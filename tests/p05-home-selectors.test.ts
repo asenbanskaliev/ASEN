@@ -10,7 +10,11 @@ import {runAsen} from "../src/cli.js";
 import {parseAsenArgs} from "../src/runtime/launcher.js";
 
 // The admitted runner supplies a fresh owned root; never fall back to user state.
-const state=path.resolve(process.env.P05_STATE??"MISSING_P05_STATE");
+// A fresh checkout owns only this synthetic run directory under .cache.
+const parent=path.resolve(".cache/p05-home-selectors");fs.mkdirSync(parent,{recursive:true});
+assert.equal(fs.realpathSync.native(parent),parent,"P05 fixture parent must not be redirected");
+const selfOwned=process.env.P05_STATE===undefined;
+const state=selfOwned?fs.mkdtempSync(path.join(parent,"public-ci-")):path.resolve(process.env.P05_STATE!);
 assert.ok(state.startsWith(path.resolve(".cache/p05-home-selectors")+path.sep));
 const fixtures=path.join(state,"fixtures");fs.mkdirSync(fixtures,{recursive:false});
 const observations:unknown[]=[];let assertions=0;
@@ -85,4 +89,4 @@ for(const input of [["--link","home"],["--","home","--isolated"],["--model","hom
 test("S4 existing setup command does not become trailing-home grammar",async()=>{
  const f=fixture();equal(await observe("setup",["setup","home","--link"],f,{}),{exit:2,stdout:"",stderr:"Unsupported ASEN setup arguments.\n",homeCalls:0,configReads:0,launches:[]});
 });
-after(()=>fs.writeFileSync(path.join(state,"observations.json"),JSON.stringify({assertions,observations},null,2),{flag:"wx"}));
+after(()=>{fs.writeFileSync(path.join(state,"observations.json"),JSON.stringify({assertions,observations},null,2),{flag:"wx"});if(selfOwned)fs.rmSync(state,{recursive:true,force:true});});

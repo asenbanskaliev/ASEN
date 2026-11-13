@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import test, {type TestContext} from "node:test";
-import {mkdir, mkdtemp, readFile, writeFile} from "node:fs/promises";
+import test, {after,type TestContext} from "node:test";
+import {mkdir, mkdtemp, readFile, writeFile, rm} from "node:fs/promises";
+import {mkdtempSync,realpathSync} from "node:fs";
+import {tmpdir} from "node:os";
 import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
 import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
@@ -8,8 +10,11 @@ import {incrementUsageFile} from "../src/runtime/usage-store.js";
 import {readProfileFallbacksFile, resolveProfileFallbackChain, serializeProfileFallbacks, ASEN_PROFILE_FALLBACKS_SCHEMA} from "../src/runtime/profile-fallback-store.js";
 
 const ACTION = "Edit fallback chain (ASEN parent)";
-const BASE = process.env.P10_FIXTURE_ROOT;
-if (!BASE || !path.isAbsolute(BASE)) throw new Error("P10 requires an explicitly owned fixture root before import");
+// The synthetic CI owner creates a fresh root, never inferring old private authorization.
+const ownsRoot=process.env.P10_FIXTURE_ROOT===undefined;
+const BASE=process.env.P10_FIXTURE_ROOT??mkdtempSync(path.join(realpathSync.native(tmpdir()),"asen-p10-public-"));
+if (!path.isAbsolute(BASE)) throw new Error("P10 fixture root must be absolute");
+after(async()=>{if(ownsRoot)await rm(BASE,{recursive:true,force:true});});
 type Screen = {title: string; choices: string[]};
 type Choice = string | undefined | ((screen: Screen) => string | undefined | Promise<string | undefined>);
 const entry = (model: string): Choice => screen => {

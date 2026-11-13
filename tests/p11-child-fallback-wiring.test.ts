@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import test, {type TestContext} from "node:test";
-import {mkdir, mkdtemp, readFile, readdir, realpath, writeFile} from "node:fs/promises";
+import test, {after,type TestContext} from "node:test";
+import {mkdir, mkdtemp, readFile, readdir, realpath, writeFile, rm} from "node:fs/promises";
+import {mkdtempSync,realpathSync} from "node:fs";
+import {tmpdir} from "node:os";
 import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
@@ -9,9 +11,11 @@ import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
 import {ASEN_PROFILE_FALLBACKS_SCHEMA, serializeProfileFallbacks, type ProfileFallbacksFile} from "../src/runtime/profile-fallback-store.js";
 import {canonicalProfilePartition, readSessionProfile} from "../src/runtime/session-profile-binding.js";
 
-// Driver establishes every synthetic root BEFORE this module's static SDK/ASEN imports.
-const BASE = process.env.P11_FIXTURE_ROOT;
-if (!BASE || !path.isAbsolute(BASE)) throw new Error("P11 requires a parent-admitted synthetic fixture root");
+// Isolated public synthetic fixture only; not a replay of historical parent-admitted proof.
+const ownsRoot=process.env.P11_FIXTURE_ROOT===undefined;
+const BASE=process.env.P11_FIXTURE_ROOT??mkdtempSync(path.join(realpathSync.native(tmpdir()),"asen-p11-public-"));
+if (!path.isAbsolute(BASE)) throw new Error("P11 synthetic fixture root must be absolute");
+after(async()=>{if(ownsRoot)await rm(BASE,{recursive:true,force:true});});
 const PRIMARY = {model: "primary/explorer", thinking: "high" as const};
 const ROLE = [{model: "fallback/one", thinking: "off" as const}, {model: "fallback/two"}];
 const WILDCARD = [{model: "wildcard/one", thinking: "low" as const}];

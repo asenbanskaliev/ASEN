@@ -3,7 +3,7 @@ import type {TodoItem} from "./todo-store.js";
 import type {TaskEvent} from "./task-replay.js";
 import type {BackgroundJobSnapshot} from "./background-jobs.js";
 import {projectJobMetadata,jobInspectionLabel,isObservedActiveJob} from "./job-inspect.js";
-import {sanitizeTerminalText,truncateForTerminal} from "./responsive-layout.js";
+import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "./responsive-layout.js";
 import type {HostStatusProjection} from "./host-status-projection.js";
 import type {IntegrationProfileInspection} from "./integration-profile-inspection.js";
 
@@ -206,5 +206,14 @@ export function renderAsenStatusLine(snapshot:AsenPanelSnapshot,width=80):string
  }
  if(!host&&typeof snapshot.cost==="number"&&Number.isFinite(snapshot.cost)&&snapshot.cost>=0)
   parts.push("$"+snapshot.cost.toFixed(2)+(snapshot.subscription?" sub":""));
+ // The observed host-only eight-cell gauge is added ONLY when the entire row fits.
+ // Unknown/legacy/narrow rows remain exactly byte-compatible; font approval is separate.
+ if(host&&host.context.percent!==null){
+  const displayed=Math.max(0,Math.min(100,Math.round(host.context.percent)));
+  const filled=Math.max(0,Math.min(8,Math.round(displayed*8/100)));
+  const gauge="▰".repeat(filled)+"▱".repeat(8-filled);
+  const candidate=[...parts];const index=candidate.findIndex(part=>part.startsWith("ctx "));
+  if(index>=0){candidate[index]+=" "+gauge;const row=candidate.join(" │ ");if(visibleWidth(row)<=width)return fit(row,width);}
+ }
  return fit(parts.join(" │ "),width);
 }
