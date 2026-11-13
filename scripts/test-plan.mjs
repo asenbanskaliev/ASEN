@@ -76,7 +76,7 @@ export function planTestRuns({platform,testFiles,nodeOptions}){
     const chunk=ordinary.slice(index,index+MACOS_CHUNK_SIZE);
     runs.push({name:`macos-${Math.floor(index/MACOS_CHUNK_SIZE)+1}`,args:[...base,...chunk]});
    }
-  }else if(ordinary.length){runs.push({name:"linux-ordinary",args:[...base,...ordinary]});}
+  }else if(ordinary.length){runs.push({name:"all",args:[...base,...ordinary]});}
   for(const file of processHeavy){
    runs.push({name:`isolated-${file.slice(file.lastIndexOf("/")+1).replace(".test.ts","")}`,args:[...base,"--test-concurrency=1",file]});
   }

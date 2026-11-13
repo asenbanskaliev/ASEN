@@ -60,7 +60,10 @@ test("public lifecycle status is additive, fresh, threshold-aware and clears on 
  const prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
  t.after(()=>{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;});
  await f.emit("session_start");
- const expected=(context:string)=>`ASEN │ selected p/m · high │ responding ? │ ctx ${context} │ cost/sub ?`;
+ const expected=(context:string)=>{const percent=Number.parseInt(context,10),filled=Number.isFinite(percent)?Math.max(0,Math.min(8,Math.round(percent*8/100))):null;
+  const gauge=filled===null?"":" "+"▰".repeat(filled)+"▱".repeat(8-filled);
+  return `ASEN │ selected p/m · high │ responding ? │ ctx ${context}${gauge} │ cost/sub ?`;
+ };
  assert.equal(f.statuses.get("asen:host"),expected("80% warning"));
  for(const [percent,label] of [[79.999,"80%"],[80,"80% warning"],[94.999,"95% warning"],[95,"95% error"],[null,"?"]] as const){
   f.ctx.getContextUsage=()=>({tokens:percent===null?null:80,contextWindow:100,percent});
@@ -90,7 +93,7 @@ test("public theme applies the unrounded context tone without changing plain com
  const f=await fixture(t);const tones:string[]=[];
  f.ctx.ui.theme={fg(tone:string,text:string){tones.push(tone);return `<${tone}>${text}</${tone}>`;}};
  await f.emit("model_select");assert.deepEqual(tones,["warning"]);
- assert.equal(f.statuses.get("asen:host"),"<warning>ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?</warning>");
+ assert.equal(f.statuses.get("asen:host"),"<warning>ASEN │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?</warning>");
  assert.deepEqual(await f.panel("status"),["ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ? │ integrations reported"]);
 });
 
@@ -105,7 +108,7 @@ test("the composed host row carries the observed detached workspace changes segm
  await writeFile(path.join(f.project,"pending.txt"),"pending\n");
  git("checkout","--detach","-q");
  await f.emit("model_select");
- assert.equal(f.statuses.get("asen:host"),`ASEN │ detached ±1 │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?`);
+ assert.equal(f.statuses.get("asen:host"),`ASEN │ detached ±1 │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?`);
  assert.doesNotMatch(f.statuses.get("asen:host")!,/Permission:|private|connected|healthy|servers: \d/i);
  await f.emit("session_shutdown");
 });
@@ -174,16 +177,16 @@ test("session replacement clears the previous UI contribution and observes only 
 test("the host row composes workspace and elevated permission once without secondary status keys",async t=>{
  const f=await fixture(t);
  await f.emit("session_start");
- assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?");
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?");
  assert.equal(f.statuses.get("asen:permissions"),undefined,"The permission mode must not occupy a second status key");
  assert.equal(f.statuses.get("asen:workspace"),undefined,"ASEN contributes no separate workspace status key");
  await f.commands.get("asen-mode").handler("yolo",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"ASEN │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?");
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?");
  const rows=await f.panel("integrations");
  assert.ok(rows.some(row=>row.startsWith("  permissions standing permission for ordinary primary work")),rows.join("\n"));
  assert.doesNotMatch(rows.join("\n"),/Permission:|connected|healthy|servers: \d/i);
  await f.commands.get("asen-mode").handler("normal",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?");
+ assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?");
  assert.doesNotMatch((await f.panel("integrations")).join("\n"),/permissions /,"Normal mode states no meaning row");
 });
 
