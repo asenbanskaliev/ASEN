@@ -13,7 +13,7 @@ async function missingLinks(file: string): Promise<string[]> {
     const clean = (target ?? "").trim();
     if (!clean || clean.startsWith("#") || clean.startsWith("http://") || clean.startsWith("https://") || clean.startsWith("mailto:")) continue;
     // Markdown #fragments identify a section, not part of the filesystem path.
-    const fileTarget = clean.split("#", 1)[0];
+    const fileTarget = clean.split("#", 1)[0] ?? clean;
     const resolved = path.resolve(path.dirname(file), fileTarget);
     try { await readFile(resolved, "utf8"); } catch { missing.push(clean); }
   }
