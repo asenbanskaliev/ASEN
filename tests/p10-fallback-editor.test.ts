@@ -44,7 +44,8 @@ async function fixture(t: TestContext, sharedHome?: string) {
  const forbidden = () => {effects++; throw new Error("Unexpected model/provider/message effect");};
  const catalog = ["model", "second", "third", ...Array.from({length: 9}, (_, n) => `m${n}`)].map(id => ({provider: "catalog", id, reasoning: true}));
  const manager = {getSessionId: () => id};
- const ctx: any = {cwd: project, mode: "rpc", hasUI: true, sessionManager: manager,
+ // This fixture drives the native interactive editor; headless RPC stays noninteractive.
+ const ctx: any = {cwd: project, mode: "tui", hasUI: true, sessionManager: manager,
   modelRegistry: {getAll: () => catalog, find: forbidden, getAvailable: forbidden, refresh: forbidden, getApiKey: forbidden},
   ui: {notify: (text: string) => notices.push(text), setWidget() {}, setStatus() {},
    select: async (title: string, choices: string[]) => {const screen = {title, choices: [...choices]}; screens.push(screen); const next = queue.shift(); return typeof next === "function" ? next(screen) : next;},
