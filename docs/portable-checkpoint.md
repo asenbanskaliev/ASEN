@@ -1,10 +1,10 @@
 # Continue the portable WIP checkpoint
 
-This is an unfinished-work snapshot, **not acceptance, a release or a production fix**. Publication is still parent-controlled. The candidate manifest is an ownership proposal, not staging or secret-safety approval.
+This is an unfinished-work snapshot, **not acceptance, a release or a production fix**. Code checkpoint `cc74abeb30fc5e9aa336d7bd32dba3537d9c7ba0` was pushed normally and its remote branch SHA verified. Later handoff metadata may have a newer Git HEAD; read the latest publication ODD log. The candidate manifest and provenance JSON preserve their preparation-time proposals, not current staging status, secret-safety certification or native approval.
 
 ## New-machine quick path
 
-1. Clone the owner-confirmed repository and select `feat/t12-integrated-acceptance-merge` at the eventual published checkpoint SHA. No commit or push is recorded here; `a49d8ad9` is the preparation HEAD, not approval of the dirty worktree.
+1. Clone the owner-confirmed repository and select the current published `feat/t12-integrated-acceptance-merge` HEAD. Confirm it contains code checkpoint `cc74abeb30fc5e9aa336d7bd32dba3537d9c7ba0`; `git merge-base --is-ancestor cc74abeb30fc5e9aa336d7bd32dba3537d9c7ba0 HEAD` should exit 0. `a49d8ad9` was only the historical preparation HEAD, not current publication or approval.
 2. Read [AGENTS](../AGENTS.md), [current portable handoff](remote-continuation.md), the latest [canonical capability ODD](../odd/tasks/pi-capability-completion.md), then the selected owning ODD. Latest logs override historical active-worker instructions.
 3. Read tracked `package.json` and `package-lock.json`. Use Git and Node **>=22.19.0**, compatible npm and the locked dependencies. No minimum npm version is asserted. Native dependencies such as `node-pty` require host-compatible prerequisites; verify these before any installation. Installed SDK copies from another machine are not inputs.
 4. Only after fresh user authorization, use `npm ci` against the lockfile in isolated project-owned roots. It was **not run for this checkpoint**. Resolve host prerequisites without changing dependencies or weakening guards.
@@ -41,7 +41,7 @@ These directories/variables are **not complete fixtures**. Read the selected pub
 
 [Portable provenance](../odd/evidence/portable-checkpoint-evidence.json) records public sources and missing proof. Raw local receipts/admissions are excluded and unavailable on a fresh machine; do not reconstruct authority, old records or approvals. Font bytes and live-session permission do not transfer. Dirty-byte hashes do not certify an approved Git SHA or EOL identity.
 
-## Parent publication checklist
+## Retained publication checklist (preparation history)
 
 - Inspect the [exact-path manifest](../odd/evidence/portable-checkpoint-manifest.json), candidate content and dependency closure; do not stage directories wholesale.
 - Keep code, matching tests and owning docs together. Shared extension/runtime-doc hunks are aggregate, not invented per-hunk authorship. Report over-400-line groups rather than truncate history.
