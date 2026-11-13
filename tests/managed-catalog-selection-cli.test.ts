@@ -144,7 +144,7 @@ test("managed select tokens remain literal in protected Pi and existing maintena
  const contexts=[["install","managed","select",V1,"--expected-current",V2],["--","managed","select",V1,"--expected-current",V2]];
  for(const args of contexts){
   await absent(record);assert.deepEqual(invoke(f,["--package-root",packageRoot,...args]),{code:0,stdout:"",stderr:""});
-  assert.deepEqual(JSON.parse(await fs.readFile(record,"utf8")),args[0]==="--"?args.slice(1):args);
+  assert.deepEqual(JSON.parse(await fs.readFile(record,"utf8")),["-e",packageRoot,...(args[0]==="--"?args.slice(1):args)]);
   await fs.rm(record); // Remove only the fixture-owned observation before the next independent invocation.
  }
  assert.equal(await fs.readFile(f.current,"utf8"),V2+"\n");await noTransient(f);

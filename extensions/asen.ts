@@ -178,7 +178,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      }
      return result;
     };
-    const result=scopedPublication?command.handler(...args,(guard:()=>void)=>{assertPublication=guard;}):command.handler(...args);
+    // Pi command handlers have (args, ctx) slots even when a direct caller omits both.
+    // Never shift the scoped publication guard into the user's argument position.
+    const result=scopedPublication?command.handler(args[0],args[1],(guard:()=>void)=>{assertPublication=guard;}):command.handler(...args);
     return result instanceof Promise?result.then(publish):publish(result);
    }
   });

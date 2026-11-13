@@ -101,8 +101,8 @@ test("invalid persona input leaves state, counters, routing, tools and confirmat
  const planFacts=JSON.stringify({taskIdentity:"persona-preserves-routing",instruction:"Change only docs/example.md",intent:"implementation",scope:{kind:"known",expectedPaths:["docs/example.md"]},writes:[{path:"docs/example.md",changeKind:"documentation"}],riskOperations:[],session:{estimatedMinutes:10,continuation:false},testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:5},unresolvedDecisions:[]});
  const route=async()=>{const value=JSON.parse(String(await host.commands.get("asen-plan")!.handler(planFacts,ctx)));return value.executablePlan.tasks.map((item:any)=>({role:item.role,model:item.model,thinking:item.thinking,writeSurfaces:item.writeSurfaces}));};
  const routeBefore=await route(),noticeBefore=notices.length;
- assert.equal(await command.handler("unknown-persona",ctx),"Usage: /asen-persona [professional | neutral | simple]");
- assert.equal(await command.handler("neutral extra",ctx),"Usage: /asen-persona [professional | neutral | simple]");
+ assert.equal(await command.handler("unknown-persona",ctx),"Usage: /asen-persona [show | professional | neutral | simple]");
+ assert.equal(await command.handler("neutral extra",ctx),"Usage: /asen-persona [show | professional | neutral | simple]");
  assert.deepEqual({global:await readFile(f.globalFile),project:await readFile(f.projectFile),profiles:await readFile(profilesFile),usage:await readFile(usageFile)},{global:before.global,project:before.project,profiles:before.profiles,usage:before.usage});
  assert.equal(notices.length,noticeBefore+2,"invalid public commands follow the existing one-notification-per-command convention");
  const noticesBeforeRouteCheck=notices.length;assert.deepEqual(await route(),routeBefore);assert.equal(notices.length,noticesBeforeRouteCheck+1,"the existing plan command keeps its notification convention");

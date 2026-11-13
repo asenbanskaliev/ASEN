@@ -7,7 +7,8 @@ import { createAsenFocusTheme } from '../src/runtime/focus-theme.js';
 
 const backgrounds: ThemeBg[] = ['selectedBg', 'searchMatchBg', 'userMessageBg', 'customMessageBg', 'toolPendingBg', 'toolSuccessBg', 'toolErrorBg'];
 const foregrounds = `accent border borderAccent borderMuted success error warning muted dim text thinkingText scrollbarTrack scrollbarThumb searchMatchText userMessageText customMessageText customMessageLabel toolTitle toolOutput mdHeading mdLink mdLinkUrl mdCode mdCodeBlock mdCodeBlockBorder mdQuote mdQuoteBorder mdHr mdListBullet toolDiffAdded toolDiffRemoved toolDiffContext syntaxComment syntaxKeyword syntaxFunction syntaxVariable syntaxString syntaxNumber syntaxType syntaxOperator syntaxPunctuation thinkingOff thinkingMinimal thinkingLow thinkingMedium thinkingHigh thinkingXhigh thinkingMax bashMode`.split(' ') as Exclude<ThemeToken, ThemeBg>[];
-const palette = JSON.parse(readFileSync(new URL('../design/asen-focus-experience/palette.json', import.meta.url), 'utf8'));
+// Portable regression oracle: not the unpublished design approval asset.
+const palette = JSON.parse(readFileSync(new URL('./fixtures/focus-palette-v1.json', import.meta.url), 'utf8'));
 function contrast(a: string, b: string): number {
   const luminance = (hex: string) => {
     const c = hex.slice(1).match(/../g)!.map(x => parseInt(x, 16) / 255).map(x => x <= .04045 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4);
