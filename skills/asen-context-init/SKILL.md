@@ -1,6 +1,10 @@
 ---
 name: asen-context-init
 description: "Trigger: initialize project context, start structured engineering work. Detect real project conventions, test/build capabilities and available Pi-native skills before planning."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use at the start of structured work when project capabilities or conventions are not yet established.

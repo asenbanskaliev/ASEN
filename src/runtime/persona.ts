@@ -5,7 +5,7 @@ import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 
 export const ASEN_PERSONA_SCHEMA="asen.persona/v1" as const;
 export const ASEN_PERSONA_STYLE_SECTION="asen_persona_style" as const;
-export const ASEN_PERSONA_USAGE="Usage: /asen-persona [professional | neutral | simple]" as const;
+export const ASEN_PERSONA_USAGE="Usage: /asen-persona [show | professional | neutral | simple]" as const;
 export type PersonaStyle="professional"|"neutral"|"simple";
 export type PersonaSource="project"|"global"|"default";
 export interface PersonaSelection{style:PersonaStyle;source:PersonaSource;available:true}
@@ -26,15 +26,16 @@ function parsePersona(raw:string):PersonaFile{
  if(keys.length!==2||keys[0]!=="schema"||keys[1]!=="style"||record.schema!==ASEN_PERSONA_SCHEMA||!isStyle(record.style))throw new Error("Invalid persona configuration");
  return {schema:ASEN_PERSONA_SCHEMA,style:record.style};
 }
-async function regularFileState(file:string):Promise<"missing"|"file">{
- let parent;try{parent=await lstat(path.dirname(file));}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return "missing";throw error;}
- if(parent.isSymbolicLink()||!parent.isDirectory())throw new Error("Persona configuration directory must be a real directory");
- try{const metadata=await lstat(file);if(metadata.isSymbolicLink()||!metadata.isFile())throw new Error("Persona configuration must be a regular file");return "file";}
- catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return "missing";throw error;}
+async function regularFileState(file:string,guard:()=>void=()=>{}):Promise<"missing"|"file">{
+ guard();
+ let parent:Awaited<ReturnType<typeof lstat>>;try{parent=await lstat(path.dirname(file));}catch(error){guard();if((error as NodeJS.ErrnoException).code==="ENOENT")return "missing";throw error;}
+ guard();if(parent.isSymbolicLink()||!parent.isDirectory())throw new Error("Persona configuration directory must be a real directory");
+ try{const metadata=await lstat(file);guard();if(metadata.isSymbolicLink()||!metadata.isFile())throw new Error("Persona configuration must be a regular file");return "file";}
+ catch(error){guard();if((error as NodeJS.ErrnoException).code==="ENOENT")return "missing";throw error;}
 }
-async function readPersonaFile(file:string):Promise<PersonaFile|undefined>{
- if(await regularFileState(file)==="missing")return undefined;
- return parsePersona(await readFile(file,"utf8"));
+async function readPersonaFile(file:string,guard:()=>void=()=>{}):Promise<PersonaFile|undefined>{
+ const state=await regularFileState(file,guard);guard();if(state==="missing")return undefined;
+ const raw=await readFile(file,"utf8");guard();return parsePersona(raw);
 }
 export function personaStyleText(style:PersonaStyle):string{return styleText[style];}
 export function personaConfigPaths(home:string,project:string):{globalFile:string;projectFile:string}{
@@ -45,20 +46,21 @@ export async function resolvePersonaStyle(globalFile:string,projectFile:string):
  const global=await readPersonaFile(globalFile);if(global)return {style:global.style,source:"global",available:true};
  return {style:"professional",source:"default",available:true};
 }
-async function writePersonaFile(file:string,style:PersonaStyle,createParent:boolean):Promise<void>{
+async function writePersonaFile(file:string,style:PersonaStyle,createParent:boolean,guard:()=>void):Promise<void>{
+ guard();
  if(!isStyle(style))throw new Error("Invalid persona style");
- if(createParent)await mkdir(path.dirname(file),{recursive:true,mode:0o700});
- const parent=await lstat(path.dirname(file));if(parent.isSymbolicLink()||!parent.isDirectory())throw new Error("Persona configuration directory must be a real directory");
+ if(createParent){await mkdir(path.dirname(file),{recursive:true,mode:0o700});guard();}
+ const parent=await lstat(path.dirname(file));guard();if(parent.isSymbolicLink()||!parent.isDirectory())throw new Error("Persona configuration directory must be a real directory");
  await withExclusiveFileLock(file,async()=>{
-  await regularFileState(file);
-  await atomicWriteText(file,`${JSON.stringify({schema:ASEN_PERSONA_SCHEMA,style},null,2)}\n`);
- });
+  guard();await regularFileState(file,guard);guard();
+  await atomicWriteText(file,`${JSON.stringify({schema:ASEN_PERSONA_SCHEMA,style},null,2)}\n`);guard();
+ });guard();
 }
-/** A selection is global and also keeps an existing project override aligned. */
-export async function selectPersonaStyle(globalFile:string,projectFile:string,style:PersonaStyle):Promise<PersonaSelection>{
- if(!isStyle(style))throw new Error("Invalid persona style");
- const [global,project]=await Promise.all([readPersonaFile(globalFile),readPersonaFile(projectFile)]);void global;
- await writePersonaFile(globalFile,style,true);
- if(project)await writePersonaFile(projectFile,style,false);
+/** Global plus an existing project override; guard expiry stops later writes, not completed writes. */
+export async function selectPersonaStyle(globalFile:string,projectFile:string,style:PersonaStyle,guard:()=>void=()=>{}):Promise<PersonaSelection>{
+ guard();if(!isStyle(style))throw new Error("Invalid persona style");
+ const [global,project]=await Promise.all([readPersonaFile(globalFile,guard),readPersonaFile(projectFile,guard)]);guard();void global;
+ await writePersonaFile(globalFile,style,true,guard);guard();
+ if(project){await writePersonaFile(projectFile,style,false,guard);guard();}
  return {style,source:project?"project":"global",available:true};
 }

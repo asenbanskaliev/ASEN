@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {controlledInstructionPlanCommand} from "../src/runtime/route-command.js";
+import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/route-command.js";
 
 test("ECO-06 plain instruction triage does not mint a route or execution authority",()=>{
  const result=JSON.parse(controlledInstructionPlanCommand("Inspect the repository and propose a safe fix","/repo"));
@@ -34,6 +34,26 @@ test("ECO-06 exact ODD input compiles to an immutable ordered task DAG without g
  assert.equal(graph.tasks[0].status,"ready");assert.equal(graph.tasks[1].status,"waiting");
  assert.equal(graph.execution,"not_started");assert.equal(graph.authorization,"required_before_dispatch");
  assert.ok(graph.tasks.every((task:{execution:string;authorization:string})=>task.execution==="not_started"&&task.authorization==="required_before_dispatch"));
+});
+test("R2c1 public JSON plans select organic guards without granting execution or accepting a caller skip flag",()=>{
+ const value=JSON.parse(controlledInstructionPlanCommand(oddInput(),"/repo"));
+ assert.equal(value.selectedSkills.includes("asen-tdd"),false);
+ for(const id of ["asen-apply","asen-safe-change","asen-work-unit"])assert.ok(value.selectedSkills.includes(id));
+ assert.deepEqual(value.requiredAgentRoles,["worker","reviewer","reviewer"]);
+ for(const task of value.executablePlan.tasks){
+  assert.equal(task.skillSelection.selectionProfile,"organic");
+  assert.equal(task.skills.includes("asen-tdd"),false);
+  assert.equal(task.authorization,"required_before_dispatch");
+  assert.equal(task.execution,"not_started");
+  assert.equal(Object.hasOwn(task,"writeSurfaces"),false,"planning without an exact candidate cannot authorize a writer");
+  if(task.role==="reviewer")assert.ok(task.skills.includes("asen-review"));
+ }
+ assert.deepEqual(value.execution,{started:false,authorized:false});
+ assert.deepEqual(value.actions,{informationRetrieved:false,reviewRequested:false});
+ assert.equal(value.authorizationRequiredBeforeExecution,true);
+ assert.throws(()=>controlledInstructionPlanCommand(oddInput({selectionProfile:"organic"}),"/repo"),/exactly/);
+ const {instruction:_instruction,...facts}=JSON.parse(oddInput());
+ assert.match(routePreviewCommand(JSON.stringify(facts),"/repo"),/Preview only: no agent was dispatched and no write permission was granted/);
 });
 test("ECO-06 persists the active profile model and thinking route with each agent phase",()=>{
  const revision="a".repeat(40),profiles={global:{schema:"asen.runtime-profiles/v1" as const,active:"test",profiles:[{name:"test",routes:{worker:{model:"nvidia/nemotron-3.5-lightning-30b-a3b",thinking:"low" as const},reviewer:{model:"nvidia/nemotron-3.5-lightning-30b-a3b"},verifier:{model:"nvidia/nemotron-3.5-lightning-30b-a3b"}}}]}};

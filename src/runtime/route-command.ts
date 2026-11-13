@@ -41,7 +41,7 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
  const facts=deriveOddFacts({...factsInput,repositoryIdentity} as unknown as OddRoutingRequest),decision=planOddRoute(facts);
  if(candidate&&(candidate.repository!==repositoryIdentity||!candidate.id||!candidate.revision||!candidate.createdAt))throw new Error("ASEN plan candidate does not match the active project");
  const writeSurfaces=facts.writes.map(write=>write.path);
- const plan=buildOrchestrationPlan({taskId:decision.taskIdentity,repository:decision.repositoryIdentity,prompt:instruction,...(candidate?{candidate}:{}),...(candidate&&writeSurfaces.length?{writeSurfaces}:{}),...(runtimeProfiles?{runtimeProfiles}:{})},decision);
+ const plan=buildOrchestrationPlan({selectionProfile:"organic",taskId:decision.taskIdentity,repository:decision.repositoryIdentity,prompt:instruction,...(candidate?{candidate}:{}),...(candidate&&writeSurfaces.length?{writeSurfaces}:{}),...(runtimeProfiles?{runtimeProfiles}:{})},decision);
  const writerAuthorizationBasis=candidate&&writeSurfaces.length?JSON.stringify({instruction,...factsInput}):undefined;
  const executablePlan=materializeExecutablePlan(plan,instruction,writerAuthorizationBasis);
  const sensitive=facts.riskOperations.length>0;

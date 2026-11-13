@@ -3,15 +3,14 @@ import {access,lstat,mkdir,readFile,realpath,writeFile} from "node:fs/promises";
 import {W_OK,X_OK} from "node:constants";
 import {homedir} from "node:os";
 import {execFileSync} from "node:child_process";
-import path from "node:path";import {existsSync} from "node:fs";import {fileURLToPath} from "node:url";
+import path from "node:path";import {existsSync,realpathSync} from "node:fs";import {fileURLToPath} from "node:url";
 import {refreshSkillRegistry,summarizeSkillRegistryDiagnostics,type SkillRegistryMirror} from "../src/skills/generated-registry.js";
 import type {SkillSource} from "../src/skills/discovery.js";
-import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCommand} from "../src/lifecycle/workflow-selection.js";
-import {decideLifecycleApplicability,decideLifecycleApplicabilityWithSelection,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
+import {decideLifecycleApplicability,type LifecycleApplicability,type LifecycleApplicabilityInput} from "../src/lifecycle/applicability.js";
 import type {OddRouteDecision} from "../src/flow/odd-routing.js";
-import {claimedOrchestrationRouteContext} from "../src/orchestration/orchestrator.js";
 import type {ExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
+import {createNativeRddControl,type NativeRddOptions} from "../src/review/native-rdd-control.js";
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
 import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
 import type {MemoryContext} from "../src/memory/context.js";import type {MemoryStore} from "../src/memory/types.js";
@@ -31,7 +30,10 @@ import {formatCommandGuide} from "../src/runtime/command-guide.js";
 import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
 import {findPotentialWorkspaceConflicts,visibleWorkspaceConflictRows,visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
 import {readProfilesFile,mutateProfilesFile} from "../src/runtime/profile-store.js";
-import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,type ProfileLayer,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
+import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallbacksFile,setProfileFallbackChain,MAX_PROFILE_FALLBACK_CHAIN_LENGTH} from "../src/runtime/profile-fallback-store.js";
+import {createParentModelFallback,type ParentCatalogModel} from "../src/runtime/parent-model-fallback.js";
+import {formatModelFallbackFailureNotice,formatModelFallbackNotice} from "../src/runtime/model-fallback-notice.js";
+import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,upsertProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/profiles.js";
 import {canonicalProfilePartition,captureSessionProfile,readSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/session-profile-binding.js";
 import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/persona.js";
 import {parseHistoryStore,emptyHistoryStore} from "../src/runtime/history-store.js";
@@ -40,7 +42,7 @@ import {runHistoryCommand,recordHistoryInput,type HistoryCommandResult} from "..
 import {runUsageCommand} from "../src/runtime/usage-command.js";
 import {runPiHistoryStatsCommand} from "../src/stats/pi-history-command.js";
 import {incrementUsageFile} from "../src/runtime/usage-store.js";
-import {VERSION,type ExtensionAPI} from "@earendil-works/pi-coding-agent";
+import {VERSION,Theme,type ExtensionAPI,type ExtensionContext} from "@earendil-works/pi-coding-agent";
 import {validatePiHost,validatePiRegistrationCollisions,validatePiExecutionContext} from "../src/runtime/pi-host.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {Candidate} from "../src/core/types.js";
@@ -75,6 +77,9 @@ import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtim
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ide-panel.js";
 import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
+import {createNativeCommandPalette} from "../src/runtime/native-command-palette.js";
+import {createAsenFocusTheme} from "../src/runtime/focus-theme.js";
+import {renderAsenFocusHeader} from "../src/runtime/focus-chrome.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/native-m2-navigator.js";
 import {createM1SurfaceCache} from "../src/runtime/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status-projection.js";
@@ -91,14 +96,15 @@ import {AsenAutoPermissionReviewer} from "../src/security/auto-permission-review
 import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault} from "../src/security/permission-mode-policy.js";
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
-type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};notify(message:string,level:"info"|"error"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;custom?:(...args:any[])=>Promise<any>}};
-type PiLike={getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void};
+type CreateProfileCatalogModel=ParentCatalogModel&{reasoning?:boolean|undefined;thinkingLevelMap?:Partial<Record<Thinking,string|null|undefined>>|undefined};
+type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;custom?:(...args:any[])=>Promise<any>}};
+type PiLike={getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
-export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];autoPermissionStatus?:()=>{calls:number;totalTokens:number;totalCost:number;pending:boolean};homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string}
+export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];autoPermissionStatus?:()=>{calls:number;totalTokens:number;totalCost:number;pending:boolean};homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;profileFallbacksFile?:string;profileFallbacksReader?:typeof readProfileFallbacksFile;fallbackClock?:()=>number;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string;nativeRdd?:NativeRddOptions}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -207,6 +213,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   },...dependencies.registryLifecycle});
   const historyFile=path.join(home(),".asen","history.json"),usageFile=path.join(home(),".asen","usage.json");
   const profilesFile=dependencies.profilesFile??path.join(home(),".asen","profiles.json");
+  const profileFallbacksFile=dependencies.profileFallbacksFile??path.join(home(),".asen","profile-fallbacks.json"),profileFallbacksReader=dependencies.profileFallbacksReader??readProfileFallbacksFile;
   const personaFiles=async(ctx:CommandContext)=>personaConfigPaths(home(),await canonical(ctx.cwd));
   let agentDeliveryContext:CommandContext|undefined,agentDeliveryIdentity:{sessionId:string;projectId:string}|undefined;
   let explorerBudget:Readonly<{sessionId:string;projectId:string;telemetry:ExplorerBudgetTelemetry}>|undefined;
@@ -279,9 +286,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const activeValidationTask=(sessionId:string,projectId:string):string|undefined=>[...validationActivities.values()].find(activity=>activity.sessionId===sessionId&&activity.projectId===projectId)?.taskId;
   const sessionIdentity=async(ctx:CommandContext)=>{const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId)throw new Error("ASEN requires the active Pi session");const projectId=await canonical(ctx.cwd);return {sessionId,projectId,worktree:projectId};};
+  const parentEventScope=async(ctx:CommandContext|undefined)=>{if(!ctx)return undefined;try{const identity=await sessionIdentity(ctx);return {sessionId:identity.sessionId,projectId:identity.projectId};}catch{return undefined;}};
   let profilePartitionPromise:Promise<string>|undefined;
   const profilePartition=()=>profilePartitionPromise??=canonicalProfilePartition(profilesFile);
   const inheritedProfile=async(identity:ProfileSessionIdentity)=>captureSessionProfile(await profilePartition(),identity,()=>readProfilesFile(profilesFile));
+  let parentBindingGeneration=0;
+  const parentFallback=createParentModelFallback({
+   identity:async host=>{
+    const ctx=host as CommandContext|undefined;if(!ctx||ctx.signal?.aborted)return undefined;
+    const identity=await sessionIdentity(ctx),snapshot=await inheritedProfile(identity);
+    if(ctx.signal?.aborted)return undefined;
+    const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)return undefined;
+    return {...identity,profile:snapshot.file.active};
+   },
+   loadChain:async profile=>profile?resolveProfileFallbackChain(await profileFallbacksReader(profileFallbacksFile),profile,"orchestrator"):[],
+   currentModel:host=>{const model=(host as CommandContext|undefined)?.model;return model?`${model.provider}/${model.id}`:undefined;},
+   findModel:(model,host)=>{const split=model.indexOf("/");if(split<=0||split===model.length-1)return undefined;return (host as CommandContext|undefined)?.modelRegistry?.find(model.slice(0,split),model.slice(split+1));},
+   setModel:model=>pi.setModel?pi.setModel(model):false,
+   getThinking:()=>pi.getThinkingLevel?.(),setThinking:level=>pi.setThinkingLevel?.(level),
+   notify:(change,pricing,host)=>(host as CommandContext|undefined)?.ui?.notify(formatModelFallbackNotice(change,pricing),"warning"),
+   followUp:message=>pi.sendUserMessage?.(message,{deliverAs:"followUp"}),
+   ...(dependencies.fallbackClock?{clock:dependencies.fallbackClock}:{}),
+  });
   const profileLayer=async(identity:ProfileSessionIdentity):Promise<ProfileLayer>=>{
    const chosen=await inheritedProfile(identity);
    const projectFile=path.join(identity.projectId,".asen","profiles.json");
@@ -394,7 +420,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
   }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined,async host=>{await advancePlan(host as CommandContext);},async host=>refreshTodoWidget(host as CommandContext));
   if(memoryStorePromise)registerPiMemoryTools(pi,host=>currentMemoryBinding(host));
-  const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity)=>resolveRuntimeRoute(await profileLayer(identity),role),agentNoticeJournal):undefined;
+  const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity,directExplorer)=>{
+   const layers=await profileLayer(identity),route=resolveRuntimeRoute(layers,role);
+   if(!directExplorer)return route;
+   const profile=(route.source==="default"?layers.session??layers.project??layers.global:layers[route.source])?.active;
+   const chain=resolveProfileFallbackChain(await readProfileFallbacksFile(profileFallbacksFile),profile,role);
+   return {...route,...(profile&&chain.length?{modelFallback:{profile,chain}}:{})};
+  },agentNoticeJournal):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const advancingPlans=new Set<string>();
   const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
@@ -416,14 +448,31 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }finally{advancingPlans.delete(key);}
   };
   const startSession=async(ctx:CommandContext)=>{
-   panelEpoch++;hostStatusClosed=false;clearHostStatus();
+   const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
     typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
+   if(ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.theme instanceof Theme&&typeof ctx.ui.setTheme==="function"){
+    try{
+     let asenVersion="unavailable";
+     try{const metadata=JSON.parse(await readFile(path.join(productionPackageRoot,"package.json"),"utf8"));if(typeof metadata.version==="string"&&metadata.version.trim())asenVersion=metadata.version;}catch{/* Unknown metadata is not a fabricated version. */}
+     if(parentGeneration===parentBindingGeneration&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.theme instanceof Theme){
+      // A Theme instance is runtime-only: never persist a named theme or steal the transcript root.
+      const applied=ctx.ui.setTheme(createAsenFocusTheme(ctx.ui.theme));
+      if(applied.success&&typeof ctx.ui.setHeader==="function")ctx.ui.setHeader((_tui,theme)=>({
+       render(width:number){return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,ctx.ui.theme instanceof Theme?ctx.ui.theme:theme);},
+       invalidate(){},
+      }));
+     }
+    }catch{/* Optional presentation must not interrupt startup or confer authority. */}
+   }
    await refreshHostStatus(ctx);
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
-   if(ctx.sessionManager?.getSessionId?.())await inheritedProfile(await sessionIdentity(ctx));
+   if(ctx.sessionManager?.getSessionId?.()){
+    const identity=await sessionIdentity(ctx);await inheritedProfile(identity);const current=await sessionIdentity(ctx);
+    if(parentGeneration===parentBindingGeneration&&current.sessionId===identity.sessionId&&current.projectId===identity.projectId)parentFallback.activate(identity);
+   }
    try {
     const startupSnapshot = dependencies.status?.();
     const startupSummary = startupSnapshot ? buildStatus(startupSnapshot).summary : "Listo para empezar";
@@ -672,6 +721,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("agent_start",()=>{agentParentRunActive=true;agentWakeOwed=undefined;
    if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}
   });
+  // Pi emits agent_end for each failed attempt; only the final attempt is classified at agent_settled.
+  pi.on?.("agent_end",async(event,ctx)=>parentFallback.onAgentEnd(event,await parentEventScope(ctx as CommandContext)));
   const flushAgentBoundary=async(ctx:CommandContext|undefined,settled=false)=>{
    if(settled)agentParentRunActive=false;
    if(!ctx)return;
@@ -681,14 +732,19 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(settled&&pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId)
     scheduleAgentWakeAtBoundary?.();
   };
-  pi.on?.("agent_settled",async(_event,ctx)=>{await flushAgentBoundary(ctx as CommandContext,true);await refreshWorkRow(ctx as CommandContext);});
+  pi.on?.("agent_settled",async(event,ctx)=>{
+   const context=ctx as CommandContext,scope=await parentEventScope(context);
+   try{await parentFallback.onAgentSettled({aborted:event?.aborted===true},context,scope);}
+   catch{try{context.ui.notify(formatModelFallbackFailureNotice(),"error");}catch{/* Fallback failure never interrupts existing settled handlers. */}}
+   await flushAgentBoundary(context,true);await refreshWorkRow(context);
+  });
   pi.on?.("turn_end",async(_event,ctx)=>{await flushAgentBoundary(ctx as CommandContext);await refreshWorkRow(ctx as CommandContext);await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_compact",async(_event,ctx)=>flushAgentBoundary(ctx as CommandContext));
   pi.on?.("session_compact_failed",async(_event,ctx)=>flushAgentBoundary(ctx as CommandContext));
   for(const event of ["model_select","thinking_level_select","session_compact","session_compact_failed","session_tree","turn_end","agent_settled"])
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
-   panelEpoch++;hostStatusClosed=true;clearHostStatus();
+   parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
    const endingSession=ctx?.sessionManager?.getSessionId?.();
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
@@ -784,9 +840,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
 // asen-presentation rich mode removed to avoid duplicate command with compact/complete mode below.
 
-  pi.registerCommand?.("asen-commands",{description:"Search registered commands by name, description or group",handler:(args:string|undefined,ctx?:CommandContext)=>{
+  pi.registerCommand?.("asen-commands",{description:"Browse manual command guidance in native UI, or search registered commands by name, description or group",handler:(args:string|undefined,ctx?:CommandContext)=>{
    const assertCurrent=ctx?panelScope(ctx):()=>{};
    const result=inspectRegisteredCommands(pi.getCommands?.bind(pi),args);
+   if(!String(args??"").trim()&&ctx?.hasUI===true&&(typeof ctx.ui?.select==="function"||(ctx.mode==="tui"&&typeof ctx.ui?.custom==="function"))&&result.entries.length){
+    assertCurrent();
+    const palette=keymapCommandHandlers.get("asen-palette");
+    if(palette)return palette(args,ctx);
+   }
    const rows=result.entries.map(({name,group,description,implemented})=>({name,group,description,implemented}));
    const output=result.state==="unavailable"?{state:result.state,message:commandDiscoveryNotice(result)}:rows;
    assertCurrent();
@@ -794,21 +855,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    assertCurrent();ctx?.ui?.notify?.(JSON.stringify(output,null,2),"info");
    return output;
   }});
-  registerData("asen-language",{description:"Show/switch ASEN language with /asen language <en|es>",handler:async(args?:string,_ctx?:CommandContext):Promise<any>=>{
+  registerData("asen-language",{description:"Show/switch ASEN language: /asen-language [show|status|en|es]",handler:async(args?:string,_ctx?:CommandContext):Promise<any>=>{
    const parts = String(args??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
-   const requested = parts.length>1 ? parts[1] : "";
+   const requested = parts.length>1 ? parts[1] : (parts[0]??"");
    const homePath = dependencies.homeDir?.() ?? home();
    const current=await readAsenLanguage(homePath);
-   if(!parts.length||requested==="status"||requested==="show") return {language:current,note:"Use `/asen language en` or `/asen language es`"};
+   if(!parts.length||requested==="status"||requested==="show") return {language:current,note:"Use `/asen-language show`, `/asen-language en` or `/asen-language es`"};
    if(requested==="en"||requested==="es"){if(requested!==current)await writeAsenLanguage(homePath,requested as any);return {language:requested};}
-   return {error:"Use `/asen language show`, `/asen language en` or `/asen language es`"};
+   return {error:"Use `/asen-language show`, `/asen-language en` or `/asen-language es`"};
   }});
   registerData("asen-help",{description:"Show the live registered command guide or exact command help",handler:(args?:string)=>{const discoveryQuery=String(args??"").trim().replace(/^\//u,"");return formatCommandGuide(inspectRegisteredCommands(pi.getCommands?.bind(pi),discoveryQuery),args,terminalColumns());}});
   pi.registerCommand?.("asen-banner",{description:"Report startup banner support without creating a separate datastore",handler:async(_args:any,ctx:any)=>{const message="ASEN startup banner: no separate persisted preference is shipped; startup presentation is owned by the Pi host and can be inspected through `asen-status`."; ctx?.ui?.notify?.(message,"info"); return [message];}});
   pi.registerCommand?.("asen-research-probe",{description:"Opt-in ASEN outbound probe, disabled by default until an explicit URL is supplied",handler:async(args:string,ctx:any)=>{
     const parsed=String(args||"").trim();
     const match=/^--url\s+(\S+)(?:\s+--execute)?$/u.exec(parsed);
-    if(!match){const message="Research probe is disabled by default; enterprise use requires `--url <absolute https url> [--execute]` and remains read-only diagnostics."; ctx?.ui?.notify?.(message,"info"); return [message];}
+    if(!match){const message="Research probe is disabled by default; enterprise use requires `--url <absolute HTTP or HTTPS URL> [--execute]` and remains read-only diagnostics."; ctx?.ui?.notify?.(message,"info"); return [message];}
     const safeUrl=match[1] || "";
     if(!/^https?:\/\//u.test(safeUrl)){const blocked="Research probe refused non-absolute or non-HTTP(S) URL"; ctx?.ui?.notify?.(blocked,"error"); return [blocked];}
     try{
@@ -825,12 +886,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    };
    const result=inspectRegisteredCommands(pi.getCommands?.bind(pi),args);
    await revalidate();
-   if(!result.entries.length||ctx.hasUI!==true||typeof ctx.ui?.select!=="function"){
+   const custom=!String(args??"").trim()&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui?.custom==="function"
+    ?ctx.ui.custom as ExtensionContext["ui"]["custom"]:undefined;
+   if(!result.entries.length||ctx.hasUI!==true||(!custom&&typeof ctx.ui?.select!=="function")){
     const lines=[commandDiscoveryNotice(result),...result.entries.map(row=>row.label)];
     assertCurrent();ctx.ui?.notify?.(lines.join("\n"),"info");return lines;
    }
    const choices=new Map(result.entries.map(row=>[row.label,row]));
-   const selected=await ctx.ui.select(commandDiscoveryNotice(result),[...choices.keys()],ctx.signal?{signal:ctx.signal}:{});
+   const selected=custom?await custom.call(ctx.ui,(tui,theme,keybindings,done)=>createNativeCommandPalette(result.entries,{
+    availableRows:()=>Math.max(1,Math.floor((tui.terminal.rows??24)*0.85)),theme,keybindings,
+    requestRender:()=>tui.requestRender(),complete:done,
+    notice:result.limited?"Limited discovery · up to 64 commands":"Registered discovery · not complete command set",
+    stillCurrent:()=>{try{assertCurrent();return !ctx.signal?.aborted&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
+   }),{overlay:true,overlayOptions:{width:"70%",maxHeight:"85%",anchor:"center"}})
+    :await ctx.ui.select!(commandDiscoveryNotice(result),[...choices.keys()],ctx.signal?{signal:ctx.signal}:{});
    await revalidate();
    const row=typeof selected==="string"?choices.get(selected):undefined;
    if(!row)return;
@@ -858,8 +927,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     {name:"asen-mode",role:"primary session and global permission defaults"},
     {name:"asen-history",role:"local task/session history"},
     {name:"asen-usage",role:"runtime usage and accounting"},
-    {name:"asen-stats",role:"Pi history aggregates"},
-    {name:"asen-workflow",role:"ODD/SDD routing evidence"}],
+    {name:"asen-stats",role:"Pi history aggregates"}],
     implemented:true,note:"Use /asen-customize permissions for the live primary selection menu."};
    requirePrimaryPermissionUI(ctx);
    if(typeof ctx.ui.select!=="function")throw new Error("ASEN permission menu requires native Pi select UI");
@@ -906,7 +974,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
    const checks=doctorChecks(input);return {exitCode:doctorExitCode(checks),checks};
   }});
-  registerData("asen-route",{description:"Advanced read-only route diagnostic for exact ODD facts; for ordinary requests, write what you want in chat",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
+  registerData("asen-route",{description:"Read-only ODD route diagnostic; complexity never selects SDD; ordinary requests belong in chat",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
   const preparePlan=async(args:string|undefined,ctx:CommandContext,conversational=false):Promise<string>=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;if(!manager||!sessionId)throw new Error("ASEN planning requires the active Pi session");
    const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
@@ -943,7 +1011,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await refreshTodoWidget(ctx);
    return JSON.stringify(output,null,2);
   };
-  registerData("asen-plan",{description:"Internal plan materializer for validated ODD facts; ordinary-language requests are planned from chat without user-authored JSON",handler:preparePlan});
+  registerData("asen-plan",{description:"Materialize validated ODD facts with applicable tests and scoped admission; ordinary requests are planned from chat",handler:preparePlan});
   if(pi.registerTool)registerAsenPlanRequestTool({registerTool:pi.registerTool.bind(pi)},(args,ctx)=>preparePlan(args,ctx,true));
   registerData("asen-panel",{description:"Show safe read-only work panel: Todos, Jobs, Agents, Changes, Review, Integrations",handler:async(args:string|undefined,ctx:CommandContext)=>{
     const view=String(args??"").trim().toUpperCase();
@@ -961,7 +1029,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        requestRender:()=>tui.requestRender(),close,
        openChanges:()=>done("ASEN_OPEN_CHANGES_VIEW"),
        ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
-       terminalRows:()=>Math.max(8,Number(tui.terminal?.rows??24)),
+       terminalRows:()=>Math.max(1,Number(tui.terminal?.rows??24)),
+       availableRows:()=>Math.max(1,Math.floor(Number(tui.terminal?.rows??24)*.9)),
+       ...(_theme instanceof Theme?{theme:_theme}:{}),
        stillCurrent:()=>{try{assertCurrent();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
       });
      },{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
@@ -1285,7 +1355,23 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return `Revisión ${result.role} aceptada para el Todo ${result.taskId}. ${advanced.started?"Se ha despachado el siguiente agente según las reglas vigentes.":advanced.reason??"No hay un siguiente trabajo preparado."} Sin merge ni permiso adicional de escritura.`;
   }});
   registerData("asen-task-agents",{description:"Show read-only task, dependency readiness and agent coordination for the current Pi session",handler:async(_args:string|undefined,ctx:CommandContext)=>{if(!todoStorePromise||!agentRuntimePromise)return ["ASEN task-agent coordination requires both local stores."];const identity=await sessionIdentity(ctx);const coordinator=new TaskAgentCoordinator(await todoStorePromise,await agentRuntimePromise,taskAgentLinks);const view=await coordinator.snapshot(identity);return view.tasks.map(task=>({taskId:task.id,title:task.title,state:task.state,revision:task.revision,dependsOn:task.dependsOn,blockedBy:task.blockedBy,ready:task.ready,agents:task.agents}));}});
-  registerData("asen-profiles",{description:"Show/apply profiles: [show | session <profile> | session --inherit | global <profile>]; actual routing remains unknown",handler:async(args:string|undefined,ctx:CommandContext|undefined)=>{
+  // Native access uses invocation-local ownership, including synchronous publication/store guards.
+  const nativeAccessScope=async(ctx:CommandContext)=>{
+   const checkPanel=panelScope(ctx),manager=ctx.sessionManager,id=manager?.getSessionId?.(),cwd=ctx.cwd;
+   const check=()=>{checkPanel();if(ctx.signal?.aborted||!id||!cwd)throw new Error("ASEN access cancelled or context changed");};
+   check();const identity=await sessionIdentity(ctx);check();
+   const guard=()=>{
+    check();let project:string;try{project=path.normalize(realpathSync(path.resolve(ctx.cwd)));}catch{throw new Error("ASEN access project changed");}
+    if(identity.sessionId!==manager?.getSessionId?.()||project!==identity.projectId)throw new Error("ASEN access context changed");
+   };
+   guard();return guard;
+  };
+  const nativeChoice=async(ctx:CommandContext,title:string,choices:string[],guard:()=>void)=>{
+   guard();const selected=await ctx.ui.select!(title,choices,ctx.signal?{signal:ctx.signal}:undefined);guard();
+   if(selected!==undefined&&!choices.includes(selected))throw new Error("ASEN access returned an unknown choice");
+   return selected;
+  };
+  const profileAction=async(args:string|undefined,ctx:CommandContext|undefined,guard:()=>void=()=>{})=>{
    const input=(args??"").trim(),parts=input?input.split(/\s+/u):[],operation=parts[0],name=parts[1];
    if(!(parts.length===0||operation==="show"&&parts.length===1||(operation==="session"||operation==="global")&&parts.length===2))return "Usage: /asen-profiles [show | session <profile> | session --inherit | global <profile>]";
    if(parts.length===0||operation==="show"){
@@ -1331,29 +1417,191 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const manager=ctx?.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx?.cwd;
     if(!ctx||!manager||!sessionId||!cwd)throw new Error("Session profile selection requires the active Pi session and project");
     identity=await sessionIdentity(ctx);const owner=identity;
-    const assertContext=()=>{if(ctx.signal?.aborted)throw new Error("Profile selection cancelled");if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before profile selection");};
+    const assertContext=()=>{guard();if(ctx.signal?.aborted)throw new Error("Profile selection cancelled");if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before profile selection");};
     const validate=async()=>{assertContext();const current=await sessionIdentity(ctx);assertContext();if(current.sessionId!==owner.sessionId||current.projectId!==owner.projectId)throw new Error("Pi session or project changed before profile selection");};
-    assertContext();const partition=await profilePartition(),load=()=>readProfilesFile(profilesFile);
-    const applied=name==="--inherit"?await resetSessionProfile(partition,owner,load,validate):await selectSessionProfile(partition,owner,name!,load,validate);
+    assertContext();const partition=await profilePartition();assertContext();const load=()=>readProfilesFile(profilesFile);
+    const beforeCommit=():true=>{assertContext();return true;};
+    const applied=name==="--inherit"?await resetSessionProfile(partition,owner,load,validate,beforeCommit):await selectSessionProfile(partition,owner,name!,load,validate,beforeCommit);
     assertContext();value=applied.global;frozen=applied.snapshot;
    }else if(operation==="global"){
     if(ctx?.signal?.aborted)throw new Error("Profile selection cancelled");
-    setActiveProfile(await readProfilesFile(profilesFile),name!);
-    value=await mutateProfilesFile(profilesFile,current=>setActiveProfile(current,name!));
+    const current=await readProfilesFile(profilesFile);guard();setActiveProfile(current,name!);
+    value=await mutateProfilesFile(profilesFile,current=>{guard();return setActiveProfile(current,name!);});guard();
    }else value=await readProfilesFile(profilesFile);
    const inventory={active:value.active??"default",profiles:value.profiles.map(p=>p.name),available:true,globalRoles:globalRuntimeRoutingFacts(value)};
    if(!ctx?.sessionManager?.getSessionId?.()||!ctx.cwd)return inventory;
-   identity??=await sessionIdentity(ctx);frozen??=await inheritedProfile(identity);
+   identity??=await sessionIdentity(ctx);guard();frozen??=await inheritedProfile(identity);guard();
    const roles=Object.fromEntries(Object.entries(globalRuntimeRoutingFacts(frozen.file)).map(([role,facts])=>[role,{...facts,source:"session" as const}]));
    return {...inventory,sessionProfile:{sessionId:identity.sessionId,projectId:identity.projectId,active:frozen.active,source:frozen.source,frozen:true,roles}};
-  }});
-  registerData("asen-persona",{description:"Show or select the ASEN communication style",handler:async(args:string|undefined,ctx:CommandContext)=>{
-   const input=(args??"").trim();
-   if(input!==""&&!isPersonaStyle(input))return ASEN_PERSONA_USAGE;
-   let files:Awaited<ReturnType<typeof personaFiles>>;try{files=await personaFiles(ctx);}catch{return {style:"professional",source:"default",available:false};}
-   if(input==="")try{return await resolvePersonaStyle(files.globalFile,files.projectFile);}catch{return {style:"professional",source:"default",available:false};}
-   return selectPersonaStyle(files.globalFile,files.projectFile,input as PersonaStyle);
-  }});
+  };
+  const pickSavedRoute=async(ctx:CommandContext,name:string,guard:()=>void)=>{
+   guard();const catalog=ctx.modelRegistry?.getAll?.();guard();
+   if(!catalog)return {available:false,reason:"Model catalog is unavailable; no profile saved"};
+   if(!Array.isArray(catalog))throw new Error("Invalid model catalog");
+   // Pinned pi-ai models.js getSupportedThinkingLevels, with unknown metadata kept Default-only.
+   const declaredEfforts=(model:CreateProfileCatalogModel):Thinking[]=>{
+    if(model.reasoning!==true)return model.reasoning===false?["off"]:[];
+    const levels:Thinking[]=["off","minimal","low","medium","high","xhigh","max"],map=model.thinkingLevelMap;
+    if(map!==undefined&&(map===null||typeof map!=="object"||Array.isArray(map)||levels.some(level=>map[level]!==undefined&&map[level]!==null&&typeof map[level]!=="string")))return [];
+    return levels.filter(level=>{
+     const mapped=map?.[level];
+     return mapped!==null&&((level!=="xhigh"&&level!=="max")||mapped!==undefined);
+    });
+   };
+   const models=catalog.map(model=>{
+    if(!model||typeof model.provider!=="string"||!model.provider||typeof model.id!=="string"||!model.id)throw new Error("Invalid model catalog");
+    const value=model.provider+"/"+model.id;
+    upsertProfile({schema:"asen.runtime-profiles/v1",profiles:[]},{name,routes:{worker:{model:value}}});
+    return {value,efforts:declaredEfforts(model)};
+   });
+   const selected=await nativeChoice(ctx,"Catalog models (not authenticated availability)",[...new Set(models.map(model=>"Catalog model: "+model.value)),"Back"],guard);
+   if(selected===undefined||selected==="Back")return {cancelled:true};
+   const model=selected.slice("Catalog model: ".length),efforts=models.find(entry=>entry.value===model)!.efforts;
+   let thinking:Thinking|undefined;
+   if(efforts.length){
+    const effort=await nativeChoice(ctx,"Declared catalog effort (not provider-used)",["Default (unspecified)",...efforts,"Back"],guard);
+    if(effort===undefined||effort==="Back")throw new Error("ASEN effort selection cancelled");
+    thinking=efforts.find(level=>level===effort);
+   }
+   return {route:{model,...(thinking!==undefined?{thinking}:{})}};
+  };
+  const createSavedProfile=async(ctx:CommandContext,guard:()=>void)=>{
+   if(typeof ctx.ui.input!=="function")return {available:false,reason:"Native input is unavailable"};
+   const projectId=path.normalize(realpathSync(path.resolve(ctx.cwd)));guard();
+   const scope=await nativeChoice(ctx,"Save profile scope (does not activate)",["Global","Project","Back"],guard);
+   if(scope===undefined||scope==="Back")return {cancelled:true};
+   guard();const name=await ctx.ui.input("Profile name — Back cancels","Letters, digits, dot, underscore, hyphen",ctx.signal?{signal:ctx.signal}:undefined);guard();
+   if(name===undefined||name==="Back")return {cancelled:true};
+   const profile:RuntimeProfile={name,routes:{}};
+   // Validate identifiers with the existing schema, without reading a stale destination snapshot.
+   upsertProfile({schema:"asen.runtime-profiles/v1",profiles:[]},profile);
+   const target=await nativeChoice(ctx,"Route target — parent/orchestrator routing is separate",["Unspecified defaults","Role: explorer","Role: worker","Role: reviewer","Role: verifier","Back"],guard);
+   if(target===undefined||target==="Back")return {cancelled:true};
+   if(target!=="Unspecified defaults"){
+    const picked=await pickSavedRoute(ctx,name,guard);
+    if(!picked.route)return picked;
+    profile.routes[target.slice("Role: ".length)]=picked.route;
+   }
+   const thinking=Object.values(profile.routes)[0]?.thinking;
+   const save=await nativeChoice(ctx,`Save ${scope} profile ${name} — ${thinking===undefined?"Default effort (unspecified)":"effort: "+thinking}; no activation`,["Save profile","Back"],guard);
+   if(save===undefined||save==="Back")return {cancelled:true};
+   const file=scope==="Global"?profilesFile:path.join(projectId,".asen","profiles.json");
+   guard();await mutateProfilesFile(file,current=>{
+    guard();
+    if(current.profiles.some(saved=>saved.name===name))throw new Error("Profile already exists in selected scope");
+    return upsertProfile(current,profile);
+   });guard();
+   return {saved:true,scope,name,active:"unchanged",sessionProfile:"unchanged",parentModel:"unchanged"};
+  };
+  // Parsed valid profiles only: own roles sorted; absent fields differ from absent roles.
+  const savedProfileSignature=(profile:RuntimeProfile)=>JSON.stringify([profile.name,
+   Object.keys(profile.routes).sort().map(role=>[role,profile.routes[role]!.model??null,profile.routes[role]!.thinking??null])]);
+  const editSavedProfile=async(ctx:CommandContext,guard:()=>void)=>{
+   const projectId=path.normalize(realpathSync(path.resolve(ctx.cwd)));guard();
+   const scope=await nativeChoice(ctx,"Edit saved profile scope (does not activate)",["Global","Project","Back"],guard);
+   if(scope===undefined||scope==="Back")return {cancelled:true};
+   const file=scope==="Global"?profilesFile:path.join(projectId,".asen","profiles.json");
+   const inventory=await readProfilesFile(file);guard();
+   const selected=await nativeChoice(ctx,"Edit existing saved profile",[...inventory.profiles.map(profile=>"Profile: "+profile.name),"Back"],guard);
+   if(selected===undefined||selected==="Back")return {cancelled:true};
+   const name=selected.slice("Profile: ".length),original=structuredClone(inventory.profiles.find(profile=>profile.name===name)!);
+   const signature=savedProfileSignature(original);
+   const roles=["explorer","worker","reviewer","verifier"].filter(role=>Object.hasOwn(original.routes,role));
+   const target=await nativeChoice(ctx,"Replace one existing role route",[...roles.map(role=>"Role: "+role),"Back"],guard);
+   if(target===undefined||target==="Back")return {cancelled:true};
+   const role=target.slice("Role: ".length),picked=await pickSavedRoute(ctx,name,guard);
+   if(!picked.route)return picked;
+   const route=picked.route;
+   const save=await nativeChoice(ctx,`Save ${scope} profile ${name} — ${role}: ${route.model}; ${route.thinking===undefined?"Default effort (unspecified)":"effort: "+route.thinking}; saved configuration only, no activation`,["Save profile","Back"],guard);
+   if(save===undefined||save==="Back")return {cancelled:true};
+   guard();await mutateProfilesFile(file,current=>{
+    guard();
+    const saved=current.profiles.find(profile=>profile.name===name);
+    if(!saved||savedProfileSignature(saved)!==signature)throw new Error("Saved profile changed or disappeared; nothing saved. Reopen Edit.");
+    return upsertProfile(current,{...saved,routes:{...saved.routes,[role]:route}});
+   });guard();
+   return {saved:true,scope,name,role,active:"unchanged",sessionProfile:"unchanged",parentModel:"unchanged"};
+  };
+  const editSavedFallbackChain=async(ctx:CommandContext,guard:()=>void)=>{
+   const inventory=await readProfilesFile(profilesFile);guard();
+   const selected=await nativeChoice(ctx,"Edit fallback chain — saved GLOBAL profile, ASEN parent only",[...inventory.profiles.map(profile=>"Profile: "+profile.name),"Back"],guard);
+   if(selected===undefined||selected==="Back")return {cancelled:true};
+   const name=selected.slice("Profile: ".length),role="orchestrator";
+   const original=await readProfileFallbacksFile(profileFallbacksFile);guard();
+   // Compare only the own target, including absence; never compare wildcard resolution.
+   const ownChain=(file:typeof original)=>Object.hasOwn(file.profiles,name)&&Object.hasOwn(file.profiles[name]!,role)?file.profiles[name]![role]:undefined;
+   const signature=JSON.stringify(ownChain(original)??null);
+   let steps=structuredClone(ownChain(original)??[]);
+   for(;;){
+    const entries=steps.map((step,index)=>"Entry "+(index+1)+": "+step.model+" — "+(step.thinking===undefined?"Default effort (unspecified)":"effort: "+step.thinking));
+    const action=await nativeChoice(ctx,
+     "Global "+name+" — ASEN parent fallback order; empty override may inherit *; no live model change",
+     [...entries,...(steps.length<MAX_PROFILE_FALLBACK_CHAIN_LENGTH?["Add model"]:[]),"Save chain","Discard","Back"],guard);
+    if(action===undefined||action==="Discard"||action==="Back")return {cancelled:true};
+    if(action==="Save chain"){
+     guard();await updateProfileFallbacksFile(profileFallbacksFile,current=>{
+      guard();
+      if(JSON.stringify(ownChain(current)??null)!==signature)throw new Error("Fallback chain changed; nothing saved. Reopen Edit fallback chain.");
+      return setProfileFallbackChain(current,name,role,steps);
+     });guard();
+     return {saved:true,scope:"Global",name,role,active:"unchanged",sessionProfile:"unchanged",parentModel:"unchanged"};
+    }
+    if(action==="Add model"){
+     const picked=await pickSavedRoute(ctx,name,guard);
+     if(!picked.route)return picked;
+     const next=[...steps,picked.route];
+     setProfileFallbackChain(original,name,role,next);steps=next;
+     continue;
+    }
+    const index=entries.indexOf(action);
+    const change=await nativeChoice(ctx,action,["Replace model",...(index>0?["Move up"]:[]),...(index<steps.length-1?["Move down"]:[]),"Remove entry","Back"],guard);
+    if(change===undefined)return {cancelled:true};
+    if(change==="Back")continue;
+    const next=steps.map(step=>({...step}));
+    if(change==="Replace model"){
+     const picked=await pickSavedRoute(ctx,name,guard);
+     if(!picked.route)return picked;
+     next[index]=picked.route;
+    }else if(change==="Remove entry")next.splice(index,1);
+    else {
+     const destination=index+(change==="Move up"?-1:1);
+     [next[index],next[destination]]=[next[destination]!,next[index]!];
+    }
+    setProfileFallbackChain(original,name,role,next);steps=next;
+   }
+  };
+  registerData("asen-profiles",{description:"Open native profile access, or inspect/apply: show | session <profile> | session --inherit | global <profile>",handler:async(args:string|undefined,ctx:CommandContext|undefined,publication:(guard:()=>void)=>void)=>{
+   if((args??"").trim()||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return profileAction(args,ctx);
+   const guard=await nativeAccessScope(ctx);publication(guard);
+   for(;;){
+    const action=await nativeChoice(ctx,"ASEN profiles",["Use this session","Make default","Restore captured inheritance","Create saved profile","Edit saved profile","Edit fallback chain (ASEN parent)","Back"],guard);
+    if(action===undefined||action==="Back")return {cancelled:true};
+    if(action==="Create saved profile")return createSavedProfile(ctx,guard);
+    if(action==="Edit saved profile")return editSavedProfile(ctx,guard);
+    if(action==="Edit fallback chain (ASEN parent)")return editSavedFallbackChain(ctx,guard);
+    if(action==="Restore captured inheritance")return profileAction("session --inherit",ctx,guard);
+    const file=await readProfilesFile(profilesFile);guard();
+    const choices=file.profiles.map(profile=>"Profile: "+profile.name);
+    const selected=await nativeChoice(ctx,choices.length?"Select saved profile":"No saved profiles — editing is not available here",[...choices,"Back"],guard);
+    if(selected===undefined)return {cancelled:true};
+    if(selected==="Back")continue;
+    return profileAction(`${action==="Make default"?"global":"session"} ${selected.slice("Profile: ".length)}`,ctx,guard);
+   }
+  }},true);
+  registerData("asen-persona",{description:"Open native style selection, inspect with show, or select professional | neutral | simple",handler:async(args:string|undefined,ctx:CommandContext,publication:(guard:()=>void)=>void)=>{
+   let input=(args??"").trim(),guard:()=>void=()=>{};
+   if(input!==""&&input!=="show"&&!isPersonaStyle(input))return ASEN_PERSONA_USAGE;
+   if(input===""&&ctx?.hasUI===true&&typeof ctx.ui.select==="function"){
+    guard=await nativeAccessScope(ctx);publication(guard);
+    const selected=await nativeChoice(ctx,"ASEN communication style",["professional","neutral","simple","Back"],guard);
+    if(selected===undefined||selected==="Back")return {cancelled:true};
+    input=selected;
+   }
+   let files:Awaited<ReturnType<typeof personaFiles>>;try{files=await personaFiles(ctx);}catch{guard();return {style:"professional",source:"default",available:false};}
+   guard();
+   if(input===""||input==="show")try{return await resolvePersonaStyle(files.globalFile,files.projectFile);}catch{return {style:"professional",source:"default",available:false};}
+   const result=await selectPersonaStyle(files.globalFile,files.projectFile,input as PersonaStyle,guard);guard();return result;
+  }},true);
   pi.registerCommand?.("asen-history",{description:"Manage opt-in, redacted, project-scoped local prompt history",handler:async(args:string,ctx:CommandContext)=>{
    const sessionId=ctx.sessionManager?.getSessionId?.();if(!sessionId){ctx.ui.notify("ASEN history is unavailable without a current session.","error");return;}
    const selecting=args.trim().split(/\s+/u)[0]==="select";
@@ -1450,14 +1698,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  const consumer=registerWorkflowSelectionCommand(register);
-  const review=registerOrdinaryReviewCommand(register);
-  return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability:(decision:OddRouteDecision,input:LifecycleApplicabilityInput)=>{
-   const original=claimedOrchestrationRouteContext(decision),binding={taskIdentity:original.facts.taskIdentity,repositoryIdentity:original.facts.repositoryIdentity},choice=readWorkflowSelection(consumer,binding);
-   if(!choice)return decideLifecycleApplicability(decision,input);
-   const claimed=claimWorkflowSelection(consumer,choice,binding);
-   return decideLifecycleApplicabilityWithSelection(decision,input,claimed);
-  }});
+  const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd));
+  // Public work is ODD-only. Legacy selection/recovery remains in lifecycle modules,
+  // not a product command or an implicit conversion into fresh write authority.
+  return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability});
  };
 }
 
@@ -1503,6 +1747,10 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
     ...(typeof pi.getCommands==="function"?{getCommands:pi.getCommands.bind(pi)}:{}),
     ...(typeof pi.getAllTools==="function"?{getAllTools:pi.getAllTools.bind(pi)}:{}),
     ...(pi.sendMessage?{sendMessage:(message:Parameters<NonNullable<PiLike["sendMessage"]>>[0],options?:Parameters<NonNullable<PiLike["sendMessage"]>>[1])=>pi.sendMessage!(message,options)}:{}),
+    ...(typeof pi.setModel==="function"?{setModel:pi.setModel.bind(pi) as NonNullable<PiLike["setModel"]>}:{}),
+    ...(typeof pi.getThinkingLevel==="function"?{getThinkingLevel:pi.getThinkingLevel.bind(pi) as NonNullable<PiLike["getThinkingLevel"]>}:{}),
+    ...(typeof pi.setThinkingLevel==="function"?{setThinkingLevel:pi.setThinkingLevel.bind(pi) as NonNullable<PiLike["setThinkingLevel"]>}:{}),
+    ...(typeof pi.sendUserMessage==="function"?{sendUserMessage:pi.sendUserMessage.bind(pi) as NonNullable<PiLike["sendUserMessage"]>}:{}),
     registerTool:tool=>{publicWrites++;pi.registerTool({...tool,execute:async(...args:any[])=>{
      if(!registrationsReady)throw new Error("ASEN registrations are disabled after an incomplete host setup");
      validatePiExecutionContext(args[4]);

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,mkdir,realpath,writeFile} from "node:fs/promises";
+import {mkdtemp,mkdir,realpath,rm,writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
 import * as bindings from "../src/runtime/session-profile-binding.js";
 import path from "node:path";
 import {canonicalProfilePartition,captureSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile} from "../src/runtime/session-profile-binding.js";
@@ -155,9 +156,9 @@ test("empty profile snapshot stays empty and module reload keeps an existing bin
  }finally{clearSessionProfiles(partition,owner.sessionId);}
 });
 
-test("configuration partition is stable before and after missing parents are created",async()=>{
- await mkdir(path.resolve(".cache"),{recursive:true});
- const home=await mkdtemp(path.resolve(".cache/asen-profile-partition-"));
+test("configuration partition is stable before and after missing parents are created",async t=>{
+ const home=await mkdtemp(path.join(tmpdir(),"asen-profile-partition-"));
+ t.after(()=>rm(home,{recursive:true,force:true}));
  const file=path.join(home,"missing","profiles.json"),before=await canonicalProfilePartition(file);
  assert.equal(before,path.join(await realpath(home),"missing","profiles.json"));
  await mkdir(path.dirname(file));await writeFile(file,"{}");assert.equal(await canonicalProfilePartition(file),before);

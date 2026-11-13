@@ -22,13 +22,34 @@ function validateTimeout(timeoutMs:number):void{if(!Number.isSafeInteger(timeout
 function staleDeadOwner(raw:string):boolean{
  try{const owner=JSON.parse(raw) as {pid?:unknown;createdAt?:unknown};return Number.isSafeInteger(owner.pid)&&(owner.pid as number)>0&&Number.isSafeInteger(owner.createdAt)&&Date.now()-(owner.createdAt as number)>30000&&!alive(owner.pid as number);}catch{return false;}
 }
+const unsupportedHardLinkDiagnostic="Atomic file locking requires hard-link support from the storage filesystem";
+const definitiveUnsupportedHardLinkCodes=new Set(["ENOSYS","ENOTSUP","EOPNOTSUPP","EXDEV"]);
+function unsupportedHardLinkError(cause:unknown):Error{return new Error(unsupportedHardLinkDiagnostic,{cause});}
+async function classifyClaimError(error:Error,temporary:string,lock:string):Promise<Error>{
+ const code=(error as NodeJS.ErrnoException).code;
+ if(definitiveUnsupportedHardLinkCodes.has(code??""))return unsupportedHardLinkError(error);
+ if(process.platform!=="win32"||code!=="EISDIR")return error;
+ try{
+  if(!(await lstat(temporary)).isFile())return error;
+  try{await lstat(lock);return error;}catch(destinationError){return (destinationError as NodeJS.ErrnoException).code==="ENOENT"?unsupportedHardLinkError(error):error;}
+ }catch{return error;}
+}
+function classifyClaimErrorSync(error:Error,temporary:string,lock:string):Error{
+ const code=(error as NodeJS.ErrnoException).code;
+ if(definitiveUnsupportedHardLinkCodes.has(code??""))return unsupportedHardLinkError(error);
+ if(process.platform!=="win32"||code!=="EISDIR")return error;
+ try{
+  if(!lstatSync(temporary).isFile())return error;
+  try{lstatSync(lock);return error;}catch(destinationError){return (destinationError as NodeJS.ErrnoException).code==="ENOENT"?unsupportedHardLinkError(error):error;}
+ }catch{return error;}
+}
 async function createAndClaim(lock:string,token:string):Promise<void>{
  const temporary=`${lock}.claim-${token}-${randomUUID()}`;let handle:Awaited<ReturnType<typeof open>>|undefined,created=false,closed=false;
  try{
   handle=await open(temporary,"wx",0o600);created=true;
   await handle.writeFile(JSON.stringify({pid:process.pid,token,createdAt:Date.now()}));await handle.sync();await handle.close();closed=true;
  }catch(error){if(handle&&!closed)try{await handle.close();}catch{/* Preserve the initialization failure. */}if(created)try{await rm(temporary,{force:true});}catch{/* Preserve the initialization failure. */}throw error;}
- try{await link(temporary,lock);}catch(error){try{await rm(temporary,{force:true});}catch{/* Preserve the claim failure. */}throw error;}
+ try{await link(temporary,lock);}catch(error){const claimError=await classifyClaimError(error as Error,temporary,lock);try{await rm(temporary,{force:true});}catch{/* Preserve the claim failure. */}throw claimError;}
  try{await rm(temporary,{force:true});}catch{/* An owned orphan cannot block the canonical lock. */}
 }
 function createAndClaimSync(lock:string,token:string):void{
@@ -37,7 +58,7 @@ function createAndClaimSync(lock:string,token:string):void{
   fd=openSync(temporary,"wx",0o600);created=true;
   writeFileSync(fd,JSON.stringify({pid:process.pid,token,createdAt:Date.now()}));fsyncSync(fd);closeSync(fd);closed=true;
  }catch(error){if(fd!==undefined&&!closed)try{closeSync(fd);}catch{/* Preserve the initialization failure. */}if(created)try{rmSync(temporary,{force:true});}catch{/* Preserve the initialization failure. */}throw error;}
- try{linkSync(temporary,lock);}catch(error){try{rmSync(temporary,{force:true});}catch{/* Preserve the claim failure. */}throw error;}
+ try{linkSync(temporary,lock);}catch(error){const claimError=classifyClaimErrorSync(error as Error,temporary,lock);try{rmSync(temporary,{force:true});}catch{/* Preserve the claim failure. */}throw claimError;}
  try{rmSync(temporary,{force:true});}catch{/* An owned orphan cannot block the canonical lock. */}
 }
 

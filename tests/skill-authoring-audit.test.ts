@@ -29,6 +29,73 @@ Return evidence.
 ## References
 - \`references/details.md\`
 `;
+// Metadata-only coverage for the project-owned legacy Skills, not body conformance.
+const metadataSkillNames=[
+ "apply","archive","context-init","design","explore","go-testing","phase-protocol",
+ "proposal","review","safe-change","specification","status","tasks","verify"
+].map(suffix=>`asen-${suffix}`);
+function assertProjectMetadata(text:string,directoryName:string){
+ const normalized=text.replace(/\r\n?/g,"\n");
+ const header=/^---\n([\s\S]*?)\n---(?:\n|$)/.exec(normalized)?.[1];
+ assert.ok(header,"closed frontmatter is required");
+ // MIT follows package.json/LICENSE; ASEN and 1.0.0 follow existing Skill metadata.
+ // Keep metadata presence independent of legacy body and reference conformance.
+ assert.match(header,/^name: [^\n]+\ndescription: "(?:[^"\\]|\\.)*"\nlicense: MIT\nmetadata:\n  author: ASEN\n  version: "(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)"$/);
+ const indexed=parseSkillIndexMetadata(normalized);
+ assert.equal(indexed?.name,directoryName);
+ assert.ok(indexed?.description.startsWith("Trigger:"));
+ assert.ok(indexed.description.length<=250);
+}
+
+for(const name of metadataSkillNames){
+ test(`project Skill metadata is present and valid: ${name}`,async()=>{
+  assertProjectMetadata(await read(`skills/${name}/SKILL.md`),name);
+ });
+}
+
+test("exploration delivery rules are nested under output without changing their content",async()=>{
+ const text=await read("skills/asen-explore/SKILL.md");
+ const current=auditSkillDocument(text,{directoryName:"asen-explore"});
+ assert.ok(!current.issues.some(issue=>issue.code==="invalid-section-order"));
+ assert.deepEqual([...text.matchAll(/^## (.+)$/gm)].map(match=>match[1]),sections);
+ const heading="### Background Completion Contract";
+ assert.ok(text.indexOf(heading)>text.indexOf("## Output Contract"));
+ assert.ok(text.indexOf(heading)<text.indexOf("## References"));
+ for(const rule of [
+  "- Return a compact read-only report tied to the original question; distinguish observed facts from assumptions and unknowns.",
+  "- When started asynchronously, retain the task ID; completion is delivered by an event, not by sleep or repeated status polling. Inspect status only when there is a genuine next orchestration decision.",
+  "- Never interpret an Explorer report as permission to write, merge, rerun a failed worker, or accept a reviewer result."
+ ]) assert.ok(text.includes(rule),"Existing background rule must be preserved");
+ const extraH2=replace(text,heading,"## Background Completion Contract");
+ const invalid=auditSkillDocument(extraH2,{directoryName:"asen-explore"});
+ assert.ok(invalid.issues.some(issue=>issue.code==="invalid-section-order"));
+ assert.deepEqual(invalid.metadata,current.metadata);
+ assert.equal(invalid.bodyWordCount,current.bodyWordCount);
+});
+
+test("project Skill metadata validation rejects missing or malformed fields",()=>{
+ const valid=validDocument().replace("license: Apache-2.0","license: MIT");
+ assertProjectMetadata(valid,"example-skill");
+ for(const [from,to] of [
+  ["license: MIT\n",""],["license: MIT","license: unknown"],
+  ["metadata:\n  author: ASEN\n  version: \"1.0.0\"",""],
+  ["  author: ASEN","  author:"],["  author: ASEN","  author: invented-author"],
+  ['  version: "1.0.0"','  version: "1.0"'],
+  ['  version: "1.0.0"','  version: "01.0.0"'],
+  ["metadata:","extra: value\nmetadata:"],
+  ["  author: ASEN","  author: ASEN\n  author: duplicate"]
+ ]) assert.throws(()=>assertProjectMetadata(valid.replace(from!,to!),"example-skill"));
+ assert.throws(()=>assertProjectMetadata(valid,"wrong-directory"));
+});
+
+test("project Skill metadata validation is separate from legacy body conformance",()=>{
+ const header=validDocument().replace("license: Apache-2.0","license: MIT").split("## Activation Contract")[0]!;
+ const legacy=`${header}## Legacy section\nShort legacy body.\n`;
+ assertProjectMetadata(legacy,"example-skill");
+ assertHas(legacy,"invalid-section-order");
+ assertHas(legacy,"body-below-target");
+});
+
 const codes=(text:string,directoryName="example-skill")=>auditSkillDocument(text,{directoryName}).issues.map(issue=>issue.code);
 const replace=(text:string,from:string,to:string)=>{assert.ok(text.includes(from));return text.replace(from,to);};
 
@@ -45,6 +112,18 @@ test("accepts a strict valid Skill document",()=>{
  assert.deepEqual(result.issues,[]);
  assert.equal(result.metadata?.name,"example-skill");
  assert.ok(result.bodyWordCount>=180&&result.bodyWordCount<=450);
+});
+
+test("accepts ASEN MIT policy without weakening strict license or document checks",()=>{
+ const mit=replace(validDocument(),"license: Apache-2.0","license: MIT");
+ assert.deepEqual(codes(mit),[]);
+ for(const license of ["", "license: BSD-3-Clause", "license: unknown", 'license: "MIT"'])
+  assertHas(replace(mit,"license: MIT",license),"invalid-frontmatter");
+ assertHas(replace(mit,"  author: ASEN","  author:"),"invalid-frontmatter");
+ assertHas(replace(mit,'  version: "1.0.0"','  version: "1.0"'),"invalid-frontmatter");
+ assertHas(replace(mit,"## Hard Rules","## Other Rules"),"invalid-section-order");
+ assertHas(replace(mit,"references/details.md","../outside.md"),"nonlocal-reference");
+ assertHas(replace(validDocument(20),"license: Apache-2.0","license: MIT"),"body-below-target");
 });
 
 test("indexes old minimal frontmatter without claiming strict validity",()=>{

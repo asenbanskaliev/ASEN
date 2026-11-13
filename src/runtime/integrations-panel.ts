@@ -11,7 +11,7 @@ function compactLine(value: string, width: number): string {
 
 /** Bounded, sanitized projection of public integration inventory and configured profiles. */
 export function integrationPanel(inspection: IntegrationProfileInspection, width = 120): string[] {
- if (!Number.isInteger(width) || width < 48) throw new Error("Integration panel width must be at least 48 characters");
+ if (!Number.isInteger(width) || width < 1) throw new Error("Integration panel width must be a positive integer");
  const rows: string[] = [];
  if (inspection.commands.state === "unavailable" && inspection.tools.state === "unavailable" && inspection.profiles.state === "unavailable") {
   return [compactLine("Integraciones: no disponible; ninguna afirmación de conexión puede derivarse del inventario.", width)];

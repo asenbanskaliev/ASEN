@@ -7,8 +7,10 @@ catalog into a capability comparison. Evidence paths are repository-relative so 
 
 ASEN is a Comparator-Shell-style Pi-native harness in the same functional family, with a different namespace and stronger
 release-grade diagnostics. It does not copy every UX surface, but it covers the operational surfaces defining the
-workspace flow: agent orchestration, ODD/SDD workflow, evidence-bound review, memory, tasks, profiles/persona,
+workspace flow: agent orchestration, public ODD workflow, evidence-bound review, memory, tasks, profiles/persona,
 usage/stats, managed install/recovery, and diagnostics.
+
+Current workflow disposition: **PARTIAL, not FULL**. The older snapshot below is historical comparison evidence, not the current reference policy. Current reference public SDD retirement and ASEN U1 are tracked in `odd/tasks/odd-rdd-shell-parity.md` (S2, L5, L16). No native approval, real-host execution or whole-menu parity is established here.
 
 ## Comparator Shell source command surface observed
 
@@ -27,7 +29,7 @@ From the extracted snapshot:
 From `src/runtime/command-catalog.ts`:
 
 - core: `asen`
-- workflow: `asen-workflow`, `asen-route`, `asen-plan`
+- workflow: `asen-route`, `asen-plan` (ODD-only; no public SDD selector)
 - review: `asen-review`
 - skills: `asen-skill-registry`
 - configuration: `asen-profiles`, `asen-persona`, `asen-commands`, `asen-customize` (unimplemented)
@@ -35,13 +37,19 @@ From `src/runtime/command-catalog.ts`:
 - memory: `asen-memory`
 - diagnostics: `asen-status`, `asen-doctor`, `asen-authority-status`, `asen-integrations`
 
+### Frozen U1 inventory and legitimate count changes
+
+Before editing, a read-only registration inventory observed 37 static catalog entries, 37 shared-extension registrations (36 catalog-owned plus `asen-task-agents`), 38 with the separate authority extension, and 7 customization links. Retiring only `asen-workflow` yields 36 catalog entries, 36 shared/production registrations, 37 with authority, and 6 customization links. Native profiles/persona and all other public commands remain unchanged. The existing static `asen-task-agents` omission is not repaired here. These are distinct inventories, not proof that every menu matches.
+
+Internal `workflow-selection.ts`, applicability, lifecycle, issued contexts, authenticated readers and historical records remain compatibility surfaces. Signed legacy SDD is not converted into fresh ODD permission; flags/artifacts without genuine selection remain blocked from structured execution.
+
 ## 1. Functional family comparison
 
 <|message|> Capability | Comparator Shell surface | ASEN surface | Status / evidence |
 | --- | --- | --- | --- |
 | Agent orchestration | `/agents`, focused map/write/verify subagents, orchestrator session notifications | `/asen-agents`, background delivery, session notification bus identity/TTL/bounded capacity | Equivalent primitives with different presentation. Evidence: `extensions/asen.ts`, `src/runtime/background-jobs.ts`, `src/runtime/session-notifications.ts`, `src/runtime/background-job-journal.ts`, tests `tests/background-jobs.test.ts`, `tests/session-notifications.test.ts`. |
-| ODD / SDD workflow | ODD primary, optional SDD/OpenSpec, native review candidate handling | ODD route + SDD skills + exact workflow selection | Functional parity, methodology plus concrete evidence. Evidence: `src/lifecycle/workflow-selection.ts`, `skills/asen-*`, odd/tasks. |
-| SDD phase control | `comparator-sdd-init`, `comparator-sdd-status`, `comparator-sdd-continue`, preflight before phases | `asen-workflow`, runtime selection, phase skills (`sdd-*`, `asen-tasks`, `asen-specification`) | ASEN exposes workflow selection plus phase skills rather than command-phase entry points. Evidence: `src/lifecycle/workflow-selection.ts`, docs `runtime-tools.md`. |
+| Public ODD workflow | Current reference: proportional ODD-only development, applicable TDD | ODD chat/route/plan; no public SDD selection | PARTIAL local registration/admission checks only. Evidence: `extensions/asen.ts`, `skills/asen-odd/SKILL.md`, `tests/workflow-selection-extension.test.ts`; RDD/independent verification/delivery remain separate work. |
+| Legacy SDD compatibility | Historical snapshot exposed SDD phase commands; current public selection retired | Internal selection fixtures, phase skills and authenticated recovery retained | Compatibility only, not product promotion or new ODD authority. Evidence: `src/lifecycle/workflow-selection.ts`, `src/lifecycle/skill-lifecycle.ts`; no migration or historical deletion. |
 | Changes / diff and correction | `/changes`, grouped caught edits, open editor, conflict resolution | `/asen-changes`, attributed Git snapshots, explicit scoped correction | Equivalent safe flow. Evidence: `src/runtime/workspace-snapshot.ts`, `src/runtime/workspace-resolution.ts`, tests `tests/t12-integrated-boundaries.test.ts`, `tests/workspace-snapshot.test.ts`. |
 | Review | Native review with exact candidate, bounded correction, consent continuations | `asen-review`, ordinary review command, authority status command | Equivalent as Ordinary flow; candidate must remain immutable. Evidence: `src/review/ordinary-review-command.ts`, docs runtime-tools. |
 | Tasks / resume | todos + session tasks | `/asen-todos` + task bundles and durable workflow | Strong parity. Evidence: `src/runtime/todo-store.ts`, agent delivery. |
@@ -70,7 +78,7 @@ ASEN enforces the same concepts:
 
 1. one parent orchestrator retains decisions
 2. bounded units require explicit reason to delegate
-3. ODD/SDD artifacts are referenced rather than paraphrased
+3. ODD artifacts (and historical legacy records when relevant) are referenced rather than paraphrased
 4. evidence gates (tests/audits) are executed
 5. an exact, immutable candidate definition is preserved for correction
 6. user controls release gates (`release:check`, publish still unrestricted by agent)
@@ -88,7 +96,7 @@ These are the principal differences that are not merely naming:
 
 ## 4. Bottom-line demonstration
 
-For operational engineering work, **functional parity is achieved**: same workflow milestones, bounded delegation, exact-candidate evidence, corrective iteration, skills registry, memory/task tracking, review posture, profiles and diagnostics. ASEN is not mechanically the same code or command vocabulary, but its behavior goal quality matches (and exceeds in transactional evidence for managed install) the Comparator Shell description.
+For operational engineering work, **functional parity remains PARTIAL**. Local primitives and bounded checks do not establish current reference parity for review control, independent verification, acceptance or delivery. Public ODD-only registration is one bounded unit, not global FULL.
 
 Where it does not match yet is surface-level UX breadth (`customize`, branded startup/banner and a richer palette) and global product availability claims. No claim of absolute identical UX is made.
 

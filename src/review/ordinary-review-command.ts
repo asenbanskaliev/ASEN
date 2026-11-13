@@ -12,6 +12,7 @@ import {captureReviewRepositoryBinding,assertReviewRepositoryBinding} from "./re
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
 import {hasSensitiveName} from "../security/primary-tool-policy.js";
 import {prepareReviewPanelDescriptor,renderReviewPanel} from "../runtime/review-panel.js";
+import {createNativeRddControl,type NativeRddControl} from "./native-rdd-control.js";
 
 interface CandidateReviewComponent{render(width:number):string[];invalidate():void;handleInput(data:string):void}
 interface CandidateReviewBindings{matches(data:string,action:"tui.select.cancel"|"tui.select.confirm"):boolean}
@@ -262,15 +263,16 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
  }
 }
 /** Registro propio de ASEN: prepara el traspaso; no emite dictamen ni autorización RDD. */
-export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void):OrdinaryReviewCommandController{
+export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl()):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
- register("asen-review",{description:"Revisar el workspace o inspeccionar un candidato preparado en vista de solo lectura; cancelar/confirmar cierra, sin UI devuelve checkout; no autoriza entrega",handler:(args,context)=>{
+ register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
+  if(command==="native status"||command==="native assess")return nativeRdd.observe(command==="native status"?"status":"assess",context);
   if(command==="workspace")return runWorkspaceReview(context);
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");

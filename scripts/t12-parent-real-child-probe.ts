@@ -9,11 +9,11 @@ import {fileURLToPath} from "node:url";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {createAsenExtension} from "../extensions/asen.js";
 
-const traceFile=process.env.ASEN_PARENT_TRACE_FILE;
-const readyFile=process.env.ASEN_PARENT_READY_FILE;
-const home=process.env.ASEN_PARENT_PRIVATE_HOME;
+const traceFile=process.env.ASEN_PARENT_TRACE_FILE as string;
+const readyFile=process.env.ASEN_PARENT_READY_FILE as string;
+const home=process.env.ASEN_PARENT_PRIVATE_HOME as string;
 const selectedModel=process.env.ASEN_SELECTED_MODEL;
-const childCli=process.env.ASEN_PARENT_CHILD_PI_CLI;
+const childCli=process.env.ASEN_PARENT_CHILD_PI_CLI as string;
 const root=fileURLToPath(new URL("../",import.meta.url));
 const witnessMode=process.env.ASEN_PARENT_WITNESS_MODE==="busy"?"busy":"idle";
 if((selectedModel!=="beam"&&selectedModel!=="beam:cloud")||!childCli||!isAbsolute(childCli))

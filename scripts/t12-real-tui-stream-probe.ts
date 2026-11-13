@@ -5,9 +5,9 @@ import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {createAsenExtension} from "../extensions/asen.js";
 
-const phase=process.env.ASEN_REAL_TUI_PHASE,home=process.env.ASEN_REAL_TUI_HOME;
+const phase=process.env.ASEN_REAL_TUI_PHASE,home=process.env.ASEN_REAL_TUI_HOME as string;
 const marker=process.env.ASEN_REAL_TUI_MARKER,store=process.env.ASEN_REAL_TUI_STORE;
-const packageRoot=process.env.ASEN_REAL_TUI_PACKAGE_ROOT,model=process.env.ASEN_SELECTED_MODEL;
+const packageRoot=process.env.ASEN_REAL_TUI_PACKAGE_ROOT,model=process.env.ASEN_SELECTED_MODEL as string;
 if(!["start","reopen"].includes(phase??"")||!home||!marker||!store||!packageRoot||!model)
  throw Error("Real TUI stream fixture configuration is incomplete");
 const piMeta=JSON.parse(await import("node:fs/promises").then(m=>m.readFile(

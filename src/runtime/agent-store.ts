@@ -1,6 +1,6 @@
 import {createHmac,randomBytes,randomUUID,timingSafeEqual} from "node:crypto";
 import {open,readFile,rename} from "node:fs/promises";
-import type {AgentRequest,AgentResult} from "../agents/dispatcher.js";
+import {snapshotAgentModelFallback,type AgentModelFallback,type AgentRequest,type AgentResult} from "../agents/dispatcher.js";
 import {atomicWriteText} from "../io/atomic-write.js";
 import {withExclusiveFileLock} from "../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../io/private-file.js";
@@ -8,11 +8,12 @@ import {completeAgentRecord,createAgentRecord,recoverAgentLifecycleRecords,trans
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 import {matchesIssuedSkillContext,isIssuedSkillContext} from "../skills/context.js";
 import {selectSkills} from "../skills/registry.js";
+import {isThinking} from "./profiles.js";
 
 const SCHEMA="asen.agents/v1" as const,MAX_RECORDS=2000,MAX_EVENTS=20000,MAX_PROMPT=32000,MAX_OUTPUT=1_000_000;
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Agent task cancelled");error.name="AbortError";throw error;}}
 type AgentRole=AgentRequest["role"];
-export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;ownerProcessId?:number;model?:string;thinking?:AgentRequest["thinking"];continuationOf?:string;dedupeKey?:string; }
+export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;ownerProcessId?:number;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;continuationOf?:string;dedupeKey?:string; }
 export interface AgentExecutionReceipt{ id:string;ok:true;output:string;sha256:string; }
 export interface AgentStateEvent{ id:string;revision:number;state:PublicAgentRecord["state"];at:string;summary?:string; }
 export interface AgentStoreEntry{ record:PublicAgentRecord;request:AgentTaskSpec;events:AgentStateEvent[];result?:AgentExecutionReceipt; }
@@ -29,19 +30,20 @@ function specFrom(request:AgentRequest&{dedupeKey?:string},createdAt:string,cont
   if(!request.skillContext||!request.skillPaths||!isIssuedSkillContext(request.skillContext)||request.skillContext.phase!==requiredPhase||request.expectedPhase!==undefined&&request.expectedPhase!==requiredPhase||!matchesIssuedSkillContext(request.skillContext,request.id,request.repository,safeControlledWorker?request.candidate:undefined)||request.skillPaths.length!==selected.length||request.skillPaths.some((path,index)=>path!==selected[index]))throw new Error("Only exact authorized skill selections may be serialized");
  }
  if(request.model!==undefined&&(typeof request.model!=="string"||!identifier(request.model)))throw new Error("Invalid persistent agent model");
- if(request.thinking!==undefined&&!(["off","minimal","low","medium","high"] as unknown[]).includes(request.thinking))throw new Error("Invalid persistent agent thinking level");
- const {model,thinking,dedupeKey}=request;
+ if(request.thinking!==undefined&&!isThinking(request.thinking))throw new Error("Invalid persistent agent thinking level");
+ const {model,thinking,dedupeKey}=request,modelFallback=snapshotAgentModelFallback(request.modelFallback);
  if(dedupeKey!==undefined&&(request.role!=="explorer"||request.parentId||controlledWorker||!/^[0-9a-f]{64}$/u.test(dedupeKey)))
   throw new Error("Only fresh, unaffiliated explorer work may be coalesced");
- return {id:request.id,role:request.role,prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey??"default",createdAt,ownerProcessId:process.pid,...(model?{model}:{}),...(thinking?{thinking}:{}),...(request.parentId?{continuationOf:request.parentId}:{}),...(dedupeKey?{dedupeKey}:{})};
+ return {id:request.id,role:request.role,prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey??"default",createdAt,ownerProcessId:process.pid,...(model?{model}:{}),...(thinking?{thinking}:{}),...(modelFallback?{modelFallback}:{}),...(request.parentId?{continuationOf:request.parentId}:{}),...(dedupeKey?{dedupeKey}:{})};
 }
 function specValue(v:unknown):v is AgentTaskSpec{
  if(!v||typeof v!=="object"||Array.isArray(v))return false;
- const keys=["id","role","prompt","repository","isolationKey","createdAt",...(Object.hasOwn(v,"ownerProcessId")?["ownerProcessId"]:[]),...(Object.hasOwn(v,"model")?["model"]:[]),...(Object.hasOwn(v,"thinking")?["thinking"]:[]),...(Object.hasOwn(v,"continuationOf")?["continuationOf"]:[]),...(Object.hasOwn(v,"dedupeKey")?["dedupeKey"]:[])];
+ const keys=["id","role","prompt","repository","isolationKey","createdAt",...(Object.hasOwn(v,"ownerProcessId")?["ownerProcessId"]:[]),...(Object.hasOwn(v,"model")?["model"]:[]),...(Object.hasOwn(v,"thinking")?["thinking"]:[]),...(Object.hasOwn(v,"modelFallback")?["modelFallback"]:[]),...(Object.hasOwn(v,"continuationOf")?["continuationOf"]:[]),...(Object.hasOwn(v,"dedupeKey")?["dedupeKey"]:[])];
  if(!exact(v,keys))return false;
  // SAFETY: exact validated the complete persisted task-spec key set before field validation below.
  const x=v as unknown as AgentTaskSpec;
- return identifier(x.id)&&(["clarifier","explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.ownerProcessId===undefined||Number.isSafeInteger(x.ownerProcessId)&&x.ownerProcessId>0)&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||(["off","minimal","low","medium","high"] as unknown[]).includes(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf))&&(x.dedupeKey===undefined||x.role==="explorer"&&x.continuationOf===undefined&&/^[0-9a-f]{64}$/u.test(x.dedupeKey));
+ let fallbackValid=true;try{if(x.modelFallback!==undefined)snapshotAgentModelFallback(x.modelFallback);}catch{fallbackValid=false;}
+ return fallbackValid&&identifier(x.id)&&(["clarifier","explorer","worker","reviewer","verifier"] as unknown[]).includes(x.role)&&typeof x.prompt==="string"&&x.prompt.length>0&&x.prompt.length<=MAX_PROMPT&&!/[\u0000]/u.test(x.prompt)&&identifier(x.repository)&&identifier(x.isolationKey)&&typeof x.createdAt==="string"&&Number.isFinite(Date.parse(x.createdAt))&&(x.ownerProcessId===undefined||Number.isSafeInteger(x.ownerProcessId)&&x.ownerProcessId>0)&&(x.model===undefined||identifier(x.model))&&(x.thinking===undefined||isThinking(x.thinking))&&(x.continuationOf===undefined||identifier(x.continuationOf))&&(x.dedupeKey===undefined||x.role==="explorer"&&x.continuationOf===undefined&&/^[0-9a-f]{64}$/u.test(x.dedupeKey));
 }
 function processIsAlive(pid:number):boolean{
  try{process.kill(pid,0);return true;}catch(error){return !!error&&typeof error==="object"&&"code" in error&&(error as NodeJS.ErrnoException).code==="EPERM";}
@@ -132,7 +134,7 @@ export class PersistentAgentStore implements AgentLifecycleSink{
     sameWorkspaceIdentityPath(entry.record.projectId,spec.repository)&&
     entry.record.owner.kind===owner.kind&&entry.record.owner.id===owner.id&&
     entry.request.prompt===spec.prompt&&entry.request.model===spec.model&&
-    entry.request.thinking===spec.thinking);
+    entry.request.thinking===spec.thinking&&JSON.stringify(entry.request.modelFallback)===JSON.stringify(spec.modelFallback));
    if(existing){found={id:existing.record.id,reused:true,state:existing.record.state};return;}
    if(data.entries.some(entry=>entry.record.id===spec.id))throw new Error("Agent task id already exists");
    const record=createAgentRecord({id:spec.id,role:spec.role,owner,sessionId:spec.isolationKey,projectId:spec.repository,createdAt:at});
@@ -161,7 +163,7 @@ export class PersistentAgentStore implements AgentLifecycleSink{
    if(!parent)throw new Error("Agent task is unavailable to this session or project");
    if(parent.record.state!=="interrupted"||parent.record.role!=="explorer"||parent.request.role!=="explorer"||parent.request.prompt==="Queued task payload unavailable")throw new Error("This task cannot be resumed safely; create a new task with fresh authority");
    if(data.entries.some(entry=>entry.request.continuationOf===parentId))throw new Error("This interrupted task already has a continuation");
-   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:parent.request.prompt,repository:parent.record.projectId,isolationKey:sessionId,parentId,owner,...(parent.request.model?{model:parent.request.model}:{}),...(parent.request.thinking?{thinking:parent.request.thinking}:{})};
+   const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:parent.request.prompt,repository:parent.record.projectId,isolationKey:sessionId,parentId,owner,...(parent.request.model?{model:parent.request.model}:{}),...(parent.request.thinking?{thinking:parent.request.thinking}:{}),...(parent.request.modelFallback?{modelFallback:snapshotAgentModelFallback(parent.request.modelFallback)!}:{})};
    const spec=specFrom(request,createdAt),record=createAgentRecord({id:spec.id,role:spec.role,owner,sessionId,projectId:parent.record.projectId,createdAt}),entry:AgentStoreEntry={record,request:spec,events:[event(record,1)]};
    data.entries.push(entry);continuation=request;queued=record;
   },signal);
@@ -192,6 +194,6 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  resumable(entry:AgentStoreEntry):AgentRequest|undefined{
   const {request,record}=entry;if(record.state!=="interrupted")return undefined;
   if(request.role!=="explorer"||record.role!=="explorer"||request.repository!==record.projectId||request.isolationKey!==record.sessionId||request.prompt==="Queued task payload unavailable")return undefined;
-  return {id:`${record.id}:continue:${entry.events.length}`,role:"explorer",prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey,...(request.model?{model:request.model}:{}),...(request.thinking?{thinking:request.thinking}:{}),parentId:record.id};
+  return {id:`${record.id}:continue:${entry.events.length}`,role:"explorer",prompt:request.prompt,repository:request.repository,isolationKey:request.isolationKey,...(request.model?{model:request.model}:{}),...(request.thinking?{thinking:request.thinking}:{}),...(request.modelFallback?{modelFallback:snapshotAgentModelFallback(request.modelFallback)!}:{}),parentId:record.id};
  }
 }

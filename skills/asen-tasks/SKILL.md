@@ -1,6 +1,10 @@
 ---
 name: asen-tasks
 description: "Trigger: implementation tasks, break down work, plan work units. Convert approved behavior and design into dependency-ordered, verifiable implementation units."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use before multi-step implementation or whenever work must be divided into bounded units.

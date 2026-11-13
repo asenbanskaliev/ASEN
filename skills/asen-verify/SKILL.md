@@ -1,6 +1,10 @@
 ---
 name: asen-verify
 description: "Trigger: verify candidate, compliance check, quality gate. Prove candidate behavior against requirements with real execution evidence."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use as the candidate-bound quality gate after implementation or on an explicit verification request.

@@ -1,7 +1,6 @@
 export interface PublicCommand{group:"core"|"workflow"|"review"|"skills"|"configuration"|"session"|"memory"|"diagnostics";name:string;implemented:boolean;owner:string}
 export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"core",name:"asen",implemented:true,owner:"extensions/asen.ts"},
- {group:"workflow",name:"asen-workflow",implemented:true,owner:"src/lifecycle/workflow-selection.ts"},
  {group:"workflow",name:"asen-route",implemented:true,owner:"extensions/asen.ts"},
  {group:"workflow",name:"asen-plan",implemented:true,owner:"extensions/asen.ts"},
  {group:"review",name:"asen-review",implemented:true,owner:"src/review/ordinary-review-command.ts"},
@@ -27,6 +26,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"session",name:"asen-job-inspect",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-changes-view",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-agents",implemented:true,owner:"extensions/asen.ts"},
+ {group:"session",name:"asen-task-agents",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-todos",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-history",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-usage",implemented:true,owner:"extensions/asen.ts"},

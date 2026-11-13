@@ -1,6 +1,6 @@
 import {createHash,randomUUID} from "node:crypto";
-import type {AgentRequest,AgentRunner} from "./dispatcher.js";
-import {Dispatcher} from "./dispatcher.js";
+import type {AgentFallbackListener,AgentFallbackObservation,AgentModelFallback,AgentRequest,AgentRunner} from "./dispatcher.js";
+import {Dispatcher,snapshotAgentModelFallback} from "./dispatcher.js";
 import {EvidenceStore} from "../evidence/store.js";
 import type {Candidate} from "../core/types.js";
 import type {OrchestrationRouteEvidence} from "../orchestration/orchestrator.js";
@@ -10,26 +10,42 @@ import {PersistentAgentStore} from "../runtime/agent-store.js";
 import {workspaceIdentityPathKey} from "../runtime/workspace-store.js";
 import {issueControlledPlanPhaseGrant} from "../lifecycle/skill-lifecycle.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
+import {isThinking} from "../runtime/profiles.js";
 
 export interface AgentSessionIdentity{sessionId:string;projectId:string;}
 /** Production coordinator using the existing Dispatcher, with session checks around every public action. */
 export class AgentRuntime{
  readonly #terminalListeners=new Set<(record:PublicAgentRecord)=>void>();
+ readonly #fallbackListeners=new Set<AgentFallbackListener>();
+ readonly #fallbackOwners=new Map<string,Readonly<{sessionId:string;projectId:string;projectKey:string}>>();
  readonly #executions=new Map<string,Promise<unknown>>();
  private constructor(readonly store:PersistentAgentStore,private readonly dispatcher:Dispatcher,private readonly evidence:EvidenceStore,readonly quarantined?:string){}
- static async open(options:{storeFile:string;runner:AgentRunner;maxConcurrency?:number}):Promise<AgentRuntime>{
-  const {store,quarantined}=await PersistentAgentStore.open(options.storeFile),evidence=new EvidenceStore(),dispatcher=new Dispatcher(options.runner,evidence,options.maxConcurrency??4,store);
-  return new AgentRuntime(store,dispatcher,evidence,quarantined);
+ static async open(options:{storeFile:string;runner:AgentRunner;maxConcurrency?:number;onModelFallback?:AgentFallbackListener}):Promise<AgentRuntime>{
+  const {store,quarantined}=await PersistentAgentStore.open(options.storeFile),evidence=new EvidenceStore(),dispatcher=new Dispatcher(options.runner,evidence,options.maxConcurrency??4,store),runtime=new AgentRuntime(store,dispatcher,evidence,quarantined);
+  if(options.onModelFallback)runtime.#fallbackListeners.add(options.onModelFallback);
+  options.runner.subscribeModelFallback?.(observation=>runtime.#publishModelFallback(observation));
+  return runtime;
  }
  snapshot():readonly PublicAgentRecord[]{return this.store.snapshot();}
  async list(identity:AgentSessionIdentity):Promise<readonly PublicAgentRecord[]>{return this.store.list(identity.sessionId,identity.projectId);}
  async query(id:string,identity:AgentSessionIdentity){
   const entry=await this.store.get(id,identity.sessionId,identity.projectId);
-  return entry?{record:entry.record,history:entry.events,spec:{...(entry.request.model===undefined?{}:{model:entry.request.model}),...(entry.request.thinking===undefined?{}:{thinking:entry.request.thinking}),...(entry.request.continuationOf===undefined?{}:{continuationOf:entry.request.continuationOf})}}:null;
+  return entry?{record:entry.record,history:entry.events,spec:{...(entry.request.model===undefined?{}:{model:entry.request.model}),...(entry.request.thinking===undefined?{}:{thinking:entry.request.thinking}),...(entry.request.modelFallback===undefined?{}:{modelFallback:snapshotAgentModelFallback(entry.request.modelFallback)}),...(entry.request.continuationOf===undefined?{}:{continuationOf:entry.request.continuationOf})}}:null;
  }
  /** Observers receive only persisted terminal outcomes; notification failures cannot alter execution. */
  subscribeTerminal(listener:(record:PublicAgentRecord)=>void):()=>void{
   this.#terminalListeners.add(listener);return ()=>{this.#terminalListeners.delete(listener);};
+ }
+ /** Optional bounded child-switch observations; listener failures never affect execution. */
+ subscribeModelFallback(listener:AgentFallbackListener):()=>void{
+  if(typeof listener!=="function")throw new TypeError("Model fallback observer must be a function");this.#fallbackListeners.add(listener);return()=>{this.#fallbackListeners.delete(listener);};
+ }
+ #publishModelFallback(observation:unknown):void{
+  if(!observation||typeof observation!=="object"||Array.isArray(observation))return;const value=observation as Partial<Parameters<AgentFallbackListener>[0]>,identity=(candidate:unknown,limit:number)=>typeof candidate==="string"&&candidate.length>0&&candidate.length<=limit&&candidate===candidate.trim()&&!/[\u0000-\u001f\u007f-\u009f]/u.test(candidate),model=(candidate:unknown)=>identity(candidate,256),categories=new Set(["auth","rate_limit","quota","timeout","network","provider_unavailable"]);
+  if(!identity(value.taskId,1024)||!identity(value.sessionId,1024)||!identity(value.projectId,32768))return;const taskId=value.taskId as string,projectId=value.projectId as string,owner=this.#fallbackOwners.get(taskId);
+  if(!owner||value.sessionId!==owner.sessionId||workspaceIdentityPathKey(projectId)!==owner.projectKey||!model(value.to)||!categories.has(String(value.category))||value.from!==undefined&&!model(value.from)||value.thinking!==undefined&&!isThinking(value.thinking))return;
+  const bounded:AgentFallbackObservation=Object.freeze({taskId,sessionId:owner.sessionId,projectId:owner.projectId,...(value.from===undefined?{}:{from:value.from}),to:value.to as string,category:value.category!,...(value.thinking===undefined?{}:{thinking:value.thinking})});
+  for(const listener of this.#fallbackListeners)try{listener(bounded);}catch{/* Observers cannot affect child execution. */}
  }
  async #publishTerminal(request:AgentRequest):Promise<void>{
   try{
@@ -39,25 +55,25 @@ export class AgentRuntime{
   }catch{/* A failed storage read must never produce a success notification. */}
  }
  #dispatch(request:AgentRequest,signal?:AbortSignal):void{
-  const sessionId=request.isolationKey??"default",projectId=request.repository;
+  const sessionId=request.isolationKey??"default",projectId=request.repository,owner=Object.freeze({sessionId,projectId,projectKey:workspaceIdentityPathKey(projectId)});
   const onAbort=()=>{this.dispatcher.cancel(request.id,sessionId,projectId);};
-  signal?.addEventListener("abort",onAbort,{once:true});
+  signal?.addEventListener("abort",onAbort,{once:true});this.#fallbackOwners.set(request.id,owner);
   const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
-  void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);});
+  void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);if(this.#fallbackOwners.get(request.id)===owner)this.#fallbackOwners.delete(request.id);});
  }
- async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId||input.onPrepared&&input.onQueued)throw new Error("An active Pi session and project with one launch boundary is required");
   const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role as Exclude<typeof input.role,"clarifier">];
   if(input.role==="clarifier"&&input.skillSelection)throw new Error("clarifier dispatch cannot receive a skill phase");
   if(input.skillSelection&&input.skillSelection.phase!==requiredPhase)throw new Error(`${input.role} dispatch requires a ${requiredPhase}-phase skill selection`);
-  const request:AgentRequest={id:`agent-${randomUUID()}`,role:input.role,prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`},...(input.model?{model:input.model}:{}),...(input.thinking?{thinking:input.thinking}:{})};
+  const modelFallback=snapshotAgentModelFallback(input.modelFallback),request:AgentRequest={id:`agent-${randomUUID()}`,role:input.role,prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:input.owner??{kind:"user",id:`pi:${input.session.sessionId}`},...(input.model?{model:input.model}:{}),...(input.thinking?{thinking:input.thinking}:{}),...(modelFallback?{modelFallback}:{})};
   if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
   // Only unaffiliated ad-hoc Explorer work may reuse the identical active task.
   // Planned jobs and all reviewers/verifiers always retain unique identity.
   if(input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared){
    const dedupeKey=createHash("sha256").update(JSON.stringify([
     "asen.explorer.active.v1",input.session.sessionId,workspaceIdentityPathKey(input.session.projectId),
-    input.role,input.prompt,request.model??null,request.thinking??null,
+    input.role,input.prompt,request.model??null,request.thinking??null,request.modelFallback??null,
    ])).digest("hex");
    const claim=await this.store.enqueueAdHocExplorerOrReuse({...request,dedupeKey},request.owner!,signal);
    if(claim.reused)return claim.id;
@@ -81,11 +97,11 @@ export class AgentRuntime{
   return request.id;
  }
  /** Starts one user-approved worker bound to an exact persisted plan, candidate and file scope. */
- async startControlledWorker(input:{taskIdentity:string;prompt:string;session:AgentSessionIdentity;candidate:Candidate;writeSurfaces:readonly string[];skillSelection:SkillSelectionContext;writerAdmission:object;routeEvidence:OrchestrationRouteEvidence;model?:string;thinking?:AgentRequest["thinking"];onPrepared:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startControlledWorker(input:{taskIdentity:string;prompt:string;session:AgentSessionIdentity;candidate:Candidate;writeSurfaces:readonly string[];skillSelection:SkillSelectionContext;writerAdmission:object;routeEvidence:OrchestrationRouteEvidence;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;onPrepared:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.taskIdentity||!input.prompt||input.prompt!==input.prompt.trim()||input.prompt.length>32_000||!input.session.sessionId||!input.session.projectId)throw new Error("A controlled worker requires an exact task, prompt, session and project");
   if(input.candidate.repository!==input.session.projectId||input.skillSelection.phase!=="apply"||!Array.isArray(input.writeSurfaces)||!input.writeSurfaces.length||input.writeSurfaces.length>256||input.writeSurfaces.some(surface=>typeof surface!=="string"||!surface))throw new Error("A controlled worker requires the exact candidate, apply phase and bounded write scope");
-  const id=`${input.taskIdentity}:worker`,candidate=structuredClone(input.candidate),writeSurfaces=[...input.writeSurfaces];
-  const request:AgentRequest={id,role:"worker",expectedPhase:"apply",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:{kind:"user",id:`pi:${input.session.sessionId}`},candidate,writeSurfaces,...(input.model?{model:input.model}:{}),...(input.thinking?{thinking:input.thinking}:{}),phaseGrant:issueControlledPlanPhaseGrant({requestId:id,sessionId:input.session.sessionId,candidate,surfaces:writeSurfaces,writerAdmission:input.writerAdmission}),writerAdmission:input.writerAdmission};
+  const id=`${input.taskIdentity}:worker`,candidate=structuredClone(input.candidate),writeSurfaces=[...input.writeSurfaces],modelFallback=snapshotAgentModelFallback(input.modelFallback);
+  const request:AgentRequest={id,role:"worker",expectedPhase:"apply",prompt:input.prompt,repository:input.session.projectId,isolationKey:input.session.sessionId,owner:{kind:"user",id:`pi:${input.session.sessionId}`},candidate,writeSurfaces,...(input.model?{model:input.model}:{}),...(input.thinking?{thinking:input.thinking}:{}),...(modelFallback?{modelFallback}:{}),phaseGrant:issueControlledPlanPhaseGrant({requestId:id,sessionId:input.session.sessionId,candidate,surfaces:writeSurfaces,writerAdmission:input.writerAdmission}),writerAdmission:input.writerAdmission};
   const context=issueSkillContext(request.id,request.repository,request.candidate,input.skillSelection);
   request.skillContext=context;request.skillPaths=selectSkills(context).map(skill=>skill.path);
   const authorizedAt=new Date().toISOString(),scope=input.writeSurfaces.join(", ");

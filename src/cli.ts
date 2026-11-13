@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import {spawn} from "node:child_process";
 import {existsSync,realpathSync} from "node:fs";
+import {readFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {homedir} from "node:os";
@@ -15,7 +16,7 @@ import {runLifecycleCommand} from "./runtime/lifecycle-cli.js";
 import {stageManagedAcquisitionUpdate} from "./runtime/managed-acquisition-update.js";
 
 export function launcherPackageRoot():string{return path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");}
-export const ASEN_HELP=`Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes  Stage local bytes only; no selection or execution\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen managed install|upgrade|rollback|uninstall|release …  Signed install lifecycle (see docs/installation.md)\n       asen backup home --destination <absolute-file> | backup verify --file <file> | restore home --backup <file> --target-home <dir> --yes\n       asen --version\n`;
+export const ASEN_HELP=`Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home [--link|--isolated|--home PATH]\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes  Stage local bytes only; no selection or execution\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen managed install|upgrade|rollback|uninstall|release …  Signed install lifecycle (see docs/installation.md)\n       asen backup home --destination <absolute-file> | backup verify --file <file> | restore home --backup <file> --target-home <dir> --yes\n       asen --version\n`;
 const BACKUP_PREVIEW_USAGE="Unsupported ASEN backup project-memory command. Expected: backup project-memory --project <project-id> --destination <absolute-path> --dry-run.\n";
 const DOCTOR_USAGE="Unsupported ASEN doctor command. Expected: [--link|--isolated|--home PATH] [--package-root PATH] doctor.\n";
 const DOCTOR_INCOMPLETE="Installation doctor could not complete all metadata observations.\n";
@@ -30,6 +31,10 @@ const safeOperationalMessage=(error:unknown)=>{
 };
 export interface AsenCliDependencies{homeDirectory?:()=>string;stdout?:(text:string)=>void;stderr?:(text:string)=>void}
 function bundledPi(packageRoot:string):string|undefined{const p=path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js");return existsSync(p)?p:undefined;}
+// Pi 1.2 options that unconditionally consume the next argument, even a flag.
+const PI_VALUE_OPTIONS=new Set(["--provider","--model","--api-key","--system-prompt","--append-system-prompt",
+ "--name","-n","--session","--session-id","--fork","--session-dir","--models","--tools","-t",
+ "--exclude-tools","-xt","--thinking","--export","--extension","-e","--skill","--prompt-template","--theme"]);
 
 export async function runAsen(argv=process.argv.slice(2),env:Record<string,string|undefined>=process.env,dependencies:AsenCliDependencies={}):Promise<number>{
  const stdout=dependencies.stdout??((text:string)=>{process.stdout.write(text);}),stderr=dependencies.stderr??((text:string)=>{process.stderr.write(text);});
@@ -57,7 +62,19 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
  else if(doctor.kind==="doctor")selectorArgs=doctor.selectorArgs;
  else if(selection.kind==="select")selectorArgs=selection.selectorArgs;
  else if(managed.kind==="run")selectorArgs=managed.selectorArgs;
- const parsed=parseAsenArgs(selectorArgs);
+ // Hide consumed Pi literals only while the existing ASEN selector parser runs.
+ // Restore them before resource inspection or spawning; no sentinel reaches Pi.
+ const guardedArgs=[...selectorArgs],piValues=new Map<string,string>();
+ for(let index=0;index<guardedArgs.length;index++){
+  const arg=guardedArgs[index]!;if(arg==="--")break;
+  if(arg==="--home"||arg==="--package-root"){index++;continue;}
+  if(PI_VALUE_OPTIONS.has(arg)&&index+1<guardedArgs.length){
+   const key=`\0asen-pi-value:${index}`;index++;piValues.set(key,guardedArgs[index]!);guardedArgs[index]=key;
+  }
+ }
+ const parsed=parseAsenArgs(guardedArgs);
+ parsed.passthrough=parsed.passthrough.map(arg=>piValues.get(arg)??arg);
+ parsed.commandArgs=parsed.commandArgs.map(arg=>piValues.get(arg)??arg);
  if(parsed.error){stderr(parsed.error+"\n");return 2;}
  const packageRoot=parsed.packageRoot??launcherPackageRoot();
  if(parsed.help){stdout(ASEN_HELP);return 0;}
@@ -137,7 +154,49 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
  const bundled=bundledPi(packageRoot);
  const runtime=resolvePiRuntime({env,...(bundled?{bundled}:{}),...(env.ASEN_PI_ON_PATH?{onPath:env.ASEN_PI_ON_PATH}:{}),nodeExecPath:process.execPath});
  if(!runtime){stderr("Pi runtime not found\n");return 1;}
- const args=[...runtime.args,...(parsed.piSubcommand?[parsed.piSubcommand,...parsed.passthrough.slice(1)]:parsed.passthrough)];
+ const args=[...runtime.args];
+ // Explicit packages bypass Pi's discovery exclusions, including --no-skills.
+ // Do not turn a user's discovery opt-out into an explicit resource load.
+ // Pi 1.2 cli/args consumes values even when they look like flags. Only
+ // these unconditional value options can hide a resource flag; optional
+ // values (--mode, --print, unknown flags, etc.) do not consume such flags.
+ // Keep the external-runtime/optional-peer path free of a required SDK import.
+ const extensionSources:string[]=[];let excluded=false;
+ for(let index=0;index<parsed.passthrough.length;index++){
+  const arg=parsed.passthrough[index]!;if(arg==="--")break;
+  if(["--no-skills","-ns","--no-extensions","-ne"].includes(arg))excluded=true;
+  if((arg==="-e"||arg==="--extension")&&parsed.passthrough[index+1]!==undefined)extensionSources.push(parsed.passthrough[index+1]!);
+  if(PI_VALUE_OPTIONS.has(arg))index++;
+ }
+ if(!parsed.piSubcommand&&!excluded){
+  // utils/paths is not publicly exported. Match the package manager's local
+  // resolvePath(..., {homeDir: HOME || homedir(), trim:true}) normalization.
+  const normalize=(input:string,trim=false)=>{
+   let value=trim?input.trim():input;
+   if(process.platform==="win32"&&!value.startsWith("//")&&!value.includes("\\")){
+    const shell=value.match(/^\/(?:mnt\/|cygdrive\/)?([a-z])(?:\/(.*))?$/iu);
+    if(shell)value=`${shell[1]!.toUpperCase()}:\\${shell[2]?.replaceAll("/","\\")??""}`;
+   }
+   if(value==="~"||value.startsWith("~/")||(process.platform==="win32"&&value.startsWith("~\\")))
+    return path.join(env.HOME||homeDirectory,value.slice(2));
+   return /^file:\/\//u.test(value)?fileURLToPath(value):value;
+  };
+  const canonical=(value:string,base:string)=>{const resolved=path.resolve(normalize(base),normalize(value,true));try{return realpathSync(resolved);}catch{return resolved;}};
+  const ownRoot=canonical(packageRoot,process.cwd());
+  const isOwn=(value:unknown,base:string)=>typeof value==="string"&&(
+   /^npm:asen(?:@[^/]+)?$/u.test(value)||(!/^(?:npm|git|github|https?|ssh|builtin):/u.test(value.trim())&&canonical(value,base)===ownRoot));
+  let declared=false;
+  // Only the selected user home is trusted here. Pi owns project trust and
+  // deduplicates a project declaration with this explicit package after consent.
+  try{
+   const settings=JSON.parse(await readFile(path.join(home.dir,"settings.json"),"utf8"));
+   declared=Array.isArray(settings.packages)&&settings.packages.some((entry:unknown)=>
+    isOwn(typeof entry==="object"&&entry!==null? (entry as {source?:unknown}).source:entry,home.dir));
+  }catch(error){declared=(error as NodeJS.ErrnoException).code!=="ENOENT";}
+  const explicit=extensionSources.some(source=>isOwn(source,process.cwd()));
+  if(!declared&&!explicit)args.push("-e",packageRoot);
+ }
+ args.push(...(parsed.piSubcommand?[parsed.piSubcommand,...parsed.passthrough.slice(1)]:parsed.passthrough));
  return await new Promise<number>(resolve=>{
   const child=spawn(runtime.command,args,{stdio:"inherit",env:{...env,PI_CODING_AGENT_DIR:home.dir,ASEN_PACKAGE_ROOT:packageRoot}});
   child.once("error",()=>resolve(1));

@@ -36,8 +36,10 @@ function userSummary(value:unknown):string{
   const role=typeof task.role==="string"?task.role:"task",title=roleLabel[role]??(typeof task.title==="string"?task.title:"Tarea"),surfaces=Array.isArray(task.writeSurfaces)?task.writeSurfaces.filter((item):item is string=>typeof item==="string"):[];
   return `${index+1}. ${title}${surfaces.length?` — archivos propuestos: ${surfaces.join(", ")}`:""}`;
  })];
+ const hasReview=tasks.some(task=>task.role==="reviewer"),hasVerifier=tasks.some(task=>task.role==="verifier");
+ lines.push(hasReview&&hasVerifier?"El plan incluye revisión del cambio y verificación independiente.":hasReview?"El plan incluye revisión del cambio; no incluye verificación independiente.":hasVerifier?"El plan incluye verificación independiente; no incluye revisión del cambio.":"El plan no incluye revisión ni verificación independiente.");
  lines.push(plan.persistence?.status==="saved"?"El plan quedó guardado para esta sesión.":"No se pudo guardar el plan en las tareas de esta sesión.");
- lines.push(plan.execution?.started===false?"No se ha iniciado ningún trabajo ni se han concedido permisos; el plan espera una aclaración o una autorización.":plan.execution?.authorized===true?"El escritor se inició con autorización explícita limitada a los archivos indicados; la revisión y verificación continúan automáticamente.":"Se inició una tarea de solo lectura. Las escrituras siguen necesitando autorización explícita.");
+ lines.push(plan.execution?.started===false?"No se ha iniciado ningún trabajo ni se han concedido permisos; el plan espera una aclaración o una autorización.":plan.execution?.authorized===true?"El escritor se inició con autorización explícita limitada a los archivos indicados; los pasos posteriores siguen las dependencias del plan.":"Se inició una tarea de solo lectura. Las escrituras siguen necesitando autorización explícita.");
  return lines.join("\n");
 }
 
@@ -49,7 +51,7 @@ export function registerAsenPlanRequestTool(
 ):void{
  pi.registerTool?.({
   name:ASEN_PLAN_REQUEST_TOOL,label:"Prepare ASEN task plan",
-  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Bounded requests stay in chat; material clarifications are asked there without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs exact Pi approval, and completion requires explicit user acceptance after reviewing independent verification.",
+  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Bounded requests stay in chat; material clarifications are asked there without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs fresh exact Pi approval. Review and independent verification are included only when present in the issued plan; completion requires explicit user acceptance after reviewing available results.",
   executionMode:"sequential",
   parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,session,testing,review,unresolvedDecisions}},
   execute:async(_callId,params,_signal,_update,context)=>{

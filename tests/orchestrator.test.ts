@@ -14,6 +14,22 @@ import {tmpdir} from "node:os";
 import path from "node:path";
 import {readProfilesFile,writeProfilesFile} from "../src/runtime/profile-store.js";
 
+for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
+ test(`effort plan parity orchestration preserves ${thinking??"omission"}`,()=>{
+  const route=thinking===undefined?{}:{thinking},runtimeProfiles={global:{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{worker:route}}]}};
+  const plan=buildOrchestrationPlan({taskId:"effort",repository:"r",prompt:"inspect",candidate,runtimeProfiles},orchestrated("effort"));
+  const worker=plan.agents.find(agent=>agent.role==="worker");assert.ok(worker);assert.equal(worker.thinking,thinking);
+  assert.equal(Object.hasOwn(worker,"thinking"),thinking!==undefined);
+  assert.equal(materializeExecutablePlan(plan,"Inspect effort").tasks.find(task=>task.role==="worker")?.thinking,thinking);
+ });
+}
+test("effort plan parity orchestration rejects invalid efforts",()=>{
+ for(const thinking of ["extreme","HIGH","inherit","",null,7]){
+  const runtimeProfiles={global:{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{worker:{thinking:thinking as import("../src/runtime/profiles.js").Thinking}}}]}};
+  assert.throws(()=>buildOrchestrationPlan({taskId:"bad-effort",repository:"r",prompt:"inspect",candidate,runtimeProfiles},orchestrated("bad-effort")),/Invalid routed thinking/);
+ }
+});
+
 const candidate={id:"c",repository:"r",revision:"sha",createdAt:"now"};
 const orchestrated=(taskId="t",repository="r")=>issueOddDecision({
  taskId,repository,paths:["src/a.ts","src/b.ts","src/c.ts","src/d.ts"],

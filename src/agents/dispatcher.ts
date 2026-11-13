@@ -8,11 +8,17 @@ import {verifySkillEvidence} from "../verify/verifier.js";
 import {consumePhaseGrant,issueAdmittedWriterPhaseGrant,retirePhaseGrant,consumeWriterAdmission,assertActiveWriterSnapshot,assertActiveWriterSnapshotOutcome,acquireActiveWriterLease} from "../lifecycle/skill-lifecycle.js";
 import type {AgentLifecycleSink} from "../runtime/agent-lifecycle.js";
 import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
+import {isThinking,type Thinking} from "../runtime/profiles.js";
+import type {TerminalErrorCategory} from "../runtime/model-fallback-policy.js";
 
-export interface AgentRequest { id:string; role:"clarifier"|"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:"off"|"minimal"|"low"|"medium"|"high"; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; owner?:{kind:"user"|"agent"|"system";id:string};parentId?:string; }
+export interface AgentModelFallbackStep{readonly model:string;readonly thinking?:Thinking}
+export interface AgentModelFallback{readonly profile?:string;readonly chain:readonly AgentModelFallbackStep[]}
+export interface AgentFallbackObservation{readonly taskId:string;readonly sessionId:string;readonly projectId:string;readonly from?:string;readonly to:string;readonly category:TerminalErrorCategory;readonly thinking?:Thinking}
+export type AgentFallbackListener=(observation:AgentFallbackObservation)=>void;
+export interface AgentRequest { id:string; role:"clarifier"|"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:Thinking; modelFallback?:AgentModelFallback; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; owner?:{kind:"user"|"agent"|"system";id:string};parentId?:string; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
-export interface AgentRunner { run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>; }
+export interface AgentRunner { run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>; subscribeModelFallback?(listener:AgentFallbackListener):()=>void; }
 const validatedRunnerResults=new WeakMap<object,{lifecycle:AgentLifecycleSink|undefined;id:string;sessionId:string;projectId:string;consumed:boolean}>();
 function isPromise(value:void|Promise<void>):value is Promise<void>{return !!value&&typeof value==="object"&&"then" in value&&typeof value.then==="function";}
 /** Lifecycle code consumes a dispatcher result once, bound to one sink and exact task identity. */
@@ -48,6 +54,23 @@ function requestArray(value:unknown):string[]{
   return d.value;
  });
 }
+function fallbackModel(value:unknown):value is string{return typeof value==="string"&&value.length>0&&value.length<=256&&value===value.trim()&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);}
+/** Validates, copies and freezes the configured fallback at the admission boundary. */
+export function snapshotAgentModelFallback(value:unknown):AgentModelFallback|undefined{
+ if(value===undefined)return undefined;
+ const data=plainData(value),keys=Object.keys(data).sort();
+ if(keys.some(key=>key!=="chain"&&key!=="profile")||!keys.includes("chain"))throw new Error("Invalid agent model fallback");
+ const profile=data.profile;if(profile!==undefined&&(typeof profile!=="string"||profile.length===0||profile.length>64||!/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(profile)))throw new Error("Invalid fallback profile");
+ const raw=data.chain;if(typeof raw!=="object"||raw===null||types.isProxy(raw)||!Array.isArray(raw)||Object.getPrototypeOf(raw)!==Array.prototype||raw.length>8||Reflect.ownKeys(raw).length!==raw.length+1)throw new Error("Fallback chain exceeds the eight-model limit");
+ const seen=new Set<string>(),chain=Array.from({length:raw.length},(_,index)=>{
+  const descriptor=Object.getOwnPropertyDescriptor(raw,String(index));if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Invalid fallback chain");
+  const step=plainData(descriptor.value),stepKeys=Object.keys(step).sort();if(stepKeys.some(key=>key!=="model"&&key!=="thinking")||!stepKeys.includes("model")||!fallbackModel(step.model))throw new Error("Invalid fallback model");
+  if(step.thinking!==undefined&&!isThinking(step.thinking))throw new Error("Invalid fallback thinking level");
+  if(seen.has(step.model))throw new Error("duplicate fallback model");seen.add(step.model);
+  return Object.freeze(step.thinking===undefined?{model:step.model}:{model:step.model,thinking:step.thinking});
+ });
+ return Object.freeze({...(profile===undefined?{}:{profile}),chain:Object.freeze(chain)});
+}
 
 export class Dispatcher {
  readonly #active:WriteGrant[]=[]; #running=0;
@@ -77,6 +100,7 @@ export class Dispatcher {
    // SAFETY: plainData and requestArray validate every forwarded request field before reconstruction.
    runnerRequest={...forwarded,
     ...(data.candidate?{candidate:Object.freeze(plainData(data.candidate))}:{}),
+    ...(data.modelFallback===undefined?{}:{modelFallback:snapshotAgentModelFallback(data.modelFallback)}),
     ...(data.writeSurfaces?{writeSurfaces:Object.freeze(requestArray(data.writeSurfaces))}:{}),
     ...(data.skillPaths?{skillPaths:Object.freeze(requestArray(data.skillPaths))}:{}),
    } as unknown as AgentRequest;

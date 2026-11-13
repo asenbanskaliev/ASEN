@@ -58,6 +58,44 @@ test("registered natural intake preserves controlled command routing and instruc
  });
 });
 
+test("natural-plan wording follows issued roles without inventing review or verification",async t=>{
+ const cases=[
+  {name:"writer only",facts:request(),roles:["worker"],message:"El plan no incluye revisión ni verificación independiente."},
+  {name:"reviewers without verifier",facts:{...request(),review:{kind:"dual_explicit",estimatedMinutes:15}},roles:["worker","reviewer","reviewer"],message:"El plan incluye revisión del cambio; no incluye verificación independiente."},
+  {name:"independent verifier",facts:{...request(),intent:"verification",writes:[],scope:{kind:"known",expectedPaths:[]}},roles:["verifier"],message:"El plan incluye verificación independiente; no incluye revisión del cambio."},
+ ];
+ for(const item of cases)await t.test(item.name,async()=>{
+  let tool:any,issued:any;
+  registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+   // Writer-only response fixture, matching the existing public bridge fixture above.
+   // Other compositions reuse the actual producer; no approval or dispatch occurs.
+   issued=item.name==="writer only"?{route:"orchestrate",risk:"low",requiredAgentRoles:["worker"],executablePlan:{tasks:[{role:"worker",writeSurfaces:["src/form.ts"]}]}}:JSON.parse(controlledInstructionPlanCommand(args,"/repo"));
+   // Only the public response is simulated; no writer approval or dispatch occurs.
+   issued.persistence={status:"saved"};issued.execution={started:true,authorized:item.roles.includes("worker")};
+   return JSON.stringify(issued);
+  },()=>`wording-${item.name.replaceAll(" ","-")}`);
+  assert.match(tool.description,/review.*independent verification.*only when.*issued plan/iu);
+  assert.match(tool.description,/fresh.*Pi approval/iu);
+  assert.match(tool.description,/explicit user acceptance.*available results/iu);
+  const result=await tool.execute("call",item.facts,undefined,undefined,{cwd:"/repo"});
+  assert.deepEqual(issued.executablePlan.tasks.map((task:{role:string})=>task.role),item.roles);
+  assert.deepEqual(result.details,issued,"raw plan and execution results must remain intact");
+  assert.ok(result.content[0].text.includes(item.message),result.content[0].text);
+  assert.doesNotMatch(result.content[0].text,/continúan automáticamente|verificación superada|cambio aprobado/iu);
+  if(item.roles.includes("worker"))assert.match(result.content[0].text,/autorización explícita limitada a los archivos indicados/u);
+  else assert.match(result.content[0].text,/escrituras siguen necesitando autorización explícita/u);
+ });
+});
+
+test("natural-plan wording does not turn preparation failures into success or dispatch",async()=>{
+ for(const response of ["invalid-json","prepare-error"]){
+  let tool:any,calls=0;
+  registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async()=>{calls++;if(response==="prepare-error")throw new Error("preparation failed");return "not JSON";},()=>"failure-wording");
+  await assert.rejects(()=>tool.execute("call",request(),undefined,undefined,{cwd:"/repo"}),response==="prepare-error"?/preparation failed/u:/invalid planning result/u);
+  assert.equal(calls,1);
+ }
+});
+
 test("natural-plan tool refuses missing facts instead of inventing an ODD plan",async()=>{
  let runs=0,tool:any;
  registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async()=>{runs++;return "{}";},()=>"task-id");

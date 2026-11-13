@@ -122,9 +122,14 @@ export function parseManagedSelectArgs(argv:readonly string[]):ManagedSelectArgs
  return {kind:"select",selectorArgs:prelude.selectorArgs,version,expectedCurrentVersion:expected};
 }
 export function parseAsenArgs(argv:readonly string[]):ParsedAsenArgs{
- if(argv[0]==="home")return {link:false,isolated:false,help:false,version:false,command:"home",commandArgs:[...argv.slice(1)],passthrough:[]};
+ const homeCommand=argv[0]==="home";
  let link=false,isolated=false,home:string|undefined,packageRoot:string|undefined,help=false,version=false,error:string|undefined,command:"setup"|undefined,commandArgs:string[]=[],piSubcommand:string|undefined;const passthrough:string[]=[];
- for(let i=0;i<argv.length;i++){const arg=argv[i]!;
+ for(let i=homeCommand?1:0;i<argv.length;i++){const arg=argv[i]!;
+  // A leading home query adopts only existing selectors, not other command modes.
+  if(homeCommand){
+   if(arg==="--")break;
+   if(arg!=="--link"&&arg!=="--isolated"&&arg!=="--home"&&!arg.startsWith("--home="))continue;
+  }
   if(arg==="--"){const rest=[...argv.slice(i+1)];if(!passthrough.length&&rest[0]&&isPiCommand(rest[0]))piSubcommand=rest[0];passthrough.push(...rest);break;}
   if(arg==="--link"){link=true;continue;} if(arg==="--isolated"){isolated=true;continue;} if(arg==="--help"||arg==="-h"){help=true;continue;} if(arg==="--version"){version=true;continue;}
   if(arg.startsWith("--home=")){home=arg.slice(7)||undefined;if(!home)error="--home requires a non-empty path";continue;}
@@ -135,6 +140,7 @@ export function parseAsenArgs(argv:readonly string[]):ParsedAsenArgs{
   if(!passthrough.length&&isPiCommand(arg))piSubcommand=arg;passthrough.push(arg);
  }
  if(!error){if(link&&isolated)error="--link and --isolated are mutually exclusive";else if(link&&home)error="--link and --home are mutually exclusive";else if(isolated&&home)error="--isolated and --home are mutually exclusive";}
+ if(homeCommand)return {link,isolated,help:false,version:false,command:"home",commandArgs:[...argv.slice(1)],passthrough:[],...(home===undefined?{}:{home}),...(error===undefined?{}:{error})};
  return {link,isolated,home,packageRoot,help,version,command,commandArgs,passthrough,piSubcommand,error};
 }
 export function parseAsenLauncherConfig(text:string):AsenLauncherConfig|undefined{

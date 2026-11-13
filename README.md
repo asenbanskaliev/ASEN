@@ -8,6 +8,8 @@ ASEN is a Pi-native engineering harness focused on deterministic workflows, dele
 
 `asen setup --dry-run` prints a deterministic, read-only JSON plan for the intended setup stages: stage, verify, then activate. The plan identifies the selected package root, the `.asen` product prefix under the launcher home, and the agent home selected by the existing flag → config → environment → isolated-default precedence. Every plan and step is marked `executable: false`; previewing it grants no consent or execution authority.
 
+`asen home` prints the selected agent-home path followed by a newline, using the same precedence. To query an explicit selection, put `--home PATH`, `--link`, or `--isolated` after `home` (for example, `asen home --home "D:\Datos ASEN"`). Conflicting selectors are rejected without changes or Pi startup.
+
 Setup execution is not shipped yet. `asen setup` and `asen setup --yes` exit with code `2` and direct users to the preview, while unsupported setup arguments are rejected before launcher home/config/runtime access. `--yes` combined with `--dry-run` still only previews. The preview performs no installation, update, activation, download, version probe, backup, restore, or removal.
 
 Signed install, upgrade, rollback, backup/restore and managed-only uninstall are available as `asen managed …`, `asen backup home` and `asen restore home` (see docs/installation.md); this preview itself is not an installer or proof of host/platform support.
@@ -15,6 +17,8 @@ Signed install, upgrade, rollback, backup/restore and managed-only uninstall are
 ## Development setup
 
 See [docs/development-setup.md](docs/development-setup.md) for running ASEN locally without relying on hidden machine state.
+
+Moving to another computer? Start with the [portable WIP checkpoint guide](docs/portable-checkpoint.md), then the [current continuation](docs/remote-continuation.md) and [canonical capability ODD](odd/tasks/pi-capability-completion.md). They preserve unfinished work and explicit stops; downloading an older commit does not recover unpublished local changes. The exact candidate/deferred scope is recorded in the checkpoint manifest. This is a work-in-progress handoff, not a release approval.
 
 ## Prepared-candidate review inspection
 

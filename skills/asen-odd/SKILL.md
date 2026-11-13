@@ -13,7 +13,9 @@ Activate for non-trivial, risky, multi-step or routing-sensitive work. Do not ad
 - Use the smallest safe route; narrative confidence never implies VERIFIED.
 - Keep write authority single-threaded unless surfaces are proven isolated.
 - Candidate-changing work invalidates stale evidence.
-- ODD routing and SDD workflow selection are separate: substantial work does not imply SDD; SDD requires explicit genuine selection.
+- Public development is ODD-only: keep small work direct and plan substantial or high-risk work proportionally. Complexity, artifacts and mode flags never select SDD. Preserve legacy SDD plans, skills, signed records and recovery restrictions; none grants fresh ODD permission.
+- Apply TDD where a meaningful behavior test exists: observe RED before implementation, GREEN after, then relevant alternate/negative cases. Record a justified exception for non-behavior work; never invent test evidence.
+- Separate review assessment, consent, review verdict, functional verification, acceptance and delivery. Additional independent verification follows explicitly named high-risk escalation (security, data integrity, concurrency, installation or shared contracts), not every ordinary change. Never weaken existing authority or evidence guards.
 - Read-only ODD routes create no artifact or write authority. For substantial authorized work, use the existing task document and configured MemoryContext to preserve its full-memory-mirror, exact TODO state and next resume step. Read-only routes invoke no tracking persistence. Without configured memory, report the missing mirror; never claim persistence.
 - Use relevant project memories already supplied by ASEN or search them when prior decisions matter. Save only durable project decisions, conventions and non-obvious discoveries; keep temporary task state in Todo/ODD tracking. Memory never restores write authority.
 - A writer needs a genuine one-use admission; Skill selection alone is never write authority.
@@ -31,6 +33,6 @@ Activate for non-trivial, risky, multi-step or routing-sensitive work. Do not ad
 4. Record the route decision before privileged mutation.
 5. Mirror full task-document bytes with TODO and resume state through the bounded tracking bridge. Reject changed document bytes or candidate identity before resuming. Live Pi integration and MEM/ECO recovery remain separate evidence gates.
 ## Output Contract
-Return route, risk, reasons, tracking and isolation state, selected skill obligations, test evidence or explicit exception, unresolved decisions and route evidence. Delegation selects agents; workflow selection chooses a mode. Neither descriptive structure grants write, review, delivery, merge or release authority.
+Return route, risk, reasons, tracking and isolation state, selected skill obligations, test evidence or explicit exception, unresolved decisions and route evidence. Delegation selects agents; ordinary development stays ODD. Neither descriptive structure grants write, review, delivery, merge or release authority.
 ## References
 None.

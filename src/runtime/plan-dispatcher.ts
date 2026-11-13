@@ -16,7 +16,7 @@ type ReadOnlyRole=typeof readOnlyRoles[number];
 const MAX_VISIBLE_PLAN_INSTRUCTION=4096;
 const phaseFor:Readonly<Partial<Record<ReadOnlyRole,SkillSelectionContext["phase"]>>>={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"};
 const basisKeys=["instruction","taskIdentity","intent","scope","writes","riskOperations","session","testing","review","unresolvedDecisions"] as const;
-const skillSelectionKeys=["behaviorChange","codeChange","defect","filesTouched","phase","risk","verification"] as const;
+const skillSelectionKeys=["behaviorChange","codeChange","defect","filesTouched","phase","risk","verification","selectionProfile"] as const;
 const exact=(value:unknown,keys:readonly string[]):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
 function sameSkillSelection(left:SkillSelectionContext,right:SkillSelectionContext):boolean{
  return skillSelectionKeys.every(key=>left[key]===right[key]);
@@ -54,7 +54,7 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(exactSurfaces.length!==surfaces.length||exactSurfaces.some((surface,index)=>surface!==surfaces[index])||exactSurfaces.some(surface=>!originalScope.expectedPaths.includes(surface)))return {reason:"The persisted worker write scope differs from the exact ODD request."};
  const candidateBound={id:candidate.id,repository:candidate.repository,revision:candidate.revision,createdAt:candidate.createdAt},decision=planOddRoute(facts);
  let plan:ReturnType<typeof buildOrchestrationPlan>;
- try{plan=buildOrchestrationPlan({taskId:facts.taskIdentity,repository:identity.projectId,prompt:instruction,candidate:candidateBound,writeSurfaces:exactSurfaces,...(input.runtimeProfiles?{runtimeProfiles:input.runtimeProfiles}:{})},decision);}catch{return {reason:"The original ODD route no longer authorizes this worker plan."};}
+ try{plan=buildOrchestrationPlan({taskId:facts.taskIdentity,repository:identity.projectId,prompt:instruction,candidate:candidateBound,writeSurfaces:exactSurfaces,...(metadata.skillSelection.selectionProfile?{selectionProfile:metadata.skillSelection.selectionProfile}:{}),...(input.runtimeProfiles?{runtimeProfiles:input.runtimeProfiles}:{})},decision);}catch{return {reason:"The original ODD route no longer authorizes this worker plan."};}
  if(decision.route!=="orchestrate")return {reason:"The original ODD route does not authorize delegated worker execution."};
  const worker=plan.agents.find(agent=>agent.role==="worker");
  if(!worker?.skillContext||!worker.skillPaths||!worker.writeSurfaces||worker.writeSurfaces.length!==exactSurfaces.length||worker.writeSurfaces.some((surface,index)=>surface!==exactSurfaces[index]))return {reason:"The current ODD plan does not produce the exact persisted worker scope."};

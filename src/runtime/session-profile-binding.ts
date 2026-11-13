@@ -83,7 +83,7 @@ export async function captureSessionProfile(partition:string,identity:ProfileSes
  const state=getOrCreateBinding(partition,identity,load),inherited=await state.binding.pending;
  assertOwned(state);return structuredClone(state.binding.explicit??inherited);
 }
-async function changeSessionProfile(partition:string,identity:ProfileSessionIdentity,name:string|undefined,load:()=>Promise<RuntimeProfilesFile>,validate?:()=>void|Promise<void>):Promise<SessionProfileChange>{
+async function changeSessionProfile(partition:string,identity:ProfileSessionIdentity,name:string|undefined,load:()=>Promise<RuntimeProfilesFile>,validate?:()=>void|Promise<void>,beforeCommit?:()=>true):Promise<SessionProfileChange>{
  // Validate ownership inputs before starting a promise that could reject independently.
  if(!partition)throw new Error("Session profile requires a configuration partition");key(identity);
  const read=Promise.resolve().then(load).then(file=>{
@@ -94,15 +94,24 @@ async function changeSessionProfile(partition:string,identity:ProfileSessionIden
  const revision=(state.binding.selectionRevision??0)+1;state.binding.selectionRevision=revision;
  const [inherited,current]=await Promise.all([state.binding.pending,read]);
  await validate?.();assertOwned(state);
+ // No await may separate final freshness confirmation from the binding mutation.
+ if(beforeCommit!==undefined){
+  const confirmation:unknown=beforeCommit();
+  if(confirmation!==true){
+   if(confirmation instanceof Promise)void confirmation.catch(()=>{});
+   throw new Error("Session profile commit guard must be synchronous and return true");
+  }
+ }
+ assertOwned(state);
  if(state.binding.selectionRevision!==revision)throw new Error("Session profile selection was superseded");
  if(current.selected)state.binding.explicit=structuredClone(current.selected);else delete state.binding.explicit;
  return {snapshot:structuredClone(state.binding.explicit??inherited),global:structuredClone(current.global)};
 }
-export function selectSessionProfile(partition:string,identity:ProfileSessionIdentity,name:string,load:()=>Promise<RuntimeProfilesFile>,validate?:()=>void|Promise<void>):Promise<SessionProfileChange>{
- return changeSessionProfile(partition,identity,name,load,validate);
+export function selectSessionProfile(partition:string,identity:ProfileSessionIdentity,name:string,load:()=>Promise<RuntimeProfilesFile>,validate?:()=>void|Promise<void>,beforeCommit?:()=>true):Promise<SessionProfileChange>{
+ return changeSessionProfile(partition,identity,name,load,validate,beforeCommit);
 }
-export function resetSessionProfile(partition:string,identity:ProfileSessionIdentity,load:()=>Promise<RuntimeProfilesFile>,validate?:()=>void|Promise<void>):Promise<SessionProfileChange>{
- return changeSessionProfile(partition,identity,undefined,load,validate);
+export function resetSessionProfile(partition:string,identity:ProfileSessionIdentity,load:()=>Promise<RuntimeProfilesFile>,validate?:()=>void|Promise<void>,beforeCommit?:()=>true):Promise<SessionProfileChange>{
+ return changeSessionProfile(partition,identity,undefined,load,validate,beforeCommit);
 }
 export function clearSessionProfiles(partition:string,sessionId:string):void{
  const bindings=registry.get(partition);if(!bindings)return;

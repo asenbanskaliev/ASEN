@@ -1,4 +1,5 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile,execFileSync} from "node:child_process";import {readFileSync} from "node:fs";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {join} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile,execFileSync} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {isAbsolute,join,relative} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
+import {piRuntimeRouteArgs} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
@@ -45,8 +46,14 @@ async function waitForProcessStopped(pid:number,expectedStartTime?:string,timeou
  }while(Date.now()<deadline);
  return !await isLiveProcess(pid,expectedStartTime);
 }
+async function assertOwnedFixturePath(directory:string){
+ const root=process.env.ASEN_K7_FIXTURE_ROOT;if(!root)return;
+ const within=relative(await realpath(root),await realpath(directory));
+ assert.ok(within&&!within.startsWith("..")&&!isAbsolute(within),"fixture must remain below the explicitly owned K7 root");
+}
 async function fixture(body:string,policy=true,skillsMode:"exact"|"missing"|"extra"|"altered"="exact"){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-pi-"))),p=join(d,"pi-fixture.mjs"),scenario=join(d,"scenario.mjs");
+ await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(fileURLToPath(new URL("../extensions/authority.ts",import.meta.url)),join(d,"extensions/authority.ts"));
  for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(fileURLToPath(new URL(`../${source}`,import.meta.url)),target);}
  await writeFile(scenario,body);
@@ -102,6 +109,26 @@ test("Pi pins atomic-write reviewed bytes and rejects tampering before child inv
  assert.equal(rejected.ok,false);assert.match(rejected.output,/authority extension integrity/);
  await assert.rejects(()=>access(marker),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
  await writeFile(atomicPath,reviewedSource);
+});
+test("authority-reviewed-lock: admits current reviewed asset with scripted local Node child",async t=>{
+ const {d,p}=await fixture('import {writeFileSync} from "node:fs";writeFileSync("lock-child-started",String(process.pid));let input="";process.stdin.on("data",chunk=>input+=chunk);process.stdin.on("end",()=>{const request=JSON.parse(input.trim());console.log(JSON.stringify({type:"response",id:request.id,success:true,message:"reviewed lock admitted"}));});');
+ t.after(()=>rm(d,{recursive:true,force:true}));const starts:number[]=[];
+ const result=await runner(p,{noTools:true,timeoutMs:5000,onProcessStart:pid=>starts.push(pid)}).run({id:"lock-reviewed",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,true,result.output);assert.match(result.output,/reviewed lock admitted/u);
+ assert.equal(starts.length,1);assert.ok(starts[0]!>0);
+ assert.ok(Number(await readFile(join(d,"lock-child-started"),"utf8"))>0);
+});
+test("authority-reviewed-lock: rejects one fixture byte mutation before child invocation",async t=>{
+ const {d,p}=await fixture('import {writeFileSync} from "node:fs";writeFileSync("lock-child-started",String(process.pid));');
+ t.after(()=>rm(d,{recursive:true,force:true}));const starts:number[]=[];
+ const lockPath=join(d,"src/io/exclusive-file-lock.ts"),reviewed=await readFile(lockPath),tampered=Buffer.from(reviewed);
+ tampered[0]=tampered[0]!^1;
+ assert.equal(tampered.length,reviewed.length);assert.equal(tampered.filter((byte,index)=>byte!==reviewed[index]).length,1);
+ await writeFile(lockPath,tampered);
+ const result=await runner(p,{noTools:true,timeoutMs:5000,onProcessStart:pid=>starts.push(pid)}).run({id:"lock-tampered",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(result.ok,false);assert.equal(result.output,"pi authority extension integrity check failed: mismatch");
+ assert.deepEqual(starts,[]);
+ await assert.rejects(()=>access(join(d,"lock-child-started")),error=>(error as NodeJS.ErrnoException).code==="ENOENT");
 });
 test("Pi runner loads policy from the configured ASEN package root, not the project",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message}));});');
@@ -422,10 +449,19 @@ test("Pi RPC adapter blocks caller-supplied skill overrides",async()=>{
  assert.equal(r.ok,false);assert.match(r.output,/issued by ASEN/);
 });
 
+test("read-only Pi roles do not receive restricted writer guidance",async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message,args:process.argv.slice(2)}));});');
+ for(const role of ["explorer","reviewer","verifier","clarifier","worker"] as const){
+  const result=await runner(p).run({id:`read-only-${role}`,role,prompt:"inspect only",repository:d});
+  assert.equal(result.ok,true,result.output);const observed=JSON.parse(result.output.trim().split(/\r?\n/u).at(-1)!);
+  assert.equal(observed.message,"inspect only");assert.equal(observed.args[observed.args.indexOf("--tools")+1],"read");
+ }
+});
+
 test("organic writer reaches Pi adapter through one exact Dispatcher receiver without SDD",async t=>{
- const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
  t.after(()=>rm(d,{recursive:true,force:true}));
- await mkdir(join(d,"src"),{recursive:true});await writeFile(join(d,"src/a"),"fixture\n");execFileSync("git",["-C",d,"init","-q"]);execFileSync("git",["-C",d,"config","user.name","ASEN tests"]);execFileSync("git",["-C",d,"config","user.email","asen-tests@example.invalid"]);execFileSync("git",["-C",d,"add","."]);execFileSync("git",["-C",d,"commit","-qm","fixture"]);
+ await mkdir(join(d,"src"),{recursive:true});await writeFile(join(d,"src/a"),"fixture\n");await assertOwnedFixturePath(d);execFileSync("git",["-C",d,"init","--template=","-q"]);execFileSync("git",["-C",d,"config","--local","user.name","ASEN tests"]);execFileSync("git",["-C",d,"config","--local","user.email","asen-tests@example.invalid"]);execFileSync("git",["-C",d,"add","."]);execFileSync("git",["-C",d,"commit","-qm","fixture"]);
  const {issueOddDecision}=await import("./helpers/odd-routing.js"),{buildOrchestrationPlan}=await import("../src/orchestration/orchestrator.js"),{decideLifecycleApplicability}=await import("../src/lifecycle/applicability.js"),{issueOrganicWriterAdmission}=await import("../src/lifecycle/skill-lifecycle.js");
  const candidate={id:"organic",repository:d,revision:execFileSync("git",["-C",d,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
  buildOrchestrationPlan({taskId:"organic",repository:d,candidate,prompt:"write"},decision);
@@ -438,6 +474,18 @@ test("organic writer reaches Pi adapter through one exact Dispatcher receiver wi
  const pi=runner(p),dispatcher=new Dispatcher({run:async call=>{captured=call;return pi.run(call);}},evidence);
  const result=await dispatcher.dispatch(request);assert.equal(result.ok,true,result.output);
  const observed=JSON.parse(result.output.trim().split(/\r?\n/).at(-1)!);
+ assert.match(observed.message,/Restricted writer capabilities: read, edit, write only/u);
+ assert.match(observed.message,/No command execution.*bash.*shell/u);
+ assert.match(observed.message,/Never fabricate executed RED\/GREEN/u);
+ assert.match(observed.message,/Mark every unrun check as NOT RUN/u);
+ assert.match(observed.message,/proposed exact parent-required commands as data.*authorized parent execution/u);
+ assert.match(observed.message,/meaningful failing behavior test before implementation/u);
+ assert.match(observed.message,/no mid-writer RED checkpoint.*not completed delegated TDD orchestration/u);
+ assert.match(observed.message,/missing parent RED coordination.*do not claim an observed RED/u);
+ assert.match(observed.message,/Load every SKILL\.md below before task-specific work/u);
+ assert.ok(observed.message.indexOf("skills/asen-apply/SKILL.md")<observed.message.lastIndexOf("write"));
+ const args=observed.args as string[],extensionIndex=args.indexOf("--extension");
+ assert.deepEqual(args.slice(extensionIndex+2),["--no-skills","--tools","read,edit,write",...request.skillPaths.flatMap(path=>["--skill",path])]);
  assert.ok(observed.args.includes("read,edit,write"));assert.deepEqual(observed.authority.writeSurfaces,["src/a"]);
  assert.ok(observed.args.includes("--model"));assert.equal(observed.args[observed.args.indexOf("--model")+1],"local/test-model");
  assert.ok(observed.args.includes("--thinking"));assert.equal(observed.args[observed.args.indexOf("--thinking")+1],"low");
@@ -472,4 +520,65 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.equal(observations[0]!.observedCharacters,4);
  assert.equal(observations[0]!.requestId,"validated-delta");
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
+});
+
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown}={}){
+ const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
+ await assertOwnedFixturePath(d);
+ await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
+ for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(join(root,source),target);}
+ await writeFile(p,`import {writeFileSync} from "node:fs";import {resolve} from "node:path";
+const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0};let buffer="",turn=0,commands=[];
+const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands}));
+process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
+ if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
+ if(request.type==="get_state"){emit({type:"response",id:request.id,command:"get_state",success:true,data:{model:{provider:"provider",id:"primary"},thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}});continue;}
+ if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});continue;}
+ if(request.type==="set_thinking_level"){emit({type:"response",id:request.id,command:"set_thinking_level",success:!refuseThinking,...(refuseThinking?{error:"PRIVATE_THINKING_REJECTION"}:{})});continue;}
+ if(request.type==="prompt"){turn++;emit({type:"response",id:request.id,command:"prompt",success:true});if(turn===1){const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}else{emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}}
+ }});process.stdin.on("end",()=>process.exit(0));`);
+ return {d,p,log};
+}
+
+for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
+ test(`effort runtime parity scripted args RPC and child selection preserve ${thinking??"omission"}`,async t=>{
+  const {d,p,log}=await fallbackRpcFixture({selectionThinking:thinking});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],changes:unknown[]=[];
+  const child=runner(p,{timeoutMs:5000,onModelFallback:value=>changes.push(value)});child.subscribeChildSelection(value=>seen.push(value));
+  const effort=thinking===undefined?{}:{thinking};
+  const result=await child.run({id:"effort",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",...effort,modelFallback:{chain:[{model:"provider/final",...effort}]}});
+  assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.deepEqual(trace.args.filter((arg:string,index:number,args:string[])=>arg==="--thinking"||args[index-1]==="--thinking"),thinking===undefined?[]:["--thinking",thinking]);
+  assert.deepEqual(trace.commands.filter((command:any)=>command.type==="set_thinking_level").map((command:any)=>command.level),thinking===undefined?[]:[thinking]);
+  assert.deepEqual(seen,[{taskId:"effort",sessionId:"default",projectId:d,source:"child-reported",model:{provider:"provider",id:"primary"},...effort}]);
+  assert.deepEqual(changes,[{taskId:"effort",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",...effort}]);
+ });
+}
+test("effort runtime parity rejects invalid args and drops invalid child effort",async t=>{
+ for(const thinking of ["extreme","HIGH","inherit","",null,7]){
+  assert.throws(()=>piRuntimeRouteArgs({thinking:thinking as import("../src/runtime/profiles.js").Thinking}),/Invalid routed Pi thinking/);
+  const {d,p}=await fallbackRpcFixture({selectionThinking:thinking});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],child=runner(p,{timeoutMs:5000});child.subscribeChildSelection(value=>seen.push(value));
+  const result=await child.run({id:"invalid-observation",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true,result.output);assert.deepEqual(seen,[]);
+ }
+});
+
+test("fallback-child keeps one RPC process and conversation through an accepted fallback",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({refuse:["provider/refused"]});t.after(()=>rm(d,{recursive:true,force:true}));const starts:number[]=[],changes:unknown[]=[];
+ const result=await runner(p,{timeoutMs:10_000,onProcessStart:pid=>starts.push(pid),onModelFallback:change=>changes.push(change)}).run({id:"fallback-same-child",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",thinking:"medium",modelFallback:{profile:"child",chain:[{model:"provider/refused"},{model:"provider/final",thinking:"low"}]}});
+ assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt","set_model","set_model","set_thinking_level","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
+});
+
+test("fallback-thinking-refusal omits an effort level rejected by RPC",async t=>{
+ const {d,p}=await fallbackRpcFixture({refuseThinking:true});t.after(()=>rm(d,{recursive:true,force:true}));const changes:unknown[]=[];const result=await runner(p,{timeoutMs:10_000,onModelFallback:change=>changes.push(change)}).run({id:"thinking-refused",role:"explorer",prompt:"inspect",repository:d,isolationKey:"thinking-session",model:"provider/primary",thinking:"medium",modelFallback:{chain:[{model:"provider/final",thinking:"low"}]}});assert.equal(result.ok,true,result.output);assert.deepEqual(changes,[{taskId:"thinking-refused",sessionId:"thinking-session",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit"}]);assert.doesNotMatch(JSON.stringify(changes),/PRIVATE_THINKING_REJECTION|error/u);
+});
+
+test("fallback-child preserves the ordinary no-chain process path",async t=>{
+ const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-no-chain",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary"});assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
+});
+
+test("fallback-child does not continue for a noneligible final failure",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({category:"context_length"});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-noneligible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}});assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
+});
+
+test("fallback-child aborts before settled without sending a continuation RPC",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({settleDelayMs:250});t.after(()=>rm(d,{recursive:true,force:true}));const controller=new AbortController(),pending=runner(p,{timeoutMs:10_000}).run({id:"fallback-abort",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}},controller.signal);for(let i=0;i<100;i++){try{const trace=JSON.parse(await readFile(log,"utf8"));if(trace.commands.some((command:any)=>command.type==="prompt"))break;}catch{/* Wait for the scripted child to create its trace. */}await new Promise(resolve=>setTimeout(resolve,5));}controller.abort();const result=await pending;assert.equal(result.ok,false);assert.match(result.output,/cancelled/u);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.some((command:any)=>command.type==="set_model"),false);
 });

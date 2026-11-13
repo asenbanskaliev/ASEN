@@ -5,6 +5,7 @@ import {isAbsolute,resolve} from "node:path";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 import type {AgentRuntime} from "./agent-runtime.js";
 import type {AgentSessionIdentity} from "./agent-runtime.js";
+import type {AgentModelFallback} from "./dispatcher.js";
 import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,type TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.js";
 import type {AgentNotificationJournal} from "../runtime/agent-notification-journal.js";
 import type {TaskAgentLinkStore} from "../runtime/task-agent-link-store.js";
@@ -44,7 +45,7 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
 }
 export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_todo_inspect_interrupted_write"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
-export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default"}>,notificationJournal?:AgentNotificationJournal):()=>void{
+export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal):()=>void{
  const access=new AgentProjectAccess();
  // An exact status query records only a short-lived coordinator inspection
  // attempt; it is neither Pi model consumption nor approval for further work.
@@ -69,8 +70,8 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   }
   throwIfCancelled(signal);
   const requested:RouteChoice=persistedPlan?{...(persistedPlan.model!==undefined?{model:persistedPlan.model}:{}),...(persistedPlan.thinking!==undefined?{thinking:persistedPlan.thinking}:{})}:{};
-  let resolved:RouteChoice,routeSource:"session"|"project"|"global"|"default"|"persisted-plan";
-  if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const route=resolveRouting?await resolveRouting(dispatchRole,session):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;}
+  let resolved:RouteChoice,routeSource:"session"|"project"|"global"|"default"|"persisted-plan",modelFallback:AgentModelFallback|undefined;
+  if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const directExplorer=todoId===undefined&&dispatchRole==="explorer";const route=resolveRouting?await resolveRouting(dispatchRole,session,directExplorer):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;if(directExplorer)modelFallback=route.modelFallback;}
   const routing=runtimeRoutingMetadata(requested,resolved,routeSource);
   throwIfCancelled(signal);
   // Fresh starts of both planned and legacy Todos require the exact saved
@@ -87,7 +88,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
     await (await todoLink!.binder()).launchExact(todoSnapshot,agentId,session,enqueue,dispatch,validate);
    },
   }:{};
-  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...binding},signal);
+  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback}:{}),...binding},signal);
   return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema,includeNotices:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{

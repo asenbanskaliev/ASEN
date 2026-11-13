@@ -4,8 +4,7 @@ import {realpath} from "node:fs/promises";
 import { decideLifecycleApplicability, claimLifecycleApplicability, type LifecycleApplicabilityInput } from "../src/lifecycle/applicability.js";
 import { createSkillLifecycle, SkillLifecycle, lifecyclePhases } from "../src/lifecycle/skill-lifecycle.js";
 import { buildOrchestrationPlan } from "../src/orchestration/orchestrator.js";
-import { issueStructuredLifecycleApplicability } from "./helpers/lifecycle-applicability.js";
-import {createAsenExtension} from "../extensions/asen.js";
+import { createLegacyWorkflowFixture, issueStructuredLifecycleApplicability } from "./helpers/lifecycle-applicability.js";
 import { issueOddDecision } from "./helpers/odd-routing.js";
 
 type Fixture = Parameters<typeof issueOddDecision>[0];
@@ -16,7 +15,7 @@ function prepared(fixture: Partial<Fixture> = {}) {
   buildOrchestrationPlan({ taskId: full.taskId, repository: full.repository, prompt: "apply", candidate }, decision);
   return decision;
 }
-function extension(){const commands=new Map<string,{handler:(args:string|undefined,context:{cwd:string;ui:{notify():void}})=>unknown}>();const facade=createAsenExtension()({registerCommand:(name,command)=>commands.set(name,command as never)});return {facade,select:(task="GSP-05B1b")=>commands.get("asen-workflow")!.handler(`sdd ${task}`,{cwd:candidate.repository,ui:{notify:()=>{}}})};}
+function extension(){return createLegacyWorkflowFixture(candidate.repository,"GSP-05B1b");}
 function input(overrides: Partial<LifecycleApplicabilityInput> = {}): LifecycleApplicabilityInput {
   return { taskIdentity: "GSP-05B1b", repositoryIdentity: candidate.repository, candidate: { id: candidate.id, repository: candidate.repository, revision: candidate.revision }, explicitMode: "unspecified", affectedSubsystems: ["lifecycle"], expectedPaths: ["src/a.ts"], requiredArtifacts: [], ...overrides };
 }
@@ -54,7 +53,7 @@ test("plain structured mode and artifact selectors block while explicit organic 
  }
 });
 
-test("genuine extension selection is one-use, route-bound, and contradicts explicit organic",async()=>{
+test("genuine legacy internal selection is one-use, route-bound, and contradicts explicit organic",async()=>{
  const first=extension();await first.select();assert.equal(first.facade.decideLifecycleApplicability(prepared(),input()).outcome,"structured");
  assert.equal(first.facade.decideLifecycleApplicability(prepared(),input()).outcome,"organic","a used proof cannot select another route decision");
  const malformed=extension();await malformed.select();assert.throws(()=>malformed.facade.decideLifecycleApplicability(prepared(),input({candidate:{...input().candidate,id:"other"}})),/candidate mismatch/);

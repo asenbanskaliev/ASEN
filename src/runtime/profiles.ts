@@ -1,14 +1,16 @@
 export const ASEN_PROFILES_SCHEMA="asen.runtime-profiles/v1" as const;
-export type Thinking="off"|"minimal"|"low"|"medium"|"high";
+export type Thinking="off"|"minimal"|"low"|"medium"|"high"|"xhigh"|"max";
 export interface RouteChoice{model?:string;thinking?:Thinking}
 export interface RuntimeProfile{name:string;routes:Record<string,RouteChoice>}
 export interface RuntimeProfilesFile{schema:typeof ASEN_PROFILES_SCHEMA;active?:string;profiles:RuntimeProfile[]}
 export type ProfileLayer={global?:RuntimeProfilesFile;project?:RuntimeProfilesFile;session?:RuntimeProfilesFile};
 export interface RuntimeRoutingMetadata{requested:RouteChoice;resolved:RouteChoice;source:"session"|"project"|"global"|"default"|"persisted-plan";actual:"unknown"}
 const NAME=/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
-const THINKING=new Set(["off","minimal","low","medium","high"]);
+const THINKING:ReadonlySet<string>=new Set<Thinking>(["off","minimal","low","medium","high","xhigh","max"]);
+/** Configuration vocabulary, not a claim that a particular model supports every level. */
+export function isThinking(value:unknown):value is Thinking{return typeof value==="string"&&THINKING.has(value);}
 function record(v:unknown):v is Record<string,unknown>{return !!v&&typeof v==="object"&&!Array.isArray(v);}
-function validRoute(v:unknown):v is RouteChoice{return record(v)&&Object.keys(v).every(k=>k==="model"||k==="thinking")&&(v.model===undefined||(typeof v.model==="string"&&v.model.length>0&&v.model.length<=256&&v.model===v.model.trim()&&!/[\u0000-\u001f\u007f]/u.test(v.model)))&&(v.thinking===undefined||(typeof v.thinking==="string"&&THINKING.has(v.thinking)));}
+function validRoute(v:unknown):v is RouteChoice{return record(v)&&Object.keys(v).every(k=>k==="model"||k==="thinking")&&(v.model===undefined||(typeof v.model==="string"&&v.model.length>0&&v.model.length<=256&&v.model===v.model.trim()&&!/[\u0000-\u001f\u007f]/u.test(v.model)))&&(v.thinking===undefined||isThinking(v.thinking));}
 export function parseRuntimeProfiles(raw:string):RuntimeProfilesFile|undefined{
  let v:unknown;try{v=JSON.parse(raw);}catch{return undefined;}if(!record(v)||v.schema!==ASEN_PROFILES_SCHEMA||!Array.isArray(v.profiles)||v.profiles.length>64)return undefined;
  const names=new Set<string>(),profiles:RuntimeProfile[]=[];for(const p of v.profiles){if(!record(p)||typeof p.name!=="string"||!NAME.test(p.name)||names.has(p.name)||!record(p.routes))return undefined;const routes:Record<string,RouteChoice>={};for(const [role,route] of Object.entries(p.routes)){if(!NAME.test(role)||!validRoute(route))return undefined;routes[role]={...route};}names.add(p.name);profiles.push({name:p.name,routes});}

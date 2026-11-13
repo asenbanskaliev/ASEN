@@ -2,10 +2,100 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,type AsenPanelSnapshot} from "../src/runtime/ide-panel.js";
-import {truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
+import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
+import {inspectIntegrationProfiles} from "../src/runtime/integration-profile-inspection.js";
 
 const snapshot={todos:[],agents:[],jobs:[],changes:{branch:"main",files:0},profile:"free",permission:"normal"} satisfies AsenPanelSnapshot;
+test("sheet overview collapses empty bodies and bounds inventory without losing observed detail",()=>{
+ const integrationInspection=inspectIntegrationProfiles({
+  getCommands:()=>Array.from({length:32},(_,i)=>({name:`command-${i}`,source:"extension"})),
+  getAllTools:()=>[],
+ });
+ const data={...snapshot,todosObserved:true,integrationInspection};
+ const before=structuredClone(data);
+ const panel=createNativeWorkPanel(data,{requestRender(){},close(){},terminalRows:()=>200});
+ const overview=panel.render(120).join("\n");
+ assert.match(overview,/No work in this session/u);
+ for(const repeated of [/No tasks/u,/No owned jobs/u,/No agents/u,/command-31/u])assert.doesNotMatch(overview,repeated);
+ assert.match(overview,/Commands: reported.*limited|Commands: reported/u);
+ assert.match(overview,/Tools: empty/u);
+ assert.match(overview,/connection: unknown/u);
+ assert.match(overview,/no pending results/u);
+ for(let i=0;i<5;i++)panel.handleInput("\t");
+ panel.handleInput("\r");
+ const detail=panel.render(120).join("\n");
+ assert.match(detail,/command-31 · configured · extension · connection unknown/u);
+ assert.match(detail,/Agent profile: unavailable/u);
+ panel.handleInput("\u007f");
+ assert.doesNotMatch(panel.render(120).join("\n"),/command-31/u);
+ assert.deepEqual(data,before);
+ const folded=createNativeWorkPanel(data,{requestRender(){},close(){},terminalRows:()=>100});
+ folded.handleInput("\t");folded.handleInput("\t");folded.handleInput(" ");
+ assert.equal((folded.render(120).join("\n").match(/No work in this session/gu)??[]).length,1);
+ const unknown=createNativeWorkPanel({todos:[],agents:[],jobs:[]},{requestRender(){},close(){},terminalRows:()=>100});
+ assert.match(unknown.render(120).join("\n"),/unavailable/u);
+ assert.match(unknown.render(120).join("\n"),/unverified/u);
+});
+test("sheet fits live overlay height with pinned title and persistent scroll position indicator",()=>{
+ let height=7,calls=0;
+ const panel=createNativeWorkPanel(snapshot,{requestRender(){},close(){},terminalRows:()=>50,availableRows:()=>{calls++;return height;}});
+ for(const width of [12,35,80,139,160]){
+  const lines=panel.render(width);
+  assert.ok(lines.length<=height);
+  assert.match(lines[0]!,/Panel/u);
+  assert.match(lines.at(-1)!,/↓|more/u);
+  assert.ok(lines.every(line=>visibleWidth(line)<=width));
+ }
+ for(let i=0;i<100;i++)panel.handleInput("j");
+ assert.match(panel.render(80).at(-1)!,/↑/u,"indicator remains at bottom");
+ for(const value of [1,2,3,0,NaN]){
+  height=value;
+  const lines=panel.render(80);
+  assert.ok(lines.length<=Math.max(1,Number.isFinite(value)?value:1));
+  assert.match(lines.join("\n"),/q close/u);
+ }
+ assert.equal(calls,11,"height getter is read once per render, not polled");
+ const fallback=createNativeWorkPanel(snapshot,{requestRender(){},close(){},terminalRows:()=>10});
+ assert.ok(fallback.render(80).length<=9);
+});
+test("theme adapter styles sanitized fitted rows with a visible focus marker and muted unknowns",()=>{
+ const calls:{kind:string;role:string;text:string}[]=[];
+ const theme={
+  fg(role:string,text:string){calls.push({kind:"fg",role,text});return text;},
+  bg(role:string,text:string){calls.push({kind:"bg",role,text});return text;},
+  bold(text:string){calls.push({kind:"bold",role:"",text});return text;},
+ };
+ const data={...snapshot,profile:"界e\u0301\u001b[31m injected"};
+ const panel=createNativeWorkPanel(data,{theme,requestRender(){},close(){},terminalRows:()=>100});
+ const plain=panel.render(80);
+ assert.match(plain.join("\n"),/> ▾ TODOS/u);
+ assert.ok(calls.some(c=>c.role==="accent"&&c.text.includes("TODOS")));
+ assert.ok(calls.some(c=>c.role==="muted"&&c.text.includes("unknown")));
+ assert.equal(calls.filter(c=>c.kind==="bg"&&c.role==="customMessageBg").length,plain.length);
+ assert.ok(calls.every(c=>!c.text.includes("\u001b")&&visibleWidth(c.text)<=80));
+ panel.handleInput("\t");
+ assert.match(panel.render(80).join("\n"),/> ▾ JOBS/u);
+ panel.handleInput(" ");
+ assert.match(panel.render(80).join("\n"),/> ▸ JOBS/u);
+});
+test("theme output is retained after fitting and live height overrides terminal rows without effects",()=>{
+ let height=3,redraws=0,closes=0;
+ const theme={fg(_role:string,text:string){return `[fg]${text}[/fg]`;},bg(_role:string,text:string){return `[bg]${text}[/bg]`;},bold(text:string){return `[bold]${text}[/bold]`;}};
+ const panel=createNativeWorkPanel(snapshot,{theme,availableRows:()=>height,terminalRows:()=>{throw new Error("must not read fallback");},requestRender(){redraws++;},close(){closes++;}});
+ const rows=panel.render(40);
+ assert.equal(rows.length,3);
+ assert.match(rows[0]!,/^\[bg\]\[fg\]\[bold\]Panel/u);
+ assert.match(rows[0]!,/\[\/bold\]\[\/fg\]\[\/bg\]$/u);
+ height=1;panel.render(40);
+ for(const key of ["j","k","\t"," ","\r","\u007f"])panel.handleInput(key);
+ assert.equal(redraws,0,"unavailable short-height navigation is inert");
+ panel.handleInput("q");assert.equal(closes,1);
+ height=20;
+ for(const width of [0,NaN,Infinity])assert.equal(panel.render(width).length,1);
+ assert.equal(redraws,0,"render never requests another frame");
+});
+
 test("REVIEW derives only stored Todo states that actually await review",()=>{
  const todos=["succeeded","blocked","done","running"].map((state,index)=>({taskId:`todo-${index}`,title:`Todo ${index}`,events:[],current:{state,taskId:`todo-${index}`}})) as any;
  const output=renderAsenPanel({...snapshot,todos,todosObserved:true},120).join("\n");
@@ -133,10 +223,9 @@ test("native panel fits Close-only fallback at every width 1–11 and restores t
  assert.equal(redraws,0,"hidden navigation, folding and detail controls are inert");
  for(const width of [12,13,14,139,140]){
   const lines=panel.render(width);
-  assert.equal(lines[0],truncateForTerminal("✿ ASEN PANEL · TODOS · j/k sections · Enter detail · Space fold · Esc close",width));
+  assert.match(lines[0]!,/Panel/u);
   assert.ok(lines.every(line=>visibleWidth(line)<=width),`full panel fits ${width}`);
-  const content=renderAsenPanel(unicode,Math.max(12,width-2));
-  assert.deepEqual(lines.slice(1,-1),content.map(line=>truncateForTerminal(" "+line,width)),"unchanged full-panel projection and Unicode fitting");
+  assert.match(lines.join("\n"),/TODOS/u,"stacked section remains discoverable");
  }
  panel.handleInput("\t");
  assert.match(panel.render(80)[0]!,/JOBS/u,"navigation resumes after growing");

@@ -1,83 +1,69 @@
 # Development setup
 
-This page describes how to run ASEN from a clean development checkout. It does not enable public installation; `asen setup` remains preview-only.
+Use a clean checkout and fresh local state. ASEN remains a development candidate; `asen setup` is preview-only, not a public installer.
+
+## Continue work from another computer
+
+Start with the [portable continuation guide](remote-continuation.md). It identifies the canonical ODD files, current blockers, publication prerequisites and exact-checkout instructions. GitHub can only deliver committed, published files—not the previous computer's working tree.
 
 ## Prerequisites
 
-- Git.
-- Node.js `>=22.19.0`.
-- TypeScript checks run with the installed compiler.
-- No cloud provider credentials are required for the local development workflow.
+- Git and Node.js `>=22.19.0`; the earlier local Node `24.14.0` result does not certify every supported version.
+- The tracked `package.json` and `package-lock.json`.
+- A filesystem supporting the atomic hard-link operations required by locking. Do not weaken the lock implementation if the filesystem rejects them.
+- A compatible native binary or build toolchain for dependencies such as `node-pty`.
+
+No provider credentials, old SDK installation, private sessions, local RefMem database or audit cache are needed to read the ODD files. Install dependencies from the lockfile rather than copying another computer's `node_modules`.
 
 ## Clone and install
 
-```powershell
-git clone https://github.com/asenbanskaliev/ASEN.git
-cd ASEN
-npm ci
-```
+Follow [clean-clone prerequisites](remote-continuation.md#clean-clone-prerequisites) using the repository URL, branch and published SHA supplied by the owner. Prefer a clone: a ZIP lacks the Git history/index some checks require.
 
-## Verify the checkout
+Then follow [portable isolated PowerShell setup](remote-continuation.md#portable-isolated-powershell-setup) in a fresh PowerShell session. That block creates a unique project-local `.cache` root and isolates HOME, USERPROFILE, configuration, cache, data, temporary files and Pi state before `npm ci`. It never deletes an existing development home. These are instructions for a future authorised setup, not commands executed while preparing this handoff.
+
+## Check and build when authorised
+
+From the isolated session, after successful lockfile installation:
 
 ```powershell
 npm run typecheck
-npm run check:fast
+if ($LASTEXITCODE -ne 0) { throw "Typecheck failed" }
 npm run build
+if ($LASTEXITCODE -ne 0) { throw "Build failed" }
 node dist/cli.js --version
+if ($LASTEXITCODE -ne 0) { throw "Version check failed" }
 ```
 
-## Run ASEN with an isolated development home
+Typecheck/build do not close the ODDs or establish native approval. No installation, build or clean-clone verification was performed for the publication-documentation preparation.
+
+## Inspect with the isolated development home
+
+Keep using the same fresh session and `$HomeRoot` created by the portable setup:
 
 ```powershell
-$devHome = "C:\Temp\asen-dev"
-if (Test-Path $devHome) { Remove-Item $devHome -Recurse -Force }
-New-Item $devHome -ItemType Directory -Force | Out-Null
-$env:USERPROFILE = $devHome
-node dist/cli.js --home $devHome doctor
+node dist/cli.js --home $HomeRoot doctor
+if ($LASTEXITCODE -ne 0) { throw "Doctor collection failed; inspect its report" }
 ```
 
-The `doctor` report is metadata-only. It does not prove runtime readiness, publisher authenticity, or activation.
+The doctor is metadata-only; even exit 0 does not prove healthy installation, runtime readiness, publisher authenticity or activation. Close the disposable session to discard its environment changes. Preserve older state and fixtures; do not sweep `.cache` or remove a fixed shared directory.
 
-Full setup, upgrade, activation and unmanaged installation are documented separately in [installation and managed execution](installation.md).
+Full installation, upgrade and managed execution are described separately in [installation and managed execution](installation.md).
 
-## Run tests
+## Select tests from the active ODD
 
-Focused tests:
+Do not start `npm test`, `npm run check:fast`, `npm run verify:pack` or release checks merely because this is a new computer. Read the selected task's scope first: the runner inherits the environment, some tests create temporary Git repositories/commits, and existing bounded no-retry stops remain binding. A new checkout does not reset them.
 
-```powershell
-npm run check:fast
-```
+For a newly authorised functional unit, run only its specified focused checks under isolated state and retain the actual result. A missing prerequisite is not PASS. Full-suite/package checks still apply before release, but this handoff is not a release or permission to run them.
 
-Local validation used for the current candidate:
-
-```powershell
-npm run typecheck
-npm run build
-node --import tsx --test tests/extension-runtime-commands.test.ts
-node --import tsx --test tests/docs-surfaces.test.ts
-git diff --check
-```
-
-The full suite and package verification are available, but should only be used before a consolidated candidate:
-
-```powershell
-npm test
-npm run verify:pack
-```
-
-Known local test environment caveat:
-
-- two `tests/setup.test.ts` checks may fail on unprivileged Windows because POSIX symlinks cannot be created.
-- Those are environment limitations, not ASEN defects. Do not alter those tests to force PASS.
+Known Windows limitations, including symlink privilege and busy-file behavior, remain evidence gaps; do not rewrite tests merely to force a passing result.
 
 ## Optional ECO-12 history shortcut
 
-History selection is available through `/asen-history select`. To register a host shortcut without changing ASEN defaults:
+History selection is available through `/asen-history select`. To opt into a host shortcut, in the same isolated session:
 
 ```powershell
 $env:ASEN_HISTORY_SHORTCUT = "ctrl+h"
-node dist/cli.js --home $devHome doctor
+node dist/cli.js --home $HomeRoot doctor
 ```
 
-No default shortcut is registered unless this option is explicitly provided.
-PY
+No default shortcut is registered unless explicitly configured. Native RDD remains a separate host-supplied executable/transport integration; absent configuration means unavailable, not OFF or approved.

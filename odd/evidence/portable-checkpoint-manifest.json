@@ -1,0 +1,3304 @@
+{
+  "schema": "asen.portable-wip-candidate/v1",
+  "status": "OWNERSHIP_CANDIDATE_NOT_STAGING_APPROVAL",
+  "sourceInventory": "Parent public169 exact paths; counts/status only, not content-safety evidence",
+  "branch": "feat/t12-integrated-acceptance-merge",
+  "preparationHead": "a49d8ad9",
+  "remoteName": "origin",
+  "initialIndexPaths": 0,
+  "counts": {
+    "inventory": 169,
+    "newPublic": 3,
+    "total": 172,
+    "candidate": 138,
+    "defer": 34,
+    "unassigned": 0
+  },
+  "parentStagingApproval": false,
+  "commit": null,
+  "push": null,
+  "entries": [
+    {
+      "status": " M",
+      "path": "README.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "docs/asen-profile-scope-inspection.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 33,
+        "deleted": 3
+      }
+    },
+    {
+      "status": " M",
+      "path": "docs/development-setup.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 34,
+        "deleted": 48
+      }
+    },
+    {
+      "status": " M",
+      "path": "docs/harness-capability-map.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 14,
+        "deleted": 6
+      }
+    },
+    {
+      "status": " M",
+      "path": "docs/remote-continuation.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 198,
+        "deleted": 15
+      }
+    },
+    {
+      "status": " M",
+      "path": "docs/runtime-tools.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 57,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "docs/skill-style-guide.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 1,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "extensions/asen.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 298,
+        "deleted": 50
+      }
+    },
+    {
+      "status": " M",
+      "path": "odd/tasks/pi-capability-completion.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 690,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "scripts/t12-parent-real-child-probe.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "probes",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 4
+      }
+    },
+    {
+      "status": " M",
+      "path": "scripts/t12-real-tui-stream-probe.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "probes",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 2,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-apply/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 8,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-archive/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-context-init/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-design/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-explore/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 8,
+        "deleted": 4
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-go-testing/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-odd/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-phase-protocol/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 7,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-proposal/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-review/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-safe-change/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-specification/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-status/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-tasks/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-verify/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "skills/asen-work-unit/SKILL.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 13,
+        "deleted": 15
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/agents/agent-runtime.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 31,
+        "deleted": 15
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/agents/dispatcher.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 26,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/agents/pi-agent-tools.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 5,
+        "deleted": 4
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/agents/pi-authority-assets.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "authorityPin",
+      "owningPublicOdd": [
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/skill-loading-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 1,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/agents/pi-process-runner.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 70,
+        "deleted": 9
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/cli.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 62,
+        "deleted": 3
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/io/exclusive-file-lock.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "storage",
+      "owningPublicOdd": [
+        "odd/tasks/storage-capability-rejection.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 23,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/orchestration/executable-plan.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 1,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/orchestration/orchestrator.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 7,
+        "deleted": 5
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/review/ordinary-review-command.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "native",
+      "owningPublicOdd": [
+        "odd/tasks/odd-rdd-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 5,
+        "deleted": 3
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/agent-store.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 12,
+        "deleted": 10
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/command-catalog.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 1,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/integrations-panel.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 1,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/language.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 3,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/launcher.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 8,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/native-work-panel.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 71,
+        "deleted": 24
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/natural-plan-tool.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/persona.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 23,
+        "deleted": 21
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/plan-dispatcher.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 2,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/profile-fallback.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 54,
+        "deleted": 58
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/profiles.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 5,
+        "deleted": 3
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/route-command.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 1,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/session-profile-binding.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 14,
+        "deleted": 5
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/runtime/todo-store.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 5,
+        "deleted": 3
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/skills/context.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 2,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/skills/document.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 4,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "src/skills/registry.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 9,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/command-catalog.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 8,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/command-palette-integration.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 175,
+        "deleted": 13
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/command-palette.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 19,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/exclusive-file-lock.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "storage",
+      "owningPublicOdd": [
+        "odd/tasks/storage-capability-rejection.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 62,
+        "deleted": 11
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/extension-runtime-commands.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 32,
+        "deleted": 4
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/extension-state-commands.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 52,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/helpers/lifecycle-applicability.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 20,
+        "deleted": 8
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/ide-panel.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "p32",
+      "owningPublicOdd": [
+        "odd/tasks/p32-context-gauge.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 1,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/instruction-triage.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 21,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/integrations-panel.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 9,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/lifecycle-applicability.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 3,
+        "deleted": 4
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/native-work-panel.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 93,
+        "deleted": 4
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/natural-plan-tool.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 38,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/orchestrator.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 16,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/ordinary-review-command-ui.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "native",
+      "owningPublicOdd": [
+        "odd/tasks/odd-rdd-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 2,
+        "deleted": 2
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/panel-observation-integration.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 1,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/pi-agent-runtime.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 67,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/pi-host-preflight.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 5,
+        "deleted": 3
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/pi-process-runner.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 112,
+        "deleted": 3
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/profile-fallback.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 69,
+        "deleted": 148
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/profile-store.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 5,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/runtime-profiles.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 22,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/session-profile-binding.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 5,
+        "deleted": 4
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/skill-authoring-audit.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 79,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/skill-registry.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 26,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/todo-store.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 14,
+        "deleted": 0
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/work-unit-skill-contract.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 20,
+        "deleted": 1
+      }
+    },
+    {
+      "status": " M",
+      "path": "tests/workflow-selection-extension.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "aggregate",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 54,
+        "deleted": 5
+      }
+    },
+    {
+      "status": "??",
+      "path": "docs/asen-child-fallback-routing.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 19,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-final-refinement.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "READ_BY_WRITER_PUBLIC_SUMMARY_NOT_APPROVAL",
+      "diff": {
+        "added": 56,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-per-point-matrix.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "READ_BY_WRITER_PUBLIC_SUMMARY_NOT_APPROVAL",
+      "diff": {
+        "added": 61,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/p10-editor-functional-progress.json",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "READ_BY_WRITER_PUBLIC_SUMMARY_NOT_APPROVAL",
+      "diff": {
+        "added": 134,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/p11-child-fallback-functional-progress.json",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "READ_BY_WRITER_PUBLIC_SUMMARY_NOT_APPROVAL",
+      "diff": {
+        "added": 102,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/asen-focus-experience.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 180,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/asen-gentle-shell-equivalence-audit.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 61,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/asen-gentle-shell-full-equivalence.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 104,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/asen-gentle-shell-parity-implementation.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 368,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/asen-parity-readiness.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 55,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/asen-parity-resume.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 119,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/github-portable-continuation.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 60,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/model-fallback-shell-parity.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 121,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/odd-rdd-shell-parity.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 128,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/p05-home-selectors.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 52,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/p10-fallback-editor.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 96,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/p11-child-fallback-wiring.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 61,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/p19-parent-red-checkpoint.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 58,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/p32-context-gauge.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "p32",
+      "owningPublicOdd": [
+        "odd/tasks/p32-context-gauge.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 78,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/pi-asen-startup-banner.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 102,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/shell-experience-parity.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 354,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/skill-loading-shell-parity.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 253,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "odd/tasks/storage-capability-rejection.md",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "storage",
+      "owningPublicOdd": [
+        "odd/tasks/storage-capability-rejection.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 50,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/review/native-rdd-control.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "native",
+      "owningPublicOdd": [
+        "odd/tasks/odd-rdd-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 118,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/review/review-assessment-policy.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "native",
+      "owningPublicOdd": [
+        "odd/tasks/odd-rdd-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 79,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/runtime/focus-chrome.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 28,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/runtime/focus-theme.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 28,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/runtime/model-fallback-notice.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 42,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/runtime/model-fallback-policy.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 161,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/runtime/native-command-palette.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 169,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/runtime/parent-model-fallback.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 132,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "src/runtime/profile-fallback-store.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 109,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/focus-chrome.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 46,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/focus-extension-integration.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 88,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/focus-theme.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 65,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/integrations-narrow-command.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 71,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/language-command.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 204,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/model-fallback-policy.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 114,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/native-command-palette.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "focus",
+      "owningPublicOdd": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 118,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/native-rdd-control.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "native",
+      "owningPublicOdd": [
+        "odd/tasks/odd-rdd-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 187,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/organic-plan-skill-selection.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 118,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/organic-work-unit-guidance.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 26,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/p05-home-selectors.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 88,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/p10-fallback-editor.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 193,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/p11-child-fallback-wiring.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 173,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/p32-context-gauge.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "p32",
+      "owningPublicOdd": [
+        "odd/tasks/p32-context-gauge.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 62,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/parent-model-fallback.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 204,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/parent-red-inline-characterization.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 100,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/profile-fallback-store.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "fallback",
+      "owningPublicOdd": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 152,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/profile-persona-native-access.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "profiles",
+      "owningPublicOdd": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 502,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/research-probe-help.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "probes",
+      "owningPublicOdd": [
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 53,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/review-assessment-policy.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "native",
+      "owningPublicOdd": [
+        "odd/tasks/odd-rdd-shell-parity.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 77,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "status": "??",
+      "path": "tests/skill-launcher-resources.test.ts",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "workflow",
+      "owningPublicOdd": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "evidenceRefs": [
+        "odd/tasks/github-portable-continuation.md#Log:L16"
+      ],
+      "contentReviewStatus": "PARENT_CONTENT_REVIEW_PENDING; metadata and limited marker scan only",
+      "diff": {
+        "added": 185,
+        "deleted": 0,
+        "basis": "untracked whole text; estimate not Git diff"
+      }
+    },
+    {
+      "path": "docs/portable-checkpoint.md",
+      "status": "NEW_BY_T5",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "contentReviewStatus": "WRITER_AUTHORED; parent assessment pending"
+    },
+    {
+      "path": "odd/evidence/portable-checkpoint-manifest.json",
+      "status": "NEW_BY_T5",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "contentReviewStatus": "WRITER_AUTHORED; parent assessment pending"
+    },
+    {
+      "path": "odd/evidence/portable-checkpoint-evidence.json",
+      "status": "NEW_BY_T5",
+      "disposition": "OWNERSHIP_CANDIDATE",
+      "group": "continuation",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "contentReviewStatus": "WRITER_AUTHORED; parent assessment pending"
+    },
+    {
+      "status": " M",
+      "path": ".gitignore",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_UNVERIFIED_SECURITY_POLICY: four added lines; old T3 proof missing; untouched, no waiver",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "design/asen-focus-experience/01-quiet-focus.html",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_NOT_CONTENT_REVIEWED: entire design bundle deferred together, including metadata/alternatives/system; no partial metadata publication",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "design/asen-focus-experience/02-balanced-focus.html",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_NOT_CONTENT_REVIEWED: entire design bundle deferred together, including metadata/alternatives/system; no partial metadata publication",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "design/asen-focus-experience/03-work-first.html",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_NOT_CONTENT_REVIEWED: entire design bundle deferred together, including metadata/alternatives/system; no partial metadata publication",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "design/asen-focus-experience/design.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_NOT_CONTENT_REVIEWED: entire design bundle deferred together, including metadata/alternatives/system; no partial metadata publication",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "design/asen-focus-experience/handoffs.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_NOT_CONTENT_REVIEWED: entire design bundle deferred together, including metadata/alternatives/system; no partial metadata publication",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "design/asen-focus-experience/palette.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_NOT_CONTENT_REVIEWED: entire design bundle deferred together, including metadata/alternatives/system; no partial metadata publication",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "design/system.html",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_NOT_CONTENT_REVIEWED: entire design bundle deferred together, including metadata/alternatives/system; no partial metadata publication",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "design/system.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_NOT_CONTENT_REVIEWED: entire design bundle deferred together, including metadata/alternatives/system; no partial metadata publication",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-equivalence-assessment.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-equivalence-rea.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-auditor-a.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-auditor-b.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-auditor-input.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-draft.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-map.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-planner-a.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-planner-b.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-planner-input.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-planner-reconciliation.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-postplan-audit.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-preplan-audit.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-rea-index.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-full-equivalence-rea.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-per-point-matrix.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-per-point-rea.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-gentle-shell-per-point-source-refinement.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-parity-readiness-checks.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-parity-readiness-matrix.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-parity-readiness-report.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/asen-parity-readiness-validation.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/odd-rdd-shell-asen-comparison.md",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/p10-fallback-editor-checkpoint.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    },
+    {
+      "status": "??",
+      "path": "odd/evidence/p10-g1-mwe0wxzv-2-spff.json",
+      "disposition": "DEFER",
+      "reason": "DEFERRED_ANNEX_PROVENANCE_OR_CONTENT_REVIEW_PENDING: raw acquisition/planner inputs and other unreviewed annexes are not publication candidates",
+      "contentReviewStatus": "NOT_APPROVED",
+      "owningPublicOdd": [
+        "odd/tasks/github-portable-continuation.md"
+      ]
+    }
+  ],
+  "workUnitGroups": {
+    "storage": {
+      "behavior": "Hard-link storage capability rejection; code and regression test",
+      "owners": [
+        "odd/tasks/storage-capability-rejection.md"
+      ],
+      "paths": [
+        "src/io/exclusive-file-lock.ts",
+        "tests/exclusive-file-lock.test.ts",
+        "odd/tasks/storage-capability-rejection.md"
+      ],
+      "knownAuthoredChangedLines": 148,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": false,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "fallback": {
+      "behavior": "Fallback normalization, store, snapshot, runtime, runner and notices; shared consumer closure",
+      "owners": [
+        "odd/tasks/model-fallback-shell-parity.md"
+      ],
+      "paths": [
+        "src/agents/agent-runtime.ts",
+        "src/agents/dispatcher.ts",
+        "src/agents/pi-process-runner.ts",
+        "src/runtime/agent-store.ts",
+        "src/runtime/profile-fallback.ts",
+        "tests/pi-agent-runtime.test.ts",
+        "tests/pi-host-preflight.test.ts",
+        "tests/pi-process-runner.test.ts",
+        "tests/profile-fallback.test.ts",
+        "src/runtime/model-fallback-notice.ts",
+        "src/runtime/model-fallback-policy.ts",
+        "src/runtime/parent-model-fallback.ts",
+        "src/runtime/profile-fallback-store.ts",
+        "tests/model-fallback-policy.test.ts",
+        "tests/parent-model-fallback.test.ts",
+        "tests/profile-fallback-store.test.ts"
+      ],
+      "knownAuthoredChangedLines": 1608,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": true,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "authorityPin": {
+      "behavior": "Authority asset pin correction, paired runner tests; separate identifiable subunit of shared runner",
+      "owners": [
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/skill-loading-shell-parity.md"
+      ],
+      "paths": [
+        "src/agents/pi-authority-assets.ts"
+      ],
+      "knownAuthoredChangedLines": 2,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": false,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "profiles": {
+      "behavior": "Profile/persona access, P05 selectors, bounded P10 editor and P11 direct-child wiring; H3/timeout not closed",
+      "owners": [
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/shell-experience-parity.md"
+      ],
+      "paths": [
+        "docs/asen-profile-scope-inspection.md",
+        "src/agents/pi-agent-tools.ts",
+        "src/cli.ts",
+        "src/runtime/launcher.ts",
+        "src/runtime/persona.ts",
+        "src/runtime/profiles.ts",
+        "src/runtime/session-profile-binding.ts",
+        "tests/profile-store.test.ts",
+        "tests/runtime-profiles.test.ts",
+        "tests/session-profile-binding.test.ts",
+        "docs/asen-child-fallback-routing.md",
+        "tests/p05-home-selectors.test.ts",
+        "tests/p10-fallback-editor.test.ts",
+        "tests/p11-child-fallback-wiring.test.ts",
+        "tests/profile-persona-native-access.test.ts"
+      ],
+      "knownAuthoredChangedLines": 1203,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": true,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "workflow": {
+      "behavior": "ODD/skills, organic selection, applicability, executable plans and lifecycle; K11 characterization is not checkpoint enforcement",
+      "owners": [
+        "odd/tasks/skill-loading-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p19-parent-red-checkpoint.md"
+      ],
+      "paths": [
+        "docs/skill-style-guide.md",
+        "skills/asen-apply/SKILL.md",
+        "skills/asen-archive/SKILL.md",
+        "skills/asen-context-init/SKILL.md",
+        "skills/asen-design/SKILL.md",
+        "skills/asen-explore/SKILL.md",
+        "skills/asen-go-testing/SKILL.md",
+        "skills/asen-odd/SKILL.md",
+        "skills/asen-phase-protocol/SKILL.md",
+        "skills/asen-proposal/SKILL.md",
+        "skills/asen-review/SKILL.md",
+        "skills/asen-safe-change/SKILL.md",
+        "skills/asen-specification/SKILL.md",
+        "skills/asen-status/SKILL.md",
+        "skills/asen-tasks/SKILL.md",
+        "skills/asen-verify/SKILL.md",
+        "skills/asen-work-unit/SKILL.md",
+        "src/orchestration/executable-plan.ts",
+        "src/orchestration/orchestrator.ts",
+        "src/runtime/natural-plan-tool.ts",
+        "src/runtime/plan-dispatcher.ts",
+        "src/runtime/route-command.ts",
+        "src/runtime/todo-store.ts",
+        "src/skills/context.ts",
+        "src/skills/document.ts",
+        "src/skills/registry.ts",
+        "tests/helpers/lifecycle-applicability.ts",
+        "tests/lifecycle-applicability.test.ts",
+        "tests/natural-plan-tool.test.ts",
+        "tests/orchestrator.test.ts",
+        "tests/skill-authoring-audit.test.ts",
+        "tests/skill-registry.test.ts",
+        "tests/todo-store.test.ts",
+        "tests/work-unit-skill-contract.test.ts",
+        "tests/organic-plan-skill-selection.test.ts",
+        "tests/organic-work-unit-guidance.test.ts",
+        "tests/parent-red-inline-characterization.test.ts",
+        "tests/skill-launcher-resources.test.ts"
+      ],
+      "knownAuthoredChangedLines": 820,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": true,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "native": {
+      "behavior": "Native R3a/R3b status/assess and ordinary review, NOT lifecycle/delivery approval",
+      "owners": [
+        "odd/tasks/odd-rdd-shell-parity.md"
+      ],
+      "paths": [
+        "src/review/ordinary-review-command.ts",
+        "tests/ordinary-review-command-ui.test.ts",
+        "src/review/native-rdd-control.ts",
+        "src/review/review-assessment-policy.ts",
+        "tests/native-rdd-control.test.ts",
+        "tests/review-assessment-policy.test.ts"
+      ],
+      "knownAuthoredChangedLines": 473,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": true,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "focus": {
+      "behavior": "Focus chrome/theme, work panel and manual-only grouped palette; host proof pending",
+      "owners": [
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md"
+      ],
+      "paths": [
+        "src/runtime/integrations-panel.ts",
+        "src/runtime/language.ts",
+        "src/runtime/native-work-panel.ts",
+        "tests/command-palette-integration.test.ts",
+        "tests/command-palette.test.ts",
+        "tests/integrations-panel.test.ts",
+        "tests/native-work-panel.test.ts",
+        "src/runtime/focus-chrome.ts",
+        "src/runtime/focus-theme.ts",
+        "src/runtime/native-command-palette.ts",
+        "tests/focus-chrome.test.ts",
+        "tests/focus-extension-integration.test.ts",
+        "tests/focus-theme.test.ts",
+        "tests/integrations-narrow-command.test.ts",
+        "tests/language-command.test.ts",
+        "tests/native-command-palette.test.ts"
+      ],
+      "knownAuthoredChangedLines": 1231,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": true,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "p32": {
+      "behavior": "Missing-gauge tests and exact known-host expectation only; formatter NOT implemented",
+      "owners": [
+        "odd/tasks/p32-context-gauge.md"
+      ],
+      "paths": [
+        "tests/ide-panel.test.ts",
+        "odd/tasks/p32-context-gauge.md",
+        "tests/p32-context-gauge.test.ts"
+      ],
+      "knownAuthoredChangedLines": 142,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": false,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "probes": {
+      "behavior": "Research help literal/test and erased-type probe corrections, NOT real execution proof",
+      "owners": [
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "paths": [
+        "scripts/t12-parent-real-child-probe.ts",
+        "scripts/t12-real-tui-stream-probe.ts",
+        "tests/research-probe-help.test.ts"
+      ],
+      "knownAuthoredChangedLines": 65,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": false,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "aggregate": {
+      "behavior": "Shared extension/runtime-tools/catalog integration and matching shared tests; no per-hunk author attribution",
+      "owners": [
+        "odd/tasks/pi-capability-completion.md",
+        "odd/tasks/github-portable-continuation.md"
+      ],
+      "paths": [
+        "docs/runtime-tools.md",
+        "extensions/asen.ts",
+        "src/runtime/command-catalog.ts",
+        "tests/command-catalog.test.ts",
+        "tests/extension-runtime-commands.test.ts",
+        "tests/extension-state-commands.test.ts",
+        "tests/instruction-triage.test.ts",
+        "tests/panel-observation-integration.test.ts",
+        "tests/workflow-selection-extension.test.ts"
+      ],
+      "knownAuthoredChangedLines": 589,
+      "newCheckpointFilesNotYetCounted": false,
+      "over400": true,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    },
+    "continuation": {
+      "behavior": "Public owning plans, onboarding and compact historical summaries; not authority",
+      "owners": [
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/pi-capability-completion.md"
+      ],
+      "paths": [
+        "README.md",
+        "docs/development-setup.md",
+        "docs/harness-capability-map.md",
+        "docs/remote-continuation.md",
+        "odd/tasks/pi-capability-completion.md",
+        "odd/evidence/asen-gentle-shell-full-equivalence-final-refinement.md",
+        "odd/evidence/asen-gentle-shell-per-point-matrix.md",
+        "odd/evidence/p10-editor-functional-progress.json",
+        "odd/evidence/p11-child-fallback-functional-progress.json",
+        "odd/tasks/asen-focus-experience.md",
+        "odd/tasks/asen-gentle-shell-equivalence-audit.md",
+        "odd/tasks/asen-gentle-shell-full-equivalence.md",
+        "odd/tasks/asen-gentle-shell-parity-implementation.md",
+        "odd/tasks/asen-parity-readiness.md",
+        "odd/tasks/asen-parity-resume.md",
+        "odd/tasks/github-portable-continuation.md",
+        "odd/tasks/model-fallback-shell-parity.md",
+        "odd/tasks/odd-rdd-shell-parity.md",
+        "odd/tasks/p05-home-selectors.md",
+        "odd/tasks/p10-fallback-editor.md",
+        "odd/tasks/p11-child-fallback-wiring.md",
+        "odd/tasks/p19-parent-red-checkpoint.md",
+        "odd/tasks/pi-asen-startup-banner.md",
+        "odd/tasks/shell-experience-parity.md",
+        "odd/tasks/skill-loading-shell-parity.md",
+        "docs/portable-checkpoint.md",
+        "odd/evidence/portable-checkpoint-manifest.json",
+        "odd/evidence/portable-checkpoint-evidence.json"
+      ],
+      "knownAuthoredChangedLines": 3534,
+      "newCheckpointFilesNotYetCounted": true,
+      "over400": true,
+      "slicing": "PROPOSAL_ONLY: keep code, tests and docs together; parent selects actual hunk boundaries. No commits made."
+    }
+  },
+  "dependencyContract": {
+    "requiredNewModules": [
+      "src/review/native-rdd-control.ts",
+      "src/review/review-assessment-policy.ts",
+      "src/runtime/profile-fallback-store.ts",
+      "src/runtime/parent-model-fallback.ts",
+      "src/runtime/model-fallback-notice.ts",
+      "src/runtime/model-fallback-policy.ts",
+      "src/runtime/native-command-palette.ts",
+      "src/runtime/focus-theme.ts",
+      "src/runtime/focus-chrome.ts"
+    ],
+    "pairedRunnerPin": {
+      "pin": "src/agents/pi-authority-assets.ts",
+      "tests": "tests/pi-process-runner.test.ts",
+      "note": "Runner tests shared with fallback/workflow; pin correction independently identifiable, no file-level exclusive authorship"
+    },
+    "scope": "All source/tests/skills/docs inventory paths retained except explicitly deferred policy/design/annexes; direct literal relative import targets checked separately, not full dynamic/package closure"
+  },
+  "overages": [
+    "Canonical capability ODD alone +690; do not truncate frozen history",
+    "extensions/asen.ts +298/-50 before dependency closure; aggregate hunks do not establish authorship",
+    "Group budgets include untracked whole-text additions, not new task attribution; over400 is reported, not approval"
+  ],
+  "exclusions": {
+    "exactRootPngs": [
+      "asen-integration.png",
+      "asen-panel.png",
+      "asen-pi.png"
+    ],
+    "otherClasses": [
+      "fonts",
+      "private caches/state/config/history",
+      "installed SDK copies",
+      "binaries/runtime artifacts"
+    ],
+    "read": false,
+    "publicationCandidate": false
+  },
+  "historicalLinks": {
+    "policy": "Links in frozen ODD/evidence to deferred annexes/design/private local receipts are explicitly UNAVAILABLE_IN_CHECKPOINT unless already in published base; NOT reconstructed approval. Do not follow local receipts, inherit grants or silently rewrite logs.",
+    "deferredPaths": [
+      ".gitignore",
+      "design/asen-focus-experience/01-quiet-focus.html",
+      "design/asen-focus-experience/02-balanced-focus.html",
+      "design/asen-focus-experience/03-work-first.html",
+      "design/asen-focus-experience/design.json",
+      "design/asen-focus-experience/handoffs.json",
+      "design/asen-focus-experience/palette.json",
+      "design/system.html",
+      "design/system.md",
+      "odd/evidence/asen-gentle-shell-equivalence-assessment.md",
+      "odd/evidence/asen-gentle-shell-equivalence-rea.json",
+      "odd/evidence/asen-gentle-shell-full-equivalence-auditor-a.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-auditor-b.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-auditor-input.json",
+      "odd/evidence/asen-gentle-shell-full-equivalence-draft.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-map.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-planner-a.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-planner-b.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-planner-input.json",
+      "odd/evidence/asen-gentle-shell-full-equivalence-planner-reconciliation.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-postplan-audit.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-preplan-audit.md",
+      "odd/evidence/asen-gentle-shell-full-equivalence-rea-index.json",
+      "odd/evidence/asen-gentle-shell-full-equivalence-rea.json",
+      "odd/evidence/asen-gentle-shell-per-point-matrix.json",
+      "odd/evidence/asen-gentle-shell-per-point-rea.json",
+      "odd/evidence/asen-gentle-shell-per-point-source-refinement.md",
+      "odd/evidence/asen-parity-readiness-checks.json",
+      "odd/evidence/asen-parity-readiness-matrix.json",
+      "odd/evidence/asen-parity-readiness-report.md",
+      "odd/evidence/asen-parity-readiness-validation.json",
+      "odd/evidence/odd-rdd-shell-asen-comparison.md",
+      "odd/evidence/p10-fallback-editor-checkpoint.json",
+      "odd/evidence/p10-g1-mwe0wxzv-2-spff.json"
+    ],
+    "newGuide": "Only fresh guide links checked as a new-candidate structural check; historical link closure is partial, not a full portability claim."
+  },
+  "structuralChecksNotRun": [
+    "application import/evaluation",
+    "existing tests, stopped proofs or T3 replay",
+    "build/typecheck/lint/format",
+    "dynamic or external package resolution",
+    "full historical evidence-link closure",
+    "independent/native/security verification",
+    "installation/runtime/provider/font/graphics"
+  ],
+  "limitations": [
+    "No secret-free certification; simple marker scan is not a security audit",
+    "All candidate content still requires parent assessment before staging",
+    "Raw-byte hashes do not bind native approval or cross-machine EOL/Git identity",
+    "Design bundle deferred atomically; public owning ODD records historical chosen02 without transferring design proof"
+  ]
+}

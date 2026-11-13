@@ -4,9 +4,9 @@ import {SessionTodoStore} from "../src/runtime/todo-store.js";import {TaskAgentL
 import {AgentSession,DefaultResourceLoader,SessionManager,SettingsManager} from "@earendil-works/pi-coding-agent";import {Agent,runToolCall} from "@earendil-works/pi-agent-core";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(name:string,c:any)=>commands.set(name,c),on:()=>{}}};}
-test("status, doctor and command inventory are wired fail-closed",async()=>{
- await mkdir(path.resolve(".cache"),{recursive:true});
- const root=await mkdtemp(path.resolve(".cache/command-inventory-consumer-")),h=host();
+test("status, doctor and command inventory are wired fail-closed",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"command-inventory-consumer-")),h=host();
+ t.after(()=>rm(root,{recursive:true,force:true}));
  const pi={...h.pi,getCommands:()=>[...h.commands.keys()].map(name=>({name,source:"extension"}))};
  createAsenExtension({homeDir:()=>root,status:()=>({agents:[],changes:[],skills:{enabled:true,count:2},historyEnabled:false,telemetryEnabled:false}),doctor:()=>({piVersionOk:true,homeWritable:true,registryAvailable:true,profileValid:true,historyPrivate:true,telemetryConsentValid:true})})(pi);
  assert.match(((await h.commands.get("asen-status")!.handler()) as string[])[0]!,/profile/);
@@ -26,8 +26,36 @@ test("status, doctor and command inventory are wired fail-closed",async()=>{
  const missing=host();createAsenExtension({homeDir:()=>root})(missing.pi);
  assert.deepEqual(missing.commands.get("asen-commands")!.handler(),{state:"unavailable",message:"Registered command inventory unavailable."});
  authority(h.pi as any);
- assert.deepEqual([...h.commands.keys()].sort(),[...implementedCommands(),"asen-task-agents"].sort());
+ assert.deepEqual([...h.commands.keys()].sort(),implementedCommands().sort());
+ assert.equal(implementedCommands().filter(name=>name==="asen-task-agents").length,1);
 });
+test("task-agents palette selection remains manual-only without invoking its handler",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"task-agents-palette-"));
+ t.after(()=>rm(root,{recursive:true,force:true}));
+ const h=host(),notices:string[]=[];let calls=0,choice:string|undefined;
+ const pi={...h.pi,getCommands:()=>[{name:"asen-task-agents",description:"Live task coordination",source:"extension"}]};
+ createAsenExtension({homeDir:()=>root,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi);
+ const target=h.commands.get("asen-task-agents")!;assert.ok(target);
+ target.handler=()=>{calls++;throw Error("palette must not execute commands");};
+ const ctx:any={cwd:root,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>"palette-session"},
+  ui:{notify:(message:string)=>notices.push(message),select:async(_title:string,labels:string[])=>{
+   assert.deepEqual(labels,["/asen-task-agents [session] - Live task coordination"]);
+   return choice===undefined?labels[0]:choice;
+  }}};
+ const palette=h.commands.get("asen-palette")!;
+ await palette.handler("asen-task-agents",ctx);
+ assert.match(notices.join("\n"),/To invoke manually, type \/asen-task-agents/);
+ assert.match(notices.join("\n"),/Nothing was executed/);
+ for(const forged of ["asen-task-agents","/asen-task-agents - forged"]){
+  choice=forged;notices.length=0;await palette.handler("asen-task-agents",ctx);assert.deepEqual(notices,[]);
+ }
+ ctx.ui.select=async()=>undefined;notices.length=0;
+ await palette.handler("asen-task-agents",ctx);assert.deepEqual(notices,[]);
+ ctx.hasUI=false;ctx.ui.select=async()=>assert.fail("headless must not select");
+ await palette.handler("asen-task-agents",ctx);assert.match(notices.join("\n"),/\[session\]/);
+ assert.equal(calls,0);
+});
+
 test("status and doctor compose local state while reporting unconfigured runtimes",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-local-diagnostics-"));t.after(()=>rm(root,{recursive:true,force:true}));
  const h=host();createAsenExtension({homeDir:()=>root,packageRoot:root})(h.pi);

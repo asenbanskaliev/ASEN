@@ -5,7 +5,6 @@ import {tmpdir} from "node:os";
 import path from "node:path";
 import asen,{createPiExtension} from "../extensions/asen.js";
 import {validatePiExecutionContext,validatePiHost} from "../src/runtime/pi-host.js";
-import {VERSION} from "@earendil-works/pi-coding-agent";
 
 test("primary factory rejects missing public APIs before command or tool registration",()=>{
   for(const missing of ["on","registerCommand","registerTool","getCommands","getAllTools"]){
@@ -126,8 +125,11 @@ test("partial host registration remains inert and requires a controlled Pi reloa
 });
 
 test("command and tool collisions stop every registration before host mutation",async()=>{
- for(const state of [productionHost([{name:"asen"}]),productionHost([],[{name:"asen_ask_choice"}]),productionHost([],[{name:"ask_user_question"}])]){
-  asen(state.host as any);await state.events.get("session_start")![0]!({},state.context());
+ for(const state of [productionHost([{name:"asen"}]),productionHost([],[{name:"asen_ask_choice"}]),productionHost([],[{name:"ask_user_question"}]),productionHost([{name:"asen-task-agents"}])]){
+  // The missing reservation must fail before registration, without opening stores even on RED.
+  const activate=state.commandInventory.some((row:any)=>row.name==="asen-task-agents")
+   ?createPiExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false}):asen;
+  activate(state.host as any);await state.events.get("session_start")![0]!({},state.context());
   assert.equal(state.commands.size,0);assert.equal(state.tools.size,0);
   assert.match(state.messages.join("\n"),/host preflight failed/);
  }

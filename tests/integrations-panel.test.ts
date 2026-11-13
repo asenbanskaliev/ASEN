@@ -16,6 +16,15 @@ test("integrations panel projects entries without claiming connection", () => {
  assert.match(rows.join("\n"), /procedencia unknown\/user\/package/);
 });
 
+test("integrations panel continues rejecting invalid content widths without changing observations", () => {
+ const result = inspectIntegrationProfiles({});
+ const before = structuredClone(result);
+ for (const width of [0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY]) {
+  assert.throws(() => integrationPanel(result, width), /Integration panel width/u);
+  assert.deepEqual(result, before);
+ }
+});
+
 test("integrations panel clips controls", () => {
  const rows = integrationPanel(inspectIntegrationProfiles({}), 48);
  assert.ok(rows.every(row => row.length <= 48 || row.endsWith("…")));

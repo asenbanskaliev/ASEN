@@ -7,7 +7,9 @@ import {tmpdir} from "node:os";
 import path from "node:path";
 import {withExclusiveFileLock,withExclusiveFileLockSync} from "../src/io/exclusive-file-lock.js";
 
-function permissionError(code:"EEXIST"|"EPERM"|"EACCES"):NodeJS.ErrnoException{
+const unsupportedHardLinkDiagnostic="Atomic file locking requires hard-link support from the storage filesystem";
+type InjectedErrno="EEXIST"|"EPERM"|"EACCES"|"ENOSYS"|"ENOTSUP"|"EOPNOTSUPP"|"EXDEV"|"EISDIR";
+function permissionError(code:InjectedErrno):NodeJS.ErrnoException{
  const error=new Error(`injected ${code}`) as NodeJS.ErrnoException;error.code=code;return error;
 }
 
@@ -35,18 +37,67 @@ test("sync lock initialization failure removes its canonical lock and preserves 
  }finally{t.mock.restoreAll();syncBuiltinESMExports();}
 });
 
-test("async unsupported atomic claim cleans its temp and preserves the original error",{concurrency:false},async t=>{
- const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-async-claim-")),target=path.join(directory,"data.json"),failure=permissionError("EPERM");t.after(()=>rm(directory,{recursive:true,force:true}));
- t.mock.method(fsPromises,"link",async()=>{throw failure;});syncBuiltinESMExports();
- try{await assert.rejects(()=>withExclusiveFileLock(target,async()=>"unreachable"),error=>error===failure);assert.deepEqual(readdirSync(directory),[]);}
- finally{t.mock.restoreAll();syncBuiltinESMExports();}
+for(const code of ["ENOSYS","ENOTSUP","EOPNOTSUPP","EXDEV","EISDIR"] as const){
+ const skip=code==="EISDIR"&&process.platform!=="win32";
+ test(`async unsupported atomic claim ${code} returns the hard-link diagnostic without side effects`,{concurrency:false,skip},async t=>{
+  const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-async-unsupported-")),target=path.join(directory,"data.json"),sentinel="sentinel",failure=permissionError(code);t.after(()=>rm(directory,{recursive:true,force:true}));
+  await writeFile(target,sentinel);let operations=0;
+  t.mock.method(fsPromises,"link",async()=>{throw failure;});syncBuiltinESMExports();
+  try{
+   await assert.rejects(()=>withExclusiveFileLock(target,async()=>{operations++;return "unreachable";}),error=>error instanceof Error&&error.constructor===Error&&error.message===unsupportedHardLinkDiagnostic&&error.cause===failure);
+   assert.equal(operations,0);assert.equal(await readFile(target,"utf8"),sentinel);assert.deepEqual(readdirSync(directory),[path.basename(target)]);
+  }finally{t.mock.restoreAll();syncBuiltinESMExports();}
+ });
+ test(`sync unsupported atomic claim ${code} returns the hard-link diagnostic without side effects`,{concurrency:false,skip},async t=>{
+  const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-sync-unsupported-")),target=path.join(directory,"data.json"),sentinel="sentinel",failure=permissionError(code);t.after(()=>rm(directory,{recursive:true,force:true}));
+  await writeFile(target,sentinel);let operations=0;
+  t.mock.method(fs,"linkSync",()=>{throw failure;});syncBuiltinESMExports();
+  try{
+   assert.throws(()=>withExclusiveFileLockSync(target,()=>{operations++;return "unreachable";}),error=>error instanceof Error&&error.constructor===Error&&error.message===unsupportedHardLinkDiagnostic&&error.cause===failure);
+   assert.equal(operations,0);assert.equal(await readFile(target,"utf8"),sentinel);assert.deepEqual(readdirSync(directory),[path.basename(target)]);
+  }finally{t.mock.restoreAll();syncBuiltinESMExports();}
+ });
+}
+
+for(const mode of ["async","sync"] as const)test(`${mode} Windows EISDIR preserves a foreign destination directory`,{concurrency:false,skip:process.platform!=="win32"},async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),`asen-lock-${mode}-foreign-directory-`)),target=path.join(directory,"data.json"),lock=`${target}.lock`,sentinel="sentinel",marker=path.join(lock,"foreign.txt"),failure=permissionError("EISDIR");t.after(()=>rm(directory,{recursive:true,force:true}));
+ await writeFile(target,sentinel);await fsPromises.mkdir(lock);await writeFile(marker,"foreign");let operations=0;
+ if(mode==="async")t.mock.method(fsPromises,"link",async()=>{throw failure;});else t.mock.method(fs,"linkSync",()=>{throw failure;});
+ syncBuiltinESMExports();
+ try{
+  if(mode==="async")await assert.rejects(()=>withExclusiveFileLock(target,async()=>{operations++;}),error=>error===failure);
+  else assert.throws(()=>withExclusiveFileLockSync(target,()=>{operations++;}),error=>error===failure);
+  assert.equal(operations,0);assert.equal(await readFile(target,"utf8"),sentinel);assert.equal(await readFile(marker,"utf8"),"foreign");
+  assert.deepEqual(readdirSync(directory).sort(),[path.basename(target),path.basename(lock)].sort());assert.deepEqual(readdirSync(lock),[path.basename(marker)]);
+ }finally{t.mock.restoreAll();syncBuiltinESMExports();}
 });
 
-test("sync unsupported atomic claim cleans its temp and preserves the original error",{concurrency:false},async t=>{
- const directory=await mkdtemp(path.join(tmpdir(),"asen-lock-sync-claim-")),target=path.join(directory,"data.json"),failure=permissionError("EACCES");t.after(()=>rm(directory,{recursive:true,force:true}));
- t.mock.method(fs,"linkSync",()=>{throw failure;});syncBuiltinESMExports();
- try{assert.throws(()=>withExclusiveFileLockSync(target,()=>"unreachable"),error=>error===failure);assert.deepEqual(readdirSync(directory),[]);}
- finally{t.mock.restoreAll();syncBuiltinESMExports();}
+for(const mode of ["async","sync"] as const)test(`${mode} Windows EISDIR keeps the native error when capability inspection fails`,{concurrency:false,skip:process.platform!=="win32"},async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),`asen-lock-${mode}-inspection-failure-`)),target=path.join(directory,"data.json"),failure=permissionError("EISDIR"),inspectionFailure=permissionError("EACCES");t.after(()=>rm(directory,{recursive:true,force:true}));
+ let operations=0;
+ if(mode==="async"){
+  t.mock.method(fsPromises,"link",async()=>{throw failure;});t.mock.method(fsPromises,"lstat",async()=>{throw inspectionFailure;});
+ }else{
+  const originalLstat=fs.lstatSync.bind(fs);let inspections=0;
+  t.mock.method(fs,"linkSync",()=>{throw failure;});t.mock.method(fs,"lstatSync",((...args:Parameters<typeof fs.lstatSync>)=>{if(inspections++===0)throw inspectionFailure;return originalLstat(...args);}) as typeof fs.lstatSync);
+ }
+ syncBuiltinESMExports();
+ try{
+  if(mode==="async")await assert.rejects(()=>withExclusiveFileLock(target,async()=>{operations++;}),error=>error===failure);
+  else assert.throws(()=>withExclusiveFileLockSync(target,()=>{operations++;}),error=>error===failure);
+  assert.equal(operations,0);assert.deepEqual(readdirSync(directory),[]);
+ }finally{t.mock.restoreAll();syncBuiltinESMExports();}
+});
+
+for(const [mode,code] of [["async","EPERM"],["sync","EACCES"]] as const)test(`${mode} atomic claim ${code} cleans its temp and preserves the original error`,{concurrency:false},async t=>{
+ const directory=await mkdtemp(path.join(tmpdir(),`asen-lock-${mode}-claim-`)),target=path.join(directory,"data.json"),failure=permissionError(code);t.after(()=>rm(directory,{recursive:true,force:true}));
+ if(mode==="async")t.mock.method(fsPromises,"link",async()=>{throw failure;});else t.mock.method(fs,"linkSync",()=>{throw failure;});
+ syncBuiltinESMExports();
+ try{
+  if(mode==="async")await assert.rejects(()=>withExclusiveFileLock(target,async()=>"unreachable"),error=>error===failure);
+  else assert.throws(()=>withExclusiveFileLockSync(target,()=>"unreachable"),error=>error===failure);
+  assert.deepEqual(readdirSync(directory),[]);
+ }finally{t.mock.restoreAll();syncBuiltinESMExports();}
 });
 
 test("async failed initialization never removes a replacement canonical owner",{concurrency:false},async t=>{

@@ -27,7 +27,7 @@ async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"thr
  const pi={registerCommand(name:string,command:any){commands.set(name,command);},on(name:string,fn:Function){events.set(name,[...(events.get(name)??[]),fn]);},
   registerTool(){},getFlag(){return false;},
   ...(inventory==="missing"?{}:{getCommands(){assert.equal(this,pi,"Command reader must retain its public host receiver");if(inventoryState==="throwing")throw Error("private error");return inventoryState==="empty"?[]:inputs;},getAllTools(){assert.equal(this,pi,"Tool reader must retain its public host receiver");if(inventoryState==="throwing")throw Error("private error");return inventoryState==="empty"?[]:[{name:"lookup",namespace:{name:"mcp__docs"},description:"private description"}];}}),
-  setModel(){effects++;},setActiveTools(){effects++;},sendMessage(){effects++;}};
+  setModel(){effects++;return false;},setActiveTools(){effects++;},sendMessage(){effects++;}};
  const ctx:any={cwd:project,mode:"tui",hasUI:true,model:{provider:"p",id:"m"},thinkingLevel:"high",getContextUsage(){return {tokens:80,contextWindow:100,percent:80};},
   sessionManager:{getSessionId:()=>id},ui:{notify(message:string){notices.push(message);},setStatus(key:string,value:string|undefined){statuses.set(key,value);},setWidget(){},setFooter(){effects++;},confirm(){effects++;return false;}}};
  const dependencies={homeDir:()=>home,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,...(listGate?{todoStoreFactory:async()=>({async list(){await listGate();return [];}} as unknown as SessionTodoStore)}:{})};

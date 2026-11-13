@@ -15,6 +15,25 @@ test("live registration supplies names/descriptions; catalog supplies grouping o
  assert.equal(inspectRegisteredCommands(()=>rows,"  ").entries.length,2);
 });
 
+test("task-agents live metadata receives session grouping and session query inclusion",()=>{
+ const rows=[{name:"asen-task-agents",description:"Live task coordination",source:"extension"}];
+ const result=inspectRegisteredCommands(()=>rows);
+ assert.equal(result.state,"reported");
+ assert.deepEqual(result.entries,[{name:"asen-task-agents",group:"session",description:"Live task coordination",implemented:true,
+  label:"/asen-task-agents [session] - Live task coordination"}]);
+ assert.deepEqual(inspectRegisteredCommands(()=>rows,"session").entries,result.entries);
+});
+
+test("task-agents catalog membership never manufactures live registrations",()=>{
+ const rows=[{name:"asen-status",description:"Live health",source:"extension"}];
+ assert.equal(inspectRegisteredCommands(()=>rows,"asen-task-agents").state,"no-match");
+ assert.deepEqual(inspectRegisteredCommands(()=>rows,"asen-task-agents").entries,[]);
+ assert.deepEqual(inspectRegisteredCommands(()=>[]).entries,[]);
+ assert.equal(inspectRegisteredCommands(undefined).state,"unavailable");
+ assert.deepEqual(inspectRegisteredCommands(undefined).entries,[]);
+ assert.equal(inspectRegisteredCommands(()=>[{name:"asen-task-agents"}],"unrelated-query").state,"no-match");
+});
+
 test("empty, no match and unavailable stay distinct without fabricated rows or errors",()=>{
  assert.equal(inspectRegisteredCommands(()=>[]).state,"empty");
  assert.equal(inspectRegisteredCommands(()=>[{name:"live"}],"missing").state,"no-match");

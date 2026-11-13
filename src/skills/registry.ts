@@ -19,6 +19,7 @@ export interface SkillContract {
   blocks:readonly ("mutation"|"verification"|"release")[];
 }
 export interface SkillSelectionContext {
+  selectionProfile?:"organic";
   phase?:SkillPhase;
   defect?:boolean;
   codeChange?:boolean;
@@ -74,9 +75,16 @@ function directTriggers(context:SkillSelectionContext):Set<SkillTrigger>{
  if(context.verification) triggers.add("verification");
  return triggers;
 }
+export function validateSkillSelectionProfile(context:Pick<SkillSelectionContext,"selectionProfile">):void{
+ if(Object.hasOwn(context,"selectionProfile")&&context.selectionProfile!=="organic")throw new Error("Invalid skill selection profile");
+}
 export function selectSkills(context:SkillSelectionContext):SkillContract[]{
+ validateSkillSelectionProfile(context);
  const triggers=directTriggers(context),selected=new Set<SkillId>();
  const add=(id:SkillId):void=>{if(selected.has(id))return;const c=getSkillContract(id);for(const d of c.requires)add(d);selected.add(id);};
- for(const contract of contracts)if(contract.triggers.some(trigger=>triggers.has(trigger)))add(contract.id);
+ for(const contract of contracts){
+  if(context.selectionProfile==="organic"&&contract.id==="asen-tdd")continue;
+  if(contract.triggers.some(trigger=>triggers.has(trigger)))add(contract.id);
+ }
  return [...selected].map(getSkillContract);
 }

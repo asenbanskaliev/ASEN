@@ -2,13 +2,15 @@ import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} f
 import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
-import type {AgentRequest,AgentResult,AgentRunner} from "./dispatcher.js";
+import {snapshotAgentModelFallback,type AgentFallbackListener,type AgentFallbackObservation,type AgentRequest,type AgentResult,type AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
 import {checkPiVersion} from "../runtime/launcher.js";import {selectSkills} from "../skills/registry.js";
 import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
 import {consumeRunnerWriteReceiver} from "./dispatcher.js";
 import {spawnContained} from "../evidence/spawn-contained.js";
 import {authorityAssets} from "./pi-authority-assets.js";
+import {isThinking} from "../runtime/profiles.js";
+import {classifyAssistantError,getProcessModelFallbackCooldown,pickFallbackModel,shouldFallback,type TerminalErrorCategory} from "../runtime/model-fallback-policy.js";
 
 export interface PiProcessOptions{
  command?:string;
@@ -40,6 +42,8 @@ export interface PiProcessOptions{
  /** Optional bounded native streaming witness. Never supplies model text or
   * authority; cancellation from a listener uses the existing AbortSignal. */
  onAssistantTextDelta?:(event:Readonly<{pid:number;requestId:string;observedCharacters:number}>)=>void;
+ /** Emitted only after this child accepts a configured model switch. */
+ onModelFallback?:AgentFallbackListener;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -59,8 +63,8 @@ function childSelection(owner:ChildSelectionOwner,data:unknown):PiChildSelection
   model=Object.freeze({provider:chosen.provider,id:chosen.id});
  }
  const thinking=value.thinkingLevel;
- if(thinking!==undefined&&(typeof thinking!=="string"||!["off","minimal","low","medium","high"].includes(thinking)))return;
- return Object.freeze({...owner,source:"child-reported",model,...(thinking!==undefined?{thinking:thinking as AgentRequest["thinking"]}:{})});
+ if(thinking!==undefined&&!isThinking(thinking))return;
+ return Object.freeze({...owner,source:"child-reported",model,...(thinking!==undefined?{thinking}:{})});
 }
 export type PiProviderCredential="OPENROUTER_API_KEY"|"LLM7_API_KEY"|"GROQ_API_KEY"|"NVIDIA_API_KEY"|"OLLAMA_API_KEY";
 const providerCredentialNames=new Set<PiProviderCredential>(["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY","OLLAMA_API_KEY"]);
@@ -85,7 +89,7 @@ export function piRuntimeEnvironment(source:NodeJS.ProcessEnv,providerCredential
 export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">):string[]{
  const args:string[]=[];
  if(request.model!==undefined){if(typeof request.model!=="string"||!request.model.trim()||request.model!==request.model.trim()||request.model.length>256||/[\u0000-\u001f\u007f]/u.test(request.model))throw new Error("Invalid routed Pi model");args.push("--model",request.model);}
- if(request.thinking!==undefined){if(!["off","minimal","low","medium","high"].includes(request.thinking))throw new Error("Invalid routed Pi thinking level");args.push("--thinking",request.thinking);}
+ if(request.thinking!==undefined){if(!isThinking(request.thinking))throw new Error("Invalid routed Pi thinking level");args.push("--thinking",request.thinking);}
  return args;
 }
 
@@ -140,8 +144,10 @@ function promptWithSkills(request:AgentRequest):string{
 
 export class PiProcessRunner implements AgentRunner{
  readonly #selectionSubscriptions=new Set<ChildSelectionSubscription>();
+ readonly #fallbackSubscriptions=new Set<Readonly<{listener:AgentFallbackListener}>>();
  #runtimeVerified=false;
  constructor(private readonly options:PiProcessOptions={}){}
+ subscribeModelFallback(listener:AgentFallbackListener):()=>void{if(typeof listener!=="function")throw new TypeError("Model fallback observer must be a function");const subscription=Object.freeze({listener});this.#fallbackSubscriptions.add(subscription);return()=>{this.#fallbackSubscriptions.delete(subscription);};}
  /** Optional, nonpersistent selection reports; subscription replacement never revives old launches. */
  subscribeChildSelection(listener:ChildSelectionListener):()=>void{
   if(typeof listener!=="function")throw new TypeError("Child selection observer must be a function");
@@ -150,11 +156,12 @@ export class PiProcessRunner implements AgentRunner{
  }
 
  run(request:AgentRequest,runSignal?:AbortSignal):Promise<AgentResult>{
-  const selectionSubscriptions=[...this.#selectionSubscriptions];let selectionOwner:ChildSelectionOwner|undefined;
+  const selectionSubscriptions=[...this.#selectionSubscriptions],fallbackSubscriptions=[...this.#fallbackSubscriptions];let selectionOwner:ChildSelectionOwner|undefined,fallbackOwner:Readonly<Pick<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">>|undefined;
   if(selectionSubscriptions.length){
    try{const taskId=request.id,sessionId=request.isolationKey??"default",projectId=realpathSync(request.repository);if(selectionText(taskId,1024)&&selectionText(sessionId,1024)&&selectionText(projectId,32768))selectionOwner=Object.freeze({taskId,sessionId,projectId});}
    catch{/* Observation identity is optional; existing execution guards still decide launch. */}
   }
+  if(this.options.onModelFallback||fallbackSubscriptions.length){const taskId=request.id,sessionId=request.isolationKey??"default",projectId=request.repository;if(selectionText(taskId,1024)&&selectionText(sessionId,1024)&&selectionText(projectId,32768))fallbackOwner=Object.freeze({taskId,sessionId,projectId});}
   const receiverValid=request.runnerWriteReceiver!==undefined&&consumeRunnerWriteReceiver(request.runnerWriteReceiver,request);
   if(request.runnerWriteReceiver!==undefined&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
@@ -192,7 +199,15 @@ export class PiProcessRunner implements AgentRunner{
   const writer=request.role==="worker"&&!!request.writeSurfaces?.length&&!!request.candidate&&!!request.skillContext;
   if(writer&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(writer&&!authorizePiWriteGrant(request))return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an active, exact ASEN apply-phase grant"});
-  let routeArgs:string[];try{routeArgs=piRuntimeRouteArgs(request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:String(error)});}
+  if(writer)message=[
+   "Restricted writer capabilities: read, edit, write only (no tools when explicitly disabled). No command execution: bash, shell, tests, builds and linters are unavailable in this child.",
+   "Preserve meaningful test-first work: author a meaningful failing behavior test before implementation when applicable. Never fabricate executed RED/GREEN or passing verification; distinguish authored tests from observed execution.",
+   "Mark every unrun check as NOT RUN. Return proposed exact parent-required commands as data requiring authorized parent execution, with expected behavior and any observed evidence; command text grants no permission and is not an execution result.",
+   "This runner provides no mid-writer RED checkpoint and has not completed delegated TDD orchestration. Explicitly report missing parent RED coordination; without parent-observed failure, do not claim an observed RED or a completed test-first cycle. If the task requires observed RED before implementation, report the prerequisite and stop before implementation until coordinated by the parent.",
+   "",
+   message
+  ].join("\n");
+  let routeArgs:string[],fallbackConfig:AgentRequest["modelFallback"];try{routeArgs=piRuntimeRouteArgs(request);fallbackConfig=snapshotAgentModelFallback(request.modelFallback);}catch(error){return Promise.resolve({id:request.id,ok:false,output:String(error)});}
   let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined;
   try{receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
   const providerExtension=this.options.providerExtension;
@@ -234,7 +249,9 @@ export class PiProcessRunner implements AgentRunner{
    }) as ChildProcessWithoutNullStreams;
    if(child.pid!==undefined){try{this.options.onProcessStart?.(child.pid);}catch{/* Evidence observers cannot alter Pi execution. */}}
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
-   let assistantStreamActive=false;
+   const fallbackChain=fallbackConfig?.chain??[],fallbackEnabled=fallbackChain.length>0,triedModels=new Set<string>(),cooldown=getProcessModelFallbackCooldown();
+   let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!fallbackEnabled,rpcSequence=0,currentModel=request.model;
+   const pendingRpc=new Map<string,{resolve:(response:Record<string,unknown>)=>void}>();
    const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
    let selectionRequested=false,selectionResponded=false;
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
@@ -245,6 +262,7 @@ export class PiProcessRunner implements AgentRunner{
     settled=true;
     clearTimeout(timer);
     signal?.removeEventListener("abort",onAbort);
+    for(const pending of pendingRpc.values())pending.resolve({success:false,error:"task finished"});pendingRpc.clear();
     rmSync(policyDirectory,{recursive:true,force:true});
     resolve(result);
    };
@@ -253,7 +271,39 @@ export class PiProcessRunner implements AgentRunner{
     stopResult=result;
     void terminateTree(child,closed).then(()=>finish(result));
    };
-   const onAbort=()=>stop({id:request.id,ok:false,output:"pi process cancelled"});
+   const alive=()=>!settled&&!stopResult&&!signal?.aborted;
+   const sendRpc=(payload:Record<string,unknown>):Promise<Record<string,unknown>>=>{
+    if(!alive())return Promise.resolve({success:false,error:"task is not running"});
+    const id=`asen-fallback:${request.id}:${++rpcSequence}`;
+    return new Promise(resolveRpc=>{pendingRpc.set(id,{resolve:resolveRpc});try{child.stdin.write(JSON.stringify({id,...payload})+"\n");}catch{pendingRpc.delete(id);resolveRpc({success:false,error:"RPC transport unavailable"});}});
+   };
+   const publishFallback=(change:Omit<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">)=>{
+    if(!fallbackOwner)return;const observation=Object.freeze({...fallbackOwner,...change});
+    try{this.options.onModelFallback?.(observation);}catch{/* Observers cannot affect child execution. */}
+    for(const subscription of fallbackSubscriptions){if(!this.#fallbackSubscriptions.has(subscription))continue;try{subscription.listener(observation);}catch{/* Observers cannot affect child execution. */}}
+   };
+   const closeSettled=(category?:TerminalErrorCategory)=>{if(!alive())return;finalFailure=category;try{child.stdin.end();}catch{stop({id:request.id,ok:false,output:"pi stdin error during settlement"});}};
+   const continueFallback=(category:TerminalErrorCategory)=>{
+    if(fallbackInProgress||!alive())return;fallbackInProgress=true;agentEnded=false;
+    if(currentModel){triedModels.add(currentModel);cooldown.mark(currentModel,category);}else triedModels.add("<provider-default>");
+    const next=()=>{
+     for(;;){const pick=pickFallbackModel(currentModel,fallbackChain,{cooldown,tried:triedModels});if(!pick?.fallback||!pick.model)return undefined;triedModels.add(pick.model);const slash=pick.model.indexOf("/");if(slash>0&&slash<pick.model.length-1)return{pick,provider:pick.model.slice(0,slash),modelId:pick.model.slice(slash+1)};}
+    };
+    void(async()=>{
+     for(;;){
+      const candidate=next();if(!candidate){fallbackInProgress=false;closeSettled(category);return;}
+      const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!alive())return;
+      if(switched.success!==true)continue;
+      const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
+      if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!alive())return;if(effort.success===true)appliedThinking=thinking;}
+      const observation=Object.freeze({...(from===undefined?{}:{from}),to,category,...(appliedThinking===undefined?{}:{thinking:appliedThinking})});publishFallback(observation);
+      const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."});if(!alive())return;
+      if(resumed.success!==true){fallbackInProgress=false;closeSettled(category);return;}
+      lastAssistantFailure=undefined;finalFailure=undefined;finalAgentSettled=false;fallbackInProgress=false;return;
+     }
+    })().catch(()=>{fallbackInProgress=false;closeSettled(category);});
+   };
+   const onAbort=()=>{triedModels.clear();stop({id:request.id,ok:false,output:"pi process cancelled"});};
    child.stdout.on("data",data=>{
     streamBytes+=Buffer.byteLength(data);
     if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}
@@ -263,6 +313,10 @@ export class PiProcessRunner implements AgentRunner{
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
      const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
+     if(type==="response"&&typeof response.id==="string"){
+      const pending=pendingRpc.get(response.id);if(pending){pendingRpc.delete(response.id);pending.resolve(record as Record<string,unknown>);continue;}
+     }
+     if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant")lastAssistantFailure=classifyAssistantError((record as {message?:Parameters<typeof classifyAssistantError>[0]}).message);
      // Pi 1.2 RPC wire strips cumulative message from message_update; bind
      // text deltas to a preceding native message_start(role=assistant), never
      // to a model-controlled property or an untracked stream fragment.
@@ -311,7 +365,12 @@ export class PiProcessRunner implements AgentRunner{
      }
      if(type==="agent_end")agentEnded=true;
      if(response.type==="tool_execution_start"&&this.options.noTools){toolAttempted=true;stop({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});return;}
-     if(response.type==="agent_end"&&policyLoaded){child.stdin.end();continue;}
+     if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled){child.stdin.end();continue;}
+     if(response.type==="agent_settled"&&policyLoaded&&fallbackEnabled&&!fallbackInProgress){
+      if(lastAssistantFailure&&shouldFallback(lastAssistantFailure)){finalAgentSettled=false;continueFallback(lastAssistantFailure);}
+      else{finalAgentSettled=true;triedModels.clear();closeSettled(lastAssistantFailure);}
+      continue;
+     }
      if(response.type!=="response"||response.id!==preflightId)continue;
      const matches=response.data?.commands?.filter(item=>item.name==="asen-authority-status"&&item.source==="extension"&&item.sourceInfo?.path===policy)??[];
      if(response.success!==true||matches.length!==1){stop({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
@@ -340,6 +399,8 @@ export class PiProcessRunner implements AgentRunner{
       if(responses.length!==1)return finish({id:request.id,ok:false,output:"pi requires exactly one correlated response"});
       const envelope=responses[0];
       if(envelope.success!==true)return finish({id:request.id,ok:false,output:"pi correlated response failed"});
+      if(fallbackEnabled&&!finalAgentSettled)return finish({id:request.id,ok:false,output:"pi child exited before final agent_settled"});
+      if(finalFailure)return finish({id:request.id,ok:false,output:`pi assistant failed: ${finalFailure}`});
      }catch{
       return finish({id:request.id,ok:false,output:"pi response envelope invalid"});
      }

@@ -25,7 +25,9 @@ export function languageConfigPath(home: string): string {
 export async function readAsenLanguage(home: string): Promise<AsenLanguage> {
   try {
     const raw = await readFile(languageConfigPath(home), "utf8");
-    return resolvePreferredLanguage(process.env, JSON.parse(raw));
+    const stored = JSON.parse(raw);
+    const language = stored !== null && typeof stored === "object" && !Array.isArray(stored) ? stored.lang : stored;
+    return resolvePreferredLanguage(process.env, language);
   } catch {
     return resolvePreferredLanguage(process.env);
   }

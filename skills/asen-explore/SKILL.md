@@ -1,6 +1,10 @@
 ---
 name: asen-explore
 description: "Trigger: explore, investigate, understand codebase, compare approaches. Perform read-only evidence-based exploration before committing to a change."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use when scope, mechanism, affected areas or viable approaches require investigation.
@@ -28,10 +32,10 @@ Return current state, affected areas, approaches, evidence, risks, unknowns and 
 - State explicitly whether CodeGraph was available, which read-only fallback was used and what was not inspected.
 - Include a compact next-step decision that cannot grant a write, retry or merge.
 - Never claim an absent tool or skipped test passed; the primary session must revalidate results before a write.
-## References
-None.
-
-## Background Completion Contract
+### Background Completion Contract
 - Return a compact read-only report tied to the original question; distinguish observed facts from assumptions and unknowns.
 - When started asynchronously, retain the task ID; completion is delivered by an event, not by sleep or repeated status polling. Inspect status only when there is a genuine next orchestration decision.
 - Never interpret an Explorer report as permission to write, merge, rerun a failed worker, or accept a reviewer result.
+
+## References
+None.

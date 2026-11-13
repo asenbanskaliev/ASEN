@@ -7,11 +7,11 @@ import {
   type OddDerivedFacts,
   type OddRouteDecision,
 } from "../flow/odd-routing.js";
-import {selectSkills,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
+import {selectSkills,validateSkillSelectionProfile,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
 import {issueSkillContext,type IssuedSkillContext} from "../skills/context.js";
-import {resolveRuntimeRoute,type ProfileLayer} from "../runtime/profiles.js";
+import {isThinking,resolveRuntimeRoute,type ProfileLayer} from "../runtime/profiles.js";
 
-export interface OrchestrationInput {
+export interface OrchestrationInput extends Pick<SkillSelectionContext,"selectionProfile"> {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];
   codeChange?:boolean; behaviorChange?:boolean; filesTouched?:number; candidate?:Candidate; skillPhase?:SkillPhase; runtimeProfiles?:ProfileLayer;
 }
@@ -49,7 +49,7 @@ function applyRuntimeProfile<T extends AgentRequest>(request:T,layers:ProfileLay
  if(!layers)return request;
  const {choice}=resolveRuntimeRoute(layers,request.role);
  if(choice?.model!==undefined&&(typeof choice.model!=="string"||!choice.model||choice.model!==choice.model.trim()||choice.model.length>256||/[\u0000-\u001f\u007f]/u.test(choice.model)))throw new Error("Invalid routed model profile");
- if(choice?.thinking!==undefined&&!(["off","minimal","low","medium","high"] as unknown[]).includes(choice.thinking))throw new Error("Invalid routed thinking profile");
+ if(choice?.thinking!==undefined&&!isThinking(choice.thinking))throw new Error("Invalid routed thinking profile");
  return choice?{...request,...choice}:request;
 }
 function issueRouteEvidence(input:OrchestrationInput,decision:OddRouteDecision):OrchestrationRouteEvidence|undefined{
@@ -83,6 +83,7 @@ export function claimOrchestrationRouteEvidence(candidate:Candidate,proof:unknow
 }
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRouteDecision):OrchestrationPlan {
+  validateSkillSelectionProfile(input);
   if(typeof input.prompt!=="string"||!input.prompt.trim()||input.prompt!==input.prompt.trim()||input.prompt.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(input.prompt))throw new Error("Orchestration instruction is invalid");
   claimOddRouteDecision(decision);
   const facts = claimedOddRouteFacts(decision);
@@ -106,7 +107,8 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
     return routeEvidence ? { ...plan, routeEvidence } : plan;
   };
   const base={repository:input.repository,prompt:input.prompt,...(input.candidate?{candidate:input.candidate}:{})};
-  const common=deriveSkillSelectionContext(facts);
+  const common:SkillSelectionContext={...deriveSkillSelectionContext(facts),
+    ...(input.selectionProfile?{selectionProfile:input.selectionProfile}:{})};
   const contextFor=(suffix:string,phase:SkillPhase,verification=false)=>{
     const context=issueSkillContext(`${input.taskId}:${suffix}`,input.repository,input.candidate,{...common,phase,...(verification?{verification:true}:{})});
     const selected=selectSkills(context);

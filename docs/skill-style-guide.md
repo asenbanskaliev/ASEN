@@ -17,7 +17,7 @@ Write the following H2 sections once and in this exact order:
 5. `Output Contract`
 6. `References`
 
-Use imperative, testable rules. Count body words with Unicode letter/number word boundaries as the deterministic token approximation. Target 180–450 body words, treat 700 as the recommended ceiling requiring extraction, and enforce a hard maximum of 1000. Move rationale, examples, templates, schemas, and fixtures into local `references/` or `assets/` files before the contract becomes dense. Link only repository-local support files, reject external, absolute, and parent-traversal paths, and verify every link.
+Use imperative, testable rules. Measure body budgets in words using the parser's Unicode letter/number word pattern, not model tokens. The frozen `AUTHOR-RULE-001` token wording is historical contract text, not the current parser unit; this clarification does not revise the frozen baseline or matrix. Target 180–450 body words, treat 700 as the recommended ceiling requiring extraction, and enforce a hard maximum of 1000. Move rationale, examples, templates, schemas, and fixtures into local `references/` or `assets/` files before the contract becomes dense. Link only repository-local support files, reject external, absolute, and parent-traversal paths, and verify every link.
 
 State when the Skill activates and when it must not activate. Put unconditional invariants in Hard Rules, branching choices in a compact Decision Gates table, ordered actions in Execution Steps, and required returned evidence in Output Contract. Name prohibited behavior explicitly, including unsafe fallbacks, invented authority, unsupported claims, and out-of-scope mutation.
 

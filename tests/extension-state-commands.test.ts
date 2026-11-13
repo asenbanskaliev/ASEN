@@ -1,6 +1,57 @@
-import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";import {createAsenExtension} from "../extensions/asen.js";import {writeProfilesFile} from "../src/runtime/profile-store.js";import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";import {SessionTodoStore} from "../src/runtime/todo-store.js";import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import assert from "node:assert/strict";import test from "node:test";import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";import {createAsenExtension} from "../extensions/asen.js";import {writeProfilesFile} from "../src/runtime/profile-store.js";import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";import {ASEN_PROFILE_FALLBACKS_SCHEMA,writeProfileFallbacksFile} from "../src/runtime/profile-fallback-store.js";import {SessionTodoStore} from "../src/runtime/todo-store.js";import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(n:string,c:any)=>commands.set(n,c)}};}
 function lifecycleHost(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>(),events=new Map<string,Function[]>();return {commands,events,pi:{registerCommand:(n:string,c:any)=>commands.set(n,c),registerTool:()=>{},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[]}};}
+
+test("fallback-parent extension handles the real parent event path with a fake Pi host",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-fallback-parent-extension-")),project=await realpath(process.cwd()),profilesFile=path.join(root,".asen","profiles.json"),fallbacksFile=path.join(root,".asen","profile-fallbacks.json");
+ await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{}}]});
+ await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup",thinking:"low"}]}}});
+ const commands=new Map<string,any>(),events=new Map<string,Function[]>(),calls:string[]=[],notices:string[]=[];
+ const pi:any={registerCommand:(name:string,command:any)=>commands.set(name,command),registerTool(){},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[],getThinkingLevel:()=>"high",setThinkingLevel:(level:string)=>calls.push(`thinking:${level}`),setModel:async(model:any)=>{calls.push(`model:${model.provider}/${model.id}`);ctx.model=model;return true;},sendUserMessage:(message:string,options:any)=>calls.push(`followUp:${options.deliverAs}:${message}`)};
+ const ctx:any={cwd:project,model:{provider:"provider",id:"primary",cost:{input:1,output:2}},modelRegistry:{find:(provider:string,id:string)=>provider==="provider"&&id==="backup"?{provider,id,cost:{input:2,output:4}}:undefined},sessionManager:{getSessionId:()=>"fallback-parent-session"},ui:{notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}};
+ createAsenExtension({homeDir:()=>root,profilesFile,profileFallbacksFile:fallbacksFile,enableAgentRuntime:false,enableTodoRuntime:false,enableMemoryRuntime:false})(pi);
+ t.after(async()=>{try{for(const handler of events.get("session_shutdown")??[])await handler({},ctx);}finally{await rm(root,{recursive:true,force:true});}});
+ for(const handler of events.get("session_start")??[])await handler({},ctx);
+ for(const handler of events.get("agent_end")??[])await handler({messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctx);
+ assert.deepEqual(calls,[],"agent_end only caches the last attempt");
+ for(const handler of events.get("agent_settled")??[])await handler({aborted:false},ctx);
+ assert.deepEqual(calls.map(call=>String(call).split(":",1)[0]),["model","thinking","followUp"]);
+ assert.match(calls[2]!,/^followUp:followUp:/);assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,1);
+});
+test("fallback-parent extension rejects delayed prior-session end and abort events",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-fallback-parent-scope-")),project=await realpath(process.cwd()),profilesFile=path.join(root,".asen","profiles.json"),fallbacksFile=path.join(root,".asen","profile-fallbacks.json");
+ await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{}}]});
+ await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup"},{model:"provider/last"}]}}});
+ const events=new Map<string,Function[]>(),calls:string[]=[],notices:string[]=[],pi:any={registerCommand(){},registerTool(){},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[],getThinkingLevel:()=>"high",setThinkingLevel(){},setModel:async(model:any)=>{calls.push(`model:${model.id}`);ctxB.model=model;return true;},sendUserMessage:(message:string,options:any)=>calls.push(`follow:${options.deliverAs}:${message}`)};
+ const context=(sessionId:string)=>({cwd:project,model:{provider:"provider",id:"primary"},modelRegistry:{find:(provider:string,id:string)=>provider==="provider"&&["backup","last"].includes(id)?{provider,id}:undefined},sessionManager:{getSessionId:()=>sessionId},ui:{notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}}),ctxA:any=context("scope-a"),ctxB:any=context("scope-b");
+ createAsenExtension({homeDir:()=>root,profilesFile,profileFallbacksFile:fallbacksFile,enableAgentRuntime:false,enableTodoRuntime:false,enableMemoryRuntime:false})(pi);
+ const emit=async(name:string,event:unknown,ctx:any)=>{for(const handler of events.get(name)??[])await handler(event,ctx);};
+ t.after(async()=>{try{await emit("session_shutdown",{},ctxB);await emit("session_shutdown",{},ctxA);}finally{await rm(root,{recursive:true,force:true});}});
+ await emit("session_start",{},ctxA);await emit("session_start",{},ctxB);
+ await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxA);
+ await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[],"A end cannot feed B settled");
+ await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);assert.ok(calls.map(String).includes("model:backup"));
+ await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup"}]}}});
+ await emit("agent_settled",{aborted:true},ctxA);
+ await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"fetch failed"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);
+ assert.ok(calls.map(String).includes("model:last"),"stale A abort cannot clear B's frozen episode");assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,2);
+});
+
+test("fallback-parent extension suppresses stale deferred chain rejection notices",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-fallback-parent-reject-")),project=await realpath(process.cwd()),profilesFile=path.join(root,".asen","profiles.json"),fallbacksFile=path.join(root,".asen","profile-fallbacks.json");
+ await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{}}]});
+ await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup"}]}}});
+ let reject!:(error:Error)=>void,markReaderStarted!:()=>void;const readerStarted=new Promise<void>(resolve=>{markReaderStarted=resolve;}),deferred=new Promise<any>((_resolve,rejectPromise)=>{reject=rejectPromise;});
+ const events=new Map<string,Function[]>(),calls:string[]=[],notices:string[]=[],pi:any={registerCommand(){},registerTool(){},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[],getThinkingLevel:()=>"high",setThinkingLevel:()=>calls.push("thinking"),setModel:async()=>{calls.push("model");return true;},sendUserMessage:()=>calls.push("follow")};
+ const ctx:any={cwd:project,model:{provider:"provider",id:"primary"},modelRegistry:{find:()=>({provider:"provider",id:"backup"})},sessionManager:{getSessionId:()=>"reject-session"},ui:{notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}};
+ createAsenExtension({homeDir:()=>root,profilesFile,profileFallbacksFile:fallbacksFile,profileFallbacksReader:async()=>{markReaderStarted();return deferred;},enableAgentRuntime:false,enableTodoRuntime:false,enableMemoryRuntime:false})(pi);
+ const emit=async(name:string,event:unknown)=>{for(const handler of events.get(name)??[])await handler(event,ctx);};t.after(async()=>{try{await emit("session_shutdown",{});}finally{await rm(root,{recursive:true,force:true});}});
+ await emit("session_start",{});for(const handler of events.get("agent_end")??[])await handler({messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctx);
+ const settled=events.get("agent_settled")![0]!,pending=settled({aborted:false},ctx);await readerStarted;
+ await settled({aborted:true},ctx);reject(new Error("PRIVATE deferred chain failure"));await pending;
+ assert.deepEqual(calls,[]);assert.equal(notices.some(message=>/fallback could not complete safely/i.test(message)),false);
+});
+
 test("profiles status keeps existing fields and adds effective global routing facts",async()=>{const d=await mkdtemp(path.join(tmpdir(),"asen-state-")),f=path.join(d,"profiles.json"),explorer={model:"configured/explorer",thinking:"high" as const};await writeProfilesFile(f,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{explorer,verifier:{thinking:"low"}}}]});const h=host();createAsenExtension({profilesFile:f,agents:()=>[],changes:()=>[]})(h.pi);assert.deepEqual(await h.commands.get("asen-profiles")!.handler(),{
  active:"main",profiles:["main"],available:true,
  globalRoles:{explorer:{role:"explorer",source:"global",configured:true,model:"configured",thinking:"high",actual:"unknown"},verifier:{role:"verifier",source:"global",configured:true,model:"unspecified",thinking:"low",actual:"unknown"}},

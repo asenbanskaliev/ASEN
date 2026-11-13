@@ -36,7 +36,7 @@ export interface ExecutablePlan {
 }
 function selectionOf(context:IssuedSkillContext|undefined):SkillSelectionContext|undefined{
  if(!context?.phase)return undefined;
- return {phase:context.phase,...(context.defect!==undefined?{defect:context.defect}:{}),...(context.codeChange!==undefined?{codeChange:context.codeChange}:{}),...(context.behaviorChange!==undefined?{behaviorChange:context.behaviorChange}:{}),...(context.risk?{risk:context.risk}:{}),...(context.filesTouched!==undefined?{filesTouched:context.filesTouched}:{}),...(context.verification!==undefined?{verification:context.verification}:{})};
+ return {phase:context.phase,...(context.selectionProfile?{selectionProfile:context.selectionProfile}:{}),...(context.defect!==undefined?{defect:context.defect}:{}),...(context.codeChange!==undefined?{codeChange:context.codeChange}:{}),...(context.behaviorChange!==undefined?{behaviorChange:context.behaviorChange}:{}),...(context.risk?{risk:context.risk}:{}),...(context.filesTouched!==undefined?{filesTouched:context.filesTouched}:{}),...(context.verification!==undefined?{verification:context.verification}:{})};
 }
 
 /** Materializes the existing ODD route and selected roles as an ordered, inspectable task DAG.

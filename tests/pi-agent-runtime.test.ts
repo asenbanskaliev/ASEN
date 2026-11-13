@@ -1038,3 +1038,70 @@ test("EF-604 RPC headless host cannot claim an unseen completed Explorer notice"
  assert.deepEqual(after,journal,"RPC restart must not mutate a pending notice or replay it");
  for(const stop of restarted.events.get("session_shutdown")??[])await stop({},reopened);
 });
+
+for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
+ test(`effort runtime parity bounded observation preserves ${thinking??"omission"}`,async t=>{
+  const home=await realpath(await mkdtemp(join(tmpdir(),"asen-effort-observation-"))),{AgentRuntime}=await import("../src/agents/agent-runtime.js");
+  let emit!:(value:any)=>void,release!:()=>void,started!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;}),ready=new Promise<void>(resolve=>{started=resolve;}),seen:unknown[]=[];
+  const runtime=await AgentRuntime.open({storeFile:join(home,"agents.json"),runner:{subscribeModelFallback:listener=>{emit=listener;return()=>{};},run:async request=>{started();await gate;return{id:request.id,ok:true,output:"done"};}},onModelFallback:value=>seen.push(value)});
+  const done=new Promise<void>(resolve=>runtime.subscribeTerminal(()=>resolve()));
+  t.after(async()=>{release();await done;await rm(home,{recursive:true,force:true});});
+  const id=await runtime.startReadOnly({role:"explorer",prompt:"inspect",session:{sessionId:"effort",projectId:home}});await ready;
+  const base={taskId:id,sessionId:"effort",projectId:home,to:"provider/next",category:"network"};
+  emit({...base,...(thinking===undefined?{}:{thinking}),rawError:"PRIVATE"});
+  assert.deepEqual(seen,[{...base,...(thinking===undefined?{}:{thinking})}]);assert.equal(Object.isFrozen(seen[0]),true);
+  for(const invalid of ["extreme","HIGH","inherit","",null,7])emit({...base,thinking:invalid});
+  emit({...base,sessionId:"wrong"});emit({...base,projectId:join(home,"foreign")});assert.equal(seen.length,1);
+ });
+}
+
+for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
+ test(`effort parity admission and agent store reopen ${thinking??"inherit"}`,async t=>{
+  const home=await mkdtemp(join(tmpdir(),"asen-effort-parity-"));t.after(()=>rm(home,{recursive:true,force:true}));
+  const {snapshotAgentModelFallback}=await import("../src/agents/dispatcher.js"),{PersistentAgentStore}=await import("../src/runtime/agent-store.js");
+  const candidate=thinking===undefined?{model:"provider/backup"}:{model:"provider/backup",thinking};
+  const fallback=snapshotAgentModelFallback({profile:"main",chain:[candidate]});
+  assert.deepEqual(fallback,{profile:"main",chain:[candidate]});assert.equal(Object.isFrozen(fallback?.chain[0]),true);
+  const file=join(home,"agents.json"),{store}=await PersistentAgentStore.open(file),repository=await realpath(home);
+  const request={id:"effort-parity",role:"explorer" as const,prompt:"inspect",repository,isolationKey:"effort-session",modelFallback:fallback,...(thinking===undefined?{}:{thinking})};
+  await store.enqueue(request,{kind:"user",id:"owner"});
+  const reopened=await PersistentAgentStore.open(file);assert.equal(reopened.quarantined,undefined);
+  const saved=(await reopened.store.get(request.id,"effort-session",repository))?.request;
+  assert.deepEqual(saved?.modelFallback,fallback);assert.equal(saved?.thinking,thinking);
+  assert.equal(Object.hasOwn(saved!,"thinking"),thinking!==undefined);
+  const before=await readFile(file,"utf8");
+  for(const invalid of ["extreme","HIGH","inherit","",null,7]){
+   const bad=invalid as import("../src/runtime/profiles.js").Thinking;
+   assert.throws(()=>snapshotAgentModelFallback({chain:[{model:"bad",thinking:bad}]}),/thinking/);
+   await assert.rejects(()=>store.enqueue({...request,id:"bad-primary",thinking:bad},{kind:"user",id:"owner"}),/thinking/);
+   await assert.rejects(()=>store.enqueue({...request,id:"bad-fallback",modelFallback:{chain:[{model:"bad",thinking:bad}]}},{kind:"user",id:"owner"}),/thinking/);
+   assert.equal(await readFile(file,"utf8"),before);
+  }
+  let getterCalls=0;const accessor={model:"bad",get thinking(){getterCalls++;return "max";}};
+  for(const step of [accessor,new Proxy(candidate,{}),{...candidate,extra:true}])assert.throws(()=>snapshotAgentModelFallback({chain:[step]}));
+  assert.equal(getterCalls,0);
+ });
+}
+
+test("fallback-child runtime snapshots and durably persists the configured request chain",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-fallback-runtime-"));t.after(()=>rm(home,{recursive:true,force:true}));const {AgentRuntime}=await import("../src/agents/agent-runtime.js");const storeFile=join(home,"agents.json");let observed!:(request:import("../src/agents/dispatcher.js").AgentRequest)=>void;const firstRequest=new Promise<import("../src/agents/dispatcher.js").AgentRequest>(resolve=>{observed=resolve;});
+ let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});t.after(()=>release());const runtime=await AgentRuntime.open({storeFile,runner:{run:async request=>{observed(request);await gate;return{id:request.id,ok:true,output:"done"};}}});
+ const chain=[{model:"provider/next",thinking:"low" as const}],modelFallback={profile:"explorer",chain},id=await runtime.startReadOnly({role:"explorer",prompt:"inspect",session:{sessionId:"fallback-runtime",projectId:await realpath(process.cwd())},model:"provider/primary",modelFallback});
+ chain[0]!.model="mutated/after-admission";const admitted=await firstRequest;assert.equal(Object.isFrozen(admitted.modelFallback),true);assert.equal(Object.isFrozen(admitted.modelFallback?.chain),true);assert.deepEqual(admitted.modelFallback,{profile:"explorer",chain:[{model:"provider/next",thinking:"low"}]});
+ const stored=JSON.parse(await readFile(storeFile,"utf8")),entry=stored.entries.find((item:any)=>item.record.id===id);assert.deepEqual(entry.request.modelFallback,{profile:"explorer",chain:[{model:"provider/next",thinking:"low"}]});assert.deepEqual((await runtime.query(id,{sessionId:"fallback-runtime",projectId:await realpath(process.cwd())}))?.spec.modelFallback,{profile:"explorer",chain:[{model:"provider/next",thinking:"low"}]});release();
+});
+
+test("fallback-attribution isolates concurrent tasks across runtimes sharing one runner",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-fallback-attribution-")),projectB=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-project-b-")));const {AgentRuntime}=await import("../src/agents/agent-runtime.js"),listeners=new Set<(value:any)=>void>(),releases=new Map<string,(result:{id:string;ok:boolean;output:string})=>void>(),requests:import("../src/agents/dispatcher.js").AgentRequest[]=[];t.after(async()=>{for(const [id,release] of releases)release({id,ok:false,output:"test cleanup"});await Promise.all([rm(home,{recursive:true,force:true}),rm(projectB,{recursive:true,force:true})]);});
+ const runner:AgentRunner={run:request=>{requests.push(request);return new Promise(resolve=>releases.set(request.id,resolve));},subscribeModelFallback:listener=>{listeners.add(listener as (value:any)=>void);return()=>listeners.delete(listener as (value:any)=>void);}},emit=(value:any)=>{for(const listener of listeners)listener(value);},seenA:unknown[]=[],seenB:unknown[]=[];
+ const runtimeA=await AgentRuntime.open({storeFile:join(home,"a.json"),runner,onModelFallback:value=>seenA.push(value)}),runtimeB=await AgentRuntime.open({storeFile:join(home,"b.json"),runner,onModelFallback:value=>seenB.push(value)}),projectA=await realpath(process.cwd());
+ const idA=await runtimeA.startReadOnly({role:"explorer",prompt:"inspect A",session:{sessionId:"session-a",projectId:projectA}}),idB=await runtimeB.startReadOnly({role:"explorer",prompt:"inspect B",session:{sessionId:"session-b",projectId:projectB}});for(let i=0;i<100&&requests.length<2;i++)await new Promise(resolve=>setTimeout(resolve,5));assert.equal(requests.length,2);
+ emit({taskId:idA,sessionId:"session-a",projectId:projectA,from:"provider/a",to:"provider/a2",category:"network",thinking:"minimal",rawError:"PRIVATE_PROVIDER_ERROR"});emit({taskId:idB,sessionId:"session-b",projectId:projectB,to:"provider/b2",category:"rate_limit"});emit(null);emit({taskId:idA,sessionId:"session-a",projectId:projectA,category:"network"});emit({taskId:"unknown",sessionId:"session-a",projectId:projectA,to:"provider/unknown",category:"network"});emit({taskId:idA,sessionId:"wrong-session",projectId:projectA,to:"provider/wrong-session",category:"network"});emit({taskId:idA,sessionId:"session-a",projectId:projectB,to:"provider/wrong-project",category:"network"});
+ assert.deepEqual(seenA,[{taskId:idA,sessionId:"session-a",projectId:projectA,from:"provider/a",to:"provider/a2",category:"network",thinking:"minimal"}]);assert.deepEqual(seenB,[{taskId:idB,sessionId:"session-b",projectId:projectB,to:"provider/b2",category:"rate_limit"}]);assert.equal(Object.isFrozen(seenA[0]),true);assert.doesNotMatch(JSON.stringify([seenA,seenB]),/PRIVATE_PROVIDER_ERROR|rawError/u);
+ let terminalA!:()=>void,terminalB!:()=>void;const doneA=new Promise<void>(resolve=>{terminalA=resolve;}),doneB=new Promise<void>(resolve=>{terminalB=resolve;});runtimeA.subscribeTerminal(()=>terminalA());runtimeB.subscribeTerminal(()=>terminalB());releases.get(idA)?.({id:idA,ok:true,output:"done"});releases.get(idB)?.({id:idB,ok:true,output:"done"});await Promise.all([doneA,doneB]);await new Promise(resolve=>setImmediate(resolve));emit({taskId:idA,sessionId:"session-a",projectId:projectA,to:"provider/stale",category:"network"});assert.equal(seenA.length,1);assert.equal(seenB.length,1);
+});
+
+test("fallback-child runtime rejects malformed chains before durable admission",async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-fallback-runtime-invalid-"));t.after(()=>rm(home,{recursive:true,force:true}));const {AgentRuntime}=await import("../src/agents/agent-runtime.js"),projectId=await realpath(process.cwd());let runs=0;const runtime=await AgentRuntime.open({storeFile:join(home,"agents.json"),runner:{run:async request=>{runs++;return{id:request.id,ok:true,output:"unexpected"};}}});
+ await assert.rejects(()=>runtime.startReadOnly({role:"explorer",prompt:"inspect",session:{sessionId:"fallback-invalid",projectId},modelFallback:{chain:[{model:"provider/duplicate"},{model:"provider/duplicate"}]}}),/duplicate fallback model/u);assert.equal(runs,0);assert.deepEqual(runtime.snapshot(),[]);
+});

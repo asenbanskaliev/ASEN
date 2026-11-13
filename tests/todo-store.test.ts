@@ -10,6 +10,20 @@ import {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {parseTodoFile} from "../src/runtime/todo-store.js";
 
 async function fixture(t:import("node:test").TestContext){const dir=await mkdtemp(join(tmpdir(),"asen-todo-"));t.after(()=>rm(dir,{recursive:true,force:true}));return join(dir,"todos.json");}
+for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
+ test(`effort plan parity Todo persists ${thinking??"omission"}`,async t=>{
+  const file=await fixture(t),store=await SessionTodoStore.open(file),plan={role:"primary" as const,skillPaths:[],...(thinking===undefined?{}:{thinking})};
+  const draft={title:"Effort",requestId:"asen-plan:effort",dependsOn:[],description:"Keep route",plan};
+  await store.addPlan([draft],one);const reopened=await SessionTodoStore.open(file);
+  assert.equal(reopened.diagnostics(),undefined);assert.deepEqual((await reopened.list(one))[0]?.plan,plan);
+  const before=await readFile(file,"utf8");
+  for(const invalid of ["extreme","HIGH","inherit","",null,7]){
+   await assert.rejects(()=>reopened.addPlan([{...draft,requestId:"asen-plan:invalid",plan:{...plan,thinking:invalid as import("../src/runtime/profiles.js").Thinking}}],one),/Invalid ASEN Todo plan task/);
+   assert.equal(await readFile(file,"utf8"),before);
+  }
+ });
+}
+
 const one={sessionId:"session-one",projectId:"/project"},other={sessionId:"session-two",projectId:"/project"};
 
 test("Todo task state, history and session isolation survive a process reopen",async t=>{

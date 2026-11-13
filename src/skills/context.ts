@@ -1,5 +1,5 @@
 import type {Candidate} from "../core/types.js";
-import type {SkillSelectionContext} from "./registry.js";
+import {validateSkillSelectionProfile,type SkillSelectionContext} from "./registry.js";
 
 export type IssuedSkillContext=Readonly<SkillSelectionContext>&{
  readonly taskId:string;
@@ -17,6 +17,7 @@ export function consumeIssuedWorkerContext(context:IssuedSkillContext):boolean{
 }
 
 export function issueSkillContext(taskId:string,repository:string,candidate:Candidate|undefined,context:SkillSelectionContext):IssuedSkillContext {
+ validateSkillSelectionProfile(context);
  if(candidate&&candidate.repository!==repository) throw new Error("Skill context candidate repository mismatch");
  const issued=Object.freeze({
   ...context,

@@ -1,4 +1,26 @@
 import test from "node:test";import assert from "node:assert/strict";import {ASEN_PROFILES_SCHEMA,parseRuntimeProfiles,resolveRuntimeRoute,removeProfile,renameProfile,serializeRuntimeProfiles,setActiveProfile,upsertProfile} from "../src/runtime/profiles.js";
+import type {Thinking} from "../src/runtime/profiles.js";
+
+for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
+ test(`effort parity profiles round-trip ${thinking??"inherit"}`,()=>{
+  const route=thinking===undefined?{}:{thinking};
+  const value={schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{worker:route}}]};
+  const parsed=parseRuntimeProfiles(JSON.stringify(value));assert.deepEqual(parsed,value);assert.ok(parsed);
+  assert.deepEqual(parseRuntimeProfiles(serializeRuntimeProfiles(parsed)),value);
+  assert.deepEqual(resolveRuntimeRoute({global:parsed},"worker").choice,route);
+ });
+}
+test("effort parity profiles reject invalid values without mutation",()=>{
+ const initial={schema:ASEN_PROFILES_SCHEMA,profiles:[{name:"main",routes:{worker:{thinking:"low" as const}}}]},before=serializeRuntimeProfiles(initial);
+ for(const thinking of ["extreme","HIGH","inherit","",null,7]){
+  const invalid={name:"main",routes:{worker:{thinking:thinking as Thinking}}};
+  assert.equal(parseRuntimeProfiles(JSON.stringify({...initial,profiles:[invalid]})),undefined);
+  assert.throws(()=>upsertProfile(initial,invalid),/Invalid profile/);
+  assert.throws(()=>serializeRuntimeProfiles({...initial,profiles:[invalid]}),/Invalid profiles file/);
+  assert.equal(serializeRuntimeProfiles(initial),before);
+ }
+});
+
 const file=(active="base")=>({schema:ASEN_PROFILES_SCHEMA,active,profiles:[{name:"base",routes:{worker:{model:"free/model",thinking:"medium" as const}}}]});
 test("profiles reject malformed, duplicate and dangling active values",()=>{assert.equal(parseRuntimeProfiles("{"),undefined);assert.equal(parseRuntimeProfiles(JSON.stringify({...file(),active:"missing"})),undefined);assert.equal(parseRuntimeProfiles(JSON.stringify({...file(),profiles:[...file().profiles,...file().profiles]})),undefined);});
 test("profile parsing preserves prototype-named routes as own data properties",()=>{const raw='{"schema":"asen.runtime-profiles/v1","active":"base","profiles":[{"name":"base","routes":{"constructor":{"thinking":"low"},"toString":{"model":"safe/model"}}}]}';const parsed=parseRuntimeProfiles(raw);assert.ok(parsed);const routes=parsed.profiles[0]!.routes;assert.equal(Object.hasOwn(routes,"constructor"),true);assert.equal(Object.hasOwn(routes,"toString"),true);assert.equal(Object.getPrototypeOf(routes),Object.prototype);assert.equal(resolveRuntimeRoute({global:parsed},"toString").choice?.model,"safe/model");assert.equal(JSON.parse(serializeRuntimeProfiles(parsed)).profiles[0].routes.toString.model,"safe/model");});

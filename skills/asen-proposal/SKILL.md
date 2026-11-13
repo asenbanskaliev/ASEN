@@ -1,6 +1,10 @@
 ---
 name: asen-proposal
 description: "Trigger: proposal, define change, establish scope. Convert an explored change into bounded intent, scope, risks, rollback and measurable success criteria."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use before non-trivial implementation when intent and boundaries must be made explicit.

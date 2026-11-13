@@ -136,7 +136,7 @@ test("INTEGRATIONS states the permission meaning once without repeating the mode
 test("the composed status line orders workspace, permission and host segments",()=>{
  const hostStatus=projectHostStatus({model:{provider:"p",id:"m"},thinkingLevel:"high",getContextUsage(){return{tokens:80,contextWindow:100,percent:80};}});
  assert.equal(renderAsenStatusLine(snapshot({changes:{branch:"main",files:3},permission:"YOLO",hostStatus}),100),
-  "ASEN │ main ±3 │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ?");
+  "ASEN │ main ±3 │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?");
  assert.equal(renderAsenStatusLine(snapshot({changes:{branch:"release",files:0},permission:"normal",hostStatus:projectHostStatus()}),100),
   "ASEN │ release clean │ selected ? │ responding ? │ ctx ? │ cost/sub ?","Normal mode adds no second banner");
  const narrow=renderAsenStatusLine(snapshot({changes:{branch:"main",files:3},permission:"YOLO",hostStatus}),12);

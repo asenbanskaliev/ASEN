@@ -8,10 +8,11 @@ import {sameWorkspaceIdentityPath,workspaceIdentityPathKey} from "./workspace-st
 import {applyTaskEvent,replayTask,type TaskEvent,type TaskState} from "./task-replay.js";
 import type {SkillPhase,SkillSelectionContext} from "../skills/registry.js";
 import type {Candidate} from "../core/types.js";
+import {isThinking,type Thinking} from "./profiles.js";
 
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
 export type TodoPlanRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
-export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;thinking?:"off"|"minimal"|"low"|"medium"|"high";candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;}
+export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;}
 export interface TodoPlanDraft{title:string;requestId:string;dependsOn:readonly string[];description:string;plan:TodoPlanMetadata;}
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
@@ -50,7 +51,7 @@ function validPlan(value:unknown):value is TodoPlanMetadata{
  if(!exact(value,keys)||!(["primary","explorer","worker","reviewer","verifier","clarifier"] as unknown[]).includes(value.role)||!Array.isArray(value.skillPaths)||value.skillPaths.some(p=>typeof p!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/u.test(p))||new Set(value.skillPaths).size!==value.skillPaths.length)return false;
  if(hasPriority&&(!Number.isSafeInteger(value.priority)||Number(value.priority)<1||Number(value.priority)>100))return false;
  if(hasModel&&(typeof value.model!=="string"||!value.model||value.model!==value.model.trim()||value.model.length>256||/[\u0000-\u001f\u007f]/u.test(value.model)))return false;
- if(hasThinking&&!("off minimal low medium high".split(" ").includes(String(value.thinking))))return false;
+ if(hasThinking&&!isThinking(value.thinking))return false;
  if(hasCandidateRevision&&(!["explorer","reviewer","verifier"].includes(String(value.role))||typeof value.candidateRevision!=="string"||!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(value.candidateRevision)))return false;
  if(hasCandidate){const candidate=value.candidate;if(!candidate||typeof candidate!=="object"||Array.isArray(candidate)||!exact(candidate,["id","repository","revision","createdAt"])||!identity(candidate.id)||!identity(candidate.repository)||typeof candidate.revision!=="string"||!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(candidate.revision)||typeof candidate.createdAt!=="string"||!Number.isFinite(Date.parse(candidate.createdAt)))return false;}
  if(hasWriteSurfaces){const surfaces=value.writeSurfaces;if(!Array.isArray(surfaces)||surfaces.length<1||surfaces.length>256||surfaces.some(surface=>typeof surface!=="string"||!surface||surface!==surface.trim()||surface.startsWith("/")||surface.includes("\\")||surface.includes(":")||surface.split("/").some(part=>!part||part==="."||part===".."))||new Set(surfaces).size!==surfaces.length)return false;}
@@ -58,7 +59,8 @@ function validPlan(value:unknown):value is TodoPlanMetadata{
  const writerMetadata=hasCandidate||hasWriteSurfaces||hasAuthorizationBasis;if(writerMetadata&&(value.role!=="worker"||!hasCandidate||!hasWriteSurfaces||!hasAuthorizationBasis||!hasSelection||(value.skillSelection as SkillSelectionContext).phase!=="apply"))return false;
  if(!hasSelection)return value.role==="primary"||value.role==="clarifier";
  const selectionRaw=value.skillSelection;if(!selectionRaw||typeof selectionRaw!=="object"||Array.isArray(selectionRaw)||Object.getPrototypeOf(selectionRaw)!==Object.prototype)return false;const selection=selectionRaw as SkillSelectionContext,role=value.role as TodoPlanRole;
- const allowed=["phase","defect","codeChange","behaviorChange","risk","filesTouched","verification"],selectionKeys=Object.keys(selectionRaw);
+ const allowed=["phase","defect","codeChange","behaviorChange","risk","filesTouched","verification","selectionProfile"],selectionKeys=Object.keys(selectionRaw);
+ if(Object.hasOwn(selection,"selectionProfile")&&selection.selectionProfile!=="organic")return false;
  if(selectionKeys.some(key=>!allowed.includes(key))||!Object.hasOwn(selection,"phase")||!(["status","context-init","explore","proposal","specification","design","tasks","apply","verify","archive","skill-registry","adversarial-review","skill-authoring","skill-audit","defect","go-testing","delivery-branch","delivery-chain","issue","docs","collaboration-message"] as unknown[]).includes(selection.phase))return false;
  for(const key of ["defect","codeChange","behaviorChange","verification"])if(key in selection&&typeof (selection as Record<string,unknown>)[key]!=="boolean")return false;
  if("risk" in selection&&!(["low","medium","high","unknown"] as unknown[]).includes((selection as Record<string,unknown>).risk))return false;
