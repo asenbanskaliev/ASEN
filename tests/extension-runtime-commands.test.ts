@@ -42,9 +42,9 @@ test("RPC command, palette, profile and persona inspection never requests an int
  const palette=await h.commands.get("asen-palette")!.handler("",ctx);
  assert.ok(Array.isArray(palette),"RPC palette should expose manual guidance");
  const profiles=await h.commands.get("asen-profiles")!.handler("",ctx);
- assert.equal(profiles?.available,true);
+ assert.equal((profiles as {available?:boolean})?.available,true);
  const persona=await h.commands.get("asen-persona")!.handler("",ctx);
- assert.equal(persona?.style,"professional");
+ assert.equal((persona as {style?:string})?.style,"professional");
  assert.equal(selections,0,"RPC probes must not await a native UI selection");
  assert.ok(notices.some(message=>message.includes("asen-commands")));
 });
