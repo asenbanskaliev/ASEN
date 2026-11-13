@@ -4,7 +4,7 @@
 
 Owner requested a fresh GitHub audit of code, documentation and failing CI, followed by repairs. Exact source head: `12fc65be8dd3974aa7856db313597db760dc82a4`; last prior confirmed green candidate: `a49d8ad939921c5f004c4a71c0774885fd728599`. This separate branch is a *repair candidate*, not feature acceptance, native approval, release or authorization to merge into `main`.
 
-No changes to GentlePi, P32 font/capture/footer implementation, permissions, private fixtures, provider consent, historical stopped proof, or R4 acceptance status. Do not claim green or FULL without new same-SHA receipts.
+No changes to the upstream Pi fork, P32 font/capture/footer implementation, permissions, private fixtures, provider consent, historical stopped proof, or R4 acceptance status. Do not claim green or FULL without new same-SHA receipts.
 
 ## Implemented bounded repairs
 
