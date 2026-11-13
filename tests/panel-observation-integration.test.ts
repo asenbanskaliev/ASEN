@@ -5,6 +5,7 @@ import path from "node:path";
 import {createAsenExtension,createPiExtension} from "../extensions/asen.js";
 import type {SessionTodoStore} from "../src/runtime/todo-store.js";
 import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
+import {hostContentColumns,truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 
 // All state, including incidental lifecycle usage, stays in this excluded project root.
 async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"throwing"="reported",listGate?:()=>Promise<void>,production=false){
@@ -69,7 +70,14 @@ test("public lifecycle status is additive, fresh, threshold-aware and clears on 
   f.ctx.getContextUsage=()=>({tokens:percent===null?null:80,contextWindow:100,percent});
   await f.emit("session_compact");
   assert.equal(f.statuses.get("asen:host"),expected(label));
-  assert.match((await f.panel("status"))[0]!,new RegExp(`ctx ${label.replace(/[?%]/g,"\\$&")}(?= │|$)`));
+  // The host status has its own width budget; the panel adds the truthful
+  // integrations segment, so the gauge is present only when the complete row fits.
+  const prior=`ASEN │ selected p/m · high │ responding ? │ ctx ${label} │ cost/sub ? │ integrations reported`;
+  const candidate=expected(label)+" │ integrations reported";
+  const columns=Number.isSafeInteger(process.stdout.columns)&&Number(process.stdout.columns)>0?Number(process.stdout.columns):100;
+  const budget=hostContentColumns(columns);
+  const full=visibleWidth(candidate)<=budget?candidate:prior;
+  assert.deepEqual(await f.panel("status"),[truncateForTerminal(full,budget)]);
  }
  f.statuses.set("asen:workspace","existing Git contribution");
  await f.emit("model_select");assert.equal(f.statuses.get("asen:workspace"),"existing Git contribution");
