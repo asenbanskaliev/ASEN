@@ -97,7 +97,7 @@ import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
 type CreateProfileCatalogModel=ParentCatalogModel&{reasoning?:boolean|undefined;thinkingLevelMap?:Partial<Record<Thinking,string|null|undefined>>|undefined};
-type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;custom?:(...args:any[])=>Promise<any>}};
+type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
 type PiLike={getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -1652,7 +1652,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(selecting){
      if(typeof result==="string")throw new Error("Unexpected history selection result");
      let message:string;
-     switch(result.state){case "selected":message="History entry selected.";break;case "cancelled":message="History selection cancelled.";break;case "empty":message="No matching history entries.";break;case "unavailable":message="History selection is unavailable.";break;}
+     if(result.state==="selected"&&typeof ctx.ui.pasteToEditor==="function"){
+      try{ctx.ui.pasteToEditor(result.text);}catch{/* paste failed; fall through to notify */}
+      message="History entry restored to editor.";
+     }else{switch(result.state){case "selected":message="History entry selected.";break;case "cancelled":message="History selection cancelled.";break;case "empty":message="No matching history entries.";break;case "unavailable":message="History selection is unavailable.";break;}}
      ctx.ui.notify(message,"info");return;
     }
     if(typeof result!=="string")throw new Error("Unexpected history command result");ctx.ui.notify(result,"info");return result;
@@ -1684,7 +1687,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
           ...(context.ui.confirm ? { confirm: context.ui.confirm.bind(context.ui) } : {})
          }) as any;
          let message: string;
-         switch (result.state) { case "selected": message = "History entry selected."; break; case "cancelled": message = "History selection cancelled."; break; case "empty": message = "No matching history entries."; break; default: message = "ASEN history selection is unavailable."; }
+         if (result.state === "selected" && typeof context.ui?.pasteToEditor === "function") {
+          try { context.ui.pasteToEditor(result.text); } catch { /* paste failed; fall through */ }
+          message = "History entry restored to editor.";
+         } else { switch (result.state) { case "selected": message = "History entry selected."; break; case "cancelled": message = "History selection cancelled."; break; case "empty": message = "No matching history entries."; break; default: message = "ASEN history selection is unavailable."; } }
          context.ui.notify(message, "info");
         } catch {
          context?.ui?.notify?.("ASEN history selection failed.", "error");

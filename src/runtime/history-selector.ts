@@ -14,7 +14,7 @@ export type HistoryProjection=
  | Readonly<{state:"empty";rows:readonly []}>
  | Readonly<{state:"unavailable";rows:readonly []}>;
 export type HistorySelection=
- | Readonly<{state:"selected";id:string;deletionAuthorized:false}>
+ | Readonly<{state:"selected";id:string;text:string;deletionAuthorized:false}>
  | Readonly<{state:"cancelled"}>;
 
 export function normalizeHistoryQuery(query:string):string{
@@ -112,5 +112,7 @@ export function selectHistoryEntry(entries:readonly HistoryEntry[],projectId:str
  if(!IDENTIFIER.test(id))throw new Error("Invalid history selection");
  const projection=projectHistory(entries,projectId,query,pageSize,cursor);
  if(projection.state!=="data"||!projection.rows.some(row=>row.id===id))throw new Error("Invalid history selection");
- return Object.freeze({state:"selected",id,deletionAuthorized:false});
+ const entry=entries.find(value=>value.id===id&&value.projectId===projectId);
+ if(!entry)throw new Error("Invalid history selection");
+ return Object.freeze({state:"selected",id,text:entry.text,deletionAuthorized:false});
 }
