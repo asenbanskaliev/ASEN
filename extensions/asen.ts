@@ -88,6 +88,7 @@ import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInven
 import {integrationPanel} from "../src/runtime/integrations-panel.js";
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
 import {renderAgentInspection,type AgentInspection} from "../src/runtime/agent-inspect.js";
+import {renderAgentConversation} from "../src/runtime/agent-conversation.js";
 import {projectAgentHierarchy,renderAgentFollowTail,type AgentHierarchyRecord} from "../src/runtime/agents-panel.js";
 import {createJobMetadataBindings,inspectOwnedJob,type JobMetadata} from "../src/runtime/job-inspect.js";
 import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/git-diff-preview.js";
@@ -1200,7 +1201,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      try{await validate();}catch{return ["ASEN agent scope changed; no action performed."];}
      return ["ASEN agent navigator closed. Stop requests, if any, were explicit; no transcript or replay."];
     }
-    let id=String(args??"").trim();
+    const idArgs=String(args??""),wantsConversation=/(?:^|\s)--conversation(?=\s|$)/u.test(idArgs);
+    let id=(wantsConversation?idArgs.replace(/(?:^|\s)--conversation(?=\s|$)/gu," ").replace(/\s+/gu," "):idArgs).trim();
     if(!id&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.select&&entries.length){
      const labels=entries.slice(0,100).map(row=>row.role+" · "+row.state+" · "+row.id);
      const chosen=await ctx.ui.select("ASEN agents (read-only)",labels,ctx.signal?{signal:ctx.signal}:undefined);
@@ -1211,6 +1213,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!id)return ["Usage: /asen-agent-inspect <agent-id>. No agents selected."];
     const now=await sessionIdentity(ctx);
     if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return ["ASEN agent scope changed. No inspection performed."];
+    if(wantsConversation){
+     // The durable store is the only source: no transcript, no replay, no authority.
+     if(!runtime)return ["ASEN conversation view needs the durable agent store; no runtime is available."];
+     const stored=await runtime.entry(id,identity);
+     if(!stored||stored.record.id!==id||stored.record.sessionId!==identity.sessionId)return ["ASEN agent does not belong to this Pi session/project."];
+     return [...renderAgentConversation(stored,Math.max(12,terminalColumns()))];
+    }
     const found=runtime?await runtime.query(id,identity):null;
     const record=found?.record??entries.find(row=>row.id===id);
     if(!record)return ["ASEN agent does not belong to this Pi session/project."];

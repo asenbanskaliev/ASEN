@@ -29,6 +29,11 @@ const isQuestionLine=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v
 const waitingOf=(record:PublicAgentRecord):AgentStoreState=>record.state as AgentStoreState;
 function pendingQuestionValue(v:unknown):v is AgentPendingQuestion{if(!v||typeof v!=="object"||Array.isArray(v)||!exact(v,["id","text","askedAt"]))return false;// SAFETY: exact validated the complete persisted pending-question key set before the field checks below.
  const q=v as unknown as AgentPendingQuestion;return identifier(q.id)&&isQuestionLine(q.text)&&Number.isSafeInteger(q.askedAt)&&q.askedAt>0;}
+/** Reads the pending-question leg through the store's own validator. Never invents one for a record that has none. */
+export function pendingAgentQuestion(record:PublicAgentRecord):AgentPendingQuestion|undefined{
+ const durable=record as unknown as DurableAgentRecord,question=durable.pendingQuestion;
+ return question!==undefined&&pendingQuestionValue(question)?{id:question.id,text:question.text,askedAt:question.askedAt}:undefined;
+}
 /** Applies one lifecycle leg. Waiting legs reuse the guards transitionAgent applies because the shared lifecycle module does not model the question channel. */
 function moveAgent(record:PublicAgentRecord,next:AgentStoreState,at:string,summary?:string,question?:AgentPendingQuestion):PublicAgentRecord{
  const source=waitingOf(record);

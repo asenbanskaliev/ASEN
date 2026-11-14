@@ -33,6 +33,8 @@ export class AgentRuntime{
   return entry?{record:entry.record,history:entry.events,spec:{...(entry.request.model===undefined?{}:{model:entry.request.model}),...(entry.request.thinking===undefined?{}:{thinking:entry.request.thinking}),...(entry.request.modelFallback===undefined?{}:{modelFallback:snapshotAgentModelFallback(entry.request.modelFallback)}),...(entry.request.continuationOf===undefined?{}:{continuationOf:entry.request.continuationOf})}}:null;
  }
  /** Observers receive only persisted terminal outcomes; notification failures cannot alter execution. */
+ /** Full durable entry for read-only projections. It never mutates, replays or re-authorizes a task. */
+ async entry(id:string,identity:AgentSessionIdentity){return this.store.get(id,identity.sessionId,identity.projectId);}
  subscribeTerminal(listener:(record:PublicAgentRecord)=>void):()=>void{
   this.#terminalListeners.add(listener);return ()=>{this.#terminalListeners.delete(listener);};
  }
