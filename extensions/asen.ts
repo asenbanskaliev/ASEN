@@ -83,7 +83,7 @@ import {renderAsenFocusHeader} from "../src/runtime/focus-chrome.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/native-m2-navigator.js";
 import {createM1SurfaceCache} from "../src/runtime/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status-projection.js";
-import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps} from "../src/runtime/keymaps.js";
+import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps,prepareKeymapChange,writeKeymaps,keymapSavedNotice,resetKeymap,KEYMAP_RELOAD_NOTICE} from "../src/runtime/keymaps.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/integration-profile-inspection.js";
 import {integrationPanel} from "../src/runtime/integrations-panel.js";
 import type {KeybindingsManager} from "@earendil-works/pi-tui";
@@ -929,8 +929,40 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     {name:"asen-mode",role:"primary session and global permission defaults"},
     {name:"asen-history",role:"local task/session history"},
     {name:"asen-usage",role:"runtime usage and accounting"},
-    {name:"asen-stats",role:"Pi history aggregates"}],
-    implemented:true,note:"Use /asen-customize permissions for the live primary selection menu."};
+    {name:"asen-stats",role:"Pi history aggregates"},
+    {name:"asen-keymaps",role:"keyboard shortcut bindings"}],
+    implemented:true,note:"Use /asen-customize permissions for the live primary selection menu. Use /asen-customize keymaps to edit shortcuts."};
+   if(String(raw??"").trim()==="keymaps"){
+    if(ctx?.mode!=="tui"||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return "Keymap editing requires interactive TUI.";
+    const configHome=home();
+    for(;;){
+     const file=readKeymaps(configHome);
+     const rows=ASEN_KEYMAP_ACTIONS.map(action=>{
+      const current=effectiveKey(action.id,process.env,file.bindings);
+      return `${action.label}: ${current??"disabled"} (default: ${action.defaultKey??"none"})`;
+     });
+     const chosen=await ctx.ui.select("Edit keybindings",[...rows,"Reset all to defaults","Back"],ctx.signal?{signal:ctx.signal}:undefined);
+     if(ctx.signal?.aborted||chosen===undefined||chosen==="Back")return {cancelled:true};
+     if(chosen==="Reset all to defaults"){
+      if(typeof ctx.ui.confirm==="function"&&!(await ctx.ui.confirm("Reset keymaps","Restore all shortcuts to their defaults?")))continue;
+      let bindings=file.bindings;for(const action of ASEN_KEYMAP_ACTIONS)bindings=resetKeymap(bindings,action.id);
+      writeKeymaps(configHome,bindings);return `All keymaps reset to defaults. ${KEYMAP_RELOAD_NOTICE}`;
+     }
+     const index=rows.indexOf(chosen);
+     if(index<0)continue;
+     const action=ASEN_KEYMAP_ACTIONS[index]!;
+     if(typeof ctx.ui.input!=="function")return "Keymap editing requires interactive input.";
+     const input=await ctx.ui.input(`New key for ${action.label}`,effectiveKey(action.id,process.env,file.bindings)??"",ctx.signal?{signal:ctx.signal}:undefined);
+     if(ctx.signal?.aborted||input===undefined)continue;
+     const change=prepareKeymapChange(action.id,input,process.env,file);
+     if(change.kind==="refused"){ctx.ui.notify(change.message,change.type);continue;}
+     if(change.confirm&&typeof ctx.ui.confirm==="function"){
+      if(!(await ctx.ui.confirm("Keymap conflict",change.confirm))){ctx.ui.notify("Keymap change cancelled.","info");continue;}
+     }
+     writeKeymaps(configHome,change.bindings);
+     return keymapSavedNotice(action.id,action.label,process.env,change.bindings);
+    }
+   }
    requirePrimaryPermissionUI(ctx);
    if(typeof ctx.ui.select!=="function")throw new Error("ASEN permission menu requires native Pi select UI");
    const identity=await sessionIdentity(ctx),manager=ctx.sessionManager;
