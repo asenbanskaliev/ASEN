@@ -30,10 +30,10 @@ import {formatCommandGuide} from "../src/runtime/command-guide.js";
 import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
 import {findPotentialWorkspaceConflicts,visibleWorkspaceConflictRows,visibleWorkspaceRows,type WorkspaceChange} from "../src/runtime/workspace-attribution.js";
 import {readProfilesFile,mutateProfilesFile} from "../src/runtime/profile-store.js";
-import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallbacksFile,setProfileFallbackChain,MAX_PROFILE_FALLBACK_CHAIN_LENGTH} from "../src/runtime/profile-fallback-store.js";
+import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallbacksFile,setProfileFallbackChain,renameProfileFallbacks,removeProfileFallbacks,writeProfileFallbacksFile,MAX_PROFILE_FALLBACK_CHAIN_LENGTH} from "../src/runtime/profile-fallback-store.js";
 import {createParentModelFallback,type ParentCatalogModel} from "../src/runtime/parent-model-fallback.js";
 import {formatModelFallbackFailureNotice,formatModelFallbackNotice} from "../src/runtime/model-fallback-notice.js";
-import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,upsertProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/profiles.js";
+import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/profiles.js";
 import {canonicalProfilePartition,captureSessionProfile,readSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/session-profile-binding.js";
 import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/persona.js";
 import {parseHistoryStore,emptyHistoryStore} from "../src/runtime/history-store.js";
@@ -1572,14 +1572,54 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     setProfileFallbackChain(original,name,role,next);steps=next;
    }
   };
+  const renameSavedProfile=async(ctx:CommandContext,guard:()=>void)=>{
+   const inventory=await readProfilesFile(profilesFile);guard();
+   const choices=inventory.profiles.map(p=>"Profile: "+p.name);
+   const selected=await nativeChoice(ctx,"Rename saved profile",[...choices,"Back"],guard);
+   if(selected===undefined||selected==="Back")return {cancelled:true};
+   const from=selected.slice("Profile: ".length);
+   if(typeof ctx.ui.input!=="function")return "Profile rename requires interactive input";
+   const to=(await ctx.ui.input("New profile name","",ctx.signal?{signal:ctx.signal}:undefined))?.trim();
+   guard();if(!to)return {cancelled:true};
+   if(to===from)return {renamed:false,reason:"unchanged"};
+   await mutateProfilesFile(profilesFile,current=>{
+    guard();return renameProfile(current,from,to);
+   });guard();
+   try{const fb=await readProfileFallbacksFile(profileFallbacksFile);guard();
+    const renamed=renameProfileFallbacks(fb,from,to);
+    if(renamed!==fb)await writeProfileFallbacksFile(profileFallbacksFile,renamed);guard();
+   }catch{/* fallback file absent or invalid; profile rename still succeeded */}
+   return {renamed:true,from,to};
+  };
+  const deleteSavedProfile=async(ctx:CommandContext,guard:()=>void)=>{
+   const inventory=await readProfilesFile(profilesFile);guard();
+   const choices=inventory.profiles.map(p=>"Profile: "+p.name);
+   const selected=await nativeChoice(ctx,"Delete saved profile",[...choices,"Back"],guard);
+   if(selected===undefined||selected==="Back")return {cancelled:true};
+   const name=selected.slice("Profile: ".length);
+   if(inventory.active===name)return "Cannot delete the active profile. Switch to another profile first.";
+   if(typeof ctx.ui.confirm!=='function')return "Profile deletion requires interactive confirmation";
+   const approved=await ctx.ui.confirm("Delete profile",`Delete "${name}"? This cannot be undone.`);
+   guard();if(approved!==true)return {cancelled:true};
+   await mutateProfilesFile(profilesFile,current=>{
+    guard();return removeProfile(current,name);
+   });guard();
+   try{const fb=await readProfileFallbacksFile(profileFallbacksFile);guard();
+    const cleaned=removeProfileFallbacks(fb,name);
+    if(cleaned!==fb)await writeProfileFallbacksFile(profileFallbacksFile,cleaned);guard();
+   }catch{/* fallback file absent or invalid; profile deletion still succeeded */}
+   return {deleted:true,name};
+  };
   registerData("asen-profiles",{description:"Open native profile access, or inspect/apply: show | session <profile> | session --inherit | global <profile>",handler:async(args:string|undefined,ctx:CommandContext|undefined,publication:(guard:()=>void)=>void)=>{
    if((args??"").trim()||ctx?.mode!=="tui"||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return profileAction(args,ctx);
    const guard=await nativeAccessScope(ctx);publication(guard);
    for(;;){
-    const action=await nativeChoice(ctx,"ASEN profiles",["Use this session","Make default","Restore captured inheritance","Create saved profile","Edit saved profile","Edit fallback chain (ASEN parent)","Back"],guard);
+    const action=await nativeChoice(ctx,"ASEN profiles",["Use this session","Make default","Restore captured inheritance","Create saved profile","Edit saved profile","Rename saved profile","Delete saved profile","Edit fallback chain (ASEN parent)","Back"],guard);
     if(action===undefined||action==="Back")return {cancelled:true};
     if(action==="Create saved profile")return createSavedProfile(ctx,guard);
     if(action==="Edit saved profile")return editSavedProfile(ctx,guard);
+    if(action==="Rename saved profile")return renameSavedProfile(ctx,guard);
+    if(action==="Delete saved profile")return deleteSavedProfile(ctx,guard);
     if(action==="Edit fallback chain (ASEN parent)")return editSavedFallbackChain(ctx,guard);
     if(action==="Restore captured inheritance")return profileAction("session --inherit",ctx,guard);
     const file=await readProfilesFile(profilesFile);guard();
