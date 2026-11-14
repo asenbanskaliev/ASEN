@@ -1,6 +1,7 @@
 import type {Theme} from "@earendil-works/pi-coding-agent";
 import type {KeybindingsManager,TuiMouseEvent,TuiMouseEventResult} from "@earendil-works/pi-tui";
 import type {RegisteredCommand} from "./command-palette.js";
+import {CURATED_PALETTE_GROUPS,COMMAND_SHORTCUT_HINTS} from "./command-catalog.js";
 import {truncateForTerminal,visibleWidth} from "./responsive-layout.js";
 
 export interface NativeCommandPaletteControls{
@@ -37,8 +38,19 @@ function rank(entry:Entry,query:string):number|undefined{
 }
 /** Pure interaction-local ui.custom component; the host owns snapshot/cap/overlay. */
 export function createNativeCommandPalette(entries:readonly Entry[],controls:NativeCommandPaletteControls):NativeCommandPaletteComponent{
+ // Build curated-then-dynamic ordering with shortcut hints
+ const curatedNames=new Set(CURATED_PALETTE_GROUPS.flatMap(g=>g.commands));
+ const byName=new Map(entries.map(e=>[e.name,e]));
+ const orderedEntries:Entry[]=[];
+ for(const group of CURATED_PALETTE_GROUPS){
+  for(const name of group.commands){
+   const entry=byName.get(name);
+   if(entry)orderedEntries.push(entry);
+  }
+ }
+ for(const entry of entries)if(!curatedNames.has(entry.name))orderedEntries.push(entry);
  const groups=new Map<string,Entry[]>();
- for(const entry of entries){
+ for(const entry of orderedEntries){
   if(!groups.has(entry.group))groups.set(entry.group,[]);
   groups.get(entry.group)!.push(entry);
  }
@@ -101,9 +113,11 @@ export function createNativeCommandPalette(entries:readonly Entry[],controls:Nat
    if("heading" in row)body.push(paint(row.heading,"accent",true));
    else{
     const focus=row.index===selected;
-    if(visibleWidth(truncateForTerminal("  "+row.entry.label,cols))>2)hits.push({y:2+body.length,index:row.index});
-    body.push(paint((focus?"> ":"  ")+row.entry.label,focus?"accent":"text",false,focus));
-    if(focus)visibleSelection=visibleWidth(truncateForTerminal("> "+row.entry.label,cols))>2;
+    const shortcut=COMMAND_SHORTCUT_HINTS.get(row.entry.name);
+    const displayLabel=shortcut?`${row.entry.label}  [${shortcut}]`:row.entry.label;
+    if(visibleWidth(truncateForTerminal("  "+displayLabel,cols))>2)hits.push({y:2+body.length,index:row.index});
+    body.push(paint((focus?"> ":"  ")+displayLabel,focus?"accent":"text",false,focus));
+    if(focus)visibleSelection=visibleWidth(truncateForTerminal("> "+displayLabel,cols))>2;
    }
   }
   if(!items.length)body.push(paint("No commands match","muted"));

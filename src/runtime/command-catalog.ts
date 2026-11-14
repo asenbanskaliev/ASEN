@@ -40,3 +40,17 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
 ] as const;
 export function implementedCommands(){return ASEN_COMMAND_CATALOG.filter(c=>c.implemented).map(c=>c.name);}
 export function missingCommands(){return ASEN_COMMAND_CATALOG.filter(c=>!c.implemented).map(c=>c.name);}
+
+export const CURATED_PALETTE_GROUPS:readonly{title:string;commands:readonly string[]}[]=[
+ {title:"Session",commands:["asen-status","asen-agents","asen-todos","asen-changes","asen-history","asen-panel"]},
+ {title:"Configuration",commands:["asen-profiles","asen-persona","asen-mode","asen-customize","asen-language","asen-banner","asen-presentation"]},
+ {title:"Diagnostics",commands:["asen-doctor","asen-stats","asen-usage","asen-telemetry","asen-integrations"]},
+ {title:"Workflow",commands:["asen-plan","asen-route","asen-review","asen-accept-review","asen-memory","asen-commands","asen-skill-registry"]},
+];
+
+export const COMMAND_SHORTCUT_HINTS:ReadonlyMap<string,string>=new Map([
+ ["asen-palette","alt+k"],
+ ["asen-changes-view","alt+g"],
+ ["asen-usage","alt+u"],
+ ["asen-agents","alt+a"],
+]);
