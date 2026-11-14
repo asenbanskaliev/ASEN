@@ -10,7 +10,7 @@ import {matchesIssuedSkillContext,isIssuedSkillContext} from "../skills/context.
 import {selectSkills} from "../skills/registry.js";
 import {isThinking} from "./profiles.js";
 
-const SCHEMA="asen.agents/v1" as const,MAX_RECORDS=2000,MAX_EVENTS=20000,MAX_PROMPT=32000,MAX_OUTPUT=1_000_000;
+const SCHEMA="asen.agents/v1" as const,MAX_RECORDS=2000,MAX_EVENTS=20000,MAX_PROMPT=32000,MAX_OUTPUT=1_000_000,MAX_QUESTION=8000;
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Agent task cancelled");error.name="AbortError";throw error;}}
 type AgentRole=AgentRequest["role"];
 export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;ownerProcessId?:number;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;continuationOf?:string;dedupeKey?:string; }
@@ -18,6 +18,32 @@ export interface AgentExecutionReceipt{ id:string;ok:true;output:string;sha256:s
 export interface AgentStateEvent{ id:string;revision:number;state:PublicAgentRecord["state"];at:string;summary?:string; }
 export interface AgentStoreEntry{ record:PublicAgentRecord;request:AgentTaskSpec;events:AgentStateEvent[];result?:AgentExecutionReceipt; }
 export interface AgentStoreFile{schema:typeof SCHEMA;revision:number;entries:AgentStoreEntry[];}
+/** Question-channel state. The shared lifecycle union still models only the six original states, so "waiting" is widened inside this durable store alone. */
+export type AgentStoreState=PublicAgentRecord["state"]|"waiting";
+export interface AgentPendingQuestion{id:string;text:string;askedAt:number;}
+type DurableAgentRecord=Omit<PublicAgentRecord,"state">&{state:AgentStoreState;pendingQuestion?:AgentPendingQuestion};
+const PERSISTED_STATES:readonly string[]=["queued","running","waiting","interrupted","cancelled","failed","completed"];
+const AGENT_TRANSITIONS:Record<AgentStoreState,AgentStoreState[]>={queued:["running","interrupted","cancelled","failed"],running:["waiting","interrupted","cancelled","failed","completed"],waiting:["running","cancelled","interrupted"],interrupted:["cancelled"],cancelled:[],failed:[],completed:["interrupted"]};
+/** One bounded single-line question or reply; terminal sanitization belongs to the display layer. */
+const isQuestionLine=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=MAX_QUESTION&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
+const waitingOf=(record:PublicAgentRecord):AgentStoreState=>record.state as AgentStoreState;
+function pendingQuestionValue(v:unknown):v is AgentPendingQuestion{if(!v||typeof v!=="object"||Array.isArray(v)||!exact(v,["id","text","askedAt"]))return false;// SAFETY: exact validated the complete persisted pending-question key set before the field checks below.
+ const q=v as unknown as AgentPendingQuestion;return identifier(q.id)&&isQuestionLine(q.text)&&Number.isSafeInteger(q.askedAt)&&q.askedAt>0;}
+/** Applies one lifecycle leg. Waiting legs reuse the guards transitionAgent applies because the shared lifecycle module does not model the question channel. */
+function moveAgent(record:PublicAgentRecord,next:AgentStoreState,at:string,summary?:string,question?:AgentPendingQuestion):PublicAgentRecord{
+ const source=waitingOf(record);
+ if(source!=="waiting"&&next!=="waiting")return transitionAgent(record,next,at,summary);
+ if(!AGENT_TRANSITIONS[source]?.includes(next))throw new Error("Invalid agent transition; a waiting child can only resume, be cancelled, or be interrupted for review");
+ const atTime=Date.parse(at),currentTime=Date.parse(record.updatedAt);
+ if(!Number.isFinite(atTime)||!Number.isFinite(currentTime))throw new Error("Invalid agent transition timestamp");
+ if(atTime<currentTime)throw new Error("Agent transition is stale");
+ const moved=structuredClone(record) as DurableAgentRecord;
+ delete moved.pendingQuestion;
+ moved.state=next;moved.updatedAt=at;
+ if(summary!==undefined)moved.summary=summary;
+ if(question!==undefined)moved.pendingQuestion=question;
+ return moved as PublicAgentRecord;
+}
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).length===keys.length&&keys.every(k=>Object.hasOwn(v,k));
 const identifier=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function specFrom(request:AgentRequest&{dedupeKey?:string},createdAt:string,controlledWorker=false):AgentTaskSpec{
@@ -50,17 +76,19 @@ function processIsAlive(pid:number):boolean{
 }
 function receiptDigest(key:Buffer,entry:AgentStoreEntry,output:string):string{return createHmac("sha256",key).update(JSON.stringify([entry.record.id,entry.record.owner,entry.record.sessionId,entry.record.projectId,entry.request,output])).digest("hex");}
 function validAgentHistory(events:AgentStateEvent[],record:PublicAgentRecord):boolean{
- const transitions:Record<PublicAgentRecord["state"],PublicAgentRecord["state"][]>={queued:["running","interrupted","cancelled","failed"],running:["interrupted","cancelled","failed","completed"],interrupted:["cancelled"],cancelled:[],failed:[],completed:["interrupted"]};
- for(let i=0;i<events.length;i++){const current=events[i]!;if(current.revision!==i+1||current.id!==record.id||typeof current.at!=="string"||!Number.isFinite(Date.parse(current.at)))return false;if(i===0){if(current.state!=="queued"||current.at!==record.createdAt)return false;}else{const previous=events[i-1]!;if(!transitions[previous.state]?.includes(current.state)||Date.parse(current.at)<Date.parse(previous.at))return false;if(previous.state==="completed"&&(current.state!=="interrupted"||current.summary!=="Unverified completion after restart; explicit review is required"))return false;}}
+ for(let i=0;i<events.length;i++){const current=events[i]!;if(current.revision!==i+1||current.id!==record.id||typeof current.at!=="string"||!Number.isFinite(Date.parse(current.at)))return false;if(i===0){if(current.state!=="queued"||current.at!==record.createdAt)return false;}else{const previous=events[i-1]!;if(!AGENT_TRANSITIONS[previous.state]?.includes(current.state)||Date.parse(current.at)<Date.parse(previous.at))return false;if(previous.state==="completed"&&(current.state!=="interrupted"||current.summary!=="Unverified completion after restart; explicit review is required"))return false;}}
  const last=events.at(-1);return !!last&&last.state===record.state&&last.at===record.updatedAt&&last.summary===record.summary;
 }
 function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false):v is AgentStoreEntry{
  if(!v||typeof v!=="object"||Array.isArray(v))return false;const keys=["record","request","events",...(Object.hasOwn(v,"result")?["result"]:[])];if(!exact(v,keys))return false;
  // SAFETY: entryValue validates the complete entry shape and all nested fields before returning true.
- const x=v as unknown as AgentStoreEntry,r=x.record;if(!r||!exact(r,["id","role","owner","sessionId","projectId","state","createdAt","updatedAt",...(Object.hasOwn(r,"summary")?["summary"]:[])])||!exact(r.owner,["kind","id"])||!specValue(x.request)||x.request.id!==r.id||x.request.role!==r.role||x.request.isolationKey!==r.sessionId||x.request.repository!==r.projectId||!Array.isArray(x.events)||x.events.length<1||x.events.length>MAX_EVENTS)return false;
+ const x=v as unknown as AgentStoreEntry,r=x.record;if(!r||!exact(r,["id","role","owner","sessionId","projectId","state","createdAt","updatedAt",...(Object.hasOwn(r,"summary")?["summary"]:[]),...(Object.hasOwn(r,"pendingQuestion")?["pendingQuestion"]:[])])||!exact(r.owner,["kind","id"])||!specValue(x.request)||x.request.id!==r.id||x.request.role!==r.role||x.request.isolationKey!==r.sessionId||x.request.repository!==r.projectId||!Array.isArray(x.events)||x.events.length<1||x.events.length>MAX_EVENTS)return false;
  try{createAgentRecord({id:r.id,role:r.role,owner:r.owner,sessionId:r.sessionId,projectId:r.projectId,createdAt:r.createdAt});}catch{return false;}
- if(!identifier(r.id)||!(["queued","running","interrupted","cancelled","failed","completed"] as unknown[]).includes(r.state)||typeof r.updatedAt!=="string"||!Number.isFinite(Date.parse(r.updatedAt))||(r.summary!==undefined&&(typeof r.summary!=="string"||r.summary.length>MAX_OUTPUT)))return false;
- if(x.events.some((event,i)=>!exact(event,["id","revision","state","at",...(Object.hasOwn(event,"summary")?["summary"]:[])])||event.id!==r.id||event.revision!==i+1||!(["queued","running","interrupted","cancelled","failed","completed"] as unknown[]).includes(event.state)||typeof event.at!=="string"||!Number.isFinite(Date.parse(event.at))||(event.summary!==undefined&&(typeof event.summary!=="string"||event.summary.length>MAX_OUTPUT))))return false;
+ if(!identifier(r.id)||!PERSISTED_STATES.includes(r.state)||typeof r.updatedAt!=="string"||!Number.isFinite(Date.parse(r.updatedAt))||(r.summary!==undefined&&(typeof r.summary!=="string"||r.summary.length>MAX_OUTPUT)))return false;
+ // SAFETY: the durable record projection reuses the exact key set and timestamp validated above for the pending question leg.
+ const durable=r as unknown as DurableAgentRecord,question=durable.pendingQuestion;
+ if(Object.hasOwn(r,"pendingQuestion")!==(durable.state==="waiting")||question!==undefined&&(durable.state!=="waiting"||!pendingQuestionValue(question)||question.askedAt>Date.parse(durable.updatedAt)))return false;
+ if(x.events.some((event,i)=>!exact(event,["id","revision","state","at",...(Object.hasOwn(event,"summary")?["summary"]:[])])||event.id!==r.id||event.revision!==i+1||!PERSISTED_STATES.includes(event.state)||typeof event.at!=="string"||!Number.isFinite(Date.parse(event.at))||(event.summary!==undefined&&(typeof event.summary!=="string"||event.summary.length>MAX_OUTPUT))))return false;
  if(!validAgentHistory(x.events,r))return false;
  if(x.result!==undefined){const result=x.result,shape=!!receiptKey&&exact(result,["id","ok","output","sha256"])&&result.id===r.id&&result.ok===true&&typeof result.output==="string"&&result.output.length<=MAX_OUTPUT&&typeof result.sha256==="string"&&/^[a-f0-9]{64}$/u.test(result.sha256);let authenticated=false;if(shape){const expected=Buffer.from(receiptDigest(receiptKey!,x,result.output),"hex"),actual=Buffer.from(result.sha256,"hex");authenticated=actual.length===expected.length&&timingSafeEqual(actual,expected);}if(!authenticated&&!(allowUnverifiedCompletion&&r.state==="completed"))return false;}
  if(allowUnverifiedCompletion&&r.state==="completed"&&x.events.at(-1)?.state==="completed")return true;
@@ -183,12 +211,33 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  }
  async failed(id:string,summary?:string,at=this.now()):Promise<void>{await this.#move(id,"failed",summary,at);}
  async cancelled(id:string,summary?:string,at=this.now()):Promise<void>{await this.#move(id,"cancelled",summary,at);}
- async #move(id:string,state:Exclude<PublicAgentRecord["state"],"queued"|"completed">,summary:string|undefined,at:string):Promise<void>{let updated:PublicAgentRecord|undefined;await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");updated=transitionAgent(entry.record,state,at,summary);entry.record=updated;entry.events.push(event(updated,entry.events.length+1));});if(updated)this.#records.set(id,structuredClone(updated));}
+ /** Child-to-parent question channel: durably parks one running child in waiting with exactly one bounded question. */
+ async askQuestion(id:string,sessionId:string,project:string,questionText:string):Promise<boolean>{return this.#question(id,sessionId,project,questionText,"ask");}
+ /** Parent-to-child reply: resumes the waiting child and forgets the answered question; the answer itself is not persisted. */
+ async answerQuestion(id:string,sessionId:string,project:string,answer:string):Promise<boolean>{return this.#question(id,sessionId,project,answer,"answer");}
+ async #question(id:string,sessionId:string,project:string,text:string,mode:"ask"|"answer"):Promise<boolean>{
+  if(!identifier(id)||!identifier(sessionId)||!identifier(project))throw new Error("Invalid agent question identity");
+  if(!isQuestionLine(text))throw new Error(mode==="ask"?"Invalid agent question; one bounded single line is required":"Invalid agent answer; one bounded single line is required");
+  const at=this.now();if(!Number.isFinite(Date.parse(at)))throw new Error("Invalid agent question timestamp");
+  let updated:PublicAgentRecord|undefined;
+  await this.#mutate(data=>{
+   const entry=data.entries.find(x=>x.record.id===id&&x.record.sessionId===sessionId&&sameWorkspaceIdentityPath(x.record.projectId,project));
+   if(!entry)return;
+   const asking=mode==="ask";
+   if(waitingOf(entry.record)!==(asking?"running":"waiting"))return;
+   const next=asking?moveAgent(entry.record,"waiting",at,undefined,{id:`question-${randomUUID()}`,text,askedAt:Date.parse(at)}):moveAgent(entry.record,"running",at);
+   updated=next;entry.record=next;entry.events.push(event(next,entry.events.length+1));
+  });
+  if(updated)this.#records.set(id,structuredClone(updated));
+  return !!updated;
+ }
+ async #move(id:string,state:Exclude<PublicAgentRecord["state"],"queued"|"completed">,summary:string|undefined,at:string):Promise<void>{let updated:PublicAgentRecord|undefined;await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");updated=moveAgent(entry.record,state,at,summary);entry.record=updated;entry.events.push(event(updated,entry.events.length+1));});if(updated)this.#records.set(id,structuredClone(updated));}
  async #mutate(change:(data:AgentStoreFile)=>void,signal?:AbortSignal):Promise<void>{throwIfCancelled(signal);await preparePrivateFile(this.path,true);throwIfCancelled(signal);try{await withExclusiveFileLock(this.path,async()=>{throwIfCancelled(signal);const data=await read(this.path,this.#receiptKey);throwIfCancelled(signal);change(data);if(data.entries.length>MAX_RECORDS)throw new Error("ASEN agent store has reached its record limit");const next=parseAgentStore(JSON.stringify({...data,revision:data.revision+1}),this.#receiptKey);throwIfCancelled(signal);
    // After the atomic write begins, let it finish or fail; the destination changes only at rename.
    await write(this.path,next);
   },30000,signal);}catch(error){throwIfCancelled(signal);throw error;}}
- async #recover():Promise<void>{let recovered:PublicAgentRecord[]|undefined;await this.#mutate(data=>{const at=this.now();for(const entry of data.entries){const record=entry.record;if((record.state==="running"||record.state==="queued")&&entry.request.ownerProcessId!==undefined&&processIsAlive(entry.request.ownerProcessId))continue;if(record.state==="running"||record.state==="queued"){const next=record.state==="running"?recoverAgentLifecycleRecords([record],at)[0]!:transitionAgent(record,"interrupted",at,"Queued task was not dispatched before process restart; explicit authorization required to resume");entry.record=next;entry.events.push(event(next,entry.events.length+1));}
+ async #recover():Promise<void>{let recovered:PublicAgentRecord[]|undefined;await this.#mutate(data=>{const at=this.now();for(const entry of data.entries){const record=entry.record,source=waitingOf(record);if((source==="running"||source==="queued"||source==="waiting")&&entry.request.ownerProcessId!==undefined&&processIsAlive(entry.request.ownerProcessId))continue;if(source==="running"||source==="queued"){const next=source==="running"?recoverAgentLifecycleRecords([record],at)[0]!:transitionAgent(record,"interrupted",at,"Queued task was not dispatched before process restart; explicit authorization required to resume");entry.record=next;entry.events.push(event(next,entry.events.length+1));}
+ else if(source==="waiting"){const next=moveAgent(record,"interrupted",at,"Waiting agent lost its pending question during process restart; explicit authorization required to resume");entry.record=next;entry.events.push(event(next,entry.events.length+1));}
   }recovered=data.entries.map(x=>x.record);});for(const record of recovered??[])this.#records.set(record.id,structuredClone(record));}
  /** Returns a request that is safe to resume; authority-bearing requests always need fresh admission. */
  resumable(entry:AgentStoreEntry):AgentRequest|undefined{
