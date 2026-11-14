@@ -14,12 +14,15 @@ import {launchManagedSelectedVersion} from "./runtime/managed-selected-launch.js
 import {createManagedUpdatePreview} from "./runtime/managed-update-preview.js";
 import {runLifecycleCommand} from "./runtime/lifecycle-cli.js";
 import {stageManagedAcquisitionUpdate} from "./runtime/managed-acquisition-update.js";
+import {renderCliUsage} from "./runtime/cli-usage.js";
+import {renderStartupFlow} from "./runtime/startup-flow.js";
 
 export function launcherPackageRoot():string{return path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");}
-export const ASEN_HELP=`Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home [--link|--isolated|--home PATH]\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes  Stage local bytes only; no selection or execution\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen managed install|upgrade|rollback|uninstall|release …  Signed install lifecycle (see docs/installation.md)\n       asen backup home --destination <absolute-file> | backup verify --file <file> | restore home --backup <file> --target-home <dir> --yes\n       asen --version\n`;
+export const ASEN_HELP=renderCliUsage();
 const BACKUP_PREVIEW_USAGE="Unsupported ASEN backup project-memory command. Expected: backup project-memory --project <project-id> --destination <absolute-path> --dry-run.\n";
 const DOCTOR_USAGE="Unsupported ASEN doctor command. Expected: [--link|--isolated|--home PATH] [--package-root PATH] doctor.\n";
 const DOCTOR_INCOMPLETE="Installation doctor could not complete all metadata observations.\n";
+const STARTUP_USAGE="Unsupported ASEN startup command. Expected: asen startup.\n";
 const MANAGED_SELECT_USAGE="Unsupported ASEN managed select command. Expected: managed select <exact-target-version> --expected-current <exact-current-version>.\n";
 const MANAGED_SELECT_NOT_CONFIRMED="Managed version selection is not confirmed; inspect the reported state before retrying.\n";
 const MANAGED_UPDATE_USAGE="Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n";
@@ -79,6 +82,11 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
  const packageRoot=parsed.packageRoot??launcherPackageRoot();
  if(parsed.help){stdout(ASEN_HELP);return 0;}
  if(parsed.version){stdout("0.1.0\n");return 0;}
+ // A read-only projection of the startup order. It decides nothing and launches nothing.
+ if(parsed.command==="startup"){
+  if(parsed.commandArgs.length){stderr(STARTUP_USAGE);return 2;}
+  stdout(renderStartupFlow().join("\n")+"\n");return 0;
+ }
  if(parsed.command==="setup"){
   if(parsed.commandArgs.some(argument=>argument!=="--dry-run"&&argument!=="--yes")){stderr("Unsupported ASEN setup arguments.\n");return 2;}
   if(!parsed.commandArgs.includes("--dry-run")){stderr("ASEN setup execution is not available yet; use --dry-run to inspect the plan.\n");return 2;}

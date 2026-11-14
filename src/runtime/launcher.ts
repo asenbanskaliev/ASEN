@@ -5,7 +5,7 @@ export const PI_SUBCOMMANDS=["install","remove","uninstall","update","list","con
 export type AsenHomeMode="link"|"isolated"|"path";
 export type AsenHomeSource="flag"|"config"|"environment"|"default";
 export type AsenLauncherConfig={mode:"link"}|{mode:"isolated"}|{mode:"path";dir:string};
-export interface ParsedAsenArgs{link:boolean;isolated:boolean;home?:string|undefined;packageRoot?:string|undefined;help:boolean;version:boolean;command?:"home"|"setup"|undefined;commandArgs:string[];passthrough:string[];piSubcommand?:string|undefined;error?:string|undefined}
+export interface ParsedAsenArgs{link:boolean;isolated:boolean;home?:string|undefined;packageRoot?:string|undefined;help:boolean;version:boolean;command?:"home"|"setup"|"startup"|undefined;commandArgs:string[];passthrough:string[];piSubcommand?:string|undefined;error?:string|undefined}
 export type ManagedRunArgs=
  |Readonly<{kind:"none"}>
  |Readonly<{kind:"invalid"}>
@@ -123,7 +123,7 @@ export function parseManagedSelectArgs(argv:readonly string[]):ManagedSelectArgs
 }
 export function parseAsenArgs(argv:readonly string[]):ParsedAsenArgs{
  const homeCommand=argv[0]==="home";
- let link=false,isolated=false,home:string|undefined,packageRoot:string|undefined,help=false,version=false,error:string|undefined,command:"setup"|undefined,commandArgs:string[]=[],piSubcommand:string|undefined;const passthrough:string[]=[];
+ let link=false,isolated=false,home:string|undefined,packageRoot:string|undefined,help=false,version=false,error:string|undefined,command:"setup"|"startup"|undefined,commandArgs:string[]=[],piSubcommand:string|undefined;const passthrough:string[]=[];
  for(let i=homeCommand?1:0;i<argv.length;i++){const arg=argv[i]!;
   // A leading home query adopts only existing selectors, not other command modes.
   if(homeCommand){
@@ -136,7 +136,7 @@ export function parseAsenArgs(argv:readonly string[]):ParsedAsenArgs{
   if(arg==="--home"){const value=argv[++i];if(!value)error="--home requires a non-empty path";else home=value;continue;}
   if(arg.startsWith("--package-root=")){packageRoot=arg.slice(15)||undefined;if(!packageRoot)error="--package-root requires a non-empty path";continue;}
   if(arg==="--package-root"){const value=argv[++i];if(!value)error="--package-root requires a non-empty path";else packageRoot=value;continue;}
-  if(arg==="setup"&&!passthrough.length){command="setup";commandArgs=[...argv.slice(i+1)];break;}
+  if((arg==="setup"||arg==="startup")&&!passthrough.length){command=arg;commandArgs=[...argv.slice(i+1)];break;}
   if(!passthrough.length&&isPiCommand(arg))piSubcommand=arg;passthrough.push(arg);
  }
  if(!error){if(link&&isolated)error="--link and --isolated are mutually exclusive";else if(link&&home)error="--link and --home are mutually exclusive";else if(isolated&&home)error="--isolated and --home are mutually exclusive";}
