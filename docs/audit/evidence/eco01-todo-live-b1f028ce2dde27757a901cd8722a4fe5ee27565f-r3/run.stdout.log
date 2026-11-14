@@ -1,0 +1,46 @@
+{
+  "report": "/workspace/scratch/2930ae49a776/ASEN/docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+  "summary": {
+    "executed": 5,
+    "statuses": {
+      "EQUIVALENT": 0,
+      "DIVERGENT": 0,
+      "INTENTIONAL": 3,
+      "NOT_APPLICABLE": 0,
+      "UNVERIFIED": 2
+    },
+    "overall": "UNVERIFIED",
+    "limitations": [
+      "This probes core state operations, not the complete Pi 1.1 extension lifecycle.",
+      "No direct ASEN counterpart was established for source whole-list write/clear.",
+      "Registration, denied-context and full tool-output scenarios remain open."
+    ]
+  },
+  "observations": [
+    {
+      "scenario": "normal",
+      "sha256": "8a5eae566e431678cb1604ea5a0a37ff6c80531d50f31e2463a824513340a244",
+      "status": "UNVERIFIED"
+    },
+    {
+      "scenario": "invalid-input",
+      "sha256": "437b37d0dbbdf7b840aeb50d4fee4ad9440d0c3bff665fdcd3876d13ec61a7e6",
+      "status": "INTENTIONAL"
+    },
+    {
+      "scenario": "restart-recovery",
+      "sha256": "1a3ebe8141b6de798f5a2e44c77168b7788efaa97034bcdc096edd6f542ee072",
+      "status": "INTENTIONAL"
+    },
+    {
+      "scenario": "duplicate-request",
+      "sha256": "ce23b33ff75c03797dacc2874d528ea910319e116e3485abf92770ecd5daad70",
+      "status": "INTENTIONAL"
+    },
+    {
+      "scenario": "atomic-write-failure",
+      "sha256": "2fa01d58043c625d33c77b828f727a7b52508da1b8655d42d6b56d185ec60592",
+      "status": "UNVERIFIED"
+    }
+  ]
+}

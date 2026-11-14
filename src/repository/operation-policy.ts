@@ -1,3 +1,5 @@
+import {isProxy} from "node:util/types";
+
 export const REPOSITORY_OPERATION_ACTIONS=["remote_read","issue_create","issue_update","branch_create","commit","push","pr_open","pr_update","label_mutate","merge","force_update"] as const;
 export type RepositoryOperationAction=typeof REPOSITORY_OPERATION_ACTIONS[number];
 export type MutationAction=Exclude<RepositoryOperationAction,"remote_read">;
@@ -19,7 +21,7 @@ function normalizedHost(value:unknown):string{
 }
 function exactBinding(input:RepositoryOperationBinding):RepositoryOperationBinding{
  const names=["host","owner","repository","sessionId","actor","action"] as const;
- if(typeof input!=="object"||input===null||Array.isArray(input)||Object.getPrototypeOf(input)!==Object.prototype)throw new Error("Binding must be exact plain data");
+ if(isProxy(input)||typeof input!=="object"||input===null||Array.isArray(input)||Object.getPrototypeOf(input)!==Object.prototype)throw new Error("Binding must be exact plain data");
  const keys=Reflect.ownKeys(input);if(keys.length!==names.length||keys.some(key=>typeof key!=="string"||!names.includes(key as typeof names[number]))||names.some(key=>!Object.hasOwn(input,key)))throw new Error("Binding must be exact plain data");
  const values:Record<string,unknown>={};for(const name of names){const descriptor=Object.getOwnPropertyDescriptor(input,name);if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Binding must be exact plain data");values[name]=descriptor.value;}
  const action=values.action;if(!(REPOSITORY_OPERATION_ACTIONS as readonly unknown[]).includes(action))throw new Error("Action must be supported and exact");

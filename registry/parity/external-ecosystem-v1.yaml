@@ -1,4 +1,6 @@
 audit:
+  scope: historical-phase10-primitive-inventory
+  current_strict_claims: registry/parity/ecosystem-claims-v1.json
   asen: 3c76ed7aa9be124288397ca8baf35ceacfe5889c
   reference_a: fe61793e7cb3e75462ba53c7631e87d78e989354
   reference_b: a9e36e9b8a4d7885244466cd9ea6cc3ad330a69b

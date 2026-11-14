@@ -1,0 +1,64 @@
+{
+  "schema": "asen.local-remote-work-unit-map/v1",
+  "repository": "asenbanskaliev/ASEN",
+  "base": "fe0344f87fe9d4e6d425b2d92e4d2dcd15b67cac",
+  "claimsPromotion": false,
+  "nativeApproval": false,
+  "units": [
+    {
+      "local": "e6e7897f4513efb40ee0744b86291a3709d2ef02",
+      "remote": "136c759737455871cc28ff852ff697c68fc6a508",
+      "tree": "f10bc202bd0f53a7f1968416aeed32ad84483384"
+    },
+    {
+      "local": "85b028d7cd6c6d8c5c690ea1e75e4ecc9e032e01",
+      "remote": "240b21708c1675978fd5ccdb4d1fbef817aba9ae",
+      "tree": "62a483a47c1c947639560229dc28cf472d6dde15"
+    },
+    {
+      "local": "927e917669b8ce9e0db94bb52dbfa7e96050c931",
+      "remote": "ecbcb77a66b310ed9cd4a20a2e1908378b91ddbb",
+      "tree": "8eea1f56476fef99065a530b8dd993e57f27b045"
+    },
+    {
+      "local": "d64e95b9a31d91af5a72e418e2212c05fc81a535",
+      "remote": "4484726b8e076d58204172a9dc2cc69cb8202ec8",
+      "tree": "a1f79b721199b8ff5f34dfff06bb5ae78ad3f6d0"
+    },
+    {
+      "local": "ef194f29566fb590c5e979e7c1f31c4c0b5ceb32",
+      "remote": "86c35880aba77b9a50519a42672f35e0268e3633",
+      "tree": "b4ba0380e84fff23538fc25c106e58994d11c8a9"
+    },
+    {
+      "local": "b5205a035f3045289cddbf42bcafb5c4f8c2e773",
+      "remote": "9ae7303da5dfb5544190105c8dc13862b1d6d08f",
+      "tree": "f65b62f10b9bb48235e44e74ed3fec6548aeea61"
+    },
+    {
+      "local": "907365a3b53e8ce3850f5543984938b5fa13f264",
+      "remote": "da96fae3c56028f5952e7a7580958f16ea6ad387",
+      "tree": "6f7ab1b1b5ae96e25aedd5d97fcd7a51364d2c36"
+    },
+    {
+      "local": "4a9b3168c04c477b4c4b14aa0deaa8aaa0288c5e",
+      "remote": "bdf5ecfde7b3bfe89fe510768a2ee9a3e733a44e",
+      "tree": "ad8974d578774c5ecbcc1b021babf795f8ee092d"
+    },
+    {
+      "local": "5b0e014541e57017e82643e3cfbccf12ad15088c",
+      "remote": "97856fb34c9e4977bc004956a232bfd54547a778",
+      "tree": "98099d8619708779685588a66dae7efcbe5dedcb"
+    },
+    {
+      "local": "12b0c52eacf566e714e4353e0b6d3deb7ff01d7e",
+      "remote": "8647bef6a17b608b3e898069bfca1d701740b405",
+      "tree": "1fe3aebabcb256d3e0b282c701fb371a6ddbb25a"
+    },
+    {
+      "local": "1d97c4715223dbff458ed1dd2dd773356f1dd735",
+      "remote": "da15c2fc9b42a89f627c0fe1fd45fed2436c4ee3",
+      "tree": "e5c09c5972aa6a51dd9d99dcfb1dd7fc358acab0"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "classification": "INTENTIONAL",
+  "reason": "Both reject whitespace-only titles and preserve an empty task list; ASEN exposes rejection by throwing while the source returns an error result.",
+  "source": {
+    "input": {
+      "action": "add",
+      "title": "   "
+    },
+    "error": "title is required",
+    "resultText": "Error: title is required",
+    "state": {
+      "tasks": [],
+      "nextId": 1,
+      "updatedTurn": null
+    }
+  },
+  "asen": {
+    "input": {
+      "method": "add",
+      "title": "   "
+    },
+    "error": "Invalid ASEN Todo task",
+    "rows": [],
+    "storeFileExists": false,
+    "storeFileSha256": null
+  }
+}

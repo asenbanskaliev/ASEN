@@ -1,0 +1,12 @@
+External reference in tracked tree:
+AGENTS.md
+docs/remote-continuation.md
+docs/runtime-tools.md
+odd/handoffs/pi-capability-completion-resume.md
+odd/tasks/ecosystem-final-parity-map.md
+odd/tasks/pi-capability-completion.md
+odd/tasks/runtime-child-exit-repair.md
+src/security/destructive-command-guard.ts
+src/security/normal-shell-policy.ts
+src/security/shell-command-syntax.ts
+tests/persona.test.ts

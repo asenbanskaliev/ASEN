@@ -1,0 +1,10 @@
+{
+  "contractId": "ECO-SRC-91b70c5973297fbd:12",
+  "scenario": "denied",
+  "status": "INTENTIONAL",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "asenCommit": "2e8444c42429102a2294e86fd9277963c8850353",
+  "asenTree": "f5d267adbd97fe5a33d21964d174f9f6b1ed9484",
+  "evidenceSha256": "9cb613018ffd8f34e10fe4d7c8ca524347c86b9702fa4bd90f3f8e41e2fe4740",
+  "report": "/workspace/scratch/2930ae49a776/ASEN/docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/todo-authorization-pair.json"
+}

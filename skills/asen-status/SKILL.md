@@ -1,6 +1,10 @@
 ---
 name: asen-status
 description: "Trigger: continue change, phase status, next phase, lifecycle readiness. Resolve lifecycle state and next safe phase from authoritative artifacts and blockers."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use before continuing, applying, verifying or archiving structured work when phase readiness is not already issued.

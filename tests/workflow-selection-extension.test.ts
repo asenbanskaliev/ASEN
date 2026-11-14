@@ -2,8 +2,12 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import test from "node:test";
-import {createAsenExtension} from "../extensions/asen.js";
+import test,{after} from "node:test";
+import {createAsenExtension,createPiExtension} from "../extensions/asen.js";
+import {implementedCommands} from "../src/runtime/command-catalog.js";
+import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";
+import {type LifecycleApplicabilityInput,tddObligationFor} from "../src/lifecycle/applicability.js";
 import {claimWorkflowSelection,readWorkflowSelection,registerWorkflowSelectionCommand,type WorkflowSelectionChoice,type WorkflowSelectionConsumer} from "../src/lifecycle/workflow-selection.js";
 
 type Context={cwd:string;ui:{notify(message:string,level:"info"|"error"):void}};
@@ -19,14 +23,59 @@ function selectionRegistration(){
  return {commands,consumer};
 }
 function context(cwd:string){const notifications:Array<{message:string;level:"info"|"error"}>=[];return {ctx:{cwd,ui:{notify:(message:string,level:"info"|"error")=>notifications.push({message,level})}},notifications};}
-async function project(){return fs.mkdtemp(path.join(os.tmpdir(),"asen-workflow-selection-"));}
+const ownedProjectRoots:string[]=[];
+async function project(){
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),"asen-workflow-selection-"));
+ ownedProjectRoots.push(root);return root;
+}
+after(async()=>{for(const root of ownedProjectRoots)await fs.rm(root,{recursive:true,force:true});});
 async function select(command:Command,cwd:string,task="GSP-05I1-A"){return command.handler(`sdd ${task}`,context(cwd).ctx) as Promise<WorkflowSelectionChoice>;}
 function read(consumer:WorkflowSelectionConsumer,task:string,repository:string){return readWorkflowSelection(consumer,{taskIdentity:task,repositoryIdentity:repository});}
 function claim(consumer:WorkflowSelectionConsumer,choice:unknown,task:string,repository:string){return claimWorkflowSelection(consumer,choice,{taskIdentity:task,repositoryIdentity:repository});}
 
-await test("registered Pi handler issues one exact, deeply immutable task/repository choice",async()=>{
+await test("public ODD-only registration and discovery retire only the SDD selector",async()=>{
+ const {commands}=registration();
+ assert.equal(commands.has("asen-workflow"),false);
+ assert.equal(implementedCommands().filter(name=>name==="asen-task-agents").length,1);
+ assert.deepEqual([...commands.keys()].sort(),implementedCommands().filter(name=>name!=="asen-authority-status").sort());
+ const hub=await commands.get("asen-customize")!.handler("",context("").ctx) as {customize_surfaces:{name:string}[]};
+ assert.deepEqual(hub.customize_surfaces.map(row=>row.name),["asen-profiles","asen-persona","asen-mode","asen-history","asen-usage","asen-stats"]);
+});
+
+await test("public ODD-only production factory registers without a host SDD command",async t=>{
+ const root=await project(),commands=new Map<string,any>(),events=new Map<string,Function[]>();
+ const pi={on(name:string,handler:Function){events.set(name,[...(events.get(name)??[]),handler]);},registerCommand(name:string,command:unknown){commands.set(name,command);},registerTool(){},getCommands(){return [...commands.keys()].map(name=>({name,source:"extension"}));},getAllTools(){return [];}};
+ const ctx={...context(root).ctx,mode:"rpc",hasUI:false};
+ t.after(async()=>{for(const listener of events.get("session_shutdown")??[])await listener({},ctx);});
+ const prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
+ try{
+  createPiExtension({homeDir:()=>root,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi as never);
+  await events.get("session_start")![0]!({},ctx);
+  assert.equal(commands.has("asen-workflow"),false);
+  assert.equal(commands.size,36);
+  const rows=await commands.get("asen-commands")!.handler("",ctx);
+  assert.equal(rows,undefined,"production handlers notify rather than returning internal DTOs");
+  for(const name of ["asen-profiles","asen-persona","asen-plan","asen-route","asen-review"])assert.ok(commands.has(name));
+ }finally{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;}
+});
+
+await test("public ODD-only complex and high-risk work stays organic; flags cannot mint selection",async()=>{
+ const repository=await fs.realpath(await project()),candidate={id:"public-odd",repository,revision:"fixture-revision",createdAt:"now"};
+ const {facade}=registration(),paths=["a.ts","b.ts","c.ts","d.ts"];
+ for(const riskOperations of [[],["security_boundary" as const]])for(const override of [{},{explicitMode:"structured" as const},{requiredArtifacts:["proposal" as const]}]){
+  const decision=issueOddDecision({taskId:"public-odd",repository,paths,writes:[{path:"a.ts",changeKind:"behavior"}],riskOperations});
+  buildOrchestrationPlan({taskId:"public-odd",repository,prompt:"bounded work",candidate},decision);
+  const input:LifecycleApplicabilityInput={taskIdentity:"public-odd",repositoryIdentity:repository,candidate:{id:candidate.id,repository,revision:candidate.revision},explicitMode:"unspecified",affectedSubsystems:["runtime"],expectedPaths:paths,requiredArtifacts:[],...override};
+  const result=facade.decideLifecycleApplicability(decision,input);
+  assert.equal(result.outcome,Object.keys(override).length?"blocked":"organic");
+  if(result.outcome==="blocked")assert.deepEqual(result.reasons,["sdd-selection-required"]);
+  assert.equal(tddObligationFor(result).mode,"required");
+ }
+});
+
+await test("legacy internal handler issues one exact, deeply immutable task/repository choice",async()=>{
  const root=await project();
- const {commands}=registration(),{commands:selectionCommands,consumer}=selectionRegistration();assert.deepEqual([...commands.keys()],["asen","asen-skill-registry","asen-workflow"]);
+ const {commands:selectionCommands,consumer}=selectionRegistration();
  const command=selectionCommands.get("asen-workflow")!,observed=context(path.join(root,".","nested",".."));await fs.mkdir(path.join(root,"nested"));
  const choice=await command.handler("sdd GSP-05I1-A",observed.ctx) as WorkflowSelectionChoice,repository=await fs.realpath(root);
  assert.deepEqual(choice,{workflow:"sdd",source:"pi-command",taskIdentity:"GSP-05I1-A",repositoryIdentity:repository});

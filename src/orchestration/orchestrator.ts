@@ -7,19 +7,20 @@ import {
   type OddDerivedFacts,
   type OddRouteDecision,
 } from "../flow/odd-routing.js";
-import {selectSkills,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
-import {issueSkillContext} from "../skills/context.js";
+import {selectSkills,validateSkillSelectionProfile,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
+import {issueSkillContext,type IssuedSkillContext} from "../skills/context.js";
+import {isThinking,resolveRuntimeRoute,type ProfileLayer} from "../runtime/profiles.js";
 
-export interface OrchestrationInput {
+export interface OrchestrationInput extends Pick<SkillSelectionContext,"selectionProfile"> {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];
-  codeChange?:boolean; behaviorChange?:boolean; filesTouched?:number; candidate?:Candidate; skillPhase?:SkillPhase;
+  codeChange?:boolean; behaviorChange?:boolean; filesTouched?:number; candidate?:Candidate; skillPhase?:SkillPhase; runtimeProfiles?:ProfileLayer;
 }
 export interface OrchestrationRouteEvidence {
   readonly taskId:string; readonly repository:string; readonly candidateId:string; readonly candidateRevision:string;
   readonly decisionId:string; readonly route:OddRouteDecision["route"]; readonly risk:OddRouteDecision["risk"];
   readonly verification:OddRouteDecision["verification"];
 }
-export interface OrchestrationPlan { decision:OddRouteDecision; agents:AgentRequest[]; skills:SkillId[]; routeEvidence?:OrchestrationRouteEvidence; }
+export interface OrchestrationPlan { decision:OddRouteDecision; agents:AgentRequest[]; skills:SkillId[]; skillContext?:IssuedSkillContext; routeEvidence?:OrchestrationRouteEvidence; }
 export interface ClaimedOrchestrationRouteContext {
   readonly facts: OddDerivedFacts;
   readonly candidate: Readonly<{
@@ -37,11 +38,19 @@ const codeChangeKinds=new Set(["behavior","schema","security","configuration","m
 function deriveSkillSelectionContext(facts:OddDerivedFacts):SkillSelectionContext{
   const context:SkillSelectionContext={
     risk:facts.risk,
+    defect:facts.intent==="defect",
     codeChange:facts.writes.some(write=>codeChangeKinds.has(write.changeKind)),
     behaviorChange:facts.writes.some(write=>write.changeKind==="behavior"),
   };
   if(facts.scope.kind==="known")context.filesTouched=facts.scope.expectedPaths.length;
   return context;
+}
+function applyRuntimeProfile<T extends AgentRequest>(request:T,layers:ProfileLayer|undefined):T{
+ if(!layers)return request;
+ const {choice}=resolveRuntimeRoute(layers,request.role);
+ if(choice?.model!==undefined&&(typeof choice.model!=="string"||!choice.model||choice.model!==choice.model.trim()||choice.model.length>256||/[\u0000-\u001f\u007f]/u.test(choice.model)))throw new Error("Invalid routed model profile");
+ if(choice?.thinking!==undefined&&!isThinking(choice.thinking))throw new Error("Invalid routed thinking profile");
+ return choice?{...request,...choice}:request;
 }
 function issueRouteEvidence(input:OrchestrationInput,decision:OddRouteDecision):OrchestrationRouteEvidence|undefined{
   if(!input.candidate)return undefined;
@@ -74,6 +83,8 @@ export function claimOrchestrationRouteEvidence(candidate:Candidate,proof:unknow
 }
 
 export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRouteDecision):OrchestrationPlan {
+  validateSkillSelectionProfile(input);
+  if(typeof input.prompt!=="string"||!input.prompt.trim()||input.prompt!==input.prompt.trim()||input.prompt.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(input.prompt))throw new Error("Orchestration instruction is invalid");
   claimOddRouteDecision(decision);
   const facts = claimedOddRouteFacts(decision);
   if (decision.taskIdentity !== input.taskId) throw new Error("ODD route decision task mismatch");
@@ -96,7 +107,8 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
     return routeEvidence ? { ...plan, routeEvidence } : plan;
   };
   const base={repository:input.repository,prompt:input.prompt,...(input.candidate?{candidate:input.candidate}:{})};
-  const common=deriveSkillSelectionContext(facts);
+  const common:SkillSelectionContext={...deriveSkillSelectionContext(facts),
+    ...(input.selectionProfile?{selectionProfile:input.selectionProfile}:{})};
   const contextFor=(suffix:string,phase:SkillPhase,verification=false)=>{
     const context=issueSkillContext(`${input.taskId}:${suffix}`,input.repository,input.candidate,{...common,phase,...(verification?{verification:true}:{})});
     const selected=selectSkills(context);
@@ -107,24 +119,45 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
   const primary=contextFor("worker",requestedPhase,decision.verification==="independent");
   const skills=primary.skills;
   const agents:AgentRequest[]=[];
-  if(decision.route==="direct"||decision.route==="plan") return planned({decision,agents,skills});
+  if(decision.route==="direct") return planned({decision,agents,skills,skillContext:primary.context});
+  if(decision.route==="plan") return planned({decision,agents,skills});
   if(decision.route==="verify"){
     const verifier=contextFor("verify","verify",true);
-    agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths});
+    agents.push(applyRuntimeProfile({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths},input.runtimeProfiles));
     return planned({decision,agents,skills:verifier.skills});
   }
-  const explorer=contextFor("explore","explore");
-  agents.push({id:`${input.taskId}:explore`,role:"explorer",...base,skillContext:explorer.context,skillPaths:explorer.skillPaths});
+  // File count, write count, and duration do not establish exploration value.
+  // Incident work is the only current route with a verified broad-discovery need.
+  const needsExploration=decision.route==="incident";
+  if(needsExploration){
+    const explorer=contextFor("explore","explore");
+    agents.push(applyRuntimeProfile({id:`${input.taskId}:explore`,role:"explorer",...base,skillContext:explorer.context,skillPaths:explorer.skillPaths},input.runtimeProfiles));
+  }
   const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base,skillContext:primary.context,skillPaths:primary.skillPaths};
   if(input.writeSurfaces?.length){
     worker.writeSurfaces=[...input.writeSurfaces];
     if(!input.candidate) throw new Error("Writer orchestration requires an exact candidate");
     worker.candidate=input.candidate;
   }
-  agents.push(worker);
-  const reviewer=contextFor("review","adversarial-review",true);
-  agents.push({id:`${input.taskId}:review`,role:"reviewer",...base,skillContext:reviewer.context,skillPaths:reviewer.skillPaths});
-  const verifier=contextFor("verify","verify",true);
-  agents.push({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths});
+  agents.push(applyRuntimeProfile(worker,input.runtimeProfiles));
+  if(facts.incident||facts.review.kind!=="none"){
+    // A dual_explicit review requires two independently identified judges over
+    // the same frozen candidate. Keep the single reviewer for ordinary/independent review.
+    const judgeCount=facts.review.kind==="dual_explicit"?2:1;
+    for(let index=0; index<judgeCount; index++){
+      const reviewer=contextFor(index===0?"review":`review:${index+1}`,"adversarial-review",true);
+      agents.push(applyRuntimeProfile({
+        id:index===0?`${input.taskId}:review`:`${input.taskId}:review:${index+1}`,
+        role:"reviewer",...base,skillContext:reviewer.context,skillPaths:reviewer.skillPaths,
+      },input.runtimeProfiles));
+    }
+  }
+  // Medium-risk work retains writer tests and any explicitly requested
+  // reviewers, but does not spend an independent Verifier by default.
+  // Verification intent above and genuinely high-risk incidents are distinct.
+  if(decision.verification==="independent"){
+   const verifier=contextFor("verify","verify",true);
+   agents.push(applyRuntimeProfile({id:`${input.taskId}:verify`,role:"verifier",...base,skillContext:verifier.context,skillPaths:verifier.skillPaths},input.runtimeProfiles));
+  }
   return planned({decision,agents,skills});
 }

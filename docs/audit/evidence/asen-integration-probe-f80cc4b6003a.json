@@ -1,0 +1,15 @@
+{
+	"schema": "asen-integration-probe/v1",
+	"candidateSha": "f80cc4b6003a99dde3d894f45410699807f11c76",
+	"host": "pi",
+	"readers": {
+		"commands": "unavailable",
+		"tools": "unavailable"
+	},
+	"servers": [],
+	"verdict": "GAP",
+	"networkCalls": 0,
+	"modelCalls": 0,
+	"registryWrites": false,
+	"limitation": "Registered commands and tools prove configuration presence only. Connectivity is reported as NONE unless an admissible handshake observation exists; a GAP verdict states that public readers cannot distinguish a live server from a configured-but-unreachable one."
+}

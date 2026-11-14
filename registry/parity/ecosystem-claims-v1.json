@@ -1,0 +1,818 @@
+{
+  "version": 1,
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "legacyRegistry": "Historical Phase 10 inventory; its primitive PARITY labels are not strict ecosystem FULL claims.",
+  "acceptedScope": "GSP-06 provider-limited closure and admitted memory R01-R09 remain accepted. This does not exclude ecosystem implementation.",
+  "rows": [
+    {
+      "id": "ECO-01",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "136879aa0b78863afe848846717032522ce883c3c874170855d56565eb176721",
+        "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
+        "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+        "250a3db46eb790fefc794473d20a31e9dd9c6ea11887a343b808fe8e9757a7f6",
+        "2a2faeebaff581a2370cadf12d3c607ddea23af305d2f8c499309881c91ca204",
+        "2db784c9d70b806c41cf5bb5abc3253acabad108b60c2299cec9eeab107fdf53",
+        "2eff2ba68b246bc79f42d110c3a8fb01ea305da1e7896e30d5dc887d0c3db044",
+        "34ed34719141571ab1d0cbe2cc28dd66da6c9f4c30aa612239b018c1af66ca2e",
+        "35f277a97a432a111d6ed62494bfacd633f975573e32eeb867a74db7105a7f28",
+        "408736bcf2eb97214d4622854df361674f5b8eab95eb270a19911e2e8af59789",
+        "42d9cd663a79b0cd7bc39aa01b92cb76dbadc2a5310102a0ec2cd9d9359a2f0c",
+        "485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",
+        "4ca70dbc9b28d177986f350715f763508e87245cd85cd048b883bdc617893db9",
+        "4d69814a064177b700abd8f688269f16f0a8694f29e56dd34441633a14e43dae",
+        "531c776df94e59bec803a196f90af454498d1c013b6cbbdd94a28bd3077b800b",
+        "6012799d86a79515f3b31a8d855aa0e48e1172304b98afdd63643a2146013650",
+        "61f7c359c2bf0b985f93f6d14060d9e4f0364030fe1d46297fc9308557d2acce",
+        "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+        "71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",
+        "71d8732d3c2df8c95a029d0ca6476cb7991efccf45122f70bae5e0a42fb4838b",
+        "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+        "7deb98ac1cb60df84f9dd4cce7e4bef640862df3331736df45995a7cd31bad20",
+        "84e11467c4458b64a1995960d91a5f2d82a100cdd7932f281f7d9b79ffa26e9b",
+        "971eb77cc401466620b1ee19e156907846bdf80a46297483b45d7baf874091ca",
+        "9871535787a8178bf962fa1e9da862492868940b9a34f0490f937304d2a26e2e",
+        "9b60fa2775129c468f7eb3510905014553cee5f3cbcb78a608f08baf8bbd7336",
+        "9ff54b948dc2593bfcc9e59d9edac9588f6e3e3cdb1d8873e703fdbdb20958c7",
+        "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
+        "ab1608f51f18c5bae30325b7defcf09e3e5a452aede430ade22b3669bf437a02",
+        "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+        "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+        "b2abb9981a68d73a6b0d3121ab68b9bfb2669306a3c6e611d76d0f08de8bf742",
+        "b7cdfe192e91f1557133a5c80ba96e41cdb5b1c4d1dbb5d42f5e7103103ed301",
+        "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+        "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+        "c4c6da34fa3038e183a6df71b0c71470d2ceb2abb69c99cd782dcac0ed7d6c56",
+        "d9ea50ecc8011d5664a5c663f1dc37d98ccfde1442efe4211fee9488ee314728",
+        "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+        "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+        "f276fe56fe69392f7e6c0f3f8212adbf97cb155ac0c1ef1e788d88f81c9ce3db",
+        "f8b00b31f1c7cd7d08d99cf65e566ae74a865e3542fda91f67f8c7275d8fd09a",
+        "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
+      ],
+      "implementation": [
+        "scripts/ecosystem-baseline.mjs"
+      ],
+      "tests": [
+        "tests/ecosystem-baseline.test.ts"
+      ],
+      "remaining": [
+        "The frozen 164-row unresolved-reference adjudication overlay and mapped runtime-edge drift invalidation are implemented, but complete normative semantics remain unverified; the 167-object/988-reference source manifest is unchanged."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": false,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-02",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "3a933bdb788af27e95f75475758ff446e2d2a30d87c6072e1c42593696879c77",
+        "6c95a68fcdfb8f56399c917d97ab01340c22e6cd1632fa6c062d678a56cc1d7a"
+      ],
+      "implementation": [
+        "scripts/package-exports.mjs",
+        "scripts/verify-pack.mjs",
+        "src/runtime/pi-host.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/package-exports.test.ts",
+        "tests/package.test.ts",
+        "tests/pi-host-preflight.test.ts"
+      ],
+      "remaining": [
+        "Source and local tests cover numeric Pi versions >=0.85.1 and <2.0.0, required own callable public methods, delayed activation because factory-time context is unavailable, first initialized tui/rpc/json/print contexts with boolean hasUI, complete bounded command/tool inventory snapshots, and fail-closed initial ASEN collision rejection before its first registration mutation. Later foreign duplicates follow Pi-native precedence/disambiguation because the public API exposes no arbitrary late sibling-registration veto; this human-approved compatibility contract is not the old strict guarantee. The finite witness matrix executed Pi 0.85.1 and 1.1.0 across tui/rpc/json/print on Linux, Windows and macOS (24 cells), bound to candidate cea70e3d2dcf7af416d8c9c58d83990a416f4475. CI and Release Gate passed. Offline bundle admission verified all cells, 18 execution receipts and six restart/cross-session receipts with their log hashes; raw records are retained under registry/evidence/ecosystem/cea70e3-*.json. These samples do not establish the entire semver range or live model interruption recovery. The retained frozen-source comparison was re-derived against the exact pinned source (zero changes); it does not inspect newer upstream. Independent native review/admission remain required before promotion; this row stays PARTIAL and these retained records do not grant review authority."
+      ],
+      "stateful": false,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": [
+        {
+          "id": "ECO-02A-linux-failure",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "failure",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: partial host registration remains inert",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "84f2bef02815ad1145f3ccd9050287d5b86e8215c82ea5caa28e9018f104a80d",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-linux-failure.json",
+          "recordSha256": "46f90a736fdad3186242bc37b72a0786dd6c9d13345ddaca0c8e9cc388649fa1"
+        },
+        {
+          "id": "ECO-02A-linux-linux",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "linux",
+          "class": "OS_RUNTIME",
+          "command": "npm run verify:pi-matrix",
+          "observation": "Eight packed real-host cells on this operating system completed with natural exit and no model calls",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "1fff29313ae807b3689eebd42d73b7fd5aa4b899b6d3018c429b8bb03a1ea8a1",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-linux-linux.json",
+          "recordSha256": "360d8238e66fd7053ada6a618dcc84cdf7f3faa2d29adbb8cb4909df0f7a3354"
+        },
+        {
+          "id": "ECO-02A-linux-negative",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "negative",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: command and tool collisions stop every registration",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "1308d8442f2cd1ee77770ba270ef8670c9b43dbe1492a5b73113592e4261cdee",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-linux-negative.json",
+          "recordSha256": "ef332b758943371fc2c731f04a6644508e8a52e54357e62854836a15d88cdcd7"
+        },
+        {
+          "id": "ECO-02A-linux-pi-host",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "pi-host",
+          "class": "REAL_PI_HOST",
+          "command": "npm run verify:pi-matrix",
+          "observation": "Pi 0.85.1 and 1.1.0 in four public modes; bounded lifecycle sample, not complete behavior parity",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "1fff29313ae807b3689eebd42d73b7fd5aa4b899b6d3018c429b8bb03a1ea8a1",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-linux-pi-host.json",
+          "recordSha256": "a02bb1174c2085e7fc387cddf00915c07c0fec3dbb2aefae7153b4af4acdbbae"
+        },
+        {
+          "id": "ECO-02A-linux-positive",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "positive",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: factory waits for initialized public inventories",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "f2b9a943942cb8016c88e5d99b4c90e67cb73430aef4ecfeb61ae81c502e0751",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-linux-positive.json",
+          "recordSha256": "00faa8320e75b065ca76fb675ad4d7351f76b38310c8beeef8d9c522556262f8"
+        },
+        {
+          "id": "ECO-02A-linux-recovery",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "recovery",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: preflight rejection retries on a later session",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "d0570f18fa851d85f635f1ecd2a521ccfab5286c7392437372a65fdcae2ff7bf",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-linux-recovery.json",
+          "recordSha256": "80d1958f25d0d9a30498d19adbff2a16ca8d42e7ec04b8cdffd484e119da046d"
+        },
+        {
+          "id": "ECO-02A-win32-failure",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "failure",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: partial host registration remains inert",
+          "result": "PASS",
+          "sourceManifestSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9",
+          "logSha256": "ef7374a4f8548763bcea5e74ff18e10569394322b15d7b24b9cc59ca540c86c7",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-win32-failure.json",
+          "recordSha256": "333099708012be8d93dde9eb91384c5c4081d9af377b334c761f69b50552ceb0"
+        },
+        {
+          "id": "ECO-02A-win32-negative",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "negative",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: command and tool collisions stop every registration",
+          "result": "PASS",
+          "sourceManifestSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9",
+          "logSha256": "1f67f3a3a44046ed3cce8a249878eca944bbb43eea2ddf421bff5ebfc3696c71",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-win32-negative.json",
+          "recordSha256": "d1eb6378a48af3a4efba650c368244b0e44eb47270e6dae47432b7ad635319e1"
+        },
+        {
+          "id": "ECO-02A-win32-pi-host",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "pi-host",
+          "class": "REAL_PI_HOST",
+          "command": "npm run verify:pi-matrix",
+          "observation": "Pi 0.85.1 and 1.1.0 in four public modes; bounded lifecycle sample, not complete behavior parity",
+          "result": "PASS",
+          "sourceManifestSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9",
+          "logSha256": "956b395d9c6d8fd9fe82ce8812aeef23a8c4c82d7bad2027d59c45e4fbc61fbd",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-win32-pi-host.json",
+          "recordSha256": "c5388cae2202af2f38d88a167f6e0a1cf21b54da7664821f66603d15f2e34f49"
+        },
+        {
+          "id": "ECO-02A-win32-positive",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "positive",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: factory waits for initialized public inventories",
+          "result": "PASS",
+          "sourceManifestSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9",
+          "logSha256": "b98dcdf58dd6397691a163aec7c674d5da65c38febc2b623fa5859ef7ba4c34c",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-win32-positive.json",
+          "recordSha256": "b35b47276a3b693e5f3eb904514f886a39da1d8d6766a13d4f9eff1c7d50fc4a"
+        },
+        {
+          "id": "ECO-02A-win32-recovery",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "recovery",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: preflight rejection retries on a later session",
+          "result": "PASS",
+          "sourceManifestSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9",
+          "logSha256": "1d4da3b19b9b78cd2e2978b6ffdf684da92bbb2f6457b007e2703aa04f0156a7",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-win32-recovery.json",
+          "recordSha256": "de06daf8b3f34af879989d58e3f01205239857290f2e239d95a2104cb88836f1"
+        },
+        {
+          "id": "ECO-02A-win32-windows",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "windows",
+          "class": "OS_RUNTIME",
+          "command": "npm run verify:pi-matrix",
+          "observation": "Eight packed real-host cells on this operating system completed with natural exit and no model calls",
+          "result": "PASS",
+          "sourceManifestSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9",
+          "logSha256": "956b395d9c6d8fd9fe82ce8812aeef23a8c4c82d7bad2027d59c45e4fbc61fbd",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-win32-windows.json",
+          "recordSha256": "a4814b2f0ccaf61dd1f3af0ff9577a27afce53bac84e3d8530cf366dfb1505da"
+        },
+        {
+          "id": "ECO-02A-darwin-failure",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "failure",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: partial host registration remains inert",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "0642f74997b77dc9e696d87d83bcf6fcd27824d44174edbd0dd82068ae3afb1d",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-darwin-failure.json",
+          "recordSha256": "ed234847a2bcc9911d205243b74376fbc346875e88eaeb01393a774021640454"
+        },
+        {
+          "id": "ECO-02A-darwin-macos",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "macos",
+          "class": "OS_RUNTIME",
+          "command": "npm run verify:pi-matrix",
+          "observation": "Eight packed real-host cells on this operating system completed with natural exit and no model calls",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "38b49ff95e1a52def817f5e74b80a32a1593206c5ee5c112aef8ff9b66d104ca",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-darwin-macos.json",
+          "recordSha256": "8d67bcc1d054b51136b38dc210382953a708b140072c0bd691dd11bc2cae6886"
+        },
+        {
+          "id": "ECO-02A-darwin-negative",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "negative",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: command and tool collisions stop every registration",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "eff134c613f3f2d8ca3b83c5a126b17ab8cf3ed66cc024f885ec95bd76b7a0b6",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-darwin-negative.json",
+          "recordSha256": "36e82dbae5c77b560dedd1335911904f4238ce310193d73dc364d47a3b98f614"
+        },
+        {
+          "id": "ECO-02A-darwin-pi-host",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "pi-host",
+          "class": "REAL_PI_HOST",
+          "command": "npm run verify:pi-matrix",
+          "observation": "Pi 0.85.1 and 1.1.0 in four public modes; bounded lifecycle sample, not complete behavior parity",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "38b49ff95e1a52def817f5e74b80a32a1593206c5ee5c112aef8ff9b66d104ca",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-darwin-pi-host.json",
+          "recordSha256": "6dd330bca91240540757af7c947bc1c1f4a91d5bd83980df3efee67cddac3db9"
+        },
+        {
+          "id": "ECO-02A-darwin-positive",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "positive",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: factory waits for initialized public inventories",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "b9234db63e48aa59403ff39695b7a9609aa11c55b962ff2d2fb0aef1a42c947b",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-darwin-positive.json",
+          "recordSha256": "8ef4be419898ea68b44cf7178cc5a52581d8b69449fb9cbadc4575790e787f04"
+        },
+        {
+          "id": "ECO-02A-darwin-recovery",
+          "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+          "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+          "kind": "recovery",
+          "class": "DETERMINISTIC_EXECUTION",
+          "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+          "observation": "12 selected preflight contract test(s) completed; pattern: preflight rejection retries on a later session",
+          "result": "PASS",
+          "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+          "logSha256": "0da76cf7a8b8adc0943fe623c997050493ae1fc6e86548aaec5400d88af3c62f",
+          "recordPath": "registry/evidence/ecosystem/cea70e3-darwin-recovery.json",
+          "recordSha256": "e182a62f383235611d8a96b4d92092982e9887f1211244f2d970e2a50bbb1de5"
+        }
+      ]
+    },
+    {
+      "id": "ECO-03",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "531c776df94e59bec803a196f90af454498d1c013b6cbbdd94a28bd3077b800b",
+        "9871535787a8178bf962fa1e9da862492868940b9a34f0490f937304d2a26e2e"
+      ],
+      "implementation": [
+        "src/interaction/ask-user.ts",
+        "src/interaction/pi-tools.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/ask-user.test.ts",
+        "tests/ask-user-rpc.test.ts"
+      ],
+      "remaining": [
+        "Core choice/question validation, cancellation and timeout are implemented. Real offline Pi RPC choice and cancellation pass on Linux with zero model calls. Full TUI/questionnaire presentation, cross-platform journeys and genuine human-only mutation consumers remain unverified."
+      ],
+      "stateful": false,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-04",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7"
+      ],
+      "implementation": [
+        "src/interaction/code-intelligence.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/code-intelligence.test.ts"
+      ],
+      "remaining": [
+        "Read-only query/explore registration, canonical Git roots, literal arguments, bounded output/time, cancellation and npm entry containment pass with synthetic subprocesses. Real installed CodeGraph CLI, permitted initialization lifecycle, index behavior and cross-platform host journeys remain unverified; no index was inspected."
+      ],
+      "stateful": false,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-05",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388"
+      ],
+      "implementation": [
+        "src/agents/dispatcher.ts",
+        "src/agents/pi-process-runner.ts",
+        "src/agents/agent-runtime.ts",
+        "src/runtime/agent-store.ts",
+        "src/agents/pi-agent-tools.ts",
+        "src/runtime/agent-lifecycle.ts",
+        "src/policies/scopes.ts"
+      ],
+      "tests": [
+        "tests/dispatcher.test.ts",
+        "tests/pi-process-runner.test.ts",
+        "tests/agent-store.test.ts",
+        "tests/agent-lifecycle.test.ts",
+        "tests/pi-agent-runtime.test.ts",
+        "tests/scopes.test.ts"
+      ],
+      "remaining": [
+        "The installed Pi RPC journey restores an interrupted read-only agent's identity and review-required status after reopening the same named session in a second process without a model invocation on Linux, macOS and Windows. New direct-child completion and timeout/overflow/forbidden-tool process-tree cleanup coverage is awaiting the grouped cross-platform run. Public transport/grant contract coverage and the exact-SHA authenticated GSP-06 model receipt remain outstanding. Local source fa9ce13 adds session-owned persisted terminal notifications and per-task state/history queries without returning prompts or authority payloads. Restart does not replay notifications; shutdown detaches delivery before cancellation. Focused lifecycle/store/production-adapter tests pass 32/32 and typecheck passes. Broader dispatcher/runner/preflight tests passed 91/93; two process-tree observers failed because local ps exits with fatal library error, lookup self. This delta has no hosted exact-SHA or authenticated-model admission; independent/native review remains pending. Source d351bc0 wires optional foreign-project roots into all four read-only agent tools with live Pi UI consent, no persisted/recovered permission, and session shutdown cancellation across owned launched projects. Installed packed Pi verification passed locally with 28 public exports and three natural process exits; this is not authenticated child-model or cross-session messaging proof."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": true,
+      "evidence": []
+    },
+    {
+      "id": "ECO-06",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd"
+      ],
+      "implementation": [
+        "src/orchestration/orchestrator.ts",
+        "src/flow/odd-routing.ts",
+        "src/runtime/route-command.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/orchestrator-dispatcher-integration.test.ts",
+        "tests/writer-admission-4r.test.ts",
+        "tests/extension-state-commands.test.ts"
+      ],
+      "remaining": [
+        "A primary Pi /asen-route preview now binds exact user-supplied ODD facts to the active canonical project and grants no execution authority. Automatic prompt-to-orchestration and production status/doctor composition remain incomplete; EP-003 primary-session sensitive-path/shell admission and discovery-gated EP-004\u2013008 public provider contracts remain open. Private provider authority is excluded."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": true,
+      "evidence": []
+    },
+    {
+      "id": "ECO-07",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "8d63626c564cdad7af151b60f17cf24242eecc10a6048df420af0b9e0dea6c36",
+        "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d"
+      ],
+      "implementation": [
+        "src/flow/odd-task-tracking.ts",
+        "src/tasks/task.ts",
+        "src/runtime/task-replay.ts",
+        "src/runtime/todo-store.ts",
+        "src/runtime/pi-todo-tools.ts",
+        "src/runtime/todo-presentation.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/odd-task-tracking.test.ts",
+        "tests/task-replay.test.ts",
+        "tests/todo-store.test.ts",
+        "tests/fixtures/todo-crash-process.ts",
+        "tests/pi-agent-runtime.test.ts",
+        "tests/extension-state-commands.test.ts",
+        "scripts/verify-pi-package.mjs"
+      ],
+      "remaining": [
+        "Durable session/project-isolated Todo state, validated replay, Pi tools, the read-only /asen-todos view, abrupt process-exit recovery and preservation of completed work are implemented and tested. Installed-package Pi recovery after reopening the same named session in a second process without a model passes on Linux, macOS and Windows. New project-substitution, skipped-revision, backward-time and stale-plan-after-recovery cases pass locally; grouped CI and strict evidence receipts remain outstanding.",
+        "Local source 1db6cf81b502b3b753a26be85b4abd9bb95a4dd4 rejects cancelled Todo creation before persistence or while waiting for its lock, changed-session recovery consent, and stale approval racing with newer cancellation. Focused Todo/replay/production-adapter verification passed 27/27 and typecheck passed. Exact hosted validation and independent review of this source remain pending; existing hosted receipts do not transfer.",
+        "Local source d4f026b rejects changed-session Todo creation inside the write lock and stale query delivery; cancelled reads fail. Independent durable clients cannot both consume one plan revision. Final focused checks pass 31/31; installed-package restart/cross-session smoke passes on d4f026b without models. Hosted verification and native approval remain pending.",
+        "Local source e6e7897 fixes simultaneous ODD event lost updates using exact conditional persistence in the existing memory transaction. Both clients can no longer consume the same replay revision. All memory/ODD tests pass 182/182; typecheck and installed-package restart/cross-session smoke pass without models. This source remains unsubmitted to hosted CI and has no independent/native approval.",
+        "Local source 927e917 rejects repeated first-plan registration that would erase saved ODD history, duplicate simultaneous creation and reuse of deleted task identities. Atomic creation uses the existing memory store; consumers resume the saved task or choose a fresh identity. All memory/ODD tests pass 185/185. Current hosted CI is for an older source, and independent/native approval remains pending.",
+        "Local source ef194f2 rejects resume projections if the saved task changes or is deleted during document validation. Focused Todo/replay/ODD/conditional-memory checks pass 38/38, and typecheck passes after a test-only optional-field correction. Hosted checks and independent approval of this source remain pending.",
+        "Local test unit 4a9b316 verifies real subprocess exit before Todo atomic rename: old plan bytes survive, the dead-owner lock is recoverable after its existing grace period, and the next revision commits once. Todo/replay/tools checks pass 25/25; exact hosted and independent/native admission remain pending."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-08",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66"
+      ],
+      "implementation": [
+        "src/skills/discovery.ts",
+        "src/skills/generated-registry.ts",
+        "src/skills/registry-lifecycle.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/skill-discovery.test.ts",
+        "tests/generated-skill-registry.test.ts",
+        "tests/skill-registry-extension.test.ts",
+        "tests/skill-registry-lifecycle.test.ts"
+      ],
+      "remaining": [
+        "Startup refresh, serialized existing-cache writes, recursive watch/debounce, dirty-again coalescing, disable, shutdown and stale-generation protection are implemented and locally tested. Real cross-platform Pi startup/restart journeys and complete missing-source/recreated-watch behavior remain unverified."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-09",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "4cf2363d319e30e2b8bb5e2dbe58239c2397798331fbbe11f1675f30ee595511",
+        "a29669355e55c663c06ae91a0f026e1a5a5f7465ce7438b74a70f4024b25fd84",
+        "a29d57b6ad755bb9fcedfebe8daa0ed224275031ad35afe249fc10c0910e33af",
+        "e63420a56dd37757fb9c1bca3f3fcb299c65ea2d25df992a94fc9aade756c051"
+      ],
+      "implementation": [
+        "scripts/verify-pack.mjs",
+        "src/runtime/launcher.ts",
+        "src/runtime/setup.ts",
+        "src/runtime/command-catalog.ts"
+      ],
+      "tests": [
+        "tests/package.test.ts",
+        "tests/launcher.test.ts",
+        "tests/setup.test.ts",
+        "tests/command-catalog.test.ts"
+      ],
+      "remaining": [
+        "Launcher/home precedence and transactional idempotent setup are implemented deterministically. Real executable wiring, permissions and final cross-platform packed-Pi installation remain."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-10",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+        "ec64bc54484b4a597ffa16aba5aed950cd9eb1ecf0a1caf0c1405dbbb721d4d9"
+      ],
+      "implementation": [
+        "src/runtime/workspace-attribution.ts",
+        "src/runtime/workspace-store.ts",
+        "src/runtime/agent-lifecycle.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/workspace-attribution.test.ts",
+        "tests/agent-lifecycle.test.ts",
+        "tests/extension-state-commands.test.ts",
+        "scripts/verify-pi-package.mjs"
+      ],
+      "remaining": [
+        "Actor/session/project/worktree attribution, bounded projections, concurrent durable appends, reopen persistence and the session/project-filtered /asen-changes command are implemented and tested. An installed-package Linux Pi RPC journey verifies session-filtered workspace history after reopening the same named session in a second process. Workspace conflict semantics and Windows/macOS host evidence remain."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-11",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
+        "554ddea751d636ee35e9d06babb9bf4513930d7186fcf1fe23599b767e6c844a",
+        "6541e3da65f7f5576eec6edbabda6756ab3caafaae0d6560ceb3b2c5f08827f4",
+        "7a4a83c3f215f34868b375293af33c183322cc610f674ef5fa6ef825ae0eca1c",
+        "831db959b54c8a660da3adfba2a57ad7cc869abc2254ce9e981ff29f15435faf"
+      ],
+      "implementation": [
+        "src/runtime/profiles.ts",
+        "src/runtime/profile-store.ts"
+      ],
+      "tests": [
+        "tests/runtime-profiles.test.ts",
+        "tests/profile-store.test.ts"
+      ],
+      "remaining": [
+        "Strict profile schema, session/project/global precedence, fallback, deterministic mutations and persisted/reloaded profile storage are implemented and tested internally. Profile parsing preserves prototype-named route keys as own data properties, and route resolution ignores inherited properties; deterministic regression coverage exercises both boundaries. Production profile-provider/command/model-routing integration, real Pi/platform journeys and rollback evidence remain incomplete. No full production routing parity is claimed."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": true,
+      "evidence": []
+    },
+    {
+      "id": "ECO-12",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "250a3db46eb790fefc794473d20a31e9dd9c6ea11887a343b808fe8e9757a7f6",
+        "408736bcf2eb97214d4622854df361674f5b8eab95eb270a19911e2e8af59789",
+        "42d9cd663a79b0cd7bc39aa01b92cb76dbadc2a5310102a0ec2cd9d9359a2f0c",
+        "b7cdfe192e91f1557133a5c80ba96e41cdb5b1c4d1dbb5d42f5e7103103ed301",
+        "d9ea50ecc8011d5664a5c663f1dc37d98ccfde1442efe4211fee9488ee314728",
+        "f8b00b31f1c7cd7d08d99cf65e566ae74a865e3542fda91f67f8c7275d8fd09a",
+        "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
+      ],
+      "implementation": [
+        "src/runtime/history.ts",
+        "src/runtime/history-store.ts",
+        "src/runtime/history-command.ts",
+        "src/io/exclusive-file-lock.ts",
+        "src/io/private-file.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/history-store.test.ts",
+        "tests/history-usage.test.ts",
+        "tests/extension-runtime-commands.test.ts",
+        "tests/exclusive-file-lock.test.ts"
+      ],
+      "remaining": [
+        "Private durable storage, process-safe serialization, opt-in redacted Pi input capture, project-scoped search/export/delete, tombstones, retention, confirmed corrupt-store reset and reopen behavior have deterministic coverage. Reference keyboard shortcut behavior and full cross-platform interactive history journeys remain unverified."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-13",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "30b974055e03a2d584da910fb4e8365c649d3ffd93301f7b5afed09ce12e5e2d",
+        "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+        "6b380b0b02f4f5611ae666ec69f1c72337c2d44dec396110bcd27067457919f5",
+        "71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",
+        "740b7b6f5e97f70caac1077beb0a652edfcaf4ecf2a9f892ca6ee6ff505f7f81",
+        "9566b0a9fac53001c64c38dd4f2799b171ec65676520b6152eb6fabc229d6544",
+        "b2abb9981a68d73a6b0d3121ab68b9bfb2669306a3c6e611d76d0f08de8bf742",
+        "c70802b1cfdf7d76f94d61bb4d3f6e98f26d3377fa4a87b64b188fbd6b0eacd2",
+        "d9cfc54a6c8d6b2b93e21213b69cbed25272793ae110e31a54b663008b1ddb6c",
+        "eb0f2993d9271f55cb42eca343e6fbb601a733fb90bd40daeebc92ee60ae1ba9"
+      ],
+      "implementation": [
+        "src/runtime/usage.ts",
+        "src/runtime/usage-store.ts",
+        "src/runtime/usage-command.ts",
+        "src/io/exclusive-file-lock.ts",
+        "src/io/private-file.ts",
+        "extensions/asen.ts"
+      ],
+      "tests": [
+        "tests/history-usage.test.ts",
+        "tests/extension-runtime-commands.test.ts",
+        "tests/exclusive-file-lock.test.ts"
+      ],
+      "remaining": [
+        "Local usage counters persist and expose preview, reset, and explicit consent/revocation through Pi; no data is sent and no transport exists. The reference one-shot telemetry delivery behavior and full cross-platform consent journey remain unverified; do not add an external transport without separate evidence and explicit consent."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-14",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "12c15a41dd2a951d30baca7285aff8be6f2c334986a0efbfdf833929742f4693",
+        "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+        "2db784c9d70b806c41cf5bb5abc3253acabad108b60c2299cec9eeab107fdf53",
+        "2eff2ba68b246bc79f42d110c3a8fb01ea305da1e7896e30d5dc887d0c3db044",
+        "34ed34719141571ab1d0cbe2cc28dd66da6c9f4c30aa612239b018c1af66ca2e",
+        "35f277a97a432a111d6ed62494bfacd633f975573e32eeb867a74db7105a7f28",
+        "937bac58127347f7d393bf326213f77ab9287a06848db601f4e0e72beb57ed6f",
+        "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
+        "daf7b47605ef2d3f48493f10a04e9092cabd2b2c8b29e59497e1f0feb06ab24b",
+        "eda0aa3542e1f18a9cce87d7d19f70c20714053d53d691329d68bad30edfc064"
+      ],
+      "implementation": [
+        "src/session/pi-resume.ts",
+        "src/session/checkpoint.ts",
+        "src/runtime/presentation.ts"
+      ],
+      "tests": [
+        "tests/pi-session-recovery-e2e.test.ts",
+        "tests/session-recovery.test.ts",
+        "tests/presentation.test.ts"
+      ],
+      "remaining": [
+        "Presentation policy now covers theme selection, color/no-color, banner, pretty/quiet, non-TTY and narrow terminals. Pi startup/UI command integration, keyboard/action inventory and cross-platform host lifecycle evidence remain."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-15",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "136879aa0b78863afe848846717032522ce883c3c874170855d56565eb176721",
+        "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
+        "2a2faeebaff581a2370cadf12d3c607ddea23af305d2f8c499309881c91ca204",
+        "2eff2ba68b246bc79f42d110c3a8fb01ea305da1e7896e30d5dc887d0c3db044",
+        "485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",
+        "4ca70dbc9b28d177986f350715f763508e87245cd85cd048b883bdc617893db9",
+        "4d69814a064177b700abd8f688269f16f0a8694f29e56dd34441633a14e43dae",
+        "6012799d86a79515f3b31a8d855aa0e48e1172304b98afdd63643a2146013650",
+        "61f7c359c2bf0b985f93f6d14060d9e4f0364030fe1d46297fc9308557d2acce",
+        "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+        "6c95a68fcdfb8f56399c917d97ab01340c22e6cd1632fa6c062d678a56cc1d7a",
+        "71d8732d3c2df8c95a029d0ca6476cb7991efccf45122f70bae5e0a42fb4838b",
+        "7deb98ac1cb60df84f9dd4cce7e4bef640862df3331736df45995a7cd31bad20",
+        "84e11467c4458b64a1995960d91a5f2d82a100cdd7932f281f7d9b79ffa26e9b",
+        "971eb77cc401466620b1ee19e156907846bdf80a46297483b45d7baf874091ca",
+        "9b60fa2775129c468f7eb3510905014553cee5f3cbcb78a608f08baf8bbd7336",
+        "9ff54b948dc2593bfcc9e59d9edac9588f6e3e3cdb1d8873e703fdbdb20958c7",
+        "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
+        "ab1608f51f18c5bae30325b7defcf09e3e5a452aede430ade22b3669bf437a02",
+        "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+        "b2abb9981a68d73a6b0d3121ab68b9bfb2669306a3c6e611d76d0f08de8bf742",
+        "c4c6da34fa3038e183a6df71b0c71470d2ceb2abb69c99cd782dcac0ed7d6c56",
+        "f276fe56fe69392f7e6c0f3f8212adbf97cb155ac0c1ef1e788d88f81c9ce3db"
+      ],
+      "implementation": [
+        "docs/architecture/upstream-independence.md"
+      ],
+      "tests": [
+        "tests/audit-boundary.test.ts"
+      ],
+      "remaining": [
+        "Feature documentation follows unimplemented behavior; ecosystem command/link/media/claim validation remains incomplete."
+      ],
+      "stateful": false,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": false,
+      "evidence": []
+    },
+    {
+      "id": "ECO-16",
+      "status": "PARTIAL",
+      "sourceHashes": [
+        "136879aa0b78863afe848846717032522ce883c3c874170855d56565eb176721",
+        "1cdbb3968664e3f3dd5d1ca9eae757e3e37ea12c345861fc2b6c57c7533231d9",
+        "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+        "250a3db46eb790fefc794473d20a31e9dd9c6ea11887a343b808fe8e9757a7f6",
+        "2a2faeebaff581a2370cadf12d3c607ddea23af305d2f8c499309881c91ca204",
+        "2db784c9d70b806c41cf5bb5abc3253acabad108b60c2299cec9eeab107fdf53",
+        "2eff2ba68b246bc79f42d110c3a8fb01ea305da1e7896e30d5dc887d0c3db044",
+        "34ed34719141571ab1d0cbe2cc28dd66da6c9f4c30aa612239b018c1af66ca2e",
+        "35f277a97a432a111d6ed62494bfacd633f975573e32eeb867a74db7105a7f28",
+        "408736bcf2eb97214d4622854df361674f5b8eab95eb270a19911e2e8af59789",
+        "42d9cd663a79b0cd7bc39aa01b92cb76dbadc2a5310102a0ec2cd9d9359a2f0c",
+        "485ab76d54832f3806438eb8aaf9abfe37e58e1be936438c6e31ba655b957e91",
+        "4ca70dbc9b28d177986f350715f763508e87245cd85cd048b883bdc617893db9",
+        "4d69814a064177b700abd8f688269f16f0a8694f29e56dd34441633a14e43dae",
+        "531c776df94e59bec803a196f90af454498d1c013b6cbbdd94a28bd3077b800b",
+        "6012799d86a79515f3b31a8d855aa0e48e1172304b98afdd63643a2146013650",
+        "61f7c359c2bf0b985f93f6d14060d9e4f0364030fe1d46297fc9308557d2acce",
+        "62d91a65ff7a0dcf022b8eab47df2a1e6da9e9bba7795a88ccd4aa65130e5003",
+        "71c2cf89e92bda9a7f549e60312b45f6b45a3c7f4a0c22772c379f5d9b946ee9",
+        "71d8732d3c2df8c95a029d0ca6476cb7991efccf45122f70bae5e0a42fb4838b",
+        "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+        "7deb98ac1cb60df84f9dd4cce7e4bef640862df3331736df45995a7cd31bad20",
+        "84e11467c4458b64a1995960d91a5f2d82a100cdd7932f281f7d9b79ffa26e9b",
+        "971eb77cc401466620b1ee19e156907846bdf80a46297483b45d7baf874091ca",
+        "9871535787a8178bf962fa1e9da862492868940b9a34f0490f937304d2a26e2e",
+        "9b60fa2775129c468f7eb3510905014553cee5f3cbcb78a608f08baf8bbd7336",
+        "9ff54b948dc2593bfcc9e59d9edac9588f6e3e3cdb1d8873e703fdbdb20958c7",
+        "a6dcfeb0f3d0873e4ca5915c26902296cc9cd3c9c100eae70e2b72757748ad1f",
+        "ab1608f51f18c5bae30325b7defcf09e3e5a452aede430ade22b3669bf437a02",
+        "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+        "b2189d32a9115f57a3b75f8393a00ef89bcf352d522d836d542ef80845bdc7c1",
+        "b2abb9981a68d73a6b0d3121ab68b9bfb2669306a3c6e611d76d0f08de8bf742",
+        "b7cdfe192e91f1557133a5c80ba96e41cdb5b1c4d1dbb5d42f5e7103103ed301",
+        "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+        "c2bc82385042a019877ef376d3c8902c3d56739ac93a2089027de24a98fceb66",
+        "c4c6da34fa3038e183a6df71b0c71470d2ceb2abb69c99cd782dcac0ed7d6c56",
+        "d9ea50ecc8011d5664a5c663f1dc37d98ccfde1442efe4211fee9488ee314728",
+        "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+        "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+        "f276fe56fe69392f7e6c0f3f8212adbf97cb155ac0c1ef1e788d88f81c9ce3db",
+        "f8b00b31f1c7cd7d08d99cf65e566ae74a865e3542fda91f67f8c7275d8fd09a",
+        "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
+      ],
+      "implementation": [
+        "scripts/validate-ecosystem-claims.mjs"
+      ],
+      "tests": [
+        "tests/ecosystem-baseline.test.ts"
+      ],
+      "remaining": [
+        "Unimplemented ECO units and applicable host/platform/model evidence prevent global parity closure."
+      ],
+      "stateful": true,
+      "platformSensitive": true,
+      "piBoundary": true,
+      "modelBoundary": true,
+      "evidence": []
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "schema": "asen.p11-child-fallback-functional-progress/v1",
+  "status": "PARTIAL_BLOCKED_PARENT_SPOTCHECK",
+  "feature": "odd/tasks/p11-child-fallback-wiring.md",
+  "specs": [
+    "S1",
+    "S2",
+    "S3"
+  ],
+  "tasks": {
+    "G1": "DONE_EXPECTED_RED_ONLY",
+    "G2": "DONE_IMPLEMENTATION_SELF_CHECK",
+    "G3": "BLOCKED_OWNER_DEFERRED",
+    "G4": "PENDING_AFTER_G3"
+  },
+  "producer": {
+    "run": ".cache/p11-child-fallback/GREEN-RDvNxJ",
+    "tests": 7,
+    "pass": 7,
+    "exit": 0,
+    "lsp": {
+      "checked": 2,
+      "errors": 0
+    }
+  },
+  "verifier": {
+    "taskId": "mwerolo2-5-95n3",
+    "scope": "separate agent technical verification, not human/native review or certification",
+    "verdictBySpec": {
+      "S1": "PASS_BOUNDED",
+      "S2": "PASS_BOUNDED",
+      "S3": "PASS_BOUNDED"
+    },
+    "candidateBlockers": [],
+    "handoff": ".cache/p11-child-fallback/g3-independent-gyZXVb/handoff.md",
+    "handoffPersistedBy": "primary-session from verifier final inline Markdown",
+    "run": ".cache/p11-child-fallback/GREEN-R6oYyo",
+    "outer": ".cache/p11-child-fallback/g3-independent-gyZXVb",
+    "pass": 7,
+    "tests": 7,
+    "exit": 0,
+    "sourceClosure": 159,
+    "preservationError": null,
+    "runnerLabel": "PUBLIC_CONSUMER_FUNCTIONAL_SELF_CHECK / NOT_INDEPENDENT / NO_REAL_HOST_PROVIDER_PROOF",
+    "limitations": [
+      "optional Python probe exit127, zero script checks/tests; no replacement",
+      "CodeGraph unavailable; nonexistent source lookup not evidence",
+      "no independent CRLF recount or GREEN-driver self-hash recomputation",
+      "excluded routing variants static-only"
+    ]
+  },
+  "parentSpotcheck": {
+    "status": "FAILED_TIMEOUT_NOT_FEATURE_RED_OR_PASS",
+    "outerToolTimeoutSeconds": 30,
+    "outerExitRecord": "ABSENT",
+    "run": ".cache/p11-child-fallback/GREEN-BgUkMH",
+    "outerPrefix": ".cache/p11-child-fallback/g3-parent-spotcheck",
+    "childTimeoutSeconds": 20,
+    "childStatus": null,
+    "signal": "SIGTERM",
+    "error": "ETIMEDOUT",
+    "stdoutBytes": 0,
+    "reportedTestTotals": null,
+    "actualExecutedTestCount": "UNKNOWN",
+    "preservationError": null,
+    "sourceClosurePreserved": true,
+    "sourceClosureCount": 159,
+    "automaticRetry": false
+  },
+  "processReconciliation": {
+    "firstQuery": "exit1 invalid WQL due shell quoting, no inventory obtained",
+    "correctedQuery": "read-only metadata-only syntax repair, not a test retry",
+    "exit": 0,
+    "matchingCount": 0,
+    "processes": [],
+    "evidencePrefix": ".cache/p11-child-fallback/g3-parent-process-inventory"
+  },
+  "sourceScope": {
+    "authorizedChangedFiles": [
+      "extensions/asen.ts",
+      "src/agents/pi-agent-tools.ts"
+    ],
+    "protectedInputs": 188,
+    "otherOriginalRawIdentical": 186,
+    "postbaseline": ".cache/p11-child-fallback/g2-wiring-01/postbaseline.json",
+    "sourceOrTestChangedAfterG2": false
+  },
+  "notVerified": [
+    "full compiler/build",
+    "native authority/approval",
+    "actual Pi/AgentSession/providers/host",
+    "same-conversation/broader cancellation/historical proofs",
+    "global equivalence/readiness"
+  ],
+  "riskItems": [
+    2,
+    3,
+    4
+  ],
+  "next": "Owner selected AVANZA: leave P11 blocked, advance read-only P08 analysis; no P11 retry/source changes/global closure.",
+  "ownerDisposition": {"request": "AVANZA", "meaning": "defer P11 and analyze P08 only", "explorerTaskId": "mwew3vx8-6-rxf9"}
+}

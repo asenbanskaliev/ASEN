@@ -1,6 +1,10 @@
 ---
 name: asen-review
 description: "Trigger: independent review, high-risk review, candidate review. Perform read-only candidate-bound review before verification or release when required."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use for high/unknown risk or whenever independent review is explicitly required.

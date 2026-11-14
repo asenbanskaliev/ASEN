@@ -111,13 +111,15 @@ function filteredTap(stdout:string,target:string,planned:readonly string[]):void
  const summary=(label:string)=>Number(lines.find(line=>line.startsWith(`# ${label} `))?.slice(label.length+3));if(targetPass!==1||new Set(seen).size!==seen.length||summary("tests")!==seen.length||summary("fail")!==0||summary("todo")!==0)throw new Error("filtered Node TAP did not run the target exactly once");
 }
 type Range={startOffset:number;endOffset:number};type RawRange=Range&{count:number};
-function coverageRelativePath(cwd:string,absolute:string,canonicalRoot=realpathSync(cwd)):string{
+function coverageRelativePath(cwd:string,absolute:string,canonicalRoot=realpathSync(cwd)):string|undefined{
  const relativePath=relative(canonicalRoot,absolute).replace(/\\/gu,"/");
- if(isAbsolute(relativePath)||relativePath.startsWith("../")||relativePath===".."||resolve(canonicalRoot,relativePath)!==resolve(absolute))throw new Error("Node coverage script is outside the isolated candidate");
+ if(isAbsolute(relativePath)||relativePath.startsWith("../")||relativePath==="..")return undefined;
+ const expected=resolve(canonicalRoot,relativePath),actual=resolve(absolute);
+ if(process.platform==="win32"?expected.toLowerCase()!==actual.toLowerCase():expected!==actual)throw new Error("Node coverage script path is ambiguous");
  return relativePath;
 }
 function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:readonly string[]):Map<string,Range[]>{
- const found=new Map<string,Range[]>();
+ const found=new Map<string,Range[]>(),observedScripts=new Set<string>();
  for(const document of documents){
   const scripts=(document as {result?:unknown})?.result;
   if(!Array.isArray(scripts))throw new Error("Node coverage output is malformed");
@@ -127,7 +129,8 @@ function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:re
    if(!url.startsWith("file:"))continue;
    let absolute:string;try{absolute=fileURLToPath(url);}catch{throw new Error("Node coverage file URL is malformed");}
    const relativePath=coverageRelativePath(cwd,absolute,cwd);
-   if(!behaviorPaths.includes(relativePath))continue;
+   observedScripts.add(relativePath??"<outside-root>");
+   if(relativePath===undefined||!behaviorPaths.includes(relativePath))continue;
    if(found.has(relativePath))throw new Error("Node coverage contains duplicate or ambiguous behavior scripts");
    const raw:RawRange[]=[];
    for(const fn of functions){
@@ -147,14 +150,21 @@ function coverageRanges(documents:readonly unknown[],cwd:string,behaviorPaths:re
    found.set(relativePath,positive);
   }
  }
- for(const path of behaviorPaths)if(!found.get(path)?.length)throw new Error("Node coverage is missing positive behavior coverage");
+ for(const path of behaviorPaths)if(!found.get(path)?.length){
+  const state=found.has(path)?"script-found-with-zero-positive-ranges":"script-not-found";
+  const observed=[...observedScripts].sort().slice(0,20).join(",")||"none";
+  throw new Error(`Node coverage is missing positive behavior coverage: ${path}; ${state}; observed relative scripts: ${observed}`);
+ }
  return found;
 }
 /** Runs full and per-case fixed Node TAP commands and returns only normalized positive V8 ranges. */
 export async function executeNodeCoverageObservation(candidate:Candidate,testPaths:readonly string[],plannedCaseIds:readonly string[],behaviorPaths:readonly string[]):Promise<NodeCoverageObservation>{
  const paths=strictTestPaths(testPaths),cases=strictTexts(plannedCaseIds,"planned case ids"),behaviors=repositoryPaths(behaviorPaths,"behavior paths"),base=[process.execPath,"--test","--test-reporter=tap"];
  const fullCommand=[...base,...paths] as [string,...string[]],full=await executeNodeCoverageCommand(candidate,fullCommand,{cwd:candidate.repository,timeoutMs:120000});if(full.proof.exitCode!==0||full.stderr.trim())throw new Error("coverage observation requires a clean full test run");const parsed=parseTap(full.stdout,true);if(!same(parsed.executed,cases))throw new Error("full Node TAP cases do not exactly match the plan");
- const proofs=[full.proof],observed=[];for(const caseId of cases){const escaped=caseId.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&"),command=[...base,`--test-name-pattern=^${escaped}$`,...paths] as [string,...string[]],run=await executeNodeCoverageCommand(candidate,command,{cwd:candidate.repository,timeoutMs:120000});proofs.push(run.proof);if(run.proof.exitCode!==0||run.stderr.trim())throw new Error("filtered coverage observation requires a clean test run");filteredTap(run.stdout,caseId,cases);const ranges=coverageRanges(run.coverage,run.coverageRoot,behaviors);observed.push(Object.freeze({caseId,behavior:Object.freeze(behaviors.map(path=>Object.freeze({path,ranges:Object.freeze(ranges.get(path)!.map(range=>Object.freeze({...range})))})))}));}
+ if(cases.length===1){const caseId=cases[0]!,ranges=coverageRanges(full.coverage,full.coverageRoot,behaviors),observed=Object.freeze([{caseId,behavior:Object.freeze(behaviors.map(path=>Object.freeze({path,ranges:Object.freeze(ranges.get(path)!.map(range=>Object.freeze({...range})))})))}]);const observation=Object.freeze({adapterId:"node-test-v8" as const,commandFingerprint:createHash("sha256").update(JSON.stringify(full.proof.command)).digest("hex"),candidate:Object.freeze({id:candidate.id,repository:candidate.repository,revision:candidate.revision}),testPaths:Object.freeze(paths),plannedCaseIds:Object.freeze(cases),cases:Object.freeze(observed)});issuedCoverage.set(observation,{proofs:Object.freeze([full.proof])});return observation;}
+ const fullDuration=Math.max(10000,Date.parse(full.proof.finishedAt)-Date.parse(full.proof.startedAt)||5000);
+ const filteredTimeout=Math.max(10000,Math.min(120000,fullDuration*5));
+ const proofs=[full.proof],observed=[];for(const caseId of cases){const escaped=caseId.replace(/[.*+?^${}()|[\]\\]/gu,"\\$&"),command=[...base,`--test-name-pattern=^${escaped}$`,...paths] as [string,...string[]],run=await executeNodeCoverageCommand(candidate,command,{cwd:candidate.repository,timeoutMs:filteredTimeout});proofs.push(run.proof);if(run.proof.exitCode!==0||run.stderr.trim())throw new Error("filtered coverage observation requires a clean test run");filteredTap(run.stdout,caseId,cases);const ranges=coverageRanges(run.coverage,run.coverageRoot,behaviors);observed.push(Object.freeze({caseId,behavior:Object.freeze(behaviors.map(path=>Object.freeze({path,ranges:Object.freeze(ranges.get(path)!.map(range=>Object.freeze({...range})))})))}));}
  const observation=Object.freeze({adapterId:"node-test-v8" as const,commandFingerprint:createHash("sha256").update(JSON.stringify(proofs.map(proof=>proof.command))).digest("hex"),candidate:Object.freeze({id:candidate.id,repository:candidate.repository,revision:candidate.revision}),testPaths:Object.freeze(paths),plannedCaseIds:Object.freeze(cases),cases:Object.freeze(observed)});issuedCoverage.set(observation,{proofs:Object.freeze(proofs)});return observation;
 }
 export function claimNodeCoverageObservation(value:unknown):{proofs:readonly ExecutedEvidence[]}{if(typeof value!=="object"||value===null||!issuedCoverage.has(value))throw new Error("coverage observation was not issued here");if(claimedCoverage.has(value))throw new Error("coverage observation has already been claimed");claimedCoverage.add(value);return issuedCoverage.get(value)!;}

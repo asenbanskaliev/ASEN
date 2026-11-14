@@ -1,6 +1,10 @@
 ---
 name: asen-safe-change
 description: "Trigger: code change, source mutation, safe implementation. Require bounded scope, exact authorization and rollback before privileged mutation."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use for every source/code mutation.

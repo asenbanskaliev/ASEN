@@ -1,0 +1,21 @@
+{
+  "schema": "asen.todo/v1",
+  "revision": 1,
+  "items": [
+    {
+      "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+      "title": "One operation",
+      "events": [
+        {
+          "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+          "sessionId": "eco01-duplicate",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:21:52.739Z"
+        }
+      ],
+      "requestId": "eco01-duplicate-request"
+    }
+  ]
+}
