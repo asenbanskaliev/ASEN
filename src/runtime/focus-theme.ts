@@ -1,7 +1,8 @@
 import { Theme, type ThemeToken, type ThemeBg } from '@earendil-works/pi-coding-agent';
 import { colorToHex } from '@earendil-works/pi-tui';
 
-// Exact owned palette from design/asen-focus-experience/palette.json.
+// WIP runtime palette; original design source is deferred from the portable checkpoint.
+// Public tests compare these values with their explicitly derived regression oracle, not design acceptance.
 const palettes = {
   dark: { text: '#E5EEF5', muted: '#A6B5C3', accent: '#83D7C0', surface: '#15232E', focus: '#153D35', border: '#526879', warning: '#E7BF7A', error: '#F0A4AA', info: '#A9CBE3' },
   light: { text: '#172B35', muted: '#405B69', accent: '#176B59', surface: '#EDF4F1', focus: '#D7EBE4', border: '#748B96', warning: '#805600', error: '#A52A3B', info: '#2D617B' },

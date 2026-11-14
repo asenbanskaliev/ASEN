@@ -81,7 +81,7 @@ test("unconfigured native status/assess are unavailable, never simulated OFF",as
  }
  assert.equal(f.notices.length,2);assert.equal(f.requests.length,0);
 });
-for(const executable of ["gentle-ai","relative/native.exe",()=>{throw new Error("resolver unavailable");}]){
+for(const executable of ["example-unqualified-native","relative/native.exe",()=>{throw new Error("resolver unavailable");}]){
  test(`invalid executable fails closed without execution: ${String(executable)}`,async t=>{
   const f=await fixture(t,true,false,executable);
   unavailable(await f.call("native status"),"status");assert.equal(f.requests.length,0);

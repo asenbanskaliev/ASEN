@@ -108,7 +108,7 @@ test("protected Pi and update passthrough contexts retain their old literal beha
  for(const literal of [["update","managed","update","--manifest",f.manifestPath,"--package-root",f.packageRoot,"--dry-run"],["--","managed","update","--manifest",f.manifestPath,"--package-root",f.packageRoot,"--dry-run"]]){
   const result=invokeCli(f,["--package-root",piRoot,...literal]);assert.deepEqual(result,{code:0,stdout:"",stderr:""});
   const expectedArgs=literal[0]==="--"?literal.slice(1):literal.filter((_,index)=>index!==5&&index!==6);
-  assert.deepEqual(JSON.parse(await fs.readFile(record,"utf8")),expectedArgs);await fs.unlink(record);
+  const forwarded=literal[0]==="--"?["-e",piRoot,...expectedArgs]:expectedArgs;assert.deepEqual(JSON.parse(await fs.readFile(record,"utf8")),forwarded);await fs.unlink(record);
  }
 });
 

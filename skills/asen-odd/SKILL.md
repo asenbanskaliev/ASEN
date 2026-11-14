@@ -33,6 +33,6 @@ Activate for non-trivial, risky, multi-step or routing-sensitive work. Do not ad
 4. Record the route decision before privileged mutation.
 5. Mirror full task-document bytes with TODO and resume state through the bounded tracking bridge. Reject changed document bytes or candidate identity before resuming. Live Pi integration and MEM/ECO recovery remain separate evidence gates.
 ## Output Contract
-Return route, risk, reasons, tracking and isolation state, selected skill obligations, test evidence or explicit exception, unresolved decisions and route evidence. Delegation selects agents; ordinary development stays ODD. Neither descriptive structure grants write, review, delivery, merge or release authority.
+Return route, risk, reasons, tracking and isolation state, selected skill obligations, test evidence or explicit exception, unresolved decisions and route evidence. Delegation selects agents; workflow selection chooses a mode for coordination, not independent authority; ordinary development stays ODD. Neither descriptive structure grants write, review, delivery, merge or release authority.
 ## References
 None.

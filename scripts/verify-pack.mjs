@@ -1,10 +1,11 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync, existsSync } from "node:fs";
+import { readFileSync, realpathSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, chmodSync, existsSync } from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {verifyPublicExports} from "./package-exports.mjs";
 import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
+import {maskApprovedWireSchemas} from "./upstream-reference-policy.mjs";
 
 const temp=mkdtempSync(join(tmpdir(),"asen-packed-exports-"));
 function npm(args,options={}) {
@@ -50,7 +51,15 @@ if(missing.status!==1||!/Pi runtime not found/.test(missing.stderr))throw new Er
 if(process.platform!=="win32"){
   const fake=join(installation,"fake pi.mjs");writeFileSync(fake,"#!/usr/bin/env node\nconsole.log(JSON.stringify({args:process.argv.slice(2),dir:process.env.PI_CODING_AGENT_DIR}));\n");chmodSync(fake,0o755);
   const out=JSON.parse(execFileSync(bin,["--home",spaced,"--model","x y","ñ"],{encoding:"utf8",cwd:installation,env:{...cleanEnv,ASEN_PI:fake}}));
-  if(out.dir!==spaced||JSON.stringify(out.args)!==JSON.stringify(["--model","x y","ñ"]))throw new Error("packed ASEN executable passthrough/home environment mismatch");
+  // macOS may resolve /var/... to its /private/var/... canonical filesystem alias.
+  // Require exactly one injected extension, the same physical installed package,
+  // and an unchanged literal Pi tail: never accept a sibling/replacement path.
+  const expectedTail=["--model","x y","ñ"];
+  const actualArgs=out.args;
+  const extensionMatches=Array.isArray(actualArgs)&&actualArgs.length===expectedTail.length+2&&actualArgs[0]==="-e"
+    &&typeof actualArgs[1]==="string"&&existsSync(actualArgs[1])&&realpathSync(actualArgs[1])===realpathSync(installed);
+  const tailMatches=Array.isArray(actualArgs)&&JSON.stringify(actualArgs.slice(2))===JSON.stringify(expectedTail);
+  if(out.dir!==spaced||!extensionMatches||!tailMatches)throw new Error("packed ASEN executable passthrough/home environment mismatch: "+JSON.stringify({homeMatches:out.dir===spaced,extensionMatches,tailMatches,actualArgs}));
 }
 
 const forbidden=new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"),"i");
@@ -58,7 +67,7 @@ for(const file of names) {
   if (forbidden.test(file)) throw new Error(`external reference leaked into packed artifact path: ${file}`);
   if (/^(src|extensions|skills)\//.test(file) || file==="package.json") {
     const text=readFileSync(join(installed,file),"utf8");
-    if (forbidden.test(text)) throw new Error(`external reference leaked into packed product: ${file}`);
+    if (forbidden.test(maskApprovedWireSchemas(file,text))) throw new Error(`external reference leaked into packed product: ${file}`);
   }
 }
 console.log(JSON.stringify({tarball:result.filename,files:names.length,integrity:result.integrity,publicExports:checked.length,packedInstallVerified:true}));

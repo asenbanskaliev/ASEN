@@ -1,4 +1,4 @@
-import test from "node:test";
+import test,{after} from "node:test";
 import assert from "node:assert/strict";
 import {mkdtemp,readFile,rm,writeFile,unlink} from "node:fs/promises";
 import {spawn,spawnSync} from "node:child_process";
@@ -7,6 +7,22 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 // @ts-expect-error JavaScript-only budget helper.
 import {reserveInferenceCall,inspectInferenceBudget,readInferenceBudgetReceipts} from "../scripts/t12-inference-budget.mjs";
+
+// Only this synthetic test process is detached from the CI run's provider-call
+// authority. All tests use private temporary directories and no real provider.
+// Production reserveInferenceCall keeps the GitHub rerun denial unchanged.
+const inheritedActionEnv={
+ GITHUB_ACTIONS:process.env.GITHUB_ACTIONS,
+ GITHUB_RUN_ATTEMPT:process.env.GITHUB_RUN_ATTEMPT,
+};
+delete process.env.GITHUB_ACTIONS;
+delete process.env.GITHUB_RUN_ATTEMPT;
+after(()=>{
+ for(const [name,value] of Object.entries(inheritedActionEnv)){
+  if(value===undefined)delete process.env[name];else process.env[name]=value;
+ }
+});
+
 
 test("T12 inference budget reserves bounded child calls exactly once",async t=>{
  const directory=await mkdtemp(join(tmpdir(),"asen-inference-budget-"));
@@ -305,4 +321,21 @@ test("T12 GitHub rerun cannot replenish a strict provider-call budget after atte
  assert.match(again.stderr,/real-provider rerun is not authorized/);
  assert.deepEqual(await inspectInferenceBudget({directory}),
   {limit:5,reserved:1,remaining:4,authorization:"NOT_GRANTED"});
+});
+
+test("T12 strict real-provider GitHub rerun guard remains fail-closed",async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"asen-inference-strict-rerun-deny-"));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ process.env.GITHUB_ACTIONS="true";
+ process.env.GITHUB_RUN_ATTEMPT="2";
+ try{
+  await assert.rejects(
+   ()=>reserveInferenceCall("provider-connectivity",{limit:3,directory,strictOrder:true}),
+   /real-provider rerun is not authorized/
+  );
+  await assert.rejects(()=>inspectInferenceBudget({directory}),/ENOENT/);
+ }finally{
+  delete process.env.GITHUB_ACTIONS;
+  delete process.env.GITHUB_RUN_ATTEMPT;
+ }
 });

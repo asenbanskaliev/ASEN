@@ -178,7 +178,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      }
      return result;
     };
-    const result=scopedPublication?command.handler(...args,(guard:()=>void)=>{assertPublication=guard;}):command.handler(...args);
+    // Pi command handlers have (args, ctx) slots even when a direct caller omits both.
+    // Never shift the scoped publication guard into the user's argument position.
+    const result=scopedPublication?command.handler(args[0],args[1],(guard:()=>void)=>{assertPublication=guard;}):command.handler(...args);
     return result instanceof Promise?result.then(publish):publish(result);
    }
   });
@@ -843,7 +845,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.registerCommand?.("asen-commands",{description:"Browse manual command guidance in native UI, or search registered commands by name, description or group",handler:(args:string|undefined,ctx?:CommandContext)=>{
    const assertCurrent=ctx?panelScope(ctx):()=>{};
    const result=inspectRegisteredCommands(pi.getCommands?.bind(pi),args);
-   if(!String(args??"").trim()&&ctx?.hasUI===true&&(typeof ctx.ui?.select==="function"||(ctx.mode==="tui"&&typeof ctx.ui?.custom==="function"))&&result.entries.length){
+   if(!String(args??"").trim()&&ctx?.mode==="tui"&&ctx?.hasUI===true&&(typeof ctx.ui?.select==="function"||typeof ctx.ui?.custom==="function")&&result.entries.length){
     assertCurrent();
     const palette=keymapCommandHandlers.get("asen-palette");
     if(palette)return palette(args,ctx);
@@ -888,7 +890,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await revalidate();
    const custom=!String(args??"").trim()&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui?.custom==="function"
     ?ctx.ui.custom as ExtensionContext["ui"]["custom"]:undefined;
-   if(!result.entries.length||ctx.hasUI!==true||(!custom&&typeof ctx.ui?.select!=="function")){
+   if(!result.entries.length||ctx.mode!=="tui"||ctx.hasUI!==true||(!custom&&typeof ctx.ui?.select!=="function")){
     const lines=[commandDiscoveryNotice(result),...result.entries.map(row=>row.label)];
     assertCurrent();ctx.ui?.notify?.(lines.join("\n"),"info");return lines;
    }
@@ -1571,7 +1573,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
   };
   registerData("asen-profiles",{description:"Open native profile access, or inspect/apply: show | session <profile> | session --inherit | global <profile>",handler:async(args:string|undefined,ctx:CommandContext|undefined,publication:(guard:()=>void)=>void)=>{
-   if((args??"").trim()||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return profileAction(args,ctx);
+   if((args??"").trim()||ctx?.mode!=="tui"||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return profileAction(args,ctx);
    const guard=await nativeAccessScope(ctx);publication(guard);
    for(;;){
     const action=await nativeChoice(ctx,"ASEN profiles",["Use this session","Make default","Restore captured inheritance","Create saved profile","Edit saved profile","Edit fallback chain (ASEN parent)","Back"],guard);
@@ -1591,7 +1593,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   registerData("asen-persona",{description:"Open native style selection, inspect with show, or select professional | neutral | simple",handler:async(args:string|undefined,ctx:CommandContext,publication:(guard:()=>void)=>void)=>{
    let input=(args??"").trim(),guard:()=>void=()=>{};
    if(input!==""&&input!=="show"&&!isPersonaStyle(input))return ASEN_PERSONA_USAGE;
-   if(input===""&&ctx?.hasUI===true&&typeof ctx.ui.select==="function"){
+   if(input===""&&ctx?.mode==="tui"&&ctx?.hasUI===true&&typeof ctx.ui.select==="function"){
     guard=await nativeAccessScope(ctx);publication(guard);
     const selected=await nativeChoice(ctx,"ASEN communication style",["professional","neutral","simple","Back"],guard);
     if(selected===undefined||selected==="Back")return {cancelled:true};

@@ -29,6 +29,26 @@ test("status, doctor and command inventory are wired fail-closed",async t=>{
  assert.deepEqual([...h.commands.keys()].sort(),implementedCommands().sort());
  assert.equal(implementedCommands().filter(name=>name==="asen-task-agents").length,1);
 });
+test("RPC command, palette, profile and persona inspection never requests an interactive selection",async testContext=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-rpc-no-interactive-select-"));
+ testContext.after(()=>rm(root,{recursive:true,force:true}));
+ const h=host(),notices:string[]=[];let selections=0;
+ const pi={...h.pi,getCommands:()=>[...h.commands.keys()].map(name=>({name,source:"extension"}))};
+ createAsenExtension({homeDir:()=>root,packageRoot:root,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi);
+ const ctx:any={cwd:root,mode:"rpc",hasUI:true,sessionManager:{getSessionId:()=>"rpc-command-session"},
+  ui:{select:async()=>{selections++;throw new Error("RPC must not open a TUI selector");},notify:(message:string)=>notices.push(message)}};
+ const rows=await h.commands.get("asen-commands")!.handler("",ctx);
+ assert.ok(Array.isArray(rows)&&rows.some((row:any)=>row.name==="asen-commands"));
+ const palette=await h.commands.get("asen-palette")!.handler("",ctx);
+ assert.ok(Array.isArray(palette),"RPC palette should expose manual guidance");
+ const profiles=await h.commands.get("asen-profiles")!.handler("",ctx);
+ assert.equal((profiles as {available?:boolean})?.available,true);
+ const persona=await h.commands.get("asen-persona")!.handler("",ctx);
+ assert.equal((persona as {style?:string})?.style,"professional");
+ assert.equal(selections,0,"RPC probes must not await a native UI selection");
+ assert.ok(notices.some(message=>message.includes("asen-commands")));
+});
+
 test("task-agents palette selection remains manual-only without invoking its handler",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"task-agents-palette-"));
  t.after(()=>rm(root,{recursive:true,force:true}));

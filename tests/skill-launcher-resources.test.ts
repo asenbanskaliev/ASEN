@@ -1,18 +1,21 @@
 import assert from "node:assert/strict";
-import {test,mock} from "node:test";
+import {test,mock,after} from "node:test";
 import childProcess from "node:child_process";
 import {syncBuiltinESMExports} from "node:module";
 import {EventEmitter} from "node:events";
 import {pathToFileURL} from "node:url";
 import {mkdtemp,mkdir,writeFile,rm,readdir} from "node:fs/promises";
+import {tmpdir} from "node:os";
 import path from "node:path";
 import {DefaultResourceLoader,SettingsManager,parseArgs} from "@earendil-works/pi-coding-agent";
 import {runAsen,launcherPackageRoot} from "../src/cli.js";
 
 // No Pi process, installer, AgentSession, model, or product extension is executed.
-const audit=process.env.ASEN_AUDIT_ROOT;
+// Self-owned synthetic resource-loader fixture. Never loads private .asen-audit grants.
+const audit=await mkdtemp(path.join(tmpdir(),"asen-public-skill-fixtures-"));
+await mkdir(path.join(audit,"tmp"));
+after(async()=>rm(audit,{recursive:true,force:true}));
 async function fixture(run:(f:{root:string;pkg:string;cwd:string;agent:string;home:string})=>Promise<void>){
- assert.ok(audit,"source .asen-audit/env-c.sh before running");
  const root=await mkdtemp(path.join(audit,"tmp",`skill-launcher-${process.env.ASEN_SKILL_LAUNCHER_PHASE??"green"}-`));
  const environmentKeys=["TEMP","TMP","TMPDIR","HOME","USERPROFILE"];
  const previousTemp=environmentKeys.map(key=>process.env[key]);

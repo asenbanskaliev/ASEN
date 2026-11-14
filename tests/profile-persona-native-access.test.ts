@@ -24,7 +24,8 @@ async function fixture(t:TestContext,empty=false,sharedHome?:string){
  const commands=new Map<string,any>(),events=new Map<string,Function[]>(),notices:string[]=[],screens:{title:string;choices:string[]}[]=[];
  let id="session-a",effects=0;
  const forbidden=()=>{effects++;throw new Error("Unexpected provider/model effect");};
- const ctx:any={cwd:project,mode:"rpc",hasUI:true,sessionManager:{getSessionId:()=>id},modelRegistry:{find:forbidden,getAvailable:forbidden,refresh:forbidden,getApiKey:forbidden,getAll:()=>[{provider:"catalog",id:"model"}] },
+ // Native selections require a real TUI contract. RPC no-selector regressions live in extension-runtime-commands.test.ts.
+ const ctx:any={cwd:project,mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>id},modelRegistry:{find:forbidden,getAvailable:forbidden,refresh:forbidden,getApiKey:forbidden,getAll:()=>[{provider:"catalog",id:"model"}] },
   ui:{input:async()=>queue.shift(),notify:(text:string)=>notices.push(text),setWidget(){},setStatus(){},select:async(title:string,choices:string[])=>{screens.push({title,choices});return queue.shift();}}};
  const queue:(string|undefined)[]=[];
  const pi:any={on(name:string,fn:Function){events.set(name,[...(events.get(name)??[]),fn]);},registerCommand(name:string,command:any){commands.set(name,command);},registerTool(){},getCommands:()=>[],getAllTools:()=>[],getFlag:()=>false,setModel:forbidden,sendMessage:forbidden,sendUserMessage:forbidden,setThinkingLevel:forbidden};
