@@ -1,0 +1,216 @@
+import assert from "node:assert/strict";
+import test,{type TestContext} from "node:test";
+import {execFileSync} from "node:child_process";
+import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join,resolve} from "node:path";
+import {registerOrdinaryReviewCommand,truncateClaim,boundedFindingClaims,REVIEW_FINDING_CLAIM_MAX_BYTES,REVIEW_FINDING_CLAIMS_MAX_BYTES} from "../src/review/ordinary-review-command.js";
+import {createNativeRddControl,type ExecFileResult,type NativeRddObservation} from "../src/review/native-rdd-control.js";
+import type {PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-reviewer.js";
+
+type Command=Parameters<Parameters<typeof registerOrdinaryReviewCommand>[0]>[1];
+const author={provider:"author-provider",id:"writer"},reviewer={provider:"review-provider",id:"reviewer-one"};
+const DEFAULT_LENSES=["risk","resilience","reliability"];
+function git(root:string,...args:string[]):string{return execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();}
+function assessmentData(data:Record<string,unknown>):NativeRddObservation{
+ const payload={schema:"gentle-ai.review-assessment/v1",changed_paths:1,changed_lines:1,reasons:[],candidate:{kind:"current-changes"},...data};
+ return Object.freeze({operation:"assess",status:"available",data:Object.freeze(payload),reviewAuthority:false,deliveryAuthority:false}) as NativeRddObservation;
+}
+function unconfigured():NativeRddObservation{
+ return Object.freeze({operation:"assess",status:"unavailable",reason:"unconfigured",reviewAuthority:false,deliveryAuthority:false}) as NativeRddObservation;
+}
+function repository(t:TestContext):string{
+ const root=resolve(mkdtempSync(join(tmpdir(),"asen-review-assessment-")));
+ t.after(()=>rmSync(root,{recursive:true,force:true}));
+ git(root,"init","-q");git(root,"-c","user.name=ASEN test","-c","user.email=asen@example.invalid","commit","-q","--allow-empty","-m","base");
+ writeFileSync(join(root,"target.txt"),"committed base\n");git(root,"add","target.txt");git(root,"-c","user.name=ASEN test","-c","user.email=asen@example.invalid","commit","-q","-m","track target");
+ writeFileSync(join(root,"target.txt"),"candidate\n");
+ return root;
+}
+function editorAnswer(title:string):string{
+ if(title.includes("untracked"))return "[]";
+ if(title.includes("Rutas exactas"))return '["target.txt"]';
+ return "Check the task requirements";
+}
+/** One interactive workspace review driven by a host-injected read-only native control whose own notifications are recorded. */
+function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation)){
+ const root=repository(t),messages:string[]=[],trace:{operation:string,notified:string[]}[]=[];
+ const control={async observe(operation:string,context:{ui:{notify(message:string,level:"info"|"error"):void}}):Promise<NativeRddObservation>{
+  const notified:string[]=[];trace.push({operation,notified});
+  context.ui.notify=(message:string)=>{notified.push(message);};
+  return typeof observation==="function"?observation():observation;
+ }};
+ const commands=new Map<string,Command>();
+ registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control as never);
+ const registry={getAvailable:()=>[author,reviewer],hasConfiguredAuth:(model:PiReviewerModel)=>model.provider!=="author-provider",
+  streamSimple:(model:PiReviewerModel)=>{
+   const answer={verdict:"pass",summary:"Reviewed the exact diff",findings:[]};
+   return (async function*(){yield {type:"done" as const,reason:"stop" as const,message:{content:[{type:"text",text:JSON.stringify(answer)}],role:"assistant",provider:model.provider}};})();
+  }} as unknown as PiReviewRegistry;
+ const context={cwd:root,hasUI:true,modelRegistry:registry,model:author,sessionManager:{getSessionId:()=>"session-assess"},
+  ui:{notify:(message:string)=>messages.push(message),select:async(_title:string,options:string[])=>options[0],editor:async(title:string)=>editorAnswer(title),confirm:async()=>true}};
+ return {handler:commands.get("asen-review")!.handler,context,messages,trace};
+}
+
+test("workspace review keeps the default risk triple when native assess is unavailable",async t=>{
+ const state=setup(t,unconfigured());
+ const result=await state.handler("workspace",state.context) as {status:string,risk:{riskId:string;reason:string;severity:string;lenses:string[];independentVerifier:boolean},acceptance:string,deliveryAuthority:boolean};
+ assert.equal(result.status,"passed-awaiting-tests");
+ assert.equal(result.risk.riskId,"pi-independent-review");
+ assert.equal(result.risk.reason,"Review the exact current workspace snapshot");
+ assert.equal(result.risk.severity,"high");
+ assert.deepEqual([...result.risk.lenses],DEFAULT_LENSES);
+ assert.equal(result.risk.independentVerifier,true);
+ assert.deepEqual(state.trace.map(call=>call.operation),["assess"]);
+ assert.deepEqual(state.trace[0]!.notified,[],"the internal assessment must not add a notification of its own");
+ assert.equal(state.messages.length,1);
+ assert.equal(result.acceptance,"not-accepted");assert.equal(result.deliveryAuthority,false);
+});
+
+test("native assess passive risk lowers severity, lenses and the independent verifier",async t=>{
+ const state=setup(t,assessmentData({risk:"passive",reasons:[{code:"docs_only"}],review_due:false,review_due_reason:"passive"}));
+ const result=await state.handler("workspace",state.context) as {risk:{severity:string;lenses:string[];reason:string;independentVerifier:boolean}};
+ assert.equal(result.risk.severity,"low");
+ assert.deepEqual([...result.risk.lenses],["risk"]);
+ assert.equal(result.risk.independentVerifier,false);
+ assert.match(result.risk.reason,/native assess risk passive/u);
+ assert.match(result.risk.reason,/native reason docs_only/u);
+});
+
+test("native assess medium risk maps to its own lens set without recommended lenses",async t=>{
+ const state=setup(t,assessmentData({risk:"medium"}));
+ const result=await state.handler("workspace",state.context) as {risk:{severity:string;lenses:string[]}};
+ assert.equal(result.risk.severity,"low");
+ assert.deepEqual([...result.risk.lenses],["risk","reliability"]);
+});
+
+test("recommended lenses from native assess replace the default triple in wire order",async t=>{
+ const state=setup(t,assessmentData({risk:"high",lenses:["readability","risk","readability","nonsense"]}));
+ const result=await state.handler("workspace",state.context) as {risk:{severity:string;lenses:string[];independentVerifier:boolean}};
+ assert.equal(result.risk.severity,"high");
+ assert.deepEqual([...result.risk.lenses],["readability","risk"]);
+ assert.equal(result.risk.independentVerifier,true);
+ assert.deepEqual(state.trace[0]!.notified,[]);
+});
+
+test("unusable assessment risk payloads fall back to the default triple",async t=>{
+ for(const payload of [{risk:"critical"},{risk:{}},{},[]] as Record<string,unknown>[]){
+  const state=setup(t,assessmentData(payload));
+  const result=await state.handler("workspace",state.context) as {status:string,risk:{riskId:string;severity:string;reason:string;lenses:string[];independentVerifier:boolean}};
+  assert.equal(result.status,"passed-awaiting-tests");
+  assert.equal(result.risk.riskId,"pi-independent-review");
+  assert.equal(result.risk.severity,"high");
+  assert.deepEqual([...result.risk.lenses],DEFAULT_LENSES);
+  assert.equal(result.risk.reason,"Review the exact current workspace snapshot");
+  assert.equal(result.risk.independentVerifier,true);
+ }
+});
+
+test("unusable recommended lenses keep the assessed tier lens set",async t=>{
+ for(const payload of [{risk:"high",lenses:["security","ops"]},{risk:"high",lenses:"risk"},{risk:"medium",lenses:[1,2]}] as Record<string,unknown>[]){
+  const state=setup(t,assessmentData(payload));
+  const result=await state.handler("workspace",state.context) as {risk:{severity:string;reason:string;lenses:string[]}};
+  assert.equal(result.risk.severity,payload.risk==="high"?"high":"low");
+  assert.deepEqual([...result.risk.lenses],payload.risk==="high"?DEFAULT_LENSES:["risk","reliability"]);
+  assert.match(result.risk.reason,new RegExp(`native assess risk ${payload.risk}`,"u"));
+ }
+});
+
+test("an assessment whose context went stale falls back without extra messages",async t=>{
+ const state=setup(t,()=>Object.freeze({operation:"assess",status:"unavailable",reason:"stale_context",reviewAuthority:false,deliveryAuthority:false}) as NativeRddObservation);
+ const result=await state.handler("workspace",state.context) as {status:string,risk:{lenses:string[]}};
+ assert.equal(result.status,"passed-awaiting-tests");
+ assert.deepEqual([...result.risk.lenses],DEFAULT_LENSES);
+ assert.equal(state.messages.length,1);
+});
+
+test("explicit native assess keeps its read-only notification and no authority",async t=>{
+ const root=repository(t),messages:string[]=[],commands=new Map<string,Command>(),executed:string[][]=[];
+ const stdout=JSON.stringify({schema:"gentle-ai.review-assessment/v1",risk:"medium",reasons:[{code:"changed_files"}],changed_paths:1,changed_lines:12,candidate:{kind:"current-changes"}});
+ const control=createNativeRddControl({executable:()=>process.execPath,execute:async request=>{executed.push([...request.arguments]);return {stdout,stderr:"",exitCode:0,signal:null,timedOut:false,outputLimitExceeded:false} as ExecFileResult;}});
+ registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control);
+ const context={cwd:root,hasUI:false,sessionManager:{getSessionId:()=>"session-assess"},ui:{notify:(message:string)=>messages.push(message)}};
+ const result=await commands.get("asen-review")!.handler("native assess",context) as NativeRddObservation;
+ assert.equal(result.status,"available");assert.equal(result.operation,"assess");
+ assert.equal(result.data.risk,"medium");
+ assert.equal(result.reviewAuthority,false);assert.equal(result.deliveryAuthority,false);
+ assert.deepEqual(messages,[JSON.stringify(result,null,2)]);
+ assert.deepEqual(executed,[["review","assess","--cwd",root,"--json"]]);
+});
+
+test("workspace review derives its risk through the configured read-only transport without extra messages",async t=>{
+ const root=repository(t),messages:string[]=[],executed:string[][]=[];
+ const stdout=JSON.stringify({schema:"gentle-ai.review-assessment/v1",risk:"high",lenses:["reliability","risk"],reasons:[{code:"shared_contract"}],changed_paths:2,changed_lines:40,candidate:{kind:"current-changes"}});
+ const control=createNativeRddControl({executable:()=>process.execPath,execute:async request=>{executed.push([...request.arguments]);return {stdout,stderr:"",exitCode:0,signal:null,timedOut:false,outputLimitExceeded:false} as ExecFileResult;}});
+ const commands=new Map<string,Command>();
+ registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control);
+ const registry={getAvailable:()=>[author,reviewer],hasConfiguredAuth:(model:PiReviewerModel)=>model.provider!=="author-provider",
+  streamSimple:(model:PiReviewerModel)=>{
+   const answer={verdict:"pass",summary:"Reviewed the exact diff",findings:[]};
+   return (async function*(){yield {type:"done" as const,reason:"stop" as const,message:{content:[{type:"text",text:JSON.stringify(answer)}],role:"assistant",provider:model.provider}};})();
+  }} as unknown as PiReviewRegistry;
+ const context={cwd:root,hasUI:true,modelRegistry:registry,model:author,sessionManager:{getSessionId:()=>"session-assess"},
+  ui:{notify:(message:string)=>messages.push(message),select:async(_title:string,options:string[])=>options[0],editor:async(title:string)=>editorAnswer(title),confirm:async()=>true}};
+ const result=await commands.get("asen-review")!.handler("workspace",context) as {status:string,risk:{severity:string;lenses:readonly string[];reason:string;independentVerifier:boolean}};
+ assert.equal(result.status,"passed-awaiting-tests");
+ assert.equal(result.risk.severity,"high");
+ assert.deepEqual([...result.risk.lenses],["reliability","risk"]);
+ assert.equal(result.risk.independentVerifier,true);
+ assert.match(result.risk.reason,/native assess risk high; native reason shared_contract/u);
+ assert.deepEqual(executed,[["review","assess","--cwd",root,"--json"]]);
+ assert.equal(messages.length,1,"the read-only assessment is folded into the plan, not announced as a second message");
+});
+
+test("workspace review without an interactive host stays unavailable before any assessment",async t=>{
+ const root=repository(t),messages:string[]=[];let observed=0;
+ const commands=new Map<string,Command>();
+ registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),{async observe(){observed++;return unconfigured();}} as never);
+ const context={cwd:root,hasUI:false,sessionManager:{getSessionId:()=>"session-assess"},ui:{notify:(message:string)=>messages.push(message)}};
+ const result=await commands.get("asen-review")!.handler("workspace",context);
+ assert.deepEqual(result,{status:"unavailable",reason:"Revisión independiente no disponible: se requiere una sesión Pi interactiva, modelo autor conocido y un modelo revisor autenticado distinto."});
+ assert.equal(observed,0);assert.equal(messages.length,1);
+});
+
+test("finding claim truncation keeps the last whole character inside the byte bound",()=>{
+ assert.equal(REVIEW_FINDING_CLAIM_MAX_BYTES,1024);
+ assert.equal(REVIEW_FINDING_CLAIMS_MAX_BYTES,8192);
+ assert.deepEqual(truncateClaim("a short claim",REVIEW_FINDING_CLAIM_MAX_BYTES),{text:"a short claim",truncated:false});
+ const long="x".repeat(1200),cutLong=truncateClaim(long,REVIEW_FINDING_CLAIM_MAX_BYTES);
+ assert.equal(Buffer.byteLength(cutLong.text),1024);assert.equal(cutLong.truncated,true);assert.equal(cutLong.text,long.slice(0,1024));
+ const accented="é".repeat(700),cutAccent=truncateClaim(accented,1024);
+ assert.equal(Buffer.byteLength(cutAccent.text),1024);assert.equal(cutAccent.text.length,512);
+ assert.equal(cutAccent.truncated,true);assert.equal(accented.startsWith(cutAccent.text),true);
+ const cutAstral=truncateClaim("😀".repeat(3),6);
+ assert.equal(cutAstral.text,"😀");assert.equal(Buffer.byteLength(cutAstral.text),4);assert.equal(cutAstral.truncated,true);
+ assert.deepEqual(truncateClaim("😀",0),{text:"",truncated:true});
+ assert.deepEqual(truncateClaim("",1024),{text:"",truncated:false});
+});
+
+test("bounded finding claims stop at the total byte bound and mark later ids omitted",()=>{
+ const ids=["c1","c2","c3","c4","c5","c6","c7","c8","c9","c10"];
+ const bounded=boundedFindingClaims(ids,ids.map(id=>({id,claim:"y".repeat(1000)})))!;
+ assert.deepEqual(Object.keys(bounded.claims),ids.slice(0,8));
+ assert.deepEqual([...bounded.truncated],[]);
+ assert.deepEqual([...bounded.omitted],["c9","c10"]);
+ assert.equal(Buffer.byteLength(Object.values(bounded.claims).join(""),"utf8"),8000);
+});
+
+test("a per-claim cut is recorded as truncated and still counts toward the total bound",()=>{
+ const ids=["f1","f2","f3","f4","f5","f6","f7","f8","f9","f10"];
+ const long="x".repeat(1500);
+ const findings=ids.map((id,index)=>({id,claim:index===9?"short claim":long}));
+ const bounded=boundedFindingClaims(ids,findings)!;
+ assert.deepEqual(Object.keys(bounded.claims),ids.slice(0,8));
+ assert.deepEqual([...bounded.truncated],ids.slice(0,8));
+ assert.deepEqual([...bounded.omitted],["f9","f10"]);
+ assert.equal(Buffer.byteLength(bounded.claims["f1"]!,"utf8"),REVIEW_FINDING_CLAIM_MAX_BYTES);
+});
+
+test("empty or unmatched claim ids produce no bounded claim envelope",()=>{
+ assert.equal(boundedFindingClaims([],[]),undefined);
+ assert.equal(boundedFindingClaims(["missing"],[{id:"other",claim:"text"}]),undefined);
+ assert.equal(boundedFindingClaims(["a"],[{id:"a",claim:"one"},{id:"a",claim:"two"}]),undefined);
+ const partial=boundedFindingClaims(["a","ghost"],[{id:"a",claim:"kept"}])!;
+ assert.equal(partial.claims.a,"kept");
+ assert.deepEqual([...partial.omitted],[]);assert.deepEqual([...partial.truncated],[]);
+});

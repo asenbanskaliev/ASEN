@@ -12,7 +12,8 @@ import {captureReviewRepositoryBinding,assertReviewRepositoryBinding} from "./re
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
 import {hasSensitiveName} from "../security/primary-tool-policy.js";
 import {prepareReviewPanelDescriptor,renderReviewPanel} from "../runtime/review-panel.js";
-import {createNativeRddControl,type NativeRddControl} from "./native-rdd-control.js";
+import {createNativeRddControl,type NativeRddControl,type NativeRddObservation} from "./native-rdd-control.js";
+import type {ReviewLens,ReviewRiskInput} from "./review-risk.js";
 
 interface CandidateReviewComponent{render(width:number):string[];invalidate():void;handleInput(data:string):void}
 interface CandidateReviewBindings{matches(data:string,action:"tui.select.cancel"|"tui.select.confirm"):boolean}
@@ -82,7 +83,77 @@ function changedCandidatePaths(before:readonly Readonly<{path:string;mode:string
 function assertNoSensitiveReviewPaths(paths:readonly string[]):void{
  if(paths.some(hasSensitiveName))throw new Error("La revisión independiente no puede incluir rutas sensibles (.env*, *.pem, *.key)");
 }
-async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:string):Promise<unknown>{
+export const REVIEW_FINDING_CLAIM_MAX_BYTES=1024;
+export const REVIEW_FINDING_CLAIMS_MAX_BYTES=8192;
+/** Cuts at the last whole character that still fits within maxBytes UTF-8 bytes. */
+export function truncateClaim(claim:string,maxBytes:number):{text:string;truncated:boolean}{
+ if(Buffer.byteLength(claim)<=maxBytes)return {text:claim,truncated:false};
+ let kept="",bytes=0;
+ for(const character of claim){
+  const size=Buffer.byteLength(character);
+  if(bytes+size>maxBytes)break;
+  kept+=character;bytes+=size;
+ }
+ return {text:kept,truncated:true};
+}
+/** Retained v4.8.0 relay bound (reference lib/review-coordinator.ts): untrusted reviewer claims never travel whole.
+ * The correction/acknowledgment envelope owned by P22/P23 is its consumer; nothing here routes on the text.
+ * Claims are added in ids order until the next one would pass the total bound; the rest are only listed as omitted.
+ * An id with no single matching claim is skipped, so neither case can pass for a whole claim. */
+export function boundedFindingClaims(ids:readonly string[],findings:readonly {id:string;claim:string}[]):{claims:Record<string,string>;truncated:readonly string[];omitted:readonly string[]}|undefined{
+ const entries:[string,string][]=[],truncated:string[]=[],omitted:string[]=[];
+ let total=0;
+ for(const id of ids){
+  const matches=findings.filter(finding=>finding.id===id);
+  if(matches.length!==1)continue;
+  const {text,truncated:cut}=truncateClaim(matches[0]!.claim,REVIEW_FINDING_CLAIM_MAX_BYTES),size=Buffer.byteLength(text);
+  if(omitted.length>0||total+size>REVIEW_FINDING_CLAIMS_MAX_BYTES){omitted.push(id);continue;}
+  total+=size;entries.push([id,text]);
+  if(cut)truncated.push(id);
+ }
+ return entries.length===0?undefined:Object.freeze({claims:Object.fromEntries(entries),truncated:Object.freeze(truncated),omitted:Object.freeze(omitted)});
+}
+const DEFAULT_REVIEW_RISK:Readonly<{riskId:string;reason:string;severity:"low"|"high";lenses:readonly ReviewLens[]}>={riskId:"pi-independent-review",reason:"Review the exact current workspace snapshot",severity:"high",lenses:["risk","resilience","reliability"]};
+/** Mirrors the canonical lens whitelist owned by planReviewRisk in review-risk.ts (that set is module-private). */
+const ALLOWED_REVIEW_LENSES:readonly ReviewLens[]=["risk","resilience","readability","reliability"];
+const ASSESSMENT_LENSES:Readonly<Record<"passive"|"medium"|"high",readonly ReviewLens[]>>=Object.freeze({passive:["risk"],medium:["risk","reliability"],high:["risk","resilience","reliability"]});
+const REVIEW_RISK_REASON_MAX_BYTES=400;
+function assessmentText(value:unknown):string{
+ return typeof value==="string"?value.replace(/[\u0000-\u001f\u007f-\u009f]/gu," ").replace(/\s+/gu," ").trim():"";
+}
+function recommendedLenses(value:unknown):ReviewLens[]{
+ if(!Array.isArray(value))return [];
+ const selected:ReviewLens[]=[];
+ for(const item of value){
+  const lens=assessmentText(item) as ReviewLens;
+  if(ALLOWED_REVIEW_LENSES.includes(lens)&&!selected.includes(lens))selected.push(lens);
+ }
+ return selected;
+}
+/** Descriptive mapping of one read-only native assess observation to the workspace review risk.
+ * It never grants review, acknowledgment or delivery authority, and any missing or unusable payload keeps the default triple. */
+export function reviewRiskFromNativeAssessment(observation:NativeRddObservation|undefined):ReviewRiskInput{
+ const fallback={...DEFAULT_REVIEW_RISK,lenses:[...DEFAULT_REVIEW_RISK.lenses]};
+ if(observation===undefined||observation.status!=="available")return fallback;
+ const data=observation.data;
+ const risk=assessmentText(data.risk).toLowerCase();
+ if(risk!=="passive"&&risk!=="medium"&&risk!=="high")return fallback;
+ const recommended=recommendedLenses(data.lenses);
+ const lenses=recommended.length?recommended:[...ASSESSMENT_LENSES[risk]];
+ const codes=[...new Set((Array.isArray(data.reasons)?data.reasons:[]).map(reason=>assessmentText((reason as {code?:unknown}|null)?.code)).filter(Boolean))].slice(0,4);
+ const due=data.review_due===true||data.review_due===false?" review due "+(data.review_due?"yes":"no"):"";
+ const parts=[`native assess risk ${risk}`,...codes.map(code=>`native reason ${code}`),due].filter(Boolean);
+ const reason=truncateClaim([DEFAULT_REVIEW_RISK.reason,parts.join("; ")].join("; "),REVIEW_RISK_REASON_MAX_BYTES).text;
+ return {riskId:DEFAULT_REVIEW_RISK.riskId,reason:reason||DEFAULT_REVIEW_RISK.reason,severity:risk==="high"?"high":"low",lenses};
+}
+/** Silent read-only observation: the explicit `native assess` command keeps its own notification, this one only informs the plan. */
+async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:ReviewCommandContext):Promise<ReviewRiskInput>{
+ try{
+  const observation=await nativeRdd.observe("assess",{cwd:context.cwd,sessionManager:context.sessionManager,ui:{notify:()=>{}},...(context.signal?{signal:context.signal}:{})});
+  return reviewRiskFromNativeAssessment(observation);
+ }catch{return reviewRiskFromNativeAssessment(undefined);}
+}
+async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string):Promise<unknown>{
  const sessionId=context.sessionManager?.getSessionId?.(),registry=context.modelRegistry,author=context.model;
  if(!context.hasUI||!sessionId||!registry||!author||!context.ui.select||!context.ui.editor||!context.ui.confirm){
   const unavailable="Revisión independiente no disponible: se requiere una sesión Pi interactiva, modelo autor conocido y un modelo revisor autenticado distinto.";
@@ -152,10 +223,12 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
   }
  }
  assertNoSensitiveReviewPaths([...reviewPaths,...intendedUntracked]);
+ const risk=await assessWorkspaceReviewRisk(nativeRdd,context);
+ assertContextCurrent();
  const reviewerId="pi-model:"+model.provider+"/"+model.id;
  let workspace:ReturnType<typeof openWorkspaceReview>;
  try{workspace=openWorkspaceReview({repositoryRoot:projectRoot,intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
-  risk:{riskId:"pi-independent-review",reason:"Review the exact current workspace snapshot",severity:"high",lenses:["risk","resilience","reliability"]}},{reviewPaths},correction?{previousProjection:correction.priorProjection,allowedPaths:correction.allowedPaths}:undefined);}
+  risk},{reviewPaths},correction?{previousProjection:correction.priorProjection,allowedPaths:correction.allowedPaths}:undefined);}
  catch(error){
   if(!(error instanceof WorkspaceReviewScopeError))throw error;
   if(correction&&error.kind!=="unchanged-correction")retireCorrection=true;
@@ -240,7 +313,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,correctionId?:str
    }
   }else status="passed-awaiting-tests";
   const result=Object.freeze({status,requestId:bound.requestId,resultId:bound.resultId,candidate:evidence.candidate,reviewerId:bound.reviewerId,
-   verdict:bound.verdict,summary:verdict.summary,findings:verdict.findings,tests:evidence.tests,
+   verdict:bound.verdict,risk:evidence.risks,summary:verdict.summary,findings:verdict.findings,tests:evidence.tests,
    ...(correctionValidation?{correction:correctionValidation}:{}),...(correctionNext?{correctionId:correctionNext,allowedCorrectionPaths:workspaceCorrections.get(correctionNext)?.allowedPaths}:{}),
    acceptance:"not-accepted",deliveryAuthority:false});
   closeWorkspace();
@@ -268,9 +341,9 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
   if(command==="native status"||command==="native assess")return nativeRdd.observe(command==="native status"?"status":"assess",context);
-  if(command==="workspace")return runWorkspaceReview(context);
+  if(command==="workspace")return runWorkspaceReview(context,nativeRdd);
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
-  if(correctionMatch)return runWorkspaceReview(context,correctionMatch[1]);
+  if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
    const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
