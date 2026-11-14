@@ -136,6 +136,17 @@ export class WorkspaceLockTable {
   }
 
   /**
+   * Release every held lock regardless of owner.
+   * Used by lifecycle teardown (e.g. session dispose) that cannot enumerate agent IDs.
+   * Returns the count of released locks.
+   */
+  public clear(): number {
+    const count = this.locks.size;
+    this.locks.clear();
+    return count;
+  }
+
+  /**
    * Count the number of active (non-expired) locks currently held.
    */
   public activeLockCount(): number {
