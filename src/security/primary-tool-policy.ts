@@ -8,6 +8,7 @@ import {isYoloRoutineDelivery,isSensitiveShellAction} from "./yolo-delivery-poli
 import {isYoloTempScratchRemoval} from "./yolo-temp-scratch.js";
 
 import { hasSensitiveName, sensitivePath, sensitiveName } from "./path-safety.js";
+import {evaluateExecutionSurface} from "./execution-surface-guard.js";
 
 export type PrimaryToolPolicyHandler=(event:ToolCallEvent,context:ExtensionContext)=>Promise<ToolCallEventResult|undefined>;
 export {isYoloRoutinePush,isYoloRoutineDelivery} from "./yolo-delivery-policy.js";
@@ -122,6 +123,8 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
      return denied("guarded shell confirmation expired");
     return undefined;
    }
+   const surfaceBlock=evaluateExecutionSurface(toolName,input);
+   if(surfaceBlock)return surfaceBlock;
    const toolCallId=event.toolCallId,cwd=context.cwd,signal=context.signal;
    if(!input||typeof input!=="object")return denied("malformed tool input");
    const rawPath=(input as {path?:unknown}).path;
