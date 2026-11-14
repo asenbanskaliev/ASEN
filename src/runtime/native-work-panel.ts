@@ -1,7 +1,7 @@
 import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,type AsenPanelSection,type AsenPanelSnapshot} from "./ide-panel.js";
 import {truncateForTerminal,visibleWidth} from "./responsive-layout.js";
 import type {Theme} from "@earendil-works/pi-coding-agent";
-import type {KeybindingsManager} from "@earendil-works/pi-tui";
+import type {KeybindingsManager,TuiMouseEvent,TuiMouseEventResult} from "@earendil-works/pi-tui";
 
 export interface NativePanelControls{
  readonly requestRender:()=>void;
@@ -18,10 +18,11 @@ export interface NativePanelControls{
 export interface NativePanelComponent{
  render(width:number):string[];
  handleInput(data:string):void;
+ handleMouse?(event:TuiMouseEvent):TuiMouseEventResult|undefined;
  invalidate():void;
 }
 /** Keyboard-native read-only overlay on Pi's documented ui.custom component API. */
-export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:NativePanelControls):NativePanelComponent{
+export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:NativePanelControls):NativePanelComponent & {handleMouse:(event:TuiMouseEvent)=>TuiMouseEventResult|undefined}{
  let active=0,scrollTop=0,selectedOnly=false,closeOnly=false,activationRequested=false,revealActive=false;
  const collapsed=new Set<AsenPanelSection>();
  const sections=[...ASEN_PANEL_SECTIONS];
@@ -114,5 +115,25 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   }
   if(matches("tui.editor.deleteCharBackward","\u007f","\b")){selectedOnly=false;scrollTop=0;controls.requestRender();}
  };
- return {render,handleInput,invalidate(){scrollTop=0;}};
+ const handleMouse=(event:TuiMouseEvent):TuiMouseEventResult|undefined=>{
+  if(event.type!=="press"||event.button!=="left")return undefined;
+  // Map click y to section header index via row tracking
+  let rowIndex=0;
+  for(const [index,section] of sections.entries()){
+   if(selectedOnly&&section!==activeName())continue;
+   if(rowIndex===event.y){
+    active=index;scrollTop=0;revealActive=true;
+    if(collapsed.has(section))collapsed.delete(section);else collapsed.add(section);
+    controls.requestRender();return {handled:true};
+   }
+   rowIndex++;
+   const open=selectedOnly||!collapsed.has(section);
+   if(!open)continue;
+   // Skip content rows for this section
+   const contentRows=renderAsenPanelSection(snapshot,section,72).length;
+   rowIndex+=contentRows;
+  }
+  return undefined;
+ };
+ return {render,handleInput,handleMouse,invalidate(){scrollTop=0;}};
 }
