@@ -1557,11 +1557,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return {saved:true,scope,name,role,active:"unchanged",sessionProfile:"unchanged",parentModel:"unchanged"};
   };
   const editSavedFallbackChain=async(ctx:CommandContext,guard:()=>void)=>{
-   const inventory=await readProfilesFile(profilesFile);guard();
-   const selected=await nativeChoice(ctx,"Edit fallback chain — saved GLOBAL profile, ASEN parent only",[...inventory.profiles.map(profile=>"Profile: "+profile.name),"Back"],guard);
+   const projectId=path.normalize(realpathSync(path.resolve(ctx.cwd)));guard();
+   const scope=await nativeChoice(ctx,"Edit fallback chain scope",["Global","Project","Back"],guard);
+   if(scope===undefined||scope==="Back")return {cancelled:true};
+   const fallbackFile=scope==="Global"?profileFallbacksFile:path.join(projectId,".asen","profile-fallbacks.json");
+   const profilesSource=scope==="Global"?profilesFile:path.join(projectId,".asen","profiles.json");
+   const inventory=await readProfilesFile(profilesSource);guard();
+   const selected=await nativeChoice(ctx,`Edit fallback chain — ${scope} profile`,[...inventory.profiles.map(profile=>"Profile: "+profile.name),"Back"],guard);
    if(selected===undefined||selected==="Back")return {cancelled:true};
-   const name=selected.slice("Profile: ".length),role="orchestrator";
-   const original=await readProfileFallbacksFile(profileFallbacksFile);guard();
+   const name=selected.slice("Profile: ".length);
+   const availableRoles=["orchestrator","explorer","worker","reviewer","verifier","*"];
+   const roleChoice=await nativeChoice(ctx,`Select role for ${name} fallback chain`,[...availableRoles.map(r=>"Role: "+r),"Back"],guard);
+   if(roleChoice===undefined||roleChoice==="Back")return {cancelled:true};
+   const role=roleChoice.slice("Role: ".length);
+   const original=await readProfileFallbacksFile(fallbackFile);guard();
    // Compare only the own target, including absence; never compare wildcard resolution.
    const ownChain=(file:typeof original)=>Object.hasOwn(file.profiles,name)&&Object.hasOwn(file.profiles[name]!,role)?file.profiles[name]![role]:undefined;
    const signature=JSON.stringify(ownChain(original)??null);
@@ -1569,16 +1578,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    for(;;){
     const entries=steps.map((step,index)=>"Entry "+(index+1)+": "+step.model+" — "+(step.thinking===undefined?"Default effort (unspecified)":"effort: "+step.thinking));
     const action=await nativeChoice(ctx,
-     "Global "+name+" — ASEN parent fallback order; empty override may inherit *; no live model change",
+     scope+" "+name+" — "+role+" fallback order; empty override may inherit *; no live model change",
      [...entries,...(steps.length<MAX_PROFILE_FALLBACK_CHAIN_LENGTH?["Add model"]:[]),"Save chain","Discard","Back"],guard);
     if(action===undefined||action==="Discard"||action==="Back")return {cancelled:true};
     if(action==="Save chain"){
-     guard();await updateProfileFallbacksFile(profileFallbacksFile,current=>{
+     guard();await updateProfileFallbacksFile(fallbackFile,current=>{
       guard();
       if(JSON.stringify(ownChain(current)??null)!==signature)throw new Error("Fallback chain changed; nothing saved. Reopen Edit fallback chain.");
       return setProfileFallbackChain(current,name,role,steps);
      });guard();
-     return {saved:true,scope:"Global",name,role,active:"unchanged",sessionProfile:"unchanged",parentModel:"unchanged"};
+     return {saved:true,scope,name,role,active:"unchanged",sessionProfile:"unchanged",parentModel:"unchanged"};
     }
     if(action==="Add model"){
      const picked=await pickSavedRoute(ctx,name,guard);
