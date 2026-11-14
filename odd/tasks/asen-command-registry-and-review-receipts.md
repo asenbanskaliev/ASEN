@@ -30,9 +30,16 @@
   * `testSuite`: `{ total, passed, failed, durationMs, runner }`
   * `verdict`: `"PASSED"` | `"FAILED"`
   * `signature`: `sha256(treeSha + ":" + testSuite.passed + ":" + verdict + ":" + commitSha)`
-* **S7:** `verifyReviewReceipt(receipt)` valida criptográficamente que la firma coincida exactamente con los datos declarados. Si el veredicto, tests, commitSha o treeSha fueron alterados, retorna `false`.
+* **S7:** `verifyReviewReceipt(receipt)` valida que la firma coincida exactamente con los datos declarados. Si el veredicto, tests, commitSha o treeSha fueron alterados, retorna `false`.
 * **S8:** `writeReviewReceipt(storageDir, receipt)` escribe atómicamente el recibo en `<storageDir>/<commitSha>.json`.
 * **S9:** `readReviewReceipt(storageDir, commitSha)` recupera y valida el recibo de disco; retorna `null` si no existe o si está corrupto/adulterado.
+
+> **Evolución de seguridad (2026-11-14, hardening HMAC):** la firma original era un **checksum de contenido** `sha256(...)` sin clave — tamper-evident pero falsificable por cualquiera. Se endureció sin romper compatibilidad:
+> * `loadReceiptSigningKey(storageDir)`: clave HMAC local de 32 bytes en `receipt-signing.key` (permisos `0o600`, creada atómicamente), mismo patrón que `agent-store.ts`.
+> * `createReviewReceiptSigned(input, key)`: firma `hmac-sha256:<hex>` autenticada con clave.
+> * `verifyReviewReceiptSigned(receipt, key)`: verificación estricta con `timingSafeEqual`; **rechaza recibos legacy**.
+> * `ReceiptVerifierService.isTreeAlreadyVerified` ahora exige la firma HMAC: un recibo legacy forjado **ya no certifica**. El camino permisivo quedó en `isTreeVerifiedLegacy` (solo informativo, nunca para saltar verificación).
+> * Evidencia: `tests/review-receipt-hmac.test.ts` (4) + `tests/receipt-verifier.test.ts` (3) verdes; typecheck exit 0.
 
 ---
 
