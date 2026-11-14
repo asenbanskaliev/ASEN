@@ -17,6 +17,6 @@ test("history selection defects to project scope, not session scope, and exclude
  assert.deepEqual(projection.rows.map(row => row.id), ["same-b", "same-a"]);
  assert.ok(!projection.rows.some(row => row.id === "foreign"));
  const selected = selectHistoryEntry(entries, "project-a", normalizeHistoryQuery(""), 5, "same-a");
- assert.deepEqual(selected, { state: "selected", id: "same-a", deletionAuthorized: false });
+ assert.deepEqual(selected, { state: "selected", id: "same-a", text: "same-a:scope", deletionAuthorized: false });
  assert.throws(() => selectHistoryEntry(entries, "project-b", "", 5, "same-a"), /selection/);
 });

@@ -11,6 +11,7 @@ import {spawnContained} from "../evidence/spawn-contained.js";
 import {authorityAssets} from "./pi-authority-assets.js";
 import {isThinking} from "../runtime/profiles.js";
 import {classifyAssistantError,getProcessModelFallbackCooldown,pickFallbackModel,shouldFallback,type TerminalErrorCategory} from "../runtime/model-fallback-policy.js";
+import {applyToolOverlay,loadToolOverlays} from "./tool-overlay.js";
 
 export interface PiProcessOptions{
  command?:string;
@@ -232,8 +233,12 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:`pi authority extension preparation failed: ${String(error)}`});
   }
   const policy=join(policyDirectory,"extensions","authority.ts");
+  const configHome=childEnvironment.PI_CODING_AGENT_DIR??join(childEnvironment.HOME??childEnvironment.USERPROFILE??request.repository,".pi","agent");
+  const baseTools=writer?["read","edit","write"]:["read"];
+  const effectiveTools=applyToolOverlay(baseTools,loadToolOverlays(configHome,request.repository));
+  const toolArgs=this.options.noTools||effectiveTools.length===0?["--no-tools"]:["--tools",effectiveTools.join(",")];
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,
-   "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...(this.options.noTools?["--no-tools"]:["--tools",writer?"read,edit,write":"read"]),...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
+   "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...toolArgs,...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
   const maxStream=this.options.maxStreamBytes??32_000_000;

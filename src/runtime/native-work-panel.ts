@@ -1,4 +1,4 @@
-import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,type AsenPanelSection,type AsenPanelSnapshot} from "./ide-panel.js";
+import {ASEN_PANEL_SECTIONS,renderAsenPanelSection,renderAsenPanelWithLayout,type AsenPanelSection,type AsenPanelSnapshot} from "./ide-panel.js";
 import {truncateForTerminal,visibleWidth} from "./responsive-layout.js";
 import type {Theme} from "@earendil-works/pi-coding-agent";
 import type {KeybindingsManager,TuiMouseEvent,TuiMouseEventResult} from "@earendil-works/pi-tui";
@@ -35,29 +35,31 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   return head+" ".repeat(Math.max(0,width-visibleWidth(head)-visibleWidth(tail)))+tail;
  };
  const rowsFor=(width:number):Row[]=>{
-  const headers=renderAsenPanel(snapshot,width,sections);
+  const layout=renderAsenPanelWithLayout(snapshot,width,[...collapsed]);
   const rows:Row[]=[];
   const noWork=!snapshot.todos.length&&!snapshot.jobs.length&&!snapshot.agents.length;
-  for(const [index,section] of sections.entries()){
+  for(const group of layout.groups){
+   const section=group.section;
    if(selectedOnly&&section!==activeName())continue;
    const open=selectedOnly||!collapsed.has(section);
-   const summary=headers[index]!.split(" · ").slice(1).join(" · ");
+   const header=layout.lines[group.start]??section;
+   const summary=header.split(" · ").slice(1).join(" · ");
    rows.push({text:fitLine((section===activeName()?"> ":"  ")+(open?"▾ ":"▸ ")+section,summary,width),section,heading:true});
    if(!selectedOnly&&section==="AGENTS"&&noWork)rows.push({text:"  No work in this session"});
    if(!open)continue;
-   let body:readonly string[]=[];
-   if(selectedOnly)body=renderAsenPanelSection(snapshot,section,width,true);
+   let source:readonly string[]=[];
+   if(selectedOnly)source=renderAsenPanelSection(snapshot,section,width,true);
    else if(section==="INTEGRATIONS"){
     const inspection=snapshot.integrationInspection;
-    body=inspection?[
+    source=inspection?[
      "  Commands: "+inspection.commands.state+(inspection.commands.limited?" · limited":""),
      "  Tools: "+inspection.tools.state+(inspection.tools.limited?" · limited":"")+" · connection: unknown",
      "  Enter details · /asen-integrations",
-    ]:renderAsenPanelSection(snapshot,section,width).slice(0,3);
+    ]:layout.lines.slice(group.start+1,group.end).slice(0,3);
    }else if(section==="TODOS"?snapshot.todos.length:section==="JOBS"?snapshot.jobs.length:section==="AGENTS"?snapshot.agents.length:section==="CHANGES"?snapshot.changes&&snapshot.changes.files>0:section==="REVIEW"?!/no pending results|unverified/u.test(summary):false){
-    body=renderAsenPanelSection(snapshot,section,width);
+    source=layout.lines.slice(group.start+1,group.end);
    }
-   rows.push(...body.map(text=>({text,section})));
+   rows.push(...source.map(text=>({text,section})));
   }
   return rows;
  };

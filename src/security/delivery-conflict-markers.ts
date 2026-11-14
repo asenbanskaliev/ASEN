@@ -422,7 +422,7 @@ function groupFindings(locations: readonly string[]): ConflictMarkerFinding[] {
  * optional seam over {@link CONFLICT_MARKER_BUDGET_MS} so the exhausted-budget
  * fail-open path can be proven without waiting for a wall-clock timeout.
  */
-export async function checkConflictMarkers(command: string, cwd: string, signal?: AbortSignal,
+export async function checkConflictMarkers(command: string, cwd: string, signal?: AbortSignal | undefined,
  budgetMs: number = CONFLICT_MARKER_BUDGET_MS): Promise<ConflictMarkerResult | undefined> {
  try {
   const budget = new Budget(budgetMs, signal);

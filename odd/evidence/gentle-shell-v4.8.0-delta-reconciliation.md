@@ -543,3 +543,269 @@ All five cards confirmed **NO_CONSUMER** in ASEN — inventory/registration only
 3. P48 surface guard (19-line part) — trivial, ship immediately; writer admission needs separate design decision
 4. P47 language anchor — cheap but needs Pi context_with_system event probe first
 5. P50 image cache — lowest, no image-attachment prerequisite in ASEN
+
+## REA Voice/Dictation deep analysis (2026-11-14, subagent mwgaszaz-v-p4b9)
+
+### Architecture: 9 modules, strict unidirectional deps
+```
+extensions/gentle-voice.ts → lib/voice-command.ts → lib/voice-session.ts → scripts/voice-worker.cjs
+                                                  → lib/voice-install.ts → lib/voice-artifacts.ts
+                                                  → lib/voice-platform.ts
+                                                  → lib/voice-push-to-talk.ts
+                                                  → lib/voice-ui.ts + lib/overlay-repaint.ts
+                                                  → lib/voice-settings.ts
+```
+Zero runtime deps added; everything native is downloaded, never bundled. Engines: ^22.19.0 || >=23.6.0.
+
+### voice-artifacts.ts — pinned data
+- SHERPA_ONNX_NODE v1.13.8 (sha512 SRI), NODE_CPAL v1.0.0 (7.7MB, sha512)
+- PARAKEET_MODEL: csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8, ~670MB total, SHA-256 per file
+- Platform targets: darwin-x64/arm64, linux-x64/arm64, win32-x64
+- VOICE_LINUX_MIN_GLIBC = "2.34"
+
+### voice-install.ts — staging + verification + atomic publish
+- mkdtemp staging (0700), marker .gentle-voice.json (schema=1)
+- Download: https only, ≤5 redirects with origin+pathPrefix allowlist, streaming sha512/sha256 verify
+- Archive: hand-written tar parser, whole-archive validation before extraction, type 0/0x30 only
+- Publish: atomic rename, concurrent-winner recheck, staging cleanup in finally
+- Timeouts: runtime 20min, model 120min
+
+### voice-session.ts — state machine + worker spawn
+- States: idle→starting→recording→transcribing→finished
+- Worker: separate Node process via spawn(process.execPath, [workerPath])
+- Child env allowlist: HOME/TEMP/LANG/PULSE only, adds GENTLE_PI_AGENTS_CHILD=1, drops PATH/credentials
+- No-orphan guarantee: stdin.end + unref setTimeout kill + all timers unref
+- Caps: MAX_LINE=64KiB, MAX_LINES=16, MAX_TEXT=16KiB, RECORDING_MARGIN_MS=10_000
+- Error codes: 12 worker codes + 8 session codes, frozen MESSAGES table (no path/env leakage)
+
+### voice-worker.cjs — out-of-process capture/decode
+- Flow: waiting→loading→recording→transcribing→ended
+- WSL detection selects pulseaudio backend
+- Model verification: streamed chunked SHA-256 of ~670MB WHILE recording
+- Transcription: sherpa-onnx OfflineRecognizer, resample to 16kHz, nemo_transducer provider:"cpu"
+- Result: text.trim().slice(0,16384), truncated flag
+
+### voice-command.ts — orchestration
+- Overlay: center anchor, 60% width, minWidth 44
+- Push-to-talk: SpaceHoldDetector, Esc cancels active hold, lazy install check on first hold
+- dictate(): runDictation with onState→view.setState, generation recheck before delivery
+- Refusals: GENTLE_PI_AGENTS_CHILD, non-TUI, concurrent run, generation staleness
+
+## REA Guide/Tour deep analysis (2026-11-14, subagent mwgasnsv-u-ygsb)
+
+### Architecture: 2 files
+- `lib/gentle-guide.ts` (197 lines): pure logic — GuideStep type, GUIDE_STEPS (18 steps), GuideTour class, guidePlacement, guideTryLine, GuidePopover class
+- `extensions/gentle-guide.ts` (178 lines): Pi integration — command + tool registration, overlay lifecycle, agent-mode nonCapturing
+
+### GuideStep type
+```typescript
+{ id: string; title: string; body: string; region: "center"|"editor"|"sidebar";
+  command?: string; keymap?: string; requires?: string }
+```
+`requires` = command OR tool name that must exist for step to be shown.
+
+### 18 steps (only welcome/end unconditional)
+welcome, prompt, palette(gentle:commands/alt+k), keymaps(gentle:customize), models(gentle:profiles), agents(gentle:agents/alt+a), todos(todo.collapse/ctrl+shift+t), jobs(gentle:jobs/ctrl+shift+j), changes(gentle:changes/alt+g), design(gentle:design), voice(gentle:voice), music(gentle:music), customize(gentle:customize), permissions(gentle:yolo), memory(mem_search), usage(gentle:usage/alt+u), diagnostics(gentle:doctor), end
+
+### GuideTour class
+Constructor throws on empty steps. Methods: current(), position() (1-based), isLast(), next()/previous() (boolean), show(id) (boolean). No state beyond index.
+
+### Placement
+- Width: min(56, max(40, columns-4))
+- Sidebar with rail: anchor right-center, offsetX -(railColumns+1)
+- Editor: anchor bottom-center, offsetY -6
+- Center/default: anchor center
+- Agent mode: nonCapturing=true (overlay never takes keyboard focus)
+
+### GuidePopover rendering
+Uses renderPaletteCard (╭─╮ borders). Title row + pointer line + body + try line + footer.
+Local mode: captures keys (→/enter/space next, ←/h back, esc/q end).
+Agent mode: handleInput inert, footer says "Reply in chat · /gentle:guide stop ends".
+
+### Tool integration (gentle_guide)
+Actions: start/next/previous/show/end. One step per turn. Returns guideStepText for agent narration.
+Headless mode for RPC (no overlay, text-only walking).
+before_agent_start appends GUIDE_PROMPT_HINT. session_shutdown closes active tour.
+Child isolation: GENTLE_PI_AGENTS_CHILD=1 → no command or tool registered.
+
+### Relocation
+Region change → close("moved") + reopen with new placement. Same GuideTour instance carried over.
+
+## REA Provider/Fast-Mode deep analysis (2026-11-14, subagent mwgatb6g-w-5afd)
+
+### Provider registration (nan-provider)
+- Single call: `pi.registerProvider(createNanProviderConfig())` in extensions/nan-provider.ts
+- Config: id:"nan", baseUrl:"https://api.nan.builders/v1", api:"openai-completions"
+- Auth: apiKey with login(prompt secret) + resolve(credential or NAN_API_KEY env)
+- Stream: lazyApi via Pi's openAICompletionsApi factory (never import SDK subpath)
+- Host contract: Provider.auth requires ≥1 of apiKey/oauth; getModels() must not throw
+
+### Catalog + live discovery
+- 11 CHAT_MODELS: glm5.3, deepseek-v4-flash, glm5.3-flash, qwen3.8-flash, mimo-v2.6-flash, gemma4, qwen3.6, kimi-k3.1-pro, qwen3.8-max, deepseek-v4-pro, hy4
+- Thinking level maps per family: GLM(off:null,xhigh,max), EXTENDED(off:"none",xhigh,max), MIMO(off:"none",minimal:"low",xhigh:"max",max:"max")
+- fetchLiveModelIds: GET /models with Bearer key, redirect:"error", cache:"no-store", 3s timeout
+- Credential change resets to offline baseline; live catalog authoritative only for fetching credential
+- No persist → Pi storage untouched
+
+### Fast-mode tier
+- FAST_MODELS: gpt-5.6-{luna,sol,terra}, gpt-6-{astra,sol,luna}, gpt-6.1-{sol,terra}
+- ServiceTier = "standard"|"fast"; applyOpenAITier adds service_tier:"priority"|"default" to payload
+- supportsOpenAIFast: model ∈ FAST_MODELS AND (openai+openai-responses OR openai-codex+openai-codex-responses)
+- Never mutates input payload
+
+### Lifecycle (gentle-fast.ts, 63 lines)
+- Restore from session-profile binding or frozen default at session_start/session_tree
+- PROFILE_TIER_EVENT bus for live tier changes (replaces disk re-read)
+- model_select invalidates tier if model changed
+- before_provider_request → applyOpenAITier when tier set and model matches
+- No slash command, no setStatus, no provider_stream_event observer
+
+### Child propagation
+- CHILD_TIER_ENV="GENTLE_PI_AGENT_SERVICE_TIER" JSON {tier, model}
+- Set on child env when profile.tier exists; deleted first then re-set
+- Force-injects gentle-fast.ts into child extensionPaths when tier set
+
+### Persistence
+- Tier stored in profiles file (gentle-pi.agent_model_profiles kind)
+- Footer renders profileTier beside effort in shell-bar
+- "gentle-fast" extension-status key filtered out of bar intentionally
+
+## REA Tool Call Hooks Integration (2026-11-14, subagent mwgd62ka-13-tplx)
+
+### Exact guard chain in extensions/gentle-ai.ts tool_call handler (line-ordered)
+1. nested gentle_review* from codemode → block
+2. primaryToolCall predicate (not child, not nested subagent)
+3. explorationBudget + verifierSettleReminders
+4. yolo.mode() → settles binding + epoch bump
+5. **sensitive-path denial** (evaluateSensitivePathTool)
+6. **execution-surface-guard** (evaluateExecutionSurfaceTool, sync)
+7. delivered-test lint
+8. subagent_run-only rejects (JD fix, writer scope, etc.)
+9. auto.guard + auto.check
+10. Non-shell tools → return gate() (preflight/markers NEVER see non-shell)
+11. agents-child destructive command block
+12. modeEpoch capture
+13. yolo.mode() recheck A → block on epoch change
+14. evaluateBashPolicies → confirmCommand (awaits human dialog)
+15. **delivery-preflight** (AFTER authorization, comment explains why)
+16. **conflict-markers** (only if !deliveryDenied && primaryToolCall; short-circuited by preflight denial)
+17. epoch recheck B → block on mode change during preflight
+18. return deliveryDenied ?? markerDenied (RDD denial wins over marker denial)
+
+### Key invariant
+No await between recheck B and return. Both awaits (preflight + markers) precede a single sync check + coalesced return.
+
+### deliveryAuthorized determination
+No flag/token — re-derived from live native evidence per call:
+- recognizeReviewDeliveryActions finds git push / gh pr create|merge
+- Per repo root: cli.reviewMode status → off=skip, non-on=deny
+- Committed-range selector via processRetainedNativeStatusSelections
+- cli.assess confirms candidate.kind==="base-diff" + baseRef
+- Staleness: HEAD/base identity before/after + deliveryEpoch + modeEpoch
+
+### Blocking shape
+Both return {block:true, reason}. Preflight fails closed. Markers fail open.
+
+## REA Command/Tool Registration Integration (2026-11-14, subagent mwgd6e1s-14-dzpj)
+
+### P27 Guide registration pattern
+- Command: pi.registerCommand("gentle:guide", {description, handler}) — local vs agent dispatch via ctx.mode + ctx.model check
+- Tool: pi.registerTool({name:"gentle_guide", parameters:TypeBox, prepareLoadout:hideBehindCodemode, execute}) — returns {content:[{type:"text",text}], details:{}}
+- Overlay: ctx.ui.custom(factory, {overlay:true, overlayOptions:()=>placement}) — function-valued options evaluated once at open
+- Hooks: before_agent_start → appendSystemPromptOnce; session_shutdown → active.close("ended")
+- Child isolation: GENTLE_PI_AGENTS_CHILD=1 → no command or tool registered
+
+### P29 Voice registration pattern
+- Command: pi.registerCommand("gentle:voice", {description, handler}) — gates: child refusal, hasUI, mode==="tui", single-op lock
+- Worker spawn: spawn(process.execPath, [workerPath], {cwd:runtimeRoot, shell:false, windowsHide:true, stdio:["pipe","pipe","pipe"], env:childEnv(allowlist)})
+- Paste: ctx.ui.pasteToEditor(text) then setTimeout(tui.requestRender, 0)
+- Push-to-talk: ctx.ui.onTerminalInput(handler) with SpaceHoldDetector; Esc cancels hold
+- Overlay: ctx.ui.custom with {overlay:true, overlayOptions:{anchor:"center",width:"60%",minWidth:44}}
+- Status: ctx.ui.setStatus("gentle-voice", text|undefined) for hold-to-talk (no overlay)
+- Lifecycle: session_start→arm if toggle on; session_shutdown→generation++, abort, disarm
+
+### P13 Question channel registration pattern
+- Child tool: pi.registerTool({name:"subagent_parent_message", parameters:{kind:"query"|"notification",message}, execute:messenger.query})
+- Parent tools: subagent_send_message (steer), subagent_reply ({task_id,request_id,message})
+- WAITING surfacing: runner.waitForQuery in task mode returns early with question text; UI shows WARNING tone, "?" pill, "asks you" label
+- Delivery: pi.sendMessage({deliverAs:"steer",triggerTurn:true}) for query notification
+- Timeout: CHILD_QUERY_TIMEOUT_MS=120_000, stall watchdog +5s margin, late reply via replyLate+LRU recordClosedQuery
+
+### P45 Desktop RPC registration pattern
+- Command: pi.registerCommand("gentle:desktop", {handler}) — gate isInteractiveRpcHost inside handler
+- Publisher: ctx.ui.setWidget("gentle-desktop-rpc", [line]) — string[] form is RPC channel
+- Router: built from static method/event tables, domain fall-through config→permission→usage→design→jobs→profiles→agents
+- Lifecycle: session_start→reset bridges→router.stop→gate check→attach→router.start(publisher); session_shutdown→reset+stop
+- Gate: mode==="rpc" && GENTLE_SHELL_INTERACTIVE_HOST==="1"; stripped from child env
+
+## REA Pi Event Hooks Integration (2026-11-14, subagent mwgd6r54-15-fro4)
+
+### P30 Provider registration
+- pi.registerProvider(createNanProviderConfig()) — single-arg overload, config with id/name/baseUrl/auth/getModels/refreshModels/stream/streamSimple
+- Auth: apiKey.login(interaction→prompt secret), resolve({ctx,credential,signal}) with env fallback
+- Stream: lazyApi via host-owned openAICompletionsApi factory (never import SDK subpath)
+- refreshModels: reads context.allowNetwork/signal/credential, publishes via context.publish({update})
+- Live discovery: GET /models with 3s timeout, redirect:"error", cache:"no-store", catalog keyed to credential
+
+### P30 before_provider_request hook
+- pi.on("before_provider_request", handler) — return value REPLACES payload; undefined = leave unchanged
+- Handler: applyOpenAITier(event.payload, selection, ctx.model) → {...payload, service_tier:"priority"|"default"} or undefined
+- supportsOpenAIFast: model ∈ FAST_MODELS AND compatible API pair
+
+### P30 PROFILE_TIER_EVENT
+- Custom event "gentle-pi:profile-tier" over pi.events bus (emit/on)
+- Emitted after setModel success, bind-profile, apply/clear profile
+- Consumer filters by sessionId (bus is global, not session-scoped)
+- Child propagation: CHILD_TIER_ENV="GENTLE_PI_AGENT_SERVICE_TIER" JSON on child env, honoured only on exact model match
+
+### P30 Session restore + invalidation
+- session_start/session_tree → restore(ctx) from session-profile binding or frozen default
+- model_select → clear tier if model changed
+- freezeSessionProfileAtStartup for non-child sessions
+
+### P47 context_with_system handler
+- pi.on("context_with_system", handler) — returns {messages?} or undefined
+- Chosen over "context" so Pi mid-conversation system messages stay in head
+- Anchor injected when tail is automated: append to returned messages array
+- Also persisted via pi.sendMessage({customType, content, display:false}, {triggerTurn:false})
+
+### P47 input handler
+- pi.on("input", handler) — records human text via isHumanInput(source, text)
+- Clears persisted anchors on new human input
+- Returns {action:"continue"}
+
+### P47 Placement invariant
+- PersistedPlacement{after, at} tracks where anchor was saved
+- placePersistedMessages relocates saved messages to maintain prompt-cache prefix stability
+- Pi 1.5.2 appends streaming messages at turn end → saved copy lands late → relocation needed
+
+### P47 Child exclusion
+- GENTLE_PI_AGENTS_CHILD=1 → both handlers return undefined immediately
+
+## REA Runtime Consumers Integration (2026-11-14, subagent mwgd750z-16-58wd)
+
+### P46 Tool overlay consumption
+- Single call site: lib/agents-config.ts:232 loadToolOverlays(configHome, cwd)
+- Per-agent application: agents-config.ts:242 applyToolOverlay(parsed.tools, overlays.entries[parsed.name])
+- Overlay applied AFTER parseAgentDefinition, keyed by resolved agent name
+- Unknown overlay agent names → notices appended to DiscoveryResult
+- Runner interaction: overlay invisible to runner; only sees request.agent.tools via --tools CLI arg
+- Notice surfacing: list_agents output only, no ui.notify
+- configHome resolution: gentlePiConfigHome(env) → GENTLE_PI_CONFIG_HOME → ~/.pi/gentle-ai
+
+### P32 Panel layout groups consumption
+- Producer: renderShellStatusSections returns {lines, targets, groups, loose}
+- Consumer A (rail): extensions/gentle-shell.ts caches targets/groups by width, passes cardGroups:(width)=>statusGroups.get(width) to sidebarPart
+- Consumer B (card painting): shell-sidebar-layout.ts:392 reads cardGroups(renderWidth), draws bordered card per group with sectionCardRows
+- Loose rows rendered OUTSIDE cards, unpainted, non-clickable
+- Click dispatch: targetAt(y,width) finds StatusTarget by row, toggle→collapse section, open-changes→openChanges
+- Digest↔groups coupling: sectionCache keyed by digest invalidates on fold/hover change
+
+### P50 Image disk cache consumption
+- Construction: ImageAttachments() at module scope, cache-free initially
+- Gate: GENTLE_PI_IMAGES_DISK_CACHE==="session" read once at extension init
+- session_start: sweepStale(root, 7 days) in try/catch, then setCache(new ImageDiskCache({root, sessionId}))
+- session_shutdown: dispose() + setCache(undefined) + clear() + setWidget undefined
+- Paste path: editor attachments option → insertChip → attachments.add → cache.write (only write point)
+- Prompt is path-free: submission uses base64 only
+- /gentle:images: cachedPaths(draft) filtered listing, notify per entry

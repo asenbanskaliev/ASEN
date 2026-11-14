@@ -101,31 +101,31 @@ test("P10 exposes a global parent fallback editor without changing data or count
 
 test("P10 saves explicit off effort and reopens the same global parent chain", async t => {
  const f = await fixture(t); await f.requireEditor(); const before = await f.state(), frozen = await f.show();
- await f.run([ACTION, "Profile: A", "Add model", "Catalog model: catalog/model", "off", "Save chain"]);
+ await f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Add model", "Catalog model: catalog/model", "off", "Save chain"]);
  assert.deepEqual(resolveProfileFallbackChain(await f.read(), "A", "orchestrator"), [{model: "catalog/model", thinking: "off"}]);
  const saved = JSON.parse(f.notices.at(-1)!); assert.equal(saved.saved, true); assert.equal(saved.role, "orchestrator"); assert.equal(saved.name, "A");
  unchangedExceptFallback(before, await f.state(), f.fallbackFile); assert.deepEqual(await f.show(), frozen);
- const from = f.screens.length; await f.run([ACTION, "Profile: A", "Back"]);
+ const from = f.screens.length; await f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Back"]);
  assert.ok(f.screens.slice(from).some(screen => screen.choices.some(choice => choice.startsWith("Entry ") && choice.includes("catalog/model") && choice.includes("off"))));
 });
 
 test("P10 reorders, replaces model/effort, and removes entries in the displayed order", async t => {
  const f = await fixture(t); await f.seed(chain([{model: "catalog/model", thinking: "off"}, {model: "catalog/second", thinking: "off"}])); await f.requireEditor();
  const before = await f.state();
- await f.run([ACTION, "Profile: A", entry("catalog/second"), "Move up", entry("catalog/second"), "Replace model", "Catalog model: catalog/third", "high", entry("catalog/model"), "Remove entry", "Save chain"]);
+ await f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", entry("catalog/second"), "Move up", entry("catalog/second"), "Replace model", "Catalog model: catalog/third", "high", entry("catalog/model"), "Remove entry", "Save chain"]);
  assert.deepEqual(resolveProfileFallbackChain(await f.read(), "A", "orchestrator"), [{model: "catalog/third", thinking: "high"}]);
  unchangedExceptFallback(before, await f.state(), f.fallbackFile);
 });
 
 for (const exit of ["Discard", "Back"]) test(`P10 ${exit} discards staged changes without altering files, counters or frozen binding`, async t => {
  const f = await fixture(t); await f.requireEditor(); const before = await f.state(), frozen = await f.show();
- await f.run([ACTION, "Profile: A", "Add model", "Catalog model: catalog/model", "off", exit]);
+ await f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Add model", "Catalog model: catalog/model", "off", exit]);
  assert.deepEqual(await f.state(), before); assert.deepEqual(await f.show(), frozen); assert.equal(JSON.parse(f.notices.at(-1)!).sessionProfile?.state === "absent", false);
 });
 
 test("P10 rejects forged editor choices without publication or configuration effects", async t => {
  const f = await fixture(t); await f.requireEditor(); const before = await f.state(), count = f.notices.length;
- await assert.rejects(f.run([ACTION, "Profile: A", "forged editor action"]), /ASEN access returned an unknown choice/);
+ await assert.rejects(f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "forged editor action"]), /ASEN access returned an unknown choice/);
  assert.deepEqual(await f.state(), before); assert.equal(f.notices.length, count);
 });
 
@@ -138,7 +138,7 @@ for (const kind of ["session", "manager", "project", "abort"]) test(`P10 rejects
   if (kind === "abort") f.ctx.signal = AbortSignal.abort();
   return "Save chain";
  };
- await assert.rejects(f.run([ACTION, "Profile: A", "Add model", "Catalog model: catalog/model", "off", save]), {name: "Error", message: kind === "abort" ? "ASEN access cancelled or context changed" : "ASEN panel session changed"});
+ await assert.rejects(f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Add model", "Catalog model: catalog/model", "off", save]), {name: "Error", message: kind === "abort" ? "ASEN access cancelled or context changed" : "ASEN panel session changed"});
  assert.deepEqual(await f.state(), before); assert.equal(f.notices.length, count);
 });
 
@@ -146,14 +146,14 @@ test("P10 rejects a concurrent target-chain edit rather than overwriting it", as
  const f = await fixture(t); await f.requireEditor(); let concurrent: Record<string, Buffer> | undefined;
  const save: Choice = async () => {await f.seed(chain([{model: "concurrent/model", thinking: "off"}])); concurrent = await f.state(); return "Save chain";};
  const count = f.notices.length;
- await assert.rejects(f.run([ACTION, "Profile: A", "Add model", "Catalog model: catalog/model", "off", save]), /Fallback chain changed.*nothing saved/);
+ await assert.rejects(f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Add model", "Catalog model: catalog/model", "off", save]), /Fallback chain changed.*nothing saved/);
  assert.deepEqual(await f.state(), concurrent); assert.equal(f.notices.length, count);
 });
 
 test("P10 preserves unrelated concurrent chains while saving the chosen target", async t => {
  const f = await fixture(t); await f.requireEditor(); const before = await f.state();
  const save: Choice = async () => {const current = await f.read(); current.profiles.B = {worker: [{model: "concurrent/other"}]}; await f.seed(current as ReturnType<typeof chain>); return "Save chain";};
- await f.run([ACTION, "Profile: A", "Add model", "Catalog model: catalog/model", "off", save]);
+ await f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Add model", "Catalog model: catalog/model", "off", save]);
  const stored = await f.read(); assert.deepEqual(stored.profiles.B, {worker: [{model: "concurrent/other"}]});
  assert.deepEqual(resolveProfileFallbackChain(stored, "A", "orchestrator"), [{model: "catalog/model", thinking: "off"}]);
  unchangedExceptFallback(before, await f.state(), f.fallbackFile);
@@ -161,29 +161,29 @@ test("P10 preserves unrelated concurrent chains while saving the chosen target",
 
 test("P10 rejects malformed fallback bytes unchanged and publishes no success", async t => {
  const f = await fixture(t); await writeFile(f.fallbackFile, "not valid JSON\r\n"); await f.requireEditor(); const before = await f.state(), count = f.notices.length;
- await assert.rejects(f.run([ACTION, "Profile: A"]), /Invalid profile fallback file/);
+ await assert.rejects(f.run([ACTION, "Global", "Profile: A", "Role: orchestrator"]), /Invalid profile fallback file/);
  assert.deepEqual(await f.state(), before); assert.equal(f.notices.length, count);
 });
 
 test("P10 saves eight unique entries and refuses an additional entry without writing", async t => {
  const f = await fixture(t); await f.seed(chain(Array.from({length: 7}, (_, n) => ({model: `catalog/m${n}`, thinking: "off"})))); await f.requireEditor();
- await f.run([ACTION, "Profile: A", "Add model", "Catalog model: catalog/m7", "off", "Save chain"]);
+ await f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Add model", "Catalog model: catalog/m7", "off", "Save chain"]);
  assert.equal(resolveProfileFallbackChain(await f.read(), "A", "orchestrator").length, 8);
  const before = await f.state(), count = f.notices.length;
- await assert.rejects(f.run([ACTION, "Profile: A", "Add model"]), /ASEN access returned an unknown choice/);
+ await assert.rejects(f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Add model"]), /ASEN access returned an unknown choice/);
  assert.deepEqual(await f.state(), before); assert.equal(f.notices.length, count);
 });
 
 test("P10 rejects a duplicate model without changing stored data or counters", async t => {
  const f = await fixture(t); await f.seed(chain([{model: "catalog/model", thinking: "off"}])); await f.requireEditor(); const before = await f.state(), count = f.notices.length;
- await assert.rejects(f.run([ACTION, "Profile: A", "Add model", "Catalog model: catalog/model", "off"]), /Invalid profile fallback chain/);
+ await assert.rejects(f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", "Add model", "Catalog model: catalog/model", "off"]), /Invalid profile fallback chain/);
  assert.deepEqual(await f.state(), before); assert.equal(f.notices.length, count);
 });
 
 test("P10 removal restores wildcard inheritance rather than claiming to disable fallback", async t => {
  const f = await fixture(t), seeded = chain([{model: "catalog/model", thinking: "off"}]);
  Object.assign(seeded.profiles.A, {"*": [{model: "default/model"}]}); await f.seed(seeded); await f.requireEditor(); const before = await f.state();
- await f.run([ACTION, "Profile: A", entry("catalog/model"), "Remove entry", "Save chain"]);
+ await f.run([ACTION, "Global", "Profile: A", "Role: orchestrator", entry("catalog/model"), "Remove entry", "Save chain"]);
  const stored = await f.read(); assert.equal(Object.hasOwn(stored.profiles.A!, "orchestrator"), false);
  assert.deepEqual(resolveProfileFallbackChain(stored, "A", "orchestrator"), [{model: "default/model"}]);
  assert.ok(f.screens.some(screen => /inherit/i.test(screen.title))); unchangedExceptFallback(before, await f.state(), f.fallbackFile);

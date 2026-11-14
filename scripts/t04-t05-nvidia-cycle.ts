@@ -86,18 +86,19 @@ async function waitForFile(file:string,timeoutMs:number,child:ReturnType<typeof 
 }
 function tsxImportUrl():string{
  const configured=process.env.ASEN_TSX_IMPORT_URL;
- if(configured){const url=new URL(configured);if(url.protocol!=="file:"||!existsSync(fileURLToPath(url)))throw new Error("ASEN_TSX_IMPORT_URL must identify an existing file URL");return url.href;}
+ if(configured)try{const url=new URL(configured);if(url.protocol!=="file:"||!existsSync(fileURLToPath(url)))throw new Error("invalid");return url.href;}catch{throw new Error("ASEN_TSX_IMPORT_URL must identify an existing file URL");}
  try{return pathToFileURL(require.resolve("tsx")).href;}catch{
-  const npm=process.platform==="win32"?"npm.cmd":"npm",globalRoot=execFileSync(npm,["root","-g"],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim(),loader=join(globalRoot,"tsx","dist","loader.mjs");
-  if(!existsSync(loader))throw new Error("The pinned global tsx loader is unavailable");return pathToFileURL(loader).href;
+  let globalRoot:string;try{const npm=process.platform==="win32"?"npm.cmd":"npm";globalRoot=execFileSync(npm,["root","-g"],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();}catch{throw new Error("The pinned global tsx loader is unavailable");}
+  const loader=join(globalRoot,"tsx","dist","loader.mjs");if(!existsSync(loader))throw new Error("The pinned global tsx loader is unavailable");return pathToFileURL(loader).href;
  }
 }
 async function hardKillInitialWriter(root:string,stateDir:string,taskId:string,sessionId:string,authorizationId:string){
  const journalFile=join(stateDir,"jobs.json"),barrier=join(stateDir,"interruption-barrier.json"),pids=join(stateDir,"processes.json");
  const child=spawn(process.execPath,["--import",tsxImportUrl(),"./scripts/t04-t05-nvidia-cycle.ts"],{cwd:sourceRoot,env:{...process.env,ASEN_T04_T05_CHILD:"interrupted-writer",ASEN_T04_T05_ROOT:root,ASEN_T04_T05_JOURNAL:journalFile,ASEN_T04_T05_BARRIER:barrier,ASEN_T04_T05_PIDS:pids,ASEN_T04_T05_TASK:taskId,ASEN_T04_T05_SESSION:sessionId,ASEN_T04_T05_AUTH:authorizationId},stdio:["ignore","ignore","pipe"]});
  let stderr="";child.stderr.setEncoding("utf8").on("data",chunk=>stderr=(stderr+String(chunk)).slice(-16_384));
- try{await waitForFile(barrier,180_000,child);}catch(error){try{if(child.pid&&child.exitCode===null&&child.signalCode===null)process.kill(child.pid,"SIGKILL");}catch{}throw new Error(`${error instanceof Error?error.message:"Interrupted writer failed"}; child stderr: ${redact(stderr)}`,{cause:error});}
- const processEvidence=JSON.parse(readFileSync(pids,"utf8")) as {controllerPid:number;piPid:number},barrierEvidence=JSON.parse(readFileSync(barrier,"utf8"));
+ try{await waitForFile(barrier,180_000,child);}catch(error){try{if(child.pid&&child.exitCode===null&&child.signalCode===null)process.kill(child.pid,"SIGKILL");}catch(killError){stderr=(stderr+`; cleanup failed: ${String(killError)}`).slice(-16_384);}throw new Error(`${error instanceof Error?error.message:"Interrupted writer failed"}; child stderr: ${redact(stderr)}`,{cause:error});}
+ let processEvidence:{controllerPid:number;piPid:number},barrierEvidence:any;
+ try{processEvidence=JSON.parse(readFileSync(pids,"utf8"));barrierEvidence=JSON.parse(readFileSync(barrier,"utf8"));}catch(error){throw new Error("Interrupted writer evidence is invalid",{cause:error});}
  assert.equal(processEvidence.controllerPid,child.pid);assert.ok(processEvidence.piPid>0);assert.equal(barrierEvidence.agentId,taskId);assert.equal(barrierEvidence.sessionId,sessionId);assert.equal(barrierEvidence.path,target);assert.equal(barrierEvidence.fileSha256,sha256(rejectedContent));assert.equal(readFileSync(join(root,target),"utf8"),rejectedContent);
  // Kill the controller first while Pi is stopped. Otherwise the controller can
  // observe Pi's death and persist a misleading terminal result before it dies.
@@ -113,9 +114,11 @@ async function runWriter(root:string,taskId:string,sessionId:string,content:stri
 }
 type ReviewOutput={verdict:"pass"|"fail";summary:string;findings:Array<{id:string;severity:"critical"|"high"|"medium"|"low";path:string;description:string}>};
 function parseReview(output:string):ReviewOutput{
- const records=output.trim().split(/\r?\n/u).filter(Boolean).map(line=>JSON.parse(line)),messages=records.filter(row=>row?.type==="message_end"&&row?.message?.role==="assistant"),message=messages.at(-1)?.message;
+ let records:any[];try{records=output.trim().split(/\r?\n/u).filter(Boolean).map(line=>JSON.parse(line));}catch(error){throw new Error("Independent reviewer output is invalid",{cause:error});}
+ const messages=records.filter(row=>row?.type==="message_end"&&row?.message?.role==="assistant"),message=messages.at(-1)?.message;
  assert.ok(message&&Array.isArray(message.content),"Independent reviewer returned no assistant message");
- const raw=message.content.map((item:{type?:string;text?:string})=>item.type==="text"?item.text??"":"").join("").replace(/^```(?:json)?\s*/u,"").replace(/\s*```$/u,"").trim(),value=JSON.parse(raw) as ReviewOutput;
+ const raw=message.content.map((item:{type?:string;text?:string})=>item.type==="text"?item.text??"":"").join("").replace(/^```(?:json)?\s*/u,"").replace(/\s*```$/u,"").trim();
+ let value:ReviewOutput;try{value=JSON.parse(raw) as ReviewOutput;}catch(error){throw new Error("Independent reviewer verdict is invalid",{cause:error});}
  assert.ok(value&&Object.getPrototypeOf(value)===Object.prototype);assert.deepEqual(Object.keys(value).sort(),["findings","summary","verdict"]);assert.ok(value.verdict==="pass"||value.verdict==="fail");assert.equal(typeof value.summary,"string");assert.ok(value.summary.trim());assert.ok(Array.isArray(value.findings)&&value.findings.length<=100);
  for(const finding of value.findings){assert.deepEqual(Object.keys(finding).sort(),["description","id","path","severity"]);assert.ok(["critical","high","medium","low"].includes(finding.severity));assert.equal(typeof finding.id,"string");assert.equal(typeof finding.path,"string");assert.equal(typeof finding.description,"string");assert.ok(finding.description.trim());}
  if(value.verdict==="pass")assert.equal(value.findings.some(finding=>finding.severity==="critical"||finding.severity==="high"),false);else assert.ok(value.findings.length);

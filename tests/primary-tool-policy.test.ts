@@ -29,14 +29,15 @@ test("ordinary commands pass without confirmation for exactly the recognized she
  assert.equal(confirmations,0);assert.equal(executions,3);
 });
 
-test("guarded commands use raw preview metadata and need fresh approval per call",async()=>{
+test("guarded delivery commands use raw preview metadata but remain blocked without delivery authority",async()=>{
  const prompts:unknown[][]=[];let executions=0;
  const ctx=context(process.cwd(),{ui:{confirm:async(...args:unknown[])=>{prompts.push(args);return true;}}});
  for(const id of ["shell-1","shell-2"]){
   const decision=await invoke(event("bash",{command:"git   push origin main"},id),ctx,()=>{executions++;});
-  assert.equal(decision,undefined);
+  assert.equal(decision?.block,true);
+  assert.match(decision?.reason??"",/Review outcomes do not authorize delivery/);
  }
- assert.equal(executions,2);
+ assert.equal(executions,0);
  assert.deepEqual(prompts,Array(2).fill(["ASEN · Confirm Git push?","git push origin main"]));
 });
 

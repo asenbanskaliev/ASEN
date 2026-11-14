@@ -67,11 +67,11 @@ test("selection recomputes the exact current page from source and grants no auth
  const entries=[entry("page-1","p"),entry("page-2","p"),entry("foreign","q"),entry("page-3","p"),entry("page-4","p")];
  const first=projectHistory(entries,"p","",3);assert.equal(first.state,"data");if(first.state!=="data")return;
  const selected=selectHistoryEntry(entries,"p","",3,"page-4");
- assert.deepEqual(selected,{state:"selected",id:"page-4",deletionAuthorized:false});assert.equal(Object.isFrozen(selected),true);
+ assert.deepEqual(selected,{state:"selected",id:"page-4",text:"page-4",deletionAuthorized:false});assert.equal(Object.isFrozen(selected),true);
  assert.throws(()=>selectHistoryEntry(entries,"p","",3,"foreign"),/selection/);
  assert.throws(()=>selectHistoryEntry(entries,"p","",3,"arbitrary-valid-id"),/selection/);
  assert.throws(()=>selectHistoryEntry(entries,"p","",3,"page-1"),/selection/);
- assert.deepEqual(selectHistoryEntry(entries,"p","",3,"page-1",first.nextCursor),{state:"selected",id:"page-1",deletionAuthorized:false});
+ assert.deepEqual(selectHistoryEntry(entries,"p","",3,"page-1",first.nextCursor),{state:"selected",id:"page-1",text:"page-1",deletionAuthorized:false});
  assert.throws(()=>selectHistoryEntry(entries,"p","",3,"page-4",first.nextCursor),/selection/);
 });
 

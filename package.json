@@ -75,5 +75,8 @@
   },
   "bin": {
     "asen": "./dist/cli.js"
+  },
+  "dependencies": {
+    "pi-alibaba-models": "^1.1.1"
   }
 }

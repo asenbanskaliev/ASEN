@@ -72,11 +72,13 @@ test("Primary Normal still confirms push; YOLO bypasses only scoped push, not da
  const fake=(command:string)=>({toolName:"bash",toolCallId:"id",input:{command}} as any);
  const normal=createPrimaryToolPolicyHandler({getMode:()=> "normal"});
  const yolo=createPrimaryToolPolicyHandler({getMode:()=> "yolo"});
- assert.equal(await normal(fake("git push origin feat/demo"),context),undefined);
+ const normalPush=await normal(fake("git push origin feat/demo"),context);
+ assert.equal(normalPush?.block,true);assert.match(normalPush?.reason??"",/Review outcomes do not authorize delivery/);
  assert.equal(confirmations,1);
  assert.equal(await yolo(fake("git push origin feat/demo"),context),undefined);
  assert.equal(confirmations,1);
- assert.equal(await yolo(fake("git push origin main"),context),undefined);
+ const yoloMain=await yolo(fake("git push origin main"),context);
+ assert.equal(yoloMain?.block,true);assert.match(yoloMain?.reason??"",/Review outcomes do not authorize delivery/);
  assert.equal(confirmations,2);
  assert.equal(await yolo(fake("rm -rf data"),context),undefined);
  assert.equal(confirmations,3,"YOLO must retain destructive approval");

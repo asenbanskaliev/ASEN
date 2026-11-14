@@ -21,7 +21,7 @@ export interface DeliveryPreflightContext {
   command: string;
   /** Whether native review has approved delivery for this candidate */
   deliveryAuthorized: boolean;
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
 }
 
 export interface DeliveryPreflightResult {

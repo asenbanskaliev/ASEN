@@ -348,6 +348,26 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/);
  assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
+test("workspace tool overlay is applied after role selection and before Pi launch",async t=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ await mkdir(join(d,".pi","gentle-ai"),{recursive:true});
+ await writeFile(join(d,".pi","gentle-ai","tools.json"),JSON.stringify({add:["grep","read"],remove:["read"]}));
+ const r=await runner(p).run({id:"overlay",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(r.ok,true,r.output);
+ const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
+ assert.equal(args[args.indexOf("--tools")+1],"grep");
+});
+test("workspace overlay removing every role tool emits no-tools",async t=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ await mkdir(join(d,".pi","gentle-ai"),{recursive:true});
+ await writeFile(join(d,".pi","gentle-ai","tools.json"),JSON.stringify({remove:["read"]}));
+ const r=await runner(p).run({id:"overlay-empty",role:"explorer",prompt:"inspect",repository:d});
+ assert.equal(r.ok,true,r.output);
+ const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
+ assert.ok(args.includes("--no-tools"));assert.ok(!args.includes("--tools"));
+});
 test("read-only artifact audit disables every Pi tool",async()=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
  const context=issueSkillContext("audit",d,undefined,{phase:"explore"});

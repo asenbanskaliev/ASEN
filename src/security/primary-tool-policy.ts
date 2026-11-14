@@ -9,6 +9,8 @@ import {isYoloTempScratchRemoval} from "./yolo-temp-scratch.js";
 
 import { hasSensitiveName, sensitivePath, sensitiveName } from "./path-safety.js";
 import {evaluateExecutionSurface} from "./execution-surface-guard.js";
+import {checkDeliveryPreflight} from "../review/delivery-preflight.js";
+import {checkConflictMarkers} from "./delivery-conflict-markers.js";
 
 export type PrimaryToolPolicyHandler=(event:ToolCallEvent,context:ExtensionContext)=>Promise<ToolCallEventResult|undefined>;
 export {isYoloRoutinePush,isYoloRoutineDelivery} from "./yolo-delivery-policy.js";
@@ -121,6 +123,15 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
      context.signal!==signal||signal?.aborted||(options.getMode?.(context)??"normal")!==mode||
      options.modeEpoch?.()!==startEpoch||(event.input as {command?:unknown}).command!==command)
      return denied("guarded shell confirmation expired");
+    // P23+P49: delivery safety guards — after human authorization, before execution
+    if(typeof command==="string"&&context.cwd!=null){
+     const safeCwd=context.cwd as string;
+     const safeCmd=command as string;
+     const preflight=checkDeliveryPreflight({cwd:safeCwd,command:safeCmd,deliveryAuthorized:false});
+     if(preflight?.blocked)return denied(preflight.reason??"delivery preflight blocked");
+     const markers=await checkConflictMarkers(safeCmd,safeCwd);
+     if(markers?.blocked)return denied(markers.reason??"delivery conflict markers detected");
+    }
     return undefined;
    }
    const surfaceBlock=evaluateExecutionSurface(toolName,input);

@@ -130,7 +130,7 @@ test("history select shows exactly 20 newest sanitized project labels with opaqu
  assert.equal(labels.length,20);assert.deepEqual(labels,projection.rows.map(row=>`id=${row.id} | timestamp=${row.timestamp} | redacted=${row.redacted} | preview=${row.preview}`));
  const duplicateRows=projection.rows.filter(row=>row.preview==="needle duplicate");assert.equal(duplicateRows.length,2);assert.notEqual(duplicateRows[0]!.id,duplicateRows[1]!.id);assert.ok(duplicateRows.every(row=>labels.some(label=>label.includes(`id=${row.id} |`))));
  assert.equal(seenSignal,signal);assert.doesNotMatch(labels.join("\n"),/PRIVATE-MARKER|foreign|\x1b/);
- assert.deepEqual(result,{state:"selected",id:projection.rows[0]!.id,deletionAuthorized:false});assert.deepEqual(Object.keys(result).sort(),["deletionAuthorized","id","state"]);
+ assert.deepEqual(result,{state:"selected",id:projection.rows[0]!.id,text:"needle \x1B]0;PRIVATE-MARKER\x07 safe-21",deletionAuthorized:false});assert.deepEqual(Object.keys(result).sort(),["deletionAuthorized","id","state","text"]);
 });
 
 test("history select returns bounded unavailable before store access, empty, and cancelled outcomes",async t=>{
@@ -149,7 +149,7 @@ test("history select safely bounds hostile metadata labels and rejects unoffered
  await runHistoryCommand("enable",base);await recordHistoryInput(base,"duplicate | preview=value");
  const raw=JSON.parse(await readFile(storePath,"utf8"));raw.entries[0].id="opaque | preview=FORGED \u202e";raw.entries[0].createdAt="\n2026-10-06\t";await writeFile(storePath,JSON.stringify(raw));await readHistoryStore(storePath);
  let offered:string[]=[];const selected=await runHistoryCommand("select",{...base,select:async(_title,options)=>{offered=options;return options[0];}});
- assert.equal(offered.length,1);assert.ok(offered[0]!.length<=4096);assert.doesNotMatch(offered[0]!,/[\u0000-\u001f\u007f-\u009f]|\p{Cf}/u);assert.equal(offered[0]!.split("|").length-1,3);assert.deepEqual(selected,{state:"selected",id:raw.entries[0].id,deletionAuthorized:false});
+ assert.equal(offered.length,1);assert.ok(offered[0]!.length<=4096);assert.doesNotMatch(offered[0]!,/[\u0000-\u001f\u007f-\u009f]|\p{Cf}/u);assert.equal(offered[0]!.split("|").length-1,3);assert.deepEqual(selected,{state:"selected",id:raw.entries[0].id,text:"duplicate | preview=value",deletionAuthorized:false});
  await assert.rejects(()=>runHistoryCommand("select",{...base,select:async()=>"not one of the offered labels"}),/selection/);
 });
 
