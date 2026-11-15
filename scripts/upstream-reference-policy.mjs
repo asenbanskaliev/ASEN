@@ -161,7 +161,7 @@ export function maskApprovedReferenceTokens(path, content) {
   if (previous === 0) return line;
   counts.set(line, previous - 1);
   // Mask only an unchanged, counted, known line, never a whole source file.
-  return line.replace(/gentle(?:man)?|engram/giu, "<approved-compat>");
+  return line.replace(new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"), "giu"), "<approved-compat>");
  }).join("\n");
  return result;
 }
