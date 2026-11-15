@@ -8,6 +8,10 @@ import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel
 import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../src/runtime/agents/parallel-todo-journal.js";
 import {bindParallelSourceTodos,type SourceTodoRow} from "../src/runtime/agents/parallel-todo-bindings.js";
 import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
+import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
+import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
+import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
+import type {TaskAgentLink} from "../src/runtime/agents/task-agent-link-store.js";
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
 import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
 
@@ -24,7 +28,8 @@ function fixture(t:TestContext){
  const head=git("rev-parse","HEAD"),identity:TodoContext={sessionId:"pi-t06",projectId:source},
   journalFile=join(privateRoot,"parallel-worktrees.json"),journal=new ParallelTodoWorktreeJournal(journalFile),
   sessionLinksFile=join(privateRoot,"parallel-worktree-sessions.json"),sessions=new ParallelChildSessionJournal(sessionLinksFile,journal),
-  planClaimsFile=join(privateRoot,"parallel-child-plan-claims.json"),handoffs:string[]=[],
+  planClaimsFile=join(privateRoot,"parallel-child-plan-claims.json"),
+  observationFile=join(privateRoot,"parallel-worker-observations.json"),handoffs:string[]=[],
   scopes=[{taskId:"todo-backend",writeSurfaces:["backend.txt"]},{taskId:"todo-frontend",writeSurfaces:["frontend.txt"]}],
   notifications:string[]=[],confirmMessages:string[]=[];
  const row=(taskId:string,file:string,revision=1,state="planned"):SourceTodoRow=>{
@@ -36,12 +41,18 @@ function fixture(t:TestContext){
     writeSurfaces:[file],writerAuthorizationBasis:'{"instruction":"work"}'}
   } as unknown as SourceTodoRow;
  };
+ const childRows=new Map<string,SourceTodoRow[]>(),
+  childAgentRecords=new Map<string,PublicAgentRecord[]>(),
+  childTaskLinks=new Map<string,TaskAgentLink[]>();
  let rows=[row("todo-backend","backend.txt"),row("todo-frontend","frontend.txt")],
   session=identity.sessionId,approve=true,editorAnswer=JSON.stringify({parentDir:parent,units:scopes});
  const commands=new Map<string,{handler:(args:string,ctx:unknown)=>Promise<unknown>}>();
  registerParallelWorktreeCommand((name,command)=>commands.set(name,command as never),{
-  journalFile,sessionLinksFile,planClaimsFile,planChildTodo:async input=>{handoffs.push(input);return {status:"model-free-ODD-planner-stub"};},
-  loadTodos:async identity=>identity.sessionId==="pi-t06"?rows:[],
+  journalFile,sessionLinksFile,planClaimsFile,observationFile,
+  planChildTodo:async input=>{handoffs.push(input);return {status:"model-free-ODD-planner-stub"};},
+  loadTodos:async identity=>identity.sessionId==="pi-t06"?rows:childRows.get(identity.sessionId)??[],
+  loadChildAgentRecords:async identity=>childAgentRecords.get(identity.sessionId)??[],
+  loadChildTaskAgentLinks:async identity=>childTaskLinks.get(identity.sessionId)??[],
   loadChildAgents:async identity=>identity.sessionId==="child-pi-1"?
    [{id:"child-worker-1",role:"worker",state:"running"}]:[]
  });
@@ -68,7 +79,10 @@ function fixture(t:TestContext){
   rmSync(privateRoot,{recursive:true,force:true});
  });
  return {source,parent,head,identity,scopes,rows,run,runChild,journal,sessions,handoffs,ctx,
-  journalFile,sessionLinksFile,planClaimsFile,
+  journalFile,sessionLinksFile,planClaimsFile,observationFile,
+  setChildObservations:(id:string,todos:SourceTodoRow[],agents:PublicAgentRecord[],links:TaskAgentLink[])=>{
+   childRows.set(id,todos);childAgentRecords.set(id,agents);childTaskLinks.set(id,links);
+  },
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
   setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},row};
