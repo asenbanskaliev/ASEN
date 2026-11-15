@@ -10,7 +10,7 @@ import {preparePrivateFile} from "../../io/private-file.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import type {TodoContext} from "../lifecycle/todo-store.js";
 import type {BoundParallelTodo} from "./parallel-todo-bindings.js";
-import type {ParallelWorktreeAllocation} from "./parallel-worktrees.js";
+import {assertPreparedParallelWorktree,type ParallelWorktreeAllocation} from "./parallel-worktrees.js";
 
 const SCHEMA="asen.parallel-todo-worktrees/v1" as const;
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
@@ -113,6 +113,7 @@ export class ParallelTodoWorktreeJournal{
      task.writeSurfaces.some((s,j)=>s!==allocation.writeSurfaces[j])||
      allocation.grantsAuthority!==false||allocation.autoMerge!==false)
      throw new Error("Parallel worktree result differs from reserved exact Todo mapping");
+    assertPreparedParallelWorktree(allocation);
    }
    const next={...record,state:"prepared" as const};journal.records[journal.records.indexOf(record)]=next;journal.revision++;
    await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\n");
