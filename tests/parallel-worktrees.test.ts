@@ -1,7 +1,7 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {existsSync,mkdtempSync,rmSync,writeFileSync,readFileSync} from "node:fs";
+import {chmodSync,existsSync,mkdtempSync,rmSync,writeFileSync,readFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {acquireWorkspaceWriter} from "../src/runtime/lifecycle/workspace-writer-lease.js";
@@ -90,6 +90,7 @@ test("T06 rejects overlapping, ambiguous, globbed, metadata, case-colliding or d
   [{taskId:"a",writeSurfaces:["left.txt"]},{taskId:"A",writeSurfaces:["right.txt"]}],
   [{taskId:"a",writeSurfaces:["../secret"]},{taskId:"b",writeSurfaces:["right.txt"]}],
   [{taskId:"a",writeSurfaces:[".git/config"]},{taskId:"b",writeSurfaces:["right.txt"]}],
+  [{taskId:"a",writeSurfaces:[".GIT/config"]},{taskId:"b",writeSurfaces:["right.txt"]}],
   [{taskId:"a",writeSurfaces:["left.txt"]},{taskId:"b",writeSurfaces:["right*.txt"]}]
  ];
  for(const units of bad)await assert.rejects(()=>f.prepare({units}),/Invalid|Overlapping/u);
@@ -173,4 +174,17 @@ test("T06 runs two genuinely authorized Dispatcher workers concurrently on separ
  await assert.rejects(()=>dispatchApprovedParallelWorkers({
   dispatcher,allocations:created.allocations,requests
  }),/separate freshly authorized/u);
+});
+
+test("T06 Git worktree staging cannot execute project post-checkout hooks",{
+ skip:process.platform==="win32"
+},async t=>{
+ const f=fixture(t),marker=join(f.source,"unsafe-post-checkout-marker");
+ const hook=join(f.source,".git","hooks","post-checkout");
+ writeFileSync(hook,'#!/bin/sh\nprintf hook-executed > "'+marker+'"\n');
+ chmodSync(hook,0o755);
+ const staged=await f.prepare();
+ assert.equal(staged.status,"prepared");if(staged.status!=="prepared")return;
+ f.registered(staged.allocations);
+ assert.equal(existsSync(marker),false,"staging is not permission to execute Git post-checkout hooks");
 });
