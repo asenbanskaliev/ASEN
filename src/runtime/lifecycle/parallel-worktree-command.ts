@@ -1,10 +1,13 @@
 import {execFileSync} from "node:child_process";
-import {realpathSync} from "node:fs";
+import {existsSync,realpathSync} from "node:fs";
 import path from "node:path";
 import {prepareParallelWorkerWorktrees,type ParallelWorkerUnit} from "../agents/parallel-worktrees.js";
+import {bindParallelSourceTodos,sameSourceTodoBindings,type SourceTodoRow} from "../agents/parallel-todo-bindings.js";
+import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../agents/parallel-todo-journal.js";
+import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare (crea 2-4 worktrees Git aislados tras confirmación; nunca autoriza ni lanza Workers)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | status (prepara worktrees aislados con confirmación; solo prepare-todos registra el vínculo ODD/TODOS)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
  sessionManager?:{getSessionId?:()=>string};
@@ -30,17 +33,60 @@ function readRequest(value:string):{parentDir:string;units:readonly ParallelWork
   !Array.isArray(data.units))throw new Error("Worktree request has invalid parentDir or units");
  return {parentDir:data.parentDir,units:data.units as ParallelWorkerUnit[]};
 }
-export function registerParallelWorktreeCommand(register:(name:string,command:WorktreeCommand)=>void):void{
+export function registerParallelWorktreeCommand(
+ register:(name:string,command:WorktreeCommand)=>void,
+ options?:{journalFile?:string;loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>}
+):void{
  register(ASEN_WORKTREES_COMMAND,{
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:async(args,ctx)=>{
-   if(args?.trim()!=="prepare"){ctx.ui.notify(usage,"info");return usage;}
+   const action=args?.trim();
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="status"){
+    ctx.ui.notify(usage,"info");return usage;
+   }
    const id=ctx.sessionManager?.getSessionId?.();
+   if(action==="status"){
+    if(!id||!options?.journalFile||!ctx.cwd){
+     const unavailable={status:"unavailable" as const,reason:"Worktree journal or owned Pi session unavailable"};
+     ctx.ui.notify(unavailable.reason,"warning");return unavailable;
+    }
+    const root=realpathSync(path.resolve(ctx.cwd));
+    const records=await new ParallelTodoWorktreeJournal(options.journalFile).list({sessionId:id,projectId:root});
+    const rows=options.loadTodos?await options.loadTodos({sessionId:id,projectId:root}):[];
+    const result={status:"audit-only" as const,grantsAuthority:false as const,autoResume:false as const,
+     records:records.map(record=>({
+      batchId:record.id,createdAt:record.createdAt,state:record.state,sourceHead:record.sourceHead,
+      tasks:record.tasks.map(task=>{
+       const live=rows.find(row=>row.taskId===task.taskId);
+       return {sourceTodoId:task.taskId,sourceRequestId:task.requestId,sourceRevision:task.taskRevision,
+        sourceTodoState:live?.current.state??"missing",
+        sourceTodoUnchanged:live?.current.revision===task.taskRevision&&live?.current.state==="planned",
+        worktreeRoot:task.worktreeRoot,worktreePresent:existsSync(task.worktreeRoot),
+        writeSurfaces:task.writeSurfaces,acceptance:"not-accepted"};
+      })
+     }))
+    };
+    ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
+   }
    if(!id||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.editor||!ctx.ui.confirm){
     const blocked={status:"unavailable" as const,reason:"Worktree creation requires live Pi TUI, editor, confirmation and an owned session"};
     ctx.ui.notify(blocked.reason,"warning");return blocked;
    }
    const root=realpathSync(path.resolve(ctx.cwd)),head=currentHead(root);
+   const linked=action==="prepare-todos";
+   if(linked&&(!options?.loadTodos||!options.journalFile)){
+    const unavailable={status:"unavailable" as const,reason:"Linked worktree preparation needs Todo runtime and a private journal"};
+    ctx.ui.notify(unavailable.reason,"warning");return unavailable;
+   }
+   const owner:TodoContext={sessionId:id,projectId:root};
+   const journal=linked?new ParallelTodoWorktreeJournal(options!.journalFile!):undefined;
+   const currentTodos=linked?await options!.loadTodos!(owner):[];
+   const planned=currentTodos.filter(row=>row.current.state==="planned"&&row.plan?.role==="worker"&&
+    row.plan.candidate?.revision===head&&row.plan.writeSurfaces?.length);
+   if(linked&&planned.length<2){
+    const blocked={status:"blocked" as const,reason:"Prepare at least two candidate-bound planned ODD Worker Todos before linking worktrees"};
+    ctx.ui.notify(blocked.reason,"warning");return blocked;
+   }
    const checkIdentity=()=>{
     if(ctx.signal?.aborted||ctx.sessionManager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
@@ -48,14 +94,20 @@ export function registerParallelWorktreeCommand(register:(name:string,command:Wo
    };
    const sample={
     parentDir:path.join(path.dirname(root),path.basename(root)+"-worktrees"),
-    units:[{taskId:"backend",writeSurfaces:["src/backend"]},{taskId:"frontend",writeSurfaces:["src/frontend"]}]
+    units:linked?planned.slice(0,2).map(todo=>({taskId:todo.taskId,writeSurfaces:todo.plan!.writeSurfaces!})):
+     [{taskId:"backend",writeSurfaces:["src/backend"]},{taskId:"frontend",writeSurfaces:["src/frontend"]}]
    };
    const edited=await ctx.ui.editor("Preparar worktrees: directorio padre existente y dos a cuatro scopes separados (JSON)",JSON.stringify(sample,null,2));
    checkIdentity();
    if(!edited?.trim())return {status:"cancelled",grantsAuthority:false};
    const selection=readRequest(edited);
+   const bound=linked?bindParallelSourceTodos({
+    identity:owner,expectedHead:head,rows:currentTodos,units:selection.units
+   }):undefined;
+   const batchId=linked?newParallelTodoWorktreeBatchId():undefined;
    const result=await prepareParallelWorkerWorktrees({
     sourceRoot:root,parentDir:selection.parentDir,expectedHead:head,units:selection.units,
+    ...(batchId?{batchId}:{}),
     ...(ctx.signal?{signal:ctx.signal}:{}),
     confirm:async summary=>{
      checkIdentity();
@@ -68,12 +120,26 @@ export function registerParallelWorktreeCommand(register:(name:string,command:Wo
       "Los Workers requerirán una sesión, un plan ODD y un consentimiento nuevo por worktree.",
       "NO habrá fusión ni borrado automático. Inspecciona cada worktree al terminar."
      ].join("\n");
-     return await ctx.ui.confirm!("Crear los worktrees Git aislados?",message)===true;
+     const approved=await ctx.ui.confirm!("Crear los worktrees Git aislados?",message)===true;
+     if(!approved)return false;
+     if(linked){
+      checkIdentity();
+      const fresh=bindParallelSourceTodos({
+       identity:owner,expectedHead:head,rows:await options!.loadTodos!(owner),units:selection.units
+      });
+      if(!bound||!sameSourceTodoBindings(bound,fresh))
+       throw new Error("Source ODD Todo state changed while awaiting confirmation; no worktrees were created");
+      await journal!.reserve({identity:owner,id:batchId!,head,parentDir:selection.parentDir,bindings:bound});
+     }
+     return true;
     }
    });
    checkIdentity();
    if(result.status==="declined"){ctx.ui.notify("Preparación cancelada sin crear worktrees.","info");return result;}
+   if(linked)await journal!.markPrepared({identity:owner,id:batchId!,allocations:result.allocations});
    const display={status:"prepared" as const,
+    ...(linked?{batchId,sourceTodoBound:true as const}:
+      {sourceTodoBound:false as const}),
     worktrees:result.allocations.map(a=>({taskId:a.taskId,root:a.root,head:a.baseRevision,writeSurfaces:a.writeSurfaces})),
     grantsAuthority:false as const,autoMerge:false as const,
     next:"Abrir una sesión Pi por worktree, preparar ODD y obtener consentimiento Worker individual. Revisión e integración manuales."};
