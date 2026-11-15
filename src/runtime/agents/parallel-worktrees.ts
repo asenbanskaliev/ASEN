@@ -153,11 +153,11 @@ export async function dispatchApprovedParallelWorkers(input:{
  if(!(input.dispatcher instanceof Dispatcher))throw new Error("Parallel Workers require the genuine ASEN Dispatcher");
  if(!Array.isArray(allocations)||allocations.length<2||allocations.length>4||
   !Array.isArray(requests)||requests.length!==allocations.length)throw new Error("Parallel dispatch requires a matching bounded batch");
- const used=new Set<string>();
+ const used=new Set<string>(),requestIds=new Set<string>();
  for(let i=0;i<allocations.length;i++){
   const allocation=allocations[i]!,request=requests[i]!;
   if(!genuineAllocations.has(allocation)||dispatchedAllocations.has(allocation)||
-   used.has(allocation.root)||request.role!=="worker"||
+   used.has(allocation.root)||typeof request.id!=="string"||!request.id||requestIds.has(request.id)||request.role!=="worker"||
    request.repository!==allocation.root||request.candidate?.repository!==allocation.root||
    request.candidate.revision!==allocation.baseRevision||!request.isolationKey||
    !request.writerAdmission||typeof request.writerAdmission!=="object"||!request.skillContext||
@@ -165,7 +165,7 @@ export async function dispatchApprovedParallelWorkers(input:{
    request.writeSurfaces?.length!==allocation.writeSurfaces.length||
    !request.writeSurfaces.every((scope:string,j:number)=>scope===allocation.writeSurfaces[j]))
    throw new Error("Parallel dispatch requires separate freshly authorized exact worktree Workers");
-  used.add(allocation.root);
+  used.add(allocation.root);requestIds.add(request.id);
   assertPreparedParallelWorktree(allocation);
   if(gitHead(allocation.sourceRoot)!==allocation.baseRevision||!clean(allocation.sourceRoot))
    throw new Error("Original candidate changed since parallel Worktree preparation; create a fresh plan");
