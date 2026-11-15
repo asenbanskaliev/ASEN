@@ -181,6 +181,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   });
   if(!link||!todo||todo.current.state!=="planned"||todo.plan?.role!=="worker"||
    todo.plan.candidate?.revision!==unit.baseRevision||
+   (todo.plan.model??"unknown")!==unit.model||
    !same(todo.plan.candidate.repository,unit.childProjectId)||
    todo.plan.writeSurfaces?.length!==unit.writeSurfaces.length||
    todo.plan.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i])||
@@ -223,6 +224,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
      claim.childSessionId===unit.childSessionId).length!==1||
     !childTodo||childTodo.plan?.role!=="worker"||
     childTodo.plan.candidate?.revision!==unit.baseRevision||
+    (childTodo.plan.model??"unknown")!==unit.model||
     !same(childTodo.plan.candidate.repository,unit.childProjectId)||
     childTodo.plan.writeSurfaces?.length!==unit.writeSurfaces.length||
     childTodo.plan.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i])||
