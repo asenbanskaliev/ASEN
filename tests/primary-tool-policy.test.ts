@@ -163,3 +163,26 @@ test("a human-approved shell action cannot reuse consent after a mode epoch chan
  assert.equal(result?.block,true);
  assert.match(result?.reason??"",/guarded shell confirmation expired/);
 });
+
+
+test("publication and merge preflight cannot be bypassed by pass, Auto, Super YOLO or background tools", async () => {
+ const cwd=process.cwd();
+ const ctx=context(cwd,{hasUI:true,ui:{confirm:async()=>true}});
+ const modes=["normal","auto","yolo","super-yolo"] as const;
+ for(const mode of modes){
+  const guard=createPrimaryToolPolicyHandler({
+   getMode:()=>mode,
+   ...(mode==="auto"?{reviewAuto:async()=>true}:{})
+  });
+  for(const toolName of ["bash","bash_background","monitor","asen_background_start"]){
+   for(const command of ["gh pr merge 42","gh release create v1.0.0","npm publish"]){
+    const result=await guard(event(toolName,{command},mode+"-"+toolName+"-"+command),ctx);
+    assert.equal(result?.block,true,mode+"/"+toolName+"/"+command);
+    assert.match(result?.reason??"",/Review outcomes do not authorize delivery/,mode+"/"+command);
+   }
+  }
+ }
+ const routine=createPrimaryToolPolicyHandler({getMode:()=>"yolo"});
+ assert.equal(await routine(event("bash",{command:"git push origin feat/test"}),ctx),undefined,
+  "explicitly scoped YOLO feature-branch exception remains intact");
+});
