@@ -11,6 +11,8 @@ const approvedWireIds=Object.freeze([
 const exactProvenanceDocs=new Set([
   "docs/portable-checkpoint.md",
   "docs/remote-continuation.md",
+  // Pinned human-readable Shell architecture study; not executable or imported source.
+  "docs/"+"gen"+"tle-shell-architecture-and-execution-flow.md",
   "docs/runtime-tools.md",
   "odd/evidence/asen-"+providerTerm+"-shell-full-equivalence-final-refinement.md",
   "odd/evidence/asen-"+providerTerm+"-shell-per-point-matrix.md",
