@@ -34,7 +34,7 @@ import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallba
 import {createParentModelFallback,type ParentCatalogModel} from "../src/runtime/lifecycle/parent-model-fallback.js";
 import {formatModelFallbackFailureNotice,formatModelFallbackNotice} from "../src/runtime/lifecycle/model-fallback-notice.js";
 import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/lifecycle/profiles.js";
-import {AGENT_PROFILE_TARGETS,isAgentProfileTarget} from "../src/runtime/lifecycle/agent-profile-targets.js";
+import {AGENT_PROFILE_TARGETS,isAgentProfileTarget,resolveAgentProfileTarget} from "../src/runtime/lifecycle/agent-profile-targets.js";
 import {canonicalProfilePartition,captureSessionProfile,readSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/lifecycle/session-profile-binding.js";
 import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/lifecycle/persona.js";
 import {parseHistoryStore,emptyHistoryStore} from "../src/runtime/lifecycle/history-store.js";
@@ -1806,7 +1806,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd));
+  const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
+   const sessionId=context.sessionManager.getSessionId(),projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+   const target=`review-${lens}` as const;
+   return resolveAgentProfileTarget(await profileLayer({sessionId,projectId}),target).choice;
+  });
   // Public work is ODD-only. Legacy selection/recovery remains in lifecycle modules,
   // not a product command or an implicit conversion into fresh write authority.
   return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability});
