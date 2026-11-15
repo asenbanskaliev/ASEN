@@ -1,4 +1,5 @@
 import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
+import {performance} from "node:perf_hooks";
 import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
@@ -143,6 +144,29 @@ function promptWithSkills(request:AgentRequest):string{
  ].join("\n");
 }
 
+/** Execution phases of a Pi child run, each with its own budget. */
+export type PiRunnerPhase="spawn"|"preflight"|"turn";
+
+/**
+ * Write one JSON line to the child stdin, honoring stream backpressure.
+ *
+ * `write()` returns false when the internal buffer is full. The promise stays
+ * pending until the stream emits `drain`, so a large prompt cannot pile up in
+ * the parent process memory.
+ */
+export function writeStdinLine(
+ stream:{write(chunk:string):boolean;once(event:"drain",listener:()=>void):unknown},
+ line:string
+):Promise<void>{
+ return new Promise((resolve,reject)=>{
+  let accepted:boolean;
+  try{accepted=stream.write(line);}
+  catch(error){reject(error);return;}
+  if(accepted){resolve();return;}
+  stream.once("drain",()=>resolve());
+ });
+}
+
 export class PiProcessRunner implements AgentRunner{
  readonly #selectionSubscriptions=new Set<ChildSelectionSubscription>();
  readonly #fallbackSubscriptions=new Set<Readonly<{listener:AgentFallbackListener}>>();
@@ -246,16 +270,31 @@ export class PiProcessRunner implements AgentRunner{
   const signal=runSignal&&this.options.signal?AbortSignal.any([runSignal,this.options.signal]):runSignal??this.options.signal;
 
   return new Promise(resolve=>{
-   const child=spawnContained(command,args,{
-    cwd:request.repository,
-    env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{})})},
-    stdio:["pipe","pipe","pipe"],
-    detached:process.platform!=="win32"
-   }) as ChildProcessWithoutNullStreams;
+   const spawnStartedAt=performance.now();
+   let child:ChildProcessWithoutNullStreams;
+   try{
+    child=spawnContained(command,args,{
+     cwd:request.repository,
+     env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{})})},
+     stdio:["pipe","pipe","pipe"],
+     detached:process.platform!=="win32"
+    }) as ChildProcessWithoutNullStreams;
+   }catch(error){
+    // A synchronous spawn failure must never reject the returned promise and
+    // must never leave the temporary policy directory behind.
+    rmSync(policyDirectory,{recursive:true,force:true});
+    resolve({id:request.id,ok:false,output:`pi process failed to start: ${error instanceof Error?error.message:String(error)}`});
+    return;
+   }
    if(child.pid!==undefined){try{this.options.onProcessStart?.(child.pid);}catch{/* Evidence observers cannot alter Pi execution. */}}
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
    const fallbackChain=fallbackConfig?.chain??[],fallbackEnabled=fallbackChain.length>0,triedModels=new Set<string>(),cooldown=getProcessModelFallbackCooldown();
-   let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!fallbackEnabled,rpcSequence=0,currentModel=request.model;
+   // Settlement contract (pinned by tests/pi-process-runner-no-fallback-settlement.test.ts):
+   // without a fallback chain a correlated response plus a clean exit completes the
+   // run; with a fallback chain the turn must also settle, because the runner may
+   // otherwise replace the turn with another model.
+   const settlementRequired=fallbackEnabled;
+   let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!settlementRequired,rpcSequence=0,currentModel=request.model;
    // A correlated continuation RPC response and its completion events can
    // arrive together in one stdout chunk, before the sendRpc await resumes.
    // Hold only a *validated* new-turn completion until the transition commits.
@@ -285,18 +324,60 @@ export class PiProcessRunner implements AgentRunner{
     void terminateTree(child,closed).then(()=>finish(result));
    };
    const alive=()=>!settled&&!stopResult&&!signal?.aborted;
+   // Phase budget: every phase owns the same budget and is measured with a
+   // monotonic clock, so a wall-clock adjustment cannot extend a phase and a
+   // healthy fallback attempt is never killed by the previous attempt's time.
+   let phase:PiRunnerPhase="spawn";
+   let phaseDeadline=spawnStartedAt+timeoutMs;
+   let rpcFailure:string|undefined;
+   const onPhaseTimeout=()=>{
+    stop({id:request.id,ok:false,output:`pi process timed out after ${timeoutMs}ms (phase: ${phase})`});
+   };
+   const armPhase=(next:PiRunnerPhase,startedAt?:number)=>{
+    phase=next;
+    phaseDeadline=(startedAt??performance.now())+timeoutMs;
+    if(timer)clearTimeout(timer);
+    timer=setTimeout(onPhaseTimeout,timeoutMs);
+   };
+   const disarmPhase=()=>{if(timer)clearTimeout(timer);timer=undefined;};
+   // One serialized writer keeps RPC order and honors stdin backpressure.
+   let writeChain:Promise<void>=Promise.resolve();
+   const writeLine=(line:string):Promise<void>=>{
+    const next=writeChain.then(()=>writeStdinLine(child.stdin,line)).catch(()=>{/* stdin errors stop the run through the stdin error handler */});
+    writeChain=next;
+    return next;
+   };
+   armPhase("spawn",spawnStartedAt);
+   child.once("spawn",()=>{armPhase("preflight",spawnStartedAt);});
    const sendRpc=(payload:Record<string,unknown>,onIssued?:(id:string)=>void):Promise<Record<string,unknown>>=>{
     if(!alive())return Promise.resolve({success:false,error:"task is not running"});
     const id=`asen-fallback:${request.id}:${++rpcSequence}`;
     onIssued?.(id);
-    return new Promise(resolveRpc=>{pendingRpc.set(id,{resolve:resolveRpc});try{child.stdin.write(JSON.stringify({id,...payload})+"\n");}catch{pendingRpc.delete(id);resolveRpc({success:false,error:"RPC transport unavailable"});}});
+    // Every RPC owns an explicit budget: an unanswered RPC can no longer
+    // immobilize the chain until the global deadline.
+    const budget=Math.max(1,timeoutMs);
+    return new Promise(resolveRpc=>{
+     let rpcTimer:ReturnType<typeof setTimeout>|undefined;
+     const settle=(response:Record<string,unknown>)=>{
+      if(rpcTimer)clearTimeout(rpcTimer);
+      pendingRpc.delete(id);
+      resolveRpc(response);
+     };
+     pendingRpc.set(id,{resolve:settle});
+     rpcTimer=setTimeout(()=>{
+      if(!pendingRpc.has(id))return;
+      rpcFailure=`rpc timeout after ${budget}ms (${String(payload.type)})`;
+      settle({success:false,error:rpcFailure});
+     },budget);
+     void writeLine(JSON.stringify({id,...payload})+"\n");
+    });
    };
    const publishFallback=(change:Omit<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">)=>{
     if(!fallbackOwner)return;const observation=Object.freeze({...fallbackOwner,...change});
     try{this.options.onModelFallback?.(observation);}catch{/* Observers cannot affect child execution. */}
     for(const subscription of fallbackSubscriptions){if(!this.#fallbackSubscriptions.has(subscription))continue;try{subscription.listener(observation);}catch{/* Observers cannot affect child execution. */}}
    };
-   const closeSettled=(category?:TerminalErrorCategory)=>{if(!alive())return;finalFailure=category;try{child.stdin.end();}catch{stop({id:request.id,ok:false,output:"pi stdin error during settlement"});}};
+   const closeSettled=(category?:TerminalErrorCategory)=>{if(!alive())return;finalFailure=category;armPhase("turn");try{child.stdin.end();}catch{stop({id:request.id,ok:false,output:"pi stdin error during settlement"});}};
    const settleCurrentTurn=()=>{
     // A completion already accepted for this turn cannot be replayed.
     if(!alive()||finalAgentSettled)return;
@@ -309,6 +390,9 @@ export class PiProcessRunner implements AgentRunner{
    };
    const continueFallback=(category:TerminalErrorCategory)=>{
     if(fallbackInProgress||!alive())return;fallbackInProgress=true;agentEnded=false;
+    // The model switch RPCs own their own budget; the turn budget starts
+    // again when the next attempt is actually issued.
+    disarmPhase();
     if(currentModel){triedModels.add(currentModel);cooldown.mark(currentModel,category);}else triedModels.add("<provider-default>");
     const next=()=>{
      for(;;){const pick=pickFallbackModel(currentModel,fallbackChain,{cooldown,tried:triedModels});if(!pick?.fallback||!pick.model)return undefined;triedModels.add(pick.model);const slash=pick.model.indexOf("/");if(slash>0&&slash<pick.model.length-1)return{pick,provider:pick.model.slice(0,slash),modelId:pick.model.slice(slash+1)};}
@@ -328,6 +412,7 @@ export class PiProcessRunner implements AgentRunner{
       continuationPromptId=undefined;continuationAcked=false;
       continuationMessageEnded=false;continuationAgentEnded=false;deferredContinuationSettled=false;
       continuationTurnPending=true;
+      armPhase("turn");
       const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."},id=>{continuationPromptId=id;});
       if(!alive())return;
       if(resumed.success!==true||!continuationAcked){
@@ -415,7 +500,7 @@ export class PiProcessRunner implements AgentRunner{
      }
      if(response.type==="tool_execution_start"&&this.options.noTools){toolAttempted=true;stop({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});return;}
      if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled){child.stdin.end();continue;}
-     if(response.type==="agent_settled"&&policyLoaded&&fallbackEnabled){
+     if(response.type==="agent_settled"&&policyLoaded&&settlementRequired){
       if(fallbackInProgress){
        // Before the correlated continuation response this may be a stale
        // first-turn notification. After it, require both real end events.
@@ -439,8 +524,9 @@ export class PiProcessRunner implements AgentRunner{
      const observed=response.data?.commands?.filter(item=>item.source==="skill").map(item=>typeof item.sourceInfo?.path==="string"?canonical(item.sourceInfo.path):"")??[];
      if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
-     if(selectionOwner&&selectionSubscriptions.length&&!selectionRequested){selectionRequested=true;child.stdin.write(JSON.stringify({id:selectionId,type:"get_state"})+"\n");}
-     child.stdin.write(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+     if(selectionOwner&&selectionSubscriptions.length&&!selectionRequested){selectionRequested=true;void writeLine(JSON.stringify({id:selectionId,type:"get_state"})+"\n");}
+     armPhase("turn");
+     void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
     }
     if(Buffer.byteLength(buffer)>maxRecord){overflow=true;stop({id:request.id,ok:false,output:`pi RPC record exceeded ${maxRecord} bytes`});}
    });
@@ -459,8 +545,8 @@ export class PiProcessRunner implements AgentRunner{
       if(responses.length!==1)return finish({id:request.id,ok:false,output:"pi requires exactly one correlated response"});
       const envelope=responses[0];
       if(envelope.success!==true)return finish({id:request.id,ok:false,output:"pi correlated response failed"});
-      if(fallbackEnabled&&!finalAgentSettled)return finish({id:request.id,ok:false,output:"pi child exited before final agent_settled"});
-      if(finalFailure)return finish({id:request.id,ok:false,output:`pi assistant failed: ${finalFailure}`});
+      if(settlementRequired&&!finalAgentSettled)return finish({id:request.id,ok:false,output:`pi child exited before final agent_settled${rpcFailure?` (${rpcFailure})`:""}`});
+      if(finalFailure)return finish({id:request.id,ok:false,output:`pi assistant failed: ${finalFailure}${rpcFailure?` (${rpcFailure})`:""}`});
      }catch{
       return finish({id:request.id,ok:false,output:"pi response envelope invalid"});
      }
@@ -472,15 +558,13 @@ export class PiProcessRunner implements AgentRunner{
     });
    });
 
-   timer=setTimeout(()=>{
-    stop({id:request.id,ok:false,output:`pi process timed out after ${timeoutMs}ms`});
-   },timeoutMs);
+   armPhase("preflight",spawnStartedAt);
 
    if(signal?.aborted)onAbort();
    else signal?.addEventListener("abort",onAbort,{once:true});
 
    child.stdin.on("error",error=>stop({id:request.id,ok:false,output:`pi stdin error: ${String(error)}`}));
-   child.stdin.write(JSON.stringify({id:preflightId,type:"get_commands"})+"\n");
+   void writeLine(JSON.stringify({id:preflightId,type:"get_commands"})+"\n");
   });
  }
 }
