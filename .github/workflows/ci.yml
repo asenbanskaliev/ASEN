@@ -616,7 +616,7 @@ jobs:
           retention-days: 7
 
   # T06: dos sesiones Pi RPC auténticas después del sondeo API NVIDIA gratuito.
-  # Solo tareas Clarifier sin herramientas; no se afirma aceptación de Writer.
+  # Explorer y Verifier reales, sin herramientas ni escritura; no acredita Writer.
   t06-nvidia-pi-native:
     needs: [t06-nvidia-free-api]
     if: >-
@@ -647,7 +647,7 @@ jobs:
           test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
           pi --version
-      - name: Dos sesiones Pi de solo lectura usando NVIDIA
+      - name: Explorer y Verifier Pi simultáneos con NVIDIA (solo lectura)
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
