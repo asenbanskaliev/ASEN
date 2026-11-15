@@ -392,3 +392,9 @@ Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
 - Falta comprobar fin de sesión, cancelación y reanudación supervisada en equipos reales, además del error nativo de Windows `0xC0000409`.
 - Antes de declarar estable este tramo se necesitan Phase 0, Pi runtime, CI y Release Gate verdes en el SHA final. Un test saltado o un workflow anterior verde no cumplen este gate.
 - La PR #61 sigue en borrador, sin merge; T06 permanece **PARCIAL** y `globalFull:false`.
+
+## T06 — Cancelación aislada entre sesiones Pi (2026-11-15)
+
+- Nueva prueba `tests/parallel-worktrees.test.ts`: dos agentes de lectura con `AgentRuntime` real, un Git worktree por sesión y un ejecutor instrumentado. La cancelación del agente A no debe cancelar ni marcar como fallido al agente B. Verifica estados persistidos independientes, `cancelled`/ `completed` y que la raíz de origen no cambie.
+- Se conserva por separado la prueba de **dos Workers ODD** con permisos de escritura y ejecuciones concurrentes instrumentadas. La prueba de cancelación se centra en aislamiento del runtime; **no afirma** haber cancelado una llamada real a un proveedor ni haber comprobado la cancelación de un Writer en Windows.
+- Para cerrar T06 faltan: prueba con proveedor Pi autenticado, recibos de modelo usado, cancelación de un Writer real, control de coste, recuperación manual de intentos ambiguos y validación multiplataforma del SHA final.
