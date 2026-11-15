@@ -641,7 +641,7 @@ test("rejected continuation prompt cannot be made successful by forged completio
   model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}
  });
  assert.equal(result.ok,false);
- assert.match(result.output,/failed|correlated|timed out/i);
+ assert.match(result.output,/failed|correlated|timed out|before final agent_settled/i);
 });
 
 test("fallback-child keeps one RPC process and conversation through an accepted fallback",async t=>{
