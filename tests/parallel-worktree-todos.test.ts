@@ -589,3 +589,38 @@ test("T06 parent supervisor blocks all starts on dirty worktree without invoking
  assert.ok(result.blockers.some(x=>/dirty, changed or unverifiable/u.test(x)));
  assert.equal(f.dispatchedChildren.length,0);
 });
+
+test("T06 parent never authorizes a silently changed paid model after batch confirmation",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ f.ctx.ui.confirm=async(_title:string,message:string)=>{
+  f.confirmMessages.push(message);
+  const v=f.getChildObservations("child-pi-2");
+  f.setChildObservations("child-pi-2",v.todos.map(row=>({
+   ...row,plan:{...row.plan!,model:"paid-provider/changed-model"}
+  } as SourceTodoRow)),v.agents,v.links);
+  return true;
+ };
+ const result=await f.run("supervise") as {status:string;started:readonly unknown[]};
+ assert.equal(result.status,"blocked");assert.equal(result.started.length,0);
+ assert.equal(f.dispatchedChildren.length,0);
+});
+
+test("T06 late child model substitution during second Worker consent stops subsequent launches",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ let confirms=0;
+ f.ctx.ui.confirm=async(_title:string,message:string)=>{
+  f.confirmMessages.push(message);confirms++;
+  if(confirms===3){
+   const v=f.getChildObservations("child-pi-2");
+   f.setChildObservations("child-pi-2",v.todos.map(row=>({
+    ...row,plan:{...row.plan!,model:"unapproved/paid-model"}
+   } as SourceTodoRow)),v.agents,v.links);
+  }
+  return true;
+ };
+ await assert.rejects(()=>f.run("supervise"),/provenance changed/u);
+ assert.equal(f.dispatchedChildren.length,1);
+ const retry=await f.run("supervise") as {status:string};
+ assert.equal(retry.status,"blocked");
+ assert.equal(f.dispatchedChildren.length,1);
+});
