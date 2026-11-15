@@ -11,6 +11,7 @@ import type {ParallelChildSessionLink} from "./parallel-todo-session-links.js";
 import {ParallelTodoWorktreeJournal} from "./parallel-todo-journal.js";
 import {ParallelChildSessionJournal} from "./parallel-todo-session-links.js";
 import {ParallelChildPlanClaimJournal} from "./parallel-child-plan-claims.js";
+import {ParentSupervisorClaimJournal} from "./parallel-parent-supervisor-claims.js";
 import {inspectParallelWorktreeChanges} from "./parallel-worktree-change-inspection.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 
@@ -47,6 +48,7 @@ export interface ParentSupervisorInput{
  readonly sourceJournal:ParallelTodoWorktreeJournal;
  readonly sessionJournal:ParallelChildSessionJournal;
  readonly claimJournal:ParallelChildPlanClaimJournal;
+ readonly attemptJournal:ParentSupervisorClaimJournal;
  readonly loadTodos:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
  readonly loadAgents:(identity:TodoContext)=>Promise<readonly PublicAgentRecord[]>;
  readonly loadTaskAgentLinks:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>;
@@ -163,6 +165,20 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
  const fresh=await prepare(input);
  if(JSON.stringify(fresh)!==JSON.stringify(initial))
   return nonAuthorizing("blocked",initial.batchId,started,["Source or child ODD changed during batch confirmation"]);
+ // Commit this batch's irreversible intent BEFORE calling any Pi dispatcher.
+ // Two concurrent supervisors cannot both launch or borrow the same consent.
+ try{
+  await input.attemptJournal.claim({
+   source:input.source,batchId:initial.batchId,
+   children:initial.tasks.map(unit=>({
+    sourceTodoId:unit.sourceTodoId,childTodoId:unit.childTodoId,
+    childSessionId:unit.childSessionId,childProjectId:unit.childProjectId
+   }))
+  });
+ }catch{
+  return nonAuthorizing("blocked",initial.batchId,started,
+   ["Supervisor intent already claimed or journal unavailable; inspect child Todos and agents, no replay"]);
+ }
  for(const unit of initial.tasks){
   await input.validateParent();
   // After earlier Workers start the full batch is no longer 'ready'.
