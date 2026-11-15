@@ -7,6 +7,12 @@ Rama padre: `feat/t12-integrated-acceptance-merge`
 Baseline inmutable para este plan: `2d20ecf2dff6b3f0a7cb509f85f0e06ca86827b6`
 Referencia a contrastar: Gentle Shell 4.8.0. No declarar paridad hasta observarla.
 
+## Objetivo final fijado y trazabilidad
+
+**Documento rector del resultado esperado:** [Flujo de agentes — objetivo funcional](./flujo-de-agentes-objetivo.md). Contiene el mapa Orquestador → Clarifier/Explorer → ODD/TODOS → Models/Profiles → Workers aislados → Dispatcher/Verifier → 4R/Judgment Day → Fix autorizado o integración controlada → UI. **Es un objetivo verificable, no un estado ya implementado.**
+
+**Regla de ejecución:** toda tarea T00–T10 debe indicar su contribución a ese flujo, archivos, pruebas negativas, evidencia de modelo/host/CI y estado exacto. Las funcionalidades de interfaz sin conexión real no satisfacen por sí solas el objetivo. No elevar `globalFull:false` a FULL sin pruebas en condiciones reales y revisión independiente.
+
 ## Objetivo y límites de autoridad
 
 Convertir la arquitectura existente de ASEN en un flujo de agentes fiable, especializado, configurable, recuperable y verificable, manteniendo el mismo núcleo de Pi/ODD y sin multiplicar runtimes.
