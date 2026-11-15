@@ -5,6 +5,7 @@ import type {WorkUnitReviewCandidate} from "../delivery/work-unit-review-candida
 import {availableIndependentPiReviewers,runIndependentPiReview,runPiLensReview,type PiReviewRegistry,type PiReviewerModel} from "./pi-model-reviewer.js";
 import {REVIEW_LENSES} from "./review-lens-contracts.js";
 import {consolidatePiLensReviews} from "./review-results.js";
+import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
 import {openBoundedCorrection,validateBoundedCorrection,type CorrectionRequest,type CorrectionValidation} from "./bounded-correction.js";
@@ -155,7 +156,7 @@ async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:Revi
   return reviewRiskFromNativeAssessment(observation);
  }catch{return reviewRiskFromNativeAssessment(undefined);}
 }
-async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false):Promise<unknown>{
+async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens)=>Promise<RouteChoice|undefined>):Promise<unknown>{
  const sessionId=context.sessionManager?.getSessionId?.(),registry=context.modelRegistry,author=context.model;
  if(!context.hasUI||!sessionId||!registry||!author||!context.ui.select||!context.ui.editor||!context.ui.confirm){
   const unavailable="Revisión independiente no disponible: se requiere una sesión Pi interactiva, modelo autor conocido y un modelo revisor autenticado distinto.";
@@ -227,6 +228,20 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  assertNoSensitiveReviewPaths([...reviewPaths,...intendedUntracked]);
  const assessed=await assessWorkspaceReviewRisk(nativeRdd,context);
  const risk:ReviewRiskInput=fourR?{...assessed,lenses:[...REVIEW_LENSES]}:assessed;
+ const lensModels=new Map<ReviewLens,PiReviewerModel>();
+ if(fourR){
+  for(const lens of REVIEW_LENSES){
+   const route=await resolveLensRoute?.(context,lens);
+   assertContextCurrent();
+   // The in-process provider interface has no verified per-call effort override.
+   // Refuse it rather than silently advertising an effort that was not used.
+   if(route?.thinking!==undefined)throw new Error("4R lens thinking is configured but the current Pi review API cannot prove applying it; remove this effort or use a supported agent route");
+   const chosen=route?.model;
+   const selectedModel=chosen===undefined?model:reviewers.find(entry=>entry.provider+"/"+entry.id===chosen);
+   if(!selectedModel)throw new Error("Configured 4R lens model is unavailable, unauthenticated or the same as author: "+lens);
+   lensModels.set(lens,selectedModel);
+  }
+ }
  assertContextCurrent();
  const reviewerId="pi-model:"+model.provider+"/"+model.id;
  let workspace:ReturnType<typeof openWorkspaceReview>;
@@ -279,7 +294,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    fourR?"Pi enviará el mismo diff en CUATRO llamadas separadas al modelo seleccionado (posible coste por llamada):":"Pi enviará el diff completo del candidato a:",
    reviewerId,
    "",
-   ...(fourR?["Lentes: "+REVIEW_LENSES.join(", "),"Estas cuatro revisiones son análisis; no conceden autorización RDD ni de escritura."]:[]),
+   ...(fourR?["Lentes y modelos verificados: "+REVIEW_LENSES.map(lens=>lens+" = "+lensModels.get(lens)!.provider+"/"+lensModels.get(lens)!.id).join("; "),"Estas cuatro revisiones son análisis; no conceden autorización RDD ni de escritura."]:[]),
    "Candidato: "+evidence.candidate.treeIdentity,
    "Archivos: "+(paths.join(", ")||"(sin cambios)"),
    "El índice real no se modifica. No se ejecutan pruebas en la vista.",
@@ -294,7 +309,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    for(const lens of REVIEW_LENSES){
     assertCorrectionReserved();assertContextCurrent();assertReviewSessionOpen(workspace.session);
     revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
-    reports.push(await runPiLensReview({registry,model,author,evidence,requirements,lens,...(context.signal?{signal:context.signal}:{})}));
+    reports.push(await runPiLensReview({registry,model:lensModels.get(lens)!,author,evidence,requirements,lens,...(context.signal?{signal:context.signal}:{})}));
    }
    const bundle=consolidatePiLensReviews({
     requestId:evidence.requestId,sessionId:evidence.sessionId,
@@ -366,13 +381,13 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  }
 }
 /** Registro propio de ASEN: prepara el traspaso; no emite dictamen ni autorización RDD. */
-export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl()):OrdinaryReviewCommandController{
+export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl(),resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens)=>Promise<RouteChoice|undefined>):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
   if(command==="native status"||command==="native assess")return nativeRdd.observe(command==="native status"?"status":"assess",context);
   if(command==="workspace")return runWorkspaceReview(context,nativeRdd);
-  if(command==="workspace 4r")return runWorkspaceReview(context,nativeRdd,undefined,true);
+  if(command==="workspace 4r")return runWorkspaceReview(context,nativeRdd,undefined,true,resolveLensRoute);
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
