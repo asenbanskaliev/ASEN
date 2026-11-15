@@ -49,7 +49,7 @@ function parse(raw:string):Journal{
    throw new Error("Duplicate parallel child session attribution");
   seenRoots.add(root);seenSessions.add(session);
  }
- return structuredClone(x) as Journal;
+ return structuredClone(x) as unknown as Journal;
 }
 async function load(file:string):Promise<Journal>{
  if(!await preparePrivateFile(file))return {schema:SCHEMA,revision:0,links:[]};
