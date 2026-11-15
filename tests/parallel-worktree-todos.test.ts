@@ -619,7 +619,10 @@ test("T06 late child model substitution during second Worker consent stops subse
   }
   return true;
  };
- await assert.rejects(()=>f.run("supervise"),/provenance changed/u);
+ const interrupted=await f.run("supervise") as {status:string;started:readonly unknown[];blockers:readonly string[];autoRetry:boolean};
+ assert.equal(interrupted.status,"partial-needs-review");
+ assert.equal(interrupted.started.length,1);assert.equal(interrupted.autoRetry,false);
+ assert.ok(interrupted.blockers.some(x=>/ambiguously/u.test(x)));
  assert.equal(f.dispatchedChildren.length,1);
  const retry=await f.run("supervise") as {status:string};
  assert.equal(retry.status,"blocked");
