@@ -1056,6 +1056,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await refreshTodoWidget(ctx);
    return JSON.stringify(output,null,2);
   };
+  delegateChildWorktreePlan=preparePlan;
   registerData("asen-plan",{description:"Materialize validated ODD facts with applicable tests and scoped admission; ordinary requests are planned from chat",handler:preparePlan});
   if(pi.registerTool)registerAsenPlanRequestTool({registerTool:pi.registerTool.bind(pi)},(args,ctx)=>preparePlan(args,ctx,true));
   registerData("asen-panel",{description:"Show safe read-only work panel: Todos, Jobs, Agents, Changes, Review, Integrations",handler:async(args:string|undefined,ctx:CommandContext)=>{
@@ -1807,9 +1808,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
+  let delegateChildWorktreePlan:((input:string,context:CommandContext)=>Promise<string>)|undefined;
   registerParallelWorktreeCommand(register,{
    journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
    sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
+   planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
+   planChildTodo:async(input,context)=>{
+    if(!delegateChildWorktreePlan)throw new Error("Pi ODD planner is not ready to accept a child handoff");
+    return delegateChildWorktreePlan(input,context as CommandContext);
+   },
    ...(todoStorePromise?{loadTodos:async identity=>(await todoStorePromise).list(identity)}:{}),
    ...(agentRuntimePromise?{loadChildAgents:async identity=>(await agentRuntimePromise).list(identity)}:{})
   });
