@@ -379,6 +379,39 @@ Reference `scripts/shell-snapshot.mjs` forks sessions, uses outside temp/private
 
 Existing bounded closures (profile creation/effort, fallback policy/store/pin, organic guidance, language, grouped manual palette and keymap startup cases) remain scoped historical evidence, not reasons to rebuild or full-app receipts. Original no-install/provider/native-consent/Git/publication limits survive. Unsupported is truthful interim status, never parity acceptance; non-brand differences require explicit owner disposition.
 
+
+## Reconciliación de funcionalidad real (15-11-2026; lote de seguridad y UI)
+
+**Base comparada:** fefa7b7a → 4bbda023 (31 commits, 99 archivos). **Cambios nuevos:** rama fix/security-parity-consolidation-20261115, pruebas pendientes de CI exact-SHA. Esta actualización no sustituye el registro de tareas, los checks históricos ni certifica FULL.
+
+**Escala obligatoria:** IMPLEMENTADO = módulo existente; CONECTADO = llamado desde la extensión/CLI/runner real; PROBADO = pruebas de regresión ejecutadas sobre el SHA señalado; EQUIVALENTE = comparación efectiva y observada con Gentle Shell v4.8.0 mediante recibos y gestos reales. Tests escritos sin CI solo son TESTS_ESCRITOS_PENDIENTES_CI. En ninguna de las filas nuevas existe prueba emparejada que habilite EQUIVALENTE.
+
+| Funcionalidad | Implementación | Conectado a ASEN | Pruebas del alcance | Equivalencia 4.8 |
+| --- | --- | --- | --- | --- |
+| Panel nativo TODOS/AGENTS/JOBS/CHANGES/REVIEW/INTEGRATIONS | src/runtime/ide-panel.ts, native-work-panel.ts | SÍ, extensions/asen.ts | tests/native-work-panel.test.ts, ide-panel-groups.test.ts; ratón por filas visibles añadido en esta rama, CI pendiente | NO |
+| Paleta, atajos e historial/editor | native-command-palette.ts, keymaps.ts, history-selector.ts | SÍ, comandos y Pi pasteToEditor condicionado al host | extension-runtime-commands y tests history/keymaps; nativo A/B no demostrado | NO |
+| Perfiles, renombrar/borrar y fallback por ámbito | profiles.ts, profile-fallback-store.ts | SÍ, asen-profiles TUI; RPC no solicita selects | profile-persona-native-access, p10-fallback-editor | NO |
+| Conversación durable por agente | agent-conversation.ts, agent-store.ts | SÍ, opción --conversation registrada en extensions/asen.ts | agent-conversation.test.ts; NO es transcript completo de herramientas/razonamiento Pi | NO |
+| Overlay tools de hijos Pi | src/agents/tool-overlay.ts | SÍ, pi-process-runner.ts aplica overlays al arranque | tool-overlay.test.ts, pi-process-runner.test.ts | NO |
+| Permisos, publicación, conflictos, ejecución externa | primary-tool-policy.ts, delivery-preflight.ts, delivery-conflict-markers.ts, execution-surface-guard.ts | SÍ, interceptor de llamadas primario, no sandbox del SO | negativas de publicación en Auto, Normal, Yolo, Super Yolo y background pendientes de CI | NO |
+| Recibos HMAC / reconocimiento de árbol ya probado | review-receipt.ts, receipt-verifier.ts | PARCIAL: biblioteca y facade; no acreditar aplicación a cada tarea Pi | autenticación completa de metadata/runner/identidad/resultado + negativas de disco; CI pendiente | NO |
+| Desinstalación y restauración | asen-uninstall.ts | NO consta instalador TUI productor real | copia recursiva privada con hashes de binarios; negativa de symlinks y destino interior; CI pendiente | NO |
+| Role model router, locks, registry, stream, notices, SessionOrchestrator | model-router.ts, workspace-lock-table.ts, command-registry.ts, activity-stream.ts, notice-ring-buffer.ts, session-orchestrator.ts | MÓDULOS: no confundirse con el wiring completo de la app; locks solo memoria, no multiproceso | unitarios; sin prueba end-to-end de integración completa | NO |
+| Voz, guía, providers, fast mode, updates | voice-dictation.ts, guide-tour.ts, provider-registry.ts, fast-mode-policy.ts, update-notifier.ts | NO: voz es máquina de estados sin micrófono; provider registry no llama a pi.registerProvider | unitarios, sin gestos/sesión TUI reales | NO |
+| RPC escritorio y caché de imágenes | desktop-rpc.ts, image-disk-cache.ts | NO: router RPC sin host de transporte y caché solo opt-in | contratos unitarios de datos/errores/aislamiento | NO |
+| M5-06 C01 y M5-07 C02–C05 | scripts/shell-asen-parity.mjs, r4-two-pi-beam-scenarios.mjs | NO en flujo de captura C02–C05, C01 consume artefactos sin certificar | nuevas negativas de procedencia R4 con HMAC separado; captura y aceptación real siguen pendientes | NO |
+
+**Cinco controles de riesgo del lote:**
+
+1. Desinstalador: prohibir borrado si no existe respaldo privado, recursivo, íntegro y verificado; recuperación sin sobrescribir archivos existentes.
+2. Recibos: HMAC sobre todos los campos con consecuencias; información legacy sin clave jamás autoriza omitir pruebas.
+3. R4: no permitir elevar UNATTESTED por un simple nombre de propietario/revisor escrito en JSON; exigir comprobación con anclas de claves distintas, obtenidas fuera del artefacto. Una firma con clave prueba posesión, no demuestra por sí sola consentimiento humano; permanece requisito externo.
+4. Auditoría de referencias: eliminar skip de archivos fuente completos; admitir exclusivamente líneas históricas exactas y contadas, con rechazos de importaciones nuevas, cadenas no previstas y duplicados.
+5. Publicación: aplicar controles de entrega y marcadores antes de los retornos de éxito en todos los modos; conservar solo la excepción YOLO ordinaria a rama de trabajo, sin convertir Super YOLO en aprobación para merge, releases o publicación de paquetes.
+
+**Orden siguiente:** cerrar CI exact-SHA/Release Gate/R4, confirmar los comandos y gestos de UI conectados en Pi TUI real, después admitir solo los módulos aislados con un consumidor concreto y test end-to-end. NO promover los EF, UI-C, C01–C20 ni globalFull:false por código o unit tests. La referencia histórica Shell 4.6.0 de ciertos escenarios no se sustituye automáticamente por la revisión documental 4.8.0.
+
+
 ## Log
 
 L1 — Original requests verbatim: "Ya que estamos haz con MCP REA analisis completo de equivalencia funcional y visual de Gentle Shell y de ASEN para poder completar los todos pendientes para obtener equivalencia absoluta de Gentleshell vs Asen . no se si me entiendes bien lo que te pido"; "HAZ ESA certificación de equivalencia Y ACUALIZA LOS TODOS CON ESA EVIDENCIA Y EQUIVALENCIA".
