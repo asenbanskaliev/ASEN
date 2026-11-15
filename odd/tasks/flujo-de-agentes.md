@@ -318,7 +318,7 @@ Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
 
 - `src/runtime/agents/parallel-worker-attribution.ts` vincula cada Worker observado con su **Todo hijo real**, candidato con SHA de origen, raíces Git, `writeSurfaces` autorizadas por la reserva y el vínculo `TaskAgentLinkStore` (agent ID = petición ODD emitida). Tener un agente con rol Worker en la misma sesión **no basta** para atribuir su resultado.
 - `src/runtime/agents/parallel-batch-coordinator.ts` comprueba el lote completo de la **sesión principal**: reserva preparada, Todo de origen aún planificado con revisión e ID originales, vínculo Pi hijo, `plan-todo` reclamado, Todos del hijo, agents y asignaciones persistidas. Diferencia tareas activas/no observadas de terminales sin inferir éxito.
-- `/asen-worktrees collect` exige TUI Pi de origen, readers reales, 2–4 resultados terminales atribuidos y **confirmación específica**; vuelve a comprobar que el snapshot no cambió antes de escribir. Solo recopila la última reserva visible del origen y no lanza ni reintenta Workers. Una falla parcial deja el diario para revisión manual.
+- `/asen-worktrees collect` exige TUI Pi de origen, readers reales, 2–4 resultados terminales atribuidos y **confirmación específica**; vuelve a comprobar que el snapshot no cambió antes de escribir. Solo recopila la última reserva visible del origen y no lanza ni reintenta Workers. La recogida se realiza ahora en una sola transacción atómica por lote; una falla no deja un subconjunto de Workers registrado como lote completo.
 - `src/runtime/agents/parallel-worker-observation-journal.ts` persiste un único recibo por Worker y lote con bloqueo, escritura atómica, IDs y estados permitidos (`completed`, `failed`, `cancelled`, `interrupted`), estado Git y nombres acotados de archivos. **Nunca guarda conversación, credenciales, salida de agente, autorización ni payload de cambios.** Rechaza duplicados/replay y cruzar sesiones.
 - `/asen-worktrees status` presenta los recibos como evidencia histórica; un `completed` procedente del almacén de agentes no constituye pruebas de software, consumo autenticado de un proveedor ni aprobación RDD/merge. Todo recibo conserva `modelActual:unknown`, `modelConsumedProven:false`, `acceptance:not-accepted`, `autoMerge:false`.
 
@@ -333,3 +333,24 @@ Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
 - No existe supervisor que inicie y organice varias **sesiones Pi nuevas** automáticamente bajo autorización separada de cada Worker. El código añadido coordina resultados **de sesiones previamente abiertas y autorizadas**, no genera permisos ni ejecuta modelos.
 - Los recibos no sustituyen pruebas reales de cada candidato, 4R, Judgment Day, tests de Windows/macOS/Linux ni integración revisada. No ejecutar merge ni reintentos de lotes con estado parcial, corrupto o desconocido.
 - Verificar Phase 0, Pi runtime, CI y Release Gate sobre el SHA final de la tanda. Nunca convertir `skipped` o `pending` en PASS.
+
+## T06/T07 — Corregir atribución de agentes y recogida atómica (2026-11-15)
+
+### Incidencia CI real y causa raíz comprobada
+
+- En el SHA `e9d44f60` el **CI multiplataforma falló** en `tests/parallel-worktree-todos.test.ts:319` (Windows, macOS y Ubuntu): esperaba una tarea `child-plan-required` tras `attach` y se observaba `0`. Release Gate, Phase 0 y Pi runtime de ese SHA habían pasado, pero **CI rojo invalida el cierre**.
+- **Causa:** `/asen-worktrees status` y `readAgentFlowPanelObservation` trataban un agente cualquiera con rol `worker` de la sesión Pi hija como actividad del Todo de origen, sin comprobar todavía el `claim` ODD y la asociación `TaskAgentLinkStore`. El error no debía corregirse cambiando el esperado del test.
+- **Reparación:** ambas vistas pasan por `attributeParallelChildWorker` y solo reflejan actividad si existen el Todo hijo con candidato/ámbito originales, el vínculo ODD → agente y la fase de planificación reclamada. Si no hay vínculo, el agente ajeno **no** se atribuye. Una incongruencia explícita falla cerrada, en lugar de inventar `running`.
+- Se añadió prueba positiva con dos Workers correctamente atribuidos, prueba negativa de Worker ajeno antes y después de `attach`, y estado `running` auténtico sin inferir `modelActual` ni aceptación.
+
+### Atomicidad de resultados del lote
+
+- `ParallelWorkerObservationJournal.recordBatch` recibe **2–4 resultados** y aplica una sola escritura atómica dentro del bloqueo exclusivo. Si el segundo resultado no es válido o si existe un recibo previo en conflicto, **no se escribe ningún recibo nuevo**. Las peticiones concurrentes del mismo lote no pueden guardar resultados duplicados.
+- `/asen-worktrees collect` ahora llama a esa operación única, después de comprobar nuevamente los estados y el consentimiento. Se conserva `record` para compatibilidad y para pruebas de recibos individuales, sin nuevos derechos de integración, reintento ni escritura.
+- Tests `parallel-worker-observation.test.ts`: lote completo, error en segundo Worker, lote con dueño distinto, colisión con recibo anterior y dos intentos concurrentes. Todos los estados se mantienen en `not-accepted`, `modelActual:unknown`, `autoMerge:false`.
+
+### Pendientes que NO se elevan a FULL
+
+- **T06**: todavía falta un supervisor **host-native** que pueda iniciar Workers Pi reales en worktrees separados con nuevo consentimiento por Worker, autorización precisa por Git root, un modelo realmente autenticado, cancelación y límites de coste. No usar una identidad de sesión hija inventada ni transportar grants del padre.
+- **T07**: falta el recibo de modelo realmente consumido y la experiencia TUI/estado final probada contra el Pi real, no solo los tests de presentación.
+- El gate verde de un SHA anterior no valida estos cambios. Requieren CI completo y Release Gate del HEAD exacto, además de la revisión independiente. `globalFull:false`.
