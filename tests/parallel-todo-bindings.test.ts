@@ -42,9 +42,10 @@ test("T06 source mapping fails on missing, duplicate or unmet dependency",()=>{
  assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[first],units:scopes}),/Source Todo/u);
  assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[first,first,second],units:scopes}),/Duplicate/u);
  assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[first,second],units:[scopes[0]!,scopes[0]!]}),/duplicate/u);
- const blocked={...first,dependsOn:[second.taskId]} as SourceTodoRow;
- assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[blocked,second],units:scopes}),/incomplete/u);
- const done={...second,current:{...second.current,state:"done"}} as SourceTodoRow;
- const result=bindParallelSourceTodos({identity,expectedHead:head,rows:[blocked,done],units:scopes});
+ const prerequisite=worker("prerequisite","prerequisite.ts");
+ const blocked={...first,dependsOn:[prerequisite.taskId]} as SourceTodoRow;
+ assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[blocked,second,prerequisite],units:scopes}),/incomplete/u);
+ const done={...prerequisite,current:{...prerequisite.current,state:"done"}} as SourceTodoRow;
+ const result=bindParallelSourceTodos({identity,expectedHead:head,rows:[blocked,second,done],units:scopes});
  assert.equal(result.length,2);
 });
