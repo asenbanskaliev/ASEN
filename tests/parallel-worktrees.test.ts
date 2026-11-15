@@ -6,7 +6,14 @@ import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {acquireWorkspaceWriter} from "../src/runtime/lifecycle/workspace-writer-lease.js";
 import {prepareParallelWorkerWorktrees,assertPreparedParallelWorktree,dispatchApprovedParallelWorkers,type ParallelWorktreeAllocation} from "../src/runtime/agents/parallel-worktrees.js";
-import type {AgentRequest} from "../src/agents/dispatcher.js";
+import {Dispatcher,type AgentRequest} from "../src/agents/dispatcher.js";
+import {EvidenceStore} from "../src/evidence/store.js";
+import {issueSkillContext} from "../src/skills/context.js";
+import {selectSkills} from "../src/skills/registry.js";
+import {issueOddDecision} from "./helpers/odd-routing.js";
+import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
+import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
+import {issueControlledPlanPhaseGrant,issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 
 function fixture(t:TestContext){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-source-"))),
@@ -97,28 +104,73 @@ test("T06 forbids overlapping parent and forged allocation identity",async t=>{
  assert.throws(()=>assertPreparedParallelWorktree({...r.allocations[0]!}),/Forged/u);
 });
 
-test("T06 rejects cross-root and unauthorised batch requests before calling dispatcher",async t=>{
- const f=fixture(t),r=await f.prepare();if(r.status!=="prepared")return;f.registered(r.allocations);
+
+function authorizedWorker(allocation:ParallelWorktreeAllocation,index:number,store:EvidenceStore):AgentRequest{
+ const taskId="t06-task-"+index,requestId=taskId+":worker",scope=allocation.writeSurfaces[0]!;
+ const candidate={id:"t06-candidate-"+index,repository:allocation.root,revision:allocation.baseRevision,createdAt:"now"};
+ const decision=issueOddDecision({taskId,repository:allocation.root,paths:[scope],writes:[{path:scope,changeKind:"behavior"}]});
+ buildOrchestrationPlan({taskId,repository:allocation.root,prompt:"write",candidate},decision);
+ const applicability=decideLifecycleApplicability(decision,{
+  taskIdentity:taskId,repositoryIdentity:allocation.root,
+  candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},
+  explicitMode:"organic",affectedSubsystems:["t06"],expectedPaths:[scope],requiredArtifacts:[]
+ });
+ if(applicability.outcome!=="organic")throw Error("Expected organic ODD admission");
+ const writerAdmission=issueOrganicWriterAdmission(applicability,[scope]);
+ const phaseGrant=issueControlledPlanPhaseGrant({requestId,sessionId:"session-t06",candidate,surfaces:[scope],writerAdmission});
+ const skillContext=issueSkillContext(requestId,allocation.root,candidate,{phase:"apply",codeChange:true});
+ for(const [id,kind] of [["work-unit","work-unit"],["scope","scope"],["rollback","rollback"]] as const){
+  store.add(candidate,{id:id+"-"+index,kind,status:"pass",summary:"bounded T06 test",createdAt:"now"});
+ }
+ return {id:requestId,role:"worker",prompt:"write only the authorized scope",
+  repository:allocation.root,isolationKey:"session-t06",writeSurfaces:[scope],
+  candidate,writerAdmission,phaseGrant,expectedPhase:"apply",
+  skillContext,skillPaths:selectSkills(skillContext).map(skill=>skill.path)};
+}
+
+test("T06 refuses cross-root, unauthorized and forged-context requests before any runner",async t=>{
+ const f=fixture(t),created=await f.prepare();if(created.status!=="prepared")return;
+ f.registered(created.allocations);
  let called=0;
- const dispatcher={dispatch:async(request:AgentRequest)=>{called++;return {id:request.id,ok:true,output:"unverified"};}};
- const requests=r.allocations.map((a,i)=>({id:"worker-"+i,role:"worker" as const,
-  prompt:"test",repository:a.root,isolationKey:"session",writeSurfaces:[...a.writeSurfaces],
-  candidate:{id:"candidate",repository:a.root,revision:f.head,createdAt:"test"},writerAdmission:{},skillContext:{} as NonNullable<AgentRequest["skillContext"]>}));
- await assert.rejects(()=>dispatchApprovedParallelWorkers({dispatcher,allocations:r.allocations,requests:[{...requests[0]!,repository:f.source},requests[1]!]}),/separate freshly authorized/u);
- await assert.rejects(()=>dispatchApprovedParallelWorkers({dispatcher,allocations:r.allocations,requests:requests.map(({writerAdmission:_unused,...remaining})=>remaining)}),/separate freshly authorized/u);
+ const dispatcher=new Dispatcher({run:async req=>{called++;return {id:req.id,ok:true,output:"unauthorized"};}},new EvidenceStore(),2);
+ const requests=created.allocations.map((a,i)=>({
+  id:"worker-"+i,role:"worker" as const,prompt:"fake",repository:a.root,isolationKey:"session-t06",
+  candidate:{id:"fake",repository:a.root,revision:f.head,createdAt:"now"},
+  writeSurfaces:[...a.writeSurfaces],writerAdmission:{},
+  skillContext:{} as NonNullable<AgentRequest["skillContext"]>}));
+ await assert.rejects(()=>dispatchApprovedParallelWorkers({
+  dispatcher,allocations:created.allocations,requests:[{...requests[0]!,repository:f.source},requests[1]!] 
+ }),/separate freshly authorized/u);
+ await assert.rejects(()=>dispatchApprovedParallelWorkers({
+  dispatcher,allocations:created.allocations,requests
+ }),/separate freshly authorized/u);
  assert.equal(called,0);
 });
 
-test("T06 dispatches a bounded batch once and leaves all reported results for review, never merge",async t=>{
- const f=fixture(t),r=await f.prepare();if(r.status!=="prepared")return;f.registered(r.allocations);
- const requests=r.allocations.map((a,i)=>({id:"worker-"+i,role:"worker" as const,
-  prompt:"authorized externally",repository:a.root,isolationKey:"session",writeSurfaces:[...a.writeSurfaces],
-  candidate:{id:"candidate",repository:a.root,revision:f.head,createdAt:"test"},
-  writerAdmission:{},skillContext:{} as NonNullable<AgentRequest["skillContext"]>}));
- const started:string[]=[];
- const dispatcher={dispatch:async(request:AgentRequest)=>{started.push(request.id);return {id:request.id,ok:true,output:"stub - not actual Pi evidence"};}};
- const result=await dispatchApprovedParallelWorkers({dispatcher,allocations:r.allocations,requests});
- assert.equal(result.status,"finished-needs-review");assert.equal(result.autoMerge,false);
- assert.equal(result.results.length,2);assert.deepEqual(new Set(started),new Set(["worker-0","worker-1"]));
- await assert.rejects(()=>dispatchApprovedParallelWorkers({dispatcher,allocations:r.allocations,requests}),/separate freshly authorized/u);
+test("T06 runs two genuinely authorized Dispatcher workers concurrently on separate worktree roots",async t=>{
+ const f=fixture(t),created=await f.prepare();if(created.status!=="prepared")return;
+ f.registered(created.allocations);
+ const evidence=new EvidenceStore();
+ const requests=created.allocations.map((a,i)=>authorizedWorker(a,i,evidence));
+ let concurrent=0,highest=0;
+ const dispatcher=new Dispatcher({run:async request=>{
+  concurrent++;highest=Math.max(highest,concurrent);
+  try{
+   writeFileSync(join(request.repository,request.writeSurfaces![0]!),"scoped change for "+request.id+"\n");
+   await new Promise(resolve=>setTimeout(resolve,35));
+   return {id:request.id,ok:true,output:"model-free authorized worker test"};
+  }finally{concurrent--;}
+ }},evidence,2);
+ const result=await dispatchApprovedParallelWorkers({dispatcher,allocations:created.allocations,requests});
+ assert.equal(highest,2,"two authorized workers must overlap execution in separate worktrees");
+ assert.equal(result.status,"finished-needs-review");
+ assert.equal(result.autoMerge,false);
+ assert.equal(result.results.length,2);
+ assert.equal(result.results.every(r=>r.ok),true);
+ assert.equal(f.git(f.source,"status","--porcelain"),"");
+ assert.equal(readFileSync(join(f.source,"left.txt"),"utf8"),"original-left\n");
+ assert.equal(readFileSync(join(f.source,"right.txt"),"utf8"),"original-right\n");
+ await assert.rejects(()=>dispatchApprovedParallelWorkers({
+  dispatcher,allocations:created.allocations,requests
+ }),/separate freshly authorized/u);
 });
