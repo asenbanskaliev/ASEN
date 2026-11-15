@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import test,{type TestContext} from "node:test";
 import {execFileSync} from "node:child_process";
 import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -19,7 +19,7 @@ function fixture(t:TestContext){
  const workspace=openWorkspaceReview({repositoryRoot:resolve(root),intendedUntracked:[],sessionId:"s-judge",reviewerId:"free/judge-a",viewParent:resolve(view),risk:{riskId:"JD",reason:"Compare independent results",severity:"high",lenses:["risk","reliability"]}});
  return {workspace,evidence:readWorkspaceReviewEvidence(workspace)};
 }
-type TestContext=Parameters<Parameters<typeof test>[1]>[0];
+
 function registry(second:"pass"|"fail"="pass"){
  const calls:{id:string;prompt:string;hasTools:boolean}[]=[];
  const value:PiReviewRegistry={
