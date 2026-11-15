@@ -56,7 +56,8 @@ export interface ParentSupervisorInput{
   * request new Pi UI approval for this exact child Worker before writing. */
  readonly launchChild:(worker:ParentSupervisorReadyWorker,
    confirm:(task:Readonly<{id:string;title:string;role:string;instruction:string;
-     writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean>
+     writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean>,
+   validateExact:()=>Promise<void>
  )=>Promise<{status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>;
  readonly confirmWorker:(worker:ParentSupervisorReadyWorker,
    task:Readonly<{id:string;title:string;role:string;instruction:string;
@@ -188,6 +189,47 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    git.status!=="clean"||!git.sourceVerified||!git.headMatchesBase)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": Child identity, worker or Git candidate changed; inspect before any new launch"]);
+  // The parent can only dispatch into its previously attached, independently
+  // planned child. This exact provenance must remain true before AND after Pi
+  // user consent, including while TrustedTaskAgentBinder performs its CAS.
+  const validateExact=async()=>{
+   await input.validateParent();
+   const batches=await input.sourceJournal.list(input.source),
+    currentBatch=batches.find(b=>b.id===unit.batchId),
+    sourceTask=currentBatch?.tasks.find(t=>t.taskId===unit.sourceTodoId);
+   const linksNow=await input.sessionJournal.listSource(input.source);
+   const owners=linksNow.filter(l=>l.batchId===unit.batchId&&
+    l.sourceTodoId===unit.sourceTodoId&&l.childSessionId===unit.childSessionId&&
+    same(l.childProjectId,unit.childProjectId));
+   const currentSource=(await input.loadTodos(input.source)).find(t=>t.taskId===unit.sourceTodoId);
+   const claims=await input.claimJournal.listSource(input.source,linksNow);
+   const childRows=await input.loadTodos(child),
+    childTodo=childRows.find(t=>t.taskId===unit.childTodoId);
+   const currentGit=inspectParallelWorktreeChanges({
+    sourceRoot:input.source.projectId,worktreeRoot:unit.childProjectId,
+    baseRevision:unit.baseRevision,writeSurfaces:unit.writeSurfaces
+   });
+   if(currentBatch?.state!=="prepared"||currentBatch.sourceHead!==unit.baseRevision||
+    !sourceTask||sourceTask.taskRevision!==currentSource?.current.revision||
+    currentSource.current.state!=="planned"||
+    sourceTask.requestId!==currentSource.requestId||
+    sourceTask.writeSurfaces.length!==unit.writeSurfaces.length||
+    sourceTask.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i])||
+    owners.length!==1||
+    claims.filter(claim=>claim.batchId===unit.batchId&&
+     claim.sourceTodoId===unit.sourceTodoId&&
+     claim.childSessionId===unit.childSessionId).length!==1||
+    !childTodo||childTodo.plan?.role!=="worker"||
+    childTodo.plan.candidate?.revision!==unit.baseRevision||
+    !same(childTodo.plan.candidate.repository,unit.childProjectId)||
+    childTodo.plan.writeSurfaces?.length!==unit.writeSurfaces.length||
+    childTodo.plan.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i])||
+    currentGit.status!=="clean"||!currentGit.sourceVerified||
+    !currentGit.headMatchesBase)
+    throw new Error("Child Pi provenance changed after parent Worker authorization; no new launch");
+   await input.validateParent();
+  };
+  await validateExact();
   let wasApproved=false;
   const outcome=await input.launchChild(unit,async task=>{
    await input.validateParent();
@@ -197,9 +239,9 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     task.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i]))
     return false;
    wasApproved=await input.confirmWorker(unit,task)===true;
-   await input.validateParent();
+   await validateExact();
    return wasApproved;
-  });
+  },validateExact);
   await input.validateParent();
   if(outcome.status!=="dispatched"||outcome.role!=="worker"||
    outcome.todoId!==unit.childTodoId||!wasApproved)
