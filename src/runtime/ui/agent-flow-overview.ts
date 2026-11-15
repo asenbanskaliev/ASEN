@@ -66,14 +66,14 @@ export function projectParallelAgentFlow(batches:readonly AgentFlowSourceBatch[]
     task.changes.acceptance!=="not-accepted"||task.changes.autoMerge!==false||
     (task.childSession!==undefined&&(!safeId(task.childSession.id)||
      !Array.isArray(task.childSession.agents)||task.childSession.agents.length>128||
-     task.childSession.agents.some(agent=>!safeId(agent.id)||!validStates.has(agent.state)))))
+     task.childSession.agents.some((agent:Readonly<{id:string;role:string;state:string}>)=>!safeId(agent.id)||!validStates.has(agent.state)))))
     throw new Error("Invalid or duplicate agent-flow evidence");
    ids.add(task.sourceTodoId);
-   const workerStates=task.childSession?.agents.filter(a=>a.role==="worker").map(a=>a.state)??[];
+   const workerStates=task.childSession?.agents.filter((a:Readonly<{id:string;role:string;state:string}>)=>a.role==="worker").map((a:Readonly<{id:string;role:string;state:string}>)=>a.state)??[];
    const workerObserved:AgentFlowProjection["tasks"][number]["workerObserved"]=
-    workerStates.some(s=>["failed","interrupted","cancelled"].includes(s))?"failure-or-interruption":
-    workerStates.some(s=>["queued","running","waiting"].includes(s))?"active":
-    workerStates.some(s=>s==="completed")?"terminal-unverified":"not-observed";
+    workerStates.some((s:string)=>["failed","interrupted","cancelled"].includes(s))?"failure-or-interruption":
+    workerStates.some((s:string)=>["queued","running","waiting"].includes(s))?"active":
+    workerStates.some((s:string)=>s==="completed")?"terminal-unverified":"not-observed";
    const invalidSource=!task.sourceTodoUnchanged;
    const invalidDiff=task.changes.status==="out-of-scope"||
     task.changes.status==="head-diverged"||task.changes.outOfScopePaths.length>0||
