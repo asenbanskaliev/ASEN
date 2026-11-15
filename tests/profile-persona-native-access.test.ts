@@ -99,11 +99,11 @@ test("native edit two independent hosts conflict instead of lost update",async t
  a.queue.push(...editChoices());await a.run("asen-profiles");const bytes=await readFile(a.file,"utf8"),count=b.notices.length;release();
  await assert.rejects(losing,/Saved profile changed or disappeared/);assert.equal(await readFile(a.file,"utf8"),bytes);assert.equal(b.notices.length,count);
 });
-test("native edit lists selected scope only and existing known own roles",async t=>{
+test("native edit lists selected scope and safe routable destinations without exposing custom keys",async t=>{
  const f=await editFixture(t),local=path.join(f.project,".asen","profiles.json");
  await writeFile(local,JSON.stringify({schema:ASEN_PROFILES_SCHEMA,profiles:[{name:"Local",routes:{custom:{},worker:{}}}]}));
  f.queue.push("Edit saved profile","Project","Profile: Local","Back");await f.run("asen-profiles");
- assert.deepEqual(f.screens[2]!.choices,["Profile: Local","Back"]);assert.deepEqual(f.screens[3]!.choices,["Role: worker","Back"]);
+ assert.deepEqual(f.screens[2]!.choices,["Profile: Local","Back"]);assert.deepEqual(f.screens[3]!.choices,["Role: explorer","Role: worker","Role: reviewer","Role: verifier","Role: review-risk","Role: review-resilience","Role: review-reliability","Role: review-readability","Role: jd-judge-a","Role: jd-judge-b","Role: jd-fix-agent","Back"]);
  await writeFile(local,JSON.stringify({schema:ASEN_PROFILES_SCHEMA,profiles:[]}));
  f.queue.push("Edit saved profile","Project","Back");await f.run("asen-profiles");assert.deepEqual(f.screens.at(-1)!.choices,["Back"]);
 });
