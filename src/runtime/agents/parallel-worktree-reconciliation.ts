@@ -28,7 +28,7 @@ export function reconcileParallelWorktreeBatch(input:{
   throw new Error("Invalid bounded worktree reconciliation batch");
  const blockers:string[]=[],evidence:ParallelBatchReconciliation["evidence"][number][]=[];
  const observed=new Map<string,string>();
- let seenChanges=false,seenActive=false,seenAllCompleted=true;
+ let seenChanges=false,seenAllCompleted=true;
  if(input.batchState!=="prepared")blockers.push("Batch creation incomplete; inspect reserved Git paths manually");
  for(const unit of input.units){
   if(!unit||typeof unit.taskId!=="string"||!unit.taskId||!unit.changes||
@@ -54,7 +54,6 @@ export function reconcileParallelWorktreeBatch(input:{
   else if(agentStates.some(s=>["queued","running"].includes(s)))agentState="active";
   else if(agentStates.includes("completed"))agentState="terminal";
   if(agentState!=="terminal")seenAllCompleted=false;
-  if(agentState==="active")seenActive=true;
   if(agentState==="unresolved")blockers.push(unit.taskId+": Worker terminated unsuccessfully or ambiguously");
   evidence.push(Object.freeze({
    taskId:unit.taskId,changedPaths:Object.freeze([...changes.changedPaths]),
