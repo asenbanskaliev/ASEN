@@ -19,7 +19,7 @@ const taskPattern=/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/u;
 const scoped=(path:unknown):path is string=>typeof path==="string"&&path.length>0&&path.length<=1024&&
  path===path.trim()&&path===path.normalize("NFC")&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(path)&&
  !path.startsWith("/")&&!path.includes("\\")&&!path.includes(":")&&!path.includes("*")&&
- path.split("/").every(part=>!!part&&part!=="."&&part!==".."&&part!==".git");
+ path.split("/").every(part=>!!part&&part!=="."&&part!==".."&&part.toLowerCase()!==".git");
 function git(root:string,...args:string[]):string{
  return execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:15000,windowsHide:true,maxBuffer:2_000_000});
 }
@@ -125,7 +125,11 @@ export async function prepareParallelWorkerWorktrees(input:ParallelWorktreePropo
   if(gitHead(source)!==input.expectedHead||!clean(source))throw new Error("Pinned source changed during worktree preparation");
   const target=resolve(parent,"asen-worker-"+unit.taskId+"-"+randomUUID());
   if(existsSync(target))throw new Error("New worktree location unexpectedly exists");
-  git(source,"worktree","add","--detach","--",target,input.expectedHead);
+  // Creating a worktree is not permission to execute repository checkout hooks.
+  const noHooks=resolve(parent,".asen-no-hooks-"+randomUUID());
+  if(existsSync(noHooks))throw new Error("Temporary hook-isolation path unexpectedly exists");
+  execFileSync("git",["-c","core.hooksPath="+noHooks,"-C",source,"worktree","add","--detach","--",target,input.expectedHead],
+   {encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:15000,windowsHide:true,maxBuffer:2_000_000});
   const allocation=Object.freeze({taskId:unit.taskId,root:target,sourceRoot:source,
    baseRevision:input.expectedHead,writeSurfaces:unit.writeSurfaces,
    grantsAuthority:false as const,autoMerge:false as const});
