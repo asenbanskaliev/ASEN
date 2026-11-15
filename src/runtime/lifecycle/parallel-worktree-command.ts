@@ -7,10 +7,12 @@ import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../age
 import {ParallelChildSessionJournal} from "../agents/parallel-todo-session-links.js";
 import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change-inspection.js";
 import {reconcileParallelWorktreeBatch} from "../agents/parallel-worktree-reconciliation.js";
+import {ParallelChildPlanClaimJournal} from "../agents/parallel-child-plan-claims.js";
+import {controlledInstructionPlanCommand} from "./route-command.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | status | review (revisión solo lectura; nunca lanza ni fusiona Workers)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | plan-todo | status | review (plan-todo pide nuevo consentimiento ODD en la sesión hija)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
  sessionManager?:{getSessionId?:()=>string};
@@ -38,7 +40,8 @@ function readRequest(value:string):{parentDir:string;units:readonly ParallelWork
 }
 export function registerParallelWorktreeCommand(
  register:(name:string,command:WorktreeCommand)=>void,
- options?:{journalFile?:string;sessionLinksFile?:string;
+ options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;
+  planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
   loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>}
 ):void{
@@ -46,10 +49,83 @@ export function registerParallelWorktreeCommand(
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:async(args,ctx)=>{
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="plan-todo"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
+   if(action==="plan-todo"){
+    if(!id||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||!ctx.cwd||
+     !options?.journalFile||!options.sessionLinksFile||!options.planClaimsFile||
+     !options.loadTodos||!options.planChildTodo){
+     const denied={status:"unavailable" as const,reason:"ODD child handoff requires active Pi TUI, source Todos, confirmed child link and ODD planner"};
+     ctx.ui.notify(denied.reason,"warning");return denied;
+    }
+    const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
+    const verifyContext=()=>{
+     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+      realpathSync(path.resolve(ctx.cwd))!==root)
+      throw new Error("Child Pi session or worktree changed before ODD planning");
+    };
+    const sourceJournal=new ParallelTodoWorktreeJournal(options.journalFile),
+     sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
+     claims=new ParallelChildPlanClaimJournal(options.planClaimsFile),
+     linked=await sessionJournal.listChild({sessionId:id,projectId:root}),
+     owner=await sourceJournal.findPreparedWorktree(root);
+    if(linked.length!==1||!owner||linked[0]!.sourceTodoId!==owner.taskId||
+     linked[0]!.batchId!==owner.batchId)
+     throw new Error("Child Pi session must be attached to this exact prepared source Todo");
+    const origin={sessionId:owner.sourceSessionId,projectId:owner.sourceProjectId},
+     batch=(await sourceJournal.list(origin)).find(row=>row.id===owner.batchId);
+    if(!batch||batch.state!=="prepared")throw new Error("Original worktree batch is not fully prepared");
+    const units=batch.tasks.map(task=>({taskId:task.taskId,writeSurfaces:task.writeSurfaces}));
+    const inspectAndBind=async()=>{
+     verifyContext();
+     const rows=await options.loadTodos!(origin);
+     bindParallelSourceTodos({identity:origin,expectedHead:owner.sourceHead,rows,units});
+     const inspection=inspectParallelWorktreeChanges({
+      sourceRoot:owner.sourceProjectId,worktreeRoot:root,baseRevision:owner.sourceHead,
+      writeSurfaces:owner.writeSurfaces
+     });
+     if(inspection.status!=="clean")
+      throw new Error("Child worktree must remain clean and pinned to source HEAD before re-planning");
+     const row=rows.find(value=>value.taskId===owner.taskId);
+     const basis=row?.plan?.writerAuthorizationBasis;
+     if(!basis)throw new Error("Original ODD Worker has no persisted exact authorization facts");
+     const checked=JSON.parse(controlledInstructionPlanCommand(
+      basis,root,{id:"source-todo-"+owner.taskId,repository:root,revision:owner.sourceHead,
+       createdAt:new Date().toISOString()}
+     )) as {route?:string;executablePlan?:{tasks?:readonly {role:string}[]}};
+     if(checked.route!=="orchestrate"||!checked.executablePlan?.tasks?.some(task=>task.role==="worker"))
+      throw new Error("Fresh child ODD policy does not produce a delegated Worker; rebuild manually");
+     return basis;
+    };
+    const basis=await inspectAndBind();
+    verifyContext();
+    const approved=await ctx.ui.confirm("Reconstruir ODD en el worktree?",[
+     "Source Todo: "+owner.taskId,"Worktree: "+root,"HEAD: "+owner.sourceHead,
+     "Scope original: "+owner.writeSurfaces.join(", "),
+     "El plan será recalculado con el proyecto de esta sesión Pi (no importará grants previos).",
+     "La planificación existente puede iniciar tareas de lectura; Writer exigirá un SEGUNDO consentimiento individual.",
+     "Un intento interrumpido quedará registrado; NO habrá reintento automático ni merge."
+    ].join("\n"));
+    verifyContext();
+    if(approved!==true)return {status:"declined",grantsAuthority:false,autoDispatch:false};
+    const freshBasis=await inspectAndBind();
+    if(freshBasis!==basis)throw new Error("ODD source basis changed during child consent");
+    const afterLinks=await sessionJournal.listChild({sessionId:id,projectId:root});
+    if(afterLinks.length!==1||JSON.stringify(afterLinks[0])!==JSON.stringify(linked[0]))
+     throw new Error("Child Pi session attribution changed before ODD handoff");
+    // Claim BEFORE calling the existing planner: crash/restart is never replay permission.
+    await claims.claim(linked[0]!);
+    verifyContext();
+    const planned=await options.planChildTodo(basis,ctx);
+    verifyContext();
+    const result={status:"handed-to-own-odd-planner" as const,sourceTodoId:owner.taskId,
+     grantsAuthority:false as const,autoMerge:false as const,autoRetry:false as const,
+     plannerResult:planned};
+    ctx.ui.notify("ASEN delegó la tarea al planificador ODD de esta sesión; los permisos Writer siguen sujetos a confirmación nueva.","info");
+    return result;
+   }
    if(action==="attach"){
     if(!id||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||
      !ctx.cwd||!options?.journalFile||!options?.sessionLinksFile){
@@ -95,6 +171,10 @@ export function registerParallelWorktreeCommand(
      options.sessionLinksFile,new ParallelTodoWorktreeJournal(options.journalFile)
     ).listSource({sessionId:id,projectId:root}):[];
     const linkedBySource=new Map(linked.map(link=>[link.sourceTodoId,link]));
+    const claimed=options.planClaimsFile?await new ParallelChildPlanClaimJournal(
+     options.planClaimsFile
+    ).listSource({sessionId:id,projectId:root},linked):[];
+    const claimedTasks=new Set(claimed.map(item=>item.sourceTodoId));
     const childObserved=new Map<string,Readonly<{agents:readonly {id:string;role:string;state:string}[];
      todos:readonly {taskId:string;role?:string;state:string}[]}>>();
     for(const link of linked){
@@ -116,7 +196,7 @@ export function registerParallelWorktreeCommand(
         sourceTodoState:live?.current.state??"missing",
         sourceTodoUnchanged:live?.current.revision===task.taskRevision&&live?.current.state==="planned",
         worktreeRoot:task.worktreeRoot,worktreePresent:existsSync(task.worktreeRoot),
-        writeSurfaces:task.writeSurfaces,
+        writeSurfaces:task.writeSurfaces,handoffClaimed:claimedTasks.has(task.taskId),
         changes:record.state==="prepared"?inspectParallelWorktreeChanges({
          sourceRoot:record.projectId,worktreeRoot:task.worktreeRoot,
          baseRevision:record.sourceHead,writeSurfaces:task.writeSurfaces
