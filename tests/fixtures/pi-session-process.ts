@@ -20,7 +20,8 @@ if(mode==="write"){
  const task={id:"task",title:"Pi recovery",phase:"VERIFYING" as const,candidateId:"candidate",blockers:["needs review"]};
  const candidate={id:"candidate",repository,revision,createdAt:"now"};
  const skillContext=issueSkillContext("task",repository,candidate,{phase:"verify",verification:true});
- await saveCheckpoint(checkpoint,createCheckpoint(project,session.getSessionId(),task,candidate,sessionFile,skillContext,["skills/asen-phase-protocol/SKILL.md","skills/asen-verify/SKILL.md"]));
+ const lifecycle=[{id:"task:verify",role:"verifier",owner:{kind:"system" as const,id:"asen-dispatcher"},sessionId:session.getSessionId(),projectId:repository,state:"completed" as const,createdAt:"2026-10-07T00:00:00Z",updatedAt:"2026-10-07T00:00:01Z",summary:"verified before restart"}];
+ await saveCheckpoint(checkpoint,createCheckpoint(project,session.getSessionId(),task,candidate,sessionFile,skillContext,["skills/asen-phase-protocol/SKILL.md","skills/asen-verify/SKILL.md"],lifecycle));
  writeFileSync(metadata,JSON.stringify({sessionFile,sessionId:session.getSessionId()}));
 }else if(mode==="resume"){
  const expected=JSON.parse(readFileSync(metadata,"utf8"));
@@ -32,5 +33,5 @@ if(mode==="write"){
  const response=responses.find(record=>record.type==="response"&&record.id==="state-request"&&record.command==="get_state");
  if(!response?.success)throw new Error("Pi RPC state response missing");
  const recovered=await resumePiSession(checkpoint,{projectId:project,repository,revision,sessionId:expected.sessionId,sessionFile:expected.sessionFile},response.data);
- process.stdout.write(JSON.stringify({task:recovered.task,candidate:recovered.candidate,skillContext:recovered.skillContext,skillPaths:recovered.skillPaths,piSessionId:response.data.sessionId,piSessionFile:response.data.sessionFile}));
+ process.stdout.write(JSON.stringify({task:recovered.task,candidate:recovered.candidate,skillContext:recovered.skillContext,skillPaths:recovered.skillPaths,agentLifecycle:recovered.agentLifecycle,piSessionId:response.data.sessionId,piSessionFile:response.data.sessionFile}));
 }else throw new Error(`Unknown mode ${mode}`);

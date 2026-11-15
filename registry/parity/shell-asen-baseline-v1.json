@@ -1,0 +1,46 @@
+{
+  "schema": "asen-pi-shell-parity-baseline/v1",
+  "purpose": "Active R4-04 runtime parity baseline; methodology references remain historical documentation only",
+  "reference": {
+    "id": "SHELL",
+    "repository": "Gentleman-Programming/gentle-shell",
+    "tag": "v4.6.0",
+    "commit": "1f74e9e24473e7e121a96b1680444ae0196d3009",
+    "tree": "64d14750450d0144d65230eb0b6ecc69d841a8f3",
+    "packageVersion": "4.6.0",
+    "host": "pi"
+  },
+  "candidate": {
+    "id": "ASEN",
+    "host": "pi"
+  },
+  "sources": [
+    "SHELL",
+    "ASEN"
+  ],
+  "cases": [
+    "C01",
+    "C02",
+    "C03",
+    "C04",
+    "C05",
+    "C06",
+    "C07",
+    "C08",
+    "C09",
+    "C10",
+    "C11",
+    "C12",
+    "C13",
+    "C14",
+    "C15",
+    "C16",
+    "C17",
+    "C18",
+    "C19",
+    "C20"
+  ],
+  "slotsRequired": 40,
+  "legacyTriadStatus": "HISTORICAL_NON_NORMATIVE",
+  "fullRequiresIndependentReview": true
+}

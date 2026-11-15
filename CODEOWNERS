@@ -1,0 +1,8 @@
+# Default owners for all files
+* @asenbanskaliev
+
+# Security-sensitive files require owner review
+/src/security/   @asenbanskaliev
+/extensions/     @asenbanskaliev
+/.github/        @asenbanskaliev
+/docs/threat-model.md @asenbanskaliev

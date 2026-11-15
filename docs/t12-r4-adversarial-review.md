@@ -1,0 +1,63 @@
+# ASEN T12 — R4 adversarial assessment (self-review, not independent sign-off)
+
+Reviewed source candidate: ASEN PR #43, previous full-green SHA `7656a5b49776cc81a4ec0eba326d8108ffc8202f`; subsequent source changes require revalidation. This document is a risk register, **not** a third-party independent R4 signature, and does not authorize merging to main.
+
+| Finding | Risk | Grounded behavior | Disposition / acceptance gate |
+| --- | --- | --- | --- |
+| R4-01 | HIGH | `managed-lifecycle.ts` performs final checks then pathname-based `unlink`. A malicious process running as the same OS user can change a directory or file between final check and delete. | Remains open. Either use a supported OS-level confined deletion helper with a witnessed no-follow parent directory handle, or formally limit threat model to cooperative same-user processes. Deterministic substitutions before final check do not prove atomic safety. |
+| R4-02 | MEDIUM | `shared-session-directory.ts` previously checked absence then unconditionally renamed a temporary record over the target, permitting simultaneous live owners of the same identity. | New-name publication replaced with atomic no-clobber hardlink plus injected race regression. Verify three platforms; existing stale ownership replacement still lacks a full malicious-same-user guarantee. |
+| R4-03 | MEDIUM | `workspace-resolution.ts` previously threw if `lease.verify()` failed immediately after an already successful `renameSync`, making a completed write look unsuccessful and skipping attribution in the command layer. | Publication now returns an explicit post-write uncertainty warning and the command persists attribution. An injected changed neighboring tracked file must confirm that the exact write happened and is not silently retried. |
+| R4-04 | MEDIUM | Previous Pi support matrix used native TUI startup/shutdown only; no actual keyboard dispatch, no ASEN command observation, and no editor selection/confirmation evidence. | **Partial closure (this session).** New genuine PTY `/asen-changes` keyboard admission with zero model invocations (`t12-real-pi-dialog-smoke.mjs`) plus a brand-new T10-7 real Pi 1.2.0 matrix at 120/80/60/40 columns, NO_COLOR, reaching `/asen-status`, `/asen-agents`, `/asen-changes` (error, Escape, re-render) without a single wrapped row or model call; `PI_TRANSCRIPT_RESERVE=3` derived by `hostContentColumns`. Editor/selector/confirmation via live Phi TUI remains pending multi-OS (Windows native leaves them NOT_PROVEN). |
+| R4-05 | HIGH — claim integrity | The original reference ecosystem source was unavailable for 16 normative parity claims; GitHub CI does not establish full equivalence with la referencia externa. Provider-backed Pi interruption also remains opt-in/skipped. | Preserve PARTIAL overall; only exact-version, exact-SHA verified scoped subfeatures may be described as FULL. No green-check promotion of unsupported claims. |
+| R4-06 | MEDIUM | Live cross-session metadata uses private local filesystem permissions and PID rather than cryptographic identity attestation. Same-user malicious code can forge metadata. | Disclose same-user isolation limit. Consent applies to metadata read, never to commands, transcripts or writing. |
+
+| R4-07 | MEDIUM | The newly inspected public Pi-native main at `14f44d11cacbb0e39b73a172113a86b1e3cbfc58` excludes a generated index from Git. ASEN's pre-fix T07 left `.codegraph/.gitignore` available as an untracked Git artifact, potentially polluting review and status. | New helper excludes `.codegraph/` only after one-run, explicitly authorized init/sync. It rejects symlinked local excludes and requires the Git common `info` directory by file identity; queries remain strictly read-only. Require real CodeGraph CLI + real Git status and all three platform suites on this exact SHA. |
+
+## Required next evidence
+
+The consolidated CI must pass the general and CodeGraph real-CLI suites on Linux, Windows and macOS, Release Gate, Pi runtime and model-free real keyboard TUI. Review the exact source for the above threat conditions, then validate actual Pi TUI editor and selector on a disposable Git repository. No automatic merge, production installation, or paid-provider request is authorized by this review.
+
+
+## Native editor/approval witness extension
+
+At source `fddecd76188c0f0fd4b3c2dd33a98090e700682f`, a real Pi TUI performed public conflict selection and editor cancellation on Ubuntu; it did not modify the tracked file or run an AI model. The expanded follow-up candidate introduces paired negative (Escape) and positive (explicit confirmation) native UI paths on Windows/macOS/Linux. The positive path is **a hypothesis under test**, not a claim: pass criteria require a changed tracked file, an unchanged Git HEAD, a visible authorized result, a bounded session receipt and no model invocations. Post-publication same-user races and the high T09 unlink-by-path risk remain open regardless of TUI results.
+
+
+
+
+## R4-08 — Windows path spelling and native PTY cleanup (2026-10-31)
+
+The exact Windows job in run 41174921209 logged `No hay conflictos de esta sesión registrados para corregir.` after `/asen-changes resolve`; Linux and macOS passed the same native TUI scenario. Investigation identified an OS-sensitive exact-string worktree filter in `extensions/asen.ts`, following a store lookup which already allowed Windows-equivalent path spellings. The next source candidate uses the existing `sameWorkspaceIdentityPath` comparer for both sides, with a native Win32 uppercase-alias regression. A synthetic conflict now seeds from the **live Pi command context** rather than an asynchronous startup callback, making the fixture's active session identity auditable.
+
+The previous Windows failure also left native PTY handles open until the fifteen-minute workflow limit. The candidate uses an explicit failure-only watchdog, bounded process-tree cleanup on Windows and a five-minute job limit. Timeout **fails the gate**, never counts as successful interaction. This is a concrete bug fix under verification; Windows native selector/editor/approval remains **NOT PROVEN** until the exact candidate job passes. Same-user OS adversaries, automatic review acceptance and provider-backed flow remain outside this test.
+
+
+## T09 current-selector provenance hardening — exact candidate pending
+
+A separate same-user file substitution risk was found in `uninstallManaged`: after deleting owned version files it read `install/current` by ordinary `readFile` and removed the pathname if its bytes resembled any known version. A symlink at that pathname could be read outside the installation root; an equal-byte foreign replacement could be deleted without an object identity check. The next candidate replaces that branch with the existing `removeOwnedFile` verification path (no-follow open descriptor, full parent identity, inode, exact expected bytes, final checks). Two regressions retain an equal-byte substituted selector and a symlink targeting foreign content. These are fail-closed provenance checks, **not** OS confinement: a malicious same-user actor can still race after the last path validation. No FULL promotion until exact-candidate lifecycle smoke and R4 proof.
+
+
+## R4-09 — Windows affirmative native editor stalls after cancellation PASS
+
+CI 41176359512 proved the first Windows journey (selection/editor/Escape) PASS. The second affirmative write never produced its required PASS receipt; cancellation of the job is a genuine failed admission, not an allowed skip. Native node-pty can hold the JS event loop and defeat an in-process timer. The next candidate isolates Pi TUI work behind a separate Node supervisor and demands the exact child exit plus candidate/scenario receipt. Timeout remains FAIL, with bounded cleanup and last phase evidence. This is a diagnostic and resilience correction, **not** evidence that Ctrl+Enter/Enter approval semantics already work on Windows.
+
+
+## R4-10 — Windows Pi host exit versus native PTY test-harness exit
+
+A fail-closed independent supervisor (run `41176954180`) reported timeout even though the inner Windows witness emitted `T12_REAL_PI_TUI_DIALOG_PASS` and a complete genuine cancellation trace. The inner witness only emits PASS **after Pi's native child `onExit` reports exit 0 without signal, TUI phases are complete, the Git project remains unmodified and the Pi `session_shutdown` observation says zero model calls**. The remaining live handle belongs to the observer's `node-pty` module, not to a still-running Pi host. The follow-up test-only correction explicitly terminates its observer process **after** all those assertions, a stored exact-candidate receipt and cleanup; any failed child exit, missing phase, wrong Git state or cleanup error keeps nonzero exit. The parent supervisor continues to demand normal successful observer exit and exact receipt and never promotes a timeout/forced child kill. The positive Windows correction/approval journey and all applicable SHA gates remain unverified until fresh CI.
+
+
+## R4-01 disposition — removal is an atomic move, the race is narrowed and accepted
+
+R4-01 stays open as a threat-model boundary, not as an unaddressed defect. Descriptor-relative deletion (`unlinkat` with a parent directory descriptor, or the Windows handle-based equivalent) is not exposed by Node's filesystem API; adding a native addon for it would introduce a new compiled dependency into the shipped package, which is out of scope. The accepted threat model for managed removal is therefore **cooperative same-user processes**: identity is checked, not enforced.
+
+The remaining harm is now bounded rather than open-ended. Removal previously re-verified the pathname and then unlinked that pathname, so a substitution between the last check and the unlink caused deletion of an object ASEN had never verified. Removal now:
+
+1. verifies the complete path chain, the open no-follow descriptor, the object identity and the exact manifest bytes;
+2. atomically renames the target into a private per-operation directory (`.removal-<uuid>`, mode `0700`, inside the managed root, therefore the same filesystem);
+3. re-identifies the *moved* object against the descriptor that was verified;
+4. deletes only that re-identified object, and otherwise preserves it at its staged path and reports it in `retained` with `status: "partial"`.
+
+Consequences to keep honest: a substituted object is preserved instead of deleted, and the deletion target is no longer a stable, attacker-known pathname. The window is narrowed to a single syscall against an unpredictable name in a private directory, but an actively hostile same-user writer can still win it, and the final unlink is still pathname-based. No test in this repository proves atomicity, and none may be described as doing so.
+
+Deterministic coverage: `managed uninstall preserves an object substituted after the last verification` and `managed uninstall never follows a symlink substituted after the last verification` (POSIX only) use the new `beforeOwnedFileUnlink` seam. Two previously Windows-skipped regressions (`equal-byte current selector replaced after validation`, `matching-byte replacement by a second same-user actor`) now execute on Windows: their recorded skip reason proved stale on this Node 24/libuv build, where renaming a file whose descriptor is open succeeds. That is a local Windows observation, not a cross-platform result. The POSIX-only symlink scenario has not been executed locally on this workstation and requires exact-SHA Linux/macOS CI, plus independent review, before any claim moves.

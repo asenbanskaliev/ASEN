@@ -1,0 +1,22 @@
+✖ copy permits its own nested and sibling directories to change destination link counts (18.934199ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 268.611368
+
+✖ failing tests:
+
+test at tests/managed-acquisition-copy.test.ts:1:251
+✖ copy permits its own nested and sibling directories to change destination link counts (18.934199ms)
+  Error [ManagedAcquisitionCopyError]: Managed acquisition copy destination ancestor changed: /workspace/scratch/52e5d39ebfa0/ASEN/.cache/u9d-directory-count-vEhEMm/stage
+      at fail (/workspace/scratch/52e5d39ebfa0/ASEN/src/runtime/managed-acquisition-copy.ts:53:8)
+      at destinationUnchanged (/workspace/scratch/52e5d39ebfa0/ASEN/src/runtime/managed-acquisition-copy.ts:134:3)
+      at async revalidateAncestors (/workspace/scratch/52e5d39ebfa0/ASEN/src/runtime/managed-acquisition-copy.ts:170:3)
+      at async copyManagedAcquisitionToStage (/workspace/scratch/52e5d39ebfa0/ASEN/src/runtime/managed-acquisition-copy.ts:335:3)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-acquisition-copy.test.ts:17:2)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)

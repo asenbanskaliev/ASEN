@@ -1,0 +1,103 @@
+{
+  "classification": "UNVERIFIED",
+  "reason": "The shared task intent is observable, but exact state and persistence mappings require an accepted contract crosswalk.",
+  "source": {
+    "input": [
+      {
+        "action": "add",
+        "title": "Review parser"
+      },
+      {
+        "action": "update",
+        "id": 1,
+        "status": "in_progress",
+        "note": "checking"
+      }
+    ],
+    "addResult": "Added #1 Review parser (pending)",
+    "updateResult": "#1 Review parser → in_progress",
+    "state": {
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Review parser",
+          "status": "in_progress",
+          "note": "checking"
+        }
+      ],
+      "nextId": 2,
+      "updatedTurn": 2
+    },
+    "replayedState": {
+      "tasks": [
+        {
+          "id": 1,
+          "title": "Review parser",
+          "status": "in_progress",
+          "note": "checking"
+        }
+      ],
+      "nextId": 2,
+      "updatedTurn": 2
+    }
+  },
+  "asen": {
+    "input": [
+      {
+        "method": "add",
+        "title": "Review parser",
+        "requestId": "eco01-normal-request"
+      },
+      {
+        "method": "update",
+        "state": "running",
+        "reason": "checking"
+      }
+    ],
+    "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+    "updateRevision": 2,
+    "rows": [
+      {
+        "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+        "title": "Review parser",
+        "events": [
+          {
+            "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+            "sessionId": "eco01-normal",
+            "projectId": "/eco01-project",
+            "revision": 1,
+            "state": "planned",
+            "at": "2026-10-16T16:21:52.713Z"
+          },
+          {
+            "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+            "sessionId": "eco01-normal",
+            "projectId": "/eco01-project",
+            "revision": 2,
+            "state": "running",
+            "at": "2026-10-16T16:21:52.723Z",
+            "reason": "checking"
+          }
+        ],
+        "requestId": "eco01-normal-request",
+        "current": {
+          "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+          "sessionId": "eco01-normal",
+          "projectId": "/eco01-project",
+          "revision": 2,
+          "state": "running",
+          "at": "2026-10-16T16:21:52.723Z",
+          "reason": "checking"
+        }
+      }
+    ],
+    "storeFileSha256": "235f4cfb22dae082d3005d28c7bbe77b61c7fd5278c45e39a33993514bbe006e",
+    "storeBytes": 799
+  },
+  "difference": {
+    "sourceState": "in_progress",
+    "asenState": "running",
+    "sourceIdentity": "integer task id",
+    "asenIdentity": "opaque task id plus session/project/revision"
+  }
+}

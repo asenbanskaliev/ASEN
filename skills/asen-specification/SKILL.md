@@ -1,6 +1,10 @@
 ---
 name: asen-specification
 description: "Trigger: specification, requirements, acceptance scenarios, behavior contract. Define observable requirements and executable acceptance scenarios for a change."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use when behavior must be defined precisely enough to implement and verify.

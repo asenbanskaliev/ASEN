@@ -2,23 +2,35 @@ name: Pi Free Smoke
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        required: true
+        type: string
+      consent_provider_audit:
+        required: true
+        type: string
+        default: 'no'
 permissions:
   contents: read
 jobs:
   authenticated-free-model:
-    if: github.event.pull_request.number == 30 && github.event.pull_request.head.repo.full_name == github.repository
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.number == 30 &&
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions/setup-node@v7
+          ref: ${{ github.event.pull_request.head.sha || inputs.candidate_sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: 22
       - name: Install Pi and pi-free
         run: |
-          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
           pi install npm:pi-free
       - name: Inspect pi-free registered models
         run: pi --list-models
@@ -63,8 +75,10 @@ jobs:
           ASEN_PI_PROVIDER_EXTENSION: npm:pi-free
         run: |
           set -euo pipefail
-          export ASEN_RECOVERY_FILE="$(mktemp)"
-          export ASEN_RECOVERY_KEY="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))')"
+          ASEN_RECOVERY_FILE="$(mktemp)"
+          export ASEN_RECOVERY_FILE
+          ASEN_RECOVERY_KEY="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))')"
+          export ASEN_RECOVERY_KEY
           trap 'rm -f "$ASEN_RECOVERY_FILE"' EXIT
           node --import tsx scripts/pi-authenticated-recovery-init.mjs
           node --import tsx scripts/pi-authenticated-skill-e2e.mjs

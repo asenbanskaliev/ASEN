@@ -11,22 +11,55 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Assert exact candidate checkout
         env:
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: 22
-      - run: npm install
-      - run: npm run check
-      - run: npm run verify:pack
-      - name: Install official Pi CLI
-        run: npm install -g --ignore-scripts @earendil-works/pi-coding-agent@0.87.1
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      # CI independently typechecks PRs and main pushes at their exact SHA.
+      # Release-only pushes do not trigger CI; retain TypeScript validation there.
+      - name: Typecheck release-only pushes
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+        run: npm run typecheck
+      - name: Build platform-specific release candidate
+        run: npm run build
+      - name: T09 finite copy and strict verification budget regressions
+        run: node --import tsx --test tests/managed-acquisition-copy.test.ts
+      - name: Packed restart and cross-session execution receipts
+        run: npm run verify:package-receipts -- stateful-evidence
+      - name: Retain exact-candidate package session evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: package-sessions-${{ runner.os }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: stateful-evidence
+          if-no-files-found: error
+          retention-days: 14
+      - name: Pack the already-built exact candidate once per OS
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARBALL="$(npm pack --ignore-scripts --silent)"
+          test -n "$TARBALL"
+          test -f "$TARBALL"
+          printf 'ASEN_RELEASE_TARBALL=%s\n' "$TARBALL" >> "$GITHUB_ENV"
+          echo "Packed the same candidate once for Pi and npm smoke on this runner"
+      - name: Use installed official Pi CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          node -e 'const p=require("./node_modules/@earendil-works/pi-coding-agent/package.json"); if (p.version !== "1.2.0") throw new Error("Expected Pi 1.2.0, got "+p.version); console.log("Using installed Pi "+p.version)'
+          echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Real Pi package install smoke
         shell: bash
         if: runner.os != 'Windows'
@@ -34,8 +67,9 @@ jobs:
           set -euo pipefail
           export PI_CODING_AGENT_DIR="$RUNNER_TEMP/pi-agent"
           export PI_OFFLINE=1
-          TARBALL="$(npm pack --silent)"
-          pi install "$GITHUB_WORKSPACE/$TARBALL"
+          test -n "$ASEN_RELEASE_TARBALL"
+          test -f "$GITHUB_WORKSPACE/$ASEN_RELEASE_TARBALL"
+          pi install "$GITHUB_WORKSPACE/$ASEN_RELEASE_TARBALL"
           pi list | tee "$RUNNER_TEMP/pi-list.txt"
           grep -qi asen "$RUNNER_TEMP/pi-list.txt"
           node "$GITHUB_WORKSPACE/scripts/pi-extension-e2e.mjs" "$GITHUB_WORKSPACE/extensions/asen.ts"
@@ -45,8 +79,9 @@ jobs:
         run: |
           $env:PI_CODING_AGENT_DIR = Join-Path $env:RUNNER_TEMP "pi-agent"
           $env:PI_OFFLINE = "1"
-          $tarball = npm pack --silent
-          pi install (Join-Path $env:GITHUB_WORKSPACE $tarball)
+          $tarball = Join-Path $env:GITHUB_WORKSPACE $env:ASEN_RELEASE_TARBALL
+          if (!(Test-Path $tarball)) { throw "Pinned ASEN release archive is missing" }
+          pi install $tarball
           $list = pi list | Out-String
           $list
           if ($list -notmatch "asen") { throw "ASEN not listed by real Pi" }
@@ -56,20 +91,33 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           set -euo pipefail
-          TARBALL="$(npm pack --silent)"
+          test -n "$ASEN_RELEASE_TARBALL"
+          test -f "$GITHUB_WORKSPACE/$ASEN_RELEASE_TARBALL"
           TMP="$(mktemp -d)"
           cd "$TMP"
           npm init -y >/dev/null
-          npm install "$GITHUB_WORKSPACE/$TARBALL"
+          npm install --no-audit --no-fund "$GITHUB_WORKSPACE/$ASEN_RELEASE_TARBALL"
           node -e 'const p=require("./node_modules/asen/package.json"); if (!p.pi?.extensions?.length) process.exit(1)'
+          ASEN_T09_TIMING_PATH="$GITHUB_WORKSPACE/t09-phase-timings.json" node "$GITHUB_WORKSPACE/scripts/t09-real-package-smoke.mjs" "$TMP/node_modules/asen"
       - name: Packed install smoke (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $tarball = npm pack --silent
+          $tarball = Join-Path $env:GITHUB_WORKSPACE $env:ASEN_RELEASE_TARBALL
+          if (!(Test-Path $tarball)) { throw "Pinned ASEN release archive is missing" }
           $tmp = Join-Path $env:RUNNER_TEMP "asen-packed"
           New-Item -ItemType Directory -Force -Path $tmp | Out-Null
           Set-Location $tmp
           npm init -y | Out-Null
-          npm install (Join-Path $env:GITHUB_WORKSPACE $tarball)
+          npm install --no-audit --no-fund $tarball
           node -e "const p=require('./node_modules/asen/package.json'); if (!p.pi?.extensions?.length) process.exit(1)"
+          $env:ASEN_T09_TIMING_PATH = Join-Path $env:GITHUB_WORKSPACE "t09-phase-timings.json"
+          node (Join-Path $env:GITHUB_WORKSPACE "scripts/t09-real-package-smoke.mjs") (Join-Path $tmp "node_modules/asen")
+      - name: Retain T09 bounded phase timings
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: t09-phase-timings-${{ runner.os }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: t09-phase-timings.json
+          if-no-files-found: warn
+          retention-days: 14

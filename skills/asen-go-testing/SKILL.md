@@ -1,6 +1,10 @@
 ---
 name: asen-go-testing
 description: "Trigger: Go tests, go test, table tests, golden files, Go TUI tests. Apply deterministic behavior-focused Go testing patterns."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use when writing/reviewing Go tests or diagnosing Go test coverage and interactive/golden behavior.

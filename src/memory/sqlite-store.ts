@@ -1,9 +1,14 @@
+import {Buffer} from "node:buffer";
 import { DatabaseSync } from "node:sqlite";
 import {createHash,randomUUID} from "node:crypto";
+import { redactSecrets , stripPrivateTags } from "../security/redact.js";
 import {existsSync,rmSync} from "node:fs";
+import {withExclusiveFileLockSync} from "../io/exclusive-file-lock.js";
+import {validateMemoryImport} from "./export-validation.js";
 import type { MemoryItem, MemoryObservationInput, MemoryObservationStore, MemoryObservationUpdate, MemoryContextOptions, MemoryExport, MemoryRelation, MemoryRelationInput, MemorySessionState, MemorySessionSummary, MemorySearchOptions, MemorySearchPreview, MemorySessionRegistry, MemoryStore } from "./types.js";
 
-const CURRENT_SCHEMA_VERSION=8;
+const CURRENT_SCHEMA_VERSION=9;
+const SQLITE_STARTUP_LOCK_TIMEOUT_MS=30_000;
 const MAX_OBSERVATION_LENGTH_BYTES=50_000;
 const DEFAULT_DEDUPE_WINDOW_MS=15*60_000;
 type Migration={readonly version:number;apply(db:DatabaseSync):void};
@@ -50,7 +55,17 @@ const migrations:readonly Migration[]=[
   `);}},
  {version:8,apply(db){db.exec(`
    ALTER TABLE memory_relations ADD COLUMN reviewed_at TEXT;
-  `);}}
+  `);}},
+ {version:9,apply(db){
+  db.exec(`DROP TRIGGER IF EXISTS memory_ai;DROP TRIGGER IF EXISTS memory_ad;DROP TRIGGER IF EXISTS memory_au;`);
+  db.exec(`CREATE VIRTUAL TABLE memory_fts_new USING fts5(id UNINDEXED,project_id UNINDEXED,content,content='memory',content_rowid='rowid');`);
+  db.exec("INSERT INTO memory_fts_new(rowid,id,project_id,content) SELECT rowid,id,project_id,content FROM memory;");
+  db.exec(`DROP TABLE memory_fts;`);
+  db.exec(`ALTER TABLE memory_fts_new RENAME TO memory_fts;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_ai AFTER INSERT ON memory BEGIN INSERT INTO memory_fts(rowid,id,project_id,content) VALUES(new.rowid,new.id,new.project_id,new.content); END;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_ad AFTER DELETE ON memory BEGIN INSERT INTO memory_fts(memory_fts,rowid,id,project_id,content) VALUES('delete',old.rowid,old.id,old.project_id,old.content); END;`);
+  db.exec(`CREATE TRIGGER IF NOT EXISTS memory_au AFTER UPDATE ON memory BEGIN INSERT INTO memory_fts(memory_fts,rowid,id,project_id,content) VALUES('delete',old.rowid,old.id,old.project_id,old.content); INSERT INTO memory_fts(rowid,id,project_id,content) VALUES(new.rowid,new.id,new.project_id,new.content); END;`);
+ }}
 ];
 function schemaVersion(db:DatabaseSync):number{
  const value=(db.prepare("PRAGMA user_version").get() as {user_version?:unknown}|undefined)?.user_version;
@@ -87,6 +102,11 @@ function migrate(db:DatabaseSync,path:string,existingFile:boolean):void{
  }
  if(version!==CURRENT_SCHEMA_VERSION)throw new Error(`Memory schema version ${version} is unsupported`);
 }
+function repairFts(db:DatabaseSync):void{
+ db.exec("BEGIN IMMEDIATE");
+ try{db.exec("DELETE FROM memory_fts; INSERT INTO memory_fts(id,project_id,content) SELECT id,project_id,content FROM memory; COMMIT");}
+ catch(error){try{db.exec("ROLLBACK");}catch{/* Preserve the repair failure. */}throw error;}
+}
 
 export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,MemorySessionRegistry {
  readonly #db:DatabaseSync;
@@ -94,22 +114,21 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  constructor(path:string,dedupeWindowMs=DEFAULT_DEDUPE_WINDOW_MS){
   if(!Number.isFinite(dedupeWindowMs))throw new Error("Memory dedupe window must be finite");
   this.#dedupeWindowMs=dedupeWindowMs;
-  const existingFile=path!==":memory:"&&path!==""&&existsSync(path);
-  this.#db=new DatabaseSync(path);
-  try{
-   this.#db.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
-   migrate(this.#db,path,existingFile);
-   this.#db.exec("PRAGMA journal_mode=WAL;");
-   this.#repairFts();
-  }catch(error){try{this.#db.close();}catch{/* Preserve the startup failure. */}throw error;}
+  const initialize=()=>{
+   const existingFile=existsSync(path),db=new DatabaseSync(path);
+   try{
+    db.exec("PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;");
+    migrate(db,path,existingFile);
+    db.exec("PRAGMA journal_mode=WAL;");
+    repairFts(db);
+    return db;
+   }catch(error){try{db.close();}catch{/* Preserve the startup failure. */}throw error;}
+  };
+  this.#db=path===":memory:"||path===""?initialize():withExclusiveFileLockSync(path,initialize,SQLITE_STARTUP_LOCK_TIMEOUT_MS);
  }
- #repairFts():void{
-  this.#db.exec("BEGIN IMMEDIATE");
-  try{this.#db.exec("DELETE FROM memory_fts; INSERT INTO memory_fts(id,project_id,content) SELECT id,project_id,content FROM memory; COMMIT");}
-  catch(e){this.#db.exec("ROLLBACK");throw e;}
- }
- #transaction<T>(operation:()=>T):T{
-  this.#db.exec("BEGIN IMMEDIATE");
+ #repairFts():void{repairFts(this.#db);}
+ #transaction<T>(operation:()=>T,mode:"IMMEDIATE"|"DEFERRED"="IMMEDIATE"):T{
+  this.#db.exec(mode==="DEFERRED"?"BEGIN DEFERRED":"BEGIN IMMEDIATE");
   try{const result=operation();this.#db.exec("COMMIT");return result;}
   catch(error){try{this.#db.exec("ROLLBACK");}catch{/* Preserve the session-operation failure. */}throw error;}
  }
@@ -124,7 +143,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  endSession(projectId:string,sessionId:string,summary?:string):void{
   this.#requireIdentity(projectId,sessionId);
   const prepared=summary===undefined?undefined:prepareStoredContent(summary);
-  if(summary!==undefined&&!prepared)throw new Error("Memory session summary is required");
+  if(summary!==undefined&&!prepared?.trim())throw new Error("Memory session summary is required");
   this.#transaction(()=>{
    const existing=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(sessionId) as {project_id:string;status:string}|undefined;
    if(!existing||existing.project_id!==projectId)throw new Error("Memory session identity conflict");
@@ -161,15 +180,27 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   });
  }
  #requireIdentity(projectId:string,sessionId:string):void{if(!projectId.trim()||!sessionId.trim())throw new Error("Memory project and session IDs must be nonblank");}
- save(item:MemoryItem):void{
+ save(item:MemoryItem):void{this.#save(item);}
+ createIfAbsent(item:MemoryItem):void{this.#save(item,undefined,true);}
+ saveIfUnchanged(item:MemoryItem,expected:MemoryItem):void{
+  if(item.id!==expected.id||item.projectId!==expected.projectId||item.sessionId!==expected.sessionId)throw new Error("Memory conditional-write identity mismatch");
+  this.#save(item,expected);
+ }
+ #save(item:MemoryItem,expected?:MemoryItem,createOnly=false):void{
   this.#requireIdentity(item.projectId,item.sessionId);
-  const content=stripPrivateTags(item.content);
-  if(!content)throw new Error("Memory content is empty");
+  const content=stripPrivateTags(redactSecrets(item.content));
+  if(!content.trim())throw new Error("Memory content is empty");
   this.#transaction(()=>{
    const session=this.#db.prepare("SELECT project_id,status FROM memory_sessions WHERE session_id=?").get(item.sessionId) as {project_id:string;status:string}|undefined;
    if(!session||session.project_id!==item.projectId)throw new Error("Memory session identity conflict");
    if(session.status!=="live")throw new Error("Memory session is ended");
+   if(expected){
+    const current=this.get(item.id),keys=["id","projectId","sessionId","kind","topic","content","createdAt","pinned","title","scope","toolName","topicKey","revisionCount","duplicateCount","lastSeenAt","updatedAt"] as const;
+    if(!current||keys.some(key=>current[key]!==expected[key]))throw new Error("Memory revision conflict; record changed before persistence");
+   }
    const existing=this.#db.prepare("SELECT project_id FROM memory WHERE id=?").get(item.id) as {project_id?:string}|undefined;
+   if(createOnly&&this.#db.prepare("SELECT id FROM memory_tombstones WHERE id=?").get(item.id))throw new Error("Memory task record was deleted; use a fresh task identity");
+   if(createOnly&&existing)throw new Error("Memory task record already exists; resume the saved task instead");
    if(existing&&existing.project_id!==item.projectId) throw new Error("Memory ownership mismatch");
    this.#db.prepare(`INSERT INTO memory(id,project_id,session_id,kind,topic,content,created_at) VALUES(?,?,?,?,?,?,?)
     ON CONFLICT(id) DO UPDATE SET session_id=excluded.session_id,kind=excluded.kind,topic=excluded.topic,content=excluded.content,created_at=excluded.created_at`)
@@ -178,10 +209,10 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  }
  addObservation(item:MemoryObservationInput):string{
   this.#requireIdentity(item.projectId,item.sessionId);
-  const title=stripPrivateTags(item.title);
-  if(!title)throw new Error("Memory observation title is required");
+  const title=stripPrivateTags(redactSecrets(item.title));
+  if(!title.trim())throw new Error("Memory observation title is required");
   const content=prepareStoredContent(item.content);
-  if(!content)throw new Error("Memory observation content is required");
+  if(!content.trim())throw new Error("Memory observation content is required");
   let id:string=randomUUID();
   const scope=normalizeScope(item.scope),topicKey=normalizeTopicKey(item.topic??"");
   const normalizedHash=hashNormalizedContent(content);
@@ -223,7 +254,7 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
   if(hasFind!==hasReplace||hasContent&&(hasFind||hasReplace))throw new Error("Find and replace must be paired and cannot be combined with content");
   if(!hasKind&&!hasTitle&&!hasContent&&!hasProjectId&&!hasScope&&!hasTopicKey&&!hasFind)throw new Error("Memory observation update requires a field");
   const title=hasTitle?stripPrivateTags(input.title!):undefined;
-  if(title!==undefined&&!title)throw new Error("Memory observation title is required");
+  if(title!==undefined&&!title.trim())throw new Error("Memory observation title is required");
   if(hasFind&&(Buffer.byteLength(input.find!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES||Buffer.byteLength(input.replace!,"utf8")>MAX_OBSERVATION_LENGTH_BYTES))throw new Error("Find and replace values exceed the observation byte limit");
   const directContent=hasContent?prepareStoredContent(input.content!):undefined;
   if(directContent!==undefined&&!directContent)throw new Error("Memory observation content is required");
@@ -260,9 +291,11 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  deleteObservation(id:string,expectedProject:string,hardDelete=false):void{
   if(!expectedProject.trim())throw new Error("Expected memory project must be nonblank");
   this.#transaction(()=>{
-   const existing=this.#db.prepare("SELECT project_id FROM memory WHERE id=?").get(id) as {project_id:string}|undefined;
+   const existing=this.#db.prepare("SELECT project_id,session_id FROM memory WHERE id=?").get(id) as {project_id:string;session_id:string}|undefined;
    if(!existing)throw new Error("Memory observation not found");
    if(existing.project_id!==expectedProject)throw new Error("Memory ownership mismatch");
+   // A session summary may repeat this note. Remove that derived summary with the note.
+   this.#db.prepare("DELETE FROM memory_session_summaries WHERE project_id=? AND session_id=?").run(expectedProject,existing.session_id);
    const deletedAt=new Date().toISOString();
    if(hardDelete){
     this.#db.prepare("INSERT INTO memory_tombstones(id,project_id,deleted_at) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET project_id=excluded.project_id,deleted_at=excluded.deleted_at").run(id,expectedProject,deletedAt);
@@ -325,14 +358,16 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  }
  exportProject(projectId:string):MemoryExport{
   if(!projectId.trim())throw new Error("Memory project is required");
-  const observations=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL ORDER BY created_at,id").all(projectId) as Record<string,unknown>[]).map(row);
-  const relations=this.listRelations(projectId);
-  const summaries=(this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? ORDER BY created_at,session_id").all(projectId) as Array<{project_id:string;session_id:string;content:string;created_at:string}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}));
-  const sessions=(this.#db.prepare("SELECT * FROM memory_sessions WHERE project_id=? ORDER BY session_id").all(projectId) as Array<{project_id:string;session_id:string;root_session_id:string;parent_session_id:string|null;status:"live"|"ended"}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,rootSessionId:r.root_session_id,...(r.parent_session_id?{parentSessionId:r.parent_session_id}:{}),status:r.status} satisfies MemorySessionState));
-  const soft=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NOT NULL").all(projectId) as Record<string,unknown>[]).map(r=>({id:String(r.id),projectId:String(r.project_id),deletedAt:String(r.deleted_at),mode:"soft" as const,item:row(r)}));
-  const hard=(this.#db.prepare("SELECT id,project_id,deleted_at FROM memory_tombstones WHERE project_id=?").all(projectId) as Array<{id:string;project_id:string;deleted_at:string}>).map(r=>({id:r.id,projectId:r.project_id,deletedAt:r.deleted_at,mode:"hard" as const}));
-  const deletions=[...soft,...hard].sort((a,b)=>a.id.localeCompare(b.id));
-  return {version:1,projectId,observations,relations,summaries,sessions,deletions};
+  return this.#transaction(()=>{
+   const observations=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL ORDER BY created_at,id").all(projectId) as Record<string,unknown>[]).map(row);
+   const relations=this.listRelations(projectId);
+   const summaries=(this.#db.prepare("SELECT * FROM memory_session_summaries WHERE project_id=? ORDER BY created_at,session_id").all(projectId) as Array<{project_id:string;session_id:string;content:string;created_at:string}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,content:r.content,createdAt:r.created_at}));
+   const sessions=(this.#db.prepare("SELECT * FROM memory_sessions WHERE project_id=? ORDER BY session_id").all(projectId) as Array<{project_id:string;session_id:string;root_session_id:string;parent_session_id:string|null;status:"live"|"ended"}>).map(r=>({projectId:r.project_id,sessionId:r.session_id,rootSessionId:r.root_session_id,...(r.parent_session_id?{parentSessionId:r.parent_session_id}:{}),status:r.status} satisfies MemorySessionState));
+   const soft=(this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NOT NULL").all(projectId) as Record<string,unknown>[]).map(r=>({id:String(r.id),projectId:String(r.project_id),deletedAt:String(r.deleted_at),mode:"soft" as const,item:row(r)}));
+   const hard=(this.#db.prepare("SELECT id,project_id,deleted_at FROM memory_tombstones WHERE project_id=?").all(projectId) as Array<{id:string;project_id:string;deleted_at:string}>).map(r=>({id:r.id,projectId:r.project_id,deletedAt:r.deleted_at,mode:"hard" as const}));
+   const deletions=[...soft,...hard].sort((a,b)=>a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+   return {version:1,projectId,observations,relations,summaries,sessions,deletions};
+  },"DEFERRED");
  }
  importProject(data:MemoryExport):void{
   if(data.version!==1||!data.projectId.trim())throw new Error("Unsupported memory export");
@@ -374,29 +409,61 @@ export class SqliteMemoryStore implements MemoryStore,MemoryObservationStore,Mem
  search(projectId:string,query:string):MemoryItem[]{return this.searchWithOptions(projectId,query);}
  searchWithOptions(projectId:string,query:string,options:MemorySearchOptions={}):MemoryItem[]{
   const matchMode=options.matchMode??"all";if(matchMode!=="all"&&matchMode!=="any")throw new Error("Invalid memory search match mode");
-  const limit=Math.min(Math.max(Math.trunc(options.limit??10),1),20),fts=memoryFtsQuery(query,matchMode);
-  if(!fts)return [];
-  const rows=this.#db.prepare(`SELECT m.* FROM memory_fts f JOIN memory m ON m.id=f.id WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,limit) as Record<string,unknown>[];
-  return rows.map(row);
+  const limit=Math.min(Math.max(Math.trunc(options.limit??10),1),20);
+  if(process.env.ASEN_MEMORY_RANKING!=="v2"||matchMode==="any"){
+   const fts=memoryFtsQuery(query,matchMode);
+   if(!fts)return [];
+   const rows=this.#db.prepare(`SELECT m.*, bm25(memory_fts,0,0,8,4,1) AS memory_rank FROM memory_fts f JOIN memory m ON m.rowid=f.rowid WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,limit) as Record<string,unknown>[];
+   return rows.map(row);
+  }
+  const terms=query.trim().split(/\s+/u).map(term=>term.replace(/"/g,'""')).filter(Boolean);
+  if(!terms.length)return [];
+  const candidateLimit=Math.min(limit*3,50);
+  const queries:string[]=[];
+  const exact=terms.map(term=>`"${term}"`).join(" AND ");
+  if(exact)queries.push(exact);
+  const prefix=terms.map(term=>term.length>=3?`"${term}*"`:`"${term}"`).join(" AND ");
+  if(prefix!==exact&&prefix)queries.push(prefix);
+  const broad=terms.map(term=>`"${term}"`).join(" OR ");
+  if(broad!==exact&&broad)queries.push(broad);
+  const seen=new Set<string>();
+  const candidates:Array<Record<string,unknown>>=[];
+  for(const fts of queries){
+   const rows=this.#db.prepare(`SELECT m.*, bm25(memory_fts,0,0,8,4,1) AS memory_rank FROM memory_fts f JOIN memory m ON m.rowid=f.rowid WHERE f.project_id=? AND m.deleted_at IS NULL AND memory_fts MATCH ? ORDER BY rank LIMIT ?`).all(projectId,fts,candidateLimit) as Record<string,unknown>[];
+   for(const row of rows){const id=String(row.id);if(seen.has(id))continue;seen.add(id);candidates.push(row);if(candidates.length>=candidateLimit)break;}
+   if(candidates.length>=limit&&fts===exact)break;
+  }
+  const now=Date.now();
+  return candidates
+   .map(row=>{
+    const rank=typeof row.memory_rank==="number"?row.memory_rank:0,createdAt=Date.parse(String(row.created_at??"")),ageMs=Number.isFinite(createdAt)?Math.min(now-createdAt,365*24*60*60*1000):365*24*60*60*1000;
+    const structural=(row.pinned?0.35:0)+((String(row.kind)==="decision"||String(row.kind)==="bugfix")?0.15:0)-(ageMs/(365*24*60*60*1000))*0.05;
+    return {row,score:rank-structural};
+   })
+   .sort((a,b)=>a.score-b.score)
+   .slice(0,limit)
+   .map(entry=>entry.row as unknown as MemoryItem);
  }
  searchPreviews(projectId:string,query:string,options:MemorySearchOptions={}):MemorySearchPreview[]{
   return this.searchWithOptions(projectId,query,options).map(item=>{const chars=Array.from(item.content),preview=chars.slice(0,300).join("");return {id:item.id,kind:item.kind,...(item.title!==undefined?{title:item.title}:{}),preview,truncated:chars.length>300,...(item.topicKey!==undefined?{topicKey:item.topicKey}:{})};});
  }
  formatContext(projectId:string,options:MemoryContextOptions={}):string{
+  const summary=this.#db.prepare("SELECT session_id,content,created_at FROM memory_session_summaries WHERE project_id=? ORDER BY created_at DESC,session_id DESC LIMIT 1").get(projectId) as {session_id:string;content:string;created_at:string}|undefined;
   const pinnedLimit=boundedContextLimit(options.pinned,Number.MAX_SAFE_INTEGER),recentLimit=boundedContextLimit(options.observations,20);
   const pinned=this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL AND pinned=1 ORDER BY created_at DESC,id DESC LIMIT ?").all(projectId,pinnedLimit) as Record<string,unknown>[];
   const recent=this.#db.prepare("SELECT * FROM memory WHERE project_id=? AND deleted_at IS NULL AND pinned=0 ORDER BY created_at DESC,id DESC LIMIT ?").all(projectId,recentLimit) as Record<string,unknown>[];
-  if(pinned.length===0&&recent.length===0)return "";
-  let out="## Memory from Previous Sessions\\n\\n";
-  if(pinned.length){out+="### Pinned\\n"+pinned.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\\n";}
-  if(recent.length){out+="### Recent Observations\\n"+recent.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\\n";}
+  if(!summary&&pinned.length===0&&recent.length===0)return "";
+  let out="## Memory from Previous Sessions\n\n";
+  if(summary)out+=`### Latest Session Summary\n${Array.from(summary.content).slice(0,2000).join("")}\n\n`;
+  if(pinned.length){out+="### Pinned\n"+pinned.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\n";}
+  if(recent.length){out+="### Recent Observations\n"+recent.map(r=>contextBullet(row(r),options.compact??false)).join("")+"\n";}
   return limitContextBytes(out,options.maxBytes??0);
  }
  close():void{this.#db.close();}
 }
 function boundedContextLimit(value:number|undefined,fallback:number):number{if(value===undefined||value===0)return fallback;if(value<0)return 0;return Math.min(Math.trunc(value),1000);}
-function contextBullet(item:MemoryItem,compact:boolean):string{const title=item.title?.trim()||item.topicKey||item.id;return compact?`- [${item.kind}] **${title}**\\n`:`- [${item.kind}] **${title}**: ${Array.from(item.content).slice(0,300).join("")}\\n`;}
-const contextTruncationMarker="\\n[truncated]\\n";
+function contextBullet(item:MemoryItem,compact:boolean):string{const title=item.title?.trim()||item.topicKey||item.id;return compact?`- [${item.kind}] **${title}**\n`:`- [${item.kind}] **${title}**: ${Array.from(item.content).slice(0,300).join("")}\n`;}
+const contextTruncationMarker="\n[truncated]\n";
 function limitContextBytes(value:string,maxBytes:number):string{if(maxBytes<=0||Buffer.byteLength(value,"utf8")<=maxBytes)return value;const marker=Buffer.from(contextTruncationMarker);if(maxBytes<marker.length)return truncateUtf8Bytes(value,maxBytes);return truncateUtf8Bytes(value,maxBytes-marker.length)+contextTruncationMarker;}
 function truncateUtf8Bytes(value:string,maxBytes:number):string{if(maxBytes<=0)return "";const bytes=Buffer.from(value,"utf8");if(bytes.length<=maxBytes)return value;return bytes.subarray(0,maxBytes).toString("utf8").replace(/\\uFFFD$/u,"");}
 function memoryFtsQuery(query:string,mode:"all"|"any"):string{
@@ -413,7 +480,6 @@ function prepareStoredContent(content:string):string{
  while(end>0&&(bytes[end]!&0xc0)===0x80)end--;
  return bytes.subarray(0,end).toString("utf8")+"... [truncated]";
 }
-function stripPrivateTags(value:string):string{return value.replace(/<private>.*?<\/private>/gis,"[REDACTED]").trim();}
 function hashNormalizedContent(content:string):string{return createHash("sha256").update(content.toLowerCase().split(/\s+/u).filter(Boolean).join(" ")).digest("hex");}
 function replaceObservationContent(content:string,find:string,replacement:string):{content:string;noop:boolean}{
  const marker="... [truncated]";
@@ -458,18 +524,6 @@ function inferExportSessions(data:MemoryExport):MemorySessionState[]{
  const ids=new Set<string>();for(const item of data.observations)ids.add(item.sessionId);for(const summary of data.summaries)ids.add(summary.sessionId);for(const deletion of data.deletions??[])if(deletion.mode==="soft"&&deletion.item)ids.add(deletion.item.sessionId);
  return [...ids].sort().map(sessionId=>({projectId:data.projectId,sessionId,rootSessionId:sessionId,status:data.summaries.some(s=>s.sessionId===sessionId)?"ended":"live"}));
 }
-function validateMemoryImport(data:MemoryExport,sessions:MemorySessionState[]):void{
- const sessionIds=new Set<string>();
- for(const s of sessions){if(s.projectId!==data.projectId||!s.sessionId.trim()||!s.rootSessionId.trim()||sessionIds.has(s.sessionId))throw new Error("Invalid memory import session");sessionIds.add(s.sessionId);}
- for(const s of sessions)if(s.parentSessionId&&!sessionIds.has(s.parentSessionId))throw new Error("Invalid memory import session ancestry");
- const deletionIds=new Set<string>();for(const deletion of data.deletions??[]){if(deletionIds.has(deletion.id))throw new Error("Invalid memory import deletion");deletionIds.add(deletion.id);}
- const observationIds=new Set<string>();
- for(const item of data.observations){if(item.projectId!==data.projectId||!sessionIds.has(item.sessionId)||observationIds.has(item.id))throw new Error("Invalid memory import observation");observationIds.add(item.id);}
- for(const relation of data.relations)if(relation.projectId!==data.projectId||!observationIds.has(relation.sourceId)||!observationIds.has(relation.targetId))throw new Error("Invalid memory import relation");
- for(const summary of data.summaries)if(summary.projectId!==data.projectId||!sessionIds.has(summary.sessionId))throw new Error("Invalid memory import summary");
- for(const deletion of data.deletions??[]){if(deletion.projectId!==data.projectId||!deletion.id.trim()||!deletion.deletedAt.trim()||observationIds.has(deletion.id))throw new Error("Invalid memory import deletion");if(deletion.mode==="soft"&&(!deletion.item||deletion.item.id!==deletion.id||deletion.item.projectId!==data.projectId||!sessionIds.has(deletion.item.sessionId)))throw new Error("Invalid memory import deletion");if(deletion.mode==="hard"&&deletion.item)throw new Error("Invalid memory import deletion");}
-}
-
 function orderImportSessions(sessions:MemorySessionState[]):MemorySessionState[]{
  const pending=new Map(sessions.map(s=>[s.sessionId,s])),ordered:MemorySessionState[]=[];
  while(pending.size){let progressed=false;for(const [id,s] of [...pending])if(!s.parentSessionId||!pending.has(s.parentSessionId)){ordered.push(s);pending.delete(id);progressed=true;}if(!progressed)throw new Error("Invalid memory import session ancestry");}

@@ -1,0 +1,12 @@
+{
+  "id": "ECO-02A-linux-positive",
+  "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "kind": "positive",
+  "class": "DETERMINISTIC_EXECUTION",
+  "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+  "observation": "12 selected preflight contract test(s) completed; pattern: factory waits for initialized public inventories",
+  "result": "PASS",
+  "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+  "logSha256": "f2b9a943942cb8016c88e5d99b4c90e67cb73430aef4ecfeb61ae81c502e0751"
+}

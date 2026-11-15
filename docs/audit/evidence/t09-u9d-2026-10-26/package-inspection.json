@@ -1,0 +1,26 @@
+{
+  "command": [
+    "python",
+    ".cache/remote-t09/package-inspection.py"
+  ],
+  "exit": 0,
+  "elapsedSeconds": 0.06,
+  "before": {
+    "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+    "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+    "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+    "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+    "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+    "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+    "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+  },
+  "after": {
+    "src/cli.ts": "793b9848446df9f61caf3da4925f3a9b86ee9276bf5b882a5685fa3e52163447",
+    "src/runtime/launcher.ts": "ac1813eba14ecd5bb3497732c48b69424ff1f758306ae8fb9d2e817ed81a83f6",
+    "src/runtime/managed-acquisition-copy.ts": "27e806de43331b774e96e41f27d344e5dcfa3f279aae744dabfa34d8e5296d1d",
+    "tests/managed-acquisition-copy.test.ts": "52f32780890c8fe9514ccfcf2d41ac374d93974c846d80024d58e3b9f937de72",
+    "tests/managed-update-stage-cli.test.ts": "bbf56f6c656a1dde4c3623dbca3d36258ab6f24afad360ef38611fc6f494a2cd",
+    "package.json": "ba6e14e9617f2080d6cbcd8de555ad5e90cf111237b55b3190aed85438dd0d99",
+    "package-lock.json": "bbe9b316580be68925550ab661aa295a88e37f345f9b47fc1d0275521f59ea57"
+  }
+}

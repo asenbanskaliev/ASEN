@@ -13,6 +13,7 @@ export interface OddFacts {
   externalWrite?: boolean;
   securitySensitive?: boolean;
   unknownScope?: boolean;
+  independentReview?: boolean;
 }
 
 export interface OddDecision {
@@ -31,10 +32,8 @@ export function routeOdd(facts: OddFacts): OddDecision {
 
   if (facts.incident) { route="incident"; reasons.push("incident"); }
   else if (facts.verificationCommand) { route="verify"; reasons.push("verification-command"); }
-  else if ((facts.filesTouched ?? 0)>=4) { route="orchestrate"; reasons.push("four-or-more-files"); }
-  else if ((facts.nonTrivialWrites ?? 0)>=2) { route="orchestrate"; reasons.push("two-or-more-nontrivial-writes"); }
-  else if (facts.longSession) { route="orchestrate"; reasons.push("long-session"); }
   else if (risk==="high" || risk==="unknown") { route="plan"; reasons.push(risk==="unknown"?"unknown-scope":"high-risk"); }
+  else if (facts.independentReview) { route="orchestrate"; reasons.push("explicit-independent-review"); }
 
   if (reasons.length===0) reasons.push("simple-bounded-request");
   return {

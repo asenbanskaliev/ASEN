@@ -1,0 +1,55 @@
+name: R4 automated self-audit (not independent)
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  self-audit:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.head_ref == 'feat/t12-integrated-acceptance-merge' &&
+      github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Confirm exact head SHA
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+      - name: Install locked project dependencies
+        run: npm ci --ignore-scripts
+      - name: Verify authority pin and types
+        run: |
+          npm run check:authority-pin
+          npm run typecheck
+      - name: R4 self-test and focused adversarial integration
+        run: |
+          node --test tests/r4-self-audit.test.mjs
+          node --import tsx --test --test-name-pattern='T09 (manual rollback must recheck active version after successful CLI probe|manual rollback without a journal rejects post-probe selector drift|manual recovery retains journal when probe corrupts the selector|automatic rollback must recheck selection after restored CLI probe|already-selected recovery must not clear journal if CLI moves selector|same-user second process cannot redirect quarantine removal|stale recovery journal refuses to overwrite a newer active version|malformed update journals block recovery without changing the current version|uninstall does not erase a malformed recovery journal or the installation)' tests/t09-lifecycle.test.ts
+          node --import tsx --test tests/extension-runtime-commands.test.ts tests/background-job-delivery.integration.test.ts tests/background-job-journal.test.ts tests/background-jobs.test.ts tests/authorized-job-retry.test.ts tests/notification-projection.test.ts tests/session-notifications.test.ts tests/odd-state-consistency.test.ts tests/workspace-resolution.test.ts tests/t09-u4-interrupted-upgrade.test.ts
+      - name: Generate exact-SHA self-audit report
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/r4-self-audit.mjs | tee r4-self-audit-report.json
+      - name: Upload bounded self-audit evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: r4-self-audit-${{ github.event.pull_request.head.sha }}
+          path: r4-self-audit-report.json
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,4 +1,4 @@
-import type {MemoryContextOptions,MemoryExport,MemoryItem,MemoryObservationInput,MemoryObservationUpdate,MemoryRelation,MemoryRelationInput,MemorySearchOptions,MemorySearchPreview,MemorySessionSummary,MemoryStore} from "./types.js";
+import type {MemoryContextOptions,MemoryExport,MemoryItem,MemoryRelation,MemorySearchOptions,MemorySearchPreview,MemoryStore} from "./types.js";
 export class MemoryLibrary{
  constructor(private readonly store:MemoryStore,readonly projectId:string){}
  get(id:string):MemoryItem|undefined{const item=this.store.get(id);return item?.projectId===this.projectId?item:undefined;}

@@ -1,0 +1,12 @@
+{
+  "id": "ECO-02A-win32-positive",
+  "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "kind": "positive",
+  "class": "DETERMINISTIC_EXECUTION",
+  "command": "node --import tsx --test --test-reporter=tap tests/pi-host-preflight.test.ts",
+  "observation": "12 selected preflight contract test(s) completed; pattern: factory waits for initialized public inventories",
+  "result": "PASS",
+  "sourceManifestSha256": "1a7c706439630fc7339b247b66c61727235ac14d894f6f7a57578787558849f9",
+  "logSha256": "b98dcdf58dd6397691a163aec7c674d5da65c38febc2b623fa5859ef7ba4c34c"
+}

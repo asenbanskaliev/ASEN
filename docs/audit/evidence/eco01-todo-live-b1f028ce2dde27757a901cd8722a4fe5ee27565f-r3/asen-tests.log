@@ -1,0 +1,42 @@
+✔ resuming a restart-blocked Todo requires explicit active Pi UI approval (38.457841ms)
+✔ a blocked Todo with a persisted agent link cannot bypass agent recovery (20.705101ms)
+✔ a planned DAG node cannot become done without a verification summary and explicit Pi confirmation (29.160104ms)
+✔ linked agent results above the complete UI review bound cannot be accepted (15.335251ms)
+✔ accepting an independently verified plan result advances the next step after persistence (22.069924ms)
+✔ ECO-07 restart recovery preserves one ordered task transition chain through completion (20.43311ms)
+✔ cancelling a pending blocked-task confirmation prevents a late approval from changing Todo state (14.158979ms)
+✔ cancelled Todo creation does not create a durable task (2.272764ms)
+✔ a retried Pi Todo add call ID returns its existing task instead of duplicating it (7.786998ms)
+✔ blocked Todo approval cannot survive a session change during its dialog (11.207958ms)
+✔ a concurrent task cancellation invalidates an earlier blocked-resume approval (14.443203ms)
+✔ session change while waiting for the Todo lock rejects the pending mutation (41.536023ms)
+✔ session change during locked Todo creation leaves no task in either session (45.69929ms)
+✔ Todo read rejects cancelled calls and a session replacement during store access (1.566277ms)
+✔ Todo task state, history and session isolation survive a process reopen (29.97797ms)
+✔ Todo creation retries are idempotent across concurrent clients and restarts (31.089294ms)
+✔ dependency-aware plan tasks persist across restart and cannot run before prerequisites are done (32.156829ms)
+✔ Todo plan journals survive skill registry changes and reject stale dispatch separately (7.185539ms)
+✔ executable Todo plans persist atomically and idempotently (20.561074ms)
+✔ controlled Todo plans preserve a validated provider route but never write credentials (8.579906ms)
+✔ running Todo work becomes blocked after restart and is never resumed automatically (19.058363ms)
+✔ session startup recovery changes only the matching session and project (34.571928ms)
+✔ an abrupt process exit blocks only its own running Todo tasks and preserves completed work (174.139229ms)
+✔ Todo rejects stale revisions and impossible transitions under concurrent updates (20.950918ms)
+✔ cancelling an update waiting for the Todo store lock leaves durable state unchanged (37.089313ms)
+✔ cancellation after atomic Todo persistence starts lets the whole transaction commit (14.321754ms)
+✔ corrupt Todo storage is preserved in quarantine and malformed replays fail closed (5.334331ms)
+✔ Todo project identity is bound even when the Pi session id matches (7.634258ms)
+✔ Todo recovery lookup accepts Windows case aliases for the same project root (4.550642ms)
+✔ cancelled creation waiting for the Todo lock cannot append a stale task (35.273818ms)
+✔ independent Todo clients cannot both apply the same saved plan revision (24.744466ms)
+✔ a crash before Todo commit preserves the previous plan and recovers its dead lock (128.296938ms)
+✔ simultaneous Todo startup quarantines corrupted bytes once without losing recovery (17.99158ms)
+✔ a Todo commit failure preserves durable history and permits a clean retry (9.855234ms)
+ℹ tests 34
+ℹ suites 0
+ℹ pass 34
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 786.200965

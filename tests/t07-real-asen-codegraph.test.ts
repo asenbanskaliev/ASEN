@@ -1,0 +1,59 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {mkdtempSync,writeFileSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {execFileSync} from "node:child_process";
+import {resolveCodeGraphEntry} from "../src/interaction/code-intelligence.js";
+import {createAsenExtension} from "../extensions/asen.js";
+
+test("real CodeGraph CLI through ASEN/Pi registration: init, query, sync, restart",async t=>{
+  const root=mkdtempSync(join(tmpdir(),"asen-real-codegraph-"));
+  t.after(()=>rmSync(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
+  execFileSync("git",["init","-q",root]);
+  execFileSync("git",["-C",root,"config","user.email","probe@example.invalid"]);
+  execFileSync("git",["-C",root,"config","user.name","Probe"]);
+  const source=join(root,"sample.js");
+  writeFileSync(source,"export function initialSymbol() { return 1; }\n");
+  execFileSync("git",["-C",root,"add","sample.js"]);
+  execFileSync("git",["-C",root,"commit","-qm","initial"]);
+  const packageRoot=process.env.ASEN_T07_CODEGRAPH_PACKAGE_ROOT;
+  if(!packageRoot){t.skip("Real CodeGraph CLI is exercised in the dedicated T07 matrix job");return;}
+  const script=resolveCodeGraphEntry(packageRoot);
+  const options={codeIntelligence:{script}};
+  const tools=new Map<string,any>();
+  createAsenExtension(options as any)({registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);}} as any);
+  const tool=tools.get("codegraph");
+  assert.ok(tool);
+  let approvals=0;
+  const context={cwd:root,hasUI:true,ui:{confirm:async()=>{approvals++;return true;}}};
+  const invoke=(operation:string,query?:string)=>tool.execute("real",{operation,...(query?{query}:{})},undefined,undefined,context);
+  const init=await invoke("init");
+  assert.equal(init.details.status,"completed",JSON.stringify(init));
+  assert.ok(["added","present"].includes(init.details.localExclude?.status),"approved init must exclude its local index from Git status");
+  assert.equal(execFileSync("git",["-C",root,"status","--porcelain"],{encoding:"utf8"}).trim(),"","index creation must not leave untracked review noise");
+
+  const first=await invoke("query","initialSymbol");
+  assert.equal(first.details.status,"completed",JSON.stringify(first));
+  assert.match(first.content[0].text,/initialSymbol/);
+  writeFileSync(source,"export function updatedSymbol() { return 42; }\n");
+  execFileSync("git",["-C",root,"add","sample.js"]);
+  execFileSync("git",["-C",root,"commit","-qm","updated"]);
+  const sync=await invoke("sync");
+  assert.equal(sync.details.status,"completed",JSON.stringify(sync));
+  assert.equal(sync.details.localExclude?.status,"present","sync must not duplicate the Git-local exclude");
+
+  const changed=await invoke("query","updatedSymbol");
+  assert.equal(changed.details.status,"completed",JSON.stringify(changed));
+  assert.match(changed.content[0].text,/updatedSymbol/);
+  assert.equal(approvals,2,"init and sync each require approval");
+  const afterRestart=new Map<string,any>();
+  createAsenExtension(options as any)({registerCommand(){},registerTool(tool:any){afterRestart.set(tool.name,tool);}} as any);
+  const restarted=afterRestart.get("codegraph");
+  assert.ok(restarted);
+  const again=await restarted.execute("restart",{operation:"query",query:"updatedSymbol"},undefined,undefined,{cwd:root} as any);
+  assert.equal((again.details as {status:string}).status,"completed",JSON.stringify(again));
+  assert.equal(again.content[0]?.type,"text");
+  if(again.content[0]?.type!=="text")throw new Error("Expected text result");
+  assert.match(again.content[0].text,/updatedSymbol/);
+});

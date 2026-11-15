@@ -1,0 +1,680 @@
+{
+  "version": 1,
+  "baselineCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "adjudicationFile": "registry/parity/ecosystem-reference-adjudications-v1.json",
+  "mappings": [
+    {
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 0,
+      "objectId": "39f21cca79a50f02b25472e48d68c2a97e04a073",
+      "bytes": 10707,
+      "sha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+      "callLine": 214,
+      "span": {
+        "startLine": 208,
+        "endLine": 231,
+        "sha256": "d58f1cf373161a361aed434e47ad5154064cd5d0495ae4e43b6c136db12f73c5"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "installed-package-discovery",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
+      "referenceIndex": 0,
+      "objectId": "780805490645c357be10b179ff1edd460038f21f",
+      "bytes": 15683,
+      "sha256": "afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",
+      "callLine": 133,
+      "span": {
+        "startLine": 120,
+        "endLine": 138,
+        "sha256": "14bab5abdbf5dac6cf61794cf1e70ba2627f05710ba518aa8ec3ed7e2e32d384"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "user-selected-absolute-file",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
+      "referenceIndex": 2,
+      "objectId": "780805490645c357be10b179ff1edd460038f21f",
+      "bytes": 15683,
+      "sha256": "afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",
+      "callLine": 297,
+      "span": {
+        "startLine": 271,
+        "endLine": 310,
+        "sha256": "25ae5e1512512fa0c618189180bd6ded5f0081db312f6c88e0597b0b5ca298a9"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "generated-install-manifest-and-binary",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-f4f6b335bf2cf4e9",
+      "referenceIndex": 0,
+      "objectId": "beea157aa1ad2f2c4e9e6c303e6064ea725aaaab",
+      "bytes": 17838,
+      "sha256": "3f26a3bfe12e962bf968fcc546c0cdf4d700d3a9a8c180626f4e3729da2d4bf3",
+      "callLine": 169,
+      "span": {
+        "startLine": 169,
+        "endLine": 169,
+        "sha256": "5cbf226fe65f0208f81fc38f7a89780c4e8dab6eb190227968351f873e8f2859"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "configured-provider-url",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-ee431194e4155110",
+      "referenceIndex": 0,
+      "objectId": "d803af7e0263dd8df374d1c7f18b4a60b93b5cb5",
+      "bytes": 111266,
+      "sha256": "8f4ce05940375a03b24cefb517c9329b6a34bf2d978513dea6b784916012f15b",
+      "callLine": 619,
+      "span": {
+        "startLine": 606,
+        "endLine": 620,
+        "sha256": "bc093b37701720074b431c53b825c33002b942786d4e9ee4f09dcbd9b79b56ac"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "caller-selected-candidate-tree",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 1,
+      "objectId": "af5a725bad0b3841179e0572429fdcab1eb3189b",
+      "bytes": 12081,
+      "sha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+      "callLine": 33,
+      "span": {
+        "startLine": 32,
+        "endLine": 38,
+        "sha256": "0d4bd0f5d54216487e19a60575abadf65ba1621b4370a8ddbbfbb9855717af4f"
+      },
+      "mappingKind": "tracked-glob",
+      "mappingReason": "direct-markdown-children",
+      "targets": [
+        "assets/agents/*.md"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-dbf31123d00902ed",
+      "referenceIndex": 1,
+      "objectId": "8c8fe7c8bb2af81a00fbffe7589c4fbc758806df",
+      "bytes": 15942,
+      "sha256": "740b7b6f5e97f70caac1077beb0a652edfcaf4ecf2a9f892ca6ee6ff505f7f81",
+      "callLine": 3,
+      "span": {
+        "startLine": 1,
+        "endLine": 6,
+        "sha256": "82710160f01d8d291894e1e372f5a7d9247433129f93f945db203c991ece738e"
+      },
+      "mappingKind": "tracked-file",
+      "mappingReason": "exact-source-file",
+      "targets": [
+        "contracts/telemetry/runtime-aggregate-v1.schema.json"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-8745033959a82ed0",
+      "referenceIndex": 0,
+      "objectId": "c3c8cd439aaae8fd6b775c190660f37341e3ef5e",
+      "bytes": 15444,
+      "sha256": "cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",
+      "callLine": 134,
+      "span": {
+        "startLine": 121,
+        "endLine": 139,
+        "sha256": "77b4bcfa14a46e5572e13a0baefcddfeb51f64d727e38c4a8028137a935c7185"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "user-selected-absolute-file",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-8745033959a82ed0",
+      "referenceIndex": 2,
+      "objectId": "c3c8cd439aaae8fd6b775c190660f37341e3ef5e",
+      "bytes": 15444,
+      "sha256": "cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",
+      "callLine": 298,
+      "span": {
+        "startLine": 272,
+        "endLine": 311,
+        "sha256": "10539dce99600450e289398ecf8444e87f14e028954e329880d8012e97e7b94a"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "generated-install-manifest-and-binary",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 2,
+      "objectId": "c6b15ce14dbcbf1e3a367358638f6b782d71ec96",
+      "bytes": 40972,
+      "sha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "callLine": 166,
+      "span": {
+        "startLine": 165,
+        "endLine": 167,
+        "sha256": "6ec3ca5a6596cd808154081dbe34c98ee69d5f13b2c8b1563ddcdfb9e64f39d4"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "downloaded-or-staged-content",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 0,
+      "objectId": "c6b15ce14dbcbf1e3a367358638f6b782d71ec96",
+      "bytes": 40972,
+      "sha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "callLine": 176,
+      "span": {
+        "startLine": 176,
+        "endLine": 176,
+        "sha256": "405ea65219a981feba5f4dcc4c551023a1fa6d22ed61ce6f40747a1078405797"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "https-download-url",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 1,
+      "objectId": "c6b15ce14dbcbf1e3a367358638f6b782d71ec96",
+      "bytes": 40972,
+      "sha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "callLine": 185,
+      "span": {
+        "startLine": 185,
+        "endLine": 185,
+        "sha256": "c8ba63ced71ecc91cc85212692b256f85e441d0a75a60fbcfb12eece360b46b0"
+      },
+      "mappingKind": "external-runtime",
+      "mappingReason": "https-redirect-location",
+      "targets": []
+    },
+    {
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 7,
+      "objectId": "39f21cca79a50f02b25472e48d68c2a97e04a073",
+      "bytes": 10707,
+      "sha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+      "callLine": 323,
+      "span": {
+        "startLine": 323,
+        "endLine": 323,
+        "sha256": "a4e951dfbf0364d42620121c654f3f4d1842059c6f0ec6778b19280635a9c8be"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-625c38e8637ad8b0"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-af1edc66cbd9834c",
+      "referenceIndex": 64,
+      "objectId": "c6bf814ca8934bd26af5f0efb0c229029ca07155",
+      "bytes": 81559,
+      "sha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+      "callLine": 1152,
+      "span": {
+        "startLine": 1152,
+        "endLine": 1178,
+        "sha256": "2d2504228419e852849ce25dd30410645c68f8357be7f362474b583b94130eb0"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-af1edc66cbd9834c"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 33,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9405,
+      "span": {
+        "startLine": 9405,
+        "endLine": 9415,
+        "sha256": "910ae33c8132730a0cbac13e6dd41b7f7b21f594cba766c03b20ab438ac2457f"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 89,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 8975,
+      "span": {
+        "startLine": 8975,
+        "endLine": 9013,
+        "sha256": "b79c2071260a75206d9a1675b0da7dd9932be168883993fb4f394c60cc65886b"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 90,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9015,
+      "span": {
+        "startLine": 9015,
+        "endLine": 9059,
+        "sha256": "46a4e717c96aaeef7e31b2f8152f8f2efc7bd0bc1ac383a7070d2b1953baf517"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 91,
+      "objectId": "a0fed68c1cd897700a3857cbe7ea4851891eddd0",
+      "bytes": 467267,
+      "sha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "callLine": 9061,
+      "span": {
+        "startLine": 9061,
+        "endLine": 9207,
+        "sha256": "5b63cd9e60d08d8513e1e8e129c6e9a4033699ee538742685ef293812f4dcb04"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-f25fcbecafe905e1",
+      "referenceIndex": 17,
+      "objectId": "ef22678c9621f95d450079ec3aae02f02eccb37c",
+      "bytes": 114585,
+      "sha256": "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+      "callLine": 1708,
+      "span": {
+        "startLine": 1708,
+        "endLine": 1713,
+        "sha256": "4fdc0bdefe5526e4cb8e7bf4c9c35fce16361d635e82b013e9854facdcc12f6b"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-f25fcbecafe905e1"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-91b70c5973297fbd",
+      "referenceIndex": 12,
+      "objectId": "6f627072f868d6b0fcd46e61e94f4f48612ae935",
+      "bytes": 9934,
+      "sha256": "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+      "callLine": 168,
+      "span": {
+        "startLine": 168,
+        "endLine": 203,
+        "sha256": "7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-91b70c5973297fbd"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 5,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 592,
+      "span": {
+        "startLine": 592,
+        "endLine": 612,
+        "sha256": "a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 6,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 615,
+      "span": {
+        "startLine": 615,
+        "endLine": 623,
+        "sha256": "87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 7,
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "callLine": 626,
+      "span": {
+        "startLine": 626,
+        "endLine": 641,
+        "sha256": "adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 0,
+      "objectId": "af5a725bad0b3841179e0572429fdcab1eb3189b",
+      "bytes": 12081,
+      "sha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+      "callLine": 31,
+      "span": {
+        "startLine": 31,
+        "endLine": 31,
+        "sha256": "abcebbb1bb7acd5e06af7a3670c3a102be0aedf349bf6dc01436a279e0dbf6e7"
+      },
+      "mappingKind": "tracked-glob",
+      "mappingReason": "direct-markdown-children",
+      "targets": [
+        "assets/agents/*.md"
+      ]
+    },
+    {
+      "sourceId": "ECO-SRC-8420ca03583cfe7b",
+      "referenceIndex": 5,
+      "objectId": "6ed00aef22da1cfaa2d2d6dcaf9746ad758cc64f",
+      "bytes": 6833,
+      "sha256": "dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d",
+      "callLine": 39,
+      "span": {
+        "startLine": 39,
+        "endLine": 47,
+        "sha256": "1123875c62b7b65b57c7abd6546401d32d55a5cd7c976ef387674d92c18c0c5e"
+      },
+      "mappingKind": "code-contract",
+      "mappingReason": "self-owned-registration",
+      "targets": [
+        "ECO-SRC-8420ca03583cfe7b"
+      ]
+    }
+  ],
+  "normativeInventory": {
+    "familyId": "presentation.commands.v1",
+    "source": {
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "path": "extensions/startup-banner.ts",
+      "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+      "bytes": 42261,
+      "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8"
+    },
+    "dependencySpans": [
+      {"id": "configuration-model", "startLine": 14, "endLine": 25, "sha256": "356e8f90381ecf05ebcbbaeb0806e2bb67b1adc22c6c9fad754419d12c43f08d"},
+      {"id": "configuration-resolution", "startLine": 71, "endLine": 87, "sha256": "d4d2bdb7a19fe000fa84524537bd1654a849b8dd12da208ca9c79bb03bf429a0"},
+      {"id": "configuration-io", "startLine": 110, "endLine": 122, "sha256": "786f898b42a85543abefe926a5d9753e43cc00ff825b95660bfb3052390d615e"},
+      {"id": "success-reporting", "startLine": 580, "endLine": 589, "sha256": "5fedaea0c72c72c8546bea200c37c0e9f92500f140d6e6492fd81fdc65909358"}
+    ],
+    "registrations": [
+      {"id": "presentation.menu", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 5}, "span": {"startLine": 592, "endLine": 612, "sha256": "a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"}},
+      {"id": "presentation.toggle", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6}, "span": {"startLine": 615, "endLine": 623, "sha256": "87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"}},
+      {"id": "presentation.color", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 7}, "span": {"startLine": 626, "endLine": 641, "sha256": "adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"}}
+    ],
+    "endpoints": [
+      {
+        "id": "presentation.menu",
+        "registrationId": "presentation.menu",
+        "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 5},
+        "instantiationSpan": {"startLine": 643, "endLine": 643, "sha256": "ceb734babb5e36206a97bae3bf9c2ca9c074a7202f8c4e73f1b71ff992caa832"},
+        "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+        "obligations": ["successful selection persists the resulting configuration and reports it", "cancellation before a choice writes nothing", "rose and text-logo choices preserve unrelated settings", "color cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+      },
+      {
+        "id": "presentation.rose-toggle",
+        "registrationId": "presentation.toggle",
+        "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6},
+        "instantiationSpan": {"startLine": 644, "endLine": 644, "sha256": "ccaa896ec604e82f06952b83552b45522a20046354727eb5aa083a92155f1575"},
+        "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+        "obligations": ["a successful toggle persists the resulting configuration and reports it", "the toggle changes only the rose setting and preserves unrelated settings", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+      },
+      {
+        "id": "presentation.text-logo-toggle",
+        "registrationId": "presentation.toggle",
+        "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6},
+        "instantiationSpan": {"startLine": 645, "endLine": 645, "sha256": "a268a09f732c597e795f46c3af3cdaa943cd76c0f7e82ec7baac64ccb5d5719c"},
+        "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+        "obligations": ["a successful toggle persists the resulting configuration and reports it", "the toggle changes only the text-logo setting and preserves unrelated settings", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+      },
+      {
+        "id": "presentation.color-setter",
+        "registrationId": "presentation.color",
+        "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 7},
+        "instantiationSpan": {"startLine": 646, "endLine": 646, "sha256": "fc04dbe1330a69d8b8fb45c171dfd1f516c0bd67e67ce1079d5d1a93311c4f91"},
+        "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+        "obligations": ["a successful color choice persists the resulting configuration and reports it", "a valid trimmed color preset bypasses prompting", "an invalid preset prompts for a supported color", "cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+      }
+    ]
+  },
+  "normativeInventories": [
+    {
+      "familyId": "presentation.commands.v1",
+      "source": {
+        "sourceId": "ECO-SRC-6c28d7b99a511610",
+        "path": "extensions/startup-banner.ts",
+        "objectId": "44de38b41e2199f31cffbe60887456ab9324d185",
+        "bytes": 42261,
+        "sha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8"
+      },
+      "dependencySpans": [
+        {"id": "configuration-model", "startLine": 14, "endLine": 25, "sha256": "356e8f90381ecf05ebcbbaeb0806e2bb67b1adc22c6c9fad754419d12c43f08d"},
+        {"id": "configuration-resolution", "startLine": 71, "endLine": 87, "sha256": "d4d2bdb7a19fe000fa84524537bd1654a849b8dd12da208ca9c79bb03bf429a0"},
+        {"id": "configuration-io", "startLine": 110, "endLine": 122, "sha256": "786f898b42a85543abefe926a5d9753e43cc00ff825b95660bfb3052390d615e"},
+        {"id": "success-reporting", "startLine": 580, "endLine": 589, "sha256": "5fedaea0c72c72c8546bea200c37c0e9f92500f140d6e6492fd81fdc65909358"}
+      ],
+      "registrations": [
+        {"id": "presentation.menu", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 5}, "span": {"startLine": 592, "endLine": 612, "sha256": "a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"}},
+        {"id": "presentation.toggle", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6}, "span": {"startLine": 615, "endLine": 623, "sha256": "87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"}},
+        {"id": "presentation.color", "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 7}, "span": {"startLine": 626, "endLine": 641, "sha256": "adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"}}
+      ],
+      "endpoints": [
+        {
+          "id": "presentation.menu", "registrationId": "presentation.menu",
+          "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 5},
+          "instantiationSpan": {"startLine": 643, "endLine": 643, "sha256": "ceb734babb5e36206a97bae3bf9c2ca9c074a7202f8c4e73f1b71ff992caa832"},
+          "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+          "obligations": ["successful selection persists the resulting configuration and reports it", "cancellation before a choice writes nothing", "rose and text-logo choices preserve unrelated settings", "color cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+        },
+        {
+          "id": "presentation.rose-toggle", "registrationId": "presentation.toggle",
+          "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6},
+          "instantiationSpan": {"startLine": 644, "endLine": 644, "sha256": "ccaa896ec604e82f06952b83552b45522a20046354727eb5aa083a92155f1575"},
+          "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+          "obligations": ["a successful toggle persists the resulting configuration and reports it", "the toggle changes only the rose setting and preserves unrelated settings", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+        },
+        {
+          "id": "presentation.text-logo-toggle", "registrationId": "presentation.toggle",
+          "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 6},
+          "instantiationSpan": {"startLine": 645, "endLine": 645, "sha256": "a268a09f732c597e795f46c3af3cdaa943cd76c0f7e82ec7baac64ccb5d5719c"},
+          "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+          "obligations": ["a successful toggle persists the resulting configuration and reports it", "the toggle changes only the text-logo setting and preserves unrelated settings", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+        },
+        {
+          "id": "presentation.color-setter", "registrationId": "presentation.color",
+          "mappedReference": {"sourceId": "ECO-SRC-6c28d7b99a511610", "referenceIndex": 7},
+          "instantiationSpan": {"startLine": 646, "endLine": 646, "sha256": "fc04dbe1330a69d8b8fb45c171dfd1f516c0bd67e67ce1079d5d1a93311c4f91"},
+          "dependencySpanIds": ["configuration-model", "configuration-resolution", "configuration-io", "success-reporting"],
+          "obligations": ["a successful color choice persists the resulting configuration and reports it", "a valid trimmed color preset bypasses prompting", "an invalid preset prompts for a supported color", "cancellation writes nothing", "missing, malformed, or unreadable configuration reads as defaults", "writes create the configuration directory and replace the complete JSON document"]
+        }
+      ]
+    },
+    {
+      "familyId": "codegraph.operations.v1",
+      "source": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "path": "extensions/codegraph-tools.ts", "objectId": "39f21cca79a50f02b25472e48d68c2a97e04a073", "bytes": 10707, "sha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7"},
+      "dependencySpans": [
+        {"id": "parameters", "startLine": 24, "endLine": 28, "sha256": "2fe256de1eb2465db9ecfbc21dcda5c3ee0972062d03002e813387c100184b2b"},
+        {"id": "schema", "startLine": 53, "endLine": 62, "sha256": "4e6bfde7cf01eb6eb0931765bf57f8bead43846ee4eaa324518a474e39042e82"},
+        {"id": "workspace-root", "startLine": 71, "endLine": 94, "sha256": "a02379149444e151865b5213a6e18e04de883d1696e173f37130700fd1182b3f"},
+        {"id": "safe-index", "startLine": 96, "endLine": 106, "sha256": "d91aa9c9646fad940b953037a0336f04af07dcbb5eb8eeb2d71a7e3f4f259359"},
+        {"id": "arguments", "startLine": 108, "endLine": 161, "sha256": "1d398b11becb2d4967e7c8475450833c7f162aeb053abd922ab65f2bfcc14195"},
+        {"id": "init-argv", "startLine": 128, "endLine": 129, "sha256": "12eeb47d23cda82fdadb45f85311f0afb7f5632aad58415171ee09793cc70717"},
+        {"id": "query-argv", "startLine": 130, "endLine": 141, "sha256": "4161988c45f1b4cbd302553315f6a145eb6df96782a9a836c1bce680da901e50"},
+        {"id": "explore-argv", "startLine": 142, "endLine": 153, "sha256": "0bd5922c22d244d88d6c94133b55a4bb38cf3e3727064f6e9e93e35fc660ac0e"},
+        {"id": "output-error", "startLine": 163, "endLine": 188, "sha256": "f578681cf32809e6983a833effa12932700183d8b66cea9213c6166b30c053a5"},
+        {"id": "path-shim", "startLine": 191, "endLine": 203, "sha256": "7d6e14083d4ac7e056ac7507bea32f5a8d716ec458f0aab3cb7f585d267ad7cd"},
+        {"id": "binary", "startLine": 208, "endLine": 243, "sha256": "f2bcbc52d48346ca630f8de71ade35870d3dab41e42bdf7550e40b90b788846b"},
+        {"id": "process", "startLine": 245, "endLine": 278, "sha256": "8b013a4f4e01e2c35d65dcdd3726414a578a61991496ba1660d04a7882c6e6ab"},
+        {"id": "factory", "startLine": 280, "endLine": 319, "sha256": "8c6022206fee753eb867328e30f2bfb2e332496c4b669c81b7a55d86b12c3552"},
+        {"id": "default-helper", "startLine": 326, "endLine": 328, "sha256": "20257cd99a8e2e010befa9dc771947c2ce4411e82ec75b9bba1e67e17c44be1e"}
+      ],
+      "registrations": [
+        {"id": "codegraph.tool", "mappedReference": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "referenceIndex": 7}, "span": {"startLine": 323, "endLine": 323, "sha256": "a4e951dfbf0364d42620121c654f3f4d1842059c6f0ec6778b19280635a9c8be"}}
+      ],
+      "endpoints": [
+        {
+          "id": "codegraph.init", "registrationId": "codegraph.tool", "mappedReference": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "referenceIndex": 7},
+          "instantiationSpan": {"startLine": 9, "endLine": 9, "sha256": "7741b3700a8d48b12df547cbbd853a4a71b6d85770f4b72b86da9e443c4b0fc7"},
+          "dependencySpanIds": ["parameters", "schema", "workspace-root", "safe-index", "arguments", "init-argv", "output-error", "path-shim", "binary", "process", "factory", "default-helper"],
+          "obligations": ["the current workspace must be a real Git project root and HOME or the temporary directory is rejected", "an existing .codegraph path must be a real directory and not a symbolic link", "init argv contains only the operation and current workspace; query and limit are not forwarded", "the wrapper never initializes automatically", "execution is sequential, shell-free, signal-aware, and buffer-bounded", "joined output is bounded and failures distinguish unavailable from failed"]
+        },
+        {
+          "id": "codegraph.query", "registrationId": "codegraph.tool", "mappedReference": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "referenceIndex": 7},
+          "instantiationSpan": {"startLine": 10, "endLine": 10, "sha256": "fe48ff89094261c30d093edf90a9f790d75e53382d9b1f1c2e57958e7d0ea68a"},
+          "dependencySpanIds": ["parameters", "schema", "workspace-root", "safe-index", "arguments", "query-argv", "output-error", "path-shim", "binary", "process", "factory", "default-helper"],
+          "obligations": ["the current workspace must be a real Git project root and HOME or the temporary directory is rejected", "an existing .codegraph path must be a real directory and not a symbolic link", "query requires a nonblank query of at most 2000 characters and an integer limit from 1 through 20 defaulting to 10", "query passes the limit with --limit after the current workspace path", "the wrapper never initializes automatically", "execution is sequential, shell-free, signal-aware, and buffer-bounded", "joined output is bounded and failures distinguish unavailable from failed"]
+        },
+        {
+          "id": "codegraph.explore", "registrationId": "codegraph.tool", "mappedReference": {"sourceId": "ECO-SRC-625c38e8637ad8b0", "referenceIndex": 7},
+          "instantiationSpan": {"startLine": 11, "endLine": 11, "sha256": "bb26ebfcf475085886d55ac1c715a93a7d902d12d9b84c3e8f67c8cc98b416f6"},
+          "dependencySpanIds": ["parameters", "schema", "workspace-root", "safe-index", "arguments", "explore-argv", "output-error", "path-shim", "binary", "process", "factory", "default-helper"],
+          "obligations": ["the current workspace must be a real Git project root and HOME or the temporary directory is rejected", "an existing .codegraph path must be a real directory and not a symbolic link", "explore requires a nonblank query of at most 2000 characters and an integer limit from 1 through 20 defaulting to 10", "explore passes the limit with --max-files after the current workspace path", "the wrapper never initializes automatically", "execution is sequential, shell-free, signal-aware, and buffer-bounded", "joined output is bounded and failures distinguish unavailable from failed"]
+        }
+      ]
+    },
+    {
+      "familyId": "agents.tools.v1",
+      "source": {"sourceId": "ECO-SRC-af1edc66cbd9834c", "objectId": "c6bf814ca8934bd26af5f0efb0c229029ca07155", "bytes": 81559, "sha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388"},
+      "dependencySpans": [
+        {"id": "tool-prefix", "startLine": 60, "endLine": 60, "sha256": "2303fafeecfb20a557dc2579c5311b846924802e5057ee5664004cb9bbe8a701"},
+        {"id": "tool-helper", "startLine": 1151, "endLine": 1179, "sha256": "7f85db5c1d64ee61803aaa5f513e3af1b07688abdb0755297ab45358b12dd7e6"},
+        {"id": "list-agents-call", "startLine": 1276, "endLine": 1281, "sha256": "ea87968cac6563cd6340a2854766913b5cb3ee4bd9e3f3ec519a10ffa89d6909"},
+        {"id": "run-call", "startLine": 1283, "endLine": 1318, "sha256": "ed566cdd9fcd89b53949775d53ab21da0f724133da5b15dc466c23513395968e"},
+        {"id": "status-call", "startLine": 1320, "endLine": 1323, "sha256": "67fb5645114f6b2495169be38898525d045e99edca14e753bcc39a0e6084ab59"},
+        {"id": "result-call", "startLine": 1325, "endLine": 1335, "sha256": "36eca78fa90ac6c6a898a812145d80aecf5f1f51f483045b00bc78a05ea24010"},
+        {"id": "list-tasks-call", "startLine": 1337, "endLine": 1340, "sha256": "1eb93dca2334dc01d1ba25f9afc7aba1f5e2fb795ce3c74eb022410f35b7a868"},
+        {"id": "reply-call", "startLine": 1342, "endLine": 1347, "sha256": "aa30bee043174e466f87d52182ea1c94ee8d41ca7bdd6435d412fcbeb30d925c"},
+        {"id": "cancel-call", "startLine": 1349, "endLine": 1353, "sha256": "c4ada83556038882a1c42080f3c9c1e498631ce353fd136085ce6ef91a80c650"},
+        {"id": "send-message-call", "startLine": 1355, "endLine": 1358, "sha256": "6a258938c7628e5c5c1ea255f895513e829cde741bbe5bbba039875cd631baa4"},
+        {"id": "continue-call", "startLine": 1360, "endLine": 1380, "sha256": "28b2ab4ec459c53d7278ddb64641fe57a5ee5b9565126af59730223f24508f77"}
+      ],
+      "registrations": [
+        {"id": "agents.tool-helper", "mappedReference": {"sourceId": "ECO-SRC-af1edc66cbd9834c", "referenceIndex": 64}, "span": {"startLine": 1152, "endLine": 1178, "sha256": "2d2504228419e852849ce25dd30410645c68f8357be7f362474b583b94130eb0"}}
+      ],
+      "endpoints": [
+        {"id":"agents.list_agents","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1276,"endLine":1276,"sha256":"a217c336b06006c9f5a9123616c957a611374c0a327925b1875c5c8c32f9684f"},"dependencySpanIds":["tool-prefix","tool-helper","list-agents-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.run","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1284,"endLine":1284,"sha256":"edc966ea7a050636e4a684acebdf7bd47cd8e0d7334eb6d585b6e36a5756693d"},"dependencySpanIds":["tool-prefix","tool-helper","run-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.status","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1320,"endLine":1320,"sha256":"df087c1390784e3eb85bf69ee4a485265ff6c6bc3ace89f28c3ad62444206ab9"},"dependencySpanIds":["tool-prefix","tool-helper","status-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.result","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1325,"endLine":1325,"sha256":"eb8aa2e777731d2788b5bc9b68989dd0adf0bb58d1423c01b2955391d9125148"},"dependencySpanIds":["tool-prefix","tool-helper","result-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.list_tasks","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1337,"endLine":1337,"sha256":"833762108df979996c4586bd5c6747bb6d32fab3ea40fb178bc33f029b1af318"},"dependencySpanIds":["tool-prefix","tool-helper","list-tasks-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.reply","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1342,"endLine":1342,"sha256":"6be051384e0394569d346c93e4a7c8494211ec25a602470953ec92cc52975d1b"},"dependencySpanIds":["tool-prefix","tool-helper","reply-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.cancel","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1349,"endLine":1349,"sha256":"ce916503e02d93983cbbe0a05d890f027025d3ce483eba6122ba7c05fc36e44d"},"dependencySpanIds":["tool-prefix","tool-helper","cancel-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.send_message","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1355,"endLine":1355,"sha256":"166c798ac0f7382673a521c24b8f4271106ef1e55ebc15cdd465335d0965e16b"},"dependencySpanIds":["tool-prefix","tool-helper","send-message-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]},
+        {"id":"agents.continue","registrationId":"agents.tool-helper","mappedReference":{"sourceId":"ECO-SRC-af1edc66cbd9834c","referenceIndex":64},"instantiationSpan":{"startLine":1361,"endLine":1361,"sha256":"1f4ba3d15a118f8fd0e0cfb613eb7c6b0dd4aabb8cd4b6024af260d934d36c61"},"dependencySpanIds":["tool-prefix","tool-helper","continue-call"],"obligations":["the endpoint literal is argument zero of the exact tool helper"]}
+      ]
+    },
+    {
+      "familyId": "orchestrator.review.v1",
+      "source": {"sourceId":"ECO-SRC-1f527249710bd9bf","objectId":"a0fed68c1cd897700a3857cbe7ea4851891eddd0","bytes":467267,"sha256":"c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd"},
+      "dependencySpans": [
+        {"id":"review-sidebar","startLine":8833,"endLine":8833,"sha256":"b1557775eb979b874c3a9a37975e4e328bd3b61719560e2d4c9963ecd6bed558"},
+        {"id":"install-owner-loop","startLine":9403,"endLine":9403,"sha256":"ac1022a59947267180234fafa0952837d58c308790388c5bdeae833bab9cafad"}
+      ],
+      "registrations": [
+        {"id":"review.capture-group","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":89},"span":{"startLine":8975,"endLine":9013,"sha256":"b79c2071260a75206d9a1675b0da7dd9932be168883993fb4f394c60cc65886b"}},
+        {"id":"review.capture","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":90},"span":{"startLine":9015,"endLine":9059,"sha256":"46a4e717c96aaeef7e31b2f8152f8f2efc7bd0bc1ac383a7070d2b1953baf517"}},
+        {"id":"review.controller","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":91},"span":{"startLine":9061,"endLine":9207,"sha256":"5b63cd9e60d08d8513e1e8e129c6e9a4033699ee538742685ef293812f4dcb04"}},
+        {"id":"orchestrator.install","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":33},"span":{"startLine":9405,"endLine":9415,"sha256":"910ae33c8132730a0cbac13e6dd41b7f7b21f594cba766c03b20ab438ac2457f"}}
+      ],
+      "endpoints": [
+        {"id":"review.capture-group","registrationId":"review.capture-group","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":89},"instantiationSpan":{"startLine":8976,"endLine":8976,"sha256":"a78431c06e8768b3c72cc1b2bef5588cd3e68e95b61af6da9c84a1ad24e72d80"},"dependencySpanIds":["review-sidebar"],"obligations":["the exact name literal belongs to the exact wrapped registration"]},
+        {"id":"review.capture","registrationId":"review.capture","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":90},"instantiationSpan":{"startLine":9016,"endLine":9016,"sha256":"df50547fd5fa69a487cfb21f6aa2763b4db5a944749184b648be1321e16a2735"},"dependencySpanIds":["review-sidebar"],"obligations":["the exact name literal belongs to the exact wrapped registration"]},
+        {"id":"review.controller","registrationId":"review.controller","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":91},"instantiationSpan":{"startLine":9062,"endLine":9062,"sha256":"15fb2ccca12fedf6033a6d36c96182dcc94d3d8d7a9ecc41a75ba38250510fde"},"dependencySpanIds":["review-sidebar"],"obligations":["the exact name literal belongs to the exact wrapped registration"]},
+        {"id":"orchestrator.install-delegation","registrationId":"orchestrator.install","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":33},"instantiationSpan":{"startLine":9405,"endLine":9405,"sha256":"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65"},"dependencySpanIds":["install-owner-loop"],"obligations":["the exact install name is the delegation expansion of the exact owner loop template"]},
+        {"id":"orchestrator.install-review","registrationId":"orchestrator.install","mappedReference":{"sourceId":"ECO-SRC-1f527249710bd9bf","referenceIndex":33},"instantiationSpan":{"startLine":9405,"endLine":9405,"sha256":"49a01d627b3ad2d701b88cbd8e8544f88929da0dd96be45f8ea5e96745017c65"},"dependencySpanIds":["install-owner-loop"],"obligations":["the exact install name is the review expansion of the exact owner loop template"]}
+      ]
+    },
+    {
+      "familyId":"workspace.change-listener.v1",
+      "source":{"sourceId":"ECO-SRC-f25fcbecafe905e1","objectId":"ef22678c9621f95d450079ec3aae02f02eccb37c","bytes":114585,"sha256":"dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf"},
+      "dependencySpans":[
+        {"id":"session-change-event-import","startLine":114,"endLine":114,"sha256":"35f01f921db7f23f746b86b374a24e9d38e0209b729b2b8a34b2652577534ac1"}
+      ],
+      "registrations":[
+        {"id":"workspace.change-listener","mappedReference":{"sourceId":"ECO-SRC-f25fcbecafe905e1","referenceIndex":17},"span":{"startLine":1708,"endLine":1713,"sha256":"4fdc0bdefe5526e4cb8e7bf4c9c35fce16361d635e82b013e9854facdcc12f6b"}}
+      ],
+      "endpoints":[
+        {"id":"workspace.session-change","registrationId":"workspace.change-listener","mappedReference":{"sourceId":"ECO-SRC-f25fcbecafe905e1","referenceIndex":17},"instantiationSpan":{"startLine":1708,"endLine":1708,"sha256":"c33ee0f3f2bcad5afbd2d6b3e1fe5ece3c1cc11924fe639927368d32361a352b"},"dependencySpanIds":["session-change-event-import"],"obligations":["the exact imported event identifier is the first argument of the exact subscription and the callback is its second argument"]}
+      ]
+    },
+    {
+      "familyId":"todo.tool.v1",
+      "source":{"sourceId":"ECO-SRC-91b70c5973297fbd","objectId":"6f627072f868d6b0fcd46e61e94f4f48612ae935","bytes":9934,"sha256":"db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d"},
+      "dependencySpans":[
+        {"id":"tool-name-import","startLine":15,"endLine":15,"sha256":"35f31e9a351626192a7db9c48011995c33fcd35a42d9765ba99abe482fff568e"},
+        {"id":"tool-parameters","startLine":31,"endLine":57,"sha256":"82e094af72c2b866f1200c8421c2138a30684c3203b86f7561d655ffd1d8bc43"}
+      ],
+      "registrations":[
+        {"id":"todo.tool","mappedReference":{"sourceId":"ECO-SRC-91b70c5973297fbd","referenceIndex":12},"span":{"startLine":168,"endLine":203,"sha256":"7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"}}
+      ],
+      "endpoints":[
+        {"id":"todo.tool","registrationId":"todo.tool","mappedReference":{"sourceId":"ECO-SRC-91b70c5973297fbd","referenceIndex":12},"instantiationSpan":{"startLine":169,"endLine":169,"sha256":"b7c14a71a207c2b84801c5d610ad1b957653cd05836750f6b1e187b3a25c8dbc"},"dependencySpanIds":["tool-name-import","tool-parameters"],"obligations":["the exact imported tool-name identifier belongs to the exact registration","the exact parameter-schema identifier belongs to the exact registration"]}
+      ]
+    },
+    {
+      "familyId":"session-change.relay-listener.v1",
+      "source":{"sourceId":"ECO-SRC-8420ca03583cfe7b","objectId":"6ed00aef22da1cfaa2d2d6dcaf9746ad758cc64f","bytes":6833,"sha256":"dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d"},
+      "dependencySpans":[
+        {"id":"session-change-relay-import","startLine":8,"endLine":8,"sha256":"080bdde371776cb2084bf9d6dbad6cec698b4b75f7e472de21425f9e2f79dbe3"}
+      ],
+      "registrations":[
+        {"id":"session-change.relay-listener","mappedReference":{"sourceId":"ECO-SRC-8420ca03583cfe7b","referenceIndex":5},"span":{"startLine":39,"endLine":47,"sha256":"1123875c62b7b65b57c7abd6546401d32d55a5cd7c976ef387674d92c18c0c5e"}}
+      ],
+      "endpoints":[
+        {"id":"session-change.relay","registrationId":"session-change.relay-listener","mappedReference":{"sourceId":"ECO-SRC-8420ca03583cfe7b","referenceIndex":5},"instantiationSpan":{"startLine":39,"endLine":39,"sha256":"5fc3bab1a53390ce652bb6650a1cf85c5e5bd5077ac56876a30a8027eadb0ff8"},"dependencySpanIds":["session-change-relay-import"],"obligations":["the exact imported event identifier is the first argument of the exact subscription and the callback is its second argument"]}
+      ]
+    }
+  ]
+}

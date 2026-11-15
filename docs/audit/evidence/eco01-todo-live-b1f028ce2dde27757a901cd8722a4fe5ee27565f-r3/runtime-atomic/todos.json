@@ -1,0 +1,20 @@
+{
+  "schema": "asen.todo/v1",
+  "revision": 1,
+  "items": [
+    {
+      "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+      "title": "Existing",
+      "events": [
+        {
+          "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+          "sessionId": "eco01-atomic",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:21:52.745Z"
+        }
+      ]
+    }
+  ]
+}

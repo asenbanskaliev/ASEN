@@ -19,7 +19,9 @@ export interface SkillContract {
   blocks:readonly ("mutation"|"verification"|"release")[];
 }
 export interface SkillSelectionContext {
+  selectionProfile?:"organic";
   phase?:SkillPhase;
+  defect?:boolean;
   codeChange?:boolean;
   behaviorChange?:boolean;
   risk?:"low"|"medium"|"high"|"unknown";
@@ -42,7 +44,7 @@ const contracts:readonly SkillContract[]=[
  {id:"asen-adversarial-review",path:"skills/asen-adversarial-review/SKILL.md",triggers:["adversarial-review"],requires:["asen-review"],evidence:["adversarial-review"],blocks:[]},
  {id:"asen-skill-authoring",path:"skills/asen-skill-authoring/SKILL.md",triggers:["skill-authoring"],requires:["asen-skill-registry"],evidence:["skill-contract"],blocks:[]},
  {id:"asen-skill-audit",path:"skills/asen-skill-audit/SKILL.md",triggers:["skill-audit"],requires:["asen-skill-registry"],evidence:["skill-audit"],blocks:[]},
- {id:"asen-defect-workflow",path:"skills/asen-defect-workflow/SKILL.md",triggers:["defect"],requires:["asen-work-unit"],evidence:["defect-reproduction"],blocks:[]},
+ {id:"asen-defect-workflow",path:"skills/asen-defect-workflow/SKILL.md",triggers:["defect"],requires:["asen-work-unit"],evidence:["defect-intake"],blocks:["mutation"]},
  {id:"asen-go-testing",path:"skills/asen-go-testing/SKILL.md",triggers:["go-testing"],requires:[],evidence:["go-test"],blocks:[]},
  {id:"asen-delivery-branch",path:"skills/asen-delivery-branch/SKILL.md",triggers:["delivery-branch"],requires:["asen-work-unit"],evidence:["delivery-state"],blocks:[]},
  {id:"asen-delivery-chain",path:"skills/asen-delivery-chain/SKILL.md",triggers:["delivery-chain"],requires:["asen-work-unit"],evidence:["delivery-plan"],blocks:[]},
@@ -64,6 +66,7 @@ export function getSkillContract(id:SkillId):SkillContract{
 function directTriggers(context:SkillSelectionContext):Set<SkillTrigger>{
  const triggers=new Set<SkillTrigger>();
  if(context.phase) triggers.add(context.phase);
+ if(context.defect) triggers.add("defect");
  if(context.codeChange) triggers.add("code-change");
  if(context.behaviorChange) triggers.add("behavior-change");
  if(context.risk==="high") triggers.add("high-risk");
@@ -72,9 +75,16 @@ function directTriggers(context:SkillSelectionContext):Set<SkillTrigger>{
  if(context.verification) triggers.add("verification");
  return triggers;
 }
+export function validateSkillSelectionProfile(context:Pick<SkillSelectionContext,"selectionProfile">):void{
+ if(Object.hasOwn(context,"selectionProfile")&&context.selectionProfile!=="organic")throw new Error("Invalid skill selection profile");
+}
 export function selectSkills(context:SkillSelectionContext):SkillContract[]{
+ validateSkillSelectionProfile(context);
  const triggers=directTriggers(context),selected=new Set<SkillId>();
  const add=(id:SkillId):void=>{if(selected.has(id))return;const c=getSkillContract(id);for(const d of c.requires)add(d);selected.add(id);};
- for(const contract of contracts)if(contract.triggers.some(trigger=>triggers.has(trigger)))add(contract.id);
+ for(const contract of contracts){
+  if(context.selectionProfile==="organic"&&contract.id==="asen-tdd")continue;
+  if(contract.triggers.some(trigger=>triggers.has(trigger)))add(contract.id);
+ }
  return [...selected].map(getSkillContract);
 }

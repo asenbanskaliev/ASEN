@@ -10,6 +10,16 @@ Implement local-first persistent memory parity for ASEN after the Skill parity c
 - Memory planning and frozen provenance may proceed now; runtime implementation starts only after the Skill chain is complete and verified.
 - Memory work is a separate feature branch chain based on the final Skill-parity slice.
 
+## Reconciliation with completed memory-v3 work — 2026-10-06
+
+This tracker predates the completed memory-v3 implementation. It must not be used to rebuild or replace that work. The canonical implementation and evidence record is `odd/tasks/memory-v3-parity.md`.
+
+R01-R09 already cover the admitted local core: versioned SQLite migrations; project/session identity; observation lifecycle and privacy; bounded project-scoped retrieval/context; typed relationships and review; curated capture; close/compaction summaries and write recovery; doctor/backup/repair; validated export/import; and configured-platform verification. The recorded final evidence also includes a real Pi/model restart journey recovering the synthetic marker `COBALT-731`.
+
+MEM-01 through MEM-09 below are therefore an audit map, not a new implementation queue. Preserve the existing memory architecture, schema, identifiers and behavior. Map each MEM item to existing R01-R09 evidence before changing runtime code, and modify runtime behavior only for a concrete reproduced gap. Cloud remains outside the admitted local-core architecture. Earlier unavailable Pi Free evidence must not be relabelled as PASS.
+
+The user explicitly authorized this reconciliation to continue while GSP-06 remains formally open. This sequencing exception does not close GSP-06 and does not transfer evidence between tracks.
+
 ## Product decisions
 
 - Local SQLite is authoritative; cloud is never required for local operation.
@@ -27,54 +37,77 @@ Implement local-first persistent memory parity for ASEN after the Skill parity c
 
 ## Current ASEN baseline
 
-- `src/memory/sqlite-store.ts`: SQLite WAL, project/session columns, basic ID upsert, FTS triggers, restart repair, project-filtered content search.
-- `src/memory/context.ts`: basic remember/search wrapper, not a full context API.
-- Tests cover restart persistence, basic project search isolation, ownership mismatch by ID, and FTS update/rebuild.
-- CAP-MEM-001 and CAP-MEM-002 remain `specified`.
+The original basic-SQLite baseline in this tracker is superseded by the completed memory-v3 work. Current code includes schema version 8, persistent project/session handling, observation lifecycle, FTS retrieval/context, relationships, summaries/recovery, doctor/repair, and validated export/import. Exact closure and test evidence remains in `odd/tasks/memory-v3-parity.md`.
+
+## Current checklist disposition - 2026-11-01
+
+MEM-01 through MEM-09 below are **RECONCILED/COVERED only for the admitted local memory-v3 core**, by the existing R01-R09 evidence map. Checked boxes close obsolete duplicate implementation tasks, NOT strict global parity or unadmitted optional CLI/HTTP/MCP/provider/Cloud surfaces. Never use these checkboxes to promote a global FULL claim. The historical requirement descriptions remain below for traceability; verified capabilities and explicit exclusions are defined in the existing R01-R09 map.
 
 ## Tasks
 
-- [ ] MEM-01 — Freeze the upstream local-memory contract and add an honest parity matrix.
+- [x] MEM-01 — Freeze the upstream local-memory contract and add an honest parity matrix.
   - Record exact source commit, local core documents, hashes, public tool contracts, and intentional cloud/TUI deferrals.
   - Replace broad memory parity claims with observable FULL/PARTIAL/MISSING evidence.
   - Add a validator that rejects unsupported FULL claims.
-- [ ] MEM-02 — Add schema v1, versioned migrations, connection safety, and compatibility import.
+- [x] MEM-02 — Add schema v1, versioned migrations, connection safety, and compatibility import.
   - Tables: projects, sessions, observations, observation FTS, user prompts, prompt FTS, relations, and schema metadata.
   - Reject future schemas without mutation; make migrations idempotent and transactional.
   - Preserve current ASEN rows, IDs, project/session association, and content.
   - Add WAL/local-filesystem checks, busy timeout, bounded writer retry, and concurrent-open tests.
-- [ ] MEM-03 — Implement canonical project identity and persistent sessions.
+- [x] MEM-03 — Implement canonical project identity and persistent sessions.
   - Resolve validated explicit project, existing session, nearest `.asen/config.json`, stable Git/worktree binding, child project, then basename fallback.
   - Fail closed on ambiguity, invalid config, collisions, or unwritable binding.
   - Start/end sessions with canonical directory, ownership, lease, summary, and terminal state.
   - Reject non-mutating cross-project and missing-session writes.
-- [ ] MEM-04 — Implement observation lifecycle and privacy.
+- [x] MEM-04 — Implement observation lifecycle and privacy.
   - Structured title/content/type/scope/topic/provenance fields.
   - Topic-key upsert with revision count; exact duplicate suppression.
   - Partial update, soft delete, hard delete, pin/unpin, and typed failure envelopes.
   - Private redaction and UTF-8 byte limits before persistence and indexing.
-- [ ] MEM-05 — Implement retrieval and context.
+- [x] MEM-05 — Implement retrieval and context.
   - Weighted FTS over title/topic/content, safe query parsing, all/any matching, short-term fallback, filters, previews, and limits.
   - Project-scoped get/search by default; explicit all-project reads only.
   - Context, timeline, recent items, pins, prompts, stale-review state, and total UTF-8 context budget.
-- [ ] MEM-06 — Implement relationships and memory review.
+- [x] MEM-06 — Implement relationships and memory review.
   - Conflict candidates after save; pending relationship records.
   - Judge/compare with related, compatible, scoped, conflicts-with, supersedes, and not-conflict outcomes.
   - Cross-project guard, provenance, stale review, mark-reviewed, and deleted-target rendering.
-- [ ] MEM-07 — Integrate ASEN and Pi lifecycle.
+- [x] MEM-07 — Integrate ASEN and Pi lifecycle.
   - Pi-native save/search/context/get/update/delete/session/summary/timeline/pin/review/judge/compare/doctor tools.
   - Bind writes to the actual Pi runtime session; never trust a model-supplied replacement session ID.
   - Curated passive capture from explicit key learnings; no transcript sink.
   - Prompt capture is best-effort and separately stored; automated artifacts can disable it.
-- [ ] MEM-08 — Implement compaction recovery and operational safety.
+- [x] MEM-08 — Implement compaction recovery and operational safety.
   - Persist structured session summary exactly once before/after compaction according to confirmed/failed/unknown/unavailable outcomes.
   - Unknown outcomes never replay blindly.
   - Memory failure must not suppress the user's final response.
   - Doctor/repair, integrity and FTS checks, backup, atomic versioned export/import, and safe rollback.
-- [ ] MEM-09 — Add local interfaces and complete strict verification.
+- [x] MEM-09 — Add local interfaces and complete strict verification.
   - Thin library, minimal CLI, local HTTP, and MCP adapters over one memory core.
   - Unit, migration, integration, multi-process, security, restart, corruption, and Pi Free lifecycle tests.
   - Promote CAP-MEM-001/002 and parity rows only after exact automated evidence; keep cloud/TUI/sync deferrals explicit.
+
+## MEM to completed R01-R09 audit map — 2026-10-06
+
+| MEM item | Existing evidence | Audit result |
+| --- | --- | --- |
+| MEM-01 | Frozen v3 provenance, contract manifests, parity audit and reference tests already exist. | Covered by the completed v3 evidence; do not recreate. |
+| MEM-02 | R01 implements versioned SQLite migrations, future-version rejection, rollback/reopen, backups and concurrent-open coverage. Current schema is v8. | Covered for the admitted local core. |
+| MEM-03 | R02-R03 cover project/session identity, continuation and bounded resolution/ambiguity behavior. | Covered for the admitted local core. |
+| MEM-04 | R03-R04 cover observation lifecycle, dedupe/topic behavior, update/delete/pin and private-content/size handling. | Covered for the admitted local core. |
+| MEM-05 | R04 and later slices cover project-scoped FTS search, previews and bounded context, including UTF-8 context limits. | Covered for the admitted local core. |
+| MEM-06 | R05 closes typed relationships and idempotent review for the admitted local scope. | Covered for the admitted local core. |
+| MEM-07 | R06-R07 close curated capture, session summaries, write reconciliation and lifecycle integration for the admitted local core. | Covered; do not add a second lifecycle implementation. |
+| MEM-08 | R07-R08 cover exactly-once close/summary behavior, unknown-write reconciliation, final-response preservation, doctor/repair, backup and validated export/import. | Covered for the admitted local core. |
+| MEM-09 | R09 records configured-platform verification; final evidence records a real Pi/model restart E2E. | Core verification covered. Optional interface/provider claims remain bounded by their recorded evidence. |
+
+### Real gaps after reconciliation
+
+No reproduced defect in the existing local memory core was found by this reconciliation. Therefore no runtime or schema change is authorized from this checklist alone.
+
+Items named only by the older checklist, such as adding extra CLI/HTTP/MCP surfaces, are not automatically gaps: the completed v3 scope and its explicit exclusions take precedence. Likewise, unavailable historical Pi Free evidence remains unavailable and must not be converted into a PASS. Capability/parity labels may only be promoted when their own exact evidence supports the promotion.
+
+If a later audit reproduces a concrete behavioral failure, open a bounded fix against that failure rather than reopening MEM-01 through MEM-09 wholesale.
 
 ## Required adversarial evidence
 
@@ -99,5 +132,6 @@ Implement local-first persistent memory parity for ASEN after the Skill parity c
 
 ## Audit evidence
 
-- Frozen upstream analysis identified SQLite/FTS as local authority with sessions, observations, prompts, relationships, topic upserts, dedupe, scopes, lifecycle review, project detection, compaction hooks, doctor, and multiple thin interfaces.
-- ASEN currently implements only the basic SQLite/FTS persistence subset; project detection, persistent sessions, full context, relations, compaction integration, operational repair, and public interfaces remain partial or missing.
+- Frozen upstream analysis identified SQLite/FTS as local authority with sessions, observations, prompts, relationships, topic upserts, dedupe, scopes, lifecycle review, project detection, compaction hooks, doctor, and thin interfaces.
+- The previous statement that ASEN implemented only basic SQLite/FTS is obsolete. The completed memory-v3 tracker records R01-R09 implementation and verification.
+- Remaining work in this tracker is evidence reconciliation unless a concrete runtime gap is reproduced.

@@ -1,0 +1,28 @@
+{
+  "schema": "asen.eco02-closeout/v1",
+  "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+  "functionalEvidence": "VERIFIED",
+  "claimsStatus": "PARTIAL",
+  "nativeReview": "UNAVAILABLE_NOT_APPROVED",
+  "ciRuns": {
+    "CI": 38235086095,
+    "Release Gate": 38235086075,
+    "Phase 0 Architecture": 38235086105,
+    "Pi 1.1 runtime evidence": 38235086191
+  },
+  "matrixCells": 24,
+  "executedReceipts": 24,
+  "retainedFiles": 99,
+  "sourceComparison": "Frozen source compared with the same pinned source; no claim about latest upstream.",
+  "remaining": [
+    "Independent exact-candidate native review and authentic approval/acknowledgement.",
+    "Final authorized admission of supported compatibility contract; no extrapolation to every version or live model recovery."
+  ],
+  "authority": {
+    "historicalReview": "review-24fb23d5e025249c",
+    "historicalResult": "correction_required",
+    "acknowledged": false,
+    "approvalFabricated": false
+  },
+  "claimsPromotion": false
+}

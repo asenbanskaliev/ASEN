@@ -1,6 +1,10 @@
 ---
 name: asen-design
 description: "Trigger: technical design, architecture decision, implementation approach. Design a change from real code, explicit contracts, threats and test strategy."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use after scope/specification when implementation structure requires architectural decisions.

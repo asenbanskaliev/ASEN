@@ -9,7 +9,7 @@ const matrixPath="registry/parity/skill-contract-parity-v1.json";
 const sections=["Activation Contract","Hard Rules","Decision Gates","Execution Steps","Output Contract","References"];
 const read=async(path:string)=>(await readFile(path,"utf8")).replace(/\r\n?/g,"\n");
 const selected=(context:SkillSelectionContext)=>selectSkills(context).map(skill=>skill.id);
-const markers=(text:string,patterns:readonly RegExp[])=>patterns.forEach(pattern=>assert.match(text,pattern));
+const markers=(text:string,patterns:readonly RegExp[])=>{for(const pattern of patterns)assert.match(text,pattern);};
 
 test("direct runtime triggers activate work-unit behavior and unrelated phases do not",()=>{
  for(const context of [{codeChange:true},{behaviorChange:true},{filesTouched:2},{phase:"tasks" as SkillPhase}])
@@ -93,5 +93,24 @@ test("SRC-SKILL-012 retains only the Pi Free gap with deterministic E1 and Skill
   "tests/work-unit-policy.test.ts — deterministic branch, split, line-budget, path, applicability, and boundary-provenance evidence",
   "tests/work-unit-evidence.test.ts — deterministic one-shot evidence, exact partition, generated identity, commit, tree, task, and delivery-relation evidence",
   "tests/work-unit-review-candidate.test.ts — deterministic exact commit or repository-bound PR-slice candidate evidence"
+ ]);
+});
+
+test("small organic work-unit guidance does not impose tracking or repository operations",async()=>{
+ const contract=selectSkills({phase:"apply",codeChange:true,behaviorChange:true,selectionProfile:"organic"}).find(skill=>skill.id==="asen-work-unit");
+ assert.ok(contract);
+ const text=await read(contract.path);
+ markers(text,[
+  /Selecting this skill does not itself require a feature document, todo, branch operation, commit, PR, or delivery/is,
+  /Small work.*understood.*contained risk.*resumable.*stays inline.*unless requested/is
+ ]);
+});
+
+test("strict work-unit delivery instructions apply only with applicability and authority",async()=>{
+ const text=await read(skillPath);
+ markers(text,[
+  /Apply the requirements below only when tracking or delivery is applicable and authorized/is,
+  /Without repository authority, do not create branches or commits/is,
+  /required delivery evidence as pending, never fabricate completion/is
  ]);
 });

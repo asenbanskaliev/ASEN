@@ -1,6 +1,10 @@
 ---
 name: asen-archive
 description: "Trigger: archive completed change, close engineering cycle. Preserve verified final-state contracts and immutable audit history after successful verification."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use only after the exact final candidate has passed required verification and closure gates.

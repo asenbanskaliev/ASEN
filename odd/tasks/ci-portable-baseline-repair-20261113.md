@@ -1,0 +1,67 @@
+# ASEN — CI portable baseline reconciliation (2026-11-13)
+
+## Scope and authority
+
+Owner requested a fresh GitHub audit of code, documentation and failing CI, followed by repairs. Exact source head: `12fc65be8dd3974aa7856db313597db760dc82a4`; last prior confirmed green candidate: `a49d8ad939921c5f004c4a71c0774885fd728599`. This separate branch is a *repair candidate*, not feature acceptance, native approval, release or authorization to merge into `main`.
+
+No changes to the upstream Pi fork, P32 font/capture/footer implementation, permissions, private fixtures, provider consent, historical stopped proof, or R4 acceptance status. Do not claim green or FULL without new same-SHA receipts.
+
+## Implemented bounded repairs
+
+- Preserve Pi `(args, ctx)` command signature in scoped `registerData` wrapper, including direct zero-argument test calls, without moving publication guard into `args`.
+- Distinguish Markdown path from `#fragment` in documented links; explicitly check the two known handoff section titles.
+- Align review/persona help tests with actual public read-only usage; do not claim native review approval.
+- Align protected-literal CLI argument fixtures with the one explicitly auto-loaded ASEN package extension. These tests still check the exact forwarded literal tail, without removing denials or parser validation.
+- Record the ODD workflow selection distinction without treating agents/modes as authorization.
+- Replace a test-only dependency on an intentionally deferred private/design path with a **synthetic, versioned public regression oracle** derived from the checked-in WIP runtime colors. It does not replace real design provenance, color approval, host snapshots or P32 verification.
+
+## Still blocked / not repaired by this batch
+
+- `scripts/audit-upstream-boundary.mjs` flags 27 referenced paths, including external provenance documents and native RDD schema literals. Separate security assessment required before any narrowly allowed exceptions; never disable audit globally.
+- P05/P10/P11 stateful frozen test roots, `ASEN_AUDIT_ROOT` and ignored legacy helper `.asen-audit/env-c.sh` need independently admitted, portable isolated test fixtures.
+- P32 gauge RED is intentional and `STOPPED_BLOCKED`, not a harmless snapshot mismatch. No normalization or fake GREEN.
+- Packed Pi RPC first-command timeout, concurrent Pi process/effort 5-second timeouts, and agent state teardown `ENOTEMPTY` need cause-focused reproductions. Do not just extend deadlines to hide a hang.
+- CI test-shard coverage, R4 evidence and T12 integrated security are downstream gates; they cannot be promoted to PASS independently of their inputs.
+
+## Verification and acceptance
+
+Static source review only before publication. Publish on separate feature fix branch, open draft PR *into the existing development branch*, run GitHub CI against its exact head, inspect all relevant checks and follow remaining failures with separate test-first fixes. Do not merge automatically, do not alter the base PR #57 or its head, and do not claim `globalFull:true`.
+
+## Next security-boundary candidate — explicit path/schema treatment
+
+The previous candidate proved that packaged Pi RPC can advance beyond native-menu waits and CLI vector assertions, but Phase0 and the package scan still reject the same exact external wire-schema strings. The next change adds one shared **audit-only** policy helper for 25 historically published, non-executable provenance documents and for exactly three `schema`-property values in `src/review/native-rdd-control.ts` and its test. All unknown paths, executable imports, unmatched strings and suffix mutations continue to fail. The packed-product verifier uses the same schema-masking helper; no production RDD validator or wire format is modified. Tests verify legitimate exact shapes and malicious lookalikes/imports. Documentation exceptions are path-literal, never directory globbing.
+
+This is a **risk-relevant security policy change, IMPLEMENTED_PENDING_INDEPENDENT_REVIEW**: a green automated gate does not establish an independent review, genuine native authority, publisher provenance, real host acceptance or global parity. In particular, grandfathered provenance text must be reviewed before adding new exception paths. Do not promote this candidate to a release or merge without separately evaluating the policy changes and the complete CI results.
+
+## Focused CI repair candidate — November 13, subsequent audit
+
+- Native editor tests now simulate actual `mode=tui`; RPC no-selector tests remain and must stay negative. This fixes the test contract rather than broadening RPC interactive privileges.
+- P05/P10/P11/skill-loader public tests now allocate isolated synthetic own roots on demand and remove only those roots. They **do not** confer retrospective parent admission to any frozen private evidence; acceptance remains separately blocked.
+- Agent runtime fallback test waits for durable terminal notification before deleting the fixture, preventing teardown racing a background persistence operation. No production result is assumed before persisted terminal.
+- The previously RED P32 observed-only status gauge has now been added to the actual formatter, bounded to a complete-width host row; tests still verify byte-for-byte legacy/unknown/narrow outputs. **Visual Windows Consolas glyph proof and owner-deferred capture are NOT made green by this unit change** and remain open for independent review. This new user instruction requested repairing CI errors; no fonts/assets are copied or installed.
+- The strict CI matrix/R4 admission is not weakened: technical checks can run on the review PR but global FULL is gated on authentic, same-SHA results and separate visual/independent proof.
+
+## R4 technical candidate run on the review PR
+
+CI conditionals now admit the exact `fix/ci-portable-baseline-20261113` head **only when** the PR base is `feat/t12-integrated-acceptance-merge`. R4 native-input validation separately enforces the same branch/base pair, repository, immutable checkout SHA, and same-run prerequisite statuses. T07 and T12 are enabled for this exact review PR. No secret-dependent R4 independent reviewer and no paid-provider live test is enabled. If a required shard fails, R4 technical **must** emit `R4_TECHNICAL_FAIL` with `globalFull:false`. Automatic `R4_TECHNICAL_PASS`, if eventually achieved, remains neither independent review nor full Shell/ASEN parity.
+
+## Follow-up CI stabilization — no relaxed oracle
+
+A fresh Windows shard and macOS shard showed a single stale `focus-extension-integration` header assertion each: the actual observed-host status now contains the eight-cell P32 gauge. The assertion now demands that exact output rather than treating it as noise. Previous Ubuntu/macOS Pi process fixtures also reported 5/10-second expiry under parallel test-file load. The POSIX test planner now isolates only `pi-process-runner.test.ts` and `pi-agent-runtime.test.ts` into serial chunks, preserving the exact timeouts, every existing test and six-shard coverage receipts; Windows process-heavy isolation was already in place and remains unchanged. A negative partition test rejects duplicate/missing members. This is a scheduling improvement, not provider or host acceptance.
+
+## Final deterministic assertion reconciliation — candidate follow-up
+
+On exact SHA `960264ee`, Ubuntu completed **3,721 PASS / 5 FAIL / 0 cancelled / 14 skipped**, with the only test failures being four `panel-observation-integration` host-row expectations that still omitted the now-shipped P32 observed gauge, and one `test-runner` expectation of the historical Linux ordinary chunk name `all`. macOS shard0 completed **435 PASS / 4 FAIL** (the same host-row expectations). Windows shard0 **PASS**; Windows shard2 reported the same Linux-plan naming expectation from its cross-platform contract tests. These are not permission or timeout failures. The follow-up updates the exact observed-host assertion values, retains narrow status-panel expectations where the complete gauge does not fit, and restores the stable ordinary chunk name `all` without reintroducing process contention. Visual font proof still remains separate.
+
+## Exact compact status / panel width regression follow-up
+
+On `e5409a82`, all earlier deterministic REDs in full Ubuntu and macOS shard0 disappeared except one panel-observation assertion. The actual `/asen-panel status` at 97 usable columns **does** show P32 when the label is shorter (`80%`) and **does not** when the longer `80% warning` row plus the separate integrations segment would exceed the row width. The previous regex accidentally required a bare `ctx 80%` before the next separator and rejected the valid eight-cell gauge. New integration assertion independently computes the fixed terminal budget and exact expected candidate-vs-legacy complete row; it does not make the gauge optional regardless of width. Width, legacy and cell math remain covered by dedicated formatter tests. Visual glyph proof is still separate.
+
+
+## CI attempt 2 — T12 synthetic rerun fixture regression (2026-11-13)
+
+The exact-SHA CI run 43517330949 first attempt reached five green shards and failed macOS shard0 on three bounded Pi process timeouts; `test-shard-coverage` and R4 therefore correctly failed closed. A GitHub **rerun of failed jobs** on the same SHA was then executed, without modifying code. In attempt 2, macOS shard0 cleared those earlier Pi timeouts but reported five failures in `tests/t12-inference-budget.test.ts`: the synthetic strict-order unit tests inherited GitHub's `GITHUB_ACTIONS=true` and `GITHUB_RUN_ATTEMPT=2`, activating the intentionally non-replayable **real-provider** reservation guard.
+
+The repair isolates **only that synthetic test module's process environment** from CI-run metadata while preserving its unique disposable roots, cross-process atomic claims, and all existing stage-order/replay assertions. A new explicit negative regression restores the real GitHub attempt-2 environment within the fixture and must observe a strict denial without writing any inference receipt. The **production** `scripts/t12-inference-budget.mjs` guard, call limits, receipts, provider consent and credentials remain unchanged. No provider is called. This is not R4 success or consent for another authentic inference.
+
+The new HEAD requires fresh same-SHA CI/Release Gate/Pi/Phase0 validation. PR #58 remains draft and must not be merged pending **all applicable checks PASS**, review of the 25 documentary exceptions plus three RDD wire-schema exceptions, and explicit P32 visual approval. R4 automated technical evidence is separate from independent review; `globalFull:false`, authentic 20 two-environment cases and 24 UI cases remain open.

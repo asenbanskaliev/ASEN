@@ -1,0 +1,259 @@
+{
+  "schema": "asen-shell-asen-scenarios/v1",
+  "description": "Active Pi Shell/ASEN twenty-case functional acceptance scenarios; never a separate methodology-runtime lane.",
+  "comparisonFields": [
+    "route",
+    "roles",
+    "guards",
+    "checks",
+    "notifications",
+    "effects"
+  ],
+  "sources": [
+    "SHELL",
+    "ASEN"
+  ],
+  "cases": [
+    {
+      "id": "C01",
+      "scenario": "Trabajo pequeño directo",
+      "requiredObservableFields": [
+        "route",
+        "roles",
+        "effects"
+      ],
+      "mode": "direct",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C02",
+      "scenario": "Explorer estructural CodeGraph-first",
+      "requiredObservableFields": [
+        "route",
+        "roles",
+        "checks"
+      ],
+      "mode": "read-only",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C03",
+      "scenario": "Presupuesto y delegación Explorer",
+      "requiredObservableFields": [
+        "route",
+        "roles",
+        "checks"
+      ],
+      "mode": "read-only",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C04",
+      "scenario": "Petición ambigua o de alto riesgo",
+      "requiredObservableFields": [
+        "route",
+        "guards",
+        "effects"
+      ],
+      "mode": "safety",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C05",
+      "scenario": "Plan ODD de varias etapas",
+      "requiredObservableFields": [
+        "route",
+        "roles",
+        "checks"
+      ],
+      "mode": "planning",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C06",
+      "scenario": "Dos unidades Writer disjuntas",
+      "requiredObservableFields": [
+        "roles",
+        "guards",
+        "effects"
+      ],
+      "mode": "write",
+      "requiresHumanConsent": true,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C07",
+      "scenario": "Dos Writers sobre un archivo",
+      "requiredObservableFields": [
+        "roles",
+        "guards",
+        "effects"
+      ],
+      "mode": "write",
+      "requiresHumanConsent": true,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C08",
+      "scenario": "Corrección RED/GREEN/PRESERVE",
+      "requiredObservableFields": [
+        "roles",
+        "checks",
+        "effects"
+      ],
+      "mode": "write",
+      "requiresHumanConsent": true,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C09",
+      "scenario": "Cambio de riesgo medio sin Verifier extra",
+      "requiredObservableFields": [
+        "route",
+        "roles",
+        "checks"
+      ],
+      "mode": "review",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C10",
+      "scenario": "Cambio de alto riesgo con Verifier propio",
+      "requiredObservableFields": [
+        "roles",
+        "checks",
+        "guards"
+      ],
+      "mode": "review",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C11",
+      "scenario": "Revisión normal y transición",
+      "requiredObservableFields": [
+        "route",
+        "roles",
+        "checks"
+      ],
+      "mode": "review",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C12",
+      "scenario": "Revisión adversarial con bloqueo",
+      "requiredObservableFields": [
+        "roles",
+        "checks",
+        "guards"
+      ],
+      "mode": "review",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C13",
+      "scenario": "Subagente con padre activo e inactivo",
+      "requiredObservableFields": [
+        "roles",
+        "notifications",
+        "checks"
+      ],
+      "mode": "notification",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C14",
+      "scenario": "Resultado repetido o antiguo",
+      "requiredObservableFields": [
+        "guards",
+        "notifications",
+        "effects"
+      ],
+      "mode": "notification",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C15",
+      "scenario": "Reinicio con entrega incierta",
+      "requiredObservableFields": [
+        "guards",
+        "notifications",
+        "effects"
+      ],
+      "mode": "recovery",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C16",
+      "scenario": "Modelo sin cuota o credenciales",
+      "requiredObservableFields": [
+        "guards",
+        "checks",
+        "effects"
+      ],
+      "mode": "provider-unavailable",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C17",
+      "scenario": "Acción fuera de ámbito autorizado",
+      "requiredObservableFields": [
+        "guards",
+        "effects"
+      ],
+      "mode": "safety",
+      "requiresHumanConsent": false,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C18",
+      "scenario": "Decisión humana del subagente",
+      "requiredObservableFields": [
+        "roles",
+        "guards",
+        "notifications"
+      ],
+      "mode": "human-decision",
+      "requiresHumanConsent": true,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C19",
+      "scenario": "Writer Pi con permiso humano",
+      "requiredObservableFields": [
+        "roles",
+        "guards",
+        "effects"
+      ],
+      "mode": "write",
+      "requiresHumanConsent": true,
+      "stage": "NOT_EXECUTED"
+    },
+    {
+      "id": "C20",
+      "scenario": "Flujo completo de cinco roles",
+      "requiredObservableFields": [
+        "route",
+        "roles",
+        "checks",
+        "notifications",
+        "effects"
+      ],
+      "mode": "end-to-end",
+      "requiresHumanConsent": true,
+      "stage": "NOT_EXECUTED"
+    }
+  ]
+}

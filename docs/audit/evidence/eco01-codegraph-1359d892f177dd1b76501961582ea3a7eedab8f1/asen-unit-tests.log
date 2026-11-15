@@ -1,0 +1,20 @@
+✔ registered read-only CodeGraph adapter keeps malicious query as one literal argument (140.871835ms)
+✔ model cannot change roots, executable, limits or initialize an index (11.824439ms)
+✔ read-only compatibility tool rejects unsafe existing index entries before subprocess execution (22.252789ms)
+✔ stale/error output is sanitized with no automatic initialization or retry (41.394376ms)
+✔ bounded subprocess output, timeout and cancellation fail safely (147.728427ms)
+✔ PATH entry normalization strips only matched surrounding double quotes (0.301195ms)
+✔ npm entry resolution rejects escaping metadata, entries and shell shims (9.790065ms)
+✔ tools omit an absent AbortSignal from injected runner options and preserve a provided signal (17.23784ms)
+✔ canonical CodeGraph tool exposes upstream metadata and exact scoped argv without automatic init (15.055817ms)
+✔ canonical CodeGraph tool validates an existing index with lstat and never executes for unsafe entries (21.651255ms)
+✔ canonical CodeGraph tool truncates output and returns upstream-compatible fallback metadata (14.317807ms)
+✔ canonical registration and ASEN integration expose both contracts with correct annotations (7.521647ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1621.295385

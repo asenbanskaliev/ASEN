@@ -1,0 +1,91 @@
+{
+	"schema": "asen-rail-feasibility-probe/v2",
+	"candidateSha": "4d3bbb8713287659d841ab6d03723d5a315080fc",
+	"host": "@earendil-works/pi-coding-agent",
+	"hostVersion": "1.2.0",
+	"platform": "win32",
+	"measuredWidth": 140,
+	"resizeWidth": 120,
+	"runRole": "primary",
+	"observations": {
+		"apiPresence": {
+			"setWidget": true,
+			"setHeader": true,
+			"custom": true,
+			"getEditorText": true,
+			"focusReader": true,
+			"overlayBounds": true
+		},
+		"widgetRender": {
+			"framesBeforeMount": 0,
+			"framesAfterMount": 4,
+			"framesTyped": 4,
+			"framesOverlay": 6,
+			"framesResized": 2,
+			"framesAfterDispose": 0
+		},
+		"docWidth": {
+			"baselineMin": 140,
+			"baselineMax": 140,
+			"withRailMin": 140,
+			"withRailMax": 140,
+			"afterResizeMin": 120,
+			"afterResizeMax": 120
+		},
+		"railWidth": {
+			"min": 120,
+			"max": 140
+		},
+		"overlay": {
+			"boundsAfterOpen": {
+				"row": 0,
+				"col": 0,
+				"width": 30,
+				"height": 1
+			},
+			"boundsAfterResize": {
+				"row": 0,
+				"col": 0,
+				"width": 30,
+				"height": 1
+			},
+			"boundsAfterDispose": null
+		},
+		"inputPreservation": {
+			"afterType": true,
+			"afterOverlay": true,
+			"afterResize": true,
+			"afterDispose": true
+		},
+		"focus": {
+			"base": "CustomEditor",
+			"typed": "CustomEditor",
+			"overlay": "CustomEditor",
+			"resized": "CustomEditor"
+		},
+		"disposal": {
+			"railFramesStopped": true,
+			"overlayGone": true,
+			"editorTextKept": true
+		}
+	},
+	"capabilities": {
+		"additive-widget": "VERIFIED",
+		"transcript-reflow": "NO_REFLOW_OBSERVED",
+		"resize-re-render": "VERIFIED",
+		"input-preservation": "VERIFIED",
+		"focus-stability": "VERIFIED",
+		"overlay-occlusion": "OCCLUSION_OBSERVED",
+		"disposal-cleanliness": "VERIFIED",
+		"reserved-column": "GAP",
+		"rail-candidate-class": "ADDITIVE NO RESERVATION"
+	},
+	"selfTest": {
+		"positionOnlyClaimRejected": true,
+		"occlusionAsRailClaimRejected": true
+	},
+	"limitation": "This receipt measures one executed Pi host session through render-path widths the host itself passed to mounted components (setHeader document slot, setWidget rail factory, custom overlay handle, getEditorText, getFocusedComponent, OverlayHandle.getBounds). It contains no PTY line-width inference. RESERVED COLUMN requires a measured sustained narrowing of the conversation render width; OCCLUSION records an overlay that covers an unshrunk transcript and is never a rail; ADDITIVE NO RESERVATION records a persistent widget that changes no width; INCONCLUSIVE records unmeasurable evidence. VERIFIED applies only where the listed public-API observation succeeded.",
+	"modelCalls": 0,
+	"networkCalls": 0,
+	"providerCalls": 0
+}

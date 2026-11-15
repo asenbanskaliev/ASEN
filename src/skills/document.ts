@@ -92,7 +92,10 @@ export function auditSkillDocument(text:string,{directoryName}:{directoryName:st
  const description=metadata?.description;
  if(!descriptionLine||!/^description: "(?:[^"\\]|\\.)*"$/.test(descriptionLine)||!description?.startsWith("Trigger:")||description.length>250)
   add("invalid-description","Description must be quoted, one physical line, trigger-first, and at most 250 characters");
- if(frontmatter.lines.find(line=>line.startsWith("license:"))!=="license: Apache-2.0")add("invalid-frontmatter","License must be Apache-2.0");
+ // ASEN's MIT repository policy is the style guide's explicit license exception.
+ const licenseLine=frontmatter.lines.find(line=>line.startsWith("license:"));
+ if(licenseLine!=="license: Apache-2.0"&&licenseLine!=="license: MIT")
+  add("invalid-frontmatter","License must be Apache-2.0 or MIT (ASEN repository policy)");
  const authorLine=frontmatter.lines.find(line=>line.startsWith("  author:"));
  const author=authorLine===undefined?null:scalar(authorLine.slice(2),"author");
  if(!author?.trim())add("invalid-frontmatter","Metadata author must be a nonblank scalar value");

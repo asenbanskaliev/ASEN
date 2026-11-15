@@ -1,0 +1,30 @@
+{
+  "schema": "asen.todo/v1",
+  "revision": 2,
+  "items": [
+    {
+      "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+      "title": "Review parser",
+      "events": [
+        {
+          "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+          "sessionId": "eco01-normal",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:21:52.713Z"
+        },
+        {
+          "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+          "sessionId": "eco01-normal",
+          "projectId": "/eco01-project",
+          "revision": 2,
+          "state": "running",
+          "at": "2026-10-16T16:21:52.723Z",
+          "reason": "checking"
+        }
+      ],
+      "requestId": "eco01-normal-request"
+    }
+  ]
+}

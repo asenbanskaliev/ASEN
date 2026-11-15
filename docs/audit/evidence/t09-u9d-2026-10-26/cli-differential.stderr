@@ -1,0 +1,30 @@
+No API key found for the selected model.
+
+Use /login to log into a provider via OAuth or API key. See:
+  /workspace/scratch/52e5d39ebfa0/ASEN/node_modules/@earendil-works/pi-coding-agent/docs/providers.md
+  /workspace/scratch/52e5d39ebfa0/ASEN/node_modules/@earendil-works/pi-coding-agent/docs/models.md
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: explicit-home
++ actual - expected
+
+  {
+    code: 1,
++   stderr: '',
+-   stderr: 'Pi runtime not found\n',
+    stdout: ''
+  }
+
+    at <anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/cli-differential.ts:23:115)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: { code: 1, stdout: '', stderr: '' },
+  expected: { code: 1, stdout: '', stderr: 'Pi runtime not found\n' },
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.22.1

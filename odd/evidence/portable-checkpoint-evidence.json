@@ -1,0 +1,99 @@
+{
+  "schema": "asen.portable-wip-provenance/v1",
+  "kind": "PUBLIC_ODD_SUMMARY_NOT_RECEIPT_OR_APPROVAL",
+  "preparationHead": "a49d8ad9",
+  "dirtyWorktreeIsNotApprovedSha": true,
+  "globalReadiness": false,
+  "nativeAuthority": false,
+  "parentStagingApproval": false,
+  "commit": null,
+  "push": null,
+  "records": [
+    {
+      "topic": "P32 actual RED",
+      "sources": ["odd/tasks/p32-context-gauge.md#Log:L11"],
+      "historicalOutcome": {"tests": 15, "pass": 13, "fail": 2, "missingGaugeFailures": [9, 14]},
+      "limits": "Case14 stopped at its first assertion; later gauge variants were not executed. Not G1 completion or feature GREEN.",
+      "originalFormatterSha256ReportedByOdd": "d64cd36ba46c1da541c50f118d7f14f747a1956e1ebb7b632c984591428e0f3a",
+      "formatter": "UNCHANGED per public ODD; not rehashed by this writer"
+    },
+    {
+      "topic": "P32 capture01",
+      "sources": ["odd/tasks/p32-context-gauge.md#Log:L16", "odd/tasks/p32-context-gauge.md#Log:L17"],
+      "historicalOutcome": "Environment guard rejected inherited key before application imports, PowerShell, graphics or PNG generation",
+      "applicationImports": 0,
+      "glyphChecks": 0,
+      "png": 0,
+      "innerExit": 1,
+      "outerExit": 2,
+      "limits": "No dataset/inner receipt/glyph report; not a native graphics unavailability finding"
+    },
+    {
+      "topic": "P32 capture02 and owner stop",
+      "sources": ["odd/tasks/p32-context-gauge.md#Log:L18", "odd/tasks/p32-context-gauge.md#Specs:S7", "odd/tasks/p32-context-gauge.md#Log:L19", "odd/tasks/github-portable-continuation.md#Log:L14-L16"],
+      "historicalOutcome": "Environment passed; 30 original-source formatter fixture outputs collected; future-glyph validation rejected unsupported U+25B0",
+      "datasetCases": 30,
+      "datasetSha256ReportedByOdd": "fab4b3017f5ae39e62c9b954757b3c5a95839ab75e418c95b8545ceda002530e",
+      "png": 0,
+      "glyphReport": "ABSENT; no full glyph PASS",
+      "childPowerShellExit": 1,
+      "outerExit": 2,
+      "admissions": "Both frozen USED; excluded, not portable, not renewed",
+      "ownerChoice": "checkpoint_with_font_blocked",
+      "fontCycle": "STOPPED_BLOCKED",
+      "gates": {"G1": "BLOCKED", "G2": "PENDING", "G3": "PENDING", "G4": "PENDING"},
+      "prohibitedContinuation": ["new font/resource probe", "capture03", "ASCII substitution", "G2 footer edit", "font-byte copy"],
+      "permissionTransfer": false
+    },
+    {
+      "topic": "P10 bounded editor",
+      "sources": ["odd/tasks/p10-fallback-editor.md#Tasks:G3", "odd/tasks/p10-fallback-editor.md#Log:L26-L27"],
+      "historicalOutcome": "Bounded selected-global ASEN-parent editor: parent17/17, separate technical verifier17/17, final parent17/17; original setup and first GREEN failures retained",
+      "limits": "No native, actual host, provider, visual or global approval; local raw receipts unavailable in checkpoint"
+    },
+    {
+      "topic": "P11 child wiring",
+      "sources": ["odd/tasks/p11-child-fallback-wiring.md#Log:L13-L14"],
+      "historicalOutcome": "Parent7/7 and separate technical verifier7/7; required subsequent parent spotcheck timed out",
+      "parentSpotcheck": {"childTimeoutSeconds": 20, "outerTimeoutSeconds": 30, "error": "ETIMEDOUT", "signal": "SIGTERM", "executedProgress": "UNKNOWN", "tap": "ABSENT"},
+      "gates": {"G3": "BLOCKED_OWNER_DEFERRED", "G4": "PENDING"},
+      "retry": false
+    },
+    {
+      "topic": "P05 and P19",
+      "sources": ["odd/tasks/p05-home-selectors.md#Tasks:H3", "odd/tasks/p05-home-selectors.md#Log:L13-L14", "odd/tasks/p19-parent-red-checkpoint.md#Log:L12"],
+      "historicalOutcome": "P05 H3 executable independent verification missing after parser setup failure; P19 recovery disconnect exit41 and closed streams without ChildProcess close; EOF/abort not reached",
+      "limits": "P19 NOT_IMPLEMENTED, no checkpoint enforcement claim; no retry, alternate transport or replacement proof"
+    },
+    {
+      "topic": "Conserved original gates",
+      "sources": ["odd/tasks/asen-gentle-shell-parity-implementation.md:337-346"],
+      "gates": {
+        "EQ09_K9": "DEFERRED; zero valid differential comparisons and independent final preservation missing",
+        "EQ10_R3b": "FROZEN;328 lines/6 paths; two pre-case setup failures; correction budget exhausted; independent verifier NOT_LAUNCHED",
+        "EQ11_T3c2b": "FROZEN; verifier admission rejected, no verdict/full206 proof",
+        "EQ12": "Cancellation timeout; descendant/output/authority proof missing",
+        "EQ13": "Original independent compiler prerequisites/scripts and genuine after-images missing",
+        "EQ14": "Original owner narrow actual-host after-image missing"
+      },
+      "limits": "No rerun, replacement, substituted proof or reset"
+    },
+    {
+      "topic": "P38",
+      "sources": ["odd/tasks/asen-gentle-shell-parity-implementation.md:296-299"],
+      "historicalOutcome": "Owner adopted manual guidance DIFFERENT; selected command is not executed",
+      "limits": "Host keyboard/pointer/focus/clipping/images and whole-menu parity remain unverified"
+    },
+    {
+      "topic": "Publication and portability gaps",
+      "sources": ["odd/tasks/github-portable-continuation.md#Log:L7", "odd/tasks/github-portable-continuation.md#Log:L10-L16", "odd/tasks/asen-gentle-shell-parity-implementation.md:277-279"],
+      "historicalOutcome": "Old T3 mwb017yw-1-lzqe SyntaxError before checks: zero checks, DROPPED; no relaunch/substitute",
+      "policy": ".gitignore four-line change DEFERRED_UNVERIFIED; untouched, no security-policy waiver",
+      "pending": ["Exact candidate content and parent staging assessment", "Actual repository/native delivery guards", "Fresh host prerequisites and owned hard-link-capable fixtures", "Legacy skill-launcher helper portability gap"],
+      "publicSourceSupplement": "tests/skill-launcher-resources.test.ts:12-15 names ASEN_AUDIT_ROOT and an ignored legacy helper; no helper contents inspected or required here"
+    }
+  ],
+  "historicalEvidenceAvailability": "Raw local receipts, hashes/preimages, admissions, captures and private state are NOT INCLUDED and UNAVAILABLE on a new machine; public logs report history, not recreated approval",
+  "newCandidateChecks": "Structural only, results in writer local handoff; no product tests, imports, independent review, native assessment, installation, build or typecheck",
+  "identityLimit": "Reported dirty raw-byte identities and historical EOL counts are not exact-Git-SHA approval or cross-machine raw EOL certification"
+}

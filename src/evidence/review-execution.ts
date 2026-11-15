@@ -3,28 +3,14 @@ import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {promisify} from "node:util";
-import type {Candidate} from "../core/types.js";
+import type {Candidate} from "../core/model.js";
 import {matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {assertExactGitCandidate} from "./execution.js";
+import {issueExecutedReview,type ExecutedReview} from "./executed-review.js";
 import {assertReviewCandidate,type ReviewReport} from "../review/review.js";
 
 const run=promisify(execFile);
-const issuedReviews=new WeakSet<object>();
-export interface ExecutedReview{
- readonly candidateRepository:string;
- readonly candidateId:string;
- readonly candidateRevision:string;
- readonly taskId:string;
- readonly reviewerId:string;
- readonly authorId:string;
- readonly command:readonly string[];
- readonly startedAt:string;
- readonly finishedAt:string;
- readonly report:ReviewReport;
-}
-export function isExecutedReview(value:unknown):value is ExecutedReview{
- return typeof value==="object"&&value!==null&&issuedReviews.has(value);
-}
+export {isExecutedReview,type ExecutedReview} from "./executed-review.js";
 export async function executeIndependentReview(candidate:Candidate,context:IssuedSkillContext,authorId:string,command:readonly [string,...string[]]):Promise<ExecutedReview>{
  if(!matchesIssuedSkillContext(context,context.taskId,candidate.repository,candidate)||context.phase!=="adversarial-review")throw new Error("Review requires issued reviewer authority for exact candidate");
  if(!authorId||context.taskId===authorId)throw new Error("Reviewer must be independent of author");
@@ -49,10 +35,10 @@ export async function executeIndependentReview(candidate:Candidate,context:Issue
   if(report.findings.some(f=>f.severity==="critical"||f.severity==="high"))throw new Error("Review contains blocking findings");
   const frozenReport=Object.freeze({...report,findings:Object.freeze(report.findings.map(f=>Object.freeze({...f})))});
   const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,taskId:context.taskId,reviewerId:report.reviewer,authorId,command:Object.freeze([...command]),startedAt,finishedAt:new Date().toISOString(),report:frozenReport});
-  issuedReviews.add(proof);
-  return proof;
+  return issueExecutedReview(proof);
  }finally{
-  try{execFileSync("git",["-C",candidate.repository,"worktree","remove","--force",isolated],{stdio:"ignore"});}catch{}
+  try{execFileSync("git",["-C",candidate.repository,"worktree","remove","--force",isolated],{stdio:"ignore"});}
+  catch{/* Recursive parent cleanup below remains authoritative. */}
   await rm(parent,{recursive:true,force:true});
  }
 }

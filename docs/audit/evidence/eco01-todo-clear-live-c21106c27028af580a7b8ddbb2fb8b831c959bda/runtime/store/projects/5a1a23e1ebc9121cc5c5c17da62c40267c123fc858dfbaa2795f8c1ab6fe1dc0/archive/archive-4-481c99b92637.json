@@ -1,0 +1,52 @@
+{
+  "schema": "asen.todo/v1",
+  "revision": 4,
+  "items": [
+    {
+      "taskId": "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+      "title": "Review parser",
+      "events": [
+        {
+          "taskId": "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+          "sessionId": "eco01-clear",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:59:01.757Z"
+        },
+        {
+          "taskId": "todo-ff34452a-e0ec-41d6-bfe4-4a5bec0edf3f",
+          "sessionId": "eco01-clear",
+          "projectId": "/eco01-project",
+          "revision": 2,
+          "state": "cancelled",
+          "at": "2026-10-16T16:59:01.770Z",
+          "reason": "User cleared the active task list"
+        }
+      ]
+    },
+    {
+      "taskId": "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4",
+      "title": "Run regression suite",
+      "events": [
+        {
+          "taskId": "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4",
+          "sessionId": "eco01-clear",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:59:01.763Z"
+        },
+        {
+          "taskId": "todo-08f8d62a-4094-4c1a-b55f-d4fcf0fab5f4",
+          "sessionId": "eco01-clear",
+          "projectId": "/eco01-project",
+          "revision": 2,
+          "state": "cancelled",
+          "at": "2026-10-16T16:59:01.774Z",
+          "reason": "User cleared the active task list"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,216 @@
+[
+  {
+    "name": "version",
+    "before": {
+      "code": 0,
+      "stdout": "0.1.0\n",
+      "stderr": ""
+    },
+    "after": {
+      "code": 0,
+      "stdout": "0.1.0\n",
+      "stderr": ""
+    }
+  },
+  {
+    "name": "home",
+    "before": {
+      "code": 0,
+      "stdout": "/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen/agent\n",
+      "stderr": ""
+    },
+    "after": {
+      "code": 0,
+      "stdout": "/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen/agent\n",
+      "stderr": ""
+    }
+  },
+  {
+    "name": "explicit-home-setup",
+    "before": {
+      "code": 0,
+      "stdout": "{\n  \"schema\": \"asen.maintenance-plan/v1\",\n  \"operation\": \"setup\",\n  \"executable\": false,\n  \"packageRoot\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg\",\n  \"prefix\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen\",\n  \"home\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/custom\",\n  \"steps\": [\n    {\n      \"order\": 1,\n      \"intent\": \"stage\",\n      \"executable\": false\n    },\n    {\n      \"order\": 2,\n      \"intent\": \"verify\",\n      \"executable\": false\n    },\n    {\n      \"order\": 3,\n      \"intent\": \"activate\",\n      \"executable\": false\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    "after": {
+      "code": 0,
+      "stdout": "{\n  \"schema\": \"asen.maintenance-plan/v1\",\n  \"operation\": \"setup\",\n  \"executable\": false,\n  \"packageRoot\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg\",\n  \"prefix\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen\",\n  \"home\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/custom\",\n  \"steps\": [\n    {\n      \"order\": 1,\n      \"intent\": \"stage\",\n      \"executable\": false\n    },\n    {\n      \"order\": 2,\n      \"intent\": \"verify\",\n      \"executable\": false\n    },\n    {\n      \"order\": 3,\n      \"intent\": \"activate\",\n      \"executable\": false\n    }\n  ]\n}\n",
+      "stderr": ""
+    }
+  },
+  {
+    "name": "selector-conflict",
+    "before": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "--link and --isolated are mutually exclusive\n"
+    },
+    "after": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "--link and --isolated are mutually exclusive\n"
+    }
+  },
+  {
+    "name": "setup-preview",
+    "before": {
+      "code": 0,
+      "stdout": "{\n  \"schema\": \"asen.maintenance-plan/v1\",\n  \"operation\": \"setup\",\n  \"executable\": false,\n  \"packageRoot\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg\",\n  \"prefix\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen\",\n  \"home\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen/agent\",\n  \"steps\": [\n    {\n      \"order\": 1,\n      \"intent\": \"stage\",\n      \"executable\": false\n    },\n    {\n      \"order\": 2,\n      \"intent\": \"verify\",\n      \"executable\": false\n    },\n    {\n      \"order\": 3,\n      \"intent\": \"activate\",\n      \"executable\": false\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    "after": {
+      "code": 0,
+      "stdout": "{\n  \"schema\": \"asen.maintenance-plan/v1\",\n  \"operation\": \"setup\",\n  \"executable\": false,\n  \"packageRoot\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg\",\n  \"prefix\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen\",\n  \"home\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen/agent\",\n  \"steps\": [\n    {\n      \"order\": 1,\n      \"intent\": \"stage\",\n      \"executable\": false\n    },\n    {\n      \"order\": 2,\n      \"intent\": \"verify\",\n      \"executable\": false\n    },\n    {\n      \"order\": 3,\n      \"intent\": \"activate\",\n      \"executable\": false\n    }\n  ]\n}\n",
+      "stderr": ""
+    }
+  },
+  {
+    "name": "setup-refusal",
+    "before": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "ASEN setup execution is not available yet; use --dry-run to inspect the plan.\n"
+    },
+    "after": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "ASEN setup execution is not available yet; use --dry-run to inspect the plan.\n"
+    }
+  },
+  {
+    "name": "update-preview",
+    "before": {
+      "code": 0,
+      "stdout": "{\n  \"schema\": \"asen.managed-update-preview/v1\",\n  \"operation\": \"managed-update-preview\",\n  \"executable\": false,\n  \"authorized\": false,\n  \"manifestPath\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/manifest.json\",\n  \"acquisition\": {\n    \"status\": \"verified\",\n    \"packageRoot\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg\",\n    \"canonicalPackageRoot\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg\",\n    \"version\": \"2.0.0\",\n    \"files\": [\n      {\n        \"sourcePath\": \"file\",\n        \"destinationPath\": \"file\",\n        \"size\": 5,\n        \"sha256\": \"3321675705932e37c55c0ba4b0870788177e3f5670b9d7ea7a3206e287dd5ead\",\n        \"contentObservation\": \"declared-bytes-matched\",\n        \"confinementObservation\": \"contained-at-validation-points\"\n      }\n    ],\n    \"bytesRead\": 5,\n    \"contentObservation\": \"declared-bytes-matched\",\n    \"confinementObservation\": \"contained-at-validation-points\",\n    \"snapshotGuarantee\": \"none\",\n    \"producerAuthenticity\": \"not-established\",\n    \"authority\": false,\n    \"runtimeReady\": false,\n    \"budgets\": {\n      \"perFileBytes\": 67108864,\n      \"totalBytes\": 268435456,\n      \"readChunkBytes\": 1048576,\n      \"cooperativeDeadlineMs\": 30000\n    }\n  },\n  \"managed\": {\n    \"prefix\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen\",\n    \"status\": \"absent\",\n    \"selectedVersion\": null,\n    \"targetVersionState\": \"not-retained\"\n  },\n  \"staging\": \"not-run\",\n  \"selection\": \"not-run\",\n  \"activation\": \"not-run\",\n  \"snapshotGuarantee\": \"none\",\n  \"producerAuthenticity\": \"not-established\",\n  \"runtimeReady\": false\n}\n",
+      "stderr": ""
+    },
+    "after": {
+      "code": 0,
+      "stdout": "{\n  \"schema\": \"asen.managed-update-preview/v1\",\n  \"operation\": \"managed-update-preview\",\n  \"executable\": false,\n  \"authorized\": false,\n  \"manifestPath\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/manifest.json\",\n  \"acquisition\": {\n    \"status\": \"verified\",\n    \"packageRoot\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg\",\n    \"canonicalPackageRoot\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg\",\n    \"version\": \"2.0.0\",\n    \"files\": [\n      {\n        \"sourcePath\": \"file\",\n        \"destinationPath\": \"file\",\n        \"size\": 5,\n        \"sha256\": \"3321675705932e37c55c0ba4b0870788177e3f5670b9d7ea7a3206e287dd5ead\",\n        \"contentObservation\": \"declared-bytes-matched\",\n        \"confinementObservation\": \"contained-at-validation-points\"\n      }\n    ],\n    \"bytesRead\": 5,\n    \"contentObservation\": \"declared-bytes-matched\",\n    \"confinementObservation\": \"contained-at-validation-points\",\n    \"snapshotGuarantee\": \"none\",\n    \"producerAuthenticity\": \"not-established\",\n    \"authority\": false,\n    \"runtimeReady\": false,\n    \"budgets\": {\n      \"perFileBytes\": 67108864,\n      \"totalBytes\": 268435456,\n      \"readChunkBytes\": 1048576,\n      \"cooperativeDeadlineMs\": 30000\n    }\n  },\n  \"managed\": {\n    \"prefix\": \"/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/home/.asen\",\n    \"status\": \"absent\",\n    \"selectedVersion\": null,\n    \"targetVersionState\": \"not-retained\"\n  },\n  \"staging\": \"not-run\",\n  \"selection\": \"not-run\",\n  \"activation\": \"not-run\",\n  \"snapshotGuarantee\": \"none\",\n  \"producerAuthenticity\": \"not-established\",\n  \"runtimeReady\": false\n}\n",
+      "stderr": ""
+    }
+  },
+  {
+    "name": "invalid-update",
+    "before": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n"
+    },
+    "after": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n"
+    }
+  },
+  {
+    "name": "invalid-select",
+    "before": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN managed select command. Expected: managed select <exact-target-version> --expected-current <exact-current-version>.\n"
+    },
+    "after": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN managed select command. Expected: managed select <exact-target-version> --expected-current <exact-current-version>.\n"
+    }
+  },
+  {
+    "name": "invalid-run",
+    "before": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN managed command. Expected: managed run <exact-version> -- <Pi arguments>.\n"
+    },
+    "after": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN managed command. Expected: managed run <exact-version> -- <Pi arguments>.\n"
+    }
+  },
+  {
+    "name": "invalid-doctor",
+    "before": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN doctor command. Expected: [--link|--isolated|--home PATH] [--package-root PATH] doctor.\n"
+    },
+    "after": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN doctor command. Expected: [--link|--isolated|--home PATH] [--package-root PATH] doctor.\n"
+    }
+  },
+  {
+    "name": "invalid-backup",
+    "before": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN backup project-memory command. Expected: backup project-memory --project <project-id> --destination <absolute-path> --dry-run.\n"
+    },
+    "after": {
+      "code": 2,
+      "stdout": "",
+      "stderr": "Unsupported ASEN backup project-memory command. Expected: backup project-memory --project <project-id> --destination <absolute-path> --dry-run.\n"
+    }
+  },
+  {
+    "name": "help-one-exact-added-line",
+    "before": {
+      "code": 0,
+      "stdout": "Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen --version\n",
+      "stderr": ""
+    },
+    "after": {
+      "code": 0,
+      "stdout": "Usage: asen [--link|--isolated|--home PATH] [Pi arguments]\n       asen home\n       asen setup --dry-run [--yes]  Preview setup intent (no changes)\n       asen [--link|--isolated|--home PATH] backup project-memory --project <project-id> --destination <absolute-path> --dry-run  Preview only; no backup created\n       asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]  Current-user execution; publisher unverified\n       asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>  Select retained metadata only; no activation\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run  Observe only; software prefix remains OS home/.asen\n       asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes  Stage local bytes only; no selection or execution\n       asen [--link|--isolated|--home PATH] [--package-root PATH] doctor\n       asen --version\n",
+      "stderr": ""
+    }
+  },
+  {
+    "name": "literal---",
+    "before": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "after": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "args": [
+      "managed",
+      "update",
+      "--manifest",
+      "/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/manifest.json",
+      "--package-root",
+      "/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/pkg",
+      "--stage",
+      "--yes"
+    ]
+  },
+  {
+    "name": "literal-update",
+    "before": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "after": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "args": [
+      "update",
+      "managed",
+      "update",
+      "--manifest",
+      "/workspace/scratch/52e5d39ebfa0/ASEN/.cache/remote-t09/differential-OHmfuD/manifest.json",
+      "--stage",
+      "--yes"
+    ]
+  }
+]

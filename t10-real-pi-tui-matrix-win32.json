@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "candidate": "c8d7074342475b87fbd7197fd67dc818447f7db0",
+  "host": "@earendil-works/pi-coding-agent",
+  "version": "1.2.0",
+  "platform": "win32",
+  "mode": "tui-matrix",
+  "color": "disabled",
+  "widths": [
+    120,
+    80,
+    60,
+    40
+  ],
+  "results": [
+    {
+      "width": 120,
+      "phases": [
+        "agents/empty:empty-view",
+        "status/agents:fits",
+        "status/workspace:fits",
+        "status/history:fits",
+        "changes/git:fits",
+        "error-path:bounded",
+        "restart:re-rendered",
+        "shutdown:clean-exit"
+      ],
+      "wrapped": [],
+      "rendered": [
+        " profile: default",
+        " agents: 0 running, 0 queued, 0 interrupted, 0 failed",
+        " workspace changes: 0",
+        " history: disabled (opt-in)",
+        " telemetry: disabled (opt-in)",
+        " Current Git state (read-only; separate from session attribution):",
+        " Git master 18dc5502c3eb — 0 changed — C:\\Asen\\.cache\\asen-t10-matrix-JoRaC6\\project"
+      ],
+      "renderProvenance": "PTY_BUFFER_ROWS",
+      "rawRowDiagnostic": {
+        "count": 7,
+        "longestChars": 84,
+        "normalizedFromActualResponses": false
+      }
+    },
+    {
+      "width": 80,
+      "phases": [
+        "agents/empty:empty-view",
+        "status/agents:fits",
+        "status/workspace:fits",
+        "status/history:fits",
+        "changes/git:fits",
+        "error-path:bounded",
+        "restart:re-rendered",
+        "shutdown:clean-exit"
+      ],
+      "wrapped": [],
+      "rendered": [
+        " profile: default",
+        " agents: 0 running, 0 queued, 0 interrupted, 0 failed",
+        " workspace changes: 0",
+        " history: disabled (opt-in)",
+        " telemetry: disabled (opt-in)",
+        " Current Git state (read-only; separate from session attribution):",
+        " Git master 18dc5502c3eb — 0 changed — C:\\Asen\\.cache\\asen-t10-matrix-JoRaC6\\…"
+      ],
+      "renderProvenance": "PTY_BUFFER_ROWS",
+      "rawRowDiagnostic": {
+        "count": 7,
+        "longestChars": 78,
+        "normalizedFromActualResponses": false
+      }
+    },
+    {
+      "width": 60,
+      "phases": [
+        "agents/empty:empty-view",
+        "status/agents:fits",
+        "status/workspace:fits",
+        "status/history:fits",
+        "changes/git:fits",
+        "error-path:bounded",
+        "restart:re-rendered",
+        "shutdown:clean-exit"
+      ],
+      "wrapped": [],
+      "rendered": [
+        " profile: default",
+        " agents: 0 running, 0 queued, 0 interrupted, 0 failed",
+        " workspace changes: 0",
+        " history: disabled (opt-in)",
+        " telemetry: disabled (opt-in)",
+        " Current Git state (read-only; separate from session",
+        " Git master 18dc5502c3eb — 0 changed — C:\\Asen\\.cache\\ase…"
+      ],
+      "renderProvenance": "PTY_BUFFER_ROWS",
+      "rawRowDiagnostic": {
+        "count": 7,
+        "longestChars": 58,
+        "normalizedFromActualResponses": false
+      }
+    },
+    {
+      "width": 40,
+      "phases": [
+        "agents/empty:empty-view",
+        "status/agents:fits",
+        "status/workspace:fits",
+        "status/history:fits",
+        "changes/git:fits",
+        "error-path:bounded",
+        "restart:re-rendered",
+        "shutdown:clean-exit"
+      ],
+      "wrapped": [],
+      "rendered": [
+        " profile: default",
+        " agents: 0 running, 0 queued, 0 inter…",
+        " workspace changes: 0",
+        " history: disabled (opt-in)",
+        " telemetry: disabled (opt-in)",
+        " Current Git state (read-only; separate",
+        " Git master 18dc5502c3eb — 0 changed …"
+      ],
+      "renderProvenance": "PTY_BUFFER_ROWS",
+      "rawRowDiagnostic": {
+        "count": 7,
+        "longestChars": 39,
+        "normalizedFromActualResponses": false
+      }
+    }
+  ],
+  "result": "PASS",
+  "wrapped": []
+}

@@ -1,0 +1,1303 @@
+name: ASEN real-agent functional acceptance
+
+# Bounded opt-in verifies direct provider and genuine read-only Dispatcher; no lifecycle bypass or Writer grant.
+# EF-603: single exact-SHA Ollama Beam witness; no Writer grant, no paid fallback.
+# To exercise the native parent lane, change this workflow in the same commit whose exact
+# message is 'ci: one-time Pi parent Beam proof'. A docs-only commit does not match paths.
+on:
+  push:
+    branches:
+      - feat/t12-integrated-acceptance-merge
+    paths:
+      - .github/workflows/asen-real-agent-acceptance.yml
+      - package.json
+      - package-lock.json
+      - tsconfig.json
+      - tsconfig.build.json
+      - .github/workflows/**
+      - extensions/**
+      - src/**
+      - scripts/t12-*.mjs
+      - scripts/t12-*.ts
+      - scripts/t12-parent-probe.ts
+      - scripts/t12-parent-real-child-probe.ts
+      - scripts/agent-ab-*.mjs
+      - scripts/agent-observable-*.mjs
+      - scripts/shell-asen-parity.mjs
+      - scripts/shell-reference-probe.mjs
+      - scripts/r4-two-pi-native-hosts.mjs
+      - scripts/r4-two-pi-beam-c01.mjs
+      - registry/parity/shell-asen-baseline-v1.json
+      - registry/parity/agent-ab-baselines-v1.json
+      - registry/parity/agent-ab-case-readiness-v1.json
+      - tests/**
+  workflow_dispatch:
+    inputs:
+      os:
+        description: Hosted runner for the Beam/Ollama acceptance lane
+        required: true
+        type: choice
+        options:
+          - ubuntu-24.04
+      max-inference-calls:
+        description: Documented upper bound for provider calls made by this run
+        required: true
+        type: choice
+        options:
+          - "3"
+          - "5"
+permissions:
+  contents: read
+concurrency:
+  group: asen-real-agent-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  offline-static-validation:
+    if: github.repository == 'asenbanskaliev/ASEN'
+    name: Provider-free static and ASEN validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact candidate checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          test "$(git rev-parse HEAD)" = "$(git rev-parse 'HEAD^{commit}')"
+          mkdir -p asen-acceptance-evidence
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Syntax-check provider entrypoints before any authenticated execution
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check scripts/t12-real-child-parent-consumption.mjs
+          node --check scripts/t12-real-parent-consumption.mjs
+          node --check scripts/t12-real-child-parent-grade.mjs
+          node --check scripts/t12-revalidation-contract.mjs
+          node --check scripts/t12-real-repair-revalidation.mjs
+          node --check scripts/t12-real-stream-interruption.mjs
+          node --check scripts/t12-real-tui-stream-crash.mjs
+          node --check scripts/t12-stream-interruption-reopen.mjs
+          node --check scripts/t12-stream-interruption-grade.mjs
+          node --check scripts/t12-real-ef603-coalescing.mjs
+          node --check scripts/t12-ef603-coalescing-grade.mjs
+          node --check scripts/t12-parent-consumption-grade.mjs
+          node --check scripts/agent-ab-manifest-reader.mjs
+          node --check scripts/agent-observable-receipts.mjs
+          node --check scripts/agent-observable-parity.mjs
+          node --check scripts/t12-native-tui-crash-recovery.mjs
+          node --check scripts/t12-native-tui-crash-grade.mjs
+          node --check scripts/agent-ab-case-readiness.mjs
+          node --check scripts/agent-ab-host-smoke.mjs
+      - name: EF-304 provider-free automated decision and witness contract tests
+        run: node --import tsx --test tests/ef304-auto-ollama-proof.test.mjs
+      - name: M1 F1 F2 provider-free rail and CodeGraph-first policy tests
+        run: node --import tsx --test tests/m1-f1f2-integration.test.ts tests/m1-f1f2-beam-proof.test.ts
+      - name: M2 F6 native navigators, durable receipt semantics and Windows alias contracts
+        run: node --import tsx --test tests/m2-f6-native-ui.test.ts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: F7 audit EF checklist and check its negative regression tests
+        run: npm run audit:ef-plan && node --import tsx --test tests/audit-ef-plan.test.ts
+      - name: Focused profile, routing, reviewer, verifier and authorization tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test \
+            tests/profile-selection.test.ts \
+            tests/profile-routing-real.test.ts \
+            tests/orchestrator.test.ts \
+            tests/functional-role-parity-matrix.test.ts \
+            tests/agent-observable-parity.test.ts \
+            tests/agent-ab-triple-cli-security.test.ts \
+            tests/agent-observable-scaffold.test.ts \
+            tests/agent-observable-receipts.test.ts \
+            tests/agent-ab-source-witness.test.ts \
+            tests/agent-ab-case-readiness.test.ts \
+            tests/agent-ab-host-smoke.test.ts \
+            tests/frozen-ecosystem-source.test.ts \
+            tests/natural-plan-tool.test.ts \
+            tests/orchestrator-dispatcher-integration.test.ts \
+            tests/agent-terminal-delivery.test.ts \
+            tests/explorer-budget.test.ts \
+            tests/session-notifications.test.ts \
+            tests/notification-projection.test.ts \
+            tests/plan-dispatcher-role-boundaries.test.ts \
+            tests/review-acceptance.test.ts \
+            tests/plan-dispatcher-candidate-guard.test.ts \
+            tests/executable-plan-candidate-propagation.test.ts \
+            tests/task-agent-coordinator.test.ts \
+            tests/task-agent-automation.test.ts \
+            tests/pi-verifier-exit.test.ts \
+            tests/pi-model-reviewer.test.ts \
+            tests/writer-authorization-snapshot.test.ts \
+            tests/permission-modes.test.ts \
+            tests/ef001-confirmation-regressions.test.ts \
+            tests/auto-permission-reviewer.test.ts \
+            tests/auto-permission-evidence.test.ts \
+            tests/yolo-temp-scratch.test.ts
+      - name: F6 interruption, restart, authorization and provider failure regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test \
+            tests/agent-store.test.ts \
+            tests/agent-coalesce-multiprocess.test.ts \
+            tests/agent-coalesce-role-scope.test.ts \
+            tests/planned-explorer-multiprocess.test.ts \
+            tests/trusted-task-agent-binder.test.ts \
+            tests/task-agent-coordinator-links.test.ts \
+            tests/task-agent-automation.test.ts \
+            tests/task-agent-recovery-chain.test.ts \
+            tests/odd-task-tracking.test.ts \
+            tests/authorized-write-recovery.test.ts \
+            tests/eco06-interrupted-writer.test.ts \
+            tests/eco07-provider-failure.test.ts \
+            tests/background-job-journal.test.ts \
+            tests/agent-notification-multiprocess.test.ts \
+            tests/agent-notification-restart-process.test.ts \
+            tests/agent-notice-ack-tool.test.ts \
+            tests/agent-rpc-tui-handoff.test.ts \
+            tests/agent-notification-journal.test.ts \
+            tests/agent-terminal-routing-journal.test.ts \
+            tests/managed-acquisition-copy.test.ts \
+            tests/pi-process-runner.test.ts \
+            tests/pi-session-recovery-e2e.test.ts \
+            tests/ef604-native-pi-headless-restart.test.ts \
+            tests/t12-stream-interruption-reopen.test.ts \
+            tests/session-recovery-e2e.test.ts
+      - name: EF-604 real native Pi TUI parent hard death and live Pi RPC subprocess recovery (no model)
+        shell: bash
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          timeout 110s node scripts/t12-native-tui-crash-recovery.mjs
+          node -e 'const x=require("./asen-acceptance-evidence/native-tui-crash-recovery.json");if(x.candidateSha!==process.env.ASEN_EXPECTED_SHA||x.status!=="PASS_NATIVE_TUI_PARENT_CRASH_WITH_ACTIVE_PI_RPC_CHILD"||x.providerCalls!==0||x.replayedCalls!==0||x.writerAuthorized!==false||x.globalFull!==false)process.exit(1);'
+      - name: F6 cross-process inference recovery, corruption and negative checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx --test tests/t12-inference-budget.test.ts
+      - name: F2/F3 deterministic fixture and planning contracts
+        shell: bash
+        run: node --import tsx --test tests/t12-real-agent-fixture.test.ts tests/t12-plan-grader.test.ts tests/t12-review-grader.test.ts tests/t12-verifier-brief.test.ts tests/t12-parent-consumption-grade.test.ts tests/t12-real-child-parent-grade.test.ts tests/t12-real-busy-parent-grade.test.ts tests/t12-real-provider-workflow.test.ts tests/t12-provider-failure.test.ts tests/t12-stream-interruption-grade.test.ts tests/t12-stream-interruption-workflow.test.ts tests/t12-real-tui-stream-crash-workflow.test.ts tests/t12-ef603-coalescing-grade.test.ts tests/t12-ef603-coalescing-workflow.test.ts tests/t12-native-tui-crash-grade.test.ts tests/t12-native-tui-crash-workflow.test.ts tests/t12-disposable-correction.test.ts tests/t12-revalidation-contract.test.ts tests/agent-ab-manifest-reader.test.ts tests/agent-ab-combined-gate.test.ts tests/t12-live-evidence-gate.test.ts tests/t12-explorer-schema.test.ts tests/t12-acceptance-ledger.test.ts
+      - name: Ollama scoped child credential regression
+        run: node --import tsx --test tests/t12-ollama-child-credential.test.ts
+      - name: Pi retry settings preserve installed extensions
+        run: node --import tsx --test tests/t12-pi-retry-settings.test.ts
+      - name: F1/F2/F6 Pi runtime event, budget and duplicate-start regression (mock runner)
+        run: node --import tsx --test --test-name-pattern='EF-201|EF-601|EF-603|EF-202|EF-604' tests/pi-agent-runtime.test.ts
+      - name: F7 create exact-SHA provider-free acceptance ledger (never claim FULL)
+        env:
+          ASEN_OFFLINE_TESTS_PASSED: '1'
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/t12-acceptance-ledger.mjs
+      - name: EF-701 cross-audit all C01-C20 A/B/ASEN evidence slots (not live attestation)
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+          ASEN_AB_COMBINED_OUTPUT: ${{ github.workspace }}/asen-acceptance-evidence/ab-combined.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          node --check scripts/agent-ab-combined-gate.mjs
+          node scripts/agent-ab-combined-gate.mjs
+          node -e 'const x=require("./asen-acceptance-evidence/ab-combined.json"); if(x.totalCases!==20||x.expectedSlots!==60||x.casesBlocked!==20||x.sourceCasesExecutedAndAttested!==0||x.integrityOnly!==0||x.globalFull!==false||x.writerAuthorized!==false)process.exit(1);'
+      - name: Validate repository diff hygiene
+        run: git diff --check
+      - name: Preserve provider-free validation evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-acceptance-offline-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/
+          if-no-files-found: warn
+          retention-days: 14
+
+
+  # R4-04: historical three-way source/CLI probes remain in scripts/tests only.
+  # The active acceptance uses a single frozen Pi Shell reference and ASEN.
+  shell-reference-probe:
+    needs: [offline-static-validation]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push'
+    name: R4-04 frozen Shell 4.6.0 native Pi launcher probe (not C01-C20)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Fail-closed frozen Shell 4.6.0 reference-probe tests
+        run: node --test tests/shell-reference-probe.test.mjs
+      - name: Execute pinned Shell 4.6.0 CLI --help in isolated temporary checkout
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+          ASEN_SHELL_PROBE_OUTPUT: ${{ github.workspace }}/asen-acceptance-evidence/shell-reference-probe.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p asen-acceptance-evidence
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          node scripts/shell-reference-probe.mjs
+      - name: Preserve actual source-only Pi launcher receipt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-shell-reference-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/shell-reference-probe.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  shell-asen-native-hosts:
+    needs: [offline-static-validation]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push'
+    name: R4-04 two isolated real Pi runtimes — native no-model witnesses
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Define private disposable reference checkout
+        shell: bash
+        run: echo "ASEN_SHELL_CHECKOUT=$RUNNER_TEMP/asen-shell-v460-reference" >> "$GITHUB_ENV"
+      - name: Verify exact ASEN candidate and install pinned local Pi host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --no-audit --no-fund
+          node --test tests/r4-two-pi-native-hosts.test.mjs
+      - name: Freeze reference source and runtime in disposable runner temp (no install scripts)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d "$RUNNER_TEMP"
+          mkdir -p "$ASEN_SHELL_CHECKOUT"
+          git -C "$ASEN_SHELL_CHECKOUT" init -q
+          UPSTREAM_OWNER="$(printf '%s%s' 'Gen' 'tleman-Programming')"
+          UPSTREAM_REPO="$(printf '%s%s' 'gen' 'tle-shell')"
+          git -C "$ASEN_SHELL_CHECKOUT" fetch --depth=1 --no-tags \
+            "https://github.com/$UPSTREAM_OWNER/$UPSTREAM_REPO.git" \
+            1f74e9e24473e7e121a96b1680444ae0196d3009
+          git -C "$ASEN_SHELL_CHECKOUT" checkout -q --detach FETCH_HEAD
+          test "$(git -C "$ASEN_SHELL_CHECKOUT" rev-parse HEAD)" = \
+            1f74e9e24473e7e121a96b1680444ae0196d3009
+          test "$(git -C "$ASEN_SHELL_CHECKOUT" rev-parse "HEAD^{tree}")" = \
+            64d14750450d0144d65230eb0b6ecc69d841a8f3
+          node -e 'const p=require(process.env.ASEN_SHELL_CHECKOUT+"/package.json");if(p.version!=="4.6.0")process.exit(1)'
+          npm install --prefix "$ASEN_SHELL_CHECKOUT" --ignore-scripts --no-save \
+            --no-package-lock --no-audit --no-fund --legacy-peer-deps --include=dev \
+            @earendil-works/pi-coding-agent@1.2.0 \
+            @earendil-works/pi-ai@1.5.0 \
+            @earendil-works/pi-tui@1.5.0 \
+            typebox@1.3.27
+          test -f "$ASEN_SHELL_CHECKOUT/node_modules/@earendil-works/pi-coding-agent/package.json"
+          test -z "$(git -C "$ASEN_SHELL_CHECKOUT" status --porcelain=v1 --untracked-files=no)"
+      - name: Launch Pi + frozen Shell and Pi + ASEN with matching read-only fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p asen-acceptance-evidence
+          timeout 210s node scripts/r4-two-pi-native-hosts.mjs
+      - name: Preserve native pair receipts (never imply 20 case executions)
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-two-pi-native-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/two-real-pi-hosts.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  shell-asen-beam-c01:
+    needs: [shell-asen-native-hosts]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci: one-time Shell ASEN Beam C01'
+    name: R4-04 authentic Shell vs ASEN paired C01 (free Beam, 2 Pi turns)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Validate exact SHA and adversarial C01 witness acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --no-audit --no-fund
+          node --test tests/r4-two-pi-beam-c01.test.mjs
+      - name: Prepare frozen original and two separate native model homes
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::No free Ollama credential; live case BLOCKED"; exit 1; }
+          echo "ASEN_SHELL_CHECKOUT=$RUNNER_TEMP/asen-shell-v460-beam-c01" >> "$GITHUB_ENV"
+          shell_root="$RUNNER_TEMP/asen-shell-v460-beam-c01"
+          mkdir -p "$shell_root"
+          git -C "$shell_root" init -q
+          UPSTREAM_OWNER="$(printf '%s%s' 'Gen' 'tleman-Programming')"
+          UPSTREAM_REPO="$(printf '%s%s' 'gen' 'tle-shell')"
+          git -C "$shell_root" fetch --depth=1 --no-tags \
+            "https://github.com/$UPSTREAM_OWNER/$UPSTREAM_REPO.git" \
+            1f74e9e24473e7e121a96b1680444ae0196d3009
+          git -C "$shell_root" checkout -q --detach FETCH_HEAD
+          test "$(git -C "$shell_root" rev-parse HEAD)" =             1f74e9e24473e7e121a96b1680444ae0196d3009
+          test "$(git -C "$shell_root" rev-parse 'HEAD^{tree}')" =             64d14750450d0144d65230eb0b6ecc69d841a8f3
+          npm install --prefix "$shell_root" --ignore-scripts --no-save \
+            --no-package-lock --no-audit --no-fund --legacy-peer-deps --include=dev \
+            @earendil-works/pi-coding-agent@1.2.0 \
+            @earendil-works/pi-ai@1.5.0 \
+            @earendil-works/pi-tui@1.5.0 typebox@1.3.27
+          for subject in SHELL ASEN; do
+            user_home="$RUNNER_TEMP/asen-beam-C01-pair/$subject/home"
+            mkdir -p "$user_home/.pi/agent"
+            HOME="$user_home" USERPROFILE="$user_home" PI_CODING_AGENT_DIR="$user_home/.pi/agent" \
+              OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" \
+              node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+            HOME="$user_home" USERPROFILE="$user_home" PI_CODING_AGENT_DIR="$user_home/.pi/agent" \
+              OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" PI_OLLAMA_WEB_TOOLS=0 \
+              node_modules/.bin/pi --list-models > "$RUNNER_TEMP/beam-C01-$subject-models"
+            awk '$1 == "ollama-cloud" {print $2}' \
+              "$RUNNER_TEMP/beam-C01-$subject-models" > "$RUNNER_TEMP/beam-C01-$subject-ids"
+          done
+          if grep -Fxq 'beam:cloud' "$RUNNER_TEMP/beam-C01-SHELL-ids" && \
+             grep -Fxq 'beam:cloud' "$RUNNER_TEMP/beam-C01-ASEN-ids"; then
+            selected='beam:cloud'
+          elif grep -Fxq 'beam' "$RUNNER_TEMP/beam-C01-SHELL-ids" && \
+               grep -Fxq 'beam' "$RUNNER_TEMP/beam-C01-ASEN-ids"; then
+            selected='beam'
+          else
+            echo "::error::No common free Beam model; no paid fallback"; exit 1
+          fi
+          echo "ASEN_SELECTED_MODEL=$selected" >> "$GITHUB_ENV"
+          echo "Both isolated Pi installations have one identical free Beam model"
+      - name: Run C01 in both real Pi TUIs, disallow file writes and extra tools
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p asen-acceptance-evidence
+          timeout 420s node scripts/r4-two-pi-beam-c01.mjs
+      - name: Preserve actual model evidence or an explicit missing receipt
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-shell-asen-beam-C01-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/C01-two-real-Pi-Beam.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  real-parent-consumption:
+    needs: offline-static-validation
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
+      github.event_name == 'push' &&
+      (github.event.head_commit.message == 'ci: one-time Pi parent Beam proof' ||
+      github.event.head_commit.message == 'ci: one-time Pi parent-child Beam proof' ||
+      github.event.head_commit.message == 'ci: one-time Pi busy-parent Beam proof' ||
+      github.event.head_commit.message == 'ci: bounded EF-601-604 parent recovery and TUI crash Beam proof')
+    name: Real Pi parent notices with Beam (fixture or real RPC child)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Install pinned Beam provider into isolated Pi home
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-pi-parent"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Ollama Cloud authentication missing"; exit 1; }
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-parent-models.txt"
+          awk '$1 == "ollama-cloud" {print $2}' "$RUNNER_TEMP/asen-parent-models.txt" > "$RUNNER_TEMP/asen-parent-model-ids.txt"
+          if grep -Fxq "beam:cloud" "$RUNNER_TEMP/asen-parent-model-ids.txt"; then
+            selected="beam:cloud"
+          elif grep -Fxq "beam" "$RUNNER_TEMP/asen-parent-model-ids.txt"; then
+            selected="beam"
+          else
+            echo "::error::No pinned Beam alias available"; exit 1
+          fi
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-parent-selected-model"
+          echo "Native Pi parent selected one registered Beam model; no paid fallback"
+      - name: Native Pi parent and optional real Pi RPC child — isolated, bounded Beam
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          ASEN_ACCEPTANCE_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-pi-parent"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-parent-selected-model")"
+          export ASEN_SELECTED_MODEL
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p asen-acceptance-evidence
+          if test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: bounded EF-601-604 parent recovery and TUI crash Beam proof"; then
+             ASEN_PARENT_WITNESS_MODE=busy timeout 250s node scripts/t12-real-child-parent-consumption.mjs
+           elif test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi busy-parent Beam proof"; then
+            ASEN_PARENT_WITNESS_MODE=busy timeout 250s node scripts/t12-real-child-parent-consumption.mjs
+          elif test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi parent-child Beam proof"; then
+            timeout 250s node scripts/t12-real-child-parent-consumption.mjs
+          elif test "$ASEN_ACCEPTANCE_COMMIT_MESSAGE" = "ci: one-time Pi parent Beam proof"; then
+            timeout 160s node scripts/t12-real-parent-consumption.mjs
+          else
+            echo "::error::Unrecognized one-time Pi acceptance trigger"; exit 1
+          fi
+      - name: Preserve source-bound real Pi parent receipt, or explicit absence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-parent-real-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            asen-acceptance-evidence/real-pi-parent-wake.json
+            asen-acceptance-evidence/real-pi-parent-child-wake.json
+            asen-acceptance-evidence/real-pi-parent-child-busy.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-tui-stream-crash:
+    needs: offline-static-validation
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
+      github.event_name == 'push' &&
+      (github.event.head_commit.message == 'ci: one-time Pi Beam TUI child crash proof' ||
+       github.event.head_commit.message == 'ci: bounded EF-601-604 parent recovery and TUI crash Beam proof')
+    name: EF-604 real Pi TUI crash during Beam child inference
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+      ASEN_MAX_AGENTS: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Select only the pinned free Beam model in isolated Pi home
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-live-tui-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Isolated Ollama key unavailable"; exit 1; }
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-live-tui-models.txt"
+          awk '$1 == "ollama-cloud" {print $2}' "$RUNNER_TEMP/asen-live-tui-models.txt" > "$RUNNER_TEMP/asen-live-tui-model-ids.txt"
+          if grep -Fxq "beam:cloud" "$RUNNER_TEMP/asen-live-tui-model-ids.txt"; then
+            selected="beam:cloud"
+          elif grep -Fxq "beam" "$RUNNER_TEMP/asen-live-tui-model-ids.txt"; then
+            selected="beam"
+          else
+            echo "::error::No Beam model, no provider fallback"; exit 1
+          fi
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-live-tui-selected-model"
+      - name: Kill the real Pi TUI only after its ASEN Explorer streams a native Beam text delta
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-live-tui-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-live-tui-selected-model")"
+          export ASEN_SELECTED_MODEL
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p asen-acceptance-evidence
+          timeout 220s node --import tsx scripts/t12-real-tui-stream-crash.mjs
+      - name: Preserve exact-SHA bounded evidence without model transcript
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-real-pi-tui-stream-crash-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/real-pi-tui-stream-crash.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-stream-interruption:
+    needs: offline-static-validation
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
+      github.event_name == 'push' &&
+      github.event.head_commit.message == 'ci: one-time Pi streamed-child interruption Beam proof'
+    name: EF-604 real Pi Beam streaming interruption and separate-process recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Select only the pinned registered Ollama Beam model in isolated Pi home
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-stream-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Isolated Ollama key unavailable"; exit 1; }
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-stream-models.txt"
+          awk '$1 == "ollama-cloud" {print $2}' "$RUNNER_TEMP/asen-stream-models.txt" > "$RUNNER_TEMP/asen-stream-model-ids.txt"
+          if grep -Fxq "beam:cloud" "$RUNNER_TEMP/asen-stream-model-ids.txt"; then
+            selected="beam:cloud"
+          elif grep -Fxq "beam" "$RUNNER_TEMP/asen-stream-model-ids.txt"; then
+            selected="beam"
+          else
+            echo "::error::No Beam model, no provider fallback"; exit 1
+          fi
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-stream-selected-model"
+      - name: Interrupt one authentic Pi RPC child only after a streamed model text delta
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-stream-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-stream-selected-model")"
+          export ASEN_SELECTED_MODEL
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p asen-acceptance-evidence
+          timeout 220s node --import tsx scripts/t12-real-stream-interruption.mjs
+      - name: Preserve bounded positive or failure evidence without model transcript
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-stream-interruption-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/real-pi-stream-interruption.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-ef603-coalescing:
+    needs: offline-static-validation
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
+      github.event_name == 'push' &&
+      github.event.head_commit.message == 'ci: one-time Pi EF-603 coalesced Explorer Beam proof'
+    name: EF-603 real Pi Beam concurrent Explorer coalescing one Pi RPC process
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Select only registered pinned Ollama Beam in disposable Pi home
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-ef603-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Ollama key unavailable"; exit 1; }
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-ef603-models.txt"
+          awk '$1 == "ollama-cloud" {print $2}' "$RUNNER_TEMP/asen-ef603-models.txt" > "$RUNNER_TEMP/asen-ef603-ids.txt"
+          if grep -Fxq "beam:cloud" "$RUNNER_TEMP/asen-ef603-ids.txt"; then
+            selected="beam:cloud"
+          elif grep -Fxq "beam" "$RUNNER_TEMP/asen-ef603-ids.txt"; then
+            selected="beam"
+          else
+            echo "::error::No registered Beam model; no paid or alternate provider fallback"; exit 1
+          fi
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-ef603-selected"
+      - name: Confirm real Pi concurrent dedupe with one reserved Beam inference
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-ef603-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-ef603-selected")"
+          export ASEN_SELECTED_MODEL
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p asen-acceptance-evidence
+          timeout 220s node --import tsx scripts/t12-real-ef603-coalescing.mjs
+          node -e 'const x=require("./asen-acceptance-evidence/real-ef603-coalescing.json");if(x.candidateSha!==process.env.ASEN_EXPECTED_SHA||x.status!=="PASS_REAL_PI_EXPLORER_ONE_EXECUTION"||x.providerCallsReserved!==1||x.nativePiProcessCount!==1||x.writerAuthorized!==false||x.globalFull!==false)process.exit(1)'
+      - name: Preserve bounded result without transcript or credentials
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-ef603-pi-coalescing-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/real-ef603-coalescing.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-repaired-review:
+    needs: offline-static-validation
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
+      github.event_name == 'push' &&
+      github.event.head_commit.message == 'ci: one-time Pi repaired-review Beam proof'
+    name: EF-403 real corrected read-only Reviewer and Verifier with Beam
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Select only pinned registered Beam in isolated Pi home
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-repair-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Ollama credential missing"; exit 1; }
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY" PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-repair-models.txt"
+          awk '$1 == "ollama-cloud" {print $2}' "$RUNNER_TEMP/asen-repair-models.txt" > "$RUNNER_TEMP/asen-repair-model-ids.txt"
+          if grep -Fxq "beam:cloud" "$RUNNER_TEMP/asen-repair-model-ids.txt"; then
+            selected="beam:cloud"
+          elif grep -Fxq "beam" "$RUNNER_TEMP/asen-repair-model-ids.txt"; then
+            selected="beam"
+          else
+            echo "::error::No registered Beam model and no fallback"; exit 1
+          fi
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-repair-selected-model"
+      - name: Execute read-only real Pi Reviewer then Verifier with exact repaired fixture
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export HOME="$RUNNER_TEMP/asen-repair-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          ASEN_SELECTED_MODEL="$(cat "$RUNNER_TEMP/asen-repair-selected-model")"
+          export ASEN_SELECTED_MODEL
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          mkdir -p asen-acceptance-evidence
+          timeout 320s node --import tsx scripts/t12-real-repair-revalidation.mjs
+      - name: Preserve bounded success or failure evidence, never raw provider output
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-repaired-review-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/real-repaired-review-verification.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-provider-acceptance:
+    needs: offline-static-validation
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.run_attempt == 1 &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && github.event.head_commit.message == 'ci: one-time Ollama Cloud provider smoke'))
+    name: Real Ollama Cloud functional acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_PROVIDER: ollama-cloud
+      ASEN_MODEL: beam:cloud
+      ASEN_STRICT_INFERENCE_ORDER: '1'
+      ASEN_MAX_INFERENCE_CALLS: ${{ inputs.max-inference-calls || '5' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci
+      - name: Verify bundled Pi runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          if test -f node_modules/.bin/pi; then ./node_modules/.bin/pi --version; fi
+      - name: Install pinned Ollama Cloud provider extension
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          export HOME="$RUNNER_TEMP/asen-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          test -n "$OLLAMA_API_KEY" || { echo "::error::OLLAMA_API_KEY missing"; exit 1; }
+          node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          mkdir -p asen-acceptance-evidence
+          node scripts/t12-pi-retry-settings.mjs > asen-acceptance-evidence/pi-retry-settings.json
+          PI_OLLAMA_WEB_TOOLS=0 node_modules/.bin/pi --list-models > "$RUNNER_TEMP/asen-ollama-models.txt"
+          mkdir -p asen-acceptance-evidence
+          # Pi lists provider and model in columns. Capture only IDs; never persist credentials.
+          awk '$1 == "ollama-cloud" {print $2}' "$RUNNER_TEMP/asen-ollama-models.txt" > asen-acceptance-evidence/registered-model-ids.txt
+          if ! test -s asen-acceptance-evidence/registered-model-ids.txt; then
+            echo "::error::No Ollama Cloud models registered; inspect provider load, credential and catalog refresh"
+            exit 1
+          fi
+          if grep -Fxq "$ASEN_MODEL" asen-acceptance-evidence/registered-model-ids.txt; then
+            selected="$ASEN_MODEL"
+          elif grep -Fxq "beam" asen-acceptance-evidence/registered-model-ids.txt; then
+            # The pinned cloud provider currently advertises this canonical Beam ID.
+            selected="beam"
+            echo "::notice::Using registered Beam alias; no unrelated model fallback permitted"
+          else
+            echo "::error::Neither the pinned Beam model nor its registered alias is available; refusing any model inference"
+            exit 1
+          fi
+          printf '%s\n' "$selected" > "$RUNNER_TEMP/asen-selected-model"
+          echo "Selected one Ollama Cloud model from live Pi registration"
+      - name: Bounded Ollama Cloud provider smoke
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          if test "$ASEN_MAX_INFERENCE_CALLS" != "3"; then
+            echo "Skipping standalone smoke so the five-call budget covers Explorer, Planner, two blind reviewers and Verifier."
+            exit 0
+          fi
+          test -n "${ASEN_OLLAMA_API_KEY}" || { echo "::error::OLLAMA_API_KEY is not configured"; exit 1; }
+          if ! test -f node_modules/.bin/pi; then echo "::error::No Pi runtime is available in the installed dependencies"; exit 1; fi
+          node scripts/t12-inference-budget.mjs provider-connectivity
+          export HOME="$RUNNER_TEMP/asen-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export PI_OLLAMA_WEB_TOOLS=0
+          mkdir -p "$HOME/.asen"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          mkdir -p asen-acceptance-evidence
+          printf '%s\n' 'Reply with exactly ASEN_PROVIDER_OK' > asen-acceptance-evidence/provider-smoke.prompt
+          export PI_PROVIDER=ollama-cloud
+          selected="$(cat "$RUNNER_TEMP/asen-selected-model")"
+          timeout 90s node_modules/.bin/pi --provider ollama-cloud --model "$selected" --no-session --print "Reply with exactly ASEN_PROVIDER_OK" > asen-acceptance-evidence/provider-smoke.jsonl
+          grep -q "ASEN_PROVIDER_OK" asen-acceptance-evidence/provider-smoke.jsonl
+          echo "provider smoke passed within the declared inference budget"
+      - name: Real ASEN Dispatcher explorer with Ollama Cloud (read-only)
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          export HOME="$RUNNER_TEMP/asen-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export PI_OLLAMA_WEB_TOOLS=0
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          node --import tsx scripts/t12-ollama-asen-dispatcher.mjs
+      - name: Real model planning on graded ASEN Explorer findings
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          export HOME="$RUNNER_TEMP/asen-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export PI_OLLAMA_WEB_TOOLS=0
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          node --import tsx scripts/t12-real-model-plan.mjs
+      - name: Real ASEN Reviewer (two blind judgments) and Verifier reject deliberate defects
+        shell: bash
+        if: env.ASEN_MAX_INFERENCE_CALLS == '5'
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          export HOME="$RUNNER_TEMP/asen-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export PI_OLLAMA_WEB_TOOLS=0
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          node --import tsx scripts/t12-real-review-verifier.mjs
+      - name: Record read-only review stages deferred at call budget
+        if: env.ASEN_MAX_INFERENCE_CALLS == '3'
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' '{"status":"BLOCKED_CALL_BUDGET","reviewer":"NOT_RUN","verifier":"NOT_RUN","authorization":"NOT_GRANTED"}' > asen-acceptance-evidence/real-review-verifier.json
+      - name: Verify real provider grades and exact-SHA call receipts without inference
+        shell: bash
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node scripts/t12-live-evidence-gate.mjs
+      - name: F7 reconcile exact-SHA real evidence after strict gate (never FULL)
+        env:
+          ASEN_EXPECTED_SHA: ${{ github.sha }}
+          ASEN_OFFLINE_TESTS_PASSED: '1'
+          ASEN_INCLUDE_VALIDATED_LIVE_EVIDENCE: '1'
+        run: node scripts/t12-acceptance-ledger.mjs
+      - name: Real-provider acceptance deferred steps
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test "$ASEN_MAX_INFERENCE_CALLS" = "5"; then
+            printf '%s\n' 'PASS_BOUNDED_READ_ONLY: authenticated Explorer, Planner, two separate Reviewer judgments and Verifier were accepted by the exact-SHA evidence gate.' 'LIMITATION: both Reviewer judgments use the same selected provider and model; they are not independent external review.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
+          else
+            printf '%s\n' 'PARTIAL_CALL_BUDGET: authenticated Explorer and Planner passed the exact-SHA evidence gate; Reviewer and Verifier did not run.' 'BLOCKED_CALL_BUDGET: Reviewer and Verifier were not run; SKIPPED is not PASS.' 'BLOCKED_INTERACTIVE: Writer requires Pi one-time approval; no authorization was simulated.' 'DEFERRED: provider-backed restart, quota exhaustion and timeout recovery remain unverified.' > asen-acceptance-evidence/real-provider-status.txt
+          fi
+      - name: Inspect call receipts without spending another inference request
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -d "$RUNNER_TEMP/asen-inference-budget"; then
+            node scripts/t12-inference-budget.mjs --report > asen-acceptance-evidence/inference-budget-summary.json
+          fi
+      - name: Preserve provider evidence without exporting secrets
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if test -d "$RUNNER_TEMP/asen-inference-budget"; then
+            cp -R "$RUNNER_TEMP/asen-inference-budget" asen-acceptance-evidence/inference-budget
+          fi
+      - name: Upload provider evidence without exporting secrets
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-real-provider-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/
+          if-no-files-found: warn
+          retention-days: 14
+
+  blocked-writer:
+    name: Writer authorization design lock
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Record why Writer remains non-authoritative in CI
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p asen-acceptance-evidence
+          printf '%s\n' 'Writer remains BLOCKED in automated CI.' '' 'Reason:' '- Worker execution requires a one-time interactive Pi UI authorization.' '- The one-use grant binds candidate, repository, revision, and exact file scope.' '- GitHub Actions cannot legitimately supply or simulate that consent.' '' 'Safe future enablement:' '1. Use a private daemon or service account only if Pi exposes an explicit non-interactive consent token contract.' '2. Bind that token to one candidate and one bounded file set.' '3. Consume it once.' '4. Run assertWriterAuthorizationSnapshotCurrent before execution and assertWriterAuthorizationSnapshotOutcome after.' > asen-acceptance-evidence/writer-blocked.md
+      - name: Preserve blocked-writer evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-writer-blocked-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/writer-blocked.md
+          if-no-files-found: error
+          retention-days: 30
+
+  ef304-automatic-ollama-beam:
+    needs: [offline-static-validation]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci: one-time EF-304 Ollama Beam automatic proof'
+    name: EF-304 bounded real Beam plus automated denial/revocation/scope evidence (not human consent)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Validate exact checkout and provider-free negative cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --no-audit --no-fund
+          npm run build
+          node --import tsx --test tests/ef304-auto-ollama-proof.test.mjs
+      - name: Register isolated pinned Ollama provider and choose only Beam
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Ollama credential missing; no simulated PASS"; exit 1; }
+          export HOME="$RUNNER_TEMP/asen-ef304-pi-home"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          node_modules/.bin/pi --list-models > "$RUNNER_TEMP/ef304-models.txt"
+          if awk '$1 == "ollama-cloud" && $2 == "beam" { found=1 } END {exit !found}' "$RUNNER_TEMP/ef304-models.txt"; then
+            selected="beam"
+          elif awk '$1 == "ollama-cloud" && $2 == "beam:cloud" { found=1 } END {exit !found}' "$RUNNER_TEMP/ef304-models.txt"; then
+            selected="beam:cloud"
+          else
+            echo "::error::No registered free Beam model; no paid fallback"
+            exit 1
+          fi
+          {
+            echo "ASEN_SELECTED_MODEL=$selected"
+            echo "HOME=$HOME"
+            echo "USERPROFILE=$HOME"
+            echo "PI_CODING_AGENT_DIR=$PI_CODING_AGENT_DIR"
+          } >> "$GITHUB_ENV"
+      - name: One authentic Ollama Beam model turn and five automated writer guard scenarios
+        shell: bash
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          timeout 180s node --import tsx scripts/ef304-auto-ollama-proof.mjs
+          node -e 'const r=require("./asen-acceptance-evidence/ef304-automatic-ollama.json");if(r.status!=="PASS_AUTOMATED_OLLAMA_GUARDS_HUMAN_PENDING"||r.candidateSha!==process.env.ASEN_EXPECTED_SHA||r.modelWitness?.toolEvents!==0||r.scenarios?.length!==5||!r.scenarios.every(x=>x.passed)||r.humanConsentObserved!==false||r.realWriterAuthorized!==false||r.globalFull!==false)process.exit(1)'
+      - name: Preserve bounded EF-304 evidence without model responses or credentials
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-ef304-automated-beam-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/ef304-automatic-ollama.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  m1-f1f2-beam:
+    needs: [offline-static-validation]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci: one-time M1 F1 F2 Ollama Beam proof'
+    name: M1 + F1/F2 native Pi real Beam (two no-tool turns; not Shell parity)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Build and negative-test exact route/rail/read-only tool contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          node --import tsx --test tests/m1-f1f2-integration.test.ts tests/m1-f1f2-beam-proof.test.ts
+      - name: Install isolated Ollama Cloud extension and choose registered free Beam
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::Missing Ollama key"; exit 1; }
+          export HOME="$RUNNER_TEMP/asen-m1-f1f2-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          node_modules/.bin/pi --list-models > "$RUNNER_TEMP/m1-f1f2-models.txt"
+          if awk '$1=="ollama-cloud" && $2=="beam" {found=1} END {exit !found}' "$RUNNER_TEMP/m1-f1f2-models.txt"; then
+            selected="beam"
+          elif awk '$1=="ollama-cloud" && $2=="beam:cloud" {found=1} END {exit !found}' "$RUNNER_TEMP/m1-f1f2-models.txt"; then
+            selected="beam:cloud"
+          else
+            echo "::error::No registered Beam, refusing alternative or paid model"; exit 1
+          fi
+          {
+            echo "ASEN_SELECTED_MODEL=$selected"
+            echo "HOME=$HOME"
+            echo "USERPROFILE=$HOME"
+            echo "PI_CODING_AGENT_DIR=$PI_CODING_AGENT_DIR"
+          } >> "$GITHUB_ENV"
+      - name: Execute two real Pi RPC/Beam turns with no tools or writer
+        shell: bash
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          timeout 270s node --import tsx scripts/m1-f1f2-beam-proof.mjs
+          node -e 'const r=require("./asen-acceptance-evidence/m1-f1f2-ollama.json");if(r.status!=="PASS_TWO_REAL_BEAM_TURNS_PARITY_PENDING"||r.candidateSha!==process.env.ASEN_EXPECTED_SHA||r.scenarios.length!==2||!r.scenarios.every(x=>x.passed)||r.writerAuthorized!==false||r.globalFull!==false)process.exit(1)'
+      - name: Preserve bounded genuine Beam evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-m1-f1f2-beam-${{ github.sha }}-${{ github.run_id }}
+          path: asen-acceptance-evidence/m1-f1f2-ollama.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  m2-f6-batched-beam:
+    needs: [offline-static-validation]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci: one-time M2 F6 Ollama Beam acceptance'
+    name: M2 + F6 genuine Pi Beam sequential witnesses (parent, dedupe, interrupted, TUI crash)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 24
+    environment: ollama-cloud-beam
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_OLLAMA_WEB_TOOLS: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Validate exact SHA and provider-free M2 F6 navigation and R4 guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          node --import tsx --test tests/m2-f6-native-ui.test.ts
+          node --test tests/r4-native-ui-evidence.test.mjs
+      - name: Install pinned isolated Pi Ollama Cloud and select only registered Beam
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$ASEN_OLLAMA_API_KEY" || { echo "::error::No isolated Ollama key"; exit 1; }
+          export HOME="$RUNNER_TEMP/asen-m2-f6-pi"
+          export USERPROFILE="$HOME"
+          export PI_CODING_AGENT_DIR="$HOME/.pi/agent"
+          export OLLAMA_API_KEY="$ASEN_OLLAMA_API_KEY"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node_modules/.bin/pi install npm:pi-ollama-cloud@0.13.1
+          node_modules/.bin/pi --list-models > "$RUNNER_TEMP/m2-f6-models.txt"
+          if awk '$1 == "ollama-cloud" && $2 == "beam" { found=1 } END {exit !found}' "$RUNNER_TEMP/m2-f6-models.txt"; then
+            selected="beam"
+          elif awk '$1 == "ollama-cloud" && $2 == "beam:cloud" { found=1 } END {exit !found}' "$RUNNER_TEMP/m2-f6-models.txt"; then
+            selected="beam:cloud"
+          else
+            echo "::error::No registered free Beam; no paid or alternate fallback"
+            exit 1
+          fi
+          {
+            echo "ASEN_SELECTED_MODEL=$selected"
+            echo "HOME=$HOME"
+            echo "USERPROFILE=$HOME"
+            echo "PI_CODING_AGENT_DIR=$PI_CODING_AGENT_DIR"
+          } >> "$GITHUB_ENV"
+      - name: Prove EF-603 one actual Pi RPC Explorer from three concurrent requests
+        shell: bash
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          mkdir -p asen-acceptance-evidence
+          timeout 220s node --import tsx scripts/t12-real-ef603-coalescing.mjs
+          node -e 'const r=require("./asen-acceptance-evidence/real-ef603-coalescing.json");if(r.status!=="PASS_REAL_PI_EXPLORER_ONE_EXECUTION"||r.candidateSha!==process.env.ASEN_EXPECTED_SHA||r.nativePiProcessCount!==1||r.globalFull!==false||r.writerAuthorized!==false)process.exit(1)'
+      - name: Prove EF-601 real RPC child and busy Pi TUI parent consumption without fake ACK
+        shell: bash
+        env:
+          ASEN_OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          ASEN_PARENT_WITNESS_MODE=busy timeout 260s node scripts/t12-real-child-parent-consumption.mjs
+      - name: Prove EF-604 streaming abort and provider-free fresh-process recovery
+        shell: bash
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          timeout 220s node --import tsx scripts/t12-real-stream-interruption.mjs
+      - name: Prove EF-604 actual native Pi TUI hard-crash while Beam child streams
+        shell: bash
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/node_modules/.bin:$PATH"
+          timeout 220s node --import tsx scripts/t12-real-tui-stream-crash.mjs
+      - name: Preserve bounded and failure-stage M2 F6 evidence (no secrets or transcript)
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-m2-f6-beam-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            asen-acceptance-evidence/real-ef603-coalescing.json
+            asen-acceptance-evidence/real-pi-parent-child-busy.json
+            asen-acceptance-evidence/real-pi-stream-interruption.json
+            asen-acceptance-evidence/real-pi-tui-stream-crash.json
+          if-no-files-found: warn
+          retention-days: 30

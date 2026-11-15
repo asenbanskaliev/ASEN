@@ -1,0 +1,60 @@
+{
+	"schema": "asen-rail-feasibility-probe/v1",
+	"candidateSha": "ef4507f35a994a35769dddf096d0b0f132059f0e",
+	"host": "@earendil-works/pi-coding-agent",
+	"hostVersion": "1.2.0",
+	"platform": "win32",
+	"measuredWidth": 140,
+	"resizeWidth": 120,
+	"observations": {
+		"apiPresence": {
+			"setWidget": true,
+			"custom": true,
+			"setStatus": true,
+			"showOverlayOnFactoryTui": false
+		},
+		"widgetPersistence": {
+			"presentBefore": true,
+			"presentAfterActivity": null
+		},
+		"inputPreservation": {
+			"typedTokenVisible": true,
+			"overlayCapturedInput": false
+		},
+		"resize": {
+			"reRendered": false,
+			"overlayAdapted": true
+		},
+		"disposal": {
+			"overlayGone": true,
+			"widgetGone": true
+		},
+		"reflow": {
+			"baselineMaxWidth": null,
+			"overlayMaxWidth": 182,
+			"overlayWidth": 40,
+			"delta": null
+		},
+		"projectTrust": {
+			"asked": true,
+			"resolvedViaPublicEvent": true
+		}
+	},
+	"capabilities": {
+		"additive-widget": "UNKNOWN",
+		"overlay-noncapturing": "VERIFIED",
+		"input-preservation-under-overlay": "VERIFIED",
+		"resize-behavior": "GAP",
+		"disposal-cleanliness": "VERIFIED",
+		"transcript-reflow": "INDETERMINATE",
+		"persistent-root-split-rail": "UNKNOWN"
+	},
+	"selfTest": {
+		"positionOnlyClaimRejected": true,
+		"missingReflowClaimRejected": true
+	},
+	"limitation": "This receipt measures one executed Pi host session at the recorded width. VERIFIED applies only where the listed public-API observation succeeded; UNKNOWN records a measurement that was not parseable, GAP records a demonstrable absence. No verdict here certifies the persistent rail without reflow evidence, and position bounds alone never pass admission.",
+	"modelCalls": 0,
+	"networkCalls": 0,
+	"providerCalls": 0
+}

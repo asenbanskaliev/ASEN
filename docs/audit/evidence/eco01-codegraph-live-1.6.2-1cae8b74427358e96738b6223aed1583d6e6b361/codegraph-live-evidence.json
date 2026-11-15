@@ -1,0 +1,1171 @@
+{
+  "schema": "asen.eco01.codegraph-live-evidence.v1",
+  "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+  "source": {
+    "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+    "path": "extensions/codegraph-tools.ts",
+    "fileSha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+    "span": {
+      "startLine": 323,
+      "endLine": 323,
+      "sha256": "a4e951dfbf0364d42620121c654f3f4d1842059c6f0ec6778b19280635a9c8be"
+    }
+  },
+  "asen": {
+    "commit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+    "branch": "feat/strict-parity-prerequisites",
+    "targetPaths": [
+      "src/interaction/code-intelligence.ts",
+      "extensions/asen.ts"
+    ]
+  },
+  "runtime": {
+    "package": "@colbymchenry/codegraph",
+    "version": "1.6.2",
+    "registry": "https://registry.npmjs.org/@colbymchenry/codegraph",
+    "packageIntegrity": "sha512-hODH/mGnCf3IUMs6rzktv/zbecJIKJfdZAYHZ9mqecb0G7ZkHaA8CZafDVnswANFEL1YFcG+lfAwc5SIXzUH6Q==",
+    "packageShasum": "372b7b4f0190197b07d444116d6692240883a2d5",
+    "platform": "linux",
+    "nodeVersion": "v24.19.0",
+    "telemetryEnabled": false,
+    "networkFallbackEnabled": false,
+    "realInit": {
+      "indexedProject": {
+        "command": [
+          "codegraph",
+          "init",
+          "--yes",
+          "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed"
+        ],
+        "exitCode": 0,
+        "stdout": "┌  Initializing CodeGraph\n│\n◆  Initialized in /tmp/asen-eco01-real-codegraph-DYU4wb/indexed\n│\nScanning files...\nParsing code...\nResolving refs...\nLinking dynamic dispatch...\n│\n◆  Indexed 1 files\n│\n●  2 nodes, 1 edges in 321ms\n│\n└  Done\n\n",
+        "stderr": ""
+      },
+      "corruptProject": {
+        "command": [
+          "codegraph",
+          "init",
+          "--yes",
+          "/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt"
+        ],
+        "exitCode": 0,
+        "stdout": "┌  Initializing CodeGraph\n│\n◆  Initialized in /tmp/asen-eco01-real-codegraph-DYU4wb/corrupt\n│\nScanning files...\nParsing code...\nResolving refs...\nLinking dynamic dispatch...\n│\n◆  Indexed 1 files\n│\n●  2 nodes, 1 edges in 335ms\n│\n└  Done\n\n",
+        "stderr": ""
+      }
+    }
+  },
+  "summary": {
+    "scenarios": 5,
+    "pairedProcessRuns": 10,
+    "results": {
+      "EQUIVALENT": 0,
+      "DIVERGENT": 0,
+      "INTENTIONAL": 5,
+      "NOT_APPLICABLE": 0,
+      "UNVERIFIED": 0
+    },
+    "overallStatus": "UNVERIFIED"
+  },
+  "observations": [
+    {
+      "scenario": "normal",
+      "status": "INTENTIONAL",
+      "assessment": {
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "normal",
+        "status": "INTENTIONAL",
+        "sourceReceiptSha256": "08ee7914254691f8929a03020fba772a4dcdcfefd605961406b94263d653fe9f",
+        "asenReceiptSha256": "251bd70f2b7dd4a1f68a96084eddae748e68caac1ee737abf9f457c3fbe2e4f7",
+        "difference": {
+          "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+        },
+        "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+        "limitations": [
+          "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+          "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+        ],
+        "observationValid": true,
+        "admitted": false
+      },
+      "behaviorSame": true,
+      "registrationDifference": true,
+      "before": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "bytes": 176128,
+            "sha256": "ae048e45e547692d575fcdc52618c6f05ff74414399769f9b421be194cbb82b5"
+          },
+          {
+            "name": ".gitignore",
+            "bytes": 229,
+            "sha256": "47c0dacebca9f56c9020b68584470dfc51f07650a3719904e98f4b447a5dd003"
+          }
+        ]
+      },
+      "after": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "bytes": 176128,
+            "sha256": "ae048e45e547692d575fcdc52618c6f05ff74414399769f9b421be194cbb82b5"
+          },
+          {
+            "name": ".gitignore",
+            "bytes": 229,
+            "sha256": "47c0dacebca9f56c9020b68584470dfc51f07650a3719904e98f4b447a5dd003"
+          }
+        ]
+      },
+      "sourceReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "normal",
+        "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "source",
+            "normal",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":null,\"executionMode\":\"sequential\"},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"\\nSearch Results for \\\"greet\\\":\\n\\nfunction    greet\\n  example.js:1\\n  (name)\\n\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-real-codegraph-DYU4wb/indexed\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-real-codegraph-DYU4wb/indexed\",\"--limit\",\"3\",\"--\",\"greet\"]}}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": null,
+            "executionMode": "sequential"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "\nSearch Results for \"greet\":\n\nfunction    greet\n  example.js:1\n  (name)\n\n"
+              }
+            ],
+            "details": {
+              "operation": "query",
+              "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+              "args": [
+                "query",
+                "--path",
+                "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+                "--limit",
+                "3",
+                "--",
+                "greet"
+              ]
+            }
+          }
+        },
+        "stdoutSha256": "1a9ded17b44fefdbfd21e7cbceff78b6a04257ef19c6d4e7ca630f7d6e8476f5",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "a11872903927ee65928d00301330642341cbca2bf0d9fce4dac8b592dcd50933",
+        "logSha256": "ffd5d08d643c66d2379074ae470faed01bf988939963e5f22db83a36ef0d3a15",
+        "receiptSha256": "08ee7914254691f8929a03020fba772a4dcdcfefd605961406b94263d653fe9f"
+      },
+      "asenReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "normal",
+        "commit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "asen",
+            "normal",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"executionMode\":\"sequential\"},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"\\nSearch Results for \\\"greet\\\":\\n\\nfunction    greet\\n  example.js:1\\n  (name)\\n\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-real-codegraph-DYU4wb/indexed\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-real-codegraph-DYU4wb/indexed\",\"--limit\",\"3\",\"--\",\"greet\"]}}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": false,
+              "openWorldHint": false
+            },
+            "executionMode": "sequential"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "\nSearch Results for \"greet\":\n\nfunction    greet\n  example.js:1\n  (name)\n\n"
+              }
+            ],
+            "details": {
+              "operation": "query",
+              "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+              "args": [
+                "query",
+                "--path",
+                "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+                "--limit",
+                "3",
+                "--",
+                "greet"
+              ]
+            }
+          }
+        },
+        "stdoutSha256": "e1c57bbae4c0382e54a3f149ce75cdda9ebe185dcb585fb5078f50529806d2c8",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "4ffca829027c82977677a04dead58486253f63ceb6b84811785405b5b82e03f3",
+        "logSha256": "1660cd4334da27adc1a07353c9fd7c3219e571fa5346cd34183ac8c3403d3313",
+        "receiptSha256": "251bd70f2b7dd4a1f68a96084eddae748e68caac1ee737abf9f457c3fbe2e4f7"
+      }
+    },
+    {
+      "scenario": "invalid-input",
+      "status": "INTENTIONAL",
+      "assessment": {
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "invalid-input",
+        "status": "INTENTIONAL",
+        "sourceReceiptSha256": "beed078cc71fba26889dffdfb552362a5e1e34963cc33fb83dba1f3bff1c49b0",
+        "asenReceiptSha256": "20c89490e976104685962eba6941593ca973cbc31669b3657befa45d29ce94d0",
+        "difference": {
+          "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+        },
+        "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+        "limitations": [
+          "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+          "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+        ],
+        "observationValid": true,
+        "admitted": false
+      },
+      "behaviorSame": true,
+      "registrationDifference": true,
+      "before": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "missing": true
+          },
+          {
+            "name": ".gitignore",
+            "missing": true
+          }
+        ]
+      },
+      "after": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "missing": true
+          },
+          {
+            "name": ".gitignore",
+            "missing": true
+          }
+        ]
+      },
+      "sourceReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "invalid-input",
+        "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "source",
+            "invalid-input",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/invalid"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/invalid",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":null,\"executionMode\":\"sequential\"},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph query is required for query and explore operations.\"}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": null,
+            "executionMode": "sequential"
+          },
+          "thrown": {
+            "name": "Error",
+            "message": "CodeGraph query is required for query and explore operations."
+          }
+        },
+        "stdoutSha256": "d8e0471f51ca8a1888f9b22e98f40d5d743babcda32dea804500681b85d53e2f",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "6fcdfe1c11af4efd0d96fed6362d9f98a19fe914c3e24c5ff61d6cf1c37e9087",
+        "logSha256": "cdf243aab7500b8434ed74e483ed080e832bad67c4a129a4791219daeacfd2af",
+        "receiptSha256": "beed078cc71fba26889dffdfb552362a5e1e34963cc33fb83dba1f3bff1c49b0"
+      },
+      "asenReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "invalid-input",
+        "commit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "asen",
+            "invalid-input",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/invalid"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/invalid",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"executionMode\":\"sequential\"},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph query is required for query and explore operations.\"}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": false,
+              "openWorldHint": false
+            },
+            "executionMode": "sequential"
+          },
+          "thrown": {
+            "name": "Error",
+            "message": "CodeGraph query is required for query and explore operations."
+          }
+        },
+        "stdoutSha256": "3ac117686550c2bffb0bc2aaf280e4fae2135b9207866cf638f6ddd751b119b2",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "2884713c58e2df746c790dda2ef84fd693c8491314107785e428458678fa6bb5",
+        "logSha256": "4ed73cb0052acec57eb5fd218f4966761f81461ef114627c6939e3da6e5e493e",
+        "receiptSha256": "20c89490e976104685962eba6941593ca973cbc31669b3657befa45d29ce94d0"
+      }
+    },
+    {
+      "scenario": "denied",
+      "status": "INTENTIONAL",
+      "assessment": {
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "denied",
+        "status": "INTENTIONAL",
+        "sourceReceiptSha256": "201f4fd6063b2554ec0031698044b15be022f0eea645d6ba76214cccbe2c5335",
+        "asenReceiptSha256": "4431f515e323f218e34d81856f1cf6123a53d81aeca6b8735fc35991aafd8a28",
+        "difference": {
+          "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+        },
+        "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+        "limitations": [
+          "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+          "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+        ],
+        "observationValid": true,
+        "admitted": false
+      },
+      "behaviorSame": true,
+      "registrationDifference": true,
+      "before": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "missing": true
+          },
+          {
+            "name": ".gitignore",
+            "missing": true
+          }
+        ]
+      },
+      "after": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "missing": true
+          },
+          {
+            "name": ".gitignore",
+            "missing": true
+          }
+        ]
+      },
+      "sourceReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "denied",
+        "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "source",
+            "denied",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/denied"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/denied",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":null,\"executionMode\":\"sequential\"},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph .codegraph must be a real directory when it already exists.\"}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": null,
+            "executionMode": "sequential"
+          },
+          "thrown": {
+            "name": "Error",
+            "message": "CodeGraph .codegraph must be a real directory when it already exists."
+          }
+        },
+        "stdoutSha256": "b78decf23eab845b2b0619889a93fd0453000e0cdf5c950b37c3b8e97d8f265c",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "c5b910a98c61f2fb423ba65e874a4162b41785b578dbf35397c90bf78e757b0c",
+        "logSha256": "baba48df58e32fd1430a4d81e9001bcbab6395530db041ddf5fc7205f8ee03e2",
+        "receiptSha256": "201f4fd6063b2554ec0031698044b15be022f0eea645d6ba76214cccbe2c5335"
+      },
+      "asenReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "denied",
+        "commit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "asen",
+            "denied",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/denied"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/denied",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"executionMode\":\"sequential\"},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph .codegraph must be a real directory when it already exists.\"}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": false,
+              "openWorldHint": false
+            },
+            "executionMode": "sequential"
+          },
+          "thrown": {
+            "name": "Error",
+            "message": "CodeGraph .codegraph must be a real directory when it already exists."
+          }
+        },
+        "stdoutSha256": "778f5fba3213fa1f8144814aa24d916ecf6222a20346b40c2ac46d65fdd849fd",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "a154a83d4a01348a33d71e1b26e8ebeae4b47b5038774e873d62a1d23bfd309b",
+        "logSha256": "227cd8329848db7a2e625078cc09eadadf67ae2d001271e88e250ad28b06664b",
+        "receiptSha256": "4431f515e323f218e34d81856f1cf6123a53d81aeca6b8735fc35991aafd8a28"
+      }
+    },
+    {
+      "scenario": "partial-failure",
+      "status": "INTENTIONAL",
+      "assessment": {
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "partial-failure",
+        "status": "INTENTIONAL",
+        "sourceReceiptSha256": "b81c210d6105437ce795832a23152a9c7809f0200c2d6b3885e023e75468eab2",
+        "asenReceiptSha256": "59039250dd5168d190b56dec272db48db4cc90f8ecfac242eea1446ffe1bbf40",
+        "difference": {
+          "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+        },
+        "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+        "limitations": [
+          "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+          "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+        ],
+        "observationValid": true,
+        "admitted": false
+      },
+      "behaviorSame": true,
+      "registrationDifference": true,
+      "before": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "bytes": 22,
+            "sha256": "8cdbac5a07cf021a0c46cb82be94701992005ec0797161791d80ad2f1685923c"
+          },
+          {
+            "name": ".gitignore",
+            "bytes": 229,
+            "sha256": "47c0dacebca9f56c9020b68584470dfc51f07650a3719904e98f4b447a5dd003"
+          }
+        ]
+      },
+      "after": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "bytes": 22,
+            "sha256": "8cdbac5a07cf021a0c46cb82be94701992005ec0797161791d80ad2f1685923c"
+          },
+          {
+            "name": ".gitignore",
+            "bytes": 229,
+            "sha256": "47c0dacebca9f56c9020b68584470dfc51f07650a3719904e98f4b447a5dd003"
+          }
+        ]
+      },
+      "sourceReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "partial-failure",
+        "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "source",
+            "partial-failure",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":null,\"executionMode\":\"sequential\"},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"CodeGraph failed to run. Use read, grep, and find for this exploration.\"}],\"details\":{\"status\":\"failed\",\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt\",\"fallback\":\"Use read, grep, and find for this exploration.\"}}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": null,
+            "executionMode": "sequential"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "CodeGraph failed to run. Use read, grep, and find for this exploration."
+              }
+            ],
+            "details": {
+              "status": "failed",
+              "operation": "query",
+              "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt",
+              "fallback": "Use read, grep, and find for this exploration."
+            }
+          }
+        },
+        "stdoutSha256": "5e38a0d05ff65c386a2e3cde3df4e5e53a67fe7b69791a2f15b1074616fcc4cc",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "0f46bb26f04304bc2b38e18f509a28be3c1f7500e6bc79328162ed276332ba5a",
+        "logSha256": "763b0c7aa4fc82072fb20609e22bf4e31a9d609ff2bf1bc0df090ea65e501fc3",
+        "receiptSha256": "b81c210d6105437ce795832a23152a9c7809f0200c2d6b3885e023e75468eab2"
+      },
+      "asenReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "partial-failure",
+        "commit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "asen",
+            "partial-failure",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"executionMode\":\"sequential\"},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"CodeGraph failed to run. Use read, grep, and find for this exploration.\"}],\"details\":{\"status\":\"failed\",\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt\",\"fallback\":\"Use read, grep, and find for this exploration.\"}}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": false,
+              "openWorldHint": false
+            },
+            "executionMode": "sequential"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "CodeGraph failed to run. Use read, grep, and find for this exploration."
+              }
+            ],
+            "details": {
+              "status": "failed",
+              "operation": "query",
+              "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/corrupt",
+              "fallback": "Use read, grep, and find for this exploration."
+            }
+          }
+        },
+        "stdoutSha256": "bab065e713f51f78a97f496a117c18356b80aa30057cb2f40a359a0fa3cb14e8",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "8e243ddea9af0902ad490620bfc7f7d21b613a222feae25c14a99051958f8870",
+        "logSha256": "9f1125a070f6c7d336451d62fb2f4065756a44b349415e8805e91efeffcc7fe5",
+        "receiptSha256": "59039250dd5168d190b56dec272db48db4cc90f8ecfac242eea1446ffe1bbf40"
+      }
+    },
+    {
+      "scenario": "restart",
+      "status": "INTENTIONAL",
+      "assessment": {
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "restart",
+        "status": "INTENTIONAL",
+        "sourceReceiptSha256": "d7df76859e628a16d744e6af78299f2dda13619a1d514ab5089921dc30f95d7c",
+        "asenReceiptSha256": "830e12622e0bd03d1ab73e93ad1a3bb57cd8327b4566e941a1ec6646e96901cd",
+        "difference": {
+          "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+        },
+        "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+        "limitations": [
+          "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+          "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+        ],
+        "observationValid": true,
+        "admitted": false
+      },
+      "behaviorSame": true,
+      "registrationDifference": true,
+      "before": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "bytes": 176128,
+            "sha256": "ae048e45e547692d575fcdc52618c6f05ff74414399769f9b421be194cbb82b5"
+          },
+          {
+            "name": ".gitignore",
+            "bytes": 229,
+            "sha256": "47c0dacebca9f56c9020b68584470dfc51f07650a3719904e98f4b447a5dd003"
+          }
+        ]
+      },
+      "after": {
+        "indexDirectoryExists": true,
+        "entries": [
+          {
+            "name": "codegraph.db",
+            "bytes": 176128,
+            "sha256": "ae048e45e547692d575fcdc52618c6f05ff74414399769f9b421be194cbb82b5"
+          },
+          {
+            "name": ".gitignore",
+            "bytes": 229,
+            "sha256": "47c0dacebca9f56c9020b68584470dfc51f07650a3719904e98f4b447a5dd003"
+          }
+        ]
+      },
+      "sourceReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "restart",
+        "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "source",
+            "restart",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":null,\"executionMode\":\"sequential\"},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"\\nSearch Results for \\\"greet\\\":\\n\\nfunction    greet\\n  example.js:1\\n  (name)\\n\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-real-codegraph-DYU4wb/indexed\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-real-codegraph-DYU4wb/indexed\",\"--limit\",\"3\",\"--\",\"greet\"]}}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": null,
+            "executionMode": "sequential"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "\nSearch Results for \"greet\":\n\nfunction    greet\n  example.js:1\n  (name)\n\n"
+              }
+            ],
+            "details": {
+              "operation": "query",
+              "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+              "args": [
+                "query",
+                "--path",
+                "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+                "--limit",
+                "3",
+                "--",
+                "greet"
+              ]
+            }
+          }
+        },
+        "stdoutSha256": "1a9ded17b44fefdbfd21e7cbceff78b6a04257ef19c6d4e7ca630f7d6e8476f5",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "a11872903927ee65928d00301330642341cbca2bf0d9fce4dac8b592dcd50933",
+        "logSha256": "ffd5d08d643c66d2379074ae470faed01bf988939963e5f22db83a36ef0d3a15",
+        "receiptSha256": "d7df76859e628a16d744e6af78299f2dda13619a1d514ab5089921dc30f95d7c"
+      },
+      "asenReceipt": {
+        "schema": "asen.eco01.execution-receipt.v1",
+        "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+        "scenario": "restart",
+        "commit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+        "command": {
+          "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+          "args": [
+            "--import",
+            "tsx",
+            "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-live.mjs",
+            "--child",
+            "/tmp/eco01-source",
+            "asen",
+            "restart",
+            "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed"
+          ]
+        },
+        "environment": {
+          "platform": "linux",
+          "nodeVersion": "v24.19.0",
+          "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+          "codegraphVersion": "1.6.2",
+          "telemetry": "disabled",
+          "downloads": "disabled"
+        },
+        "exitCode": 0,
+        "stdout": "{\"registration\":{\"name\":\"codegraph\",\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"executionMode\":\"sequential\"},\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"\\nSearch Results for \\\"greet\\\":\\n\\nfunction    greet\\n  example.js:1\\n  (name)\\n\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-real-codegraph-DYU4wb/indexed\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-real-codegraph-DYU4wb/indexed\",\"--limit\",\"3\",\"--\",\"greet\"]}}}\n",
+        "stderr": "",
+        "output": {
+          "registration": {
+            "name": "codegraph",
+            "parameters": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "init",
+                    "query",
+                    "explore"
+                  ]
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20
+                }
+              }
+            },
+            "annotations": {
+              "readOnlyHint": false,
+              "destructiveHint": true,
+              "idempotentHint": false,
+              "openWorldHint": false
+            },
+            "executionMode": "sequential"
+          },
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "\nSearch Results for \"greet\":\n\nfunction    greet\n  example.js:1\n  (name)\n\n"
+              }
+            ],
+            "details": {
+              "operation": "query",
+              "cwd": "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+              "args": [
+                "query",
+                "--path",
+                "/tmp/asen-eco01-real-codegraph-DYU4wb/indexed",
+                "--limit",
+                "3",
+                "--",
+                "greet"
+              ]
+            }
+          }
+        },
+        "stdoutSha256": "e1c57bbae4c0382e54a3f149ce75cdda9ebe185dcb585fb5078f50529806d2c8",
+        "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "outputSha256": "4ffca829027c82977677a04dead58486253f63ceb6b84811785405b5b82e03f3",
+        "logSha256": "1660cd4334da27adc1a07353c9fd7c3219e571fa5346cd34183ac8c3403d3313",
+        "receiptSha256": "830e12622e0bd03d1ab73e93ad1a3bb57cd8327b4566e941a1ec6646e96901cd"
+      }
+    }
+  ]
+}

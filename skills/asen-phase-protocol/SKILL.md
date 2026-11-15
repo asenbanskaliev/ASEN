@@ -1,6 +1,10 @@
 ---
 name: asen-phase-protocol
 description: "Trigger: delegated engineering phase, phase executor, lifecycle phase. Enforce executor-only delegation, authoritative handoff state, exact skill loading and structured phase results."
+license: MIT
+metadata:
+  author: ASEN
+  version: "1.0.0"
 ---
 ## Activation Contract
 Use for every delegated lifecycle phase.
@@ -22,7 +26,9 @@ Use for every delegated lifecycle phase.
 2. Load injected exact skill paths.
 3. Retrieve only declared required artifacts/evidence.
 4. Execute the phase without delegation.
-5. Persist candidate-bound phase evidence.
+5. Persist the phase evidence required by the issued handoff; bind it to the exact candidate when one is issued.
+   For admitted read-only delegation without a candidate, return the required report without inventing candidate identity or lifecycle artifacts.
+   Missing required handoff data or evidence remains blocked; a report grants no mutation, candidate-verification or release authority.
 6. Return structured status.
 ## Output Contract
 Return status (success/partial/blocked), executive summary, artifacts/evidence, next recommended phase, risks and skill resolution (paths-injected/fallback/none).

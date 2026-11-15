@@ -1,0 +1,3323 @@
+{
+  "schema": "asen.eco01.functional-evidence-matrix.v1",
+  "generatedAt": "2026-10-16T15:46:17.188Z",
+  "asenBaseCommit": "dd28850f8c39d59b12d8227744d61ec65458c09d",
+  "asenCandidateCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "sourceVerification": {
+    "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+    "clean": true,
+    "verifiedFiles": 14,
+    "verifiedEdges": 25
+  },
+  "executionEnvironment": {
+    "node": "v24.19.0",
+    "platform": "linux",
+    "piRuntime": "1.1.0 (CI runtime-evidence job; not used by differential executions)"
+  },
+  "summary": {
+    "contracts": 25,
+    "scenarios": 148,
+    "pairedExecutions": 12,
+    "pairedProcessRuns": 12,
+    "verified": 0,
+    "statusCounts": {
+      "EQUIVALENT": 0,
+      "DIVERGENT": 0,
+      "INTENTIONAL": 11,
+      "NOT_APPLICABLE": 0,
+      "UNVERIFIED": 137
+    },
+    "note": "Five CodeGraph scenarios were executed with the real dynamic package and remain INTENTIONAL for host annotation differences. Todo core-state comparisons cover invalid-input signaling, restart recovery, duplicate-request protection, session/project authorization, and clear/archive; those differences are INTENTIONAL except one normal pair which remains UNVERIFIED. Real Pi RPC registration was observed for both the source Todo tool and ASEN Todo tools, with zero model calls; interface/authentication differences are INTENTIONAL. Across these experiments, 12 paired scenarios and 12 Pi/package processes were observed. No EQUIVALENT results are admitted.",
+    "pairedCoreStateExperiments": 5,
+    "pairedPiRuntimeRuns": 2
+  },
+  "contracts": [
+    {
+      "id": "ECO-SRC-625c38e8637ad8b0:0",
+      "kind": "external-runtime",
+      "sourceSha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+      "sourceSpan": {
+        "startLine": 208,
+        "endLine": 231,
+        "sha256": "d58f1cf373161a361aed434e47ad5154064cd5d0495ae4e43b6c136db12f73c5"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "installed-package-discovery",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 0,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-ecb5b4ebbaf005aa:0",
+      "kind": "external-runtime",
+      "sourceSha256": "afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",
+      "sourceSpan": {
+        "startLine": 120,
+        "endLine": 138,
+        "sha256": "14bab5abdbf5dac6cf61794cf1e70ba2627f05710ba518aa8ec3ed7e2e32d384"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "user-selected-absolute-file",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
+      "referenceIndex": 0,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-ecb5b4ebbaf005aa:2",
+      "kind": "external-runtime",
+      "sourceSha256": "afe1984c6334ff774fbf69961675f2ccc9ea034cd36b3aa3b17632958a0cd553",
+      "sourceSpan": {
+        "startLine": 271,
+        "endLine": 310,
+        "sha256": "25ae5e1512512fa0c618189180bd6ded5f0081db312f6c88e0597b0b5ca298a9"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "generated-install-manifest-and-binary",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-ecb5b4ebbaf005aa",
+      "referenceIndex": 2,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-f4f6b335bf2cf4e9:0",
+      "kind": "external-runtime",
+      "sourceSha256": "3f26a3bfe12e962bf968fcc546c0cdf4d700d3a9a8c180626f4e3729da2d4bf3",
+      "sourceSpan": {
+        "startLine": 169,
+        "endLine": 169,
+        "sha256": "5cbf226fe65f0208f81fc38f7a89780c4e8dab6eb190227968351f873e8f2859"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "configured-provider-url",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-f4f6b335bf2cf4e9",
+      "referenceIndex": 0,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-ee431194e4155110:0",
+      "kind": "external-runtime",
+      "sourceSha256": "8f4ce05940375a03b24cefb517c9329b6a34bf2d978513dea6b784916012f15b",
+      "sourceSpan": {
+        "startLine": 606,
+        "endLine": 620,
+        "sha256": "bc093b37701720074b431c53b825c33002b942786d4e9ee4f09dcbd9b79b56ac"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "caller-selected-candidate-tree",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-ee431194e4155110",
+      "referenceIndex": 0,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-6058ca4d664d9095:1",
+      "kind": "tracked-glob",
+      "sourceSha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+      "sourceSpan": {
+        "startLine": 32,
+        "endLine": 38,
+        "sha256": "0d4bd0f5d54216487e19a60575abadf65ba1621b4370a8ddbbfbb9855717af4f"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "direct-markdown-children",
+      "limitation": "The source inventory points to an upstream-only file or file set and does not identify an ASEN counterpart; absence is not being treated as functional equivalence.",
+      "scenarios": [
+        {
+          "name": "empty",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "single-child",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "multiple-children",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "nested-child",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "changed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 1,
+      "mappingTargets": [
+        "assets/agents/*.md"
+      ]
+    },
+    {
+      "id": "ECO-SRC-dbf31123d00902ed:1",
+      "kind": "tracked-file",
+      "sourceSha256": "740b7b6f5e97f70caac1077beb0a652edfcaf4ecf2a9f892ca6ee6ff505f7f81",
+      "sourceSpan": {
+        "startLine": 1,
+        "endLine": 6,
+        "sha256": "82710160f01d8d291894e1e372f5a7d9247433129f93f945db203c991ece738e"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "exact-source-file",
+      "limitation": "The source inventory points to an upstream-only file or file set and does not identify an ASEN counterpart; absence is not being treated as functional equivalence.",
+      "scenarios": [
+        {
+          "name": "present",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "changed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-dbf31123d00902ed",
+      "referenceIndex": 1,
+      "mappingTargets": [
+        "contracts/telemetry/runtime-aggregate-v1.schema.json"
+      ]
+    },
+    {
+      "id": "ECO-SRC-8745033959a82ed0:0",
+      "kind": "external-runtime",
+      "sourceSha256": "cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",
+      "sourceSpan": {
+        "startLine": 121,
+        "endLine": 139,
+        "sha256": "77b4bcfa14a46e5572e13a0baefcddfeb51f64d727e38c4a8028137a935c7185"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "user-selected-absolute-file",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-8745033959a82ed0",
+      "referenceIndex": 0,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-8745033959a82ed0:2",
+      "kind": "external-runtime",
+      "sourceSha256": "cbdf5deac8b7a85ab1253dbd049953aeb192a7d1f7987f9206916ab449c10a92",
+      "sourceSpan": {
+        "startLine": 272,
+        "endLine": 311,
+        "sha256": "10539dce99600450e289398ecf8444e87f14e028954e329880d8012e97e7b94a"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "generated-install-manifest-and-binary",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-8745033959a82ed0",
+      "referenceIndex": 2,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-7fb85a620f260291:2",
+      "kind": "external-runtime",
+      "sourceSha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "sourceSpan": {
+        "startLine": 165,
+        "endLine": 167,
+        "sha256": "6ec3ca5a6596cd808154081dbe34c98ee69d5f13b2c8b1563ddcdfb9e64f39d4"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "downloaded-or-staged-content",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 2,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-7fb85a620f260291:0",
+      "kind": "external-runtime",
+      "sourceSha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "sourceSpan": {
+        "startLine": 176,
+        "endLine": 176,
+        "sha256": "405ea65219a981feba5f4dcc4c551023a1fa6d22ed61ce6f40747a1078405797"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "https-download-url",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 0,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-7fb85a620f260291:1",
+      "kind": "external-runtime",
+      "sourceSha256": "3b897818fbf8aef7ef22c9c11c5f8a8118453fbcb67d69ea1c8cf7d608d20547",
+      "sourceSpan": {
+        "startLine": 185,
+        "endLine": 185,
+        "sha256": "c8ba63ced71ecc91cc85212692b256f85e441d0a75a60fbcfb12eece360b46b0"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "https-redirect-location",
+      "limitation": "The edge depends on dynamic runtime input, and the mapping has no reproducible external fixture or bound ASEN counterpart; a mock would not establish equivalence.",
+      "scenarios": [
+        {
+          "name": "available",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "missing",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "malformed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-7fb85a620f260291",
+      "referenceIndex": 1,
+      "mappingTargets": []
+    },
+    {
+      "id": "ECO-SRC-625c38e8637ad8b0:7",
+      "kind": "code-contract",
+      "sourceSha256": "7d499bc7c70e9b7812bc03c373aafe766472ace6b95d036e0a585438ba35d0f7",
+      "sourceSpan": {
+        "startLine": 323,
+        "endLine": 323,
+        "sha256": "a4e951dfbf0364d42620121c654f3f4d1842059c6f0ec6778b19280635a9c8be"
+      },
+      "sourceReference": {
+        "kind": "tool",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "normal",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "08ee7914254691f8929a03020fba772a4dcdcfefd605961406b94263d653fe9f",
+              "asenReceiptSha256": "251bd70f2b7dd4a1f68a96084eddae748e68caac1ee737abf9f457c3fbe2e4f7",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "08ee7914254691f8929a03020fba772a4dcdcfefd605961406b94263d653fe9f",
+            "asenReceiptSha256": "251bd70f2b7dd4a1f68a96084eddae748e68caac1ee737abf9f457c3fbe2e4f7"
+          },
+          "previousControlledSimulation": {
+            "kind": "controlled-external-process",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "normal",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "d8add2103ac73e903c4e6cd08eb7c4d0063757da26fc7b07433fa78f4c5b5306",
+              "asenReceiptSha256": "ce22df84d9acaca3b0b5913c46e5f3178a6a99b431dab506802ce3e9a294e97a",
+              "difference": {
+                "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
+              },
+              "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
+              "limitations": [
+                "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
+                "Only the current host OS was exercised."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "behaviorSame": true,
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "normal",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "normal",
+                  "source",
+                  "/tmp/asen-eco01-codegraph-K8FlLE"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-K8FlLE",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-K8FlLE/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"content\":[{\"type\":\"text\",\"text\":\"controlled-index-result\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-K8FlLE\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-codegraph-K8FlLE\",\"--limit\",\"3\",\"--\",\"--help; literal query\"]}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": null
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "controlled-index-result\n"
+                  }
+                ],
+                "details": {
+                  "operation": "query",
+                  "cwd": "/tmp/asen-eco01-codegraph-K8FlLE",
+                  "args": [
+                    "query",
+                    "--path",
+                    "/tmp/asen-eco01-codegraph-K8FlLE",
+                    "--limit",
+                    "3",
+                    "--",
+                    "--help; literal query"
+                  ]
+                }
+              },
+              "stdoutSha256": "f740aed383e2ccae780cf6ae2d65f31ac6cc1b698ad95be6ae38c56ec9d4cdf1",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "b1c2d9f931d92489a9d05e61fa479555953cac1b57b849d55bb97cbb7fa59d35",
+              "logSha256": "3147e2b6907e6218f0677f07a4c1117181465e4908eed586fd47b5eeb06f6248",
+              "receiptSha256": "d8add2103ac73e903c4e6cd08eb7c4d0063757da26fc7b07433fa78f4c5b5306"
+            },
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "normal",
+              "commit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "normal",
+                  "asen",
+                  "/tmp/asen-eco01-codegraph-K8FlLE"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-K8FlLE",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-K8FlLE/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"content\":[{\"type\":\"text\",\"text\":\"controlled-index-result\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-K8FlLE\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-codegraph-K8FlLE\",\"--limit\",\"3\",\"--\",\"--help; literal query\"]}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": {
+                    "readOnlyHint": false,
+                    "destructiveHint": true,
+                    "idempotentHint": false,
+                    "openWorldHint": false
+                  }
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "controlled-index-result\n"
+                  }
+                ],
+                "details": {
+                  "operation": "query",
+                  "cwd": "/tmp/asen-eco01-codegraph-K8FlLE",
+                  "args": [
+                    "query",
+                    "--path",
+                    "/tmp/asen-eco01-codegraph-K8FlLE",
+                    "--limit",
+                    "3",
+                    "--",
+                    "--help; literal query"
+                  ]
+                }
+              },
+              "stdoutSha256": "d52cf510bf0a5ef7128630255cb94a5346df484fe203080c51cc3f84b50c19c5",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "45c1a5057bb00d8446277aeb68e81a3951441abb4a407a1ec200884adeaab5a4",
+              "logSha256": "b3b3bfc4feaee865b85d9c5930b78723a410b7dfea1a9a3242cdeb565d984cff",
+              "receiptSha256": "ce22df84d9acaca3b0b5913c46e5f3178a6a99b431dab506802ce3e9a294e97a"
+            },
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
+          }
+        },
+        {
+          "name": "invalid-input",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "invalid-input",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "beed078cc71fba26889dffdfb552362a5e1e34963cc33fb83dba1f3bff1c49b0",
+              "asenReceiptSha256": "20c89490e976104685962eba6941593ca973cbc31669b3657befa45d29ce94d0",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "beed078cc71fba26889dffdfb552362a5e1e34963cc33fb83dba1f3bff1c49b0",
+            "asenReceiptSha256": "20c89490e976104685962eba6941593ca973cbc31669b3657befa45d29ce94d0"
+          },
+          "previousControlledSimulation": {
+            "kind": "controlled-external-process",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "invalid-input",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "f470022dc8795a5b9ffb1a36ff3d774c5d13a1563181dbe58ce8dffdd04da563",
+              "asenReceiptSha256": "5f438598470280b7f31f0bbfabfb6954aa112d3e370b77e0b67d5448f0bfc819",
+              "difference": {
+                "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
+              },
+              "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
+              "limitations": [
+                "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
+                "Only the current host OS was exercised."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "behaviorSame": true,
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "invalid-input",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "invalid-input",
+                  "source",
+                  "/tmp/asen-eco01-codegraph-kFu1d3"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-kFu1d3",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-kFu1d3/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph query is required for query and explore operations.\"}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": null
+                },
+                "thrown": {
+                  "name": "Error",
+                  "message": "CodeGraph query is required for query and explore operations."
+                }
+              },
+              "stdoutSha256": "b7114103088145ec957a6f32be3d9186e51fa86ea92283c766b5e29c10d68f6f",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "8742800f4672190cb8de58d78203a75bc5bdd9b30d05e7eae47d052959a82443",
+              "logSha256": "4c4ffdfbea322a21a747ee39efa5e7168de5d4f98416a13b3c8fd97e14507626",
+              "receiptSha256": "f470022dc8795a5b9ffb1a36ff3d774c5d13a1563181dbe58ce8dffdd04da563"
+            },
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "invalid-input",
+              "commit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "invalid-input",
+                  "asen",
+                  "/tmp/asen-eco01-codegraph-kFu1d3"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-kFu1d3",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-kFu1d3/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph query is required for query and explore operations.\"}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": {
+                    "readOnlyHint": false,
+                    "destructiveHint": true,
+                    "idempotentHint": false,
+                    "openWorldHint": false
+                  }
+                },
+                "thrown": {
+                  "name": "Error",
+                  "message": "CodeGraph query is required for query and explore operations."
+                }
+              },
+              "stdoutSha256": "c8d87ed73157f37f72f20c3642e3ca758fb6d9782499fe531c11cfc652ef59a0",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "0484c16733d4ba3ec9452f85ded954095c795263cca954b998811c0220aed409",
+              "logSha256": "e39964b5430ad62dea665375dfffb40f0805ab782da9a0cd482f62f2e11e64bd",
+              "receiptSha256": "5f438598470280b7f31f0bbfabfb6954aa112d3e370b77e0b67d5448f0bfc819"
+            },
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
+          }
+        },
+        {
+          "name": "denied",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "denied",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "201f4fd6063b2554ec0031698044b15be022f0eea645d6ba76214cccbe2c5335",
+              "asenReceiptSha256": "4431f515e323f218e34d81856f1cf6123a53d81aeca6b8735fc35991aafd8a28",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "201f4fd6063b2554ec0031698044b15be022f0eea645d6ba76214cccbe2c5335",
+            "asenReceiptSha256": "4431f515e323f218e34d81856f1cf6123a53d81aeca6b8735fc35991aafd8a28"
+          },
+          "previousControlledSimulation": {
+            "kind": "controlled-external-process",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "denied",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "7452801c5cc732e8841feaf637873ef73995a4e88d57e3cb0ada4e3695196699",
+              "asenReceiptSha256": "50cf91bde6eb217708716200fc8a2bb75620cf41761168a088325cfd445dd41e",
+              "difference": {
+                "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
+              },
+              "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
+              "limitations": [
+                "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
+                "Only the current host OS was exercised."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "behaviorSame": true,
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "denied",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "denied",
+                  "source",
+                  "/tmp/asen-eco01-codegraph-IubwvP"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-IubwvP",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-IubwvP/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph .codegraph must be a real directory when it already exists.\"}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": null
+                },
+                "thrown": {
+                  "name": "Error",
+                  "message": "CodeGraph .codegraph must be a real directory when it already exists."
+                }
+              },
+              "stdoutSha256": "63da36c1b82b5b6fdab9c8ccd5df1048b8958609191f38c6ff6ac8e357628930",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "d1e5d2739f0bd5943ae5cf5ef14656f3a4d7f822fdbf83dfe261b12ee551ed68",
+              "logSha256": "11483a21b9eb79ed88140686b25e80125a9cc646c8f655266cfb5639cb8c1de6",
+              "receiptSha256": "7452801c5cc732e8841feaf637873ef73995a4e88d57e3cb0ada4e3695196699"
+            },
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "denied",
+              "commit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "denied",
+                  "asen",
+                  "/tmp/asen-eco01-codegraph-IubwvP"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-IubwvP",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-IubwvP/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"thrown\":{\"name\":\"Error\",\"message\":\"CodeGraph .codegraph must be a real directory when it already exists.\"}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": {
+                    "readOnlyHint": false,
+                    "destructiveHint": true,
+                    "idempotentHint": false,
+                    "openWorldHint": false
+                  }
+                },
+                "thrown": {
+                  "name": "Error",
+                  "message": "CodeGraph .codegraph must be a real directory when it already exists."
+                }
+              },
+              "stdoutSha256": "469a6a532b94d6403d054b7d129944f352d02394f0042331c168fce25e9f3ddc",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "5286635dcad77b68ce7d7b44d9abed8bdefe02673b3f542582054da4efbd3f66",
+              "logSha256": "08d643db11223898af05f526ff652a2617aef59f0f8daf9b7fc0fe667612d26d",
+              "receiptSha256": "50cf91bde6eb217708716200fc8a2bb75620cf41761168a088325cfd445dd41e"
+            },
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
+          }
+        },
+        {
+          "name": "partial-failure",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "partial-failure",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "b81c210d6105437ce795832a23152a9c7809f0200c2d6b3885e023e75468eab2",
+              "asenReceiptSha256": "59039250dd5168d190b56dec272db48db4cc90f8ecfac242eea1446ffe1bbf40",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "b81c210d6105437ce795832a23152a9c7809f0200c2d6b3885e023e75468eab2",
+            "asenReceiptSha256": "59039250dd5168d190b56dec272db48db4cc90f8ecfac242eea1446ffe1bbf40"
+          },
+          "previousControlledSimulation": {
+            "kind": "controlled-external-process",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "partial-failure",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "e14f2749d3f53e73e508ae955320c606371b106375c72d68b844ea905041266c",
+              "asenReceiptSha256": "6c256776f7e75ddaa57ee465637c815e9a8c3cce7c8ad01fb2131e94da56b332",
+              "difference": {
+                "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
+              },
+              "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
+              "limitations": [
+                "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
+                "Only the current host OS was exercised."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "behaviorSame": true,
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "partial-failure",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "partial-failure",
+                  "source",
+                  "/tmp/asen-eco01-codegraph-T3qh04"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-T3qh04",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-T3qh04/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"content\":[{\"type\":\"text\",\"text\":\"CodeGraph failed to run. Use read, grep, and find for this exploration.\"}],\"details\":{\"status\":\"failed\",\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-T3qh04\",\"fallback\":\"Use read, grep, and find for this exploration.\"}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": null
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "CodeGraph failed to run. Use read, grep, and find for this exploration."
+                  }
+                ],
+                "details": {
+                  "status": "failed",
+                  "operation": "query",
+                  "cwd": "/tmp/asen-eco01-codegraph-T3qh04",
+                  "fallback": "Use read, grep, and find for this exploration."
+                }
+              },
+              "stdoutSha256": "554d8b731f5733b9b46f0bf17073c86e9d0bfaaecaadaf20fe6ca53be312ce77",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "65f5579337fd39f842906144b86b93f2151ab6de9b6b171276c042e4d21f669d",
+              "logSha256": "e515eec72ae126b4e5a78fe9f5775885ed32c962da6e943ff113deb932c307c2",
+              "receiptSha256": "e14f2749d3f53e73e508ae955320c606371b106375c72d68b844ea905041266c"
+            },
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "partial-failure",
+              "commit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "partial-failure",
+                  "asen",
+                  "/tmp/asen-eco01-codegraph-T3qh04"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-T3qh04",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-T3qh04/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"content\":[{\"type\":\"text\",\"text\":\"CodeGraph failed to run. Use read, grep, and find for this exploration.\"}],\"details\":{\"status\":\"failed\",\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-T3qh04\",\"fallback\":\"Use read, grep, and find for this exploration.\"}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": {
+                    "readOnlyHint": false,
+                    "destructiveHint": true,
+                    "idempotentHint": false,
+                    "openWorldHint": false
+                  }
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "CodeGraph failed to run. Use read, grep, and find for this exploration."
+                  }
+                ],
+                "details": {
+                  "status": "failed",
+                  "operation": "query",
+                  "cwd": "/tmp/asen-eco01-codegraph-T3qh04",
+                  "fallback": "Use read, grep, and find for this exploration."
+                }
+              },
+              "stdoutSha256": "74e4502ea07cfbac3b50b4b3e905d4646f1047d4a4ac67094fc50a29ef0fbea6",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "4ab2f0bffd99d29e8a8f939ca4ab95588cf097617ae8fb634debe96adefd3a85",
+              "logSha256": "5cb2e6588ea6c4a4577e5629f8723186aeacb02be56c306063c5a3cf97a03899",
+              "receiptSha256": "6c256776f7e75ddaa57ee465637c815e9a8c3cce7c8ad01fb2131e94da56b332"
+            },
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
+          }
+        },
+        {
+          "name": "restart",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "actual-external-package",
+            "evidencePath": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+            "evidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+            "runtimeVersion": "1.6.2",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "restart",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "d7df76859e628a16d744e6af78299f2dda13619a1d514ab5089921dc30f95d7c",
+              "asenReceiptSha256": "830e12622e0bd03d1ab73e93ad1a3bb57cd8327b4566e941a1ec6646e96901cd",
+              "difference": {
+                "summary": "The real CLI behavior matches; only the host annotation metadata differs."
+              },
+              "reason": "ASEN adds conservative Pi annotations for the mutating init operation; the source registration omits those host hints. No additional write authority is granted.",
+              "limitations": [
+                "Executed real npm package @colbymchenry/codegraph@1.6.2 with network fallback and telemetry disabled.",
+                "Linux only; package version is a current dynamic runtime, not a frozen dependency lock."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "sourceReceiptSha256": "d7df76859e628a16d744e6af78299f2dda13619a1d514ab5089921dc30f95d7c",
+            "asenReceiptSha256": "830e12622e0bd03d1ab73e93ad1a3bb57cd8327b4566e941a1ec6646e96901cd"
+          },
+          "previousControlledSimulation": {
+            "kind": "controlled-external-process",
+            "observation": {
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "restart",
+              "status": "INTENTIONAL",
+              "sourceReceiptSha256": "9311949e52191b5360e7be330bc27cd13ebeb73d1d3ff3871f08edb8e48e9940",
+              "asenReceiptSha256": "a08c89fb79b8429286b83d2490c49974cddcc63c7624cdbedcc415fe30bdc82e",
+              "difference": {
+                "summary": "Only the registered tool annotation metadata differs; normalized content, errors, args, and outcomes match under the controlled executable."
+              },
+              "reason": "ASEN adds accurate Pi tool annotations for the existing mutating init operation; the frozen upstream registration omits those hints. This explicit host metadata is a deliberate transparency improvement and does not grant additional write authority.",
+              "limitations": [
+                "The CLI is a temporary controlled executable; actual CodeGraph package and index semantics remain unverified.",
+                "Only the current host OS was exercised."
+              ],
+              "observationValid": true,
+              "admitted": false
+            },
+            "behaviorSame": true,
+            "sourceReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "restart",
+              "commit": "08de420ca29be16b6f6bee725a30b599b061df16",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "restart",
+                  "source",
+                  "/tmp/asen-eco01-codegraph-rsq2Sr"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-rsq2Sr",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-rsq2Sr/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":null},\"content\":[{\"type\":\"text\",\"text\":\"controlled-index-present\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-rsq2Sr\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-codegraph-rsq2Sr\",\"--limit\",\"3\",\"--\",\"--help; literal query\"]}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": null
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "controlled-index-present\n"
+                  }
+                ],
+                "details": {
+                  "operation": "query",
+                  "cwd": "/tmp/asen-eco01-codegraph-rsq2Sr",
+                  "args": [
+                    "query",
+                    "--path",
+                    "/tmp/asen-eco01-codegraph-rsq2Sr",
+                    "--limit",
+                    "3",
+                    "--",
+                    "--help; literal query"
+                  ]
+                }
+              },
+              "stdoutSha256": "ec0a94b655373b450a0d8997e7973579983274a1fc3d79ff61ebfb4ba84fb5d8",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "2a20f9f64f36a52216b503ebe259a25cdfa5abf424f3e4cfbc4f0d2897cdb4d6",
+              "logSha256": "a09a5fa32e7ba2d35cab9f9d81435f8ea164f591488738768597e789fc9aede3",
+              "receiptSha256": "9311949e52191b5360e7be330bc27cd13ebeb73d1d3ff3871f08edb8e48e9940"
+            },
+            "asenReceipt": {
+              "schema": "asen.eco01.execution-receipt.v1",
+              "contractId": "ECO-SRC-625c38e8637ad8b0:7",
+              "scenario": "restart",
+              "commit": "1359d892f177dd1b76501961582ea3a7eedab8f1",
+              "command": {
+                "executable": "/opt/codex/runtimes/codex-primary-runtime/dependencies/node/bin/node",
+                "args": [
+                  "--import",
+                  "tsx",
+                  "/workspace/scratch/2930ae49a776/ASEN/scripts/eco01-codegraph-pair.mjs",
+                  "--child",
+                  "/tmp/eco01-source",
+                  "restart",
+                  "asen",
+                  "/tmp/asen-eco01-codegraph-rsq2Sr"
+                ]
+              },
+              "environment": {
+                "platform": "linux",
+                "nodeVersion": "v24.19.0",
+                "cwd": "/tmp/asen-eco01-codegraph-rsq2Sr",
+                "simulatedCodegraphPath": "/tmp/asen-eco01-codegraph-rsq2Sr/controlled-codegraph-bin"
+              },
+              "exitCode": 0,
+              "stdout": "{\"registration\":{\"name\":\"codegraph\",\"label\":\"CodeGraph\",\"description\":\"Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.\",\"renderShell\":\"self\",\"promptSnippet\":\"Initialize and query CodeGraph for the current workspace without shell access\",\"promptGuidelines\":[\"Use operation init before querying when the current workspace has no .codegraph index.\",\"Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory.\"],\"parameters\":{\"type\":\"object\",\"additionalProperties\":false,\"required\":[\"operation\"],\"properties\":{\"operation\":{\"type\":\"string\",\"enum\":[\"init\",\"query\",\"explore\"]},\"query\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"limit\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":20}}},\"executionMode\":\"sequential\",\"annotations\":{\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false}},\"content\":[{\"type\":\"text\",\"text\":\"controlled-index-present\\n\"}],\"details\":{\"operation\":\"query\",\"cwd\":\"/tmp/asen-eco01-codegraph-rsq2Sr\",\"args\":[\"query\",\"--path\",\"/tmp/asen-eco01-codegraph-rsq2Sr\",\"--limit\",\"3\",\"--\",\"--help; literal query\"]}}\n",
+              "stderr": "",
+              "output": {
+                "registration": {
+                  "name": "codegraph",
+                  "label": "CodeGraph",
+                  "description": "Initialize, search, or explore the CodeGraph index for the current Pi workspace only. This tool never accepts a project path or shell command.",
+                  "renderShell": "self",
+                  "promptSnippet": "Initialize and query CodeGraph for the current workspace without shell access",
+                  "promptGuidelines": [
+                    "Use operation init before querying when the current workspace has no .codegraph index.",
+                    "Use query for symbol search and explore for source plus call paths. Do not use this tool to run arbitrary commands or target another directory."
+                  ],
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "operation"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "init",
+                          "query",
+                          "explore"
+                        ]
+                      },
+                      "query": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      }
+                    }
+                  },
+                  "executionMode": "sequential",
+                  "annotations": {
+                    "readOnlyHint": false,
+                    "destructiveHint": true,
+                    "idempotentHint": false,
+                    "openWorldHint": false
+                  }
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "controlled-index-present\n"
+                  }
+                ],
+                "details": {
+                  "operation": "query",
+                  "cwd": "/tmp/asen-eco01-codegraph-rsq2Sr",
+                  "args": [
+                    "query",
+                    "--path",
+                    "/tmp/asen-eco01-codegraph-rsq2Sr",
+                    "--limit",
+                    "3",
+                    "--",
+                    "--help; literal query"
+                  ]
+                }
+              },
+              "stdoutSha256": "c33a2b5b6d40bb8ffcc5c1d7be1a62e2a0c680cf7af949a88d3c3815761c82af",
+              "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "outputSha256": "d2cb040c77fbe8bf19ef412bd963dbdc0aee211974e57ac7bfd6466652ad1487",
+              "logSha256": "880c41e36372f76980412aa1d159b5bb0387f0dafbe7ea8ee084d24c7d8cef0c",
+              "receiptSha256": "a08c89fb79b8429286b83d2490c49974cddcc63c7624cdbedcc415fe30bdc82e"
+            },
+            "simulationObservation": "intentional-annotation-difference; controlled behavior matches",
+            "limitation": "Both production extension registrations launched a temporary controlled codegraph executable. This checks tool registration, argv, error handling, and permission-denial behavior for this fixture, not compatibility with the actual CodeGraph package or persisted index contents; only this host OS was exercised."
+          }
+        }
+      ],
+      "sourceId": "ECO-SRC-625c38e8637ad8b0",
+      "referenceIndex": 7,
+      "mappingTargets": [
+        "ECO-SRC-625c38e8637ad8b0"
+      ]
+    },
+    {
+      "id": "ECO-SRC-af1edc66cbd9834c:64",
+      "kind": "code-contract",
+      "sourceSha256": "ae4519a785297cce343c9e9d00e6070430c61343b9a502c032e8699176133388",
+      "sourceSpan": {
+        "startLine": 1152,
+        "endLine": 1178,
+        "sha256": "2d2504228419e852849ce25dd30410645c68f8357be7f362474b583b94130eb0"
+      },
+      "sourceReference": {
+        "kind": "tool",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-af1edc66cbd9834c",
+      "referenceIndex": 64,
+      "mappingTargets": [
+        "ECO-SRC-af1edc66cbd9834c"
+      ]
+    },
+    {
+      "id": "ECO-SRC-1f527249710bd9bf:33",
+      "kind": "code-contract",
+      "sourceSha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "sourceSpan": {
+        "startLine": 9405,
+        "endLine": 9415,
+        "sha256": "910ae33c8132730a0cbac13e6dd41b7f7b21f594cba766c03b20ab438ac2457f"
+      },
+      "sourceReference": {
+        "kind": "command",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 33,
+      "mappingTargets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
+    },
+    {
+      "id": "ECO-SRC-1f527249710bd9bf:89",
+      "kind": "code-contract",
+      "sourceSha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "sourceSpan": {
+        "startLine": 8975,
+        "endLine": 9013,
+        "sha256": "b79c2071260a75206d9a1675b0da7dd9932be168883993fb4f394c60cc65886b"
+      },
+      "sourceReference": {
+        "kind": "tool",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 89,
+      "mappingTargets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
+    },
+    {
+      "id": "ECO-SRC-1f527249710bd9bf:90",
+      "kind": "code-contract",
+      "sourceSha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "sourceSpan": {
+        "startLine": 9015,
+        "endLine": 9059,
+        "sha256": "46a4e717c96aaeef7e31b2f8152f8f2efc7bd0bc1ac383a7070d2b1953baf517"
+      },
+      "sourceReference": {
+        "kind": "tool",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 90,
+      "mappingTargets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
+    },
+    {
+      "id": "ECO-SRC-1f527249710bd9bf:91",
+      "kind": "code-contract",
+      "sourceSha256": "c133aa14fe5b492776f1ef176145e5670692f5f391e4a694938fde628e445ecd",
+      "sourceSpan": {
+        "startLine": 9061,
+        "endLine": 9207,
+        "sha256": "5b63cd9e60d08d8513e1e8e129c6e9a4033699ee538742685ef293812f4dcb04"
+      },
+      "sourceReference": {
+        "kind": "tool",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-1f527249710bd9bf",
+      "referenceIndex": 91,
+      "mappingTargets": [
+        "ECO-SRC-1f527249710bd9bf"
+      ]
+    },
+    {
+      "id": "ECO-SRC-f25fcbecafe905e1:17",
+      "kind": "code-contract",
+      "sourceSha256": "dd8027c06370d3dd932e6500658ceb2dff4e32e6ad8f3f367ca5ac1ad22539bf",
+      "sourceSpan": {
+        "startLine": 1708,
+        "endLine": 1713,
+        "sha256": "4fdc0bdefe5526e4cb8e7bf4c9c35fce16361d635e82b013e9854facdcc12f6b"
+      },
+      "sourceReference": {
+        "kind": "event",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-f25fcbecafe905e1",
+      "referenceIndex": 17,
+      "mappingTargets": [
+        "ECO-SRC-f25fcbecafe905e1"
+      ]
+    },
+    {
+      "id": "ECO-SRC-91b70c5973297fbd:12",
+      "kind": "code-contract",
+      "sourceSha256": "db4bcc80b9e41a23a37285e4dd31de67a496a72fef16aa7711cd601daec0b25d",
+      "sourceSpan": {
+        "startLine": 168,
+        "endLine": 203,
+        "sha256": "7d73a31a69f345bdd676a260d1a01a8c480cb792249fc7b8fe3bcc679324da2c"
+      },
+      "sourceReference": {
+        "kind": "tool",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "Real Pi RPC registration is verified on source Pi 0.87.1 and ASEN Pi 1.1.0. Paired core-state runs cover selected normal/error/recovery behavior, but full tool execution, authorization lifecycle, whole-list replace/clear and cross-platform parity remain unverified.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-pi-runtime-registration",
+            "evidencePath": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/todo-registration-pair.json",
+            "evidenceSha256": "19e1af34fee4c4610545c57f06dbcdb054a71832828dbce30f4102d6d3918e7f",
+            "observation": {
+              "classification": "INTENTIONAL",
+              "reason": "Both real Pi runtimes load their mapped Todo extension and register user-facing Todo tools. The source exposes one sequential whole-list tool; ASEN exposes separate add/list/revisioned-update tools plus independent review and recovery controls. This is an intentional session-scoped authorization and lifecycle redesign, not API equivalence.",
+              "runtimes": [
+                {
+                  "version": "0.87.1",
+                  "tools": [
+                    "todo"
+                  ],
+                  "exitCode": 0,
+                  "stdoutSha256": "44d46f1f4839506f1afb09e6c057dbb0644bf7736a85379f8a2b664fcdc1f72d",
+                  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                },
+                {
+                  "version": "1.1.0",
+                  "tools": [
+                    "asen_todo_accept_result",
+                    "asen_todo_add",
+                    "asen_todo_inspect_interrupted_write",
+                    "asen_todo_list",
+                    "asen_todo_update"
+                  ],
+                  "exitCode": 0,
+                  "stdoutSha256": "6a62bd370cd3c9ed2a05af5963eb11db7b17c6d99710739994c1376da2ae1037",
+                  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                }
+              ],
+              "modelsInvoked": 0,
+              "networkMode": "offline"
+            }
+          }
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+            "evidenceSha256": "eb3640460b7eca2f944f89549f6302059e0a1d9e6123cb1c4ac6c1867b6940d5",
+            "observation": {
+              "scenario": "normal",
+              "file": "normal.json",
+              "sha256": "8a5eae566e431678cb1604ea5a0a37ff6c80531d50f31e2463a824513340a244",
+              "observation": {
+                "classification": "UNVERIFIED",
+                "reason": "The shared task intent is observable, but exact state and persistence mappings require an accepted contract crosswalk.",
+                "source": {
+                  "input": [
+                    {
+                      "action": "add",
+                      "title": "Review parser"
+                    },
+                    {
+                      "action": "update",
+                      "id": 1,
+                      "status": "in_progress",
+                      "note": "checking"
+                    }
+                  ],
+                  "addResult": "Added #1 Review parser (pending)",
+                  "updateResult": "#1 Review parser → in_progress",
+                  "state": {
+                    "tasks": [
+                      {
+                        "id": 1,
+                        "title": "Review parser",
+                        "status": "in_progress",
+                        "note": "checking"
+                      }
+                    ],
+                    "nextId": 2,
+                    "updatedTurn": 2
+                  },
+                  "replayedState": {
+                    "tasks": [
+                      {
+                        "id": 1,
+                        "title": "Review parser",
+                        "status": "in_progress",
+                        "note": "checking"
+                      }
+                    ],
+                    "nextId": 2,
+                    "updatedTurn": 2
+                  }
+                },
+                "asen": {
+                  "input": [
+                    {
+                      "method": "add",
+                      "title": "Review parser",
+                      "requestId": "eco01-normal-request"
+                    },
+                    {
+                      "method": "update",
+                      "state": "running",
+                      "reason": "checking"
+                    }
+                  ],
+                  "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+                  "updateRevision": 2,
+                  "rows": [
+                    {
+                      "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+                      "title": "Review parser",
+                      "events": [
+                        {
+                          "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+                          "sessionId": "eco01-normal",
+                          "projectId": "/eco01-project",
+                          "revision": 1,
+                          "state": "planned",
+                          "at": "2026-10-16T16:21:52.713Z"
+                        },
+                        {
+                          "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+                          "sessionId": "eco01-normal",
+                          "projectId": "/eco01-project",
+                          "revision": 2,
+                          "state": "running",
+                          "at": "2026-10-16T16:21:52.723Z",
+                          "reason": "checking"
+                        }
+                      ],
+                      "requestId": "eco01-normal-request",
+                      "current": {
+                        "taskId": "todo-ca875d18-52a6-4497-a6e5-755d5db66806",
+                        "sessionId": "eco01-normal",
+                        "projectId": "/eco01-project",
+                        "revision": 2,
+                        "state": "running",
+                        "at": "2026-10-16T16:21:52.723Z",
+                        "reason": "checking"
+                      }
+                    }
+                  ],
+                  "storeFileSha256": "235f4cfb22dae082d3005d28c7bbe77b61c7fd5278c45e39a33993514bbe006e",
+                  "storeBytes": 799
+                },
+                "difference": {
+                  "sourceState": "in_progress",
+                  "asenState": "running",
+                  "sourceIdentity": "integer task id",
+                  "asenIdentity": "opaque task id plus session/project/revision"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "invalid-input",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+            "evidenceSha256": "eb3640460b7eca2f944f89549f6302059e0a1d9e6123cb1c4ac6c1867b6940d5",
+            "observation": {
+              "scenario": "invalid-input",
+              "file": "invalid-input.json",
+              "sha256": "437b37d0dbbdf7b840aeb50d4fee4ad9440d0c3bff665fdcd3876d13ec61a7e6",
+              "observation": {
+                "classification": "INTENTIONAL",
+                "reason": "Both reject whitespace-only titles and preserve an empty task list; ASEN exposes rejection by throwing while the source returns an error result.",
+                "source": {
+                  "input": {
+                    "action": "add",
+                    "title": "   "
+                  },
+                  "error": "title is required",
+                  "resultText": "Error: title is required",
+                  "state": {
+                    "tasks": [],
+                    "nextId": 1,
+                    "updatedTurn": null
+                  }
+                },
+                "asen": {
+                  "input": {
+                    "method": "add",
+                    "title": "   "
+                  },
+                  "error": "Invalid ASEN Todo task",
+                  "rows": [],
+                  "storeFileExists": false,
+                  "storeFileSha256": null
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "denied",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/todo-authorization-pair.json",
+            "evidenceSha256": "9cb613018ffd8f34e10fe4d7c8ca524347c86b9702fa4bd90f3f8e41e2fe4740",
+            "observation": {
+              "scenario": "denied",
+              "file": "todo-authorization-pair.json",
+              "sha256": "9cb613018ffd8f34e10fe4d7c8ca524347c86b9702fa4bd90f3f8e41e2fe4740",
+              "observation": {
+                "name": "denied",
+                "classification": "INTENTIONAL",
+                "reason": "The source Todo state operation has no session/project owner and applies the task update; ASEN rejects the same task ID from another session, preserving the owner state and file bytes. This is an intentional authorization boundary.",
+                "input": {
+                  "source": {
+                    "initialTask": "Owned task",
+                    "attemptedSession": "eco01-outsider",
+                    "action": {
+                      "action": "update",
+                      "id": 1,
+                      "status": "done",
+                      "note": "cross-session attempt"
+                    }
+                  },
+                  "asen": {
+                    "taskId": "todo-61185d7a-5040-4d92-a242-692fb4e97384",
+                    "owner": {
+                      "sessionId": "eco01-owner",
+                      "projectId": "/eco01-project"
+                    },
+                    "outsider": {
+                      "sessionId": "eco01-outsider",
+                      "projectId": "/eco01-project"
+                    },
+                    "expectedRevision": 1,
+                    "nextState": "done"
+                  }
+                },
+                "sourceResult": {
+                  "error": null,
+                  "state": {
+                    "tasks": [
+                      {
+                        "id": 1,
+                        "title": "Owned task",
+                        "status": "done",
+                        "note": "cross-session attempt"
+                      }
+                    ],
+                    "nextId": 2,
+                    "updatedTurn": 2
+                  },
+                  "allowedMutation": true
+                },
+                "asenResult": {
+                  "error": {
+                    "name": "Error",
+                    "message": "Todo task is unavailable to this session or project"
+                  },
+                  "ownerBefore": [
+                    "planned"
+                  ],
+                  "ownerAfter": [
+                    "planned"
+                  ],
+                  "outsiderVisibleTasks": 0,
+                  "fileBytesBefore": 456,
+                  "fileBytesAfter": 456,
+                  "fileSha256Before": "10470931af0ce7b2b0d4673e93516b47d07feb2de544e8be8cbe5732082f21e9",
+                  "fileSha256After": "10470931af0ce7b2b0d4673e93516b47d07feb2de544e8be8cbe5732082f21e9",
+                  "deniedWithoutMutation": true
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+            "evidenceSha256": "eb3640460b7eca2f944f89549f6302059e0a1d9e6123cb1c4ac6c1867b6940d5",
+            "observation": {
+              "scenario": "atomic-write-failure",
+              "file": "atomic-write-failure.json",
+              "sha256": "2fa01d58043c625d33c77b828f727a7b52508da1b8655d42d6b56d185ec60592",
+              "observation": {
+                "classification": "UNVERIFIED",
+                "reason": "The source supports atomic whole-list write; the mapped ASEN interface exposes append and revisioned state transitions, with no direct equivalent batch replacement operation.",
+                "source": {
+                  "input": {
+                    "action": "write",
+                    "tasks": [
+                      {
+                        "title": "Would be added"
+                      },
+                      {
+                        "title": "   "
+                      }
+                    ]
+                  },
+                  "error": "title is required",
+                  "stateAfterFailure": {
+                    "tasks": [
+                      {
+                        "id": 1,
+                        "title": "Existing",
+                        "status": "pending"
+                      }
+                    ],
+                    "nextId": 2,
+                    "updatedTurn": 1
+                  },
+                  "existingState": {
+                    "tasks": [
+                      {
+                        "id": 1,
+                        "title": "Existing",
+                        "status": "pending"
+                      }
+                    ],
+                    "nextId": 2,
+                    "updatedTurn": 1
+                  }
+                },
+                "asen": {
+                  "availableMethods": [
+                    "add",
+                    "update",
+                    "list",
+                    "recover",
+                    "addPlan"
+                  ],
+                  "existingTaskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                  "rowsBefore": [
+                    {
+                      "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                      "title": "Existing",
+                      "events": [
+                        {
+                          "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                          "sessionId": "eco01-atomic",
+                          "projectId": "/eco01-project",
+                          "revision": 1,
+                          "state": "planned",
+                          "at": "2026-10-16T16:21:52.745Z"
+                        }
+                      ],
+                      "current": {
+                        "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                        "sessionId": "eco01-atomic",
+                        "projectId": "/eco01-project",
+                        "revision": 1,
+                        "state": "planned",
+                        "at": "2026-10-16T16:21:52.745Z"
+                      }
+                    }
+                  ],
+                  "rowsAfter": [
+                    {
+                      "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                      "title": "Existing",
+                      "events": [
+                        {
+                          "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                          "sessionId": "eco01-atomic",
+                          "projectId": "/eco01-project",
+                          "revision": 1,
+                          "state": "planned",
+                          "at": "2026-10-16T16:21:52.745Z"
+                        }
+                      ],
+                      "current": {
+                        "taskId": "todo-305db1df-93aa-482d-b730-238124fc2e60",
+                        "sessionId": "eco01-atomic",
+                        "projectId": "/eco01-project",
+                        "revision": 1,
+                        "state": "planned",
+                        "at": "2026-10-16T16:21:52.745Z"
+                      }
+                    }
+                  ],
+                  "storeFileBeforeSha256": "94bfbbf667c29ccf4baf4f2fffb06329188cf599aadf4e0557713ac180c9dcbd",
+                  "storeFileAfterSha256": "94bfbbf667c29ccf4baf4f2fffb06329188cf599aadf4e0557713ac180c9dcbd",
+                  "storeUnchanged": true,
+                  "comparisonBlocker": "no batch replace/clear operation exposed by the ASEN Todo store"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "restart",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+            "evidenceSha256": "eb3640460b7eca2f944f89549f6302059e0a1d9e6123cb1c4ac6c1867b6940d5",
+            "observation": {
+              "scenario": "restart-recovery",
+              "file": "restart-recovery.json",
+              "sha256": "1a3ebe8141b6de798f5a2e44c77168b7788efaa97034bcdc096edd6f542ee072",
+              "observation": {
+                "classification": "INTENTIONAL",
+                "reason": "ASEN preserves durable history and converts interrupted running work to blocked so it cannot resume without explicit user review; the source replays its in_progress snapshot.",
+                "source": {
+                  "replayedState": "in_progress",
+                  "task": {
+                    "id": 1,
+                    "title": "Continue safely",
+                    "status": "in_progress"
+                  }
+                },
+                "asen": {
+                  "beforeFileSha256": "c3d6c55ec2ebf047e0a0e4d9b287311047782cc9db60799a467e7a78f7ec6e7c",
+                  "afterFileSha256": "441e5f0197fd6d3df0f765fffb82920c9451699a68a987b29d7ee2d6cc742309",
+                  "rows": [
+                    {
+                      "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                      "title": "Continue safely",
+                      "events": [
+                        {
+                          "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                          "sessionId": "eco01-restart",
+                          "projectId": "/eco01-project",
+                          "revision": 1,
+                          "state": "planned",
+                          "at": "2026-10-16T16:21:52.728Z"
+                        },
+                        {
+                          "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                          "sessionId": "eco01-restart",
+                          "projectId": "/eco01-project",
+                          "revision": 2,
+                          "state": "running",
+                          "at": "2026-10-16T16:21:52.731Z"
+                        },
+                        {
+                          "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                          "sessionId": "eco01-restart",
+                          "projectId": "/eco01-project",
+                          "revision": 3,
+                          "state": "blocked",
+                          "at": "2026-10-16T16:21:52.735Z",
+                          "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+                        }
+                      ],
+                      "requestId": "eco01-restart-request",
+                      "current": {
+                        "taskId": "todo-4a6c8450-3ca8-447d-9b85-04e8f667502f",
+                        "sessionId": "eco01-restart",
+                        "projectId": "/eco01-project",
+                        "revision": 3,
+                        "state": "blocked",
+                        "at": "2026-10-16T16:21:52.735Z",
+                        "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+                      }
+                    }
+                  ],
+                  "history": [
+                    {
+                      "revision": 1,
+                      "state": "planned",
+                      "reason": null
+                    },
+                    {
+                      "revision": 2,
+                      "state": "running",
+                      "reason": null
+                    },
+                    {
+                      "revision": 3,
+                      "state": "blocked",
+                      "reason": "ASEN restarted while this task was running; explicit review is required before continuing"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "duplicate-request",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+            "evidenceSha256": "eb3640460b7eca2f944f89549f6302059e0a1d9e6123cb1c4ac6c1867b6940d5",
+            "observation": {
+              "scenario": "duplicate-request",
+              "file": "duplicate-request.json",
+              "sha256": "ce23b33ff75c03797dacc2874d528ea910319e116e3485abf92770ecd5daad70",
+              "observation": {
+                "classification": "INTENTIONAL",
+                "reason": "ASEN deduplicates retried request IDs to prevent duplicate tasks; the source add operation has no request identity and appends each call.",
+                "source": {
+                  "repeatedAdds": 2,
+                  "taskCount": 2,
+                  "tasks": [
+                    {
+                      "id": 1,
+                      "title": "One operation",
+                      "status": "pending"
+                    },
+                    {
+                      "id": 2,
+                      "title": "One operation",
+                      "status": "pending"
+                    }
+                  ]
+                },
+                "asen": {
+                  "firstTaskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+                  "retriedTaskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+                  "sameTask": true,
+                  "taskCount": 1,
+                  "rows": [
+                    {
+                      "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+                      "title": "One operation",
+                      "events": [
+                        {
+                          "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+                          "sessionId": "eco01-duplicate",
+                          "projectId": "/eco01-project",
+                          "revision": 1,
+                          "state": "planned",
+                          "at": "2026-10-16T16:21:52.739Z"
+                        }
+                      ],
+                      "requestId": "eco01-duplicate-request",
+                      "current": {
+                        "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+                        "sessionId": "eco01-duplicate",
+                        "projectId": "/eco01-project",
+                        "revision": 1,
+                        "state": "planned",
+                        "at": "2026-10-16T16:21:52.739Z"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "clear-and-archive",
+          "status": "INTENTIONAL",
+          "evidence": {
+            "kind": "paired-core-state-execution",
+            "evidencePath": "docs/audit/evidence/eco01-todo-clear-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/todo-clear-pair.json",
+            "evidenceSha256": "1bebc3cf36c5f595cbf523267c7610dee43e3d58eafef3bd39d346d061e36376",
+            "observation": {
+              "classification": "INTENTIONAL",
+              "reason": "The source clear replaces the active snapshot and replay yields an empty list. ASEN has no destructive clear tool; the mapped lifecycle cancels each task, empties active listing, and atomically archives the complete history. This preserves audit/recovery records while honoring the user-visible empty-active-list result.",
+              "source": {
+                "activeTaskCount": 0,
+                "clearText": "Cleared 2 tasks"
+              },
+              "asen": {
+                "activeTaskCount": 0,
+                "archivedTaskCount": 2,
+                "activeFileSha256After": "ac265daa8d81222ce98456ec561008d59ec2d72d96d79a88d1eaa495ccabc091",
+                "archiveHashes": [
+                  {
+                    "file": "runtime/store/projects/5a1a23e1ebc9121cc5c5c17da62c40267c123fc858dfbaa2795f8c1ab6fe1dc0/archive/archive-4-481c99b92637.json",
+                    "sha256": "481c99b9263777ad601de2bfc644e9ef391655660a138fe0d6194a1bf38ceb2b"
+                  }
+                ]
+              },
+              "differences": {
+                "sourcePersistence": "empty branch snapshot after clear",
+                "asenPersistence": "active store is empty; cancelled task history remains in archive",
+                "operation": "one whole-list clear versus per-task revisioned cancellation"
+              }
+            }
+          }
+        }
+      ],
+      "sourceId": "ECO-SRC-91b70c5973297fbd",
+      "referenceIndex": 12,
+      "mappingTargets": [
+        "ECO-SRC-91b70c5973297fbd"
+      ]
+    },
+    {
+      "id": "ECO-SRC-6c28d7b99a511610:5",
+      "kind": "code-contract",
+      "sourceSha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "sourceSpan": {
+        "startLine": 592,
+        "endLine": 612,
+        "sha256": "a00e5f7cfc64f8610e295254186593f4c7328203aaec992b137b4336d91f05ab"
+      },
+      "sourceReference": {
+        "kind": "command",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 5,
+      "mappingTargets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
+    },
+    {
+      "id": "ECO-SRC-6c28d7b99a511610:6",
+      "kind": "code-contract",
+      "sourceSha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "sourceSpan": {
+        "startLine": 615,
+        "endLine": 623,
+        "sha256": "87c1b3e88577f75920c26f27effc97ec78f42136af1bced582e8f41086bb63bd"
+      },
+      "sourceReference": {
+        "kind": "command",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 6,
+      "mappingTargets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
+    },
+    {
+      "id": "ECO-SRC-6c28d7b99a511610:7",
+      "kind": "code-contract",
+      "sourceSha256": "209af4a17c43c7cd551c21aa48dd2db02f672ed9bcdabf14db2cef94dba716a8",
+      "sourceSpan": {
+        "startLine": 626,
+        "endLine": 641,
+        "sha256": "adcb5bf7008634f80311fe6e231c896e0d712d359280a42b643e7a31b4657c0d"
+      },
+      "sourceReference": {
+        "kind": "command",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-6c28d7b99a511610",
+      "referenceIndex": 7,
+      "mappingTargets": [
+        "ECO-SRC-6c28d7b99a511610"
+      ]
+    },
+    {
+      "id": "ECO-SRC-6058ca4d664d9095:0",
+      "kind": "tracked-glob",
+      "sourceSha256": "57a2f7e0ecf4d389330d6a6a4029ec808d5f8bd76f13d103444ca569bc8d8c48",
+      "sourceSpan": {
+        "startLine": 31,
+        "endLine": 31,
+        "sha256": "abcebbb1bb7acd5e06af7a3670c3a102be0aedf349bf6dc01436a279e0dbf6e7"
+      },
+      "sourceReference": {
+        "kind": "asset",
+        "target": "../assets/agents/",
+        "status": "outside-root",
+        "path": null
+      },
+      "mappingReason": "direct-markdown-children",
+      "limitation": "The source inventory points to an upstream-only file or file set and does not identify an ASEN counterpart; absence is not being treated as functional equivalence.",
+      "scenarios": [
+        {
+          "name": "empty",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "single-child",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "multiple-children",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "nested-child",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "changed",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-6058ca4d664d9095",
+      "referenceIndex": 0,
+      "mappingTargets": [
+        "assets/agents/*.md"
+      ]
+    },
+    {
+      "id": "ECO-SRC-8420ca03583cfe7b:5",
+      "kind": "code-contract",
+      "sourceSha256": "dd3fe029f18791462344a0ac0fc87aab0f8a657d0226d8f676aad4c724f8658d",
+      "sourceSpan": {
+        "startLine": 39,
+        "endLine": 47,
+        "sha256": "1123875c62b7b65b57c7abd6546401d32d55a5cd7c976ef387674d92c18c0c5e"
+      },
+      "sourceReference": {
+        "kind": "event",
+        "target": null,
+        "status": "unresolved",
+        "path": null
+      },
+      "mappingReason": "self-owned-registration",
+      "limitation": "This source-owned registration has no declared ASEN counterpart in the frozen mapping; one counterpart was identified and executed directly in a controlled adapter run for this candidate.",
+      "scenarios": [
+        {
+          "name": "registration",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "normal",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "invalid-input",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "denied",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "partial-failure",
+          "status": "UNVERIFIED",
+          "evidence": null
+        },
+        {
+          "name": "restart",
+          "status": "UNVERIFIED",
+          "evidence": null
+        }
+      ],
+      "sourceId": "ECO-SRC-8420ca03583cfe7b",
+      "referenceIndex": 5,
+      "mappingTargets": [
+        "ECO-SRC-8420ca03583cfe7b"
+      ]
+    }
+  ],
+  "localValidation": {
+    "command": "ECOSYSTEM_BASELINE_REPOSITORY=<exact frozen source repository> npm run check",
+    "installCommand": "npm ci --ignore-scripts",
+    "environment": {
+      "platform": "linux",
+      "node": "v24.19.0"
+    },
+    "exitCode": 0,
+    "tests": {
+      "total": 1539,
+      "passed": 1538,
+      "failed": 0,
+      "skipped": 1
+    },
+    "audits": {
+      "phaseParity": "PASS",
+      "behaviorSkills": "PASS",
+      "skillParity": "PASS",
+      "memoryParity": "PASS",
+      "ecosystemClaims": "PASS (claims remain PARTIAL)",
+      "upstreamBoundary": "PASS"
+    },
+    "logSha256": "afb8904b04ff09416d302f5d4f126fbd52b9c213223876d296be27671ce5d5dc",
+    "logPath": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/asen-full-check.log",
+    "eco01PlanTests": {
+      "command": "node --import tsx --test tests/eco01-differential-plan.test.ts",
+      "platform": "linux",
+      "node": "v24.19.0",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "log": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/eco01-plan-tests.log",
+      "logSha256": "9ee5b2ac21431423db8910676ab4dec75cdb053da20ddbeffab2446f39331ea9"
+    },
+    "platform": "linux",
+    "node": "v24.19.0",
+    "log": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/asen-full-check.log"
+  },
+  "executionEvidence": {
+    "codegraphPair": "docs/audit/evidence/eco01-codegraph-1359d892f177dd1b76501961582ea3a7eedab8f1/codegraph-pair-evidence.json",
+    "sourceUnitTests": {
+      "command": "node --experimental-strip-types --test tests/codegraph-tools.test.ts",
+      "platform": "linux",
+      "node": "v24.19.0",
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "log": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/source-unit-tests.log",
+      "logSha256": "f1e1225d85fd89cb56e13945b5d564f008449fef294c9431ee03bfbdd8c329cb"
+    },
+    "asenUnitTests": {
+      "command": "node --import tsx --test tests/code-intelligence.test.ts",
+      "platform": "linux",
+      "node": "v24.19.0",
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "log": "docs/audit/evidence/eco01-codegraph-dd28850f8c39d59b12d8227744d61ec65458c09d/asen-unit-tests.log",
+      "logSha256": "6bb296fa7d4b8886782176a72fa9bc485a6b17e4b5909d7f8529c9c1e46fc579"
+    },
+    "fullLocalCheck": {
+      "command": "ECOSYSTEM_BASELINE_REPOSITORY=<exact frozen source repository> npm run check",
+      "platform": "linux",
+      "node": "v24.19.0",
+      "exitCode": 0,
+      "tests": {
+        "total": 1539,
+        "passed": 1538,
+        "failed": 0,
+        "skipped": 1
+      },
+      "audits": {
+        "phaseParity": "PASS",
+        "behaviorSkills": "PASS",
+        "skillParity": "PASS",
+        "memoryParity": "PASS",
+        "ecosystemClaims": "PASS (claims remain PARTIAL)",
+        "upstreamBoundary": "PASS"
+      },
+      "log": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/asen-full-check.log",
+      "logSha256": "afb8904b04ff09416d302f5d4f126fbd52b9c213223876d296be27671ce5d5dc",
+      "installCommand": "npm ci --ignore-scripts (pre-existing environment; no dependency changes)",
+      "candidateCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda"
+    }
+  },
+  "currentCandidateEvidence": {
+    "candidateCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
+    "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+    "pairEvidence": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+    "pairEvidenceSha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+    "pairResult": "UNVERIFIED",
+    "pairedScenarios": 5,
+    "pairedProcessRuns": 10,
+    "asenUnitTests": {
+      "command": "node --import tsx --test tests/code-intelligence.test.ts",
+      "passed": 12,
+      "failed": 0,
+      "log": "docs/audit/evidence/eco01-codegraph-1359d892f177dd1b76501961582ea3a7eedab8f1/asen-unit-tests.log",
+      "logSha256": "f1df7c676512b5a55d1045b222f121882b6def36126be64ce7dfd886940b097c"
+    },
+    "sourceUnitTests": {
+      "command": "node --experimental-strip-types --test tests/codegraph-tools.test.ts",
+      "passed": 12,
+      "failed": 0,
+      "log": "docs/audit/evidence/eco01-codegraph-1359d892f177dd1b76501961582ea3a7eedab8f1/source-unit-tests.log",
+      "logSha256": "3cd5941ea35c507db8178304f423e69a7bcfd1839af712296059e1565b38b5a1"
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "result": "PASS"
+    },
+    "diffCheck": {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    "fileReferenceAssessment": {
+      "path": "docs/audit/evidence/eco01-files-1359d892f177dd1b76501961582ea3a7eedab8f1/file-reference-observation.json",
+      "sha256": "ca99c1447872f0be730fbf6a98bd5cd1c56f524f56e6e026faec1b1eec367480",
+      "result": "UNVERIFIED",
+      "filesInspected": 10,
+      "sourceSchemaPresent": true,
+      "asenCounterpartsPresent": 0
+    },
+    "fileReferenceIntegrityTest": {
+      "command": "ECOSYSTEM_BASELINE_REPOSITORY=<exact frozen source repository> node --import tsx --test tests/eco01-file-reference-evidence.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "log": "local test output; CI reruns as part of npm test",
+      "testPath": "tests/eco01-file-reference-evidence.test.ts"
+    },
+    "latestCandidateCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
+    "liveCodegraphPackage": {
+      "path": "docs/audit/evidence/eco01-codegraph-live-1.6.2-1cae8b74427358e96738b6223aed1583d6e6b361/codegraph-live-evidence.json",
+      "version": "1.6.2",
+      "packageIntegrity": "sha512-hODH/mGnCf3IUMs6rzktv/zbecJIKJfdZAYHZ9mqecb0G7ZkHaA8CZafDVnswANFEL1YFcG+lfAwc5SIXzUH6Q==",
+      "packageShasum": "372b7b4f0190197b07d444116d6692240883a2d5",
+      "sha256": "c94218b2aa115ba45a7287cb3ca0af904b29b8cf6f338bc60c9bcb2e73515285",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "1cae8b74427358e96738b6223aed1583d6e6b361",
+      "platform": "linux",
+      "scenarios": 5,
+      "pairedProcessRuns": 10,
+      "scenarioStatus": "INTENTIONAL",
+      "overallStatus": "UNVERIFIED",
+      "limitations": [
+        "Current dynamic package version, not a frozen dependency lock.",
+        "Linux only.",
+        "The registration metadata difference remains INTENTIONAL; no scenario is admitted as EQUIVALENT."
+      ]
+    },
+    "realPackageVersion": "1.6.2",
+    "todoPairEvidence": {
+      "path": "docs/audit/evidence/eco01-todo-live-b1f028ce2dde27757a901cd8722a4fe5ee27565f-r3/todo-pair-evidence.json",
+      "sha256": "eb3640460b7eca2f944f89549f6302059e0a1d9e6123cb1c4ac6c1867b6940d5",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "b1f028ce2dde27757a901cd8722a4fe5ee27565f",
+      "sourcePiTui": "0.87.1",
+      "asenPiTui": "1.1.0",
+      "experiments": 6,
+      "pairedCoreStateExperiments": 5,
+      "results": {
+        "EQUIVALENT": 0,
+        "DIVERGENT": 0,
+        "INTENTIONAL": 4,
+        "NOT_APPLICABLE": 0,
+        "UNVERIFIED": 2
+      },
+      "overallStatus": "UNVERIFIED",
+      "asenTree": "ae33a228960d26106984541254cddb00223c3b3d"
+    },
+    "todoAuthorizationEvidence": {
+      "path": "docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/todo-authorization-pair.json",
+      "sha256": "9cb613018ffd8f34e10fe4d7c8ca524347c86b9702fa4bd90f3f8e41e2fe4740",
+      "stdoutLog": "docs/audit/evidence/eco01-todo-authorization-live-2e8444c42429102a2294e86fd9277963c8850353/run.stdout.log",
+      "stdoutLogSha256": "63002b5240a72b68b9d4cd396abf0def0562569b4f0fc2e6a0ba7dbf1f052923",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "2e8444c42429102a2294e86fd9277963c8850353",
+      "asenTree": "f5d267adbd97fe5a33d21964d174f9f6b1ed9484",
+      "scenario": "denied",
+      "status": "INTENTIONAL",
+      "environment": {
+        "platform": "linux",
+        "node": "v24.19.0"
+      },
+      "limitation": "The comparison exercises the actual Todo state operation and ASEN persistent store, not Pi tool registration or UI authorization lifecycle."
+    },
+    "todoRegistrationEvidence": {
+      "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/todo-registration-pair.json",
+      "sha256": "19e1af34fee4c4610545c57f06dbcdb054a71832828dbce30f4102d6d3918e7f",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
+      "asenTree": "10ecabd4598b93653a0114e9121309521623d5bf",
+      "scenario": "registration",
+      "status": "INTENTIONAL",
+      "runtimeVersions": [
+        "0.87.1",
+        "1.1.0"
+      ],
+      "modelsInvoked": 0,
+      "platform": "linux",
+      "stdoutLogs": [
+        {
+          "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/source.stdout.log",
+          "sha256": "44d46f1f4839506f1afb09e6c057dbb0644bf7736a85379f8a2b664fcdc1f72d"
+        },
+        {
+          "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/asen.stdout.log",
+          "sha256": "6a62bd370cd3c9ed2a05af5963eb11db7b17c6d99710739994c1376da2ae1037"
+        }
+      ],
+      "stderrLogs": [
+        {
+          "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/source.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/logs/asen.stderr.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    "registrationValidation": {
+      "command": "ECOSYSTEM_BASELINE_REPOSITORY=<exact frozen source repository> npm run check",
+      "platform": "linux",
+      "node": "v24.19.0",
+      "exitCode": 0,
+      "tests": {
+        "total": 1539,
+        "passed": 1538,
+        "failed": 0,
+        "skipped": 1
+      },
+      "audits": {
+        "phaseParity": "PASS",
+        "behaviorSkills": "PASS",
+        "skillParity": "PASS",
+        "memoryParity": "PASS",
+        "ecosystemClaims": "PASS (claims remain PARTIAL)",
+        "upstreamBoundary": "PASS"
+      },
+      "log": "docs/audit/evidence/eco01-todo-registration-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/asen-full-check.log",
+      "logSha256": "afb8904b04ff09416d302f5d4f126fbd52b9c213223876d296be27671ce5d5dc"
+    },
+    "todoClearEvidence": {
+      "path": "docs/audit/evidence/eco01-todo-clear-live-c21106c27028af580a7b8ddbb2fb8b831c959bda/todo-clear-pair.json",
+      "sha256": "1bebc3cf36c5f595cbf523267c7610dee43e3d58eafef3bd39d346d061e36376",
+      "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+      "asenCommit": "c21106c27028af580a7b8ddbb2fb8b831c959bda",
+      "asenTree": "10ecabd4598b93653a0114e9121309521623d5bf",
+      "scenario": "clear-and-archive",
+      "status": "INTENTIONAL",
+      "environment": {
+        "platform": "linux",
+        "node": "v24.19.0",
+        "sourcePiTui": "0.87.1",
+        "asenPiTui": "1.1.0"
+      },
+      "sourceLog": {
+        "file": "source.stdout.log",
+        "sha256": "b148b5cd4308a2ca15cd3416ace6002c6b056a0c924b72c1590cf1b2bff36a57"
+      },
+      "asenLog": {
+        "file": "asen.stdout.log",
+        "sha256": "fd28cbec5539aaaae1116f061f32056af2cad8df2f05231422eb802a5e788618"
+      },
+      "archiveHashes": [
+        {
+          "file": "runtime/store/projects/5a1a23e1ebc9121cc5c5c17da62c40267c123fc858dfbaa2795f8c1ab6fe1dc0/archive/archive-4-481c99b92637.json",
+          "sha256": "481c99b9263777ad601de2bfc644e9ef391655660a138fe0d6194a1bf38ceb2b"
+        }
+      ]
+    }
+  }
+}

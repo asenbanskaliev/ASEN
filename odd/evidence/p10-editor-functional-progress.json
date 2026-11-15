@@ -1,0 +1,134 @@
+{
+  "schema": "asen.p10-editor-functional-progress/v1",
+  "status": "BOUNDED_FUNCTIONAL_VERIFICATION_COMPLETE",
+  "independent": true,
+  "nativeAuthority": false,
+  "scope": "Selected saved global profile; orchestrator only; existing store/locks/guards unchanged",
+  "source": {
+    "extensionSha256": "085a59e1e233e7a28a48bc7146bfa57dd5c83762f40e31413c99c62f4be9a44c",
+    "docSha256": "c77ecde04ce4308fc1f60eaf080dbca27b44d3824870b900bd3ed94c254cadce",
+    "mechanicalLedger": ".cache/p10-fallback-editor/g2-menu-prep-writer/patch-ledger.json",
+    "extensionCRLF": 1783,
+    "extensionLoneLF": 0,
+    "testSha256": "16a962243b0a5d1497458bda8f7576624df916898acbdd8d3648e802e0fa0ce6"
+  },
+  "retainedRuns": [
+    {
+      "run": "red-S8KX7P",
+      "cases": 17,
+      "pass": 1,
+      "fail": 16,
+      "missingActionFailures": 16,
+      "legacyEdit": "PASS",
+      "purpose": "Expected pre-implementation RED gate, not feature acceptance"
+    },
+    {
+      "run": "green-ftzvU6",
+      "cases": 17,
+      "pass": 14,
+      "fail": 3,
+      "purpose": "First actual functional GREEN attempt failed",
+      "failures": [
+        "session drift expected-error mismatch",
+        "manager drift expected-error mismatch",
+        "project drift expected-error mismatch"
+      ],
+      "observedError": "ASEN panel session changed",
+      "followingDataAndCounterAssertions": "NOT_REACHED_IN_THREE_FAILED_CASES"
+    },
+    {
+      "run": "green-yC3cqm",
+      "cases": 17,
+      "pass": 17,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "exit": 0,
+      "sourcePreserved": true,
+      "purpose": "Parent functional self-check after exact test-expectation correction; not independent proof"
+    },
+    {
+      "run": "green-tLdqeV",
+      "executor": "independent verifier",
+      "cases": 17,
+      "pass": 17,
+      "fail": 0,
+      "exit": 0,
+      "sourcePreserved": true
+    },
+    {
+      "run": "green-OjwfMf",
+      "executor": "parent final spotcheck",
+      "cases": 17,
+      "pass": 17,
+      "fail": 0,
+      "exit": 0,
+      "sourcePreserved": true
+    }
+  ],
+  "streams": "Run receipt/TAP/stderr in .cache/p10-fallback-editor/<run>/; outer g1-ntfs-public-red.* and g2-ntfs-public-green.* retained",
+  "preparedTestCorrection": {
+    "worker": "mwe2n12w-6-w7so",
+    "status": "COMPLETED_ONE_EXPECTATION_ONLY",
+    "ledger": ".cache/p10-fallback-editor/g2-test-expectation-writer/patch-ledger.json",
+    "functionalOutcome": "PARENT_17_OF_17_PASS"
+  },
+  "priorSetups": "Three exFAT preparation failures retained separately; not RED and not superseded",
+  "stateScope": "Explicit current-session S5 NTFS synthetic-data grant; C root does not transfer across sessions/hosts",
+  "lsp": {
+    "source": "lsp",
+    "path": "extensions/asen.ts",
+    "checked": 1,
+    "errors": 0,
+    "fullTypecheck": false,
+    "build": false
+  },
+  "nativeAssessment": {
+    "rdd": "on",
+    "nativeRisk": "unassessable",
+    "candidate": null,
+    "outcome": "unknown",
+    "escalatedItem": 4,
+    "independentVerifierRequired": true
+  },
+  "g1": "DONE_EXPECTED_RED_ONLY",
+  "g2": "DONE_IMPLEMENTED_SELF_CHECKED",
+  "g3": "DONE_INDEPENDENT_TECHNICAL_PASS",
+  "g4": "DONE_BOUNDED_RECORDS_CLOSED",
+  "claimsExcluded": [
+    "Native approval or consent",
+    "Actual Pi/provider/visual proof",
+    "Global readiness/equivalence",
+    "Commit/publish permission"
+  ],
+  "independentVerification": {
+    "worker": "mwe350o8-7-s5cp",
+    "status": "PASS",
+    "specs": [
+      "S1",
+      "S2",
+      "S3",
+      "S4",
+      "S5"
+    ],
+    "run": "green-tLdqeV",
+    "tests": 17,
+    "pass": 17,
+    "fail": 0,
+    "exit": 0,
+    "blockers": [],
+    "handoff": ".cache/p10-fallback-editor/g3-independent-WKRdRP/handoff.md",
+    "protectedHashes": 13,
+    "sourceClosureHashes": 159
+  },
+  "parentSpotcheck": {
+    "run": "green-OjwfMf",
+    "pass": 17,
+    "fail": 0,
+    "exit": 0,
+    "fullTapAndStreamsRead": true
+  },
+  "overallScope": "COMPLETE_SAVED_GLOBAL_PARENT_EDITOR_ONLY",
+  "globalReadiness": false,
+  "globalEquivalenceCertified": false
+}

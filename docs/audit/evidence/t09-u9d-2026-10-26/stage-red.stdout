@@ -1,0 +1,588 @@
+✖ confirmed public staging adds verified bytes but preserves selected version, source and personal data (85.605982ms)
+✖ isolated real CLI stages spaces/Unicode paths without executing package code or moving the software prefix (326.214039ms)
+▶ stage grammar requires exact paths, fixed order and explicit yes before home lookup or filesystem I/O
+  ✖ missing confirmation (1.950746ms)
+  ✖ wrong confirmation (1.008483ms)
+  ✖ extra (0.508158ms)
+  ✖ repeat (0.253673ms)
+  ✖ global package root (0.408327ms)
+  ✖ relative manifest (0.448828ms)
+  ✖ relative package (0.417771ms)
+  ✖ control (0.316318ms)
+  ✖ wrong flags (0.360724ms)
+✖ stage grammar requires exact paths, fixed order and explicit yes before home lookup or filesystem I/O (70.75565ms)
+▶ stage protects the effective home from flag, configuration, isolated and linked environment precedence
+  ✖ flag (48.843889ms)
+  ✖ config (38.224638ms)
+  ✖ isolated (60.426484ms)
+  ✖ linked (36.773155ms)
+  ✖ default-asen (38.599324ms)
+  ✖ default-pi (43.597113ms)
+✖ stage protects the effective home from flag, configuration, isolated and linked environment precedence (267.990648ms)
+▶ stage refuses absent/foreign roots, conflicting slots and stale bytes without adoption or writes
+  ✖ absent (8.556189ms)
+  ✖ foreign (6.625007ms)
+  ✖ conflicting (39.059675ms)
+  ✖ bytes (79.084633ms)
+  ✖ manifest (42.199302ms)
+✖ stage refuses absent/foreign roots, conflicting slots and stale bytes without adoption or writes (176.650925ms)
+✖ busy lease preserves its bytes and reports uncertainty rather than claiming a staged update (52.848833ms)
+✖ catalog rename then error retains actual publication and is neither retried nor compensated (33.00899ms)
+✖ preflight diagnostics are bounded and control-scrubbed (51.909429ms)
+ℹ tests 28
+ℹ suites 0
+ℹ pass 0
+ℹ fail 28
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1417.172148
+
+✖ failing tests:
+
+test at tests/managed-update-stage-cli.test.ts:2:3592
+✖ confirmed public staging adds verified bytes but preserves selected version, source and personal data (85.605982ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 0
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:64:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:2:4606
+✖ isolated real CLI stages spaces/Unicode paths without executing package code or moving the software prefix (326.214039ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 0
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:78:79)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ missing confirmation (1.950746ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ wrong confirmation (1.008483ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ extra (0.508158ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ repeat (0.253673ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ global package root (0.408327ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ relative manifest (0.448828ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ relative package (0.417771ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ control (0.316318ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:249
+✖ wrong flags (0.360724ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+      code: 2,
+      lookups: 0,
+  +   stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+  -   stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n',
+      stdout: ''
+    }
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:98:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:95:36)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n', lookups: 0 },
+    expected: { code: 2, stdout: '', stderr: 'Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n', lookups: 0 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:2:5340
+✖ stage grammar requires exact paths, fixed order and explicit yes before home lookup or filesystem I/O (70.75565ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n'
+  - '--link and --isolated are mutually exclusive\n'
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:101:139)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n',
+    expected: '--link and --isolated are mutually exclusive\n',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:1082
+✖ flag (48.843889ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:116:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:105:95)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:1082
+✖ config (38.224638ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:116:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:105:95)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:1082
+✖ isolated (60.426484ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:116:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:105:95)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:1082
+✖ linked (36.773155ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:116:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:105:95)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:1082
+✖ default-asen (38.599324ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:116:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:105:95)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:1082
+✖ default-pi (43.597113ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:116:10)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:105:95)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:2240
+✖ absent (8.556189ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:128:65)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:122:83)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:2240
+✖ foreign (6.625007ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:128:65)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:122:83)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:2240
+✖ conflicting (39.059675ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:128:65)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:122:83)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:2240
+✖ bytes (79.084633ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:128:65)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:122:83)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:2240
+✖ manifest (42.199302ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:128:65)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:122:83)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:2995
+✖ busy lease preserves its bytes and reports uncertainty rather than claiming a staged update (52.848833ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:135:9)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:3690
+✖ catalog rename then error retains actual publication and is neither retried nor compensated (33.00899ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:147:39)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests/managed-update-stage-cli.test.ts:3:4687
+✖ preflight diagnostics are bounded and control-scrubbed (51.909429ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 1
+  
+      at TestContext.<anonymous> (/workspace/scratch/52e5d39ebfa0/ASEN/tests/managed-update-stage-cli.test.ts:156:39)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

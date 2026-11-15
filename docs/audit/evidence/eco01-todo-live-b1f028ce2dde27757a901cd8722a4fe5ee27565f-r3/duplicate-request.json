@@ -1,0 +1,51 @@
+{
+  "classification": "INTENTIONAL",
+  "reason": "ASEN deduplicates retried request IDs to prevent duplicate tasks; the source add operation has no request identity and appends each call.",
+  "source": {
+    "repeatedAdds": 2,
+    "taskCount": 2,
+    "tasks": [
+      {
+        "id": 1,
+        "title": "One operation",
+        "status": "pending"
+      },
+      {
+        "id": 2,
+        "title": "One operation",
+        "status": "pending"
+      }
+    ]
+  },
+  "asen": {
+    "firstTaskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+    "retriedTaskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+    "sameTask": true,
+    "taskCount": 1,
+    "rows": [
+      {
+        "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+        "title": "One operation",
+        "events": [
+          {
+            "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+            "sessionId": "eco01-duplicate",
+            "projectId": "/eco01-project",
+            "revision": 1,
+            "state": "planned",
+            "at": "2026-10-16T16:21:52.739Z"
+          }
+        ],
+        "requestId": "eco01-duplicate-request",
+        "current": {
+          "taskId": "todo-f99a511a-de78-4592-891d-0dea7b53c8a8",
+          "sessionId": "eco01-duplicate",
+          "projectId": "/eco01-project",
+          "revision": 1,
+          "state": "planned",
+          "at": "2026-10-16T16:21:52.739Z"
+        }
+      }
+    ]
+  }
+}

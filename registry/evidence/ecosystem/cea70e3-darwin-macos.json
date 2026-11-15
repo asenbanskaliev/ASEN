@@ -1,0 +1,12 @@
+{
+  "id": "ECO-02A-darwin-macos",
+  "candidate": "cea70e3d2dcf7af416d8c9c58d83990a416f4475",
+  "sourceCommit": "08de420ca29be16b6f6bee725a30b599b061df16",
+  "kind": "macos",
+  "class": "OS_RUNTIME",
+  "command": "npm run verify:pi-matrix",
+  "observation": "Eight packed real-host cells on this operating system completed with natural exit and no model calls",
+  "result": "PASS",
+  "sourceManifestSha256": "378dc7dd9a834898e6e2dfe453280612a406f76585fb0e68374f3868bada8493",
+  "logSha256": "38b49ff95e1a52def817f5e74b80a32a1593206c5ee5c112aef8ff9b66d104ca"
+}
