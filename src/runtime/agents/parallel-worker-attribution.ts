@@ -38,7 +38,7 @@ export function attributeParallelChildWorker(input:{
   todo.plan.candidate?.revision===owner.sourceHead&&
   sameWorkspaceIdentityPath(todo.plan.candidate.repository,owner.childProjectId)&&
   todo.plan.writeSurfaces?.length===writeSurfaces.length&&
-  todo.plan.writeSurfaces.every((scope,i)=>scope===writeSurfaces[i])&&
+  todo.plan.writeSurfaces.every((scope:string,i:number)=>scope===writeSurfaces[i])&&
   typeof todo.requestId==="string"&&todo.requestId.startsWith("asen-plan:")&&
   todo.requestId.endsWith(":worker")
  );
