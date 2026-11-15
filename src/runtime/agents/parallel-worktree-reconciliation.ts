@@ -30,7 +30,8 @@ export function reconcileParallelWorktreeBatch(input:{
  const observed=new Map<string,string>();
  let seenChanges=false,seenAllCompleted=true;
  if(input.batchState!=="prepared")blockers.push("Batch creation incomplete; inspect reserved Git paths manually");
- for(const unit of input.units){
+ const units:readonly ParallelWorktreeReviewUnit[]=input.units;
+ for(const unit of units){
   if(!unit||typeof unit.taskId!=="string"||!unit.taskId||!unit.changes||
    !Array.isArray(unit.changes.changedPaths)||!Array.isArray(unit.changes.outOfScopePaths)||
    unit.changes.acceptance!=="not-accepted"||unit.changes.autoMerge!==false)
