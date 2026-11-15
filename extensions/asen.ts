@@ -58,6 +58,7 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/agents/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/ui/todo-presentation.js";
@@ -1806,6 +1807,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
+  registerParallelWorktreeCommand(register);
   const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
    const sessionId=context.sessionManager.getSessionId(),projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
    const target=lens==="jd-judge-a"||lens==="jd-judge-b"?lens:`review-${lens}` as const;
