@@ -66,14 +66,13 @@ async function load(file:string):Promise<Journal>{
  if(!await preparePrivateFile(file))return {schema:SCHEMA,revision:0,receipts:[]};
  return parse(await readFile(file,"utf8"));
 }
-export class ParallelWorkerObservationJournal{
- constructor(readonly file:string){if(!isAbsolute(file))throw new Error("Worker observation journal requires an absolute private file");}
- async record(input:{
-  readonly link:ParallelChildSessionLink;
-  readonly worker:AttributedParallelWorker;
-  readonly sourceTodoRevision:number;
-  readonly changes:ParallelWorktreeChangeInspection;
- }):Promise<ParallelWorkerObservation>{
+export interface ParallelWorkerObservationInput{
+ readonly link:ParallelChildSessionLink;
+ readonly worker:AttributedParallelWorker;
+ readonly sourceTodoRevision:number;
+ readonly changes:ParallelWorktreeChangeInspection;
+}
+function createObservationReceipt(input:ParallelWorkerObservationInput):ParallelWorkerObservation{
   const {link,worker,sourceTodoRevision,changes}=input;
   if(!link||link.authority!=="none"||link.autoDispatch!==false||link.autoMerge!==false||
    !worker||worker.sourceTodoId!==link.sourceTodoId||!allowed.has(worker.agentState)||
@@ -95,18 +94,44 @@ export class ParallelWorkerObservationJournal{
    grantsAuthority:false,autoRetry:false,autoMerge:false
   };
   parse(JSON.stringify({schema:SCHEMA,revision:1,receipts:[receipt]}));
+  return receipt;
+}
+export class ParallelWorkerObservationJournal{
+ constructor(readonly file:string){if(!isAbsolute(file))throw new Error("Worker observation journal requires an absolute private file");}
+ /** A durable receipt is not acceptance: no Writer, model, retry or merge rights. */
+ async record(input:ParallelWorkerObservationInput):Promise<ParallelWorkerObservation>{
+  const receipts=await this.recordBatch([input],true);
+  return receipts[0]!;
+ }
+ /** Record a complete bounded batch in one atomic commit. A partial write must
+  * never leave a misleading subset of child Workers marked as observed.
+  * Existing receipts are not overwritten or silently replayed. */
+ async recordBatch(inputs:readonly ParallelWorkerObservationInput[],allowSingle=false):Promise<readonly ParallelWorkerObservation[]>{
+  if(!Array.isArray(inputs)||inputs.length<(allowSingle?1:2)||inputs.length>4)
+   throw new Error("An observation batch must contain two to four terminal Workers");
+  const receipts=inputs.map(createObservationReceipt),first=receipts[0]!;
+  const seenTasks=new Set<string>(),seenAgents=new Set<string>(),seenRoots=new Set<string>();
+  for(const r of receipts){
+   const root=r.childProjectId.toLocaleLowerCase("en-US");
+   if(r.batchId!==first.batchId||r.sourceSessionId!==first.sourceSessionId||
+    !sameWorkspaceIdentityPath(r.sourceProjectId,first.sourceProjectId)||
+    seenTasks.has(r.sourceTodoId)||seenAgents.has(r.agentId)||seenRoots.has(root))
+    throw new Error("Observation batch has mixed owners, duplicated tasks, agents or worktrees");
+   seenTasks.add(r.sourceTodoId);seenAgents.add(r.agentId);seenRoots.add(root);
+  }
   await preparePrivateFile(this.file,true);
   return withExclusiveFileLock(this.file,async()=>{
    const journal=await load(this.file);
-   if(journal.receipts.length>=512)throw new Error("Worker observation journal is full");
-   if(journal.receipts.some(row=>
-    row.batchId===link.batchId&&row.sourceTodoId===link.sourceTodoId||
-    row.agentId===worker.agentId||
-    row.childSessionId===link.childSessionId&&sameWorkspaceIdentityPath(row.childProjectId,link.childProjectId)))
-    throw new Error("Worker observation already recorded; inspect the original receipt, no replay or replacement");
-   journal.receipts.push(receipt);journal.revision++;
-   await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\n");
-   return structuredClone(receipt);
+   if(journal.receipts.length+receipts.length>512)throw new Error("Worker observation journal is full");
+   for(const fresh of receipts){
+    if(journal.receipts.some(row=>row.batchId===fresh.batchId&&row.sourceTodoId===fresh.sourceTodoId||
+     row.agentId===fresh.agentId||
+     row.childSessionId===fresh.childSessionId&&sameWorkspaceIdentityPath(row.childProjectId,fresh.childProjectId)))
+     throw new Error("Worker observation already recorded; inspect the original receipt, no replay or replacement");
+   }
+   journal.receipts.push(...receipts);journal.revision+=receipts.length;
+   await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\\n");
+   return Object.freeze(receipts.map(receipt=>structuredClone(receipt)));
   });
  }
  async listSource(identity:{sessionId:string;projectId:string},links:readonly ParallelChildSessionLink[]):Promise<readonly ParallelWorkerObservation[]>{
