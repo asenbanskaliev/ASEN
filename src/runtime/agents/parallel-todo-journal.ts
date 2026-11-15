@@ -34,7 +34,7 @@ function parse(raw:string):Journal{
  const x:unknown=JSON.parse(raw);
  if(!exact(x,["schema","revision","records"])||x.schema!==SCHEMA||
   !Number.isSafeInteger(x.revision)||Number(x.revision)<0||!Array.isArray(x.records)||
-  x.records.length>256||x.revision<x.records.length)
+  x.records.length>256||Number(x.revision)<x.records.length)
   throw new Error("Invalid parallel Todo worktree journal");
  const seen=new Set<string>();
  for(const value of x.records){
