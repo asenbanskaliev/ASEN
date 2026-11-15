@@ -90,7 +90,15 @@ export function registerParallelWorktreeCommand(
       throw new Error("Child worktree must remain clean and pinned to source HEAD before re-planning");
      const row=rows.find(value=>value.taskId===owner.taskId);
      const basis=row?.plan?.writerAuthorizationBasis;
-     if(!basis)throw new Error("Original ODD Worker has no persisted exact authorization facts");
+     if(!basis||!row?.requestId)throw new Error("Original ODD Worker has no persisted exact authorization facts");
+     const original:unknown=JSON.parse(basis);
+     if(!original||typeof original!=="object"||Array.isArray(original)||
+      typeof (original as {taskIdentity?:unknown}).taskIdentity!=="string"||
+      typeof (original as {instruction?:unknown}).instruction!=="string"||
+      (original as {taskIdentity:string}).taskIdentity!==row.requestId.slice("asen-plan:".length,-":worker".length)||
+      row.description!=="Perform only the authorized, scoped work for: "+
+       (original as {instruction:string}).instruction)
+      throw new Error("The original ODD task identity or instruction differs from the exact saved Worker plan");
      const checked=JSON.parse(controlledInstructionPlanCommand(
       basis,root,{id:"source-todo-"+owner.taskId,repository:root,revision:owner.sourceHead,
        createdAt:new Date().toISOString()}
