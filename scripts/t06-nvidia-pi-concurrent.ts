@@ -31,7 +31,11 @@ const instances=[0,1].map(index=>{
  });
  runner.subscribeChildSelection(event=>{
   if(event.sessionId===identity.sessionId&&event.projectId===identity.projectId&&event.model)
-   observation.reportedModel=event.model.provider+"/"+event.model.id;
+   // Pi puede devolver el identificador con el prefijo del proveedor
+   // incorporado; normalizarlo solo cuando coincide exactamente.
+   observation.reportedModel=event.model.provider==="nvidia"&&
+    (event.model.id===model||event.model.provider+"/"+event.model.id===model)?
+    model:event.model.provider+"/"+event.model.id;
  });
  return {identity,observation,runner};
 });
