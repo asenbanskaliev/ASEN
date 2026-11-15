@@ -1,0 +1,122 @@
+/** Durable cross-session T06 Worker observation. A receipt records a native,
+ * scoped ASEN agent lifecycle and Git inspection, not a model-consumption
+ * proof, test pass, review acceptance, merge grant or replay authorization. */
+import {readFile} from "node:fs/promises";
+import {isAbsolute} from "node:path";
+import {atomicWriteText} from "../../io/atomic-write.js";
+import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
+import {preparePrivateFile} from "../../io/private-file.js";
+import {sameWorkspaceIdentityPath} from "../workspace-store.js";
+import type {ParallelChildSessionLink} from "./parallel-todo-session-links.js";
+import type {AttributedParallelWorker} from "./parallel-worker-attribution.js";
+import type {ParallelWorktreeChangeInspection} from "./parallel-worktree-change-inspection.js";
+
+const SCHEMA="asen.parallel-worker-observations/v1" as const;
+const allowed=new Set(["completed","failed","cancelled","interrupted"]);
+const safe=(s:unknown):s is string=>typeof s==="string"&&s.length>0&&s.length<=1024&&
+ s===s.trim()&&s===s.normalize("NFC")&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(s);
+const validTime=(s:unknown):s is string=>typeof s==="string"&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
+const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&
+ Object.keys(v).length===keys.length&&keys.every(key=>Object.hasOwn(v,key));
+export interface ParallelWorkerObservation{
+ readonly batchId:string;readonly sourceSessionId:string;readonly sourceProjectId:string;
+ readonly sourceTodoId:string;readonly sourceTodoRevision:number;
+ readonly childSessionId:string;readonly childProjectId:string;
+ readonly childTodoId:string;readonly agentId:string;
+ readonly agentState:"completed"|"failed"|"cancelled"|"interrupted";
+ readonly agentUpdatedAt:string;readonly childTodoState:string;
+ readonly worktreeChangeState:ParallelWorktreeChangeInspection["status"];
+ readonly changedPaths:readonly string[];
+ readonly recordedAt:string;
+ readonly modelActual:"unknown";readonly modelConsumedProven:false;
+ readonly acceptance:"not-accepted";readonly grantsAuthority:false;readonly autoRetry:false;readonly autoMerge:false;
+}
+interface Journal{schema:typeof SCHEMA;revision:number;receipts:ParallelWorkerObservation[];}
+const keys=["batchId","sourceSessionId","sourceProjectId","sourceTodoId","sourceTodoRevision",
+ "childSessionId","childProjectId","childTodoId","agentId","agentState","agentUpdatedAt",
+ "childTodoState","worktreeChangeState","changedPaths","recordedAt",
+ "modelActual","modelConsumedProven","acceptance","grantsAuthority","autoRetry","autoMerge"] as const;
+function parse(raw:string):Journal{
+ const x:unknown=JSON.parse(raw);
+ if(!exact(x,["schema","revision","receipts"])||x.schema!==SCHEMA||
+  !Number.isSafeInteger(x.revision)||Number(x.revision)<0||
+  !Array.isArray(x.receipts)||x.receipts.length>512||Number(x.revision)!==x.receipts.length)
+  throw new Error("Invalid parallel Worker observation journal");
+ const seen=new Set<string>();
+ for(const row of x.receipts){
+  if(!exact(row,keys)||![
+   row.batchId,row.sourceSessionId,row.sourceProjectId,row.sourceTodoId,
+   row.childSessionId,row.childProjectId,row.childTodoId,row.agentId,row.childTodoState
+  ].every(safe)||!isAbsolute(row.sourceProjectId as string)||!isAbsolute(row.childProjectId as string)||
+   !Number.isSafeInteger(row.sourceTodoRevision)||Number(row.sourceTodoRevision)<1||
+   !allowed.has(String(row.agentState))||!validTime(row.agentUpdatedAt)||!validTime(row.recordedAt)||
+   !["clean","scoped-changes","out-of-scope","head-diverged","unavailable"].includes(String(row.worktreeChangeState))||
+   !Array.isArray(row.changedPaths)||row.changedPaths.length>512||
+   row.changedPaths.some(path=>!safe(path))||row.modelActual!=="unknown"||
+   row.modelConsumedProven!==false||row.acceptance!=="not-accepted"||
+   row.grantsAuthority!==false||row.autoRetry!==false||row.autoMerge!==false)
+   throw new Error("Invalid parallel Worker observation");
+  const id=[row.batchId,row.sourceTodoId].join("::");
+  if(seen.has(id))throw new Error("Duplicated parallel Worker observation");
+  seen.add(id);
+ }
+ return structuredClone(x) as unknown as Journal;
+}
+async function load(file:string):Promise<Journal>{
+ if(!await preparePrivateFile(file))return {schema:SCHEMA,revision:0,receipts:[]};
+ return parse(await readFile(file,"utf8"));
+}
+export class ParallelWorkerObservationJournal{
+ constructor(readonly file:string){if(!isAbsolute(file))throw new Error("Worker observation journal requires an absolute private file");}
+ async record(input:{
+  readonly link:ParallelChildSessionLink;
+  readonly worker:AttributedParallelWorker;
+  readonly sourceTodoRevision:number;
+  readonly changes:ParallelWorktreeChangeInspection;
+ }):Promise<ParallelWorkerObservation>{
+  const {link,worker,sourceTodoRevision,changes}=input;
+  if(!link||link.authority!=="none"||link.autoDispatch!==false||link.autoMerge!==false||
+   !worker||worker.sourceTodoId!==link.sourceTodoId||!allowed.has(worker.agentState)||
+   worker.acceptance!=="not-accepted"||worker.autoMerge!==false||worker.modelConsumedProven!==false||
+   !Number.isSafeInteger(sourceTodoRevision)||sourceTodoRevision!==link.sourceTodoRevision||
+   !changes||changes.acceptance!=="not-accepted"||changes.autoMerge!==false||
+   !Array.isArray(changes.changedPaths))
+   throw new Error("Only a terminal exact native child Worker observation may be recorded");
+  const receipt:ParallelWorkerObservation={
+   batchId:link.batchId,sourceSessionId:link.sourceSessionId,sourceProjectId:link.sourceProjectId,
+   sourceTodoId:link.sourceTodoId,sourceTodoRevision,
+   childSessionId:link.childSessionId,childProjectId:link.childProjectId,
+   childTodoId:worker.childTodoId,agentId:worker.agentId,
+   agentState:worker.agentState as ParallelWorkerObservation["agentState"],
+   agentUpdatedAt:worker.agentUpdatedAt,childTodoState:worker.childTodoState,
+   worktreeChangeState:changes.status,changedPaths:[...changes.changedPaths],
+   recordedAt:new Date().toISOString(),
+   modelActual:"unknown",modelConsumedProven:false,acceptance:"not-accepted",
+   grantsAuthority:false,autoRetry:false,autoMerge:false
+  };
+  parse(JSON.stringify({schema:SCHEMA,revision:1,receipts:[receipt]}));
+  await preparePrivateFile(this.file,true);
+  return withExclusiveFileLock(this.file,async()=>{
+   const journal=await load(this.file);
+   if(journal.receipts.length>=512)throw new Error("Worker observation journal is full");
+   if(journal.receipts.some(row=>
+    row.batchId===link.batchId&&row.sourceTodoId===link.sourceTodoId||
+    row.agentId===worker.agentId||
+    row.childSessionId===link.childSessionId&&sameWorkspaceIdentityPath(row.childProjectId,link.childProjectId)))
+    throw new Error("Worker observation already recorded; inspect the original receipt, no replay or replacement");
+   journal.receipts.push(receipt);journal.revision++;
+   await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\n");
+   return structuredClone(receipt);
+  });
+ }
+ async listSource(identity:{sessionId:string;projectId:string},links:readonly ParallelChildSessionLink[]):Promise<readonly ParallelWorkerObservation[]>{
+  if(!safe(identity.sessionId)||!isAbsolute(identity.projectId)||!Array.isArray(links))
+   throw new Error("Invalid Worker observation source identity");
+  const journal=await load(this.file);
+  return journal.receipts.filter(row=>row.sourceSessionId===identity.sessionId&&
+   sameWorkspaceIdentityPath(row.sourceProjectId,identity.projectId)&&
+   links.some(link=>link.batchId===row.batchId&&link.sourceTodoId===row.sourceTodoId&&
+    link.childSessionId===row.childSessionId&&sameWorkspaceIdentityPath(link.childProjectId,row.childProjectId)))
+   .map(row=>structuredClone(row));
+ }
+}
