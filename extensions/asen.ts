@@ -59,6 +59,7 @@ import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/li
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
+import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/agents/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/ui/todo-presentation.js";
@@ -395,7 +396,23 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("ASEN panel session changed");
    const integrationInspection=inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});
    const hostStatus=projectHostStatus(ctx);assertCurrent();
-   return {todos,todosObserved:!!todoStorePromise,agents,jobs,...(changes?{changes}:{}),hostStatus,integrationInspection,permission:permissionSession.mode(ctx)};
+   let agentFlow:Awaited<ReturnType<typeof readAgentFlowPanelObservation>>|undefined,agentFlowUnavailable=false;
+   if(todoStorePromise&&agentRuntimePromise)try{
+    agentFlow=await readAgentFlowPanelObservation({
+     identity,journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
+     sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
+     planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
+     loadTodos:async owner=>(await todoStorePromise).list(owner),
+     loadChildAgents:async owner=>(await agentRuntimePromise).list(owner)
+    });
+    assertCurrent();
+   }catch{agentFlowUnavailable=true;}
+   const actual=await sessionIdentity(ctx);assertCurrent();
+   if(actual.sessionId!==identity.sessionId||actual.projectId!==identity.projectId)
+    throw new Error("ASEN panel scope changed while reading worktree flow");
+   return {todos,todosObserved:!!todoStorePromise,agents,jobs,...(changes?{changes}:{}),
+    hostStatus,integrationInspection,permission:permissionSession.mode(ctx),
+    ...(agentFlow?{agentFlow}:{}),...(agentFlowUnavailable?{agentFlowUnavailable:true}:{})};
   };
   const m1Cache=createM1SurfaceCache();
   let workRowGeneration=0;
