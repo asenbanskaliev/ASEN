@@ -5,7 +5,7 @@ import {isWorkspaceReviewEvidenceGenuine} from "./workspace-review-session.js";
 
 export interface JudgmentDayInput{
  registry:PiReviewRegistry;author:PiReviewerModel;judgeA:PiReviewerModel;judgeB:PiReviewerModel;
- evidence:PiReviewEvidence;requirements:string;signal?:AbortSignal;
+ evidence:PiReviewEvidence;requirements:string;signal?:AbortSignal;validateBeforeJudge?:(judge:"jd-judge-a"|"jd-judge-b")=>void|Promise<void>;
 }
 export interface JudgmentDayReport{
  readonly status:"analysis-complete"|"findings-require-review"|"disagreement-requires-review";
@@ -28,8 +28,12 @@ export async function runJudgmentDay(input:JudgmentDayInput):Promise<JudgmentDay
  if(!available.some(model=>identity(model)===identity(judgeA))||!available.some(model=>identity(model)===identity(judgeB)))
   throw new Error("Judgment Day judges must be authenticated and different from the author");
  if(signal?.aborted)throw new Error("Judgment Day cancelled before model use");
+ await input.validateBeforeJudge?.("jd-judge-a");
+ if(signal?.aborted)throw new Error("Judgment Day cancelled before Judge A");
  const first=await runIndependentPiReview({registry,model:judgeA,author,evidence,requirements,perspective:"jd-judge-a",...(signal?{signal}:{})});
  if(signal?.aborted)throw new Error("Judgment Day cancelled after Judge A");
+ await input.validateBeforeJudge?.("jd-judge-b");
+ if(signal?.aborted)throw new Error("Judgment Day cancelled before Judge B");
  const second=await runIndependentPiReview({registry,model:judgeB,author,evidence,requirements,perspective:"jd-judge-b",...(signal?{signal}:{})});
  if(!isPiReviewVerdictGenuine(first)||!isPiReviewVerdictGenuine(second))throw new Error("Judgment Day did not receive genuine Pi results");
  if(signal?.aborted)throw new Error("Judgment Day cancelled after Judge B");
