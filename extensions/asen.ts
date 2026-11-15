@@ -1809,7 +1809,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
   registerParallelWorktreeCommand(register,{
    journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
-   ...(todoStorePromise?{loadTodos:async identity=>(await todoStorePromise).list(identity)}:{})
+   sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
+   ...(todoStorePromise?{loadTodos:async identity=>(await todoStorePromise).list(identity)}:{}),
+   ...(agentRuntimePromise?{loadChildAgents:async identity=>(await agentRuntimePromise).list(identity)}:{})
   });
   const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
    const sessionId=context.sessionManager.getSessionId(),projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
