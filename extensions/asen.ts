@@ -1808,7 +1808,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
   const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
    const sessionId=context.sessionManager.getSessionId(),projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
-   const target=`review-${lens}` as const;
+   const target=lens==="jd-judge-a"||lens==="jd-judge-b"?lens:`review-${lens}` as const;
    return resolveAgentProfileTarget(await profileLayer({sessionId,projectId}),target).choice;
   });
   // Public work is ODD-only. Legacy selection/recovery remains in lifecycle modules,
