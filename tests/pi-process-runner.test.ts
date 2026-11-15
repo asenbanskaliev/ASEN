@@ -315,7 +315,12 @@ test("Pi native exits expose only bounded sanitized lifecycle diagnostics",async
  t.after(()=>rm(crashed.d,{recursive:true,force:true}));
  const result=await runner(crashed.p).run({id:"native-windows-crash",role:"explorer",prompt:"hello",repository:crashed.d});
  assert.equal(result.ok,false);
- assert.equal(result.output,"pi process exited with code 3221226505 (phase: turn; windows status: 0xC0000409; signal: none; stderr-present: true)");
+ // POSIX transports preserve only the low eight exit bits: 0xC0000409 -> 9.
+  // Never synthesize a Windows crash status when running on a Unix host.
+  const expected=process.platform==="win32"
+   ?"pi process exited with code 3221226505 (phase: turn; windows status: 0xC0000409; signal: none; stderr-present: true)"
+   :"pi process exited with code 9 (phase: turn; signal: none; stderr-present: true)";
+  assert.equal(result.output,expected);
  assert.ok(!result.output.includes(secret));assert.ok(!result.output.includes("UNTRUSTED_STDOUT"));
 });
 

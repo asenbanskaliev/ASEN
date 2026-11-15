@@ -403,9 +403,9 @@
         "src/agents/dispatcher.ts",
         "src/agents/pi-process-runner.ts",
         "src/agents/agent-runtime.ts",
-        "src/runtime/agent-store.ts",
+        "src/runtime/agents/agent-store.ts",
         "src/agents/pi-agent-tools.ts",
-        "src/runtime/agent-lifecycle.ts",
+        "src/runtime/agents/agent-lifecycle.ts",
         "src/policies/scopes.ts"
       ],
       "tests": [
@@ -434,7 +434,7 @@
       "implementation": [
         "src/orchestration/orchestrator.ts",
         "src/flow/odd-routing.ts",
-        "src/runtime/route-command.ts",
+        "src/runtime/lifecycle/route-command.ts",
         "extensions/asen.ts"
       ],
       "tests": [
@@ -443,7 +443,7 @@
         "tests/extension-state-commands.test.ts"
       ],
       "remaining": [
-        "A primary Pi /asen-route preview now binds exact user-supplied ODD facts to the active canonical project and grants no execution authority. Automatic prompt-to-orchestration and production status/doctor composition remain incomplete; EP-003 primary-session sensitive-path/shell admission and discovery-gated EP-004\u2013008 public provider contracts remain open. Private provider authority is excluded."
+        "A primary Pi /asen-route preview now binds exact user-supplied ODD facts to the active canonical project and grants no execution authority. Automatic prompt-to-orchestration and production status/doctor composition remain incomplete; EP-003 primary-session sensitive-path/shell admission and discovery-gated EP-004–008 public provider contracts remain open. Private provider authority is excluded."
       ],
       "stateful": true,
       "platformSensitive": true,
@@ -462,9 +462,9 @@
         "src/flow/odd-task-tracking.ts",
         "src/tasks/task.ts",
         "src/runtime/task-replay.ts",
-        "src/runtime/todo-store.ts",
-        "src/runtime/pi-todo-tools.ts",
-        "src/runtime/todo-presentation.ts",
+        "src/runtime/lifecycle/todo-store.ts",
+        "src/runtime/agents/pi-todo-tools.ts",
+        "src/runtime/ui/todo-presentation.ts",
         "extensions/asen.ts"
       ],
       "tests": [
@@ -529,9 +529,9 @@
       ],
       "implementation": [
         "scripts/verify-pack.mjs",
-        "src/runtime/launcher.ts",
-        "src/runtime/setup.ts",
-        "src/runtime/command-catalog.ts"
+        "src/runtime/lifecycle/launcher.ts",
+        "src/runtime/lifecycle/setup.ts",
+        "src/runtime/ui/command-catalog.ts"
       ],
       "tests": [
         "tests/package.test.ts",
@@ -558,7 +558,7 @@
       "implementation": [
         "src/runtime/workspace-attribution.ts",
         "src/runtime/workspace-store.ts",
-        "src/runtime/agent-lifecycle.ts",
+        "src/runtime/agents/agent-lifecycle.ts",
         "extensions/asen.ts"
       ],
       "tests": [
@@ -587,8 +587,8 @@
         "831db959b54c8a660da3adfba2a57ad7cc869abc2254ce9e981ff29f15435faf"
       ],
       "implementation": [
-        "src/runtime/profiles.ts",
-        "src/runtime/profile-store.ts"
+        "src/runtime/lifecycle/profiles.ts",
+        "src/runtime/lifecycle/profile-store.ts"
       ],
       "tests": [
         "tests/runtime-profiles.test.ts",
@@ -616,9 +616,9 @@
         "fef309cda80d61010d459bbfb80a232e8f92c1d9149395ad117f1473665d369f"
       ],
       "implementation": [
-        "src/runtime/history.ts",
-        "src/runtime/history-store.ts",
-        "src/runtime/history-command.ts",
+        "src/runtime/lifecycle/history.ts",
+        "src/runtime/lifecycle/history-store.ts",
+        "src/runtime/lifecycle/history-command.ts",
         "src/io/exclusive-file-lock.ts",
         "src/io/private-file.ts",
         "extensions/asen.ts"
@@ -654,9 +654,9 @@
         "eb0f2993d9271f55cb42eca343e6fbb601a733fb90bd40daeebc92ee60ae1ba9"
       ],
       "implementation": [
-        "src/runtime/usage.ts",
-        "src/runtime/usage-store.ts",
-        "src/runtime/usage-command.ts",
+        "src/runtime/lifecycle/usage.ts",
+        "src/runtime/lifecycle/usage-store.ts",
+        "src/runtime/lifecycle/usage-command.ts",
         "src/io/exclusive-file-lock.ts",
         "src/io/private-file.ts",
         "extensions/asen.ts"
@@ -693,7 +693,7 @@
       "implementation": [
         "src/session/pi-resume.ts",
         "src/session/checkpoint.ts",
-        "src/runtime/presentation.ts"
+        "src/runtime/ui/presentation.ts"
       ],
       "tests": [
         "tests/pi-session-recovery-e2e.test.ts",
