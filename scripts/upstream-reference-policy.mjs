@@ -21,6 +21,8 @@ const exactProvenanceDocs=new Set([
   "odd/evidence/asen-4.8.0-comparison/"+providerTerm+"-shell-4.8.0-steady.txt",
   "odd/evidence/portable-checkpoint-evidence.json",
   "odd/evidence/portable-checkpoint-manifest.json",
+  // Exact ODD comparison dossier; textual provenance only, never executable code.
+  "odd/tasks/flujo-de-agentes.md",
   "odd/tasks/asen-focus-experience.md",
   "odd/tasks/asen-integral-runtime-architecture-stability-audit.md",
   "odd/tasks/asen-"+providerTerm+"-shell-equivalence-audit.md",
