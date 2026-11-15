@@ -257,9 +257,9 @@ test("specialized 4R route selects the configured authenticated reviewer per len
 
 test("unknown 4R profile model and unprovable effort block before consent or provider use",async t=>{
  const absent=setup(t,unconfigured(),true,{risk:{model:"missing/not-authenticated"}});
- await assert.rejects(()=>absent.handler("workspace 4r",absent.context),/unavailable, unauthenticated/u);
+ await assert.rejects(async()=>await absent.handler("workspace 4r",absent.context),/unavailable, unauthenticated/u);
  assert.equal(absent.modelCalls.length,0);assert.equal(absent.consentPrompts.length,0);
  const thinking=setup(t,unconfigured(),true,{risk:{thinking:"high"}});
- await assert.rejects(()=>thinking.handler("workspace 4r",thinking.context),/cannot prove applying/u);
+ await assert.rejects(async()=>await thinking.handler("workspace 4r",thinking.context),/cannot prove applying/u);
  assert.equal(thinking.modelCalls.length,0);assert.equal(thinking.consentPrompts.length,0);
 });
