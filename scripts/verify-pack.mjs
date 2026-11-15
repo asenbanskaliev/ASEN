@@ -5,7 +5,7 @@ import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {verifyPublicExports} from "./package-exports.mjs";
 import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
-import {maskApprovedWireSchemas,isPinnedReferenceDocument} from "./upstream-reference-policy.mjs";
+import {maskApprovedReferenceTokens,isPinnedReferenceDocument} from "./upstream-reference-policy.mjs";
 
 const temp=mkdtempSync(join(tmpdir(),"asen-packed-exports-"));
 function npm(args,options={}) {
@@ -71,7 +71,7 @@ for(const file of names) {
     // provenance comments, never executable upstream imports. Everything else is scanned.
     if (isPinnedReferenceDocument(file)) continue;
     const text=readFileSync(join(installed,file),"utf8");
-    if (forbidden.test(maskApprovedWireSchemas(file,text))) throw new Error(`external reference leaked into packed product: ${file}`);
+    if (forbidden.test(maskApprovedReferenceTokens(file,text))) throw new Error(`external reference leaked into packed product: ${file}`);
   }
 }
 console.log(JSON.stringify({tarball:result.filename,files:names.length,integrity:result.integrity,publicExports:checked.length,packedInstallVerified:true}));
