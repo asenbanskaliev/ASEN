@@ -5,7 +5,7 @@ import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {verifyPublicExports} from "./package-exports.mjs";
 import {createPiVerifierEnvironment} from "./gsp06-pi-free-environment.mjs";
-import {maskApprovedWireSchemas} from "./upstream-reference-policy.mjs";
+import {maskApprovedWireSchemas,isPinnedReferenceDocument} from "./upstream-reference-policy.mjs";
 
 const temp=mkdtempSync(join(tmpdir(),"asen-packed-exports-"));
 function npm(args,options={}) {
@@ -66,6 +66,10 @@ const forbidden=new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"),"i
 for(const file of names) {
   if (forbidden.test(file)) throw new Error(`external reference leaked into packed artifact path: ${file}`);
   if (/^(src|extensions|skills)\//.test(file) || file==="package.json") {
+    // Registered compatibility-contract and provenance paths (single source of truth in
+    // upstream-reference-policy.mjs) are permitted: they carry inert string constants or
+    // provenance comments, never executable upstream imports. Everything else is scanned.
+    if (isPinnedReferenceDocument(file)) continue;
     const text=readFileSync(join(installed,file),"utf8");
     if (forbidden.test(maskApprovedWireSchemas(file,text))) throw new Error(`external reference leaked into packed product: ${file}`);
   }

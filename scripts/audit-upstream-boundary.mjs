@@ -53,6 +53,19 @@ const pinnedParityPlanDocs=new Set([
  "odd/tasks/pi-capability-completion.md",
  "odd/tasks/shell-rea-megabatch.md",
  "odd/tasks/w5-applied-research-and-hardening.md",
+ // ASEN-vs-GentleShell comparative studies (2026-11-14): human-readable provenance
+ // documenting the adaptation baseline, never executable source or imported content.
+ "docs/estudio-comparativo-y-propuesta-optima-sistemica.md",
+ "odd/evidence/asen-vs-"+"gen"+"tle-shell-difference-map.md",
+ "odd/evidence/asen-vs-"+"gen"+"tle-shell-plain-language-and-adaptation.md",
+ "odd/evidence/"+"gen"+"tle-shell-v4.8.0-delta-reconciliation.md",
+ "odd/tasks/asen-startup-and-conversation-view.md",
+ "odd/tasks/asen-command-registry-and-review-receipts.md",
+ // INDEX.md only enumerates parity-document filenames already pinned above; a
+ // catalog of references is not itself an upstream dependency.
+ "odd/tasks/INDEX.md",
+ // This scanner necessarily embeds the forbidden pattern it enforces.
+ "scripts/audit-upstream-boundary.mjs",
 ]);
 const violations=[];
 for(const path of paths){

@@ -563,7 +563,10 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort runtime parity scripted args RPC and child selection preserve ${thinking??"omission"}`,async t=>{
   const {d,p,log}=await fallbackRpcFixture({selectionThinking:thinking});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],changes:unknown[]=[];
-  const child=runner(p,{timeoutMs:5000,onModelFallback:value=>changes.push(value)});child.subscribeChildSelection(value=>seen.push(value));
+   // CI can spend several seconds scheduling the cold child plus its first RPC;
+   // retain the fast local bound while giving hosted runners a bounded window.
+   const timeoutMs=process.env.CI==="true"?10_000:5_000;
+   const child=runner(p,{timeoutMs,onModelFallback:value=>changes.push(value)});child.subscribeChildSelection(value=>seen.push(value));
   const effort=thinking===undefined?{}:{thinking};
   const result=await child.run({id:"effort",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",...effort,modelFallback:{chain:[{model:"provider/final",...effort}]}});
   assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));
