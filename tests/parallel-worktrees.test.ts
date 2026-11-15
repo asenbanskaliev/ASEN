@@ -21,6 +21,7 @@ function fixture(t:TestContext){
  const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
  git(source,"init","-q");git(source,"config","user.name","ASEN T06");
  git(source,"config","user.email","asen-t06@example.invalid");
+ git(source,"config","core.autocrlf","false"); // Git-for-Windows must preserve the expected fixture bytes.
  writeFileSync(join(source,"left.txt"),"original-left\n");writeFileSync(join(source,"right.txt"),"original-right\n");
  git(source,"add","left.txt","right.txt");git(source,"commit","-qm","base");
  const head=git(source,"rev-parse","HEAD"),created:string[]=[],confirmCalls:unknown[]=[];
