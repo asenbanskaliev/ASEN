@@ -1,10 +1,11 @@
 # ASEN — Auditoría integral de arquitectura, integración, estabilidad y flujo end-to-end
 
 - **Rama auditada:** `feat/t12-integrated-acceptance-merge`
-- **HEAD real:** `9529b6c16a78bf94d46a1de30204e7f57245357b` (idéntico al punto de partida; sin commits posteriores)
-- **Sincronización:** `0` adelante / `0` atrás respecto de `origin/feat/t12-integrated-acceptance-merge`
+- **Punto de partida (baseline):** `9529b6c16a78bf94d46a1de30204e7f57245357b`
+- **HEAD real auditado:** `51a83ad81e89d0b78a5062987ef9939e402121da` (+5 commits de fijación y evidencia: `e72f2fe2`, `4812de28`, `768bc662`, `96182685`, `51a83ad8`)
+- **Sincronización:** Rama local de trabajo con commits de consolidación sobre el baseline conocido
 - **Árbol de trabajo:** limpio salvo 3 untracked: `.tmp-npm-test-ci-limits.log`, `docs/gentle-shell-architecture-and-execution-flow.md`, `pi`
-- **Fase:** auditoría read-only. No se modificó código productivo, no hubo merges, pushes ni cambios en `main`.
+- **Fase:** auditoría read-only terminada. Sin merges, pushes ni modificaciones en `main`.
 - **Fecha:** 2026-11-15
 
 ## Estado de esta auditoría (leer antes de citar)

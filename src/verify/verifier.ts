@@ -1,5 +1,5 @@
 import type { Candidate, Evidence, Risk } from "../core/types.js";
-import { EvidenceStore } from "../evidence/store.js";
+import type { EvidenceStore } from "../evidence/store.js";
 import { verificationLevel } from "../flow/risk.js";
 import {getSkillContract,selectSkills,type SkillId,type SkillSelectionContext} from "../skills/registry.js";
 import {isIssuedSkillContext,matchesIssuedSkillContext} from "../skills/context.js";

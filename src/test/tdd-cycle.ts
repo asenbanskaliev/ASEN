@@ -1,5 +1,5 @@
 import type {Candidate} from "../core/types.js";
-import {EvidenceStore} from "../evidence/store.js";
+import type {EvidenceStore} from "../evidence/store.js";
 import {isExecutedEvidence,type ExecutedEvidence} from "../evidence/execution.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
 

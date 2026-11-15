@@ -8,7 +8,7 @@ import {issueSkillContext,isIssuedSkillContext,matchesIssuedSkillContext,type Is
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import type {Dispatcher,AgentRequest} from "../agents/dispatcher.js";
 import {isIssuedAgentArtifactProof} from "../agents/pi-artifact-runner.js";
-import {EvidenceStore} from "../evidence/store.js";
+import type {EvidenceStore} from "../evidence/store.js";
 import {authorizeRelease,authorizeVerified} from "../verify/verifier.js";
 import {assertDirectGitParent} from "../evidence/git-lineage.js";
 import {claimLifecycleApplicability,hasOriginalWriterIntent,tddObligationFor,hasOriginalDefectIntent,workflowSelectionDescriptionForApplicability,type LifecycleApplicability,type TddObligation} from "./applicability.js";

@@ -6,7 +6,7 @@ import {isAbsolute,join,relative} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {spawnContained} from "./spawn-contained.js";
 import type {Candidate,Evidence} from "../core/types.js";
-import {EvidenceStore} from "./store.js";
+import type {EvidenceStore} from "./store.js";
 
 export interface ExecutedEvidence {
  readonly candidateRepository:string;

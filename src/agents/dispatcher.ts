@@ -1,7 +1,7 @@
 import {types} from "node:util";
 import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
-import {EvidenceStore} from "../evidence/store.js";
+import type {EvidenceStore} from "../evidence/store.js";
 import {selectSkills} from "../skills/registry.js";
 import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
