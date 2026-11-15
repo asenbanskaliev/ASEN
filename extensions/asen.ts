@@ -34,6 +34,7 @@ import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallba
 import {createParentModelFallback,type ParentCatalogModel} from "../src/runtime/lifecycle/parent-model-fallback.js";
 import {formatModelFallbackFailureNotice,formatModelFallbackNotice} from "../src/runtime/lifecycle/model-fallback-notice.js";
 import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/lifecycle/profiles.js";
+import {AGENT_PROFILE_TARGETS,isAgentProfileTarget} from "../src/runtime/lifecycle/agent-profile-targets.js";
 import {canonicalProfilePartition,captureSessionProfile,readSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/lifecycle/session-profile-binding.js";
 import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/lifecycle/persona.js";
 import {parseHistoryStore,emptyHistoryStore} from "../src/runtime/lifecycle/history-store.js";
@@ -1527,7 +1528,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const profile:RuntimeProfile={name,routes:{}};
    // Validate identifiers with the existing schema, without reading a stale destination snapshot.
    upsertProfile({schema:"asen.runtime-profiles/v1",profiles:[]},profile);
-   const target=await nativeChoice(ctx,"Route target — parent/orchestrator routing is separate",["Unspecified defaults","Role: explorer","Role: worker","Role: reviewer","Role: verifier","Back"],guard);
+   const target=await nativeChoice(ctx,"Route target — parent/orchestrator routing is separate",["Unspecified defaults",...AGENT_PROFILE_TARGETS.map(role=>"Role: "+role),"Back"],guard);
    if(target===undefined||target==="Back")return {cancelled:true};
    if(target!=="Unspecified defaults"){
     const picked=await pickSavedRoute(ctx,name,guard);
@@ -1558,8 +1559,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(selected===undefined||selected==="Back")return {cancelled:true};
    const name=selected.slice("Profile: ".length),original=structuredClone(inventory.profiles.find(profile=>profile.name===name)!);
    const signature=savedProfileSignature(original);
-   const roles=["explorer","worker","reviewer","verifier"].filter(role=>Object.hasOwn(original.routes,role));
-   const target=await nativeChoice(ctx,"Replace one existing role route",[...roles.map(role=>"Role: "+role),"Back"],guard);
+   const roles=[...AGENT_PROFILE_TARGETS].filter(role=>isAgentProfileTarget(role));
+   const target=await nativeChoice(ctx,"Add or replace one role route",[...roles.map(role=>"Role: "+role),"Back"],guard);
    if(target===undefined||target==="Back")return {cancelled:true};
    const role=target.slice("Role: ".length),picked=await pickSavedRoute(ctx,name,guard);
    if(!picked.route)return picked;
