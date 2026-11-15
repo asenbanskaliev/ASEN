@@ -9,6 +9,7 @@ import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../src
 import {bindParallelSourceTodos,type SourceTodoRow} from "../src/runtime/agents/parallel-todo-bindings.js";
 import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
+import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
 
 function fixture(t:TestContext){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-source-"))),
@@ -67,6 +68,7 @@ function fixture(t:TestContext){
   rmSync(privateRoot,{recursive:true,force:true});
  });
  return {source,parent,head,identity,scopes,rows,run,runChild,journal,sessions,handoffs,ctx,
+  journalFile,sessionLinksFile,planClaimsFile,
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
   setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},row};
@@ -303,4 +305,37 @@ test("T07 worktree status exposes a read-only overview grounded in real prepared
  assert.equal(observed.flowOverview.stages["child-plan-required"],1);
  assert.equal(observed.flowOverview.stages["attach-required"],1);
  assert.equal(observed.flowOverview.acceptance,"not-accepted");
+});
+
+
+test("T07 main work panel reads a bounded source Todo + worktree + Pi child observation",async t=>{
+ const f=fixture(t);
+ const load=()=>readAgentFlowPanelObservation({
+  identity:f.identity,journalFile:f.journalFile,sessionLinksFile:f.sessionLinksFile,
+  planClaimsFile:f.planClaimsFile,loadTodos:async()=>f.rows,
+  loadChildAgents:async id=>id.sessionId==="child-pi-1"?
+   [{id:"child-worker-1",role:"worker",state:"running"}]:[]
+ });
+ const absent=await load();
+ assert.equal(absent.state,"absent");assert.equal(absent.overview.totalTasks,0);
+ const created=await f.run("prepare-todos") as {status:string;worktrees:readonly {root:string}[]};
+ assert.equal(created.status,"prepared");
+ const first=await load();
+ assert.equal(first.state,"observed");assert.equal(first.totalRecordedBatches,1);
+ assert.equal(first.limited,false);assert.equal(first.overview.totalTasks,2);
+ assert.equal(first.overview.stages["attach-required"],2);
+ const attached=await f.runChild("attach",created.worktrees[0]!.root) as {status:string};
+ assert.equal(attached.status,"attached");
+ const withChild=await load();
+ assert.equal(withChild.overview.stages["running-observed"],1);
+ assert.equal(withChild.overview.stages["attach-required"],1);
+ assert.equal(withChild.overview.tasks[0]!.modelActual,"unknown");
+ assert.equal(withChild.overview.tasks[0]!.modelConsumedProven,false);
+ assert.equal(withChild.overview.acceptance,"not-accepted");
+ assert.equal(withChild.overview.autoMerge,false);
+ writeFileSync(join(created.worktrees[0]!.root,"frontend.txt"),"out-of-scope\\n");
+ const unsafe=await load();
+ assert.equal(unsafe.overview.stages.blocked,1);
+ assert.equal(unsafe.overview.tasks[0]!.nextAction,"inspect-blocker");
+ assert.equal(unsafe.overview.acceptance,"not-accepted");
 });
