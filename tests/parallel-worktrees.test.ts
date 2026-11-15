@@ -103,9 +103,9 @@ test("T06 rejects cross-root and unauthorised batch requests before calling disp
  const dispatcher={dispatch:async(request:AgentRequest)=>{called++;return {id:request.id,ok:true,output:"unverified"};}};
  const requests=r.allocations.map((a,i)=>({id:"worker-"+i,role:"worker" as const,
   prompt:"test",repository:a.root,isolationKey:"session",writeSurfaces:[...a.writeSurfaces],
-  candidate:{id:"candidate",repository:a.root,revision:f.head,createdAt:"test"},writerAdmission:{},skillContext:{} as AgentRequest["skillContext"]}));
+  candidate:{id:"candidate",repository:a.root,revision:f.head,createdAt:"test"},writerAdmission:{},skillContext:{} as NonNullable<AgentRequest["skillContext"]>}));
  await assert.rejects(()=>dispatchApprovedParallelWorkers({dispatcher,allocations:r.allocations,requests:[{...requests[0]!,repository:f.source},requests[1]!]}),/separate freshly authorized/u);
- await assert.rejects(()=>dispatchApprovedParallelWorkers({dispatcher,allocations:r.allocations,requests:requests.map(x=>({...x,writerAdmission:undefined}))}),/separate freshly authorized/u);
+ await assert.rejects(()=>dispatchApprovedParallelWorkers({dispatcher,allocations:r.allocations,requests:requests.map(({writerAdmission:_unused,...remaining})=>remaining)}),/separate freshly authorized/u);
  assert.equal(called,0);
 });
 
@@ -114,7 +114,7 @@ test("T06 dispatches a bounded batch once and leaves all reported results for re
  const requests=r.allocations.map((a,i)=>({id:"worker-"+i,role:"worker" as const,
   prompt:"authorized externally",repository:a.root,isolationKey:"session",writeSurfaces:[...a.writeSurfaces],
   candidate:{id:"candidate",repository:a.root,revision:f.head,createdAt:"test"},
-  writerAdmission:{},skillContext:{} as AgentRequest["skillContext"]}));
+  writerAdmission:{},skillContext:{} as NonNullable<AgentRequest["skillContext"]>}));
  const started:string[]=[];
  const dispatcher={dispatch:async(request:AgentRequest)=>{started.push(request.id);return {id:request.id,ok:true,output:"stub - not actual Pi evidence"};}};
  const result=await dispatchApprovedParallelWorkers({dispatcher,allocations:r.allocations,requests});
