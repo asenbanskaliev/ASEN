@@ -81,7 +81,7 @@ export function availableIndependentPiReviewers(registry:PiReviewRegistry,author
 export async function runIndependentPiReview(input:{registry:PiReviewRegistry;model:PiReviewerModel;author?:PiReviewerModel;evidence:PiReviewEvidence;requirements:string;signal?:AbortSignal;lens?:ReviewLens}):Promise<PiReviewVerdict>{
  const {registry,model,author,evidence}=input;
  if(!isWorkspaceReviewEvidenceGenuine(evidence))throw new Error("Independent review requires controller-issued candidate evidence");
- if(input.lens!==undefined&&(!isReviewLens(input.lens)||!evidence.risks.some(risk=>risk.lenses.includes(input.lens!))))throw new Error("Requested lens is not present in the genuine candidate review plan");
+ if(input.lens!==undefined&&(!isReviewLens(input.lens)||!evidence.risks.lenses.includes(input.lens)))throw new Error("Requested lens is not present in the genuine candidate review plan");
  if(!availableIndependentPiReviewers(registry,author).some(item=>item.provider===model.provider&&item.id===model.id))throw new Error("Independent reviewer model is unavailable or equals the author model");
  if(typeof input.requirements!=="string"||!input.requirements.trim()||input.requirements.length>20_000)throw new Error("Review requirements are missing or exceed their bound");
  if(!evidence||typeof evidence.diff!=="string")throw new Error("Exact review evidence is unavailable");
