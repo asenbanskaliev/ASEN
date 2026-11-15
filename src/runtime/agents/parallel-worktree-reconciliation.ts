@@ -28,6 +28,9 @@ export function reconcileParallelWorktreeBatch(input:{
   throw new Error("Invalid bounded worktree reconciliation batch");
  const blockers:string[]=[],evidence:ParallelBatchReconciliation["evidence"][number][]=[];
  const observed=new Map<string,string>();
+ // Una tarea no puede acreditar la ejecución de otra reutilizando su sesión o agente.
+ const seenChildSessions=new Map<string,string>(),seenWorkerIds=new Map<string,string>();
+ const knownWorkerStates=new Set(["queued","running","completed","failed","cancelled","interrupted"]);
  let seenActive=false,seenAllCompleted=true;
  if(input.batchState!=="prepared")blockers.push("Batch creation incomplete; inspect reserved Git paths manually");
  const units:readonly ParallelWorktreeReviewUnit[]=input.units;
@@ -48,11 +51,30 @@ export function reconcileParallelWorktreeBatch(input:{
     blockers.push(unit.taskId+": path also modified by "+existing);
    observed.set(key,unit.taskId);
   }
-  const agentStates=unit.childSession?.agents.filter(a=>a.role==="worker").map(a=>a.state)??[];
+  const childSession=unit.childSession;
+  if(childSession){
+   if(typeof childSession.id!=="string"||!childSession.id||
+    !Array.isArray(childSession.agents))
+    throw new Error("Malformed child Pi session evidence");
+   const previous=seenChildSessions.get(childSession.id);
+   if(previous)blockers.push(unit.taskId+": Pi child session also attributed to "+previous);
+   else seenChildSessions.set(childSession.id,unit.taskId);
+  }
+  const workers=childSession?.agents.filter(a=>a.role==="worker")??[];
+  if(workers.length>1)blockers.push(unit.taskId+": multiple Worker agents in one child session");
+  for(const worker of workers){
+   if(typeof worker.id!=="string"||!worker.id||typeof worker.state!=="string")
+    throw new Error("Malformed Pi Worker evidence");
+   const previous=seenWorkerIds.get(worker.id);
+   if(previous)blockers.push(unit.taskId+": Worker agent also attributed to "+previous);
+   else seenWorkerIds.set(worker.id,unit.taskId);
+  }
+  const agentStates=workers.map(a=>a.state);
   let agentState:ParallelBatchReconciliation["evidence"][number]["agentState"]="not-observed";
-  if(agentStates.some(s=>["failed","interrupted","cancelled"].includes(s)))agentState="unresolved";
+  if(agentStates.some(s=>!knownWorkerStates.has(s)||["failed","interrupted","cancelled"].includes(s)))
+   agentState="unresolved";
   else if(agentStates.some(s=>["queued","running"].includes(s)))agentState="active";
-  else if(agentStates.includes("completed"))agentState="terminal";
+  else if(agentStates.length===1&&agentStates[0]==="completed")agentState="terminal";
   if(agentState!=="terminal")seenAllCompleted=false;
   if(agentState==="active")seenActive=true;
   if(agentState==="unresolved")blockers.push(unit.taskId+": Worker terminated unsuccessfully or ambiguously");
