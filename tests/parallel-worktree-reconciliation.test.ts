@@ -68,3 +68,36 @@ test("T06 a completed no-op Worker still requires human review, not fabricated s
  assert.equal(result.disposition,"manual-review-required");
  assert.equal(result.acceptance,"not-accepted");assert.equal(result.autoMerge,false);
 });
+
+test("T06 no admite que dos tareas compartan una sesión Pi ni el mismo agente",()=>{
+ const a=unit("a"),b=unit("b");
+ const mismaSesion={...b,childSession:{...b.childSession!,id:a.childSession!.id}};
+ const r1=reconcileParallelWorktreeBatch({batchState:"prepared",units:[a,mismaSesion]});
+ assert.equal(r1.disposition,"blocked");
+ assert.ok(r1.blockers.some(x=>/Pi child session also attributed/u.test(x)));
+ const mismoAgente={...b,childSession:{...b.childSession!,agents:[
+  {id:a.childSession!.agents[0]!.id,role:"worker",state:"completed"}
+ ]}};
+ const r2=reconcileParallelWorktreeBatch({batchState:"prepared",units:[a,mismoAgente]});
+ assert.equal(r2.disposition,"blocked");
+ assert.ok(r2.blockers.some(x=>/Worker agent also attributed/u.test(x)));
+ assert.equal(r1.autoMerge,false);assert.equal(r2.acceptance,"not-accepted");
+});
+
+test("T06 estados desconocidos y varios Workers por sesión nunca permiten revisión favorable",()=>{
+ const a=unit("a"),b=unit("b");
+ const desconocido={...a,childSession:{...a.childSession!,agents:[
+  {id:"a-worker",role:"worker",state:"fictitious-success"}
+ ]}};
+ const r1=reconcileParallelWorktreeBatch({batchState:"prepared",units:[desconocido,b]});
+ assert.equal(r1.disposition,"blocked");
+ assert.equal(r1.evidence[0]?.agentState,"unresolved");
+ const duplicado={...a,childSession:{...a.childSession!,agents:[
+  {id:"a-worker",role:"worker",state:"completed"},
+  {id:"a-worker-2",role:"worker",state:"completed"}
+ ]}};
+ const r2=reconcileParallelWorktreeBatch({batchState:"prepared",units:[duplicado,b]});
+ assert.equal(r2.disposition,"blocked");
+ assert.ok(r2.blockers.some(x=>/multiple Worker agents/u.test(x)));
+ assert.equal(r2.grantsAuthority,false);
+});
