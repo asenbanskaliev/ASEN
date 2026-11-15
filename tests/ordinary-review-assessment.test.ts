@@ -263,3 +263,50 @@ test("unknown 4R profile model and unprovable effort block before consent or pro
  await assert.rejects(async()=>await thinking.handler("workspace 4r",thinking.context),/cannot prove applying/u);
  assert.equal(thinking.modelCalls.length,0);assert.equal(thinking.consentPrompts.length,0);
 });
+
+test("adaptive 4R executes one low-risk lens with exact informed consent",async t=>{
+ const state=setup(t,assessmentData({risk:"passive",lenses:["readability"]}));
+ const result=await state.handler("workspace adaptive",state.context) as {status:string;lenses:string[];independentVerification:string;acceptance:string;deliveryAuthority:boolean};
+ assert.equal(result.status,"adaptive-analysis-complete");
+ assert.deepEqual(result.lenses,["readability"]);
+ assert.equal(state.modelCalls.length,1);
+ assert.match(state.consentPrompts[0]!.title,/1 revisiones/u);
+ assert.match(state.consentPrompts[0]!.message,/1 llamadas separadas/u);
+ assert.equal(result.independentVerification,"not-required");
+ assert.equal(result.acceptance,"not-accepted");assert.equal(result.deliveryAuthority,false);
+});
+
+test("adaptive 4R preserves medium risk recommendations with two model calls",async t=>{
+ const state=setup(t,assessmentData({risk:"medium"}));
+ const result=await state.handler("workspace adaptive",state.context) as {status:string;lenses:string[];independentVerification:string};
+ assert.equal(result.status,"adaptive-analysis-complete");
+ assert.deepEqual(result.lenses,["risk","reliability"]);
+ assert.equal(state.modelCalls.length,2);
+ assert.equal(state.consentPrompts.length,1);
+ assert.match(state.consentPrompts[0]!.message,/2 llamadas separadas/u);
+ assert.equal(result.independentVerification,"not-required");
+});
+
+test("adaptive high-risk reviewer cannot bypass mandatory risk and reliability",async t=>{
+ const state=setup(t,assessmentData({risk:"high",lenses:["readability"]}));
+ const result=await state.handler("workspace adaptive",state.context) as {status:string;lenses:string[];independentVerification:string};
+ assert.deepEqual(result.lenses,["risk","reliability","readability"]);
+ assert.equal(state.modelCalls.length,3);
+ assert.match(state.consentPrompts[0]!.message,/3 llamadas separadas/u);
+ assert.equal(result.independentVerification,"required-not-run");
+});
+
+test("declining adaptive review blocks all model calls and grants no side effects",async t=>{
+ const state=setup(t,assessmentData({risk:"high"}),false);
+ const result=await state.handler("workspace adaptive",state.context) as {status:string};
+ assert.equal(result.status,"cancelled");
+ assert.equal(state.modelCalls.length,0);
+ assert.equal(state.consentPrompts.length,1);
+});
+
+test("adaptive review rejects missing model routing before cost consent",async t=>{
+ const state=setup(t,assessmentData({risk:"medium"}),true,{reliability:{model:"unknown/missing"}});
+ await assert.rejects(async()=>await state.handler("workspace adaptive",state.context),/unavailable, unauthenticated/u);
+ assert.equal(state.modelCalls.length,0);
+ assert.equal(state.consentPrompts.length,0);
+});
