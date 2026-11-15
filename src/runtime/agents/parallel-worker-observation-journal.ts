@@ -130,7 +130,7 @@ export class ParallelWorkerObservationJournal{
      throw new Error("Worker observation already recorded; inspect the original receipt, no replay or replacement");
    }
    journal.receipts.push(...receipts);journal.revision+=receipts.length;
-   await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\\n");
+   await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\n");
    return Object.freeze(receipts.map(receipt=>structuredClone(receipt)));
   });
  }
