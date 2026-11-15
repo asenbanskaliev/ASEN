@@ -278,3 +278,29 @@ test("T06 child ODD handoff never launches after declining consent, Git scope dr
  await assert.rejects(()=>f.runChild("plan-todo",root),/must remain clean/u);
  assert.equal(f.handoffs.length,0);
 });
+
+test("T07 worktree status exposes a read-only overview grounded in real prepared Todos",async t=>{
+ const f=fixture(t),prepared=await f.run("prepare-todos") as {status:string;worktrees:readonly {root:string}[]};
+ assert.equal(prepared.status,"prepared");
+ const source=await f.run("status") as {flowOverview:{
+  kind:string;totalBatches:number;totalTasks:number;stages:Record<string,number>;
+  modelActual?:string;tasks:readonly {taskId:string;modelActual:string;modelConsumedProven:boolean;nextAction:string}[];
+  grantsAuthority:boolean;autoLaunch:boolean;autoMerge:boolean;acceptance:string;
+ }};
+ assert.equal(source.flowOverview.kind,"read-only-flow-overview");
+ assert.equal(source.flowOverview.totalBatches,1);
+ assert.equal(source.flowOverview.totalTasks,2);
+ assert.equal(source.flowOverview.stages["attach-required"],2);
+ assert.equal(source.flowOverview.tasks[0]!.modelActual,"unknown");
+ assert.equal(source.flowOverview.tasks[0]!.modelConsumedProven,false);
+ assert.equal(source.flowOverview.autoLaunch,false);
+ assert.equal(source.flowOverview.grantsAuthority,false);
+ assert.equal(source.flowOverview.autoMerge,false);
+ assert.equal(source.flowOverview.acceptance,"not-accepted");
+ const attached=await f.runChild("attach",prepared.worktrees[0]!.root) as {status:string};
+ assert.equal(attached.status,"attached");
+ const observed=await f.run("review") as typeof source;
+ assert.equal(observed.flowOverview.stages["child-plan-required"],1);
+ assert.equal(observed.flowOverview.stages["attach-required"],1);
+ assert.equal(observed.flowOverview.acceptance,"not-accepted");
+});
