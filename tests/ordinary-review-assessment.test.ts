@@ -34,7 +34,7 @@ function editorAnswer(title:string):string{
  return "Check the task requirements";
 }
 /** One interactive workspace review driven by a host-injected read-only native control whose own notifications are recorded. */
-function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens,{model?:string;thinking?:"high"}>>={}){
+function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens|"jd-judge-a"|"jd-judge-b",{model?:string;thinking?:"high"}>>={}){
  const root=repository(t),messages:string[]=[],trace:{operation:string,notified:string[]}[]=[],modelCalls:string[]=[],consentPrompts:{title:string;message:string}[]=[];
  const control={async observe(operation:string,context:{ui:{notify(message:string,level:"info"|"error"):void}}):Promise<NativeRddObservation>{
   const notified:string[]=[];trace.push({operation,notified});
@@ -309,4 +309,37 @@ test("adaptive review rejects missing model routing before cost consent",async t
  await assert.rejects(async()=>await state.handler("workspace adaptive",state.context),/unavailable, unauthenticated/u);
  assert.equal(state.modelCalls.length,0);
  assert.equal(state.consentPrompts.length,0);
+});
+
+test("workspace judgment-day invokes two distinct authenticated judges and never auto-fixes",async t=>{
+ const state=setup(t,unconfigured());
+ const result=await state.handler("workspace judgment-day",state.context) as {
+  status:string;judges:Array<{judge:string;reviewerId:string}>;acceptance:string;
+  deliveryAuthority:boolean;autoMerge:boolean;fixAgent:string;nativeRddAdmission:string;
+ };
+ assert.equal(result.status,"analysis-complete");
+ assert.deepEqual(state.modelCalls,["review-provider/reviewer-one","review-provider/reviewer-two"]);
+ assert.deepEqual(result.judges.map(x=>x.judge),["jd-judge-a","jd-judge-b"]);
+ assert.equal(state.consentPrompts.length,1);
+ assert.match(state.consentPrompts[0]!.message,/DOS llamadas/u);
+ assert.equal(result.acceptance,"not-accepted");assert.equal(result.autoMerge,false);
+ assert.equal(result.deliveryAuthority,false);assert.equal(result.fixAgent,"not-launched");
+ assert.equal(result.nativeRddAdmission,"not-attempted");
+});
+
+test("workspace judgment-day blocks all calls if consent is denied",async t=>{
+ const state=setup(t,unconfigured(),false);
+ const result=await state.handler("workspace judgment-day",state.context) as {status:string};
+ assert.equal(result.status,"cancelled");
+ assert.equal(state.modelCalls.length,0);
+ assert.equal(state.consentPrompts.length,1);
+});
+
+test("workspace judgment-day rejects duplicated or unauthenticated judge routing before consent",async t=>{
+ const duplicate=setup(t,unconfigured(),true,{"jd-judge-b":{model:"review-provider/reviewer-one"}});
+ await assert.rejects(async()=>await duplicate.handler("workspace judgment-day",duplicate.context),/must be different/u);
+ assert.equal(duplicate.modelCalls.length,0);assert.equal(duplicate.consentPrompts.length,0);
+ const missing=setup(t,unconfigured(),true,{"jd-judge-b":{model:"not-authenticated/missing"}});
+ await assert.rejects(async()=>await missing.handler("workspace judgment-day",missing.context),/must be different/u);
+ assert.equal(missing.modelCalls.length,0);assert.equal(missing.consentPrompts.length,0);
 });
