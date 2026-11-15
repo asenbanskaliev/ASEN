@@ -409,7 +409,7 @@ async function prepareAttributedChildren(f:ReturnType<typeof fixture>,withoutLin
    createdAt:"2026-11-15T19:00:00.000Z",updatedAt:"2026-11-15T19:01:00.000Z"
   };
   const taskAgentLink:TaskAgentLink={
-   taskId,agentId:requestId,sessionId:childId,projectId:project,
+   taskId,agentId:requestId.slice("asen-plan:".length),sessionId:childId,projectId:project,
    createdAt:"2026-11-15T19:00:00.000Z"
   };
   f.setChildObservations(childId,[childTodo],[agent],withoutLink&&i===1?[]:[taskAgentLink]);
