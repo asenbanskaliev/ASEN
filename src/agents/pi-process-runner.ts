@@ -261,6 +261,9 @@ export class PiProcessRunner implements AgentRunner{
    // Hold only a *validated* new-turn completion until the transition commits.
    let continuationPromptId:string|undefined,continuationAcked=false;
    let continuationMessageEnded=false,continuationAgentEnded=false,deferredContinuationSettled=false;
+   // Keep the completion gate active even after the continuation's RPC
+   // response resolves; a delayed duplicate agent_settled must not finish it.
+   let continuationTurnPending=false;
    const pendingRpc=new Map<string,{resolve:(response:Record<string,unknown>)=>void}>();
    const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
    let selectionRequested=false,selectionResponded=false;
@@ -323,16 +326,17 @@ export class PiProcessRunner implements AgentRunner{
       lastAssistantFailure=undefined;finalFailure=undefined;finalAgentSettled=false;
       continuationPromptId=undefined;continuationAcked=false;
       continuationMessageEnded=false;continuationAgentEnded=false;deferredContinuationSettled=false;
+      continuationTurnPending=true;
       const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."},id=>{continuationPromptId=id;});
       if(!alive())return;
       if(resumed.success!==true||!continuationAcked){
-       continuationPromptId=undefined;fallbackInProgress=false;closeSettled(category);return;
+       continuationPromptId=undefined;continuationTurnPending=false;fallbackInProgress=false;closeSettled(category);return;
       }
       // Both paths (separate chunks and one coalesced stdout chunk) enter
       // the same settled-turn logic, exactly once, after the RPC is admitted.
       const settleDeferred=deferredContinuationSettled;
       continuationPromptId=undefined;fallbackInProgress=false;
-      if(settleDeferred)settleCurrentTurn();
+      if(settleDeferred){continuationTurnPending=false;settleCurrentTurn();}
       return;
      }
     })().catch(()=>{fallbackInProgress=false;closeSettled(category);});
@@ -356,7 +360,7 @@ export class PiProcessRunner implements AgentRunner{
      if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant"&&
         (!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
       lastAssistantFailure=classifyAssistantError((record as {message?:Parameters<typeof classifyAssistantError>[0]}).message);
-      if(fallbackInProgress)continuationMessageEnded=true;
+      if(continuationTurnPending&&continuationAcked)continuationMessageEnded=true;
      }
      // Pi 1.2 RPC wire strips cumulative message from message_update; bind
      // text deltas to a preceding native message_start(role=assistant), never
@@ -406,7 +410,7 @@ export class PiProcessRunner implements AgentRunner{
      }
      if(type==="agent_end"&&(!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
       agentEnded=true;
-      if(fallbackInProgress)continuationAgentEnded=true;
+      if(continuationTurnPending&&continuationAcked)continuationAgentEnded=true;
      }
      if(response.type==="tool_execution_start"&&this.options.noTools){toolAttempted=true;stop({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});return;}
      if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled){child.stdin.end();continue;}
@@ -417,6 +421,12 @@ export class PiProcessRunner implements AgentRunner{
        // Never accept a duplicate/forged settled marker on its own.
        if(continuationPromptId!==undefined&&continuationAcked&&continuationMessageEnded&&continuationAgentEnded)
         deferredContinuationSettled=true;
+      }else if(continuationTurnPending){
+       // After the RPC promise resumed, only the *new* turn's completion
+       // pair can settle it. Replayed/stale agent_settled alone is inert.
+       if(continuationAcked&&continuationMessageEnded&&continuationAgentEnded){
+        continuationTurnPending=false;settleCurrentTurn();
+       }
       }else settleCurrentTurn();
       continue;
      }
