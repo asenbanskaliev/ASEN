@@ -1841,6 +1841,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
    planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
    observationFile:path.join(home(),".asen","parallel-worker-observations.json"),
+   supervisorClaimsFile:path.join(home(),".asen","parallel-parent-supervisor-claims.json"),
    ...(agentRuntimePromise&&taskAgentLinks?{
     loadChildAgentRecords:async identity=>(await agentRuntimePromise).list(identity),
     loadChildTaskAgentLinks:async identity=>taskAgentLinks.list(identity)
