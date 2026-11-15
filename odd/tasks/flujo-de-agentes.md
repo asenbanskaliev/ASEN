@@ -373,3 +373,22 @@ Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
 - **Deriva de modelo rechazada:** el supervisor compara el modelo ODD solicitado antes del consentimiento de lote y también tras la confirmación individual. Una sustitución durante las autorizaciones detiene el lanzamiento, especialmente si cambia a un proveedor de pago. Los diálogos advierten que el coste/consumo real no está verificado.
 - **Pruebas negativas:** el segundo Worker puede ser denegado sin reintentar el primero; un cambio de modelo antes/durante los diálogos no relanza ni retargetea; los perfiles y sesiones son independientes. Las pruebas instrumentadas no constituyen evidencia de modelo autenticado.
 - **PENDIENTES:** CI, Release Gate del SHA más reciente; ejecución Pi live (proveedor autenticado), control de cancelación/recuperación intersesión, modelo realmente consumido y prueba de simultaneidad, estabilidad Windows y revisión independiente. No declarar FULL ni fusionar PR #61.
+
+
+## T06 — Concurrencia en el runtime y registro único del supervisor (2026-11-15)
+
+### Avances implementados
+
+- **Prueba real de infraestructura Pi sin consumo de proveedor:** `tests/parallel-worktrees.test.ts` emplea la clase de producción `AgentRuntime` y su `Dispatcher`, crea dos Git worktrees con ámbito separado, genera dos permisos ODD de Worker y utiliza un ejecutor instrumentado. Comprueba **solapamiento efectivo de dos ejecuciones** y persistencia independiente de resultados terminales. No representa una llamada autenticada a Ollama/Groq/NVIDIA ni una prueba del modelo consumido.
+- **Corrección de regresión multiplataforma:** el CI del SHA `53919396` falló en Windows, macOS y Ubuntu por `tests/parallel-worktree-todos.test.ts:218`. La prueba todavía esperaba ver como Worker auténtico a un agente de la sesión hija **sin** vínculo ODD/TaskAgentLink. La expectativa se corrigió para exigir `agents:[]` y conservar la barrera de atribución; no se suprimió el test.
+- **Fallo ambiguo después de autorizar:** `launchParentApprovedWorkers` devuelve `partial-needs-review` al encontrar una excepción del despacho Pi. Conserva los IDs de los Workers cuyo lanzamiento se confirmó, no supone que el Worker fallido no arrancara y nunca reintenta.
+- **Registro privado de un único intento del supervisor:** `src/runtime/agents/parallel-parent-supervisor-claims.ts` guarda `claimed-not-verified` para el lote de 2–4 Workers **antes** del primer despacho, dentro de una operación atómica y con bloqueo. Impide que dos supervisores usen simultáneamente el mismo lote o que un reinicio repita una autorización anterior. La denegación global **no** consume ese intento.
+- `/asen-worktrees status` y `review` exponen `supervisorClaimed` y `supervisorAttempts` sin promocionar el intento a `done`/PASS. Todos los registros conservan `grantsAuthority:false`, `autoRetry:false` y `autoMerge:false`.
+- Nuevas pruebas: `tests/parallel-parent-supervisor-claims.test.ts` (colisión de sesiones/worktrees, fuente ajena, archivo corrupto y doble intento simultáneo), `tests/parallel-worktree-todos.test.ts` (denegación, intento único y recuperación sin reenvío) y prueba de concurrencia `AgentRuntime` sin modelo.
+
+### Requisitos aún no cerrados
+
+- Falta validación de **dos procesos/modelos Pi autenticados con un proveedor real** y medición del coste y uso efectivo de cada uno. Los ejecutores instrumentados demuestran la concurrencia del runtime, no la calidad ni autenticidad de un modelo.
+- Falta comprobar fin de sesión, cancelación y reanudación supervisada en equipos reales, además del error nativo de Windows `0xC0000409`.
+- Antes de declarar estable este tramo se necesitan Phase 0, Pi runtime, CI y Release Gate verdes en el SHA final. Un test saltado o un workflow anterior verde no cumplen este gate.
+- La PR #61 sigue en borrador, sin merge; T06 permanece **PARCIAL** y `globalFull:false`.
