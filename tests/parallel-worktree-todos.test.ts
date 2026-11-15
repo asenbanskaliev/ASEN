@@ -68,7 +68,7 @@ function fixture(t:TestContext){
    const current=childRows.get(unit.childSessionId)??[];
    childRows.set(unit.childSessionId,current.map(t=>t.taskId===unit.childTodoId?
     {...t,current:{...t.current,state:"running"}} as SourceTodoRow:t));
-   const now="2026-11-15T22:00:00.000Z",agentId="instrumented-"+unit.childTodoId;
+   const now="2026-11-15T22:00:00.000Z",agentId=current.find(t=>t.taskId===unit.childTodoId)!.requestId.slice("asen-plan:".length);
    childAgentRecords.set(unit.childSessionId,[{
     id:agentId,role:"worker",state:"running",
     sessionId:unit.childSessionId,projectId:unit.childProjectId,
