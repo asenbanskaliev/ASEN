@@ -43,7 +43,7 @@ test("T06 genuinely linked terminal child Worker is only advisory, not integrati
 });
 test("T06 an unrelated worker in the same Pi child session is not attributed to the source Todo",()=>{
  const input=values();
- assert.equal(attributeParallelChildWorker({...input,agents:[{...agent,id:"other-worker"}]}),undefined);
+ assert.throws(()=>attributeParallelChildWorker({...input,agents:[{...agent,id:"other-worker"}]}),/lifecycle evidence is absent/u);
 });
 test("T06 missing durable task-agent relation cannot infer a Worker from role alone",()=>{
  const input=values();
