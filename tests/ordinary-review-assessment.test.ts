@@ -33,8 +33,8 @@ function editorAnswer(title:string):string{
  return "Check the task requirements";
 }
 /** One interactive workspace review driven by a host-injected read-only native control whose own notifications are recorded. */
-function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation)){
- const root=repository(t),messages:string[]=[],trace:{operation:string,notified:string[]}[]=[];
+function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true){
+ const root=repository(t),messages:string[]=[],trace:{operation:string,notified:string[]}[]=[],modelCalls:string[]=[],consentPrompts:{title:string;message:string}[]=[];
  const control={async observe(operation:string,context:{ui:{notify(message:string,level:"info"|"error"):void}}):Promise<NativeRddObservation>{
   const notified:string[]=[];trace.push({operation,notified});
   context.ui.notify=(message:string)=>{notified.push(message);};
@@ -44,12 +44,13 @@ function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObse
  registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control as never);
  const registry={getAvailable:()=>[author,reviewer],hasConfiguredAuth:(model:PiReviewerModel)=>model.provider!=="author-provider",
   streamSimple:(model:PiReviewerModel)=>{
+   modelCalls.push(model.provider+"/"+model.id);
    const answer={verdict:"pass",summary:"Reviewed the exact diff",findings:[]};
    return (async function*(){yield {type:"done" as const,reason:"stop" as const,message:{content:[{type:"text",text:JSON.stringify(answer)}],role:"assistant",provider:model.provider}};})();
   }} as unknown as PiReviewRegistry;
  const context={cwd:root,hasUI:true,modelRegistry:registry,model:author,sessionManager:{getSessionId:()=>"session-assess"},
-  ui:{notify:(message:string)=>messages.push(message),select:async(_title:string,options:string[])=>options[0],editor:async(title:string)=>editorAnswer(title),confirm:async()=>true}};
- return {handler:commands.get("asen-review")!.handler,context,messages,trace};
+  ui:{notify:(message:string)=>messages.push(message),select:async(_title:string,options:string[])=>options[0],editor:async(title:string)=>editorAnswer(title),confirm:async(title:string,message:string)=>{consentPrompts.push({title,message});return allowExternalReview;}}};
+ return {handler:commands.get("asen-review")!.handler,context,messages,trace,modelCalls,consentPrompts};
 }
 
 test("workspace review keeps the default risk triple when native assess is unavailable",async t=>{
@@ -213,4 +214,30 @@ test("empty or unmatched claim ids produce no bounded claim envelope",()=>{
  const partial=boundedFindingClaims(["a","ghost"],[{id:"a",claim:"kept"}])!;
  assert.equal(partial.claims.a,"kept");
  assert.deepEqual([...partial.omitted],[]);assert.deepEqual([...partial.truncated],[]);
+});
+
+test("explicit workspace 4r makes exactly four consented no-tools model calls and never binds RDD approval",async t=>{
+ const state=setup(t,assessmentData({risk:"passive"}));
+ const result=await state.handler("workspace 4r",state.context) as {
+  status:string;lenses:string[];reviews:Array<{lens:string;verdict:string}>;findings:unknown[];
+  acceptance:string;deliveryAuthority:boolean;nativeRddAdmission:string;
+ };
+ assert.equal(result.status,"4r-analysis-complete");
+ assert.deepEqual(result.lenses,["risk","resilience","readability","reliability"]);
+ assert.equal(result.reviews.length,4);assert.deepEqual(result.reviews.map(review=>review.lens),result.lenses);
+ assert.equal(state.modelCalls.length,4);
+ assert.equal(state.consentPrompts.length,1);
+ assert.match(state.consentPrompts[0]!.message,/CUATRO llamadas/u);
+ assert.equal(result.acceptance,"not-accepted");assert.equal(result.deliveryAuthority,false);
+ assert.equal(result.nativeRddAdmission,"not-attempted");
+ assert.equal(state.messages.length,1);
+});
+
+test("explicit workspace 4r refuses all external calls after a declined four-model-call consent",async t=>{
+ const state=setup(t,unconfigured(),false);
+ const result=await state.handler("workspace 4r",state.context) as {status:string};
+ assert.equal(result.status,"cancelled");
+ assert.equal(state.modelCalls.length,0);
+ assert.equal(state.consentPrompts.length,1);
+ assert.match(state.consentPrompts[0]!.message,/CUATRO llamadas/u);
 });
