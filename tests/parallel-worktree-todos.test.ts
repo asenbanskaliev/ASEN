@@ -125,3 +125,20 @@ test("T06 interrupted reservation remains visible, blocks duplicate planning, ne
  const foreign=await f.journal.list({sessionId:"other-session",projectId:f.source});
  assert.equal(foreign.length,0);
 });
+
+test("T06 durable reservations reject overlapping sibling batches but allow disjoint scope reuse",async t=>{
+ const f=fixture(t),first=bindParallelSourceTodos({
+  identity:f.identity,expectedHead:f.head,rows:f.rows,units:f.scopes
+ });
+ await f.journal.reserve({identity:f.identity,id:newParallelTodoWorktreeBatchId(),head:f.head,parentDir:f.parent,bindings:first});
+ const changed=[{...first[0]!,taskId:"new-backend",requestId:"asen-plan:new-backend:worker"},
+  {...first[1]!,taskId:"new-frontend",requestId:"asen-plan:new-frontend:worker"}];
+ await assert.rejects(()=>f.journal.reserve({
+  identity:{sessionId:"another-session",projectId:f.source},
+  id:newParallelTodoWorktreeBatchId(),head:f.head,parentDir:f.parent,bindings:changed
+ }),/write scopes overlap/u);
+ const disjoint=changed.map((b,i)=>({...b,writeSurfaces:[i?"extra-two.ts":"extra-one.ts"]}));
+ const saved=await f.journal.reserve({identity:f.identity,id:newParallelTodoWorktreeBatchId(),head:f.head,parentDir:f.parent,bindings:disjoint});
+ assert.equal(saved.state,"reserved");
+ assert.equal((await f.journal.list(f.identity)).length,2);
+});
