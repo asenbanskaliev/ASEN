@@ -7,6 +7,7 @@ import {
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
+import {projectParallelAgentFlow} from "../src/runtime/ui/agent-flow-overview.js";
 
 type Todo=AsenPanelSnapshot["todos"][number];
 type Agent=AsenPanelSnapshot["agents"][number];
@@ -181,4 +182,46 @@ test("UFC-M1-02 presence never implies connection and omission stays legacy-safe
  const row=renderAsenStatusLine(snapshot({integrationInspection:inspectIntegrationProfiles({getCommands:()=>[{name:"asen-doctor"}],getAllTools:()=>[]})}),160);
  assert.doesNotMatch(row,/connected|healthy/iu,"presence of a registered tool is not a connection (UI-07 discipline)");
  assert.equal(renderAsenStatusLine(snapshot(),160),"ASEN","snapshots without an inspection keep the shipped omission");
+});
+
+
+test("T07 existing Pi panel shows cross-session flow in TODOS AGENTS CHANGES INTEGRATIONS without invented PASS",()=>{
+ const overview=projectParallelAgentFlow([{
+  batchId:"flow-1",state:"prepared",tasks:[
+   {sourceTodoId:"source-worker-1",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+    changes:{status:"scoped-changes",changedPaths:["a.ts"],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"pi-child-1",agents:[{id:"worker-1",role:"worker",state:"running"}]}},
+   {sourceTodoId:"source-worker-2",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+    changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false}}
+  ]
+ }]);
+ const source=snapshot({agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview},
+  todos:[],agents:[],jobs:[]});
+ const before=structuredClone(source);
+ for(const width of [24,50,110]){
+  const todos=renderAsenPanelSection(source,"TODOS",width).join("\n");
+  const agents=renderAsenPanelSection(source,"AGENTS",width).join("\n");
+  const changes=renderAsenPanelSection(source,"CHANGES",width).join("\n");
+  const integrations=renderAsenPanelSection(source,"INTEGRATIONS",width).join("\n");
+  if(width>=50){
+   assert.match(todos,/Linked source Todos:/u);
+   assert.match(agents,/Worktree Workers:/u);
+   assert.match(changes,/Linked worktrees:/u);
+   assert.match(integrations,/Cross-session ODD:/u);
+  }
+  const rendered=renderAsenPanel(source,width);
+  assert.ok(rendered.every(line=>visibleWidth(line)<=width));
+  assert.ok(rendered.every(line=>!line.includes("\u001b")&&!line.includes("\n")));
+ }
+ assert.equal(source.agentFlow?.overview.tasks[0]?.modelActual,"unknown");
+ assert.equal(source.agentFlow?.overview.acceptance,"not-accepted");
+ assert.deepEqual(source,before);
+});
+
+test("T07 missing or unreadable flow never claims a model, Worker or successful integration",()=>{
+ const rows=renderAsenPanelSection(snapshot({agentFlowUnavailable:true}),"INTEGRATIONS",90).join("\n");
+ assert.match(rows,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(rows,/PASS|actual model [^u]|healthy/u);
 });
