@@ -7,6 +7,7 @@ import {join,resolve} from "node:path";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
 import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../src/runtime/agents/parallel-todo-journal.js";
 import {bindParallelSourceTodos,type SourceTodoRow} from "../src/runtime/agents/parallel-todo-bindings.js";
+import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
 
 function fixture(t:TestContext){
@@ -21,6 +22,7 @@ function fixture(t:TestContext){
  git("add","backend.txt","frontend.txt");git("commit","-qm","baseline");
  const head=git("rev-parse","HEAD"),identity:TodoContext={sessionId:"pi-t06",projectId:source},
   journalFile=join(privateRoot,"parallel-worktrees.json"),journal=new ParallelTodoWorktreeJournal(journalFile),
+  sessionLinksFile=join(privateRoot,"parallel-worktree-sessions.json"),sessions=new ParallelChildSessionJournal(sessionLinksFile,journal),
   scopes=[{taskId:"todo-backend",writeSurfaces:["backend.txt"]},{taskId:"todo-frontend",writeSurfaces:["frontend.txt"]}],
   notifications:string[]=[],confirmMessages:string[]=[];
  const row=(taskId:string,file:string,revision=1,state="planned"):SourceTodoRow=>{
@@ -36,7 +38,10 @@ function fixture(t:TestContext){
   session=identity.sessionId,approve=true,editorAnswer=JSON.stringify({parentDir:parent,units:scopes});
  const commands=new Map<string,{handler:(args:string,ctx:unknown)=>Promise<unknown>}>();
  registerParallelWorktreeCommand((name,command)=>commands.set(name,command as never),{
-  journalFile,loadTodos:async()=>rows
+  journalFile,sessionLinksFile,
+  loadTodos:async identity=>identity.sessionId==="pi-t06"?rows:[],
+  loadChildAgents:async identity=>identity.sessionId==="child-pi-1"?
+   [{id:"child-worker-1",role:"worker",state:"running"}]:[]
  });
  const ctx:any={cwd:source,mode:"tui",hasUI:true,
   sessionManager:{getSessionId:()=>session},ui:{
@@ -45,6 +50,10 @@ function fixture(t:TestContext){
    confirm:async(_title:string,message:string)=>{confirmMessages.push(message);return approve;}
   }};
  const run=(command:string)=>commands.get("asen-worktrees")!.handler(command,ctx);
+ const runChild=(command:string,root:string,id="child-pi-1")=>
+  commands.get("asen-worktrees")!.handler(command,{
+   ...ctx,cwd:root,sessionManager:{getSessionId:()=>id}
+  });
  t.after(()=>{
   if(existsSync(source))try{
    for(const line of git("worktree","list","--porcelain").split(/\r?\n/u)){
@@ -56,7 +65,7 @@ function fixture(t:TestContext){
   rmSync(source,{recursive:true,force:true});rmSync(parent,{recursive:true,force:true});
   rmSync(privateRoot,{recursive:true,force:true});
  });
- return {source,parent,head,identity,scopes,rows,run,journal,ctx,
+ return {source,parent,head,identity,scopes,rows,run,runChild,journal,sessions,ctx,
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
   setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},row};
@@ -141,4 +150,51 @@ test("T06 durable reservations reject overlapping sibling batches but allow disj
  const saved=await f.journal.reserve({identity:f.identity,id:newParallelTodoWorktreeBatchId(),head:f.head,parentDir:f.parent,bindings:disjoint});
  assert.equal(saved.state,"reserved");
  assert.equal((await f.journal.list(f.identity)).length,2);
+});
+
+test("T06 consented child Pi attachment observes agents without granting Worker or merge authority",async t=>{
+ const f=fixture(t),prepared=await f.run("prepare-todos") as {status:string;worktrees:readonly {root:string}[]};
+ assert.equal(prepared.status,"prepared");
+ const child=prepared.worktrees[0]!.root;
+ const attached=await f.runChild("attach",child) as {status:string;grantsAuthority:boolean;autoDispatch:boolean;sourceTodoId:string};
+ assert.equal(attached.status,"attached");
+ assert.equal(attached.grantsAuthority,false);assert.equal(attached.autoDispatch,false);
+ assert.equal(attached.sourceTodoId,"todo-backend");
+ const links=await f.sessions.listSource(f.identity);
+ assert.equal(links.length,1);
+ assert.equal(links[0]!.childProjectId,child);assert.equal(links[0]!.authority,"none");
+ const state=await f.run("status") as {status:string;records:readonly {tasks:readonly {
+  sourceTodoId:string;acceptance:string;childSession?:{id:string;agents:readonly {id:string;state:string}[]}
+ }[]}[]};
+ const associated=state.records[0]!.tasks[0]!;
+ assert.equal(associated.childSession?.id,"child-pi-1");
+ assert.deepEqual(associated.childSession?.agents,[{id:"child-worker-1",role:"worker",state:"running"}]);
+ assert.equal(associated.acceptance,"not-accepted");
+ await assert.rejects(()=>f.runChild("attach",child),/already linked/u);
+ assert.equal((await f.sessions.listSource(f.identity)).length,1);
+});
+
+test("T06 child session attachment refuses consent, wrong worktree and reused session",async t=>{
+ const f=fixture(t),prepared=await f.run("prepare-todos") as {worktrees:{root:string}[]};
+ const first=prepared.worktrees[0]!.root,second=prepared.worktrees[1]!.root;
+ f.setConsent(false);
+ assert.deepEqual(await f.runChild("attach",first),{status:"declined",grantsAuthority:false,autoDispatch:false});
+ assert.equal((await f.sessions.listSource(f.identity)).length,0);
+ f.setConsent(true);
+ await assert.rejects(()=>f.runChild("attach",f.source),/no prepared source ODD Todo/u);
+ assert.equal((await f.runChild("attach",first) as {status:string}).status,"attached");
+ await assert.rejects(()=>f.runChild("attach",second,"child-pi-1"),/already linked/u);
+ assert.equal((await f.sessions.listSource(f.identity)).length,1);
+});
+
+test("T06 child attachment fails closed if worktree HEAD diverges from prepared source",async t=>{
+ const f=fixture(t),prepared=await f.run("prepare-todos") as {worktrees:{root:string}[]};
+ const root=prepared.worktrees[0]!.root;
+ execFileSync("git",["-C",root,"config","user.name","T06 child"],{stdio:"ignore"});
+ execFileSync("git",["-C",root,"config","user.email","child@example.invalid"],{stdio:"ignore"});
+ writeFileSync(join(root,"backend.txt"),"different\n");
+ execFileSync("git",["-C",root,"add","backend.txt"],{stdio:"ignore"});
+ execFileSync("git",["-C",root,"commit","-qm","child changed HEAD"],{stdio:"ignore"});
+ await assert.rejects(()=>f.runChild("attach",root),/exact linked Git candidate/u);
+ assert.equal((await f.sessions.listSource(f.identity)).length,0);
 });
