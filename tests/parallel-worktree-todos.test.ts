@@ -327,8 +327,11 @@ test("T07 main work panel reads a bounded source Todo + worktree + Pi child obse
  const load=()=>readAgentFlowPanelObservation({
   identity:f.identity,journalFile:f.journalFile,sessionLinksFile:f.sessionLinksFile,
   planClaimsFile:f.planClaimsFile,loadTodos:async()=>f.rows,
-  loadChildAgents:async id=>id.sessionId==="child-pi-1"?
-   [{id:"child-worker-1",role:"worker",state:"running"}]:[]
+  // An unrelated session Worker must not count as a planned/authorized child.
+  loadChildAgentRecords:async()=>[{id:"child-worker-1",role:"worker",state:"running",
+   sessionId:"child-pi-1",projectId:f.source,owner:{kind:"user",id:"unrelated"},
+   createdAt:"2026-11-15T18:00:00.000Z",updatedAt:"2026-11-15T18:01:00.000Z"}],
+  loadChildTaskAgentLinks:async()=>[]
  });
  const absent=await load();
  assert.equal(absent.state,"absent");assert.equal(absent.overview.totalTasks,0);
@@ -341,7 +344,8 @@ test("T07 main work panel reads a bounded source Todo + worktree + Pi child obse
  const attached=await f.runChild("attach",created.worktrees[0]!.root) as {status:string};
  assert.equal(attached.status,"attached");
  const withChild=await load();
- assert.equal(withChild.overview.stages["running-observed"],1);
+ assert.equal(withChild.overview.stages["running-observed"],0);
+ assert.equal(withChild.overview.stages["child-plan-required"],1);
  assert.equal(withChild.overview.stages["attach-required"],1);
  assert.equal(withChild.overview.tasks[0]!.modelActual,"unknown");
  assert.equal(withChild.overview.tasks[0]!.modelConsumedProven,false);
@@ -426,4 +430,26 @@ test("T06 declining parent evidence collection leaves source and child journals 
  assert.equal(result.grantsAuthority,false);
  const journal=new ParallelWorkerObservationJournal(f.observationFile);
  assert.equal((await journal.listSource(f.identity,await f.sessions.listSource(f.identity))).length,0);
+});
+
+test("T06/T07 real issued task-agent links are required before any child Worker is shown as running",async t=>{
+ const f=fixture(t);
+ const created=await prepareAttributedChildren(f);
+ assert.equal(created.worktrees.length,2);
+ const load=()=>readAgentFlowPanelObservation({
+  identity:f.identity,journalFile:f.journalFile,sessionLinksFile:f.sessionLinksFile,
+  planClaimsFile:f.planClaimsFile,
+  loadTodos:async identity=>identity.sessionId===f.identity.sessionId?f.rows:
+   (identity.sessionId==="child-pi-1"?[f.row("irrelevant","backend.txt")]:[]),
+  loadChildAgentRecords:async id=>id.sessionId==="child-pi-1"?[
+   {id:"unrelated-agent",role:"worker",state:"running",
+    sessionId:id.sessionId,projectId:id.projectId,owner:{kind:"user",id:"other"},
+    createdAt:"2026-11-15T19:00:00.000Z",updatedAt:"2026-11-15T19:01:00.000Z"}
+  ]:[],
+  loadChildTaskAgentLinks:async()=>[]
+ });
+ const panel=await load();
+ assert.equal(panel.overview.stages["running-observed"],0);
+ assert.equal(panel.overview.stages["handoff-unverified"],2);
+ assert.equal(panel.overview.tasks.every(task=>task.modelActual==="unknown"),true);
 });
