@@ -277,3 +277,56 @@ test("T06 real AgentRuntime overlaps two authorized scoped Workers in independen
  assert.equal(readFileSync(join(f.source,"left.txt"),"utf8"),"original-left\n");
  assert.equal(readFileSync(join(f.source,"right.txt"),"utf8"),"original-right\n");
 });
+
+
+test("T06 la cancelación de un agente Pi en un worktree no interrumpe el otro (ejecutor sin modelo)",async t=>{
+ const f=fixture(t),prepared=await f.prepare();if(prepared.status!=="prepared")return;
+ f.registered(prepared.allocations);
+ let entered=0,finished=0;
+ let bothEntered!:()=>void,releaseSecond!:()=>void,allTerminal!:()=>void;
+ const both=new Promise<void>(resolve=>{bothEntered=resolve;});
+ const secondGate=new Promise<void>(resolve=>{releaseSecond=resolve;});
+ const terminal=new Promise<void>(resolve=>{allTerminal=resolve;});
+ const runner={run:async(request:AgentRequest,signal?:AbortSignal)=>{
+  entered++;
+  if(entered===2)bothEntered();
+  if(request.isolationKey==="t06-cancel-a"){
+   await new Promise<void>(resolve=>{
+    if(signal?.aborted){resolve();return;}
+    signal?.addEventListener("abort",()=>resolve(),{once:true});
+   });
+  }else await secondGate;
+  return {id:request.id,ok:!signal?.aborted,
+   output:signal?.aborted?"Cancelación comprobada":"Trabajo independiente finalizado"};
+ }};
+ const runtime=await AgentRuntime.open({
+  storeFile:join(f.parent,"t06-cancel-agents.json"),runner,maxConcurrency:2
+ });
+ runtime.subscribeTerminal(()=>{finished++;if(finished===2)allTerminal();});
+ const ids=await Promise.all(prepared.allocations.map((a,i)=>
+  runtime.startReadOnly({role:"explorer",prompt:"Inspección sin escritura "+i,
+   session:{sessionId:i?"t06-cancel-b":"t06-cancel-a",projectId:a.root}})
+ ));
+ const wait=async(promise:Promise<void>,label:string)=>{
+  let timeout:ReturnType<typeof setTimeout>|undefined;
+  try{
+   await Promise.race([promise,new Promise<void>((_,reject)=>{
+    timeout=setTimeout(()=>reject(new Error("Timeout: "+label)),20000);
+   })]);
+  }finally{if(timeout)clearTimeout(timeout);}
+ };
+ try{
+  await wait(both,"ambos agentes deben comenzar");
+  const stopped=await runtime.cancel(ids[0]!,{
+   sessionId:"t06-cancel-a",projectId:prepared.allocations[0]!.root
+  });
+  assert.equal(stopped,true);
+ }finally{releaseSecond();}
+ await wait(terminal,"ambos estados terminales deben persistirse");
+ const a=await runtime.list({sessionId:"t06-cancel-a",projectId:prepared.allocations[0]!.root});
+ const b=await runtime.list({sessionId:"t06-cancel-b",projectId:prepared.allocations[1]!.root});
+ assert.equal(a.length,1);assert.equal(b.length,1);
+ assert.equal(a[0]!.state,"cancelled");
+ assert.equal(b[0]!.state,"completed");
+ assert.equal(f.git(f.source,"status","--porcelain"),"");
+});
