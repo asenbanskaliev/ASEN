@@ -1837,6 +1837,40 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     loadChildTaskAgentLinks:async identity=>taskAgentLinks.list(identity)
    }:{}),
    planChildTodo:async(input,context)=>preparePlan(input,context as CommandContext),
+   ...(agentRuntimePromise&&todoStorePromise&&taskAgentLinks?{
+    launchChildWorker:async(unit,confirm,validateParent)=>{
+     await validateParent();
+     const identity={sessionId:unit.childSessionId,projectId:unit.childProjectId};
+     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
+     // Native ASEN ODD dispatcher is the sole Writer admission and launch path.
+     // The parent controls confirmation, not the child agent identity or scope.
+     const result=await dispatchNextPlanTask({
+      todos,agents,links:taskAgentLinks,identity,
+      runtimeProfiles:await profileLayer(identity),
+      validateIdentity:async()=>{
+       await validateParent();
+       // A child identity is a previously persisted TUI attachment, NEVER
+       // an implicitly minted session or inherited source Writer grant.
+       const childRows=await todos.list(identity);
+       if(!childRows.some(t=>t.taskId===unit.childTodoId&&
+        t.current.sessionId===identity.sessionId&&
+        sameWorkspaceIdentityPath(t.current.projectId,identity.projectId)))
+        throw new Error("Child ODD Todo identity changed before Pi dispatch");
+       await validateParent();
+      },
+      confirm:async task=>{
+       await validateParent();
+       const accepted=await confirm(task);
+       await validateParent();
+       return accepted===true;
+      }
+     });
+     if(result.status==="dispatched"&&result.role==="worker"&&
+      result.todoId===unit.childTodoId)return result;
+     return {status:"blocked" as const,reason:result.status==="blocked"?
+      result.reason:"Pi child dispatcher did not start the exact authorized Worker"};
+    }
+   }:{}),
    ...(todoStorePromise?{loadTodos:async identity=>(await todoStorePromise).list(identity)}:{}),
    ...(agentRuntimePromise?{loadChildAgents:async identity=>(await agentRuntimePromise).list(identity)}:{})
   });
