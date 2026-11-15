@@ -542,20 +542,29 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
  for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(join(root,source),target);}
  await writeFile(p,`import {writeFileSync} from "node:fs";import {resolve} from "node:path";
-const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0};let buffer="",turn=0,commands=[];
+const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true};let buffer="",turn=0,commands=[];
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands}));
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
  if(request.type==="get_state"){emit({type:"response",id:request.id,command:"get_state",success:true,data:{model:{provider:"provider",id:"primary"},thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}});continue;}
- if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});continue;}
+ if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
  if(request.type==="set_thinking_level"){emit({type:"response",id:request.id,command:"set_thinking_level",success:!refuseThinking,...(refuseThinking?{error:"PRIVATE_THINKING_REJECTION"}:{})});continue;}
- if(request.type==="prompt"){turn++;emit({type:"response",id:request.id,command:"prompt",success:true});if(turn===1){const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}else{emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}}
+ if(request.type==="prompt"){
+  turn++;
+  const reply={type:"response",id:request.id,command:"prompt",success:turn===1||!rejectContinuation};
+  if(turn===1){emit(reply);const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}
+  else if(coalesceSecondTurn){
+   const records=[reply];
+   if(!staleSettledOnly)records.push({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}},{type:"agent_end"},{type:"agent_settled"});
+   process.stdout.write(records.map(value=>JSON.stringify(value)+"\\n").join(""));
+  }else{emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}
+ }
  }});process.stdin.on("end",()=>process.exit(0));`);
  return {d,p,log};
 }
@@ -582,6 +591,52 @@ test("effort runtime parity rejects invalid args and drops invalid child effort"
   const {d,p}=await fallbackRpcFixture({selectionThinking:thinking});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],child=runner(p,{timeoutMs:5000});child.subscribeChildSelection(value=>seen.push(value));
   const result=await child.run({id:"invalid-observation",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true,result.output);assert.deepEqual(seen,[]);
  }
+});
+
+
+test("coalesced continuation response and agent_settled cannot be lost by fallback", {timeout:45_000},async t=>{
+ // One write forces the RPC response, message_end, agent_end and agent_settled
+ // into the same pipe packet. The pre-fix implementation awaited the response
+ // while discarding the subsequent completion event; it timed out.
+ for(let iteration=0;iteration<4;iteration++){
+  const {d,p,log}=await fallbackRpcFixture({coalesceSecondTurn:true});
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const observed:unknown[]=[];
+  const result=await runner(p,{timeoutMs:process.env.CI==="true"?10_000:5_000,
+   onModelFallback:value=>observed.push(value)}).run({
+    id:"coalesced-"+iteration,role:"explorer",prompt:"inspect",repository:d,
+    model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}
+   });
+  assert.equal(result.ok,true,result.output);
+  const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","prompt"]);
+  assert.equal(observed.length,1);
+  assert.match(result.output,/fallback completed/);
+ }
+});
+
+test("stale first-turn settled and unaccompanied completion never attest a new turn",{timeout:20_000},async t=>{
+ const {d,p,log}=await fallbackRpcFixture({coalesceSecondTurn:true,staleSettledOnly:true});
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ const result=await runner(p,{timeoutMs:3_000}).run({
+  id:"stale-settled",role:"explorer",prompt:"inspect",repository:d,
+  model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}
+ });
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","prompt"]);
+ assert.equal(result.ok,false);
+ assert.match(result.output,/timed out/);
+});
+
+test("rejected continuation prompt cannot be made successful by forged completion",{timeout:15_000},async t=>{
+ const {d,p}=await fallbackRpcFixture({coalesceSecondTurn:true,rejectContinuation:true});
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ const result=await runner(p,{timeoutMs:8_000}).run({
+  id:"reject-continuation",role:"explorer",prompt:"inspect",repository:d,
+  model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}
+ });
+ assert.equal(result.ok,false);
+ assert.match(result.output,/failed|correlated|timed out/i);
 });
 
 test("fallback-child keeps one RPC process and conversation through an accepted fallback",async t=>{
