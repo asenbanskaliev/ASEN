@@ -199,7 +199,7 @@ test("T06 durable reservations reject overlapping sibling batches but allow disj
  assert.equal((await f.journal.list(f.identity)).length,2);
 });
 
-test("T06 consented child Pi attachment observes agents without granting Worker or merge authority",async t=>{
+test("T06 child Pi attachment never attributes unrelated agents or grants Writer/merge authority",async t=>{
  const f=fixture(t),prepared=await f.run("prepare-todos") as {status:string;worktrees:readonly {root:string}[]};
  assert.equal(prepared.status,"prepared");
  const child=prepared.worktrees[0]!.root;
@@ -215,7 +215,8 @@ test("T06 consented child Pi attachment observes agents without granting Worker 
  }[]}[]};
  const associated=state.records[0]!.tasks[0]!;
  assert.equal(associated.childSession?.id,"child-pi-1");
- assert.deepEqual(associated.childSession?.agents,[{id:"child-worker-1",role:"worker",state:"running"}]);
+ assert.deepEqual(associated.childSession?.agents,[],
+  "attached child session is not a genuine ODD Worker launch or task-agent binding");
  assert.equal(associated.acceptance,"not-accepted");
  await assert.rejects(()=>f.runChild("attach",child),/already linked/u);
  assert.equal((await f.sessions.listSource(f.identity)).length,1);
