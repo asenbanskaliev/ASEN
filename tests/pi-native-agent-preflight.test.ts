@@ -5,15 +5,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {mkdtempSync,copyFileSync,mkdirSync,rmSync,writeFileSync} from "node:fs";
+import {mkdtempSync,copyFileSync,mkdirSync,rmSync,writeFileSync,existsSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname,join,resolve} from "node:path";
-import {fileURLToPath} from "node:url";
 import {authorityAssets} from "../src/agents/pi-authority-assets.js";
 
 const repo=resolve(".");
-const main=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
-const binary=join(dirname(main),"bundle","cli.js");
+// Exercise the *exact* executable selected by extensions/asen.ts for
+// child agents, not the alternative Pi bundle used by unrelated smoke tests.
+const binary=join(repo,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js");
+
 
 function sanitizedFailure(result:ReturnType<typeof spawnSync>){
  const code=typeof result.status==="number"?result.status:null;
@@ -30,7 +31,8 @@ function probe(t:import("node:test").TestContext,mode:"bare"|"authority"){
  t.after(()=>rmSync(home,{recursive:true,force:true}));
  mkdirSync(join(home,"extensions"),{recursive:true});
  writeFileSync(join(home,"package.json"),JSON.stringify({type:"module"}));
- const args=[binary,"--mode","rpc","--no-session","--no-extensions"];
+ assert.equal(existsSync(binary),true,"The actual bundled ASEN child CLI must exist");
+ const args=[binary,"--mode","rpc","--no-extensions"];
  let extensionPath:string|undefined;
  if(mode==="authority"){
   extensionPath=join(home,"extensions","authority.ts");
@@ -44,7 +46,10 @@ function probe(t:import("node:test").TestContext,mode:"bare"|"authority"){
  }
  args.push("--no-skills","--tools","read");
  const env:NodeJS.ProcessEnv={...process.env,
-  HOME:home,PI_CODING_AGENT_DIR:home,PI_OFFLINE:"1",PI_TELEMETRY:"0"};
+  HOME:home,PI_CODING_AGENT_DIR:home,PI_OFFLINE:"1",PI_TELEMETRY:"0",
+  ...(mode==="authority"?{ASEN_PI_AUTHORITY:JSON.stringify({
+   repository:repo,role:"explorer",writeSurfaces:[],agentId:"preflight-agent",
+   sessionId:"preflight-session"})}:{})};
  for(const key of Object.keys(env)){
   if(/(?:API_KEY|TOKEN|PASSWORD|SECRET|CREDENTIAL)/iu.test(key)||key.startsWith("GIT_"))
    delete env[key];
