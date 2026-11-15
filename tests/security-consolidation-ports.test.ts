@@ -12,7 +12,7 @@ for (const filename of ["upstream-reference-policy.test.mjs", "shell-asen-parity
     // Node marks the outer test worker with NODE_TEST_CONTEXT. A nested
     // runner inherits that marker and may emit NO TAP while exiting 0, so
     // remove only the runner-internal marker and demand observed TAP cases.
-    const env = { ...process.env, ASEN_PARITY_NO_PROVIDER: "1" };
+    const env: NodeJS.ProcessEnv = { ...process.env, ASEN_PARITY_NO_PROVIDER: "1" };
     delete env.NODE_TEST_CONTEXT;
     const result = spawnSync(process.execPath, ["--test", "--test-reporter=tap", file], {
       encoding: "utf8", timeout: 45_000, maxBuffer: 2_000_000, env
