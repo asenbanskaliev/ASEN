@@ -4,7 +4,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import {spawnSync} from "node:child_process";
+import {spawn,spawnSync} from "node:child_process";
 import {mkdtempSync,copyFileSync,mkdirSync,rmSync,writeFileSync,existsSync,realpathSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname,join,resolve} from "node:path";
@@ -80,3 +80,69 @@ function probe(t:import("node:test").TestContext,mode:"bare"|"authority"){
 
 test("native Pi RPC bare startup works without model, session or provider",t=>probe(t,"bare"));
 test("native Pi RPC loads staged ASEN authority without invoking a model",t=>probe(t,"authority"));
+
+
+test("two real native Pi RPC children preflight concurrently with one isolated shared home", {timeout:45_000},async t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-native-concurrent-"));
+ t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const configHome=join(root,"pi-agent-config");
+ mkdirSync(configHome,{recursive:true});
+ const issued=(index:number)=>{
+  const policyRoot=join(root,"authority-"+index);
+  mkdirSync(join(policyRoot,"extensions"),{recursive:true});
+  writeFileSync(join(policyRoot,"package.json"),JSON.stringify({type:"module"}));
+  const extension=join(policyRoot,"extensions","authority.ts");
+  copyFileSync(join(repo,"extensions","authority.ts"),extension);
+  for(const asset of authorityAssets){
+   const target=join(policyRoot,asset.target);
+   mkdirSync(dirname(target),{recursive:true});
+   copyFileSync(join(repo,asset.source),target);
+  }
+  return extension;
+ };
+ const run=(index:number):Promise<void>=>new Promise((resolveRun,rejectRun)=>{
+  const extension=issued(index);
+  const env:NodeJS.ProcessEnv={...process.env,PI_CODING_AGENT_DIR:configHome,
+   HOME:configHome,PI_OFFLINE:"1",PI_TELEMETRY:"0",
+   ASEN_PI_AUTHORITY:JSON.stringify({repository:repo,role:"explorer",writeSurfaces:[],
+    agentId:"parallel-preflight-"+index,sessionId:"shared-session"})};
+  for(const key of Object.keys(env))
+   if(/(?:API_KEY|TOKEN|PASSWORD|SECRET|CREDENTIAL)/iu.test(key)||key.startsWith("GIT_"))
+    delete env[key];
+  const child=spawn(process.execPath,[binary,"--mode","rpc","--no-extensions",
+   "--extension",extension,"--no-skills","--tools","read"],{
+    cwd:repo,env,stdio:["pipe","pipe","pipe"],windowsHide:true
+   });
+  let output="",hadStderr=false,limitExceeded=false;
+  child.stdout.setEncoding("utf8").on("data",chunk=>{
+   output+=String(chunk);
+   if(output.length>262_144){limitExceeded=true;child.kill();}
+  });
+  child.stderr.on("data",()=>{hadStderr=true;});
+  const timer=setTimeout(()=>{child.kill();rejectRun(new Error("Native Pi concurrency preflight timed out (index "+index+")"));},20_000);
+  child.once("error",error=>{clearTimeout(timer);rejectRun(new Error("Native Pi spawn failed (index "+index+"; code "+
+   ((error as NodeJS.ErrnoException).code??"unknown")+")"));});
+  child.once("close",(code,signal)=>{
+   clearTimeout(timer);
+   if(limitExceeded)return rejectRun(new Error("Native Pi RPC stream exceeded bounded preflight output"));
+   if(code!==0)return rejectRun(new Error("Native Pi child failed (index "+index+"; code "+code+
+    "; ntstatus "+(code===null?"none":"0x"+(code>>>0).toString(16).toUpperCase())+
+    "; signal "+(signal??"none")+"; stderrPresent "+hadStderr+")"));
+   let commands:Array<{name:string;source:string;sourceInfo?:{path:string}}>=[];
+   try{
+    for(const line of output.trim().split(/\r?\n/u).filter(Boolean)){
+     const record=JSON.parse(line);
+     if(record.type==="response"&&record.id==="parallel-"+index&&record.success===true&&
+       record.command==="get_commands")commands=record.data?.commands??[];
+    }
+   }catch{return rejectRun(new Error("Native Pi returned malformed bounded RPC output (index "+index+")"));}
+   const registered=commands.filter(x=>x.name==="asen-authority-status"&&x.source==="extension");
+   if(registered.length!==1||!registered[0]?.sourceInfo?.path||
+       realpathSync(registered[0].sourceInfo.path)!==realpathSync(extension))
+    return rejectRun(new Error("Native Pi authority was not registered exactly once (index "+index+")"));
+   resolveRun();
+  });
+  child.stdin.end(JSON.stringify({id:"parallel-"+index,type:"get_commands"})+"\n");
+ });
+ await Promise.all([run(1),run(2)]);
+});
