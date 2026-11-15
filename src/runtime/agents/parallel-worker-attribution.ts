@@ -21,12 +21,14 @@ export interface AttributedParallelWorker{
 }
 export function attributeParallelChildWorker(input:{
  readonly owner:ParallelChildSessionLink;
+ readonly writeSurfaces:readonly string[];
  readonly todos:readonly SourceTodoRow[];
  readonly agents:readonly PublicAgentRecord[];
  readonly taskAgentLinks:readonly TaskAgentLink[];
 }):AttributedParallelWorker|undefined{
- const {owner,todos,agents,taskAgentLinks}=input;
+ const {owner,todos,agents,taskAgentLinks,writeSurfaces}=input;
  if(!owner||owner.authority!=="none"||owner.autoDispatch!==false||owner.autoMerge!==false||
+  !Array.isArray(writeSurfaces)||writeSurfaces.length<1||writeSurfaces.length>256||
   !Array.isArray(todos)||!Array.isArray(agents)||!Array.isArray(taskAgentLinks))
   throw new Error("Child Worker attribution requires an exact non-authorizing source link");
  const matching=todos.filter(todo=>
@@ -35,8 +37,8 @@ export function attributeParallelChildWorker(input:{
   todo.plan?.role==="worker"&&todo.plan.skillSelection?.phase==="apply"&&
   todo.plan.candidate?.revision===owner.sourceHead&&
   sameWorkspaceIdentityPath(todo.plan.candidate.repository,owner.childProjectId)&&
-  todo.plan.writeSurfaces?.length===owner.writeSurfaces.length&&
-  todo.plan.writeSurfaces.every((scope,i)=>scope===owner.writeSurfaces[i])&&
+  todo.plan.writeSurfaces?.length===writeSurfaces.length&&
+  todo.plan.writeSurfaces.every((scope,i)=>scope===writeSurfaces[i])&&
   typeof todo.requestId==="string"&&todo.requestId.startsWith("asen-plan:")&&
   todo.requestId.endsWith(":worker")
  );
