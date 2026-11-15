@@ -23,6 +23,7 @@ function fixture(t:TestContext){
  const head=git("rev-parse","HEAD"),identity:TodoContext={sessionId:"pi-t06",projectId:source},
   journalFile=join(privateRoot,"parallel-worktrees.json"),journal=new ParallelTodoWorktreeJournal(journalFile),
   sessionLinksFile=join(privateRoot,"parallel-worktree-sessions.json"),sessions=new ParallelChildSessionJournal(sessionLinksFile,journal),
+  planClaimsFile=join(privateRoot,"parallel-child-plan-claims.json"),handoffs:string[]=[],
   scopes=[{taskId:"todo-backend",writeSurfaces:["backend.txt"]},{taskId:"todo-frontend",writeSurfaces:["frontend.txt"]}],
   notifications:string[]=[],confirmMessages:string[]=[];
  const row=(taskId:string,file:string,revision=1,state="planned"):SourceTodoRow=>{
@@ -38,7 +39,7 @@ function fixture(t:TestContext){
   session=identity.sessionId,approve=true,editorAnswer=JSON.stringify({parentDir:parent,units:scopes});
  const commands=new Map<string,{handler:(args:string,ctx:unknown)=>Promise<unknown>}>();
  registerParallelWorktreeCommand((name,command)=>commands.set(name,command as never),{
-  journalFile,sessionLinksFile,
+  journalFile,sessionLinksFile,planClaimsFile,planChildTodo:async input=>{handoffs.push(input);return {status:"model-free-ODD-planner-stub"};},
   loadTodos:async identity=>identity.sessionId==="pi-t06"?rows:[],
   loadChildAgents:async identity=>identity.sessionId==="child-pi-1"?
    [{id:"child-worker-1",role:"worker",state:"running"}]:[]
@@ -65,7 +66,7 @@ function fixture(t:TestContext){
   rmSync(source,{recursive:true,force:true});rmSync(parent,{recursive:true,force:true});
   rmSync(privateRoot,{recursive:true,force:true});
  });
- return {source,parent,head,identity,scopes,rows,run,runChild,journal,sessions,ctx,
+ return {source,parent,head,identity,scopes,rows,run,runChild,journal,sessions,handoffs,ctx,
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
   setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},row};
@@ -211,4 +212,63 @@ test("T06 /asen-worktrees review remains advisory and catches a real out-of-scop
  assert.equal(after.reconciliation[0]!.disposition,"blocked");
  assert.equal(after.reconciliation[0]!.blockers.some(x=>/outside authorized scope/u.test(x)),true);
  assert.equal(after.grantsAuthority,false);assert.equal(after.autoMerge,false);
+});
+
+test("T06 one-shot ODD handoff re-plans an exact original Worker in its Pi worktree after new consent",async t=>{
+ const f=fixture(t);
+ const basis=(taskId:string,file:string)=>JSON.stringify({
+  instruction:"Implement only "+file+" within its approved scope",
+  taskIdentity:taskId,intent:"implementation",
+  scope:{kind:"known",expectedPaths:[file]},
+  writes:[{path:file,changeKind:"behavior"}],
+  riskOperations:[],
+  session:{estimatedMinutes:20,continuation:false},
+  testing:{kind:"required"},
+  review:{kind:"dual_explicit",estimatedMinutes:5},
+  unresolvedDecisions:[]
+ });
+ f.setRows(f.rows.map((row,i)=>({
+  ...row,plan:{...row.plan!,writerAuthorizationBasis:basis(i?"todo-frontend":"todo-backend",i?"frontend.txt":"backend.txt")}
+ } as SourceTodoRow)));
+ const prepared=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
+ const child=prepared.worktrees[0]!.root;
+ assert.equal((await f.runChild("attach",child) as {status:string}).status,"attached");
+ const start=await f.runChild("plan-todo",child) as {status:string;sourceTodoId:string;grantsAuthority:boolean;autoRetry:boolean};
+ assert.equal(start.status,"handed-to-own-odd-planner");
+ assert.equal(start.grantsAuthority,false);assert.equal(start.autoRetry,false);
+ assert.equal(start.sourceTodoId,"todo-backend");
+ assert.equal(f.handoffs.length,1);
+ assert.deepEqual(JSON.parse(f.handoffs[0]!),JSON.parse(basis("todo-backend","backend.txt")));
+ const source=await f.run("status") as {records:readonly {tasks:readonly {sourceTodoId:string;handoffClaimed:boolean}[]}[]};
+ assert.equal(source.records[0]!.tasks.find(row=>row.sourceTodoId==="todo-backend")?.handoffClaimed,true);
+ await assert.rejects(()=>f.runChild("plan-todo",child),/previously claimed/u);
+ assert.equal(f.handoffs.length,1);
+});
+
+test("T06 child ODD handoff never launches after declining consent, Git scope drift or missing link",async t=>{
+ const f=fixture(t);
+ const basis=JSON.stringify({
+  instruction:"Update backend.txt",taskIdentity:"todo-backend",intent:"implementation",
+  scope:{kind:"known",expectedPaths:["backend.txt"]},
+  writes:[{path:"backend.txt",changeKind:"behavior"}],riskOperations:[],
+  session:{estimatedMinutes:20,continuation:false},
+  testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:5},
+  unresolvedDecisions:[]
+ });
+ f.setRows(f.rows.map((row,i)=>({
+  ...row,plan:{...row.plan!,writerAuthorizationBasis:i?row.plan!.writerAuthorizationBasis:basis}
+ } as SourceTodoRow)));
+ const prepared=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
+ const root=prepared.worktrees[0]!.root;
+ await assert.rejects(()=>f.runChild("plan-todo",root),/must be attached/u);
+ assert.equal((await f.runChild("attach",root) as {status:string}).status,"attached");
+ f.setConsent(false);
+ assert.deepEqual(await f.runChild("plan-todo",root),{
+  status:"declined",grantsAuthority:false,autoDispatch:false
+ });
+ assert.equal(f.handoffs.length,0);
+ f.setConsent(true);
+ writeFileSync(join(root,"frontend.txt"),"unexpected out-of-scope change\n");
+ await assert.rejects(()=>f.runChild("plan-todo",root),/must remain clean/u);
+ assert.equal(f.handoffs.length,0);
 });
