@@ -52,12 +52,20 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    if(selectedOnly)source=renderAsenPanelSection(snapshot,section,width,true);
    else if(section==="INTEGRATIONS"){
     const inspection=snapshot.integrationInspection;
+    const flowLine=snapshot.agentFlow?.overview.totalTasks?
+     ["  Cross-session ODD: linked worktree flow observed · actual model unknown"]:
+     snapshot.agentFlowUnavailable?["  Cross-session ODD: unavailable"]:[];
     source=inspection?[
+     ...flowLine,
      "  Commands: "+inspection.commands.state+(inspection.commands.limited?" · limited":""),
      "  Tools: "+inspection.tools.state+(inspection.tools.limited?" · limited":"")+" · connection: unknown",
      "  Enter details · /asen-integrations",
     ]:layout.lines.slice(group.start+1,group.end).slice(0,3);
-   }else if(section==="TODOS"?snapshot.todos.length:section==="JOBS"?snapshot.jobs.length:section==="AGENTS"?snapshot.agents.length:section==="CHANGES"?snapshot.changes&&snapshot.changes.files>0:section==="REVIEW"?!/no pending results|unverified/u.test(summary):false){
+   }else if(section==="TODOS"?snapshot.todos.length||!!snapshot.agentFlow?.overview.totalTasks:
+    section==="JOBS"?snapshot.jobs.length:
+    section==="AGENTS"?snapshot.agents.length||!!snapshot.agentFlow?.overview.totalTasks:
+    section==="CHANGES"?(snapshot.changes&&snapshot.changes.files>0)||!!snapshot.agentFlow?.overview.totalTasks:
+    section==="REVIEW"?!/no pending results|unverified/u.test(summary):false){
     source=layout.lines.slice(group.start+1,group.end);
    }
    rows.push(...source.map(text=>({text,section})));
