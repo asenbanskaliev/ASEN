@@ -14,11 +14,13 @@ import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
 import {join} from "node:path";
 
-const cli=join(fileURLToPath(new URL("..",import.meta.url)),"dist","cli.js");
+// Unit-level CLI tests exercise the source entrypoint with the same tsx loader
+// as the test harness. Release Gate separately verifies the packed dist/ CLI.
+const cli=join(fileURLToPath(new URL("..",import.meta.url)),"src","cli.ts");
 
 function runCli(args:readonly string[]):{code:number;stdout:string;stderr:string}{
  try{
-  const stdout=execFileSync(process.execPath,[cli,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});
+  const stdout=execFileSync(process.execPath,["--import","tsx",cli,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]});
   return {code:0,stdout,stderr:""};
  }catch(error){
   const failure=error as {status?:number;stdout?:string;stderr?:string};
