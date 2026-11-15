@@ -38,7 +38,8 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
  const rowsFor=(width:number):Row[]=>{
   const layout=renderAsenPanelWithLayout(snapshot,width,[...collapsed]);
   const rows:Row[]=[];
-  const noWork=!snapshot.todos.length&&!snapshot.jobs.length&&!snapshot.agents.length;
+  const noWork=!snapshot.todos.length&&!snapshot.jobs.length&&!snapshot.agents.length&&
+   !(snapshot.agentFlow?.overview.totalTasks);
   for(const group of layout.groups){
    const section=group.section;
    if(selectedOnly&&section!==activeName())continue;
