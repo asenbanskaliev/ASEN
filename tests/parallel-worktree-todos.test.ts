@@ -647,6 +647,12 @@ test("T06 global batch denial does not consume one-shot claim; approved launch d
  assert.equal(saved[0]!.grantsAuthority,false);
  assert.equal(saved[0]!.autoRetry,false);
  assert.equal(saved[0]!.autoMerge,false);
+ const readOnly=await f.run("status") as {supervisorAttempts:readonly {status:string;autoRetry:boolean;grantsAuthority:boolean}[];
+  records:readonly {supervisorClaimed:boolean}[]};
+ assert.equal(readOnly.supervisorAttempts.length,1);
+ assert.equal(readOnly.supervisorAttempts[0]!.status,"claimed-not-verified");
+ assert.equal(readOnly.supervisorAttempts[0]!.autoRetry,false);
+ assert.equal(readOnly.records[0]!.supervisorClaimed,true);
 });
 
 test("T06 simultaneous parent supervisors cannot both claim or re-launch a batch",async t=>{
