@@ -93,3 +93,38 @@ test("verifyReviewReceiptSigned rejects malformed or missing signatures", async 
   assert.equal(verifyReviewReceiptSigned({ ...receipt, signature: "hmac-sha256:zzzz" }, key), false);
   assert.equal(verifyReviewReceiptSigned({ ...receipt, signature: "" }, key), false);
 });
+
+
+test("full HMAC covers reviewer identity, metadata, timestamp and every test outcome field", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "asen-receipt-full-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const key = await loadReceiptSigningKey(dir);
+  const receipt = createReviewReceiptSigned({ ...sampleInput(), metadata: { review: "human", scope: ["a.ts"] } }, key);
+  assert.equal(verifyReviewReceiptSigned(receipt, key), true);
+  const variants = [
+    { ...receipt, oddTask: "other-task" },
+    { ...receipt, receiptId: "rcpt_fake12345678" },
+    { ...receipt, timestamp: "2025-01-01T00:00:00.000Z" },
+    { ...receipt, testSuite: { ...receipt.testSuite, failed: 1 } },
+    { ...receipt, testSuite: { ...receipt.testSuite, runner: "fake" } },
+    { ...receipt, testSuite: { ...receipt.testSuite, durationMs: 0 } },
+    { ...receipt, metadata: { review: "robot", scope: ["a.ts"] } },
+    { ...receipt, metadata: { review: "human", scope: ["other.ts"] } },
+    { ...receipt, injectedPermission: true },
+  ];
+  for (const forged of variants) assert.equal(verifyReviewReceiptSigned(forged, key), false);
+});
+
+test("persistence rejects HMAC receipts with a forged verdict or metadata", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "asen-receipt-disk-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const key = await loadReceiptSigningKey(dir);
+  const { writeReviewReceipt, readReviewReceipt } = await import("../src/evidence/review-receipt.js");
+  const receipt = createReviewReceiptSigned({ ...sampleInput(), metadata: { owner: "reviewer-1" } }, key);
+  await assert.rejects(() => writeReviewReceipt(dir, { ...receipt, metadata: { owner: "attacker" } }), /unauthenticated/);
+  await writeReviewReceipt(dir, receipt);
+  assert.equal((await readReviewReceipt(dir, receipt.commitSha))?.signature, receipt.signature);
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(join(dir, receipt.commitSha + ".json"), JSON.stringify({ ...receipt, verdict: "FAILED" }));
+  assert.equal(await readReviewReceipt(dir, receipt.commitSha), null);
+});
