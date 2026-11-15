@@ -215,7 +215,7 @@ Aceptar en la rama únicamente los bloques de perfiles y revisión 4R cuando el 
 
 - `/asen-worktrees prepare` **solo prepara** el terreno; no hace autolanzamiento de Workers ni migra un Todo guardado a otra raíz. La ejecución de lote está implementada como API interna que recibe solicitudes ya autorizadas, todavía sin productor automático desde el plan ODD.
 - Las pruebas del `Dispatcher` en CI usan runner instrumentado sin proveedor de IA. Pueden verificar rutas, grants y paralelismo de procesos/solicitudes en local, pero **no** la validez de un modelo autenticado ni el resultado funcional de la tarea.
-- No existe todavía correlación duradera del lote de worktrees con TODOS, recuperación automática ni integración/merge: los enlaces entre tareas y worktrees se revisan manualmente. Ningún crasheo puede convertir un resultado ambiguo en PASS.
+- **Nota histórica superada por los bloques posteriores:** la correlación durable origen→Todo→worktree y origen→sesión Pi se incorporó en T06; siguen pendientes los recibos live de ejecución, aceptación independiente e integración/merge. Los crasheos nunca se interpretan como PASS.
 - La prueba native Windows `0xC0000409`, la equivalencia A/B, el Fix Agent automático con consentimiento, auditoría independiente y el CI de SHA exacto de esta tanda siguen condicionados a sus evidencias; `globalFull:false`.
 
 
@@ -235,6 +235,31 @@ El vínculo al Todo de origen es una **referencia de auditoría**, no el traslad
 
 ### Criterios no satisfechos — T06 sigue abierto
 
-- El despacho del plan ODD fuente a varias sesiones/Worker de worktree **aún no está automatizado**. No se han construido acciones de merge/rebase, conciliación duradera de resultados, ni políticas de exclusión de cambios conflictivos basadas en evidencia integrada.
+- El despacho del plan ODD fuente a varios Workers de worktree **aún no está automatizado**. Existe una inspección de cambios y conflictos de solo lectura, pero no acciones de merge/rebase ni aceptación ni reconciliación aprobatoria de resultados.
 - No se ha ejecutado un proveedor IA autenticado en varios Workers. Sin WER del Windows afectado, `0xC0000409` permanece sin causa demostrada.
 - Todo gate anterior a la corrección final es histórico y no acredita este HEAD. La PR #61 sigue draft y `globalFull:false` hasta CI exacto, revisión externa y pruebas reales autorizadas.
+
+## T06 — Continuación: asociación real de sesiones Pi y revisión cruzada (2026-11-15)
+
+### Nuevas rutas de ejecución y observabilidad
+
+- `/asen-worktrees attach` desde una **sesión Pi real abierta dentro del worktree**: solicita confirmación específica para asociar la sesión con el Todo de origen. Comprueba raíz Git real, mismo repositorio común y HEAD previsto; rechaza el repositorio fuente, sesiones duplicadas, identidades cambiadas y worktrees no preparados. El registro `src/runtime/agents/parallel-todo-session-links.ts` es privado, con bloqueo y escritura atómica; incluye `authority: none`, `autoDispatch: false` y `autoMerge: false`.
+- `/asen-worktrees status` desde el proyecto fuente: puede leer el vínculo al hijo y observar tareas y agentes de la sesión Pi del worktree mediante los almacenes actuales. Un agente `completed` **no prueba** modelo consumido, revisión independiente, pruebas de software ni integración aceptada.
+- `/asen-worktrees review` agrega por lote los cambios Git reales y estados observados. `src/runtime/agents/parallel-worktree-change-inspection.ts` compara cada worktree con el SHA base (incluye commits, staged/unstaged y untracked/ignorados) sin ejecutar comandos ni hooks de la aplicación; rechaza árboles ausentes, procedencias ambiguas y cambios fuera del ámbito autorizado. `src/runtime/agents/parallel-worktree-reconciliation.ts` detecta conflictos por ruta entre Workers, desviación del HEAD, tareas de origen modificadas, fallos y estado desconocido.
+- Las únicas disposiciones de conciliación son `blocked`, `not-started` y `manual-review-required`. **Ninguna es PASS, aceptación RDD, autorización Writer ni permiso de merge.** No se borran ni reintentan worktrees automáticamente.
+- La preparación inicial reutiliza un directorio padre con worktrees hermanos previamente registrados sin permitir anidamientos de raíces Git desconocidas. El diario privado prohíbe escrituras solapadas no solo en cada lote, sino **entre lotes y sesiones del mismo proyecto**, incluso con diferencias de mayúsculas en las rutas.
+
+### Nuevas pruebas TDD
+
+- `tests/parallel-worktree-todos.test.ts`: asociación de sesión real, confirmación denegada, identidad y HEAD distintos, enlace duplicado, observación de AgentRuntime y vista `review` frente a una escritura real fuera de scope.
+- `tests/parallel-worktree-change-inspection.test.ts`: clean vs scoped, archivos rastreados, nuevos, ignorados, commit local y raíces Git inválidas.
+- `tests/parallel-worktree-reconciliation.test.ts`: bloqueo por conflicto de archivos, candidate drift, observación fallida, source Todo desactualizado y ausencia de autorización implícita.
+- `tests/parallel-worktrees.test.ts`: Git `core.autocrlf=false` para impedir que una configuración del runner Windows modifique los bytes del fixture.
+
+### Verificaciones y hallazgos de esta continuación
+
+- CI anterior sobre `41f78107` identificó una aserción que no contemplaba reusar el directorio contenedor de worktrees y diferencias CRLF de Git para Windows. Corregidos con una comprobación estricta de **hermanos** y fixture independiente del autocrlf global; no se suprimieron tests.
+- El primer gate del diario Pi `parallel-todo-session-links.ts` identificó una conversión de TypeScript demasiado amplia, corregida en `d284a9ec`.
+- El primer gate de conciliación encontró inferencia `any` en `Array.isArray`, corregida en `9ef1fa31`.
+- Los resultados verdes de SHA anteriores son históricos; el último SHA de esta tanda exige CI + Pi + Phase 0 + Release Gate completo. Un CI `cancelled` o un job `skipped` no es PASS.
+- **Pendiente mayor:** un productor automático ODD/TODO que cree planes seguros en los worktrees **sin suplantar la sesión Pi del usuario**, obtenga autorización independiente por Worker, consuma modelos reales y registre verificaciones y decisiones de integración. La solución actual NO presume ese permiso ni inicia Workers desde la sesión origen.
