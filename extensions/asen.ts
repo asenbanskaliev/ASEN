@@ -403,7 +403,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
      planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
      loadTodos:async owner=>(await todoStorePromise).list(owner),
-     loadChildAgents:async owner=>(await agentRuntimePromise).list(owner)
+     ...(taskAgentLinks?{
+      loadChildAgentRecords:async owner=>(await agentRuntimePromise).list(owner),
+      loadChildTaskAgentLinks:async owner=>taskAgentLinks.list(owner)
+     }:{})
     });
     assertCurrent();
    }catch{agentFlowUnavailable=true;}
