@@ -1,0 +1,50 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {bindParallelSourceTodos,sameSourceTodoBindings,type SourceTodoRow} from "../src/runtime/agents/parallel-todo-bindings.js";
+
+const root="/tmp/source-project",head="a".repeat(40),identity={sessionId:"session-a",projectId:root};
+const scopes=[{taskId:"todo-1",writeSurfaces:["backend/a.ts"]},{taskId:"todo-2",writeSurfaces:["frontend/a.ts"]}];
+function worker(taskId:string,scope:string,revision=1):SourceTodoRow{
+ const requestId="asen-plan:"+taskId+":worker";
+ const current={taskId,sessionId:"session-a",projectId:root,revision,state:"planned",at:"2026-11-15T18:00:00.000Z"};
+ return {taskId,title:"Work "+taskId,requestId,description:"Work scope",
+  events:[current],current,plan:{
+   role:"worker",skillPaths:["skills/asen-apply/SKILL.md"],
+   skillSelection:{phase:"apply",codeChange:true},
+   candidate:{id:"candidate",repository:root,revision:head,createdAt:"2026-11-15T18:00:00.000Z"},
+   writeSurfaces:[scope],writerAuthorizationBasis:'{"instruction":"test"}'
+  }} as unknown as SourceTodoRow;
+}
+test("T06 linked worktrees bind exact candidate and scopes to planned source Todos without granting authority",()=>{
+ const rows=[worker("todo-1","backend/a.ts"),worker("todo-2","frontend/a.ts")];
+ const mapped=bindParallelSourceTodos({identity,expectedHead:head,rows,units:scopes});
+ assert.deepEqual(mapped.map(x=>x.taskId),["todo-1","todo-2"]);
+ assert.equal(mapped[0]!.taskRevision,1);
+ assert.equal(mapped[0]!.authority,"none");
+ assert.equal(mapped[0]!.needsNewWorktreePlan,true);
+ assert.equal(sameSourceTodoBindings(mapped,bindParallelSourceTodos({identity,expectedHead:head,rows,units:scopes})),true);
+ assert.equal(JSON.stringify(rows),JSON.stringify([worker("todo-1","backend/a.ts"),worker("todo-2","frontend/a.ts")]));
+});
+test("T06 source mapping rejects stale Todo state, candidate and per-file scope",()=>{
+ const first=worker("todo-1","backend/a.ts"),second=worker("todo-2","frontend/a.ts");
+ const cases=[
+  [{...first,current:{...first.current,state:"running"}},second],
+  [{...first,current:{...first.current,revision:1,sessionId:"session-b"}},second],
+  [{...first,plan:{...first.plan!,candidate:{...first.plan!.candidate!,revision:"b".repeat(40)}}},second],
+  [{...first,plan:{...first.plan!,writeSurfaces:["backend/other.ts"]}},second],
+  [{...first,plan:{...first.plan!,role:"reviewer"}},second],
+  [{...first,requestId:"user:forged"},second]
+ ];
+ for(const rows of cases)assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:rows as SourceTodoRow[],units:scopes}),/Source Todo/u);
+});
+test("T06 source mapping fails on missing, duplicate or unmet dependency",()=>{
+ const first=worker("todo-1","backend/a.ts"),second=worker("todo-2","frontend/a.ts");
+ assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[first],units:scopes}),/Source Todo/u);
+ assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[first,first,second],units:scopes}),/Duplicate/u);
+ assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[first,second],units:[scopes[0]!,scopes[0]!]}),/duplicate/u);
+ const blocked={...first,dependsOn:[second.taskId]} as SourceTodoRow;
+ assert.throws(()=>bindParallelSourceTodos({identity,expectedHead:head,rows:[blocked,second],units:scopes}),/incomplete/u);
+ const done={...second,current:{...second.current,state:"done"}} as SourceTodoRow;
+ const result=bindParallelSourceTodos({identity,expectedHead:head,rows:[blocked,done],units:scopes});
+ assert.equal(result.length,2);
+});
