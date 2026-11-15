@@ -89,11 +89,11 @@ Invariantes no negociables:
 - [ ] T01 Auditoría de lanzamiento P0: ruta exacta, fase de salida, protocolo, métricas seguras; pruebas RED primero y GREEN después, CI 3 OS. **PARCIAL:** script read-only Windows WER y tests de seguridad/parseo; falta ejecución en el Windows afectado y atribución causal.
 - [ ] T02 Smoke de modelo autenticado Explorer/Verifier + cadena completa. **BLOQUEADO LIVE:** sin sesión y credenciales autorizadas para ese host; no lanzar un modelo en un job no autorizado.
 - [ ] T03 Roles de revisión 4R: catálogo estricto, autoridad read-only, aislamiento candidato y resultados tipados. **IMPLEMENTADO EN CANDIDATO:** contratos read-only, Pi real tool-free por lente, bundle genuino y tests negativos; falta cierre CI/Release Gate exacto y revisión independiente.
-- [ ] T04 Enrutamiento desde ODD/Todo. **PARCIAL:** /asen-review workspace 4r es opt-in real de cuatro lentes con consentimiento, modelos autenticados y sin autorización RDD; falta selección automática proporcional y Todo/revisión especializada durable.
-- [ ] T05 Perfiles 4R + JD. **PARCIAL:** catálogo seguro de once destinos, creación/edición UI y resolución especialidad→rol base por capas; ruta 4R utiliza modelos autenticados. El in-process Pi reviewer no acredita esfuerzo individual: rechaza thinking configurado, no lo ignora. JD no ejecutado y costes dinámicos no comprobados.
+- [ ] T04 Enrutamiento desde ODD/Todo. **PARCIAL:** `/asen-review workspace 4r` ofrece cuatro lentes explícitas y `/asen-review workspace adaptive` selecciona una a cuatro según riesgo, con consentimiento y modelos autenticados. En riesgo alto exige al menos risk+reliability e indica verificación independiente pendiente. Falta conectarlo al plan ODD/Todo y a identidad durable especializada.
+- [ ] T05 Perfiles 4R + JD. **PARCIAL:** once destinos, creación/edición UI y resolución especialidad→rol base por capas; 4R y Judge A/B pueden usar modelos autenticados configurados. `jd-fix-agent` sigue siendo solo destino de configuración. El revisor in-process rechaza thinking configurado sin soporte demostrado. Costes y modelos reales no comprobados.
 - [ ] T06 Paralelismo. **BLOQUEO DE DISEÑO VALIDADO:** workspace-writer-lease.ts usa lock exclusivo por Git root, incluso para superficies disjuntas; los Workers concurrentes deben usar worktrees independientes. No desactivar el lock ni reutilizar permisos en subprocesos.
 - [ ] T07 UI Agents/Todos/Changes/Integrations con evidencia solicitada versus observada y distinción SKIP/BLOCKED/FAIL/PASS.
-- [ ] T08 Judge A/B y Fix Agent. **NO IMPLEMENTADO:** destinos de perfil son configuración, no agentes ejecutables; no conceder grants de Writer hasta completar T04/T06.
+- [ ] T08 Judge A/B y Fix Agent. **PARCIAL:** dos jueces independientes con modelos autenticados distintos, perspectivas diferenciadas y comando manual `/asen-review workspace judgment-day`. Los dictámenes son solo análisis; no conceden RDD, Writer, merge ni auto-fix. Pendiente Fix Agent controlado, plan ODD/Todo, persistencia durable y pruebas reales.
 - [ ] T09 Benchmark A/B contra referencia 4.8.0 con pruebas honestas de calidad/tiempo/coste y paridad discriminada.
 - [ ] T10 Auditoría integral independiente, regresiones, matriz Windows/macOS/Linux, CI y Release Gate SHA exacto, reconciliación `odd/tasks/equivalencia-funcional-agentes-full.md` y apertura de PR listo para revisión, sin merge a `main`.
 
@@ -180,3 +180,12 @@ En el host Windows afectado y desde la carpeta del proyecto, ejecutar `powershel
 ### Siguiente frontera de admisión
 
 Aceptar en la rama únicamente los bloques de perfiles y revisión 4R cuando el mismo HEAD tenga tests, Phase 0, CI y Release Gate correctos. Cerrar T01/T02 requiere prueba del Windows/servicio real; T06 requiere worktrees segregados; T08 requiere prueba de independencia Judge A/B y canal de Fix sin Writer automático. `globalFull:false` continúa.
+
+## Continuación — revisión proporcional y Judgment Day
+
+- Modo adaptativo: `src/review/review-lens-selection.ts`, pruebas y comando `/asen-review workspace adaptive`, con mínimo de Risk y Reliability para gravedad alta. No es despacho automático desde ODD.
+- Judgment Day: `src/review/judgment-day.ts`, dos modelos autenticados distintos del autor y entre sí, perspectivas independientes, mismo candidato genuino; comando manual `/asen-review workspace judgment-day` y consentimiento para dos llamadas.
+- Las revisiones no tienen herramientas, no autorizan Writer ni RDD y no ejecutan Fix Agent; cualquier propuesta de corrección deberá tramitarse como Worker con consentimiento fresco.
+- Pruebas nuevas: `tests/review-lens-selection.test.ts`, `tests/judgment-day.test.ts`, contratos negativos en `tests/ordinary-review-assessment.test.ts`.
+- El CI del SHA `3673b613` encontró dos regresiones de snapshots (texto de ayuda, opciones de edición de perfiles). Se corrigieron en commits posteriores. El Release Gate verde de ese SHA no valida un HEAD posterior.
+- PENDIENTE: CI/Release Gate SHA exacto, revisión independiente, conectividad de modelos reales, Windows WER, ODD/Todo durable, worktrees concurrentes y benchmark A/B. Mantener `globalFull:false` y PR #61 borrador.
