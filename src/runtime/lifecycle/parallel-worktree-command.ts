@@ -6,10 +6,11 @@ import {bindParallelSourceTodos,sameSourceTodoBindings,type SourceTodoRow} from 
 import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../agents/parallel-todo-journal.js";
 import {ParallelChildSessionJournal} from "../agents/parallel-todo-session-links.js";
 import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change-inspection.js";
+import {reconcileParallelWorktreeBatch} from "../agents/parallel-worktree-reconciliation.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | status (attach vincula una sesión Pi real sin iniciar ni autorizar Workers)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | status | review (revisión solo lectura; nunca lanza ni fusiona Workers)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
  sessionManager?:{getSessionId?:()=>string};
@@ -45,7 +46,7 @@ export function registerParallelWorktreeCommand(
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:async(args,ctx)=>{
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="status"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
@@ -82,7 +83,7 @@ export function registerParallelWorktreeCommand(
        childSessionId:saved.link.childSessionId}:{} )};
     ctx.ui.notify(JSON.stringify(display,null,2),"info");return display;
    }
-   if(action==="status"){
+   if(action==="status"||action==="review"){
     if(!id||!options?.journalFile||!ctx.cwd){
      const unavailable={status:"unavailable" as const,reason:"Worktree journal or owned Pi session unavailable"};
      ctx.ui.notify(unavailable.reason,"warning");return unavailable;
@@ -107,8 +108,7 @@ export function registerParallelWorktreeCommand(
       todos:todos.map(t=>({taskId:t.taskId,...(t.plan?.role?{role:t.plan.role}:{}),state:t.current.state}))
      });
     }
-    const result={status:"audit-only" as const,grantsAuthority:false as const,autoResume:false as const,
-     records:records.map(record=>({
+    const auditRows=records.map(record=>({
       batchId:record.id,createdAt:record.createdAt,state:record.state,sourceHead:record.sourceHead,
       tasks:record.tasks.map(task=>{
        const live=rows.find(row=>row.taskId===task.taskId);
@@ -130,7 +130,21 @@ export function registerParallelWorktreeCommand(
         }}:{}),
         acceptance:"not-accepted"};
       })
-     }))
+     }));
+    const result={
+     status:action==="review"?"review-preview" as const:"audit-only" as const,
+     grantsAuthority:false as const,autoResume:false as const,autoMerge:false as const,
+     records:auditRows,
+     ...(action==="review"?{reconciliation:auditRows.map(record=>({
+      batchId:record.batchId,
+      ...reconcileParallelWorktreeBatch({
+       batchState:record.state,
+       units:record.tasks.map(task=>({
+        taskId:task.sourceTodoId,sourceTodoUnchanged:task.sourceTodoUnchanged,
+        changes:task.changes,...("childSession" in task?{childSession:task.childSession}:{})
+       }))
+      })
+     }))}:{})
     };
     ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
    }
