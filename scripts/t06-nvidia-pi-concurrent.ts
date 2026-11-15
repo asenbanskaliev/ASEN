@@ -1,6 +1,6 @@
 /**
  * T06: dos sesiones Pi RPC autenticadas con NVIDIA mediante AgentRuntime real.
- * Solo Clarifier sin herramientas ni escritura y prompts sintéticos.
+ * Explorer y Verifier sin herramientas ni escritura, con prompts sintéticos.
  * No demuestra todavía Writer/grants del flujo completo.
  */
 import assert from "node:assert/strict";
@@ -12,6 +12,7 @@ import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const marker=["ASEN_PI_NVIDIA_A_OK","ASEN_PI_NVIDIA_B_OK"] as const;
+const roles=["explorer","verifier"] as const;
 const root=resolve(process.env.GITHUB_WORKSPACE??process.cwd());
 const evidenceFile=process.env.ASEN_NVIDIA_PI_REPORT;
 if(!process.env.NVIDIA_API_KEY||!evidenceFile)throw Error("Prueba Pi NVIDIA BLOQUEADA: faltan credenciales o ubicación privada de evidencias");
@@ -46,14 +47,14 @@ const wrapper={
   return item.runner.run(request,signal);
  }
 };
-const status={schema:"asen.t06.nvidia.pi-dual/v1",source:"native-PiProcessRunner-and-AgentRuntime",
+const status={schema:"asen.t06.nvidia.pi-dual/v2",source:"native-PiProcessRunner-and-AgentRuntime",
  requestedModel:model,modelActual:"unknown",workers:[] as Array<Record<string,unknown>>,
  concurrentlyRunning:false,providerAuthenticated:false,autoMerge:false,writerGranted:false,
- executionKind:"READ_ONLY_CLARIFIER_NOT_WRITER",result:"BLOCKED",at:new Date().toISOString()};
+ executionKind:"READ_ONLY_EXPLORER_VERIFIER_NOT_WRITER",result:"BLOCKED",at:new Date().toISOString()};
 try{
  const runtime=await AgentRuntime.open({storeFile:join(base,"agents.json"),runner:wrapper,maxConcurrency:2});
  const ids=await Promise.all(instances.map((x,i)=>runtime.startReadOnly({
-  role:"clarifier",prompt:"Responde únicamente con "+marker[i]+". No uses herramientas ni texto adicional.",
+  role:roles[i]!,prompt:"Analiza sin editar archivos. Responde únicamente con "+marker[i]+". No uses herramientas ni texto adicional.",
   session:x.identity,model
  })));
  const deadline=Date.now()+105_000;
@@ -84,7 +85,7 @@ try{
   const verified=entry?.record.state==="completed"&&replyMatched&&chosen===model;
   item.observation.result=verified?"verified-pi-message":"not-verified";
   status.workers.push({
-   sessionId:item.identity.sessionId,agentRole:"clarifier",
+   sessionId:item.identity.sessionId,agentRole:roles[i]!,
    recordState:entry?.record.state??"missing",modelSelected:chosen??"unknown",
    messageVerified:replyMatched,pidObserved:item.observation.pid!==null,
    durationMs:item.observation.closedAt!==null&&item.observation.spawnedAt!==null?
