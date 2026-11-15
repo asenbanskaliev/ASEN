@@ -1,4 +1,11 @@
 /**
+ * Wired into the live review acceptance path by `src/runtime/review-acceptance.ts`
+ * through `src/evidence/receipt-verifier.ts`: the independent-review acceptance
+ * authenticates the receipt of the candidate commit before any human confirmation
+ * and refuses acceptance when a present receipt is not authentic or does not bind
+ * the candidate tree. See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md`
+ * (Tanda 3.2).
+ *
  * Immutable Cryptographic Review Receipts for ASEN.
  * Generates and verifies receipts linking commit SHA, tree SHA, test outcomes and verdict.
  *

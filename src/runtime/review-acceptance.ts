@@ -1,13 +1,21 @@
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../agents/agent-runtime.js";
+import type {ReviewReceiptState} from "../evidence/receipt-verifier.js";
 import type {TaskAgentLinkStore} from "./task-agent-link-store.js";
 import type {SessionTodoStore} from "./todo-store.js";
 import {sameWorkspaceIdentityPath} from "./workspace-store.js";
 
 export interface ParsedReviewVerdict{readonly verdict:"pass"|"fail";readonly evidence:readonly string[];}
+/** Verification applied to the accepted candidate, declared to the human. */
+export type ReviewVerification=
+ | {readonly mode:"signed-receipt";readonly treeSha:string;readonly total:number;readonly passed:number;readonly failed:number;readonly runner:string}
+ | {readonly mode:"structural-fallback"};
+/** Minimal receipt reader the acceptance path depends on. */
+export interface ReviewReceiptReader{readReceiptState(commitSha:string):Promise<ReviewReceiptState>;}
 export interface ReviewApprovalRequest{
  readonly taskId:string;readonly agentId:string;readonly role:"reviewer"|"verifier";
  readonly candidateRevision:string;readonly evidence:readonly string[];
+ readonly verification:ReviewVerification;
 }
 export type ReviewAcceptanceResult={status:"accepted";taskId:string;role:"reviewer"|"verifier"}|
  {status:"blocked";reason:string};
@@ -46,14 +54,45 @@ export function parseReviewVerdict(text:unknown):ParsedReviewVerdict|undefined{
     /[\p{Cc}\p{Cf}\u2028\u2029]/u.test(item)))return undefined;
  return Object.freeze({verdict:value.verdict,evidence:Object.freeze([...evidence] as string[])});
 }
-function candidateAtCleanHead(repository:string):string{
+/** Render a bounded, single-line list of Git porcelain paths for a blocked review. */
+function dirtyWorktreeDetail(porcelain:string):string{
+ const paths=porcelain.split(/\r?\n/u).filter(Boolean).slice(0,20).map(line=>line.slice(3).trim()).filter(Boolean);
+ const display=paths.length?paths.join(", "):"unknown path";
+ return `Review acceptance requires a clean worktree and index; dirty paths: ${display}${porcelain.split(/\r?\n/u).filter(Boolean).length>paths.length?" (additional paths omitted)":""}`;
+}
+function candidateAtCleanHead(repository:string):{commit:string;tree:string}{
  const options={cwd:repository,encoding:"utf8" as const,windowsHide:true,timeout:5000,
   maxBuffer:16_384,stdio:["ignore","pipe","ignore"] as ["ignore","pipe","ignore"]};
  const sha=execFileSync("git",["rev-parse","--verify","HEAD"],options).trim();
  if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(sha))throw new Error("Review acceptance requires a real Git commit");
+ const tree=execFileSync("git",["rev-parse","--verify","HEAD^{tree}"],options).trim();
+ if(!/^[0-9a-f]{40}$/u.test(tree))throw new Error("Review acceptance requires a real Git tree");
  const changes=execFileSync("git",["status","--porcelain=v1","--untracked-files=all"],options);
- if(changes.length)throw new Error("Review acceptance requires a clean worktree and index");
- return sha;
+ if(changes.length)throw new Error(dirtyWorktreeDetail(changes));
+ return {commit:sha,tree};
+}
+/** Resolve and authenticate the review receipt of the candidate commit.
+ *
+ * A present receipt must be authentic and bound to the exact candidate tree,
+ * otherwise acceptance is refused. When no receipt exists the acceptance falls
+ * back to structural verification (clean worktree, exact HEAD, authenticated
+ * agent result and explicit human confirmation) and declares that fallback. */
+async function resolveReviewVerification(
+ receipts:ReviewReceiptReader|undefined,repository:string,revision:string
+):Promise<ReviewVerification>{
+ if(!receipts)return {mode:"structural-fallback"};
+ const state=await receipts.readReceiptState(revision);
+ if(state.status==="absent")return {mode:"structural-fallback"};
+ if(state.status==="invalid")
+  throw new Error(`Review receipt for ${revision} is not authentic: ${state.reason}`);
+ const receipt=state.receipt;
+ if(receipt.verdict!=="PASSED")
+  throw new Error(`Review receipt for ${revision} records a FAILED verdict`);
+ const {tree}=candidateAtCleanHead(repository);
+ if(receipt.treeSha!==tree)
+  throw new Error(`Review receipt tree does not match the candidate tree ${tree}`);
+ return {mode:"signed-receipt",treeSha:receipt.treeSha,total:receipt.testSuite.total,
+  passed:receipt.testSuite.passed,failed:receipt.testSuite.failed,runner:receipt.testSuite.runner};
 }
 /** F4/F5: explicit Pi confirmation, one verified completed agent, exact HEAD,
  * no automatic promotion of a model's claim, CAS Todo journal and no writer grant. */
@@ -61,6 +100,7 @@ export async function acceptIndependentReview(input:{
  todos:Pick<SessionTodoStore,"list"|"acceptReviewedTask">;
  agents:Pick<AgentRuntime,"query">;
  links:Pick<TaskAgentLinkStore,"list">;
+ receipts?:ReviewReceiptReader;
  identity:AgentSessionIdentity;taskId:string;
  validateIdentity:()=>Promise<void>;
  confirm:(details:ReviewApprovalRequest)=>Promise<boolean>;
@@ -79,8 +119,9 @@ export async function acceptIndependentReview(input:{
   return blocked("This Todo is not a completed independent review awaiting Pi acceptance.");
  const revision=item.plan.candidateRevision,role=item.plan.role;
  const evidence=async()=>{
-  const current=candidateAtCleanHead(identity.projectId);
-  if(current!==revision)throw new Error("Review candidate changed; rebuild the review against the current HEAD");
+  const candidate=candidateAtCleanHead(identity.projectId);
+  if(candidate.commit!==revision)throw new Error("Review candidate changed; rebuild the review against the current HEAD");
+  const verification=await resolveReviewVerification(input.receipts,identity.projectId,revision);
   const links=(await input.links.list(identity)).filter(link=>link.taskId===item.taskId&&
     link.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(link.projectId,identity.projectId));
   if(links.length!==1)throw new Error("Review acceptance requires exactly one session-owned agent link");
@@ -92,7 +133,7 @@ export async function acceptIndependentReview(input:{
   const result=parseReviewVerdict(record.summary);
   if(result?.verdict!=="pass")throw new Error("Review result is malformed or not passing; no acceptance permitted");
   return Object.freeze({taskId:item.taskId,agentId:record.id,role,candidateRevision:revision,
-   evidence:result.evidence});
+   evidence:result.evidence,verification});
  };
  let details:ReviewApprovalRequest;
  try{details=await evidence();}catch(error){return blocked(error instanceof Error?error.message:"Review result could not be verified");}

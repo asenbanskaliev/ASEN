@@ -3,6 +3,12 @@
  * Accelerates verification pipelines by checking if a treeSha has already been
  * certified with an authentic, HMAC-signed PASSED receipt.
  *
+ * Wired into the live review acceptance path by `src/runtime/review-acceptance.ts`:
+ * the independent-review acceptance resolves the receipt of the candidate commit
+ * before any human confirmation and refuses acceptance when a present receipt is
+ * not authentic. See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md`
+ * (Tanda 3.2).
+ *
  * Security boundary: only receipts authenticated with the local HMAC key count
  * as verification. A legacy unkeyed checksum receipt is tamper-evident but
  * forgeable by anyone, so it is NEVER accepted here to justify skipping tests.
@@ -17,6 +23,12 @@ import {
   verifyReviewReceiptSigned,
   type ReviewReceipt
 } from "./review-receipt.js";
+
+/** Authentication state of the receipt persisted for one candidate commit. */
+export type ReviewReceiptState =
+  | { readonly status: "absent" }
+  | { readonly status: "invalid"; readonly reason: string }
+  | { readonly status: "valid"; readonly receipt: ReviewReceipt };
 
 export class ReceiptVerifierService {
   private readonly storageDir: string;
@@ -33,6 +45,46 @@ export class ReceiptVerifierService {
       this.keyPromise = loadReceiptSigningKey(this.storageDir);
     }
     return this.keyPromise;
+  }
+
+  /**
+   * Resolve the receipt persisted for one candidate commit and authenticate it.
+   *
+   * `absent` means no receipt file exists for that commit. `invalid` means a
+   * receipt exists but cannot be trusted (unreadable, malformed, wrong identity
+   * or a signature that does not match the local signing key). `valid` means the
+   * receipt is authentic for the local key; the caller still decides what the
+   * recorded verdict authorizes.
+   */
+  public async readReceiptState(commitSha: string): Promise<ReviewReceiptState> {
+    if (typeof commitSha !== "string" || !/^[a-f0-9]{40}$/i.test(commitSha)) {
+      return { status: "invalid", reason: "candidate identity is not a 40-character Git SHA" };
+    }
+    const normalized = commitSha.toLowerCase();
+    let raw: string;
+    try {
+      raw = await readFile(join(this.storageDir, `${normalized}.json`), "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return { status: "absent" };
+      return { status: "invalid", reason: "receipt file could not be read" };
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return { status: "invalid", reason: "receipt file is not valid JSON" };
+    }
+    if (
+      typeof parsed !== "object" || parsed === null ||
+      (parsed as ReviewReceipt).commitSha?.toLowerCase?.() !== normalized
+    ) {
+      return { status: "invalid", reason: "receipt identity does not match its candidate commit" };
+    }
+    const key = await this.signingKey();
+    if (!verifyReviewReceiptSigned(parsed, key)) {
+      return { status: "invalid", reason: "receipt signature is not authentic for the local signing key" };
+    }
+    return { status: "valid", receipt: parsed };
   }
 
   /**
