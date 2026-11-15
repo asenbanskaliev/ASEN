@@ -127,6 +127,23 @@ export class ParallelTodoWorktreeJournal{
    return structuredClone(next);
   });
  }
+ /** Read-only lookup from a child worktree. This returns attribution,
+  * never the original session's Writer approval or phase grant. */
+ async findPreparedWorktree(root:string):Promise<Readonly<{batchId:string;sourceSessionId:string;sourceProjectId:string;
+  sourceHead:string;taskId:string;requestId:string;taskRevision:number;
+  worktreeRoot:string;writeSurfaces:readonly string[]}>|undefined>{
+  if(!isAbsolute(root))throw new Error("Child worktree requires an absolute root");
+  const journal=await load(this.file);
+  const matches=journal.records.flatMap(record=>record.state==="prepared"?
+   record.tasks.filter(task=>sameWorkspaceIdentityPath(task.worktreeRoot,root)).map(task=>({
+    batchId:record.id,sourceSessionId:record.sessionId,sourceProjectId:record.projectId,
+    sourceHead:record.sourceHead,taskId:task.taskId,requestId:task.requestId,taskRevision:task.taskRevision,
+    worktreeRoot:task.worktreeRoot,writeSurfaces:[...task.writeSurfaces]
+   })):[]
+  );
+  if(matches.length>1)throw new Error("Ambiguous worktree ownership in durable reservations");
+  return matches[0]?Object.freeze({...matches[0],writeSurfaces:Object.freeze(matches[0].writeSurfaces)}):undefined;
+ }
  async list(identity:TodoContext):Promise<readonly ParallelTodoWorktreeRecord[]>{
   if(!valid(identity?.sessionId)||!valid(identity?.projectId))throw new Error("Invalid worktree inspection identity");
   const journal=await load(this.file);
