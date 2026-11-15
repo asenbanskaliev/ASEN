@@ -7,7 +7,7 @@
 import {execFileSync} from "node:child_process";
 import {randomUUID} from "node:crypto";
 import {existsSync,lstatSync,realpathSync} from "node:fs";
-import {basename,isAbsolute,relative,resolve,sep} from "node:path";
+import {basename,dirname,isAbsolute,relative,resolve,sep} from "node:path";
 import {parseWorktreeListOutput} from "../workspace-snapshot.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import {validateWriteGrant} from "../../policies/scopes.js";
@@ -75,7 +75,12 @@ function validateProposal(input:ParallelWorktreeProposal){
  if(isInside(realParent,source)||isInside(source,realParent)||isInside(realParent,common))
   throw new Error("Worktree parent overlaps source root or Git metadata");
  const known=worktreeRoots(source).map(path=>realpathSync(path));
- if(known.some(root=>isInside(realParent,root)||isInside(root,realParent)))
+ // An isolated parent may already contain earlier ASEN sibling worktrees.
+ // Never allow nesting under an existing worktree, or nesting unknown Git roots
+ // under the parent. Cross-batch write overlap is checked by the Todo journal.
+ if(known.some(root=>isInside(realParent,root)||
+   (isInside(root,realParent)&&
+    (!sameWorkspaceIdentityPath(dirname(root),realParent)||!basename(root).startsWith("asen-worker-")))))
   throw new Error("Worktree parent overlaps an existing worktree");
  const ids=new Set<string>(),grants: {agentId:string;repository:string;surfaces:string[]}[]=[];
  const units=input.units.map(unit=>{
