@@ -480,3 +480,23 @@ test("T06/T07 source views show only genuinely linked and ODD-claimed child Work
  assert.equal(fromPanel.overview.acceptance,"not-accepted");
  assert.equal(fromPanel.overview.autoMerge,false);
 });
+
+test("T06/T07 a genuinely ODD-linked running child is observable without claiming it succeeded",async t=>{
+ const f=fixture(t);
+ await prepareAttributedChildren(f);
+ const linked=f.getChildObservations("child-pi-1");
+ f.setChildObservations("child-pi-1",
+  linked.todos.map(row=>({...row,current:{...row.current,state:"running"}} as SourceTodoRow)),
+  linked.agents.map(agent=>({...agent,state:"running"})),linked.links
+ );
+ const status=await f.run("status") as {flowOverview:{
+  stages:Readonly<Record<string,number>>;
+  tasks:readonly {stage:string;modelActual:string;modelConsumedProven:boolean;acceptance:string}[];
+  autoMerge:boolean;
+ }};
+ assert.equal(status.flowOverview.stages["running-observed"],1);
+ assert.equal(status.flowOverview.stages["manual-review-required"],1);
+ assert.equal(status.flowOverview.tasks.every(task=>task.acceptance==="not-accepted"),true);
+ assert.equal(status.flowOverview.tasks.every(task=>task.modelConsumedProven===false),true);
+ assert.equal(status.flowOverview.autoMerge,false);
+});
