@@ -77,3 +77,14 @@ test("Judgment Day cancellation stops before first model call",async t=>{
  assert.equal(models.calls.length,0);
  closeWorkspaceReview(workspace);
 });
+
+test("Judgment Day rechecks candidate identity before each judge and blocks stale second call",async t=>{
+ const {workspace,evidence}=fixture(t),models=registry(),checks:string[]=[];
+ await assert.rejects(()=>runJudgmentDay({
+  registry:models.value,author,judgeA:a,judgeB:b,evidence,requirements:"Verify",
+  validateBeforeJudge:judge=>{checks.push(judge);if(judge==="jd-judge-b")throw new Error("candidate changed");}
+ }),/candidate changed/u);
+ assert.deepEqual(checks,["jd-judge-a","jd-judge-b"]);
+ assert.deepEqual(models.calls.map(x=>x.id),["judge-a"]);
+ closeWorkspaceReview(workspace);
+});
