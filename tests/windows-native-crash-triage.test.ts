@@ -11,6 +11,7 @@ test("Windows Pi crash triage is a read-only, bounded, privacy-limited event ins
  assert.match(code,/Get-WinEvent\s+-FilterHashtable/u);
  assert.match(code,/ValidateRange\(1, 300\)/u);
  assert.match(code,/0xC0000409/u);
+ assert.equal(code.includes(String.raw`(?:0x)?c0000409\b`),true,"WER may omit the 0x prefix");
  for(const forbidden of [/Start-Process\b/u,/Invoke-WebRequest\b/u,/Invoke-RestMethod\b/u,/\bRemove-Item\b/u,/\bSet-Content\b/u,/\bAdd-Content\b/u,/\bWrite-EventLog\b/u,/\bExport-Clixml\b/u])
   assert.doesNotMatch(code,forbidden,"native triage must not mutate or export host data");
  assert.match(code,/moduleFileName/u);
