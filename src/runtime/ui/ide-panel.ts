@@ -55,11 +55,16 @@ export function derivePanelReview(snapshot:AsenPanelSnapshot):{pending:number;kn
   todo.current.state==="blocked"&&todo.current.reason==="Linked review result requires explicit user acceptance").length,known:true};
 }
 function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
+ const linked=snapshot.agentFlow?.overview.totalTasks??0;
+ const childRunning=snapshot.agentFlow?.overview.stages["running-observed"]??0;
  switch(section){
-  case "TODOS":return snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length;
+  case "TODOS":return snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length+
+   (linked?" local · "+linked+" linked":"");
   case "JOBS":return snapshot.jobs.filter(isObservedActiveJob).length+" running";
-  case "AGENTS":return snapshot.agents.filter(a=>a.state==="running").length+" running";
-  case "CHANGES":return snapshot.changes?snapshot.changes.files+" files":"unavailable";
+  case "AGENTS":return snapshot.agents.filter(a=>a.state==="running").length+
+   (linked?" local running · "+childRunning+" child observed":" running");
+  case "CHANGES":return (snapshot.changes?snapshot.changes.files+" files":"unavailable")+
+   (linked?" · "+linked+" linked worktree tasks":"");
   case "REVIEW":{const review=derivePanelReview(snapshot);return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";}
   case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
  }
