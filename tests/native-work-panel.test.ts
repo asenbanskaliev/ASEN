@@ -5,6 +5,7 @@ import {ASEN_PANEL_SECTIONS,renderAsenPanel,type AsenPanelSnapshot} from "../src
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
+import {projectParallelAgentFlow} from "../src/runtime/ui/agent-flow-overview.js";
 
 const snapshot={todos:[],agents:[],jobs:[],changes:{branch:"main",files:0},profile:"free",permission:"normal"} satisfies AsenPanelSnapshot;
 test("sheet overview collapses empty bodies and bounds inventory without losing observed detail",()=>{
@@ -324,4 +325,33 @@ test("native panel mouse clicks target only actually rendered headings after scr
  assert.equal(tiny.render(110).length,1);
  assert.equal(tiny.handleMouse({type:"press",button:"left",x:0,y:1} as any),undefined,
   "close-only overlay has no clickable sections");
+});
+
+test("T07 native overlay exposes linked Worker flow without a parent Agent or Todo",()=>{
+ const overview=projectParallelAgentFlow([{
+  batchId:"linked",state:"prepared",tasks:[
+   {sourceTodoId:"work-a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+    changes:{status:"scoped-changes",changedPaths:["work-a.ts"],outOfScopePaths:[],
+     sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"pi-child",agents:[{id:"worker-a",role:"worker",state:"running"}]}},
+   {sourceTodoId:"work-b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+    changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}}
+  ]
+ }]);
+ const data={...snapshot,agentFlow:{state:"observed" as const,totalRecordedBatches:1,limited:false,overview}};
+ const before=structuredClone(data),panel=createNativeWorkPanel(data,{
+  requestRender(){},close(){},terminalRows:()=>130
+ });
+ const rows=panel.render(130);
+ assert.match(rows.join("\n"),/Linked source Todos: 2/u);
+ assert.match(rows.join("\n"),/Worktree Workers: 1 active observed/u);
+ assert.match(rows.join("\n"),/Linked worktrees: 1\/2/u);
+ assert.match(rows.join("\n"),/Cross-session ODD: linked/u);
+ assert.doesNotMatch(rows.join("\n"),/actual model: (?!unknown)/u);
+ for(const width of [12,35,80,130]){
+  const output=panel.render(width);
+  assert.ok(output.every(row=>visibleWidth(row)<=width));
+ }
+ assert.deepEqual(data,before);
 });
