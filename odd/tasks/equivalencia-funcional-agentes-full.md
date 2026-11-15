@@ -289,7 +289,7 @@ Para cada C: registro de referencia (SHA, pasos, herramientas, acción de contro
 
 - [ ] EF-101 Alinear rutas directa/plan/delegación sin usar solo tamaño o cantidad de archivos. **PARCIAL:** Rutas ASEN probadas; falta contraste observable A/B.
 - [x] EF-102 Conservar ODD, S#, tareas y mirror con conflictos visibles y próximos pasos honestos. **VERIFICADO:** `src/flow/odd-task-tracking.ts` + `tests/odd-task-tracking.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
-- [x] EF-103 Continuar por dependencias con identidad, sesión y candidato revalidados. **VERIFICADO:** `src/runtime/plan-dispatcher.ts` + `tests/plan-dispatcher-candidate-guard.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
+- [x] EF-103 Continuar por dependencias con identidad, sesión y candidato revalidados. **VERIFICADO:** `src/runtime/lifecycle/plan-dispatcher.ts` + `tests/plan-dispatcher-candidate-guard.test.ts` · CI `41699783530` / SHA `7c1fcd9a7bbd17ddea4aa0aa149db24e903644fc`.
 - **Gate:** C01, C04, C05.
 
 ### F2 — Explorer
