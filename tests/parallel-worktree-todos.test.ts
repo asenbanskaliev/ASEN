@@ -404,7 +404,7 @@ async function prepareAttributedChildren(f:ReturnType<typeof fixture>,withoutLin
     writeSurfaces:[file]}
   } as SourceTodoRow;
   const agent:PublicAgentRecord={
-   id:requestId,role:"worker",state:"completed",
+   id:requestId.slice("asen-plan:".length),role:"worker",state:"completed",
    sessionId:childId,projectId:project,owner:{kind:"user",id:"pi:"+childId},
    createdAt:"2026-11-15T19:00:00.000Z",updatedAt:"2026-11-15T19:01:00.000Z"
   };
