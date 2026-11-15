@@ -9,11 +9,15 @@ import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change
 import {reconcileParallelWorktreeBatch} from "../agents/parallel-worktree-reconciliation.js";
 import {projectParallelAgentFlow} from "../ui/agent-flow-overview.js";
 import {ParallelChildPlanClaimJournal} from "../agents/parallel-child-plan-claims.js";
+import {ParallelWorkerObservationJournal} from "../agents/parallel-worker-observation-journal.js";
+import {inspectParallelBatchWorkerOutcomes} from "../agents/parallel-batch-coordinator.js";
+import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
+import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
 import {controlledInstructionPlanCommand} from "./route-command.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | plan-todo | status | review (plan-todo pide nuevo consentimiento ODD en la sesión hija)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | plan-todo | collect | status | review (collect archiva observaciones, nunca inicia ni fusiona)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
  sessionManager?:{getSessionId?:()=>string};
@@ -41,19 +45,81 @@ function readRequest(value:string):{parentDir:string;units:readonly ParallelWork
 }
 export function registerParallelWorktreeCommand(
  register:(name:string,command:WorktreeCommand)=>void,
- options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;
+ options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;observationFile?:string;
   planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
-  loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>}
+  loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>;
+  loadChildAgentRecords?:(identity:TodoContext)=>Promise<readonly PublicAgentRecord[]>;
+  loadChildTaskAgentLinks?:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>}
 ):void{
  register(ASEN_WORKTREES_COMMAND,{
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:async(args,ctx)=>{
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="plan-todo"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="plan-todo"&&action!=="collect"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
+   if(action==="collect"){
+    if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||
+     !options?.journalFile||!options.sessionLinksFile||!options.planClaimsFile||
+     !options.observationFile||!options.loadTodos||!options.loadChildAgentRecords||
+     !options.loadChildTaskAgentLinks){
+     const unavailable={status:"unavailable" as const,reason:"T06 collection requires a live source Pi session, approved child ODD plans and genuine agent/task-link readers"};
+     ctx.ui.notify(unavailable.reason,"warning");return unavailable;
+    }
+    const source=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager,
+     sourceIdentity={sessionId:id,projectId:source};
+    const current=()=>{
+     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+      realpathSync(path.resolve(ctx.cwd))!==source)
+      throw new Error("Source Pi session or project changed during Worker evidence collection");
+    };
+    const sourceJournal=new ParallelTodoWorktreeJournal(options.journalFile),
+     sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
+     claimJournal=new ParallelChildPlanClaimJournal(options.planClaimsFile),
+     observations=new ParallelWorkerObservationJournal(options.observationFile);
+    const batches=await sourceJournal.list(sourceIdentity),batch=batches.at(-1);
+    current();
+    if(!batch||batch.state!=="prepared"){
+     const blocked={status:"blocked" as const,reason:"No last fully prepared parent ODD batch to collect; inspect the journal manually"};
+     ctx.ui.notify(blocked.reason,"warning");return blocked;
+    }
+    const inspect=()=>inspectParallelBatchWorkerOutcomes({
+     identity:sourceIdentity,sourceJournal,sessionJournal,planClaims:claimJournal,batchId:batch.id,
+     loadTodos:options!.loadTodos!,loadAgents:options!.loadChildAgentRecords!,
+     loadTaskAgentLinks:options!.loadChildTaskAgentLinks!
+    });
+    const preview=await inspect();current();
+    if(preview.status!=="ready-to-record"){
+     const blocked={status:"blocked" as const,batchId:batch.id,
+      blockers:preview.blockers,grantsAuthority:false as const,autoRetry:false as const};
+     ctx.ui.notify(JSON.stringify(blocked,null,2),"warning");return blocked;
+    }
+    const confirmed=await ctx.ui.confirm("Registrar observaciones de Workers de este lote?",[
+     "Lote ODD: "+batch.id,
+     ...preview.workers.map(unit=>unit.link.sourceTodoId+": "+unit.worker.agentState+" · "+unit.changes.status),
+     "Se registrará cada estado del AgentRuntime asociado a un Todo y su diff Git.",
+     "NO acredita modelo realmente consumido, test PASS, aceptación, grant, reintento ni merge.",
+     "Una interrupción puede dejar registros parciales para inspección; nunca se reenvían automáticamente."
+    ].join("\n"));
+    current();
+    if(confirmed!==true)return {status:"declined" as const,grantsAuthority:false as const,autoMerge:false as const};
+    const fresh=await inspect();current();
+    if(fresh.status!=="ready-to-record"||JSON.stringify(fresh)!==JSON.stringify(preview))
+     throw new Error("Parent batch or child Worker observations changed during consent; no receipts were recorded");
+    const recorded=[];
+    for(const unit of fresh.workers){
+     current();
+     recorded.push(await observations.record(unit));
+    }
+    const output={status:"observed-needs-independent-review" as const,batchId:batch.id,
+     observed:recorded.map(row=>({sourceTodoId:row.sourceTodoId,agentState:row.agentState,
+      changeState:row.worktreeChangeState,modelActual:"unknown" as const})),
+     acceptance:"not-accepted" as const,grantsAuthority:false as const,
+     autoRetry:false as const,autoMerge:false as const};
+    ctx.ui.notify(JSON.stringify(output,null,2),"info");return output;
+   }
    if(action==="plan-todo"){
     if(!id||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||!ctx.cwd||
      !options?.journalFile||!options.sessionLinksFile||!options.planClaimsFile||
@@ -188,6 +254,10 @@ export function registerParallelWorktreeCommand(
      options.planClaimsFile
     ).listSource({sessionId:id,projectId:root},linked):[];
     const claimedTasks=new Set(claimed.map(item=>item.sourceTodoId));
+    const receipts=options.observationFile?await new ParallelWorkerObservationJournal(
+     options.observationFile
+    ).listSource({sessionId:id,projectId:root},linked):[];
+    const receiptByTask=new Map(receipts.map(item=>[item.sourceTodoId,item]));
     const childObserved=new Map<string,Readonly<{agents:readonly {id:string;role:string;state:string}[];
      todos:readonly {taskId:string;role?:string;state:string}[]}>>();
     for(const link of linked){
@@ -210,6 +280,7 @@ export function registerParallelWorktreeCommand(
         sourceTodoUnchanged:live?.current.revision===task.taskRevision&&live?.current.state==="planned",
         worktreeRoot:task.worktreeRoot,worktreePresent:existsSync(task.worktreeRoot),
         writeSurfaces:task.writeSurfaces,handoffClaimed:claimedTasks.has(task.taskId),
+        ...(receiptByTask.has(task.taskId)?{workerReceipt:receiptByTask.get(task.taskId)}:{}),
         changes:record.state==="prepared"?inspectParallelWorktreeChanges({
          sourceRoot:record.projectId,worktreeRoot:task.worktreeRoot,
          baseRevision:record.sourceHead,writeSurfaces:task.writeSurfaces
