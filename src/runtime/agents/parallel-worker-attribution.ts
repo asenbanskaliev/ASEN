@@ -51,7 +51,12 @@ export function attributeParallelChildWorker(input:{
  if(links.length>1)throw new Error("Ambiguous child task-agent assignments");
  if(links.length===0)return undefined;
  const linked=links[0]!;
- if(linked.agentId!==todo.requestId)throw new Error("Child Worker agent ID does not match the issued ODD request");
+ // ODD Todo request IDs use "asen-plan:<identity>:worker"; the native
+ // AgentRuntime.startControlledWorker ID is "<identity>:worker", without
+ // the persistence-only "asen-plan:" prefix. Do not fabricate equality.
+ const issuedAgentId=todo.requestId.slice("asen-plan:".length);
+ if(linked.agentId!==issuedAgentId)
+  throw new Error("Child Worker agent ID does not match the issued ODD request");
  const found=agents.filter(agent=>agent.id===linked.agentId&&agent.role==="worker"&&
   agent.sessionId===owner.childSessionId&&sameWorkspaceIdentityPath(agent.projectId,owner.childProjectId));
  if(found.length!==1)throw new Error("Linked child Worker lifecycle evidence is absent or ambiguous");
