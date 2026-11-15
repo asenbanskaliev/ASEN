@@ -1040,7 +1040,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const checks=doctorChecks(input);return {exitCode:doctorExitCode(checks),checks};
   }});
   registerData("asen-route",{description:"Read-only ODD route diagnostic; complexity never selects SDD; ordinary requests belong in chat",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
-  const preparePlan=async(args:string|undefined,ctx:CommandContext,conversational=false):Promise<string>=>{
+  const preparePlan=async(args:string|undefined,ctx:CommandContext,conversational=false,deferChildLaunch=false):Promise<string>=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;if(!manager||!sessionId)throw new Error("ASEN planning requires the active Pi session");
    const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
@@ -1070,6 +1070,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    for(const item of persisted)todoIds.set(item.requestId!.slice("asen-plan:".length),item.taskId);
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
    output.persistence={status:"saved",sessionId:identity.sessionId,projectId:identity.projectId};
+   if(deferChildLaunch){
+    // A source-supervised child must persist its own ODD without starting
+    // any Pi agent here. The parent will authorize the independent Worker
+    // through the existing dispatcher; no inherited grants or double launch.
+    output.execution={started:false,authorized:false,reason:"deferred-to-source-supervisor"};
+    output.notice="Child ODD was saved without starting any agent. The original Pi session may use its own authorized plan dispatcher, or the attached source /asen-worktrees supervise may launch a dependency-ready Worker after separate Pi confirmation. No model call, Writer admission or merge occurred during planning.";
+    await refreshTodoWidget(ctx);
+    return JSON.stringify(output,null,2);
+   }
    const execution=await advancePlan(ctx);
    output.execution=execution;
    output.notice=execution.started?(execution.authorized?"The plan was saved and the exact scoped writer was started after Pi approval. Independent review and verification will continue automatically.":"The plan was saved and its first dependency-ready read-only task started automatically. A writer still requires exact Pi approval; completion requires a passing independent verifier."): `The plan was saved, but no task started: ${execution.reason??"automatic dispatch did not report a runnable task"} Explain the next step in ordinary language. Do not ask the user to inspect Todo state or run commands.`;
@@ -1836,7 +1845,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     loadChildAgentRecords:async identity=>(await agentRuntimePromise).list(identity),
     loadChildTaskAgentLinks:async identity=>taskAgentLinks.list(identity)
    }:{}),
-   planChildTodo:async(input,context)=>preparePlan(input,context as CommandContext),
+   planChildTodo:async(input,context)=>preparePlan(input,context as CommandContext,false,true),
    ...(agentRuntimePromise&&todoStorePromise&&taskAgentLinks?{
     launchChildWorker:async(unit,confirm,validateParent)=>{
      await validateParent();
