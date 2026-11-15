@@ -6,6 +6,7 @@ import {availableIndependentPiReviewers,runIndependentPiReview,runPiLensReview,t
 import {REVIEW_LENSES} from "./review-lens-contracts.js";
 import {consolidatePiLensReviews} from "./review-results.js";
 import {selectAdaptiveReviewLenses} from "./review-lens-selection.js";
+import {runJudgmentDay} from "./judgment-day.js";
 import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
@@ -157,7 +158,7 @@ async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:Revi
   return reviewRiskFromNativeAssessment(observation);
  }catch{return reviewRiskFromNativeAssessment(undefined);}
 }
-async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens)=>Promise<RouteChoice|undefined>,adaptive=false):Promise<unknown>{
+async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b")=>Promise<RouteChoice|undefined>,adaptive=false,judgmentDay=false):Promise<unknown>{
  const sessionId=context.sessionManager?.getSessionId?.(),registry=context.modelRegistry,author=context.model;
  if(!context.hasUI||!sessionId||!registry||!author||!context.ui.select||!context.ui.editor||!context.ui.confirm){
   const unavailable="Revisión independiente no disponible: se requiere una sesión Pi interactiva, modelo autor conocido y un modelo revisor autenticado distinto.";
@@ -246,7 +247,32 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   }
  }
  assertContextCurrent();
- const reviewerId="pi-model:"+model.provider+"/"+model.id;
+ let judges:readonly [PiReviewerModel,PiReviewerModel]|undefined;
+ if(judgmentDay){
+  const modelId=(candidate:PiReviewerModel)=>candidate.provider+"/"+candidate.id;
+  const routeA=await resolveLensRoute?.(context,"jd-judge-a");
+  assertContextCurrent();
+  const routeB=await resolveLensRoute?.(context,"jd-judge-b");
+  assertContextCurrent();
+  if(routeA?.thinking!==undefined||routeB?.thinking!==undefined)
+   throw new Error("Judgment Day thinking is configured but the in-process Pi review API cannot prove applying it");
+  const judgeA=routeA?.model===undefined?model:reviewers.find(candidate=>modelId(candidate)===routeA.model);
+  if(!judgeA)throw new Error("Judgment Day Judge A model is not authenticated or differs from available Pi models");
+  const candidates=reviewers.filter(candidate=>modelId(candidate)!==modelId(judgeA));
+  if(candidates.length===0)throw new Error("Judgment Day requires a second independent authenticated reviewer model");
+  let judgeB:PiReviewerModel|undefined;
+  if(routeB?.model!==undefined){
+   judgeB=candidates.find(candidate=>modelId(candidate)===routeB.model);
+  }else{
+   const choice=await context.ui.select("Selecciona segundo modelo independiente para Judgment Day",candidates.map(modelId),context.signal?{signal:context.signal}:{});
+   assertContextCurrent();
+   if(!choice)return {status:"cancelled",reason:"No second judge selected"};
+   judgeB=candidates.find(candidate=>modelId(candidate)===choice);
+  }
+  if(!judgeB)throw new Error("Judgment Day Judge B must be different, authenticated and available");
+  judges=[judgeA,judgeB];
+ }
+ const reviewerId="pi-model:"+(judges?judges[0].provider+"/"+judges[0].id:model.provider+"/"+model.id);
  let workspace:ReturnType<typeof openWorkspaceReview>;
  try{workspace=openWorkspaceReview({repositoryRoot:projectRoot,intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
   risk},{reviewPaths},correction?{previousProjection:correction.priorProjection,allowedPaths:correction.allowedPaths}:undefined);}
@@ -293,11 +319,12 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    }
   }
   if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
-  const consent=await context.ui.confirm(fourR?"Autorizar cuatro solicitudes de revisión 4R?":adaptive?`Autorizar ${selectedLenses.length} revisiones proporcionales?`:"Enviar el diff al modelo revisor?",[
-   fourR?"Pi enviará el mismo diff en CUATRO llamadas separadas a los modelos indicados abajo (posible coste por llamada):":adaptive?`Pi enviará el mismo diff en ${selectedLenses.length} llamadas separadas (posible coste por llamada):`:"Pi enviará el diff completo del candidato a:",
+  const consent=await context.ui.confirm(judgmentDay?"Autorizar dos jueces independientes Judgment Day?":fourR?"Autorizar cuatro solicitudes de revisión 4R?":adaptive?`Autorizar ${selectedLenses.length} revisiones proporcionales?`:"Enviar el diff al modelo revisor?",[
+   judgmentDay?"Pi enviará el mismo diff en DOS llamadas separadas a dos modelos independientes (posible coste por llamada):":fourR?"Pi enviará el mismo diff en CUATRO llamadas separadas a los modelos indicados abajo (posible coste por llamada):":adaptive?`Pi enviará el mismo diff en ${selectedLenses.length} llamadas separadas (posible coste por llamada):`:"Pi enviará el diff completo del candidato a:",
    reviewerId,
    "",
    ...(specialized?["Lentes y modelos verificados: "+selectedLenses.map(lens=>lens+" = "+lensModels.get(lens)!.provider+"/"+lensModels.get(lens)!.id).join("; "),"Estas revisiones son análisis; no conceden autorización RDD ni de escritura."]:[]),
+   ...(judgmentDay?["Judge A: "+judges![0].provider+"/"+judges![0].id,"Judge B: "+judges![1].provider+"/"+judges![1].id,"Judgment Day NO inicia Fix Agent ni autoriza escrituras o integración."]:[]),
    "Candidato: "+evidence.candidate.treeIdentity,
    "Archivos: "+(paths.join(", ")||"(sin cambios)"),
    "El índice real no se modifica. No se ejecutan pruebas en la vista.",
@@ -307,6 +334,23 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   assertCorrectionReserved();
   assertNoSensitiveReviewPaths([...evidence.modifiedFiles.map(file=>file.path),...evidence.candidateFiles.map(file=>file.path)]);
   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+  if(judgmentDay){
+   assertContextCurrent();assertReviewSessionOpen(workspace.session);
+   const report=await runJudgmentDay({registry,author,judgeA:judges![0],judgeB:judges![1],evidence,requirements,...(context.signal?{signal:context.signal}:{})});
+   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+   assertContextCurrent();
+   const visible=report.findings.slice(0,40).map(({judge,reviewerId,finding})=>({judge,reviewerId,...finding}));
+   const result=Object.freeze({
+    status:report.status,requestId:report.requestId,candidate:evidence.candidate,judges:report.judges,
+    findings:visible,omittedFindings:report.findings.length-visible.length,
+    acceptance:report.acceptance,deliveryAuthority:report.deliveryAuthority,autoMerge:report.autoMerge,
+    fixAgent:report.fixAgent,nativeRddAdmission:"not-attempted"
+   });
+   closeWorkspace();
+   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+   assertContextCurrent();context.ui.notify(JSON.stringify(result,null,2),report.status==="analysis-complete"?"info":"error");
+   return result;
+  }
   if(specialized){
    const reports=[];
    for(const lens of selectedLenses){
@@ -385,7 +429,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  }
 }
 /** Registro propio de ASEN: prepara el traspaso; no emite dictamen ni autorización RDD. */
-export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl(),resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens)=>Promise<RouteChoice|undefined>):OrdinaryReviewCommandController{
+export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl(),resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b")=>Promise<RouteChoice|undefined>):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
@@ -393,10 +437,11 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   if(command==="workspace")return runWorkspaceReview(context,nativeRdd);
   if(command==="workspace 4r")return runWorkspaceReview(context,nativeRdd,undefined,true,resolveLensRoute);
   if(command==="workspace adaptive")return runWorkspaceReview(context,nativeRdd,undefined,false,resolveLensRoute,true);
+  if(command==="workspace judgment-day")return runWorkspaceReview(context,nativeRdd,undefined,false,resolveLensRoute,false,true);
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");
