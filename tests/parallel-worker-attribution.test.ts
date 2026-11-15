@@ -14,7 +14,7 @@ const owner:ParallelChildSessionLink={
  sourceHead:sha,attachedAt:"2026-11-15T18:00:00.000Z",
  authority:"none",autoDispatch:false,autoMerge:false
 } as ParallelChildSessionLink;
-const owned={...owner,writeSurfaces:["src/a.ts"]} as ParallelChildSessionLink;
+const writeSurfaces=["src/a.ts"];
 const todo:SourceTodoRow={
  taskId:"child-todo-a",title:"Implement isolated child",requestId:"asen-plan:child-a:worker",
  current:{state:"succeeded",sessionId:"child-pi",projectId:child,revision:5},
@@ -30,7 +30,7 @@ const binding:TaskAgentLink={
  taskId:"child-todo-a",agentId:agent.id,sessionId:"child-pi",projectId:child,
  createdAt:"2026-11-15T18:01:00.000Z"
 };
-const values=()=>({owner:owned,todos:[todo],agents:[agent],taskAgentLinks:[binding]});
+const values=()=>({owner,writeSurfaces,todos:[todo],agents:[agent],taskAgentLinks:[binding]});
 test("T06 genuinely linked terminal child Worker is only advisory, not integration PASS",()=>{
  const input=values(),before=structuredClone(input);
  const report=attributeParallelChildWorker(input);
