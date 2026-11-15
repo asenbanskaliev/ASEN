@@ -23,7 +23,7 @@ test("T06 reconciliation may request manual review but never merges or accepts",
 });
 test("T06 unfinished, absent or reserved worktrees cannot be marked ready",()=>{
  const a=reconcileParallelWorktreeBatch({batchState:"prepared",units:[unit("a","clean",[],"running"),unit("b","clean",[],"queued")]});
- assert.equal(a.disposition,"not-started");assert.equal(a.autoMerge,false);
+ assert.equal(a.disposition,"observed-active");assert.equal(a.autoMerge,false);
  const b=reconcileParallelWorktreeBatch({batchState:"reserved",units:[unit("a"),unit("b")]});
  assert.equal(b.disposition,"blocked");assert.match(b.blockers[0]!,/incomplete/u);
 });
@@ -59,4 +59,12 @@ test("T06 malformed aggregation never produces an acceptance",()=>{
  ]]){
   assert.throws(()=>reconcileParallelWorktreeBatch({batchState:"prepared",units:units as ParallelWorktreeReviewUnit[]}));
  }
+});
+
+test("T06 a completed no-op Worker still requires human review, not fabricated success",()=>{
+ const result=reconcileParallelWorktreeBatch({batchState:"prepared",units:[
+  unit("a","clean",[],"completed"),unit("b","clean",[],"completed")
+ ]});
+ assert.equal(result.disposition,"manual-review-required");
+ assert.equal(result.acceptance,"not-accepted");assert.equal(result.autoMerge,false);
 });
