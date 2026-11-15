@@ -122,7 +122,7 @@ test("R4-04 scenario contract excludes methodology as a third runtime",()=>{
 // now and proven at GREEN; none may regress the existing comparator rules.
 import {gradeRealC01,C01_PROMPT} from "../scripts/r4-two-pi-beam-c01.mjs";
 import {observationsFromC01Report,attestC01Comparison,validateParityConsentReceipt,
- validateParityReviewRecord} from "../scripts/shell-asen-parity.mjs";
+ validateParityReviewRecord,signParityProvenanceRecord} from "../scripts/shell-asen-parity.mjs";
 import {createHash} from "node:crypto";
 import {mkdirSync,mkdtempSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -144,6 +144,9 @@ function scratchC01(report){
 const consumed=(report,artifact)=>compareShellAsenClaims({readiness:ready(),
  observations:observationsFromC01Report({report,readiness:ready(),artifactPath:artifact})});
 const RUN={candidateSha:sha,runId:"44",runAttempt:"1"};
+const ATTESTATION_KEYS={ownerKey:Buffer.alloc(32,0x31),reviewerKey:Buffer.alloc(32,0x59)};
+const signedConsent=(over={})=>signParityProvenanceRecord(consentReceipt(over),ATTESTATION_KEYS.ownerKey);
+const signedReview=(over={})=>signParityProvenanceRecord(reviewRecord(over),ATTESTATION_KEYS.reviewerKey);
 const consentReceipt=(over={})=>({schema:"asen-parity-consent-receipt/v1",
  receiptId:"owner-consent-000001",grantedBy:"owner:asenbanskaliev",
  grantedAt:"2026-11-08T00:00:00.000Z",candidateSha:sha,
@@ -203,8 +206,8 @@ test("UFC-M5-06 genuine bound attestation marks claims yet can never certify FUL
  const report=c01Report();const {dir,file}=scratchC01(report);
  t.after(()=>rmSync(dir,{recursive:true,force:true,maxRetries:8}));
  const comparison=consumed(report,file);
- const attested=attestC01Comparison({comparison,consentReceipt:consentReceipt(),
-  reviewRecord:reviewRecord(),runContext:RUN});
+ const attested=attestC01Comparison({comparison,consentReceipt:signedConsent(),
+  reviewRecord:signedReview(),runContext:RUN,provenance:ATTESTATION_KEYS});
  assert.equal(attested.cases.find(x=>x.id==="C01").status,"MATCH_CLAIM_ATTESTED");
  assert.equal(attested.certifiedMatches,0);assert.equal(attested.certifiedDifferences,0);
  assert.equal(attested.globalFull,false);
@@ -231,6 +234,28 @@ test("UFC-M5-06 independent review records demand independence and an approving 
  const report=c01Report();const {dir,file}=scratchC01(report);
  try{
   assert.throws(()=>attestC01Comparison({comparison:consumed(report,file),
-   consentReceipt:consentReceipt(),reviewRecord:reviewRecord({verdict:"rejected"}),runContext:RUN}),/approved|verdict/iu);
+   consentReceipt:signedConsent(),reviewRecord:signedReview({verdict:"rejected"}),
+    runContext:RUN,provenance:ATTESTATION_KEYS}),/approved|verdict/iu);
  }finally{rmSync(dir,{recursive:true,force:true,maxRetries:8});}
+});
+
+
+test("UFC-M5-06 forged owner and independent reviewer identities never attest a comparison",t=>{
+ const report=c01Report();const {dir,file}=scratchC01(report);
+ t.after(()=>rmSync(dir,{recursive:true,force:true,maxRetries:8}));
+ const comparison=consumed(report,file);
+ const forgedOwner=consentReceipt();
+ const forgedReviewer=reviewRecord();
+ assert.throws(()=>attestC01Comparison({comparison,consentReceipt:forgedOwner,
+  reviewRecord:forgedReviewer,runContext:RUN}),/trusted.*keys/iu);
+ assert.throws(()=>attestC01Comparison({comparison,consentReceipt:forgedOwner,
+  reviewRecord:forgedReviewer,runContext:RUN,provenance:ATTESTATION_KEYS}),/unverified/iu);
+ assert.throws(()=>attestC01Comparison({comparison,consentReceipt:signedConsent(),
+  reviewRecord:signedReview({findings:"forged"}),runContext:RUN,
+  provenance:{ownerKey:ATTESTATION_KEYS.ownerKey,reviewerKey:ATTESTATION_KEYS.ownerKey}}),/independent/iu);
+ assert.throws(()=>attestC01Comparison({comparison,consentReceipt:{...signedConsent(),grantedBy:"owner:other"},
+  reviewRecord:signedReview(),runContext:RUN,provenance:ATTESTATION_KEYS}),/unverified/iu);
+ assert.throws(()=>attestC01Comparison({comparison,consentReceipt:signedConsent(),
+  reviewRecord:{...signedReview(),findings:"artificial approval"},runContext:RUN,
+  provenance:ATTESTATION_KEYS}),/unverified/iu);
 });

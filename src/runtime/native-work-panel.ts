@@ -28,6 +28,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
  const sections=[...ASEN_PANEL_SECTIONS];
  const activeName=()=>sections[active]!;
  type Row={text:string;section?:AsenPanelSection;heading?:boolean};
+ let displayedRows:Row[]=[];
  // Fit plain text first. Theme escapes must never pass back through sanitization.
  const fitLine=(left:string,right:string,width:number)=>{
   const tail=visibleWidth(right)+2<width?right:"";
@@ -64,6 +65,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   return rows;
  };
  const render=(width:number):string[]=>{
+  displayedRows=[];
   const cols=Number.isFinite(width)?Math.max(1,Math.min(1000,Math.floor(width))):1;
   const requested=controls.availableRows?controls.availableRows():controls.terminalRows()*.9;
   const height=Number.isFinite(requested)?Math.max(1,Math.min(1000,Math.floor(requested))):1;
@@ -86,7 +88,8 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    revealActive=false;
   }
   scrollTop=Math.min(max,Math.max(0,scrollTop));
-  const visible=content.slice(scrollTop,scrollTop+usable).map(row=>{
+  displayedRows=content.slice(scrollTop,scrollTop+usable);
+  const visible=displayedRows.map(row=>{
    const focused=row.heading&&row.section===activeName();
    const muted=/unknown|unavailable|unverified|No work/u.test(row.text);
    return paint(" "+row.text,muted?"muted":focused?"accent":"text",row.heading);
@@ -118,24 +121,19 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   if(matches("tui.editor.deleteCharBackward","\u007f","\b")){selectedOnly=false;scrollTop=0;controls.requestRender();}
  };
  const handleMouse=(event:TuiMouseEvent):TuiMouseEventResult|undefined=>{
-  if(event.type!=="press"||event.button!=="left")return undefined;
-  // Map click y to section header index via row tracking
-  let rowIndex=0;
-  for(const [index,section] of sections.entries()){
-   if(selectedOnly&&section!==activeName())continue;
-   if(rowIndex===event.y){
-    active=index;scrollTop=0;revealActive=true;
-    if(collapsed.has(section))collapsed.delete(section);else collapsed.add(section);
-    controls.requestRender();return {handled:true};
-   }
-   rowIndex++;
-   const open=selectedOnly||!collapsed.has(section);
-   if(!open)continue;
-   // Skip content rows for this section
-   const contentRows=renderAsenPanelSection(snapshot,section,72).length;
-   rowIndex+=contentRows;
-  }
-  return undefined;
+  if(event.type!=="press"||event.button!=="left"||closeOnly)return undefined;
+  if(controls.stillCurrent&&!controls.stillCurrent()){controls.close();return {handled:true};}
+  // Title is rendered on row 0. Only the headings ACTUALLY displayed in
+  // the current viewport can be clicked, independent of folding or scroll.
+  const index=Number.isSafeInteger(event.y)?event.y-1:-1;
+  const target=index>=0?displayedRows[index]:undefined;
+  if(!target?.heading||!target.section)return undefined;
+  active=sections.indexOf(target.section);
+  if(active<0)return undefined;
+  scrollTop=0;revealActive=true;
+  if(collapsed.has(target.section))collapsed.delete(target.section);
+  else collapsed.add(target.section);
+  controls.requestRender();return {handled:true};
  };
  return {render,handleInput,handleMouse,invalidate(){scrollTop=0;}};
 }

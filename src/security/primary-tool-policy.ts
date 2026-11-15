@@ -107,8 +107,17 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
     const decision=classifyNormalShellCommand(command);
     if(decision.action==="deny")return denied("destructive shell command");
     if(autoRequested&&!(await autoAllowed()))return denied("Auto independent review is unavailable or denied");
+    // Delivery and conflict-marker controls run BEFORE pass/YOLO/Super YOLO
+    // shortcuts. The only existing no-review exception remains the strictly
+    // scoped, human-selected YOLO routine feature-branch delivery contract.
+    const delivery=checkDeliveryPreflight({cwd:context.cwd,command,deliveryAuthorized:false,signal:context.signal});
+    const routineWaiver=(mode==="yolo"||mode==="super-yolo")&&isYoloRoutineDelivery(command);
+    if(delivery?.blocked&&!routineWaiver&&(mode==="super-yolo"||autoRequested||decision.action==="pass"))
+     return denied(delivery.reason??"delivery preflight blocked");
+    const markerResult=await checkConflictMarkers(command,context.cwd,context.signal);
+    if(markerResult?.blocked)return denied(markerResult.reason??"delivery conflict markers detected");
     if(decision.action==="pass")return undefined;
-    if(mode==="super-yolo")return undefined; // Hard denies and credential paths already checked.
+    if(mode==="super-yolo")return undefined; // No publish/merge bypass: checked above.
     if(mode==="yolo"&&decision.dataLossKind==="filesystem"&&
      isYoloTempScratchRemoval(command))return undefined;
     if(mode==="yolo"&&decision.dataLossKind===undefined&&
@@ -123,15 +132,10 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
      context.signal!==signal||signal?.aborted||(options.getMode?.(context)??"normal")!==mode||
      options.modeEpoch?.()!==startEpoch||(event.input as {command?:unknown}).command!==command)
      return denied("guarded shell confirmation expired");
-    // P23+P49: delivery safety guards — after human authorization, before execution
-    if(typeof command==="string"&&context.cwd!=null){
-     const safeCwd=context.cwd as string;
-     const safeCmd=command as string;
-     const preflight=checkDeliveryPreflight({cwd:safeCwd,command:safeCmd,deliveryAuthorized:false});
-     if(preflight?.blocked)return denied(preflight.reason??"delivery preflight blocked");
-     const markers=await checkConflictMarkers(safeCmd,safeCwd);
-     if(markers?.blocked)return denied(markers.reason??"delivery conflict markers detected");
-    }
+    // A shell confirmation alone never grants independent publication authority.
+    // Conflict-marker checks already ran for every mode above.
+    if(delivery?.blocked&&!routineWaiver)
+     return denied(delivery.reason??"delivery preflight blocked");
     return undefined;
    }
    const surfaceBlock=evaluateExecutionSurface(toolName,input);

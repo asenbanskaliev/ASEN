@@ -36,32 +36,137 @@ const exactProvenanceDocs=new Set([
   "odd/tasks/storage-capability-rejection.md",
 ]);
 
-// Compatibility-contract references: ASEN deliberately reads the reference shell's
-// on-disk paths, cache roots and message/wire identifiers so existing user state and
-// tooling keep working across both. These are inert string constants and provenance
-// comments — never executable upstream imports (verified: no `import`/`require` of
-// upstream code). Each path is registered explicitly; nothing here authorizes new
-// paths, new imports, or native review.
-const compatibilityContractPaths=new Set([
-  "src/agents/tool-overlay.ts",            // reads `.pi/<shell>/tools.json` overlay source
-  "src/review/delivery-preflight.ts",      // provenance comment naming the reference lib
-  "src/runtime/desktop-rpc.ts",            // provenance comment (REA of reference lib)
-  "src/runtime/guide-tour.ts",             // ported reference guide contract comment
-  "src/runtime/image-disk-cache.ts",       // default cache root `<shell>/images`
-  "src/runtime/reply-language-anchor.ts",  // recognizes `<shell>-todo-state` message types
-  "src/runtime/voice-dictation.ts",        // provenance comment (reference lib guards)
-  "src/security/execution-surface-guard.ts",// provenance comment naming the reference lib
-  "tests/image-disk-cache.test.ts",        // asserts the `<shell>/images` cache root contract
-  "tests/ordinary-review-assessment.test.ts",// fixtures use the approved wire schema id
-  "tests/pi-process-runner.test.ts",       // fixtures write `.pi/<shell>/tools.json`
-  "tests/reply-language-anchor.test.ts",   // fixtures use `<shell>-todo-state` types
-  "tests/tool-overlay.test.ts",            // fixtures write `.pi/<shell>/tools.json`
+// Never exempt an entire executable file: each legitimate reference-bearing
+// line is recorded verbatim (ROT13 only to avoid self-triggering the scanner).
+// A changed line, extra occurrence, executable import or unrelated reference
+// remains subject to the normal forbidden-term scan.
+const encodedCompatibilityLines = new Map([
+ [
+  "src/agents/tool-overlay.ts",
+  [
+   " * NFRA ntrag gbby bireynl (C46, cbegrq sebz Tragyr Furyy i4.8.0 `yvo/ntrag-gbby-bireynl.gf`):",
+   " *   3. cebwrpg `<pjq>/.cv/tragyr-nv/gbbyf.wfba`",
+   " pbafg fbheprf:fgevat[]=[...qebcVaCnguf(pbasvtUbzr),wbva(pbasvtUbzr,\"gbbyf.wfba\"),wbva(pjq,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\")];"
+  ]
+ ],
+ [
+  "src/review/delivery-preflight.ts",
+  [
+   " * Ersrerapr: tragyr-furyy yvo/erivrj-qryvirel-cersyvtug.gf naq"
+  ]
+ ],
+ [
+  "src/runtime/desktop-rpc.ts",
+  [
+   " * Frphevgl fgnapr (ERN bs Tragyr Furyy i4.8.0 `yvo/qrfxgbc-ecp.gf`): gur"
+  ]
+ ],
+ [
+  "src/runtime/guide-tour.ts",
+  [
+   "// Thvqrq gbhef: gur cher unys bs gur ersrerapr furyy'f tragyr-thvqr pbagenpg, cbegrq sbe NFRA. N"
+  ]
+ ],
+ [
+  "src/runtime/image-disk-cache.ts",
+  [
+   " * Guvf vf gur fgbentr pbagenpg qvfgvyyrq sebz gur Tragyr Furyy i4.8.0",
+   " * `yvo/vzntr-qvfx-pnpur.gf` (frr bqq/rivqrapr/tragyr-furyy-i4.8.0-qrygn-erpbapvyvngvba.zq,",
+   "/** Qrsnhyg pnpur ebbg: `KQT_PNPUR_UBZR/tragyr-furyy/vzntrf`, be `~/.pnpur/tragyr-furyy/vzntrf`. */",
+   "  erghea wbva(onfr, \"tragyr-furyy\", \"vzntrf\");"
+  ]
+ ],
+ [
+  "src/runtime/reply-language-anchor.ts",
+  [
+   " * Cbeg bs Tragyr Furyy i4.8.0 yvo/ercyl-ynathntr-napube.gf.",
+   " vs (pg === \"tragyr-gbqb-fgngr\" || pg === \"tragyr-gbqb-erzvaqre\") erghea gehr;"
+  ]
+ ],
+ [
+  "src/runtime/voice-dictation.ts",
+  [
+   " * Guvf vf gur yrtny-genafvgvba ybtvp qvfgvyyrq sebz gur Tragyr Furyy i4.8.0",
+   " * `yvo/ibvpr-frffvba.gf` thneqf (frr bqq/rivqrapr/tragyr-furyy-i4.8.0-qrygn-erpbapvyvngvba.zq,"
+  ]
+ ],
+ [
+  "src/security/execution-surface-guard.ts",
+  [
+   " * Cbeg bs Tragyr Furyy i4.8.0 yvo/rkrphgvba-fhesnpr-thneq.gf."
+  ]
+ ],
+ [
+  "tests/image-disk-cache.test.ts",
+  [
+   "  nffreg.rdhny(qrsnhygPnpurEbbg({ KQT_PNPUR_UBZR: \"/kqt-pnpur\" }), wbva(\"/kqt-pnpur\", \"tragyr-furyy\", \"vzntrf\"));",
+   "  nffreg.rdhny(qrsnhygPnpurEbbg({ UBZR: \"/snxr-ubzr\" }), wbva(\"/snxr-ubzr\", \".pnpur\", \"tragyr-furyy\", \"vzntrf\"));",
+   "  nffreg.rdhny(qrsnhygPnpurEbbg({}), wbva(ubzrqve(), \".pnpur\", \"tragyr-furyy\", \"vzntrf\"));",
+   "  nffreg.rdhny(qrsnhygPnpurEbbg({ KQT_PNPUR_UBZR: \"\" }), wbva(ubzrqve(), \".pnpur\", \"tragyr-furyy\", \"vzntrf\"));",
+   "  nffreg.rdhny(qrsnhygPnpurEbbg({ KQT_PNPUR_UBZR: \"eryngvir/pnpur\" }), wbva(ubzrqve(), \".pnpur\", \"tragyr-furyy\", \"vzntrf\"));"
+  ]
+ ],
+ [
+  "tests/ordinary-review-assessment.test.ts",
+  [
+   " pbafg cnlybnq={fpurzn:\"tragyr-nv.erivrj-nffrffzrag/i1\",punatrq_cnguf:1,punatrq_yvarf:1,ernfbaf:[],pnaqvqngr:{xvaq:\"pheerag-punatrf\"},...qngn};",
+   " pbafg fgqbhg=WFBA.fgevatvsl({fpurzn:\"tragyr-nv.erivrj-nffrffzrag/i1\",evfx:\"zrqvhz\",ernfbaf:[{pbqr:\"punatrq_svyrf\"}],punatrq_cnguf:1,punatrq_yvarf:12,pnaqvqngr:{xvaq:\"pheerag-punatrf\"}});",
+   " pbafg fgqbhg=WFBA.fgevatvsl({fpurzn:\"tragyr-nv.erivrj-nffrffzrag/i1\",evfx:\"uvtu\",yrafrf:[\"eryvnovyvgl\",\"evfx\"],ernfbaf:[{pbqr:\"funerq_pbagenpg\"}],punatrq_cnguf:2,punatrq_yvarf:40,pnaqvqngr:{xvaq:\"pheerag-punatrf\"}});"
+  ]
+ ],
+ [
+  "tests/pi-process-runner.test.ts",
+  [
+   " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
+   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({nqq:[\"terc\",\"ernq\"],erzbir:[\"ernq\"]}));",
+   " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
+   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({erzbir:[\"ernq\"]}));"
+  ]
+ ],
+ [
+  "tests/reply-language-anchor.test.ts",
+  [
+   "  nffreg.bx(vfCnffvirZrffntr({ phfgbzGlcr: \"tragyr-gbqb-fgngr\" }));",
+   "   { phfgbzGlcr: \"tragyr-gbqb-fgngr\", pbagrag: \"fgngr\" },"
+  ]
+ ],
+ [
+  "tests/tool-overlay.test.ts",
+  [
+   " njnvg chgWfba(wbva(pjq,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),{nqq:[\"onfu\"]});",
+   " njnvg chgWfba(wbva(pjq,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),{erzbir:[\"qrcybl\"]});",
+   " njnvg chgWfba(wbva(pjq,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),{nqq:[\"cebwrpg\"],erzbir:[\"funerq\"]});",
+   " njnvg chgWfba(wbva(pjq,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),{nqq:[\"qrcybl\"]});",
+   " njnvg chgWfba(wbva(pjq,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),{nqq:[\"qrcybl\"]});",
+   " njnvg chgWfba(wbva(pjq,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),{});",
+   " njnvg chgWfba(wbva(pjq,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),{nqq:[\"qrcybl\"],erzbir:[\"onfu\"]});"
+  ]
+ ]
 ]);
-export function isCompatibilityContractPath(path){
-  return compatibilityContractPaths.has(path);
+function decodeLine(text) {
+ return text.replace(/[A-Za-z]/g, ch => String.fromCharCode(
+  ch.charCodeAt(0) + (ch.toLowerCase() < "n" ? 13 : -13)));
 }
-export function isPinnedReferenceDocument(path){
-  return exactProvenanceDocs.has(path)||compatibilityContractPaths.has(path);
+export function isPinnedReferenceDocument(path) {
+ return exactProvenanceDocs.has(path);
+}
+export function maskApprovedReferenceTokens(path, content) {
+ const approved = encodedCompatibilityLines.get(path);
+ let result = maskApprovedWireSchemas(path, content);
+ if (!approved) return result;
+ const counts = new Map();
+ for (const line of approved.map(decodeLine)) counts.set(line, (counts.get(line) ?? 0) + 1);
+ result = result.split("\n").map(line => {
+  // Git may materialize CRLF on Windows. Retain the strict line identity
+  // apart from that platform-owned line ending.
+  const comparable = line.endsWith("\r") ? line.slice(0, -1) : line;
+  const previous = counts.get(comparable) ?? 0;
+  if (previous === 0) return line;
+  counts.set(comparable, previous - 1);
+  // Mask only an unchanged, counted, known line, never a whole source file.
+  return line.replace(new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"), "giu"), "<approved-compat>");
+ }).join("\n");
+ return result;
 }
 export function maskApprovedWireSchemas(path,content){
   if(!approvedWirePaths.has(path))return content;

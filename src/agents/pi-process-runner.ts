@@ -256,6 +256,14 @@ export class PiProcessRunner implements AgentRunner{
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
    const fallbackChain=fallbackConfig?.chain??[],fallbackEnabled=fallbackChain.length>0,triedModels=new Set<string>(),cooldown=getProcessModelFallbackCooldown();
    let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!fallbackEnabled,rpcSequence=0,currentModel=request.model;
+   // A correlated continuation RPC response and its completion events can
+   // arrive together in one stdout chunk, before the sendRpc await resumes.
+   // Hold only a *validated* new-turn completion until the transition commits.
+   let continuationPromptId:string|undefined,continuationAcked=false;
+   let continuationMessageEnded=false,continuationAgentEnded=false,deferredContinuationSettled=false;
+   // Keep the completion gate active even after the continuation's RPC
+   // response resolves; a delayed duplicate agent_settled must not finish it.
+   let continuationTurnPending=false;
    const pendingRpc=new Map<string,{resolve:(response:Record<string,unknown>)=>void}>();
    const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
    let selectionRequested=false,selectionResponded=false;
@@ -277,9 +285,10 @@ export class PiProcessRunner implements AgentRunner{
     void terminateTree(child,closed).then(()=>finish(result));
    };
    const alive=()=>!settled&&!stopResult&&!signal?.aborted;
-   const sendRpc=(payload:Record<string,unknown>):Promise<Record<string,unknown>>=>{
+   const sendRpc=(payload:Record<string,unknown>,onIssued?:(id:string)=>void):Promise<Record<string,unknown>>=>{
     if(!alive())return Promise.resolve({success:false,error:"task is not running"});
     const id=`asen-fallback:${request.id}:${++rpcSequence}`;
+    onIssued?.(id);
     return new Promise(resolveRpc=>{pendingRpc.set(id,{resolve:resolveRpc});try{child.stdin.write(JSON.stringify({id,...payload})+"\n");}catch{pendingRpc.delete(id);resolveRpc({success:false,error:"RPC transport unavailable"});}});
    };
    const publishFallback=(change:Omit<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">)=>{
@@ -288,6 +297,16 @@ export class PiProcessRunner implements AgentRunner{
     for(const subscription of fallbackSubscriptions){if(!this.#fallbackSubscriptions.has(subscription))continue;try{subscription.listener(observation);}catch{/* Observers cannot affect child execution. */}}
    };
    const closeSettled=(category?:TerminalErrorCategory)=>{if(!alive())return;finalFailure=category;try{child.stdin.end();}catch{stop({id:request.id,ok:false,output:"pi stdin error during settlement"});}};
+   const settleCurrentTurn=()=>{
+    // A completion already accepted for this turn cannot be replayed.
+    if(!alive()||finalAgentSettled)return;
+    if(lastAssistantFailure&&shouldFallback(lastAssistantFailure)){
+     finalAgentSettled=false;
+     continueFallback(lastAssistantFailure);
+    }else{
+     finalAgentSettled=true;triedModels.clear();closeSettled(lastAssistantFailure);
+    }
+   };
    const continueFallback=(category:TerminalErrorCategory)=>{
     if(fallbackInProgress||!alive())return;fallbackInProgress=true;agentEnded=false;
     if(currentModel){triedModels.add(currentModel);cooldown.mark(currentModel,category);}else triedModels.add("<provider-default>");
@@ -302,9 +321,24 @@ export class PiProcessRunner implements AgentRunner{
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
       if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!alive())return;if(effort.success===true)appliedThinking=thinking;}
       const observation=Object.freeze({...(from===undefined?{}:{from}),to,category,...(appliedThinking===undefined?{}:{thinking:appliedThinking})});publishFallback(observation);
-      const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."});if(!alive())return;
-      if(resumed.success!==true){fallbackInProgress=false;closeSettled(category);return;}
-      lastAssistantFailure=undefined;finalFailure=undefined;finalAgentSettled=false;fallbackInProgress=false;return;
+      // Clear the *previous* turn's failure before issuing the continuation.
+      // The next turn may complete before this await resumes: do not erase
+      // its observed outcome and do not discard its agent_settled event.
+      lastAssistantFailure=undefined;finalFailure=undefined;finalAgentSettled=false;
+      continuationPromptId=undefined;continuationAcked=false;
+      continuationMessageEnded=false;continuationAgentEnded=false;deferredContinuationSettled=false;
+      continuationTurnPending=true;
+      const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."},id=>{continuationPromptId=id;});
+      if(!alive())return;
+      if(resumed.success!==true||!continuationAcked){
+       continuationPromptId=undefined;continuationTurnPending=false;fallbackInProgress=false;closeSettled(category);return;
+      }
+      // Both paths (separate chunks and one coalesced stdout chunk) enter
+      // the same settled-turn logic, exactly once, after the RPC is admitted.
+      const settleDeferred=deferredContinuationSettled;
+      continuationPromptId=undefined;fallbackInProgress=false;
+      if(settleDeferred){continuationTurnPending=false;settleCurrentTurn();}
+      return;
      }
     })().catch(()=>{fallbackInProgress=false;closeSettled(category);});
    };
@@ -319,9 +353,16 @@ export class PiProcessRunner implements AgentRunner{
      const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
      if(type==="response"&&typeof response.id==="string"){
-      const pending=pendingRpc.get(response.id);if(pending){pendingRpc.delete(response.id);pending.resolve(record as Record<string,unknown>);continue;}
+      const pending=pendingRpc.get(response.id);if(pending){
+       if(response.id===continuationPromptId)continuationAcked=response.success===true;
+       pendingRpc.delete(response.id);pending.resolve(record as Record<string,unknown>);continue;
+      }
      }
-     if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant")lastAssistantFailure=classifyAssistantError((record as {message?:Parameters<typeof classifyAssistantError>[0]}).message);
+     if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant"&&
+        (!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
+      lastAssistantFailure=classifyAssistantError((record as {message?:Parameters<typeof classifyAssistantError>[0]}).message);
+      if(continuationTurnPending&&continuationAcked)continuationMessageEnded=true;
+     }
      // Pi 1.2 RPC wire strips cumulative message from message_update; bind
      // text deltas to a preceding native message_start(role=assistant), never
      // to a model-controlled property or an untracked stream fragment.
@@ -368,12 +409,26 @@ export class PiProcessRunner implements AgentRunner{
       if(retainedBytes>max){overflow=true;stop({id:request.id,ok:false,output:`pi retained output exceeded ${max} bytes`});return;}
       stdout+=retained;
      }
-     if(type==="agent_end")agentEnded=true;
+     if(type==="agent_end"&&(!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
+      agentEnded=true;
+      if(continuationTurnPending&&continuationAcked)continuationAgentEnded=true;
+     }
      if(response.type==="tool_execution_start"&&this.options.noTools){toolAttempted=true;stop({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});return;}
      if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled){child.stdin.end();continue;}
-     if(response.type==="agent_settled"&&policyLoaded&&fallbackEnabled&&!fallbackInProgress){
-      if(lastAssistantFailure&&shouldFallback(lastAssistantFailure)){finalAgentSettled=false;continueFallback(lastAssistantFailure);}
-      else{finalAgentSettled=true;triedModels.clear();closeSettled(lastAssistantFailure);}
+     if(response.type==="agent_settled"&&policyLoaded&&fallbackEnabled){
+      if(fallbackInProgress){
+       // Before the correlated continuation response this may be a stale
+       // first-turn notification. After it, require both real end events.
+       // Never accept a duplicate/forged settled marker on its own.
+       if(continuationPromptId!==undefined&&continuationAcked&&continuationMessageEnded&&continuationAgentEnded)
+        deferredContinuationSettled=true;
+      }else if(continuationTurnPending){
+       // After the RPC promise resumed, only the *new* turn's completion
+       // pair can settle it. Replayed/stale agent_settled alone is inert.
+       if(continuationAcked&&continuationMessageEnded&&continuationAgentEnded){
+        continuationTurnPending=false;settleCurrentTurn();
+       }
+      }else settleCurrentTurn();
       continue;
      }
      if(response.type!=="response"||response.id!==preflightId)continue;

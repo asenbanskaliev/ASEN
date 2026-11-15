@@ -303,3 +303,25 @@ test("panel honors injected host navigation bindings and disabled defaults",()=>
  disabled.handleInput("\u001b");assert.equal(closes,2);
  disabled.handleInput("q");assert.equal(closes,3,"q remains the panel-local close alias");
 });
+
+
+test("native panel mouse clicks target only actually rendered headings after scroll and folding",()=>{
+ let renders=0;
+ const panel=createNativeWorkPanel(snapshot,{
+  requestRender(){renders++;},close(){},terminalRows:()=>30
+ });
+ const overview=panel.render(110);
+ const heading=overview.findIndex((line,index)=>index>0&&/▾ CHANGES/u.test(line));
+ assert.ok(heading>0,"CHANGES heading must appear in rendered rows");
+ assert.equal(panel.handleMouse({type:"press",button:"left",x:1,y:0} as any),undefined,
+  "title is not an interactive section heading");
+ assert.equal(panel.handleMouse({type:"press",button:"left",x:1,y:heading} as any)?.handled,true);
+ assert.match(panel.render(110).join("\n"),/▸ CHANGES/u,"clicked CHANGES folds, not a different section");
+ assert.equal(panel.handleMouse({type:"press",button:"right",x:1,y:heading} as any),undefined);
+ assert.equal(panel.handleMouse({type:"press",button:"left",x:1,y:100} as any),undefined);
+ assert.equal(renders,1);
+ const tiny=createNativeWorkPanel(snapshot,{requestRender(){renders++;},close(){},terminalRows:()=>2});
+ assert.equal(tiny.render(110).length,1);
+ assert.equal(tiny.handleMouse({type:"press",button:"left",x:0,y:1} as any),undefined,
+  "close-only overlay has no clickable sections");
+});

@@ -160,9 +160,10 @@ test("Super YOLO can waive routine guarded prompts but never critical hard denie
  const ctx:any={cwd,hasUI:true,mode:"tui",ui:{confirm:async()=>{throw Error("Super must never ask");}}};
  const handler=createPrimaryToolPolicyHandler({getMode:()=> "super-yolo"});
  const run=(command:string)=>handler({toolName:"bash",toolCallId:command,input:{command}} as any,ctx);
- for(const command of ["git push origin feat/demo","npm publish","rm -rf data","psql -c 'DROP TABLE fixture'"])
+ for(const command of ["git push origin feat/demo","rm -rf data","psql -c 'DROP TABLE fixture'"])
   assert.equal(await run(command),undefined,command);
- for(const command of ["git reset --hard HEAD","git push --force origin feat/demo",
+ for(const command of ["npm publish","gh release create v1.2.3","gh pr merge 42",
+  "git reset --hard HEAD","git push --force origin feat/demo",
   "rm -rf /","git branch -D feat/demo"]){
   const result=await run(command);
   assert.equal((result as any)?.block,true,command);
