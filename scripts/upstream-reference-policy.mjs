@@ -23,6 +23,8 @@ const exactProvenanceDocs=new Set([
   "odd/evidence/portable-checkpoint-manifest.json",
   // Exact ODD comparison dossier; textual provenance only, never executable code.
   "odd/tasks/flujo-de-agentes.md",
+  // Pinned static product objective; never exempts runtime sources.
+  "odd/tasks/flujo-de-agentes-objetivo.md",
   "odd/tasks/asen-focus-experience.md",
   "odd/tasks/asen-integral-runtime-architecture-stability-audit.md",
   "odd/tasks/asen-"+providerTerm+"-shell-equivalence-audit.md",
