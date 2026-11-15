@@ -563,6 +563,10 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
    const records=[reply];
    if(!staleSettledOnly)records.push({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}},{type:"agent_end"},{type:"agent_settled"});
    process.stdout.write(records.map(value=>JSON.stringify(value)+"\\n").join(""));
+   // A duplicate from the first turn may arrive AFTER the continuation
+   // acknowledgement (outside the coalesced packet): never treat it as the
+   // new turn's completion without message_end and agent_end.
+   if(staleSettledOnly)setTimeout(()=>emit({type:"agent_settled"}),20);
   }else{emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}
  }
  }});process.stdin.on("end",()=>process.exit(0));`);
