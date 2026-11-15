@@ -54,7 +54,8 @@ import {TaskAgentCoordinator} from "../src/runtime/task-agent-coordinator.js";
 import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
 import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
-import {acceptIndependentReview} from "../src/runtime/review-acceptance.js";
+import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/review-acceptance.js";
+import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/plan-dispatcher.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
@@ -149,6 +150,13 @@ async function sourcesFor(projectRoot:string,homeRoot:string,packageRoot:string)
 function safeErrorMessage(error:unknown):string{
  if(!(error instanceof Error))return "Unknown error";
  return error.message.replace(/[\u0000-\u001f\u007f]+/g," ").replace(/\s+/g," ").trim()||"Unknown error";
+}
+/** Render the verification applied to a candidate review before human acceptance.
+ * The signed receipt is stated separately from the agent's own claims. */
+function reviewVerificationText(verification:ReviewVerification):string{
+ if(verification.mode==="signed-receipt")
+  return `Recibo firmado verificado: árbol ${verification.treeSha}, pruebas ${verification.passed}/${verification.total} (fallidas: ${verification.failed}, runner: ${verification.runner}).`;
+ return "Sin recibo firmado para este commit: la aceptación se apoya solo en verificación estructural (árbol de trabajo limpio, HEAD exacto, resultado autenticado del agente y tu confirmación).";
 }
 function untrustedAgentText(value:string|undefined):string|undefined{
  if(typeof value!=="string"||!value)return undefined;
@@ -1385,11 +1393,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    };
    const result=await acceptIndependentReview({
     todos:await todoStorePromise,agents:await agentRuntimePromise,links:taskAgentLinks,
+    receipts:new ReceiptVerifierService(path.join(home(),".asen","receipts")),
     identity,taskId:requested,validateIdentity,
     ...(ctx.signal?{signal:ctx.signal}:{}),
     confirm:async detail=>ctx.ui.confirm!(
      "Aceptar evidencia independiente y finalizar este Todo?",
-     `Rol: ${detail.role}\nTodo: ${detail.taskId}\nAgente verificado: ${detail.agentId}\nRevisión Git: ${detail.candidateRevision}\n\nHallazgos proporcionados por el agente (no verificados como hechos):\n${detail.evidence.map((item,index)=>`${index+1}. ${item}`).join("\n")}\n\nEl repositorio debe seguir limpio y en el mismo commit. Esta acción SOLO registra tu aceptación del dictamen; no autoriza escritura ni merge.`
+     `Rol: ${detail.role}\nTodo: ${detail.taskId}\nAgente verificado: ${detail.agentId}\nRevisión Git: ${detail.candidateRevision}\n${reviewVerificationText(detail.verification)}\n\nHallazgos proporcionados por el agente (no verificados como hechos):\n${detail.evidence.map((item,index)=>`${index+1}. ${item}`).join("\n")}\n\nEl repositorio debe seguir limpio y en el mismo commit. Esta acción SOLO registra tu aceptación del dictamen; no autoriza escritura ni merge.`
     ),
    });
    if(result.status!=="accepted")return `No se ha aceptado la revisión: ${result.reason}`;
@@ -1821,6 +1830,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
   getMode:ctx=>permissionSession.mode(ctx),
   modeEpoch:()=>permissionSession.epoch,
   reviewAuto:autoReview,
+  protectedStateDirs:[path.join(dependencies.homeDir?.() ?? homedir(),".asen")],
  }));
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
  const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];

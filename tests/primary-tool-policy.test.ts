@@ -140,13 +140,26 @@ test("Pi 1.2 public grep cannot execute against a parent containing protected .g
  });
 });
 
-test("shell selection matches Normal mode and malformed recognized shell input passes through",async()=>{
+test("shell selection admits every builtin Pi shell tool and rejects malformed shell input",async()=>{
  const ctx=context(process.cwd(),{hasUI:false,ui:{}});
- for(const toolName of ["powershell","pwsh","Bash","bash-background","custom_shell"]){
+ // `powershell` is a builtin Pi shell tool with the same {command} contract and
+ // the same risk as `bash`. Leaving it out made the policy fail open on Windows.
+ for(const toolName of ["bash","powershell"]){
+  const decision=await policy(event(toolName,{command:"git reset --hard HEAD"}),ctx);
+  assert.equal(decision?.block,true,toolName);assert.match(decision?.reason??"",/destructive shell command/,toolName);
+ }
+ // Names that are NOT builtin Pi tools stay outside this narrow primary policy.
+ // Residual risk: any extension-registered shell-like tool is not classified here.
+ for(const toolName of ["pwsh","Bash","bash-background","custom_shell"]){
   assert.equal(await policy(event(toolName,{command:"git reset --hard HEAD"}),ctx),undefined,toolName);
  }
- for(const toolName of ["bash","bash_background","monitor"]){
-  for(const input of [undefined,null,[],{}, {command:42}])assert.equal(await policy(event(toolName,input as any),ctx),undefined,`${toolName} ${String(input)}`);
+ // Malformed input can never be classified, so it can never be admitted.
+ for(const toolName of ["bash","bash_background","monitor","powershell"]){
+  for(const input of [undefined,null,[],{}, {command:42}]){
+   const decision=await policy(event(toolName,input as any),ctx);
+   assert.equal(decision?.block,true,`${toolName} ${String(input)}`);
+   assert.match(decision?.reason??"",/malformed shell command/,`${toolName} ${String(input)}`);
+  }
  }
 });
 

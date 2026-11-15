@@ -1,4 +1,11 @@
 /**
+ * @unreachable As of the integral audit (branch `feat/t12-integrated-acceptance-merge`),
+ * no production entry point imports this module. Importers are its own test and
+ * `src/runtime/session-orchestrator.ts`, which is itself unreachable.
+ * Intended consumer: rendering subagent progress in the terminal UI.
+ * The shipped UI path does not format activity through this module.
+ * See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md` (Tanda 0).
+ *
  * Lightweight Single-Line Activity Stream Formatter for ASEN.
  * Formats subagent progress with ANSI clear-line sequences without breaking multiplexers or narrow terminals.
  */

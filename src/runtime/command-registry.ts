@@ -1,4 +1,12 @@
 /**
+ * @unreachable As of the integral audit (branch `feat/t12-integrated-acceptance-merge`),
+ * no production entry point imports this module. Importers are its own test and
+ * `src/runtime/session-orchestrator.ts`, which is itself unreachable.
+ * Intended consumer: command and palette registration in the Pi extension.
+ * The extension registers its command catalog through `ASEN_COMMAND_CATALOG` instead,
+ * so this registry is not the source of truth for the shipped command surface.
+ * See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md` (Tanda 0).
+ *
  * Unified Command Registry for ASEN.
  * Centralizes command declarations, categories, aliases, help rendering and palette projections.
  */

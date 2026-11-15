@@ -68,7 +68,7 @@ export class AsenAutoPermissionReviewer{
    snapshot=JSON.stringify(event.input);
    if(Buffer.byteLength(snapshot)>8192||/(?:-----BEGIN [A-Z ]*PRIVATE KEY|sk-proj-|ghp_[a-z0-9]{20}|(?:api[_ -]?key|password|secret|token|credential|private[_ -]?key)\s*[=:]\s*\S+)/iu.test(snapshot))return false;
    const descriptor=projectAutoToolContext(this.listTools(),toolName);
-   const evidence=["bash","bash_background","monitor","asen_background_start"].includes(toolName)?
+   const evidence=["bash","bash_background","monitor","asen_background_start","powershell"].includes(toolName)?
     autoScriptEvidence((event.input as {command?:unknown})?.command,ctx.cwd):{kind:"none" as const};
    if(evidence.kind==="invalid")return false;
    content=JSON.stringify({

@@ -1,4 +1,10 @@
 /**
+ * @unreachable As of the integral audit (branch `feat/t12-integrated-acceptance-merge`),
+ * no production entry point imports this module. Its only importer is its own test.
+ * Intended consumer: the Pi extension composition as the single governed lifecycle facade.
+ * Do not read the presence of this facade as a delivered runtime guarantee.
+ * See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md` (Tanda 0 / Tanda 3).
+ *
  * Unified Session Orchestrator Facade for ASEN.
  *
  * Single governed lifecycle that wires the engine subsystems together

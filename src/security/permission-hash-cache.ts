@@ -1,4 +1,12 @@
 /**
+ * @unreachable As of the integral audit (branch `feat/t12-integrated-acceptance-merge`),
+ * no production entry point imports this module. Importers are its own test and
+ * `src/runtime/session-orchestrator.ts`, which is itself unreachable.
+ * Intended consumer: memoizing already-approved commands in Auto mode.
+ * Auto mode is currently served by `src/security/auto-permission-reviewer.ts`, so
+ * this cache is not what decides whether an approved command is re-reviewed.
+ * See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md` (Tanda 0).
+ *
  * Permission Hash Cache for ASEN.
  * Memorizes approved commands using SHA-256 digests over (canonicalCwd + normalizedCommand + gitBranch).
  * Enforces an immutable blacklist of destructive commands that can NEVER be cached.

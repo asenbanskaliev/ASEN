@@ -1,4 +1,12 @@
 /**
+ * @unreachable As of the integral audit (branch `feat/t12-integrated-acceptance-merge`),
+ * no production entry point imports this module. Importers are its own test and
+ * `src/runtime/session-orchestrator.ts`, which is itself unreachable.
+ * Intended consumer: decoupled delivery of background notices to the terminal UI.
+ * The shipped UI path notifies through `ctx.ui.notify`, so this buffer is not
+ * what actually delivers notices to the user.
+ * See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md` (Tanda 0).
+ *
  * High-Efficiency In-Memory Circular Ring Buffer for ASEN.
  * Decouples background event notifications from blocking terminal tasks.
  * Fixed capacity (default 50 slots) prevents memory leaks and ensures O(1) operations.

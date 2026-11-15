@@ -247,7 +247,10 @@ test("production composition registers one selective primary guard without repla
  const primary=events.get("tool_call")![0]!,headless={cwd:process.cwd(),hasUI:false,ui:{},sessionManager:{getSessionId:()=>"primary-composition"}};
  assert.equal(await primary({toolName:"bash",toolCallId:"ordinary",input:{command:"echo ordinary"}},headless),undefined);
  assert.equal((await primary({toolName:"bash_background",toolCallId:"dangerous",input:{command:"git reset --hard HEAD"}},headless))?.block,true);
- assert.equal(await primary({toolName:"powershell",toolCallId:"passthrough",input:{command:"git reset --hard HEAD"}},headless),undefined);
+ // `powershell` is a builtin Pi shell tool: it must share the bash admission, not bypass it.
+ assert.equal((await primary({toolName:"powershell",toolCallId:"powershell-dangerous",input:{command:"git reset --hard HEAD"}},headless))?.block,true);
+ // Selectivity still holds: a name outside the narrow builtin policy is not classified here.
+ assert.equal(await primary({toolName:"custom_shell",toolCallId:"passthrough",input:{command:"git reset --hard HEAD"}},headless),undefined);
  const sharedEvents=new Map<string,Function[]>();createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})({on(name:string,handler:Function){sharedEvents.set(name,[...(sharedEvents.get(name)??[]),handler]);},registerCommand(){}} as any);
  assert.equal(sharedEvents.has("tool_call"),false,"test/shared composition must not install a weaker primary replacement");
  const childEvents=new Map<string,Function>();authority({on:(name:string,handler:Function)=>childEvents.set(name,handler),registerCommand(){}} as any);

@@ -1,4 +1,12 @@
 /**
+ * @unreachable As of the integral audit (branch `feat/t12-integrated-acceptance-merge`),
+ * no production entry point imports this module. Importers are its own test and
+ * `src/runtime/session-orchestrator.ts`, which is itself unreachable.
+ * Intended consumer: coordination of concurrent multi-agent executions.
+ * Child agents are currently contained by `extensions/authority.ts`, so this table
+ * is not the mechanism that prevents conflicting writes in a live session.
+ * See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md` (Tanda 0).
+ *
  * Workspace Semantic Lock Table for ASEN.
  * Coordinates concurrent multi-agent executions, preventing conflicting edits
  * on shared files without distributed dependencies or deadlocks.

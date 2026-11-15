@@ -19,6 +19,8 @@ export interface PrimaryModeOptions{
  readonly modeEpoch?:()=>number;
  /** Human-owned private preference file; model tool calls can never edit it. */
  readonly protectedPreferenceFile?:string;
+ /** Human-owned ASEN runtime state directories; model tool calls may read them, never mutate them. */
+ readonly protectedStateDirs?:readonly string[];
  /** Optional independent reviewer only. Unavailable/untrusted classifier fails closed. */
  readonly reviewAuto?:(event:ToolCallEvent,context:ExtensionContext)=>Promise<boolean>;
 }
@@ -27,7 +29,7 @@ export interface PrimaryModeOptions{
 const fileTools=new Set(["read","edit","write","grep","find","ls"]);
 // Custom ASEN job launch is a shell-capable tool too. Keep it in the same
 // admission path so its name cannot become an authorization bypass.
-const shellTools=new Set(["bash","bash_background","monitor","asen_background_start"]);
+const shellTools=new Set(["bash","bash_background","monitor","asen_background_start","powershell"]);
 // Native user consent decisions have their own independent UI; Auto must not
 // answer them, and YOLO/Super YOLO must not inherit them to children.
 const consentTools=new Set(["ask_user","ask_user_question","question","asen_session_consult",
@@ -97,11 +99,11 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
    }
    const input=event.input;
    if(shellTools.has(toolName)){
-    if(!input||typeof input!=="object"||Array.isArray(input))return undefined;
+    if(!input||typeof input!=="object"||Array.isArray(input))return denied("malformed shell command");
     const command=(input as {command?:unknown;args?:unknown}).command;
     if(typeof command==="string"&&/(?:permission-mode\.json|asen-mode\s+default)/iu.test(command))
      return denied("human-owned permission configuration");
-    if(typeof command!=="string")return autoRequested||toolName==="asen_background_start"?denied("malformed background command"):undefined;
+    if(typeof command!=="string")return denied("malformed shell command");
     if(isSensitiveShellAction(command))return denied("sensitive shell path");
     if(toolName==="asen_background_start"&&(Object.hasOwn(input,"args")||Object.keys(input).some(key=>key!=="command"&&key!=="timeoutMs"&&key!=="monitor")))return denied("unsupported background command shape");
     const decision=classifyNormalShellCommand(command);
@@ -154,6 +156,13 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
     if(canonical===canonicalPathSync(options.protectedPreferenceFile)||
       canonical===resolvedParent||canonical.startsWith(resolvedParent+path.sep))
      return denied("human-owned permission configuration");
+   }
+   if(toolName==="write"||toolName==="edit"){
+    for(const stateDir of [path.resolve(cwd,".asen"),...(options.protectedStateDirs??[])]){
+     const resolvedStateDir=canonicalPathSync(stateDir);
+     if(canonical===resolvedStateDir||canonical.startsWith(resolvedStateDir+path.sep))
+      return denied("human-owned ASEN state");
+    }
    }
    if(toolName==="grep"||toolName==="find"||toolName==="ls")try{await assertSafeTraversal(toolName,canonical);}catch{return denied("safe directory traversal cannot be established");}
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");

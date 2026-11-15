@@ -143,6 +143,59 @@ const encodedCompatibilityLines = new Map([
   ]
  ]
 ]);
+/**
+ * Wiring truth for every approved compatibility entry.
+ *
+ * `kind: "production"` - the entry is a shipped module.
+ *   `wired: true`  - a production module imports the declared port, so the port is
+ *                    reachable from a real entry point.
+ *   `wired: false` - the entry is ported text with no live consumer. It must never be
+ *                    cited as demonstrated parity or as a delivered runtime guarantee.
+ * `kind: "test"` - the upstream token appears only as fixture text in the owning test.
+ *   It is not a parity claim and is never reported as unwired production code.
+ *
+ * `compatibilityEntriesWithoutWiring` keeps this declaration honest: a new approved
+ * entry cannot be added to the mask map without stating its kind and wiring.
+ */
+const compatibilityWiring = new Map([
+ ["src/agents/tool-overlay.ts", { kind: "production", wired: true, consumer: "src/agents/pi-process-runner.ts" }],
+ ["src/review/delivery-preflight.ts", { kind: "production", wired: true, consumer: "src/security/primary-tool-policy.ts" }],
+ ["src/runtime/desktop-rpc.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/guide-tour.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/image-disk-cache.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/reply-language-anchor.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/voice-dictation.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/security/execution-surface-guard.ts", { kind: "production", wired: true, consumer: "src/security/primary-tool-policy.ts" }],
+ ["tests/image-disk-cache.test.ts", { kind: "test", wired: false, consumer: null }],
+ ["tests/ordinary-review-assessment.test.ts", { kind: "test", wired: false, consumer: null }],
+ ["tests/pi-process-runner.test.ts", { kind: "test", wired: false, consumer: null }],
+ ["tests/reply-language-anchor.test.ts", { kind: "test", wired: false, consumer: null }],
+ ["tests/tool-overlay.test.ts", { kind: "test", wired: false, consumer: null }],
+]);
+
+/** Wiring declaration for an approved compatibility entry, or null when undeclared. */
+export function compatibilityWiringOf(path) {
+ return compatibilityWiring.get(path) ?? null;
+}
+
+/** Approved production entries that exist only as ported text, sorted. */
+export function listUnwiredCompatibilityEntries() {
+ return [...compatibilityWiring]
+  .filter(([, state]) => state.kind === "production" && !state.wired)
+  .map(([path]) => path)
+  .sort();
+}
+
+/** Every approved compatibility entry, sorted. */
+export function listCompatibilityEntries() {
+ return [...encodedCompatibilityLines.keys()].sort();
+}
+
+/** Approved entries that declare no wiring at all; must stay empty. */
+export function compatibilityEntriesWithoutWiring() {
+ return [...encodedCompatibilityLines.keys()].filter(path => !compatibilityWiring.has(path)).sort();
+}
+
 function decodeLine(text) {
  return text.replace(/[A-Za-z]/g, ch => String.fromCharCode(
   ch.charCodeAt(0) + (ch.toLowerCase() < "n" ? 13 : -13)));
