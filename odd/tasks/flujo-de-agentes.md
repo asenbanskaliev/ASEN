@@ -91,7 +91,7 @@ Invariantes no negociables:
 - [ ] T03 Roles de revisión 4R: catálogo estricto, autoridad read-only, aislamiento candidato y resultados tipados. **IMPLEMENTADO EN CANDIDATO:** contratos read-only, Pi real tool-free por lente, bundle genuino y tests negativos; falta cierre CI/Release Gate exacto y revisión independiente.
 - [ ] T04 Enrutamiento desde ODD/Todo. **PARCIAL:** `/asen-review workspace 4r` ofrece cuatro lentes explícitas y `/asen-review workspace adaptive` selecciona una a cuatro según riesgo, con consentimiento y modelos autenticados. En riesgo alto exige al menos risk+reliability e indica verificación independiente pendiente. Falta conectarlo al plan ODD/Todo y a identidad durable especializada.
 - [ ] T05 Perfiles 4R + JD. **PARCIAL:** once destinos, creación/edición UI y resolución especialidad→rol base por capas; 4R y Judge A/B pueden usar modelos autenticados configurados. `jd-fix-agent` sigue siendo solo destino de configuración. El revisor in-process rechaza thinking configurado sin soporte demostrado. Costes y modelos reales no comprobados.
-- [ ] T06 Paralelismo. **PARCIAL CON VÍNCULO DURABLE ODD/TODOS:** `src/runtime/agents/parallel-worktrees.ts` prepara 2–4 worktrees Git aislados y permite despachar solicitudes Worker **previamente autorizadas** con el Dispatcher existente. `/asen-worktrees prepare-todos` exige 2–4 tareas ODD Worker reales y planificadas, mismo HEAD/scope y dependencias completas; reserva sus identidades antes de mutar Git en `parallel-todo-worktrees.json`. `/asen-worktrees status` inspecciona el estado desde la sesión origen sin auto-reanudar. No crea grants, no migra permisos ni fusiona. Falta que el coordinador ODD lance automáticamente sesiones Pi de worktree, persistir los resultados por unidad y conciliar/merge tras revisión; requiere CI exacto y pruebas live.
+- [ ] T06 Paralelismo. **PARCIAL, CON PLANIFICACIÓN ODD EN HIJOS:** `/asen-worktrees prepare-todos` vincula 2–4 TODOS Worker planificados a worktrees aislados; `attach` asocia cada sesión Pi real; `plan-todo` recalcula un nuevo plan ODD dentro del hijo tras confirmación expresa y registro irreversible del intento. La autorización Writer se obtiene exclusivamente por el planificador existente para ese Git root. `status` y `review` inspeccionan sesiones/agents/diffs/concurrencia sin auto-reanudar ni fusionar. **Falta** orquestación automática desde una única sesión padre, pruebas reales con modelos, reconciliación aprobatoria y gates finales.
 - [ ] T07 UI Agents/Todos/Changes/Integrations con evidencia solicitada versus observada y distinción SKIP/BLOCKED/FAIL/PASS.
 - [ ] T08 Judge A/B y Fix Agent. **PARCIAL:** dos jueces independientes con modelos autenticados distintos, perspectivas diferenciadas y comando manual `/asen-review workspace judgment-day`. Los dictámenes son solo análisis; no conceden RDD, Writer, merge ni auto-fix. Pendiente Fix Agent controlado, plan ODD/Todo, persistencia durable y pruebas reales.
 - [ ] T09 Benchmark A/B contra referencia 4.8.0 con pruebas honestas de calidad/tiempo/coste y paridad discriminada.
@@ -263,3 +263,25 @@ El vínculo al Todo de origen es una **referencia de auditoría**, no el traslad
 - El primer gate de conciliación encontró inferencia `any` en `Array.isArray`, corregida en `9ef1fa31`.
 - Los resultados verdes de SHA anteriores son históricos; el último SHA de esta tanda exige CI + Pi + Phase 0 + Release Gate completo. Un CI `cancelled` o un job `skipped` no es PASS.
 - **Pendiente mayor:** un productor automático ODD/TODO que cree planes seguros en los worktrees **sin suplantar la sesión Pi del usuario**, obtenga autorización independiente por Worker, consuma modelos reales y registre verificaciones y decisiones de integración. La solución actual NO presume ese permiso ni inicia Workers desde la sesión origen.
+
+## T06 — Planificación del Todo del origen en la sesión Pi hija (2026-11-15)
+
+### Implementación conectada
+
+- El comando **`/asen-worktrees plan-todo`** solo es válido en una sesión Pi TUI que se haya asociado previamente mediante `attach` al worktree exacto. No admite repositorios o sesiones ajenos y no copia `writerAdmission`, `phaseGrant` ni credenciales.
+- Recupera el Todo Worker original desde el almacén de la sesión/proyecto fuente, revalida las **2–4 tareas del lote** (roles, revisiones, dependencias, candidate, scope y base Git), comprueba que el worktree no tenga modificaciones y regenera el plan con `controlledInstructionPlanCommand` usando el **proyecto y candidato del hijo**.
+- Rechaza cualquier cambio de ruta ODD a una categoría sin Worker delegado o cualquier ampliación o desviación de `writeSurfaces`. El usuario ve la instrucción original como dato no confiable, HEAD, scope y las implicaciones de iniciar el plan antes de confirmarlo.
+- **Tras la confirmación**, escribe de forma atómica el `ParallelChildPlanClaimJournal` (`~/.asen/parallel-child-plan-claims.json`). El estado `claimed-not-verified` es deliberado: un cierre repentino o fallo del planificador no reabre un grant ni permite un replay oculto.
+- El adaptador de `extensions/asen.ts` llama al **mismo** `preparePlan` utilizado por `/asen-plan`. Ese planificador conserva las rutas, selección de skills y tokens ODD existentes; cualquier Worker requiere **un segundo consentimiento Writer** de la sesión hija. No se inicia desde el origen usando una identidad Pi suplantada.
+- La vista `/asen-worktrees status` indica `handoffClaimed` únicamente como evidencia de intento, jamás como ejecución terminada, modelo consumido o aceptación.
+
+### Pruebas de seguridad y no-replay
+
+- `tests/parallel-worktree-todos.test.ts`: plan ODD recalculado sobre el repositorio hijo, petición confirmada una única vez y envío exacto de hechos originales al planificador instrumentado. Rechazo de sesión no asociada, consentimiento denegado, cambios Git y planificación repetida.
+- Los tests de la conexión de planificación son instrumentados; **no prueban un turno real de Pi, uso de proveedor, costes ni el `0xC0000409`**.
+
+### Limitación T06 que permanece abierta
+
+No existe todavía una coordinación autónoma que cree múltiples sesiones Pi vivas desde un único supervisor y complete la tarea sin abrir la sesión hija. La ruta actual reduce pasos manuales y utiliza el planificador/Dispatcher de producción sin rebajar permisos, pero **no debe declararse paralelismo FULL ni escritor multiagente de extremo a extremo** hasta ejecutar Worker real por worktree, verificar evidencias y conciliar resultados con aprobación independiente.
+
+Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
