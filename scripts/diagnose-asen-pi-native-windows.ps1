@@ -34,7 +34,7 @@ foreach ($event in $events) {
     $scanned++
     # Keep the raw localized event description only in memory.
     $message = [string]$event.Message
-    if ($message -notmatch '(?i)(?:0x)?c0000409\\b') { continue }
+    if ($message -notmatch '(?i)(?:0x)?c0000409\b') { continue }
     if ($message -notmatch '(?i)(node\.exe|pi\.exe|pi-coding-agent)') { continue }
     $module = "unavailable"
     if ($message -match '(?im)(?:Faulting module name|Nombre del m[oó]dulo con errores|Fault module name)\s*:\s*([^,\r\n]+)') {
