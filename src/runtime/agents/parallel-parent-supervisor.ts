@@ -209,8 +209,10 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     sourceRoot:input.source.projectId,worktreeRoot:unit.childProjectId,
     baseRevision:unit.baseRevision,writeSurfaces:unit.writeSurfaces
    });
-   if(currentBatch?.state!=="prepared"||currentBatch.sourceHead!==unit.baseRevision||
-    !sourceTask||sourceTask.taskRevision!==currentSource?.current.revision||
+   if(!currentBatch||currentBatch.state!=="prepared"||
+    currentBatch.sourceHead!==unit.baseRevision||
+    !sourceTask||!currentSource||
+    sourceTask.taskRevision!==currentSource.current.revision||
     currentSource.current.state!=="planned"||
     sourceTask.requestId!==currentSource.requestId||
     sourceTask.writeSurfaces.length!==unit.writeSurfaces.length||
