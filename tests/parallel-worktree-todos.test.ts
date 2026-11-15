@@ -43,7 +43,8 @@ function fixture(t:TestContext){
  };
  const childRows=new Map<string,SourceTodoRow[]>(),
   childAgentRecords=new Map<string,PublicAgentRecord[]>(),
-  childTaskLinks=new Map<string,TaskAgentLink[]>();
+  childTaskLinks=new Map<string,TaskAgentLink[]>(),
+  dispatchedChildren:{sourceTodoId:string;childTodoId:string;model:string}[]=[];
  let rows=[row("todo-backend","backend.txt"),row("todo-frontend","frontend.txt")],
   session=identity.sessionId,approve=true,editorAnswer=JSON.stringify({parentDir:parent,units:scopes});
  const commands=new Map<string,{handler:(args:string,ctx:unknown)=>Promise<unknown>}>();
@@ -53,6 +54,30 @@ function fixture(t:TestContext){
   loadTodos:async identity=>identity.sessionId==="pi-t06"?rows:childRows.get(identity.sessionId)??[],
   loadChildAgentRecords:async identity=>childAgentRecords.get(identity.sessionId)??[],
   loadChildTaskAgentLinks:async identity=>childTaskLinks.get(identity.sessionId)??[],
+  // Instrumented ONLY: proves the supervisor delegates exact Pi user consent.
+  // Real production uses dispatchNextPlanTask + AgentRuntime + TrustedTaskAgentBinder.
+  launchChildWorker:async(unit,confirm,validateParent)=>{
+   await validateParent();
+   const authorized=await confirm({id:unit.childTodoId,title:"ODD child Worker",role:"worker",
+    instruction:"Perform only authorized child scope",writeSurfaces:unit.writeSurfaces,
+    candidateRevision:unit.baseRevision});
+   if(!authorized)return {status:"blocked" as const,reason:"Per-Worker Pi consent declined"};
+   dispatchedChildren.push({sourceTodoId:unit.sourceTodoId,childTodoId:unit.childTodoId,model:unit.model});
+   const current=childRows.get(unit.childSessionId)??[];
+   childRows.set(unit.childSessionId,current.map(t=>t.taskId===unit.childTodoId?
+    {...t,current:{...t.current,state:"running"}} as SourceTodoRow:t));
+   const now="2026-11-15T22:00:00.000Z",agentId="instrumented-"+unit.childTodoId;
+   childAgentRecords.set(unit.childSessionId,[{
+    id:agentId,role:"worker",state:"running",
+    sessionId:unit.childSessionId,projectId:unit.childProjectId,
+    owner:{kind:"user",id:"pi:"+unit.childSessionId},createdAt:now,updatedAt:now
+   }]);
+   childTaskLinks.set(unit.childSessionId,[{taskId:unit.childTodoId,
+    agentId,sessionId:unit.childSessionId,projectId:unit.childProjectId,
+    createdAt:now}]);
+   return {status:"dispatched" as const,role:"worker" as const,
+    todoId:unit.childTodoId,agentId};
+  },
   loadChildAgents:async identity=>identity.sessionId==="child-pi-1"?
    [{id:"child-worker-1",role:"worker",state:"running"}]:[]
  });
@@ -87,6 +112,7 @@ function fixture(t:TestContext){
    todos:childRows.get(id)??[],agents:childAgentRecords.get(id)??[],
    links:childTaskLinks.get(id)??[]
   }),
+  dispatchedChildren,
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
   setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},row};
@@ -499,4 +525,67 @@ test("T06/T07 a genuinely ODD-linked running child is observable without claimin
  assert.equal(status.flowOverview.tasks.every(task=>task.acceptance==="not-accepted"),true);
  assert.equal(status.flowOverview.tasks.every(task=>task.modelConsumedProven===false),true);
  assert.equal(status.flowOverview.autoMerge,false);
+});
+
+async function prepareSupervisorChildren(f:ReturnType<typeof fixture>){
+ await prepareAttributedChildren(f);
+ for(let i=0;i<2;i++){
+  const id="child-pi-"+(i+1),values=f.getChildObservations(id);
+  f.setChildObservations(id,values.todos.map(t=>({
+   ...t,current:{...t.current,state:"planned"}
+  } as SourceTodoRow)),[],[]);
+ }
+}
+
+test("T06 parent supervisor launches two exact independently consented child Workers via delegated dispatcher",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const result=await f.run("supervise") as {status:string;started:readonly {
+  sourceTodoId:string;childTodoId:string;agentId:string
+ }[];grantsAuthority:boolean;autoRetry:boolean;autoMerge:boolean;acceptance:string};
+ assert.equal(result.status,"started");
+ assert.equal(result.started.length,2);
+ assert.deepEqual(f.dispatchedChildren.map(x=>x.sourceTodoId),["todo-backend","todo-frontend"]);
+ assert.equal(result.grantsAuthority,false);assert.equal(result.autoRetry,false);
+ assert.equal(result.autoMerge,false);assert.equal(result.acceptance,"not-accepted");
+ assert.equal(f.confirmMessages.length,6); // worktree + 2 attach + batch + 2 Worker prompts
+ const again=await f.run("supervise") as {status:string;started:readonly unknown[]};
+ assert.equal(again.status,"blocked");assert.equal(again.started.length,0);
+ assert.equal(f.dispatchedChildren.length,2);
+});
+
+test("T06 supervisor refuses after consent declined for second Worker, never retries first",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ let seen=0;
+ f.ctx.ui.confirm=async(_title:string,message:string)=>{
+  f.confirmMessages.push(message);
+  seen++;
+  return seen!==3; // Batch and first worker accepted, second rejected.
+ };
+ const result=await f.run("supervise") as {status:string;started:readonly unknown[];autoRetry:boolean};
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(result.started.length,1);assert.equal(f.dispatchedChildren.length,1);
+ assert.equal(result.autoRetry,false);
+ const again=await f.run("supervise") as {status:string};
+ assert.equal(again.status,"blocked");
+ assert.equal(f.dispatchedChildren.length,1);
+});
+
+test("T06 supervisor never starts a Worker when child ODD is unclaimed or its root is dirty",async t=>{
+ const f=fixture(t);
+ const created=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
+ assert.equal((await f.runChild("attach",created.worktrees[0]!.root) as {status:string}).status,"attached");
+ const unclaimed=await f.run("supervise") as {status:string;blockers:readonly string[]};
+ assert.equal(unclaimed.status,"blocked");
+ assert.ok(unclaimed.blockers.some(x=>/not uniquely attached|not claimed/u.test(x)));
+ assert.equal(f.dispatchedChildren.length,0);
+});
+
+test("T06 parent supervisor blocks all starts on dirty worktree without invoking any Worker",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const prepared=(await f.journal.list(f.identity))[0]!;
+ writeFileSync(join(prepared.tasks[1]!.worktreeRoot,"frontend.txt"),"changed\\n");
+ const result=await f.run("supervise") as {status:string;blockers:readonly string[]};
+ assert.equal(result.status,"blocked");
+ assert.ok(result.blockers.some(x=>/dirty, changed or unverifiable/u.test(x)));
+ assert.equal(f.dispatchedChildren.length,0);
 });
