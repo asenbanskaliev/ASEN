@@ -12,6 +12,7 @@ import {ParallelChildPlanClaimJournal} from "../agents/parallel-child-plan-claim
 import {ParallelWorkerObservationJournal} from "../agents/parallel-worker-observation-journal.js";
 import {inspectParallelBatchWorkerOutcomes} from "../agents/parallel-batch-coordinator.js";
 import {launchParentApprovedWorkers,type ParentSupervisorReadyWorker} from "../agents/parallel-parent-supervisor.js";
+import {ParentSupervisorClaimJournal} from "../agents/parallel-parent-supervisor-claims.js";
 import {attributeParallelChildWorker} from "../agents/parallel-worker-attribution.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
@@ -47,7 +48,7 @@ function readRequest(value:string):{parentDir:string;units:readonly ParallelWork
 }
 export function registerParallelWorktreeCommand(
  register:(name:string,command:WorktreeCommand)=>void,
- options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;observationFile?:string;
+ options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;observationFile?:string;supervisorClaimsFile?:string;
   planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
   loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>;
@@ -70,7 +71,7 @@ export function registerParallelWorktreeCommand(
    if(action==="supervise"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||
      !ctx.ui.confirm||!options?.journalFile||!options.sessionLinksFile||
-     !options.planClaimsFile||!options.loadTodos||!options.loadChildAgentRecords||
+     !options.planClaimsFile||!options.supervisorClaimsFile||!options.loadTodos||!options.loadChildAgentRecords||
      !options.loadChildTaskAgentLinks||!options.launchChildWorker){
      const denied={status:"unavailable" as const,reason:"T06 supervisor requires the active parent Pi TUI, prepared child ODD, trusted AgentRuntime and a fresh confirmation per Worker"};
      ctx.ui.notify(denied.reason,"warning");return denied;
@@ -85,6 +86,7 @@ export function registerParallelWorktreeCommand(
     const sourceJournal=new ParallelTodoWorktreeJournal(options.journalFile),
      sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
      claimJournal=new ParallelChildPlanClaimJournal(options.planClaimsFile),
+     attemptJournal=new ParentSupervisorClaimJournal(options.supervisorClaimsFile),
      batch=(await sourceJournal.list(identity)).at(-1);
     await validateParent();
     if(!batch||batch.state!=="prepared"){
@@ -92,7 +94,7 @@ export function registerParallelWorktreeCommand(
      ctx.ui.notify(denied.reason,"warning");return denied;
     }
     const result=await launchParentApprovedWorkers({
-     source:identity,batchId:batch.id,sourceJournal,sessionJournal,claimJournal,
+     source:identity,batchId:batch.id,sourceJournal,sessionJournal,claimJournal,attemptJournal,
      loadTodos:options.loadTodos,loadAgents:options.loadChildAgentRecords,
      loadTaskAgentLinks:options.loadChildTaskAgentLinks,validateParent,
      confirmBatch:async ready=>{
