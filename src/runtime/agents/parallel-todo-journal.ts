@@ -16,6 +16,11 @@ import {assertPreparedParallelWorktree,type ParallelWorktreeAllocation} from "./
 const SCHEMA="asen.parallel-todo-worktrees/v1" as const;
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const sha=/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u;
+const intersectScopes=(left:readonly string[],right:readonly string[]):boolean=>
+ left.some(a=>right.some(b=>{
+  const x=a.toLocaleLowerCase("en-US"),y=b.toLocaleLowerCase("en-US");
+  return x===y||x.startsWith(y+"/")||y.startsWith(x+"/");
+ }));
 const valid=(s:unknown):s is string=>typeof s==="string"&&s.length>0&&s.length<=1024&&
  s===s.trim()&&s===s.normalize("NFC")&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(s);
 const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&&typeof v==="object"&&
@@ -90,10 +95,10 @@ export class ParallelTodoWorktreeJournal{
   await withExclusiveFileLock(this.file,async()=>{
    const journal=await load(this.file);
    if(journal.records.length>=256||journal.records.some(old=>
-    old.id===id||(old.sessionId===identity.sessionId&&
-     sameWorkspaceIdentityPath(old.projectId,identity.projectId)&&
-     old.tasks.some(task=>record.tasks.some(next=>next.taskId===task.taskId)))))
-    throw new Error("Parallel source Todo already reserved: inspect prior worktrees before planning another batch");
+    old.id===id||(sameWorkspaceIdentityPath(old.projectId,identity.projectId)&&
+     old.tasks.some(task=>record.tasks.some(next=>
+      task.taskId===next.taskId||intersectScopes(task.writeSurfaces,next.writeSurfaces))))))
+    throw new Error("Parallel source Todo already reserved or write scopes overlap a prior batch: inspect worktrees before planning another");
    journal.records.push(structuredClone(record));journal.revision++;
    await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\n");
   });
