@@ -1,6 +1,6 @@
 # Flujo de agentes — ASEN
 
-Estado: PLAN_AUDITADO_E_IMPLEMENTACION_PENDIENTE_DE_EVIDENCIA (2026-11-15)
+Estado: IMPLEMENTACION_PARCIAL_EN_PR_DRAFT — SIN DECLARACION_FULL (2026-11-15)
 Repositorio: `asenbanskaliev/ASEN`
 Rama de entrega: `feat/flujo-de-agentes-20261115`
 Rama padre: `feat/t12-integrated-acceptance-merge`
@@ -86,14 +86,14 @@ Invariantes no negociables:
 ## Plan ejecutable ODD + TDD por tandas
 
 - [x] T00 Plan publicado en una rama separada, baseline y permisos fijados; auditoría de código y dependencias documentada abajo. **AUDITADO, no equivale a implementación funcional**.
-- [ ] T01 Auditoría de lanzamiento P0: ruta exacta, fase de salida, protocolo, métricas seguras; pruebas RED primero y GREEN después, CI 3 OS. Sin reintento de incidentes previos.
-- [ ] T02 Smoke de modelo autenticado Explorer/Verifier + cadena completa; bloquear aceptación LIVE si falta proveedor aprobado o Windows del incidente.
-- [ ] T03 Roles de revisión 4R: catálogo estricto, autoridad read-only, aislamiento candidato y resultados tipados; tests negativos y revisión de seguridad.
-- [ ] T04 Enrutamiento desde ODD/Todo de las lentes, selección proporcional y revalidación del estado, sin nuevos privilegios ni gate vacío.
-- [ ] T05 Perfiles 4R + JD, selección de modelos/thinking/costes, UI de configuración, no regresión de cuatro destinos existentes, verificación ruta efectiva.
-- [ ] T06 Paralelismo de tareas disjuntas, DAG y reconciliación de fallos y reinicio sin replay ni doble escritura.
+- [ ] T01 Auditoría de lanzamiento P0: ruta exacta, fase de salida, protocolo, métricas seguras; pruebas RED primero y GREEN después, CI 3 OS. **PARCIAL:** script read-only Windows WER y tests de seguridad/parseo; falta ejecución en el Windows afectado y atribución causal.
+- [ ] T02 Smoke de modelo autenticado Explorer/Verifier + cadena completa. **BLOQUEADO LIVE:** sin sesión y credenciales autorizadas para ese host; no lanzar un modelo en un job no autorizado.
+- [ ] T03 Roles de revisión 4R: catálogo estricto, autoridad read-only, aislamiento candidato y resultados tipados. **IMPLEMENTADO EN CANDIDATO:** contratos read-only, Pi real tool-free por lente, bundle genuino y tests negativos; falta cierre CI/Release Gate exacto y revisión independiente.
+- [ ] T04 Enrutamiento desde ODD/Todo. **PARCIAL:** /asen-review workspace 4r es opt-in real de cuatro lentes con consentimiento, modelos autenticados y sin autorización RDD; falta selección automática proporcional y Todo/revisión especializada durable.
+- [ ] T05 Perfiles 4R + JD. **PARCIAL:** catálogo seguro de once destinos, creación/edición UI y resolución especialidad→rol base por capas; ruta 4R utiliza modelos autenticados. El in-process Pi reviewer no acredita esfuerzo individual: rechaza thinking configurado, no lo ignora. JD no ejecutado y costes dinámicos no comprobados.
+- [ ] T06 Paralelismo. **BLOQUEO DE DISEÑO VALIDADO:** workspace-writer-lease.ts usa lock exclusivo por Git root, incluso para superficies disjuntas; los Workers concurrentes deben usar worktrees independientes. No desactivar el lock ni reutilizar permisos en subprocesos.
 - [ ] T07 UI Agents/Todos/Changes/Integrations con evidencia solicitada versus observada y distinción SKIP/BLOCKED/FAIL/PASS.
-- [ ] T08 Judge A/B y Fix Agent con cadena de autoridad inmutable, independencia y resultados conciliados.
+- [ ] T08 Judge A/B y Fix Agent. **NO IMPLEMENTADO:** destinos de perfil son configuración, no agentes ejecutables; no conceder grants de Writer hasta completar T04/T06.
 - [ ] T09 Benchmark A/B contra referencia 4.8.0 con pruebas honestas de calidad/tiempo/coste y paridad discriminada.
 - [ ] T10 Auditoría integral independiente, regresiones, matriz Windows/macOS/Linux, CI y Release Gate SHA exacto, reconciliación `odd/tasks/equivalencia-funcional-agentes-full.md` y apertura de PR listo para revisión, sin merge a `main`.
 
@@ -137,7 +137,7 @@ Orden: T00 -> T01 -> T02; T01 -> T03 -> T04 -> T05; T04+T05 -> T06 -> T07; T03+T
 
 - Un test que no tuvo lugar = NOT_RUN, aun cuando CI general sea verde.
 - Un perfil especializado solo cambia `model`/`thinking` en peticiones autorizadas; no puede alterar `role`, `writeSurfaces`, `skillContext`, `writerAdmission` ni `candidate`.
-- Un resultado de lente must be bound to exact review request/candidate/session and source model; si no coincide, rechazar y no consolidar.
+- Un resultado de lente debe estar ligado a la solicitud, el candidato, la sesión y el modelo de origen; si no coincide, rechazarlo y no consolidarlo.
 - La cancelación o una selección 'Back' no escribe configuración ni activa perfiles.
 - Ante pérdida del proceso, controles de aprobación caducados o identidad cambiada: detener sin nuevas escrituras/reintentos.
 - El PR permanece en borrador hasta que se documenten resultados completos, fallos conocidos y revisión independiente.
@@ -147,3 +147,36 @@ Orden: T00 -> T01 -> T02; T01 -> T03 -> T04 -> T05; T04+T05 -> T06 -> T07; T03+T
 ## Registro de ejecución y auditorías
 
 - 2026-11-15 T00: publicado `60262309` en rama separada y PR #61 borrador. Auditoría estática A01–A10 completada; **todavía no hay nueva implementación ni prueba independiente**.
+
+## Registro de implementación del primer bloque — 2026-11-15
+
+| Entrega | Commits de esta rama | Alcance comprobable | Limitación de aceptación |
+| --- | --- | --- | --- |
+| Plan y auditoría T00 | `60262309`, `0f2247bd` | Plan ODD, hallazgos A01–A10 y PR #61 draft | No son ejecución |
+| Perfiles T05 | `522f4289`, `867ecd55`, `c91dfef6` | Catálogo de destinos, herencia por scope, UI create/edit y tests | JD sólo configurable, falta ejecución; thinking de reviewer no aplicado |
+| Política documental | `8cafce47` | Excepción de ruta exacta para este archivo de procedencia | No se relajó el escaneo de fuentes |
+| Lentes 4R T03 | `ab7db45a`, `d565b830`, `b9cd4950`, `0683ca87`, `b82c6ce` | Prompts de enfoque, resultado genuino por lente, agregador que rechaza falsificaciones y pruebas | Faltaba terminar gates del SHA final |
+| Comando 4R opt-in T04 | `641762d6`, `184dabe7`, `3105691d` | `/asen-review workspace 4r`; confirma cuatro llamadas; no hace admisión RDD | Misma interfaz de modelo por defecto si no hay ruta configurada |
+| Modelos por lente T05 | `a4659b95`, `35ffc747`, `aa9de573`, `bd8d365a` | Resuelve perfil por lente, exige modelo autenticado y no igual al autor; rechaza effort no demostrable | La interfaz Pi streamSimple no prueba aplicar effort |
+| Diagnóstico Windows T01 | `e4609327`, `568d1bea` | Script WER read-only, salida acotada y test PowerShell sintáctico Windows | No ejecutado en el Windows afectado, causa raíz pendiente |
+
+### Observaciones de CI durante iteración
+
+1. Phase 0 falló inicialmente porque la nueva documentación ODD contenía referencias externas no exentas. Corregido con una excepción **sólo documental y exacta**; el siguiente Phase 0 pasó.
+2. Release Gate detectó un error de tipo en la comparación de una lente con el `ReviewPlan` real (objeto, no lista). Corregido en `b82c6ce`.
+3. Pi runtime evidence detectó una expectativa obsoleta del texto de ayuda de `/asen-review`. Actualizada en `3105691d`.
+4. El compilador detectó un assert de test que podía retornar un resultado síncrono. Normalizado a Promise en `bd8d365a`.
+5. Los resultados anteriores se refieren a SHA anteriores y **no validan** automáticamente este HEAD. El gate exacto del último commit sigue por comprobar.
+6. No se ha hecho una prueba real del modelo, no se ha lanzado Writer con autorización humana, no se ha resuelto el fallo nativo Windows, no hay integración de JD ni equivalencia FULL.
+
+### Revisión adicional sobre concurrencia
+
+`src/runtime/lifecycle/workspace-writer-lease.ts` publica un archivo `asen-t05-writer.lock` dentro del directorio Git. Por seguridad sólo permite un Writer por Git root. Las validaciones de superficies disjuntas en `src/policies/scopes.ts` no sustituyen el lock entre procesos. El diseño T06 debe asignar un worktree separado por unidad paralela, con permisos mínimos, mutex independiente, candidato congelado y reconciliación posterior en el coordinador. Hasta disponer de ese protocolo, no se afirmará paralelismo seguro de Writers en un mismo Git root.
+
+### Comando de diagnóstico manual (sin lanzamiento de agentes)
+
+En el host Windows afectado y desde la carpeta del proyecto, ejecutar `powershell -NoProfile -File .\\scripts\\diagnose-asen-pi-native-windows.ps1 -LookbackHours 48 -MaxEvents 100`. La salida contiene sólo metadatos seleccionados de los eventos Application Error / Windows Error Reporting que mencionan `0xC0000409`, sin contenido íntegro de eventos ni rutas de procesos. Si no hay coincidencias, la causa sigue sin probar.
+
+### Siguiente frontera de admisión
+
+Aceptar en la rama únicamente los bloques de perfiles y revisión 4R cuando el mismo HEAD tenga tests, Phase 0, CI y Release Gate correctos. Cerrar T01/T02 requiere prueba del Windows/servicio real; T06 requiere worktrees segregados; T08 requiere prueba de independencia Judge A/B y canal de Fix sin Writer automático. `globalFull:false` continúa.
