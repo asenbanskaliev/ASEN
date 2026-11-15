@@ -1,4 +1,4 @@
-import test from "node:test";
+import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {mkdtempSync,rmSync,readFileSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -24,7 +24,7 @@ const changes:ParallelWorktreeChangeInspection={
  status:"scoped-changes",changedPaths:["src/a.ts"],outOfScopePaths:[],
  sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false
 };
-function fixture(t:Parameters<typeof test>[1] extends (ctx:infer T)=>unknown?T:never){
+function fixture(t:TestContext){
  const dir=mkdtempSync(join(tmpdir(),"asen-t06-worker-observation-")),file=join(dir,"observed.json");
  t.after(()=>rmSync(dir,{recursive:true,force:true}));
  return {journal:new ParallelWorkerObservationJournal(file),file};
