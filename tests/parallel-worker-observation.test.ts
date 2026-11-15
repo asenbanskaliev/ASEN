@@ -72,3 +72,56 @@ test("T06 a failed or interrupted Worker is recorded as evidence, never PASS",as
  assert.equal(failed.worktreeChangeState,"out-of-scope");
  assert.equal(failed.acceptance,"not-accepted");assert.equal(failed.modelActual,"unknown");
 });
+
+const childTwo=resolve(tmpdir(),"asen-child-proj-2");
+const linkTwo:ParallelChildSessionLink={
+ ...link,sourceTodoId:"source-todo-b",sourceRequestId:"asen-plan:source-b:worker",
+ childSessionId:"child-2",childProjectId:childTwo
+};
+const workerTwo:AttributedParallelWorker={
+ ...worker,sourceTodoId:"source-todo-b",childTodoId:"child-task-2",
+ agentId:"asen-plan:child-task-2:worker"
+};
+const firstInput={link,worker,sourceTodoRevision:2,changes};
+const secondInput={link:linkTwo,worker:workerTwo,sourceTodoRevision:2,changes};
+
+test("T06 exactly two child receipts persist in one atomic batch journal revision",async t=>{
+ const {journal,file}=fixture(t);
+ const results=await journal.recordBatch([firstInput,secondInput]);
+ assert.equal(results.length,2);assert.deepEqual(results.map(r=>r.sourceTodoId),
+  ["source-todo-a","source-todo-b"]);
+ assert.equal(results.every(r=>r.modelConsumedProven===false&&r.acceptance==="not-accepted"),true);
+ const saved=JSON.parse(readFileSync(file,"utf8")) as {revision:number;receipts:unknown[]};
+ assert.equal(saved.revision,2);assert.equal(saved.receipts.length,2);
+ const query=await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo]);
+ assert.equal(query.length,2);
+});
+
+test("T06 malformed second child cannot leave first child recorded",async t=>{
+ const {journal}=fixture(t);
+ await assert.rejects(()=>journal.recordBatch([
+  firstInput,{...secondInput,worker:{...workerTwo,agentState:"running"}}
+ ]),/terminal exact/u);
+ assert.equal((await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo])).length,0);
+ await assert.rejects(()=>journal.recordBatch([firstInput,{...secondInput,link:{...linkTwo,batchId:"other"}}]),/mixed owners/u);
+ assert.equal((await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo])).length,0);
+});
+
+test("T06 a prior receipt blocks an entire overlapping batch without partial second write",async t=>{
+ const {journal}=fixture(t);
+ await journal.record(firstInput);
+ await assert.rejects(()=>journal.recordBatch([firstInput,secondInput]),/already recorded/u);
+ const saved=await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo]);
+ assert.equal(saved.length,1);assert.equal(saved[0]!.sourceTodoId,"source-todo-a");
+});
+
+test("T06 concurrent competing same-batch observations cannot be duplicated or partially replayed",async t=>{
+ const {journal}=fixture(t);
+ const outcomes=await Promise.allSettled([
+  journal.recordBatch([firstInput,secondInput]),
+  journal.recordBatch([firstInput,secondInput])
+ ]);
+ assert.equal(outcomes.filter(result=>result.status==="fulfilled").length,1);
+ assert.equal(outcomes.filter(result=>result.status==="rejected").length,1);
+ assert.equal((await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo])).length,2);
+});
