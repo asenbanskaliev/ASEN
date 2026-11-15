@@ -235,18 +235,26 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   };
   await validateExact();
   let wasApproved=false;
-  const outcome=await input.launchChild(unit,async task=>{
+  let outcome:Awaited<ReturnType<ParentSupervisorInput["launchChild"]>>;
+  try{
+   outcome=await input.launchChild(unit,async task=>{
+    await input.validateParent();
+    if(task.id!==unit.childTodoId||task.role!=="worker"||
+     task.candidateRevision!==unit.baseRevision||
+     task.writeSurfaces?.length!==unit.writeSurfaces.length||
+     task.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i]))
+     return false;
+    wasApproved=await input.confirmWorker(unit,task)===true;
+    await validateExact();
+    return wasApproved;
+   },validateExact);
    await input.validateParent();
-   if(task.id!==unit.childTodoId||task.role!=="worker"||
-    task.candidateRevision!==unit.baseRevision||
-    task.writeSurfaces?.length!==unit.writeSurfaces.length||
-    task.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i]))
-    return false;
-   wasApproved=await input.confirmWorker(unit,task)===true;
-   await validateExact();
-   return wasApproved;
-  },validateExact);
-  await input.validateParent();
+  }catch{
+   // The existing Todo/Agent stores own the truthful launch state. The
+   // parent MUST NOT assume this failed before Pi began or auto-retry it.
+   return nonAuthorizing("partial-needs-review",initial.batchId,started,
+    [unit.sourceTodoId+": Child Pi dispatch or identity validation failed ambiguously; inspect its durable Todo/Agent records before any further action"]);
+  }
   if(outcome.status!=="dispatched"||outcome.role!=="worker"||
    outcome.todoId!==unit.childTodoId||!wasApproved)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
