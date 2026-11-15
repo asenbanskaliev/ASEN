@@ -227,9 +227,13 @@ test("T06 one-shot ODD handoff re-plans an exact original Worker in its Pi workt
   review:{kind:"dual_explicit",estimatedMinutes:5},
   unresolvedDecisions:[]
  });
- f.setRows(f.rows.map((row,i)=>({
-  ...row,plan:{...row.plan!,writerAuthorizationBasis:basis(i?"todo-frontend":"todo-backend",i?"frontend.txt":"backend.txt")}
- } as SourceTodoRow)));
+ f.setRows(f.rows.map((row,i)=>{
+  const exactBasis=basis(i?"todo-frontend":"todo-backend",i?"frontend.txt":"backend.txt");
+  return {...row,
+   description:"Perform only the authorized, scoped work for: "+(JSON.parse(exactBasis) as {instruction:string}).instruction,
+   plan:{...row.plan!,writerAuthorizationBasis:exactBasis}
+  } as SourceTodoRow;
+ }));
  const prepared=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
  const child=prepared.worktrees[0]!.root;
  assert.equal((await f.runChild("attach",child) as {status:string}).status,"attached");
@@ -256,7 +260,9 @@ test("T06 child ODD handoff never launches after declining consent, Git scope dr
   unresolvedDecisions:[]
  });
  f.setRows(f.rows.map((row,i)=>({
-  ...row,plan:{...row.plan!,writerAuthorizationBasis:i?row.plan!.writerAuthorizationBasis:basis}
+  ...row,
+  ...(i?{}:{description:"Perform only the authorized, scoped work for: Update backend.txt"}),
+  plan:{...row.plan!,writerAuthorizationBasis:i?row.plan!.writerAuthorizationBasis:basis}
  } as SourceTodoRow)));
  const prepared=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
  const root=prepared.worktrees[0]!.root;
