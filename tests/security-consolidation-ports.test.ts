@@ -9,9 +9,13 @@ import { fileURLToPath } from "node:url";
 for (const filename of ["upstream-reference-policy.test.mjs", "shell-asen-parity.test.mjs"]) {
   test("CI executes security/parity negatives in " + filename, () => {
     const file = fileURLToPath(new URL("./" + filename, import.meta.url));
-    const result = spawnSync(process.execPath, ["--test", file], {
-      encoding: "utf8", timeout: 45_000, maxBuffer: 2_000_000,
-      env: { ...process.env, ASEN_PARITY_NO_PROVIDER: "1" }
+    // Node marks the outer test worker with NODE_TEST_CONTEXT. A nested
+    // runner inherits that marker and may emit NO TAP while exiting 0, so
+    // remove only the runner-internal marker and demand observed TAP cases.
+    const env = { ...process.env, ASEN_PARITY_NO_PROVIDER: "1" };
+    delete env.NODE_TEST_CONTEXT;
+    const result = spawnSync(process.execPath, ["--test", "--test-reporter=tap", file], {
+      encoding: "utf8", timeout: 45_000, maxBuffer: 2_000_000, env
     });
     assert.equal(result.error, undefined, String(result.error));
     assert.equal(result.status, 0,
