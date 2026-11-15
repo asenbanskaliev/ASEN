@@ -7,6 +7,7 @@ import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../age
 import {ParallelChildSessionJournal} from "../agents/parallel-todo-session-links.js";
 import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change-inspection.js";
 import {reconcileParallelWorktreeBatch} from "../agents/parallel-worktree-reconciliation.js";
+import {projectParallelAgentFlow} from "../ui/agent-flow-overview.js";
 import {ParallelChildPlanClaimJournal} from "../agents/parallel-child-plan-claims.js";
 import {controlledInstructionPlanCommand} from "./route-command.js";
 import type {TodoContext} from "./todo-store.js";
@@ -227,6 +228,7 @@ export function registerParallelWorktreeCommand(
      status:action==="review"?"review-preview" as const:"audit-only" as const,
      grantsAuthority:false as const,autoResume:false as const,autoMerge:false as const,
      records:auditRows,
+     flowOverview:projectParallelAgentFlow(auditRows),
      ...(action==="review"?{reconciliation:auditRows.map(record=>({
       batchId:record.batchId,
       ...reconcileParallelWorktreeBatch({
