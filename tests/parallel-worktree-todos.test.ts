@@ -353,3 +353,77 @@ test("T07 main work panel reads a bounded source Todo + worktree + Pi child obse
  assert.equal(unsafe.overview.tasks[0]!.nextAction,"inspect-blocker");
  assert.equal(unsafe.overview.acceptance,"not-accepted");
 });
+
+async function prepareAttributedChildren(f:ReturnType<typeof fixture>,withoutLink=false){
+ const prepared=await f.run("prepare-todos") as {status:string;worktrees:readonly {root:string}[]};
+ assert.equal(prepared.status,"prepared");assert.equal(prepared.worktrees.length,2);
+ for(let i=0;i<2;i++){
+  const childId="child-pi-"+(i+1),project=prepared.worktrees[i]!.root;
+  assert.equal((await f.runChild("attach",project,childId) as {status:string}).status,"attached");
+  const file=i?"frontend.txt":"backend.txt",taskId="child-todo-"+(i+1),
+   requestId="asen-plan:child-"+(i+1)+":worker";
+  const base=f.row(taskId,file),current={
+   ...base.current,sessionId:childId,projectId:project,state:"succeeded" as const
+  };
+  const childTodo={...base,current,requestId,
+   plan:{...base.plan!,candidate:{...base.plan!.candidate!,repository:project,revision:f.head},
+    writeSurfaces:[file]}
+  } as SourceTodoRow;
+  const agent:PublicAgentRecord={
+   id:requestId,role:"worker",state:"completed",
+   sessionId:childId,projectId:project,owner:{kind:"user",id:"pi:"+childId},
+   createdAt:"2026-11-15T19:00:00.000Z",updatedAt:"2026-11-15T19:01:00.000Z"
+  };
+  const taskAgentLink:TaskAgentLink={
+   taskId,agentId:requestId,sessionId:childId,projectId:project,
+   createdAt:"2026-11-15T19:00:00.000Z"
+  };
+  f.setChildObservations(childId,[childTodo],[agent],withoutLink&&i===1?[]:[taskAgentLink]);
+ }
+ const claims=new ParallelChildPlanClaimJournal(f.planClaimsFile),
+  sessions=await f.sessions.listSource(f.identity);
+ assert.equal(sessions.length,2);
+ for(const link of sessions)await claims.claim(link);
+ return prepared;
+}
+
+test("T06 parent coordinator collects two exact child Worker audit receipts and never fabricates acceptance",async t=>{
+ const f=fixture(t),prepared=await prepareAttributedChildren(f);
+ const result=await f.run("collect") as {status:string;batchId:string;observed:readonly {agentState:string;modelActual:string}[];acceptance:string;grantsAuthority:boolean;autoMerge:boolean;autoRetry:boolean};
+ assert.equal(result.status,"observed-needs-independent-review");
+ assert.equal(result.observed.length,2);
+ assert.deepEqual(result.observed.map(x=>x.agentState),["completed","completed"]);
+ assert.equal(result.observed[0]!.modelActual,"unknown");
+ assert.equal(result.acceptance,"not-accepted");
+ assert.equal(result.grantsAuthority,false);assert.equal(result.autoMerge,false);assert.equal(result.autoRetry,false);
+ const journal=new ParallelWorkerObservationJournal(f.observationFile);
+ const links=await f.sessions.listSource(f.identity);
+ const receipts=await journal.listSource(f.identity,links);
+ assert.equal(receipts.length,2);
+ assert.equal(receipts.every(x=>x.acceptance==="not-accepted"&&x.modelConsumedProven===false),true);
+ const status=await f.run("status") as {records:readonly {tasks:readonly {workerReceipt?:{agentId:string;agentState:string}}[]}[]};
+ assert.equal(status.records[0]!.tasks.filter(x=>x.workerReceipt?.agentState==="completed").length,2);
+ await assert.rejects(()=>f.run("collect"),/already recorded/u);
+ assert.equal((await journal.listSource(f.identity,links)).length,2);
+ assert.equal(prepared.worktrees.length,2);
+});
+
+test("T06 parent coordinator will not collect unrelated child Workers or invent missing Todo-agent associations",async t=>{
+ const f=fixture(t);await prepareAttributedChildren(f,true);
+ const result=await f.run("collect") as {status:string;blockers:readonly string[];grantsAuthority:boolean};
+ assert.equal(result.status,"blocked");
+ assert.ok(result.blockers.some(x=>/independently attributed/u.test(x)));
+ assert.equal(result.grantsAuthority,false);
+ const journal=new ParallelWorkerObservationJournal(f.observationFile);
+ assert.equal((await journal.listSource(f.identity,await f.sessions.listSource(f.identity))).length,0);
+});
+
+test("T06 declining parent evidence collection leaves source and child journals unchanged",async t=>{
+ const f=fixture(t);await prepareAttributedChildren(f);
+ f.setConsent(false);
+ const result=await f.run("collect") as {status:string;grantsAuthority:boolean};
+ assert.equal(result.status,"declined");
+ assert.equal(result.grantsAuthority,false);
+ const journal=new ParallelWorkerObservationJournal(f.observationFile);
+ assert.equal((await journal.listSource(f.identity,await f.sessions.listSource(f.identity))).length,0);
+});
