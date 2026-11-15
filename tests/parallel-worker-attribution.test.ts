@@ -22,7 +22,7 @@ const todo:SourceTodoRow={
   writeSurfaces:["src/a.ts"]}
 } as unknown as SourceTodoRow;
 const agent:PublicAgentRecord={
- id:"asen-plan:child-a:worker",role:"worker",owner:{kind:"user",id:"pi:child-pi"},
+ id:"child-a:worker",role:"worker",owner:{kind:"user",id:"pi:child-pi"},
  sessionId:"child-pi",projectId:child,state:"completed",
  createdAt:"2026-11-15T18:01:00.000Z",updatedAt:"2026-11-15T18:02:00.000Z"
 };
