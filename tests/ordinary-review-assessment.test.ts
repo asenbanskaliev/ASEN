@@ -7,9 +7,10 @@ import {join,resolve} from "node:path";
 import {registerOrdinaryReviewCommand,truncateClaim,boundedFindingClaims,REVIEW_FINDING_CLAIM_MAX_BYTES,REVIEW_FINDING_CLAIMS_MAX_BYTES} from "../src/review/ordinary-review-command.js";
 import {createNativeRddControl,type ExecFileResult,type NativeRddObservation} from "../src/review/native-rdd-control.js";
 import type {PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-reviewer.js";
+import type {ReviewLens} from "../src/review/review-risk.js";
 
 type Command=Parameters<Parameters<typeof registerOrdinaryReviewCommand>[0]>[1];
-const author={provider:"author-provider",id:"writer"},reviewer={provider:"review-provider",id:"reviewer-one"};
+const author={provider:"author-provider",id:"writer"},reviewer={provider:"review-provider",id:"reviewer-one"},reviewerTwo={provider:"review-provider",id:"reviewer-two"};
 const DEFAULT_LENSES=["risk","resilience","reliability"];
 function git(root:string,...args:string[]):string{return execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();}
 function assessmentData(data:Record<string,unknown>):NativeRddObservation{
@@ -33,7 +34,7 @@ function editorAnswer(title:string):string{
  return "Check the task requirements";
 }
 /** One interactive workspace review driven by a host-injected read-only native control whose own notifications are recorded. */
-function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true){
+function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens,{model?:string;thinking?:"high"}>>={}){
  const root=repository(t),messages:string[]=[],trace:{operation:string,notified:string[]}[]=[],modelCalls:string[]=[],consentPrompts:{title:string;message:string}[]=[];
  const control={async observe(operation:string,context:{ui:{notify(message:string,level:"info"|"error"):void}}):Promise<NativeRddObservation>{
   const notified:string[]=[];trace.push({operation,notified});
@@ -41,8 +42,8 @@ function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObse
   return typeof observation==="function"?observation():observation;
  }};
  const commands=new Map<string,Command>();
- registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control as never);
- const registry={getAvailable:()=>[author,reviewer],hasConfiguredAuth:(model:PiReviewerModel)=>model.provider!=="author-provider",
+ registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control as never,async(_context,lens)=>lensChoices[lens]);
+ const registry={getAvailable:()=>[author,reviewer,reviewerTwo],hasConfiguredAuth:(model:PiReviewerModel)=>model.provider!=="author-provider",
   streamSimple:(model:PiReviewerModel)=>{
    modelCalls.push(model.provider+"/"+model.id);
    const answer={verdict:"pass",summary:"Reviewed the exact diff",findings:[]};
@@ -240,4 +241,25 @@ test("explicit workspace 4r refuses all external calls after a declined four-mod
  assert.equal(state.modelCalls.length,0);
  assert.equal(state.consentPrompts.length,1);
  assert.match(state.consentPrompts[0]!.message,/CUATRO llamadas/u);
+});
+
+test("specialized 4R route selects the configured authenticated reviewer per lens",async t=>{
+ const state=setup(t,unconfigured(),true,{risk:{model:"review-provider/reviewer-two"}});
+ const result=await state.handler("workspace 4r",state.context) as {status:string;reviews:Array<{lens:string;reviewerId:string}>};
+ assert.equal(result.status,"4r-analysis-complete");
+ assert.deepEqual(state.modelCalls,[
+  "review-provider/reviewer-two","review-provider/reviewer-one",
+  "review-provider/reviewer-one","review-provider/reviewer-one"
+ ]);
+ assert.equal(result.reviews[0]!.reviewerId,"pi-model:review-provider/reviewer-two");
+ assert.match(state.consentPrompts[0]!.message,/risk = review-provider\/reviewer-two/u);
+});
+
+test("unknown 4R profile model and unprovable effort block before consent or provider use",async t=>{
+ const absent=setup(t,unconfigured(),true,{risk:{model:"missing/not-authenticated"}});
+ await assert.rejects(()=>absent.handler("workspace 4r",absent.context),/unavailable, unauthenticated/u);
+ assert.equal(absent.modelCalls.length,0);assert.equal(absent.consentPrompts.length,0);
+ const thinking=setup(t,unconfigured(),true,{risk:{thinking:"high"}});
+ await assert.rejects(()=>thinking.handler("workspace 4r",thinking.context),/cannot prove applying/u);
+ assert.equal(thinking.modelCalls.length,0);assert.equal(thinking.consentPrompts.length,0);
 });
