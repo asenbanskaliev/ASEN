@@ -76,13 +76,14 @@ function validateProposal(input:ParallelWorktreeProposal){
  const units=input.units.map(unit=>{
   if(!unit||!taskPattern.test(unit.taskId)||unit.taskId==="."||unit.taskId===".."||
    ids.has(unit.taskId.toLowerCase())||!Array.isArray(unit.writeSurfaces)||unit.writeSurfaces.length<1||
-   unit.writeSurfaces.length>256||unit.writeSurfaces.some(path=>!scoped(path))||
-   new Set(unit.writeSurfaces.map(p=>p.toLowerCase())).size!==unit.writeSurfaces.length)
+   unit.writeSurfaces.length>256||unit.writeSurfaces.some((path:unknown)=>!scoped(path))||
+   new Set(unit.writeSurfaces.map((p:string)=>p.toLowerCase())).size!==unit.writeSurfaces.length)
    throw new Error("Invalid or repeated parallel Worker unit/scope");
   ids.add(unit.taskId.toLowerCase());
   const grant={agentId:unit.taskId,repository:source,surfaces:[...unit.writeSurfaces]};
   // Different worktrees do not excuse overlapping integration surfaces.
-  validateWriteGrant(grant,grants);grants.push(grant);
+  const reduced={...grant,surfaces:grant.surfaces.map(surface=>surface.toLowerCase())};
+  validateWriteGrant(reduced,grants);grants.push(reduced);
   return Object.freeze({taskId:unit.taskId,writeSurfaces:Object.freeze([...unit.writeSurfaces])});
  });
  if(gitHead(source)!==input.expectedHead||!clean(source))throw new Error("Parallel Workers require a clean exact pinned source candidate");
@@ -153,11 +154,14 @@ export async function dispatchApprovedParallelWorkers(input:{
    used.has(allocation.root)||request.role!=="worker"||
    request.repository!==allocation.root||request.candidate?.repository!==allocation.root||
    request.candidate.revision!==allocation.baseRevision||!request.isolationKey||
+   !request.writerAdmission||typeof request.writerAdmission!=="object"||!request.skillContext||
    request.writeSurfaces?.length!==allocation.writeSurfaces.length||
-   !request.writeSurfaces.every((scope,j)=>scope===allocation.writeSurfaces[j]))
+   !request.writeSurfaces.every((scope:string,j:number)=>scope===allocation.writeSurfaces[j]))
    throw new Error("Parallel dispatch requires separate freshly authorized exact worktree Workers");
   used.add(allocation.root);
   assertPreparedParallelWorktree(allocation);
+  if(gitHead(allocation.sourceRoot)!==allocation.baseRevision||!clean(allocation.sourceRoot))
+   throw new Error("Original candidate changed since parallel Worktree preparation; create a fresh plan");
  }
  // Burn batch allocations before starting any runner. An interrupted outcome
  // is never automatically re-dispatched; original tokens are consumed by Dispatcher.
