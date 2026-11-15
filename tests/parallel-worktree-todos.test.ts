@@ -198,3 +198,17 @@ test("T06 child attachment fails closed if worktree HEAD diverges from prepared 
  await assert.rejects(()=>f.runChild("attach",root),/exact linked Git candidate/u);
  assert.equal((await f.sessions.listSource(f.identity)).length,0);
 });
+
+test("T06 /asen-worktrees review remains advisory and catches a real out-of-scope Git write",async t=>{
+ const f=fixture(t),prepared=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
+ const before=await f.run("review") as {status:string;grantsAuthority:boolean;autoMerge:boolean;
+  reconciliation:readonly {disposition:string;acceptance:string;blockers:readonly string[]}[]};
+ assert.equal(before.status,"review-preview");assert.equal(before.autoMerge,false);
+ assert.equal(before.reconciliation[0]!.disposition,"not-started");
+ assert.equal(before.reconciliation[0]!.acceptance,"not-accepted");
+ writeFileSync(join(prepared.worktrees[0]!.root,"frontend.txt"),"crossed scope\n");
+ const after=await f.run("review") as typeof before;
+ assert.equal(after.reconciliation[0]!.disposition,"blocked");
+ assert.equal(after.reconciliation[0]!.blockers.some(x=>/outside authorized scope/u.test(x)),true);
+ assert.equal(after.grantsAuthority,false);assert.equal(after.autoMerge,false);
+});
