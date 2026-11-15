@@ -160,7 +160,7 @@ try{
  recordPhase("sqlite-backup-restore","crash-recovery");
 
  const interruptedHome=path.join(root,"interrupted-restore-home"),interruptedConfig=path.join(root,"interrupted-restore-config.json");
- const restoreModule=pathToFileURL(path.join(realPackageRoot,"dist","runtime","home-backup.js")).href;
+ const restoreModule=pathToFileURL(path.join(realPackageRoot,"dist","runtime","lifecycle","home-backup.js")).href;
  const restoreSource=`import {restoreHomeBackup} from ${JSON.stringify(restoreModule)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(interruptedHome)},targetConfig:${JSON.stringify(interruptedConfig)},replace:true,confirmed:true,hooks:{afterStagedConfigCreate(){process.stdout.write("CONFIG_STAGE_CREATED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
  const restoreChild=spawn(process.execPath,["--input-type=module","-e",restoreSource],{cwd:root,env,stdio:["ignore","pipe","pipe"],windowsHide:true});let restoreOutput="",restoreErrors="";
  restoreChild.stdout.setEncoding("utf8").on("data",chunk=>restoreOutput+=chunk);restoreChild.stderr.setEncoding("utf8").on("data",chunk=>restoreErrors+=chunk);
