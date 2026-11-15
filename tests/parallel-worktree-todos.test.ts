@@ -83,6 +83,10 @@ function fixture(t:TestContext){
   setChildObservations:(id:string,todos:SourceTodoRow[],agents:PublicAgentRecord[],links:TaskAgentLink[])=>{
    childRows.set(id,todos);childAgentRecords.set(id,agents);childTaskLinks.set(id,links);
   },
+  getChildObservations:(id:string)=>({
+   todos:childRows.get(id)??[],agents:childAgentRecords.get(id)??[],
+   links:childTaskLinks.get(id)??[]
+  }),
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
   setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},row};
@@ -452,4 +456,27 @@ test("T06/T07 real issued task-agent links are required before any child Worker 
  assert.equal(panel.overview.stages["running-observed"],0);
  assert.equal(panel.overview.stages["handoff-unverified"],2);
  assert.equal(panel.overview.tasks.every(task=>task.modelActual==="unknown"),true);
+});
+
+test("T06/T07 source views show only genuinely linked and ODD-claimed child Workers as terminal",async t=>{
+ const f=fixture(t);
+ await prepareAttributedChildren(f);
+ const status=await f.run("status") as {flowOverview:{
+  stages:Readonly<Record<string,number>>;tasks:readonly {workerObserved:string;modelActual:string}[];
+  acceptance:string;autoMerge:boolean;
+ }};
+ assert.equal(status.flowOverview.stages["manual-review-required"],2);
+ assert.equal(status.flowOverview.stages["running-observed"],0);
+ assert.equal(status.flowOverview.tasks.every(t=>t.workerObserved==="terminal-unverified"),true);
+ assert.equal(status.flowOverview.tasks.every(t=>t.modelActual==="unknown"),true);
+ const fromPanel=await readAgentFlowPanelObservation({
+  identity:f.identity,journalFile:f.journalFile,sessionLinksFile:f.sessionLinksFile,
+  planClaimsFile:f.planClaimsFile,
+  loadTodos:async id=>id.sessionId===f.identity.sessionId?f.rows:f.getChildObservations(id.sessionId).todos,
+  loadChildAgentRecords:async id=>f.getChildObservations(id.sessionId).agents,
+  loadChildTaskAgentLinks:async id=>f.getChildObservations(id.sessionId).links
+ });
+ assert.equal(fromPanel.overview.stages["manual-review-required"],2);
+ assert.equal(fromPanel.overview.acceptance,"not-accepted");
+ assert.equal(fromPanel.overview.autoMerge,false);
 });
