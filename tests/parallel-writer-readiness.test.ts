@@ -4,8 +4,8 @@ import {execFileSync} from "node:child_process";
 import {mkdtempSync,mkdirSync,rmSync,readFileSync,writeFileSync,symlinkSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {inspectParallelWriterReadiness} from "../src/runtime/parallel-writer-readiness.js";
-import {acquireWorkspaceWriter} from "../src/runtime/workspace-writer-lease.js";
+import {inspectParallelWriterReadiness} from "../src/runtime/agents/parallel-writer-readiness.js";
+import {acquireWorkspaceWriter} from "../src/runtime/lifecycle/workspace-writer-lease.js";
 
 function setup(t:import("node:test").TestContext){
  const folder=mkdtempSync(join(tmpdir(),"asen-ef303-worktrees-"));

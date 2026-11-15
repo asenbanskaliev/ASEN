@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions,agentTerminalContinuationMessage,agentNoticeIsStale,AGENT_NOTICE_STALE_AFTER_MS,agentTerminalNoticeContent} from "../src/runtime/agent-terminal-delivery.js";
+import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions,agentTerminalContinuationMessage,agentNoticeIsStale,AGENT_NOTICE_STALE_AFTER_MS,agentTerminalNoticeContent} from "../src/runtime/agents/agent-terminal-delivery.js";
 
 const id={sessionId:"primary-a",projectId:"/workspace/a"};
 test("EF-601 Pi parent routing: active steer, idle stored+separate wake, compaction holds",()=>{

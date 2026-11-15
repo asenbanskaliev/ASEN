@@ -5,7 +5,7 @@
 // required receipt behaviour is unproducible by shipped code until the probe exists.
 import test from "node:test";
 import assert from "node:assert/strict";
-import {inspectIntegrationProfiles, type PublicInventoryRow} from "../src/runtime/integration-profile-inspection.js";
+import {inspectIntegrationProfiles, type PublicInventoryRow} from "../src/runtime/ui/integration-profile-inspection.js";
 // @ts-expect-error The integration probe is a standalone provider-free ESM script without a declaration file.
 import {buildProbeReceipt, validateProbeReceipt, PROBE_SCHEMA} from "../scripts/asen-integration-probe.mjs";
 

@@ -5,7 +5,7 @@ import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
-import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
+import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
 
 function host(){
  const events=new Map<string,Function[]>(),commands=new Map<string,any>(),tools=new Map<string,any>(),messages:any[]=[];

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {SessionNotificationBus} from "../src/runtime/session-notifications.js";
+import {SessionNotificationBus} from "../src/runtime/lifecycle/session-notifications.js";
 
 test("deduplicates by source identity, not by display text",()=>{
  const bus=new SessionNotificationBus({ttlMs:60_000,capacity:4});

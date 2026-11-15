@@ -1,7 +1,7 @@
 import {test} from "node:test";
 import assert from "node:assert/strict";
-import {createNativeCommandPalette,type NativeCommandPaletteControls} from "../src/runtime/native-command-palette.js";
-import type {RegisteredCommand} from "../src/runtime/command-palette.js";
+import {createNativeCommandPalette,type NativeCommandPaletteControls} from "../src/runtime/ui/native-command-palette.js";
+import type {RegisteredCommand} from "../src/runtime/ui/command-palette.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import type {TuiMouseEvent} from "@earendil-works/pi-tui";
 const entry=(label:string,group="Work",name=label,description=""):Readonly<RegisteredCommand>=>Object.freeze({label,group,name,description,implemented:true});

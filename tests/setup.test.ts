@@ -1,4 +1,4 @@
-import test from "node:test";import assert from "node:assert/strict";import {mkdtemp,mkdir,readFile,symlink,writeFile,rm} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";import {applySetupPlan,validateSetupPlan} from "../src/runtime/setup.js";
+import test from "node:test";import assert from "node:assert/strict";import {mkdtemp,mkdir,readFile,symlink,writeFile,rm} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";import {applySetupPlan,validateSetupPlan} from "../src/runtime/lifecycle/setup.js";
 // Creating symlinks on Windows needs Developer Mode or elevation. These security cases cannot build
 // their preconditions without that privilege, so they skip honestly instead of failing on host policy.
 const symlinkSupport=new Map<string,boolean>();

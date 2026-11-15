@@ -10,9 +10,9 @@ function source(path) {
 }
 const compat = [
  "src/agents/tool-overlay.ts","src/review/delivery-preflight.ts",
- "src/runtime/desktop-rpc.ts","src/runtime/guide-tour.ts",
- "src/runtime/image-disk-cache.ts","src/runtime/reply-language-anchor.ts",
- "src/runtime/voice-dictation.ts","src/security/execution-surface-guard.ts",
+ "src/runtime/ui/desktop-rpc.ts","src/runtime/ui/guide-tour.ts",
+ "src/runtime/ui/image-disk-cache.ts","src/runtime/ui/reply-language-anchor.ts",
+ "src/runtime/ui/voice-dictation.ts","src/security/execution-surface-guard.ts",
  "tests/image-disk-cache.test.ts","tests/ordinary-review-assessment.test.ts",
  "tests/pi-process-runner.test.ts","tests/reply-language-anchor.test.ts",
  "tests/tool-overlay.test.ts"

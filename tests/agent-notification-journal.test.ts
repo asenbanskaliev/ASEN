@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
-import {AgentNotificationJournal,agentNoticeEventId} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal,agentNoticeEventId} from "../src/runtime/agents/agent-notification-journal.js";
 const subject={id:"agent-1",sessionId:"session-a",projectId:"/project-a",state:"completed"};
 async function fixture(t:import("node:test").TestContext){
  const dir=await mkdtemp(join(tmpdir(),"asen-agent-notice-"));

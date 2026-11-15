@@ -3,8 +3,8 @@ import test from "node:test";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentCoordinator} from "../src/runtime/task-agent-coordinator.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentCoordinator} from "../src/runtime/agents/task-agent-coordinator.js";
 
 const recoveryIdentity={sessionId:"session",projectId:"/project"};
 const recoveryAgent=(state="interrupted",role="explorer",id="attempt")=>({

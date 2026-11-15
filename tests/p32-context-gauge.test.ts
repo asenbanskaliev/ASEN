@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {renderAsenStatusLine,type AsenPanelSnapshot} from "../src/runtime/ide-panel.js";
-import {projectHostStatus} from "../src/runtime/host-status-projection.js";
+import {renderAsenStatusLine,type AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
+import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import {truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 
 const snapshot=(updates:Partial<AsenPanelSnapshot>={}):AsenPanelSnapshot=>({todos:[],agents:[],jobs:[],...updates});

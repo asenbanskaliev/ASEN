@@ -4,8 +4,8 @@ import {spawnSync} from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
-import {stageManagedInstall,selectManagedVersion} from "../src/runtime/managed-install.js";
-import {probeManagedCliVersion} from "../src/runtime/managed-cli-version-probe.js";
+import {stageManagedInstall,selectManagedVersion} from "../src/runtime/managed/managed-install.js";
+import {probeManagedCliVersion} from "../src/runtime/managed/managed-cli-version-probe.js";
 
 const VERSION="1.2.3";
 type Fixture=Awaited<ReturnType<typeof fixture>>;
@@ -50,7 +50,7 @@ function invoke(f:Fixture,args:readonly string[]){
 }
 async function records(f:Fixture){return JSON.parse(await fs.readFile(f.record,"utf8")) as Array<Record<string,unknown>>;}
 async function backend():Promise<Launch>{
- const moduleName="../src/runtime/managed-selected-launch.js",api=await import(moduleName).catch(()=>({} as Record<string,unknown>));
+ const moduleName="../src/runtime/managed/managed-selected-launch.js",api=await import(moduleName).catch(()=>({} as Record<string,unknown>));
  assert.equal(typeof api.launchManagedSelectedVersion,"function","managed selected-launch backend API missing");
  return api.launchManagedSelectedVersion as Launch;
 }
@@ -152,7 +152,7 @@ test("selected launch retains a moved outer payload and its empty replacement as
  await selectManagedVersion({prefix,version,expectedCurrentVersion:null,confirmed:true});
  const current=path.join(managed,"current"),receipt=path.join(managed,"managed-install.json"),versionRoot=path.join(managed,"versions",version);
  const preserved=await Promise.all([personal,current,receipt,path.join(versionRoot,"package.json"),path.join(versionRoot,"cli.cjs")].map(async file=>({file,bytes:await fs.readFile(file),mtimeMs:(await fs.stat(file)).mtimeMs})));
- const moduleName="../src/runtime/managed-selected-launch.js",api=await import(moduleName),launch=api.launchManagedSelectedVersion;
+ const moduleName="../src/runtime/managed/managed-selected-launch.js",api=await import(moduleName),launch=api.launchManagedSelectedVersion;
  const report=await launch({prefix,version,home:dataHome,args:[],confirmed:true,cwd:process.cwd(),env:cleanEnv({root,launcherHome} as Fixture)});
  const effect=JSON.parse(await fs.readFile(trace,"utf8")) as {count:number;outer:string;moved:string;replacementCreated:boolean};
  const exists=async(file:string)=>fs.lstat(file).then(()=>true,error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return false;throw error;});

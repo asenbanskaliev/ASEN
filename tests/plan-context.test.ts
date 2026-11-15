@@ -4,8 +4,8 @@ import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
-import {formatActivePlanContext} from "../src/runtime/plan-context.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {formatActivePlanContext} from "../src/runtime/lifecycle/plan-context.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 
 function row(role:string,state:string,requestId:string):any{return {requestId,title:"internal task title",plan:{role,skillPaths:[]},events:[{at:"2026-10-14T10:00:00.000Z"}],current:{state}};}
 function host(){const events=new Map<string,Function[]>(),tools=new Map<string,any>();return {events,tools,pi:{on(name:string,handler:Function){events.set(name,[...(events.get(name)??[]),handler]);},registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);}}};}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {SessionDirectory} from "../src/runtime/session-directory.js";
+import {SessionDirectory} from "../src/runtime/lifecycle/session-directory.js";
 
 test("publishes only live session labels and isolates them by canonical project",()=>{
  const d=new SessionDirectory(),now=new Date().toISOString();d.publish({sessionId:"a",subject:"one",projectId:"p1",classification:"read",updatedAt:now});d.publish({sessionId:"b",subject:"two",projectId:"p2",classification:"write",updatedAt:now});assert.equal(d.list("p1").length,1);d.remove("a");assert.equal(d.list("p1").length,0);

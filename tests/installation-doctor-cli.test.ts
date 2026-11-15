@@ -5,8 +5,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
 import {runAsen} from "../src/cli.js";
-import {parseAsenArgs} from "../src/runtime/launcher.js";
-import {stageAdditionalManagedVersion,stageManagedInstall} from "../src/runtime/managed-install.js";
+import {parseAsenArgs} from "../src/runtime/lifecycle/launcher.js";
+import {stageAdditionalManagedVersion,stageManagedInstall} from "../src/runtime/managed/managed-install.js";
 
 // Children run from isolated cwds, so tsx must be resolved from this checkout, not from the child cwd.
 const TSX_IMPORT=import.meta.resolve("tsx");
@@ -139,7 +139,7 @@ test("DoctorRed opaque Pi configuration is classified but never echoed, scanned,
 
 test("DoctorRed composer rejects a managed state change between observations without extra effects",async t=>{
  const f=await fixture(t,"state change");await stage(f);const before=await tree(f.root);let stimulated:unknown;
- const moduleName="../src/runtime/installation-doctor.js",api=await import(moduleName) as {composeInstallationDoctor:(request:Json)=>Promise<Json>};
+ const moduleName="../src/runtime/managed/installation-doctor.js",api=await import(moduleName) as {composeInstallationDoctor:(request:Json)=>Promise<Json>};
  const report=await api.composeInstallationDoctor({executingPackageRoot:path.resolve("."),effectivePackageRoot:f.effective,homeDirectory:f.home,args:parseAsenArgs(["--package-root",f.effective]),env:env(f),hooks:{beforeFinalInspection:async()=>{
   assert.deepEqual(await tree(f.root),before,"composer changed state before the explicit stimulus");await fs.writeFile(f.current,VERSION+"\n");stimulated=await tree(f.root);
  }}});

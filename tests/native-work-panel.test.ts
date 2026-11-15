@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createNativeWorkPanel} from "../src/runtime/native-work-panel.js";
-import {ASEN_PANEL_SECTIONS,renderAsenPanel,type AsenPanelSnapshot} from "../src/runtime/ide-panel.js";
+import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
+import {ASEN_PANEL_SECTIONS,renderAsenPanel,type AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
-import {inspectIntegrationProfiles} from "../src/runtime/integration-profile-inspection.js";
+import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
 
 const snapshot={todos:[],agents:[],jobs:[],changes:{branch:"main",files:0},profile:"free",permission:"normal"} satisfies AsenPanelSnapshot;
 test("sheet overview collapses empty bodies and bounds inventory without losing observed detail",()=>{

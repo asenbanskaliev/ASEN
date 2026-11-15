@@ -84,7 +84,7 @@ export default function(pi:any):void{
     if(rows.length!==1||!row||row.role!=="explorer"||row.state!=="interrupted"||
        row.sessionId!==scope.sessionId||row.projectId!==scope.projectId)
      throw Error("Exact interrupted Explorer did not recover in the same Pi TUI session and project");
-    const notices=await import("../src/runtime/agent-notification-journal.js").then(async({AgentNotificationJournal})=>
+    const notices=await import("../src/runtime/agents/agent-notification-journal.js").then(async({AgentNotificationJournal})=>
      new AgentNotificationJournal(join(home,".asen","agent-notices.json")).list(scope));
     if(notices.some(item=>item.agentId===expected))throw Error("Interrupted nonterminal stream forged a terminal notice");
     if(reopenDispatches!==0)throw Error("Recovery automatically relaunched the interrupted Explorer");

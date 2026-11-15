@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {projectHostStatus,type HostStatusInput} from "../src/runtime/host-status-projection.js";
+import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
 import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 
 const unavailable={

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
-import {statusLines,type AsenStatusInput} from "../src/runtime/status.js";
+import {agentStatusRows,type PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
+import {statusLines,type AsenStatusInput} from "../src/runtime/ui/status.js";
 import {recordWorkspaceChange,visibleWorkspaceConflictRows,visibleWorkspaceRows} from "../src/runtime/workspace-attribution.js";
 import {hostContentColumns,layoutMode,truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {formatCommandGuide} from "../src/runtime/command-guide.js";
-import type {CommandDiscovery,RegisteredCommand} from "../src/runtime/command-palette.js";
+import {formatCommandGuide} from "../src/runtime/ui/command-guide.js";
+import type {CommandDiscovery,RegisteredCommand} from "../src/runtime/ui/command-palette.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
 const entry=(name:string,group:string,description=""):RegisteredCommand=>({name,group,description,implemented:true,label:`/${name}`});

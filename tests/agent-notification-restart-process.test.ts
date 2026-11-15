@@ -4,10 +4,10 @@ import {spawnSync} from "node:child_process";
 import {mkdir,mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
-import {agentTerminalNoticeContent} from "../src/runtime/agent-terminal-delivery.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
+import {agentTerminalNoticeContent} from "../src/runtime/agents/agent-terminal-delivery.js";
 
-const sourceUrl=new URL("../src/runtime/agent-notification-journal.ts",import.meta.url).href;
+const sourceUrl=new URL("../src/runtime/agents/agent-notification-journal.ts",import.meta.url).href;
 function separateProcess(stage:string,file:string,subject:object){
  const source=`import {AgentNotificationJournal} from ${JSON.stringify(sourceUrl)};
  const journal=new AgentNotificationJournal(process.env.ASEN_TEST_NOTICE_FILE);

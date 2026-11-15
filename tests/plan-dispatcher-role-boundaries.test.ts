@@ -5,10 +5,10 @@ import {join} from "node:path";
 import test,{type TestContext} from "node:test";
 import type {AgentRequest} from "../src/agents/dispatcher.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {dispatchNextPlanTask,sameApprovedTaskSnapshot} from "../src/runtime/plan-dispatcher.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {dispatchNextPlanTask,sameApprovedTaskSnapshot} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 
 async function clarifierFixture(t:TestContext,instruction="Clarify every persisted ambiguity before any implementation starts",control?:{entered:()=>void;complete:Promise<void>}){
  const home=await mkdtemp(join(tmpdir(),"asen-clarifier-dispatch-"));t.after(()=>rm(home,{recursive:true,force:true}));

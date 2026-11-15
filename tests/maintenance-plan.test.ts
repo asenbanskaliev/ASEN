@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
-import { createSetupMaintenancePlan } from "../src/runtime/maintenance-plan.js";
+import { createSetupMaintenancePlan } from "../src/runtime/managed/maintenance-plan.js";
 
 const absolute = (name: string) => path.resolve(path.parse(process.cwd()).root, "private", name);
 

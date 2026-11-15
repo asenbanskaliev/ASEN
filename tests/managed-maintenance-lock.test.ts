@@ -4,9 +4,9 @@ import fs from "node:fs/promises";
 import {syncBuiltinESMExports} from "node:module";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {stageManagedInstall} from "../src/runtime/managed-install.js";
+import {stageManagedInstall} from "../src/runtime/managed/managed-install.js";
 
-const api=()=>import("../src/runtime/managed-maintenance-lock.js");
+const api=()=>import("../src/runtime/managed/managed-maintenance-lock.js");
 async function fixture(t:{after:(fn:()=>Promise<void>)=>void}){
  const directory=await fs.mkdtemp(path.join(tmpdir(),"ml-"));
  t.after(()=>fs.rm(directory,{recursive:true,force:true}));

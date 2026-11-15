@@ -6,9 +6,9 @@ import path from "node:path";
 import {tmpdir} from "node:os";
 import {inspect} from "node:util";
 import {syncBuiltinESMExports} from "node:module";
-import {inspectManagedInstall,stageManagedInstall,type ManagedAdditionalStageReport,type ManagedAdditionalStageRequest} from "../src/runtime/managed-install.js";
-import {verifyManagedVersion} from "../src/runtime/managed-version-verification.js";
-const api=async()=>{const module=await import("../src/runtime/managed-install.js");assert.equal(typeof module.stageAdditionalManagedVersion,"function","additional-stage API missing");return module.stageAdditionalManagedVersion;};
+import {inspectManagedInstall,stageManagedInstall,type ManagedAdditionalStageReport,type ManagedAdditionalStageRequest} from "../src/runtime/managed/managed-install.js";
+import {verifyManagedVersion} from "../src/runtime/managed/managed-version-verification.js";
+const api=async()=>{const module=await import("../src/runtime/managed/managed-install.js");assert.equal(typeof module.stageAdditionalManagedVersion,"function","additional-stage API missing");return module.stageAdditionalManagedVersion;};
 async function incoming(root:string,prefix:string,version:string):Promise<ManagedAdditionalStageRequest>{
  const packageRoot=path.join(root,"p"+version);await fs.mkdir(packageRoot);
  await fs.writeFile(path.join(packageRoot,"package.json"),JSON.stringify({name:"asen",version,engines:{node:">=0.0.0"},bin:{asen:"cli.cjs"}}));

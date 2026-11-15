@@ -4,7 +4,7 @@ import {
   UpdateNotifier,
   isNewerVersion,
   formatUpdateNotice
-} from "../src/runtime/update-notifier.js";
+} from "../src/runtime/lifecycle/update-notifier.js";
 
 test("isNewerVersion compares semver strings accurately", () => {
   assert.equal(isNewerVersion("0.1.0", "0.1.1"), true);

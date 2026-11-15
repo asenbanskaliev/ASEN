@@ -11,7 +11,7 @@ import {
   VoiceDictation,
   type VoiceDictationState,
   type VoiceErrorCode,
-} from "../src/runtime/voice-dictation.js";
+} from "../src/runtime/ui/voice-dictation.js";
 
 const ALL_CODES = [
   "invalid-state",

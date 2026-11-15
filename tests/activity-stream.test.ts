@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   ActivityStreamFormatter,
   type ActivityEvent
-} from "../src/runtime/activity-stream.js";
+} from "../src/runtime/agents/activity-stream.js";
 
 test("ActivityStreamFormatter renders single-line dynamic progress", () => {
   const formatter = new ActivityStreamFormatter({ width: 80, enableAnsi: true });

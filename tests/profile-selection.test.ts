@@ -4,8 +4,8 @@ import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
-import {writeProfilesFile} from "../src/runtime/profile-store.js";
-import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
+import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile} from "../src/runtime/lifecycle/profiles.js";
 import type {AgentRequest} from "../src/agents/dispatcher.js";
 
 async function selectionFixture(t:TestContext){

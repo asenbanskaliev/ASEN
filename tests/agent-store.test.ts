@@ -7,7 +7,7 @@ import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {AgentRequest,AgentRunner} from "../src/agents/dispatcher.js";
-import {PersistentAgentStore,parseAgentStore} from "../src/runtime/agent-store.js";
+import {PersistentAgentStore,parseAgentStore} from "../src/runtime/agents/agent-store.js";
 
 async function fixture(t:import("node:test").TestContext){const dir=await mkdtemp(join(tmpdir(),"asen-agent-store-"));t.after(()=>rm(dir,{recursive:true,force:true}));return join(dir,"agents.json");}
 const owner={kind:"user" as const,id:"pi:session-a"};

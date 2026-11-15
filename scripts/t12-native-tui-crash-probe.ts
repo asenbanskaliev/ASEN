@@ -6,7 +6,7 @@ import {spawn} from "node:child_process";
 import {writeFileSync,readFileSync,realpathSync,existsSync} from "node:fs";
 import {join} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 const home=process.env.ASEN_TUI_CRASH_HOME;
 const marker=process.env.ASEN_TUI_CRASH_MARKER;
 const phase=process.env.ASEN_TUI_CRASH_PHASE;

@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import {mkdtemp,mkdir,readFile,writeFile,stat,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {stageManagedInstall,inspectManagedInstall} from "../src/runtime/managed-install.js";
+import {stageManagedInstall,inspectManagedInstall} from "../src/runtime/managed/managed-install.js";
 
 const roots:string[]=[];
 test.afterEach(async()=>{for(const root of roots.splice(0))await rm(root,{recursive:true,force:true});});
-const api=()=>import("../src/runtime/managed-version-verification.js");
+const api=()=>import("../src/runtime/managed/managed-version-verification.js");
 const schema="asen.managed-version-verification/v1";
 const unowned="Requested managed version is not owned or failed integrity validation";
 const invalid="Managed package metadata is invalid";

@@ -11,7 +11,7 @@ import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 import {gradeStreamInterruptionEvidence} from "./t12-stream-interruption-grade.mjs";
 const repo=fileURLToPath(new URL("../",import.meta.url));
 const sha=process.env.ASEN_EXPECTED_SHA,model=process.env.ASEN_SELECTED_MODEL;

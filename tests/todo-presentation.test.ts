@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type {TodoItem} from "../src/runtime/todo-store.js";
-import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/todo-presentation.js";
+import type {TodoItem} from "../src/runtime/lifecycle/todo-store.js";
+import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/ui/todo-presentation.js";
 import {sanitizeTerminalText,visibleWidth} from "../src/runtime/responsive-layout.js";
 
 function task(state:"planned"|"running"|"blocked"|"succeeded"|"done"|"cancelled",role:"explorer"|"worker"|"verifier"="explorer"){

@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import {mkdtemp,mkdir,readFile,writeFile,stat,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {stageManagedInstall,inspectManagedInstall} from "../../src/runtime/managed-install.js";
+import {stageManagedInstall,inspectManagedInstall} from "../../src/runtime/managed/managed-install.js";
 const roots:string[]=[];
 test.afterEach(async()=>{for(const root of roots.splice(0))await rm(root,{recursive:true,force:true});});
-export const api=()=>import("../../src/runtime/managed-cli-version-probe.js");
+export const api=()=>import("../../src/runtime/managed/managed-cli-version-probe.js");
 export async function absent(file:string){try{await stat(file);return false;}catch(e){if((e as NodeJS.ErrnoException).code==="ENOENT")return true;throw e;}}
 export async function fixture(mode="ok",unicode=false){
  const root=await mkdtemp(path.join(tmpdir(),"cp-"));roots.push(root);

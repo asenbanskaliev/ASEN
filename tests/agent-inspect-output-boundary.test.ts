@@ -4,8 +4,8 @@ import {realpath} from "node:fs/promises";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
 import type {AgentRuntime} from "../src/agents/agent-runtime.js";
-import type {PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
-import type {AgentStateEvent} from "../src/runtime/agent-store.js";
+import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
+import type {AgentStateEvent} from "../src/runtime/agents/agent-store.js";
 import {hostContentColumns, visibleWidth} from "../src/runtime/responsive-layout.js";
 
 // Characterization, not a successful runner receipt or durable-store test.

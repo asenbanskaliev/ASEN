@@ -5,9 +5,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {performance} from "node:perf_hooks";
 import {syncBuiltinESMExports} from "node:module";
-import {inspectManagedInstall,stageManagedInstall} from "../src/runtime/managed-install.js";
-import {stageManagedAcquisitionUpdate} from "../src/runtime/managed-acquisition-update.js";
-import {MANAGED_ACQUISITION_COPY_DEADLINE_MS} from "../src/runtime/managed-acquisition-copy.js";
+import {inspectManagedInstall,stageManagedInstall} from "../src/runtime/managed/managed-install.js";
+import {stageManagedAcquisitionUpdate} from "../src/runtime/managed/managed-acquisition-update.js";
+import {MANAGED_ACQUISITION_COPY_DEADLINE_MS} from "../src/runtime/managed/managed-acquisition-copy.js";
 
 const sha=(bytes:string|Buffer)=>createHash("sha256").update(bytes).digest("hex");
 type Fixture=Awaited<ReturnType<typeof fixture>>;

@@ -9,11 +9,11 @@ import os from "node:os";
 import path from "node:path";
 import {createServer,type Server} from "node:http";
 import {DatabaseSync} from "node:sqlite";
-import {buildManagedManifest,generateManagedSigningKeyPair,parseManagedTrustAnchor,signManagedManifest,verifyManagedManifestSignature} from "../src/runtime/managed-trust.js";
-import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,type ManagedAcquisitionSource} from "../src/runtime/managed-lifecycle.js";
-import {inspectManagedInstall} from "../src/runtime/managed-install.js";
-import {createHomeBackup,restoreHomeBackup,verifyHomeBackup,HomeBackupError} from "../src/runtime/home-backup.js";
-import {requestBrowserConsent} from "../src/runtime/browser-assistant.js";
+import {buildManagedManifest,generateManagedSigningKeyPair,parseManagedTrustAnchor,signManagedManifest,verifyManagedManifestSignature} from "../src/runtime/managed/managed-trust.js";
+import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,type ManagedAcquisitionSource} from "../src/runtime/managed/managed-lifecycle.js";
+import {inspectManagedInstall} from "../src/runtime/managed/managed-install.js";
+import {createHomeBackup,restoreHomeBackup,verifyHomeBackup,HomeBackupError} from "../src/runtime/lifecycle/home-backup.js";
+import {requestBrowserConsent} from "../src/runtime/ui/browser-assistant.js";
 import {runAsen} from "../src/cli.js";
 
 const roots:string[]=[];
@@ -820,7 +820,7 @@ test("restore failure during staging cleans temporary data and can be retried",a
 test("a killed restore during staging preserves the old target and a retry completes",async()=>{
  const {root,home}=await homeFixture("restore-kill"),backup=path.join(root,"interrupted.asenbak"),target=path.join(root,"interrupted-target");
  await createHomeBackup({homeDir:home,destination:backup,asenVersion:"0.1.0"});await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"retain-after-kill");
- const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},replace:true,confirmed:true,hooks:{afterStagedFile(){process.stdout.write("RESTORE_STAGE_READY\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/lifecycle/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},replace:true,confirmed:true,hooks:{afterStagedFile(){process.stdout.write("RESTORE_STAGE_READY\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
  child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
  const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});
@@ -843,7 +843,7 @@ test("a killed restore during staging preserves the old target and a retry compl
 test("a killed restore before config staging is journaled removes only its empty staged file",async()=>{
  const {root,home,config}=await homeFixture("restore-config-stage-kill"),backup=path.join(root,"config-stage.asenbak"),target=path.join(root,"config-stage-target"),targetConfig=path.join(root,"config-stage-target.json");
  await createHomeBackup({homeDir:home,configFile:config,destination:backup,asenVersion:"0.1.0"});
- const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterStagedConfigCreate(){process.stdout.write("CONFIG_STAGE_CREATED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/lifecycle/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterStagedConfigCreate(){process.stdout.write("CONFIG_STAGE_CREATED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
  child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
  const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});
@@ -865,13 +865,13 @@ test("a killed restore after publication rolls back the owned target and config 
  await createHomeBackup({homeDir:home,configFile:config,destination:backup,asenVersion:"0.1.0"});
  await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"keep-before-publish");
  await fs.writeFile(targetConfig,"original-config");
- const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterConfigPublish(){process.stdout.write("RESTORE_PUBLISHED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/lifecycle/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterConfigPublish(){process.stdout.write("RESTORE_PUBLISHED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
  child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
  const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});
  await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>{child.kill();reject(new Error("restore child did not reach its publication checkpoint"));},30_000);const ready=()=>{if(output.includes("RESTORE_PUBLISHED")){clearTimeout(timer);child.stdout.off("data",ready);resolve();}};child.stdout.on("data",ready);child.once("close",()=>{clearTimeout(timer);reject(new Error(`restore child exited before publication checkpoint: ${errors}`));});});
  child.kill("SIGKILL");const stopped=await closed;assert.notEqual(stopped.code,0,"the publication child was forcibly terminated");
- const recoverySource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterRecoveryStageRemoved(){process.stdout.write("RECOVERY_STAGE_REMOVED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const recoverySource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/lifecycle/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterRecoveryStageRemoved(){process.stdout.write("RECOVERY_STAGE_REMOVED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
  const recovery=spawn(process.execPath,["--import","tsx","--input-type=module","-e",recoverySource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let recoveryOutput="",recoveryErrors="";
  recovery.stdout.setEncoding("utf8").on("data",chunk=>recoveryOutput+=chunk);recovery.stderr.setEncoding("utf8").on("data",chunk=>recoveryErrors+=chunk);
  const recoveryClosed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{recovery.once("error",reject);recovery.once("close",(code,signal)=>resolve({code,signal}));});
@@ -894,7 +894,7 @@ test("restore recovery refuses to replace a config path that appears during reco
  await createHomeBackup({homeDir:home,configFile:config,destination:backup,asenVersion:"0.1.0"});
  await fs.mkdir(target);await fs.writeFile(path.join(target,"precious"),"preserve");
  await fs.writeFile(targetConfig,"original-config");
- const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterConfigMove(){process.stdout.write("CONFIG_MOVED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
+ const childSource=`import {restoreHomeBackup} from ${JSON.stringify(pathToFileURL(path.resolve("src/runtime/lifecycle/home-backup.ts")).href)};await restoreHomeBackup({backup:${JSON.stringify(backup)},targetHome:${JSON.stringify(target)},targetConfig:${JSON.stringify(targetConfig)},replace:true,confirmed:true,hooks:{afterConfigMove(){process.stdout.write("CONFIG_MOVED\\n");return new Promise(()=>setInterval(()=>undefined,1000));}}});`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childSource],{cwd:process.cwd(),stdio:["ignore","pipe","pipe"],windowsHide:true});let output="",errors="";
  child.stdout.setEncoding("utf8").on("data",chunk=>output+=chunk);child.stderr.setEncoding("utf8").on("data",chunk=>errors+=chunk);
  const closed=new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{child.once("error",reject);child.once("close",(code,signal)=>resolve({code,signal}));});

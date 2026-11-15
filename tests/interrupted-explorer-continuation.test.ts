@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {continueInterruptedExplorer} from "../src/agents/interrupted-explorer-continuation.js";
-import type {SessionTodoStore} from "../src/runtime/todo-store.js";
+import type {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 
 const identity={sessionId:"session-a",projectId:"D:/project"};
 const interruptedEntry={record:{id:"parent",state:"interrupted",role:"explorer",sessionId:identity.sessionId,projectId:identity.projectId}} as any;
@@ -87,7 +87,7 @@ test("interrupted Explorer continuation refuses an ended explorer without dispat
 
 test("UFC-M2-03c shipped request guidance and tool description keep the same no-worker vocabulary as the guard",async()=>{
  const {readFileSync}=await import("node:fs");
- const guidance=readFileSync(new URL("../src/runtime/request-guidance.ts",import.meta.url),"utf8");
+ const guidance=readFileSync(new URL("../src/runtime/ui/request-guidance.ts",import.meta.url),"utf8");
  assert.match(guidance,/Never call asen_agent_continue for a worker/u,"the guidance forbids the exact conflation this pin guards");
  const tools=readFileSync(new URL("../src/agents/pi-agent-tools.ts",import.meta.url),"utf8");
  assert.match(tools,/resume only an interrupted read-only explorer/u,"the public tool description matches the guard clause");

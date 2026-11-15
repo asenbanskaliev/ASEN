@@ -5,9 +5,9 @@ import {readFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {homedir} from "node:os";
-import {parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs,parseManagedUpdatePreviewArgs,parseManagedUpdateStageArgs,parseProjectMemoryBackupPreviewArgs,readAsenLauncherConfig,resolveAsenHome,resolvePiRuntime} from "./runtime/launcher.js";
-import {composeInstallationDoctor} from "./runtime/installation-doctor.js";
-import {createProjectMemoryBackupPreview} from "./runtime/project-memory-backup-preview.js";
+import {parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs,parseManagedUpdatePreviewArgs,parseManagedUpdateStageArgs,parseProjectMemoryBackupPreviewArgs,readAsenLauncherConfig,resolveAsenHome,resolvePiRuntime} from "./runtime/lifecycle/launcher.js";
+import {composeInstallationDoctor} from "./runtime/managed/installation-doctor.js";
+import {createProjectMemoryBackupPreview} from "./runtime/lifecycle/project-memory-backup-preview.js";
 
 /**
  * Resolve a child process exit into a conventional shell exit code.
@@ -22,14 +22,14 @@ export function resolveChildExit(code:number|null,signal:string|null|undefined):
  if(signal)return 1;
  return code??1;
 }
-import {createSetupMaintenancePlan} from "./runtime/maintenance-plan.js";
-import {ManagedAdditionalStageError,ManagedVersionSelectionError,selectManagedVersion} from "./runtime/managed-install.js";
-import {launchManagedSelectedVersion} from "./runtime/managed-selected-launch.js";
-import {createManagedUpdatePreview} from "./runtime/managed-update-preview.js";
-import {runLifecycleCommand} from "./runtime/lifecycle-cli.js";
-import {stageManagedAcquisitionUpdate} from "./runtime/managed-acquisition-update.js";
-import {renderCliUsage} from "./runtime/cli-usage.js";
-import {renderStartupFlow} from "./runtime/startup-flow.js";
+import {createSetupMaintenancePlan} from "./runtime/managed/maintenance-plan.js";
+import {ManagedAdditionalStageError,ManagedVersionSelectionError,selectManagedVersion} from "./runtime/managed/managed-install.js";
+import {launchManagedSelectedVersion} from "./runtime/managed/managed-selected-launch.js";
+import {createManagedUpdatePreview} from "./runtime/managed/managed-update-preview.js";
+import {runLifecycleCommand} from "./runtime/lifecycle/lifecycle-cli.js";
+import {stageManagedAcquisitionUpdate} from "./runtime/managed/managed-acquisition-update.js";
+import {renderCliUsage} from "./runtime/lifecycle/cli-usage.js";
+import {renderStartupFlow} from "./runtime/lifecycle/startup-flow.js";
 
 export function launcherPackageRoot():string{return path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");}
 export const ASEN_HELP=renderCliUsage();

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import test from "node:test";
-import {eco07ProviderRateLimitError} from "../src/runtime/eco07-provider-failure.js";
+import {eco07ProviderRateLimitError} from "../src/runtime/lifecycle/eco07-provider-failure.js";
 // @ts-expect-error Provider selection is a small Node-side Actions helper.
 import {resolveEco07Provider,validateEco07ProviderSelection} from "../scripts/eco07-provider-config.mjs";
 
@@ -92,7 +92,7 @@ test("ECO-07 exact-SHA workflow uses NVIDIA only and supports a guarded branch r
  const workflow=readFileSync(resolve(".github/workflows/eco07-nvidia-e2e.yml"),"utf8");
  const compact=workflow.replace(/\s+/gu," ");
  assert.ok(workflow.includes("workflow_dispatch:"));
- assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-nvidia-e2e.yml - scripts/eco07-pi-recovery-e2e.mjs - scripts/eco07-pi-recovery-probe-extension.mjs - src/runtime/todo-store.ts - src/runtime/plan-dispatcher.ts - src/agents/pi-agent-tools.ts - src/agents/dispatcher.ts - src/agents/pi-process-runner.ts - src/lifecycle/skill-lifecycle.ts"));
+ assert.ok(compact.includes("push: branches: - feat/strict-parity-prerequisites paths: - .github/workflows/eco07-nvidia-e2e.yml - scripts/eco07-pi-recovery-e2e.mjs - scripts/eco07-pi-recovery-probe-extension.mjs - src/runtime/lifecycle/todo-store.ts - src/runtime/lifecycle/plan-dispatcher.ts - src/agents/pi-agent-tools.ts - src/agents/dispatcher.ts - src/agents/pi-process-runner.ts - src/lifecycle/skill-lifecycle.ts"));
  assert.ok(workflow.includes("expected_sha:"));
  assert.ok(workflow.includes('NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}'));
  assert.ok(workflow.includes("ASEN_ECO07_PROVIDER: nvidia"));

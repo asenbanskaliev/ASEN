@@ -8,7 +8,7 @@ import {fileURLToPath} from "node:url";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {readPiWitness} from "./ef304-auto-ollama-proof.mjs";
 import {deriveOddFacts,planOddRoute} from "../src/flow/odd-routing.js";
-import {inspectCodeGraphFirst} from "../src/runtime/explorer-read-policy.js";
+import {inspectCodeGraphFirst} from "../src/runtime/agents/explorer-read-policy.js";
 const hash=s=>createHash("sha256").update(s).digest("hex");
 export function parseM1ModelAnswer(answer,scenario){
  assert.ok(typeof answer==="string"&&answer.length>0&&answer.length<=8192,"Bounded Pi reply required");

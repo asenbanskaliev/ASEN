@@ -6,7 +6,7 @@
 // for exactly this reason.
 import test from "node:test";
 import assert from "node:assert/strict";
-import {doctorChecks} from "../src/runtime/doctor.js";
+import {doctorChecks} from "../src/runtime/lifecycle/doctor.js";
 
 test("T5.2 doctor warns when dist is older than src",()=>{
  const checks=doctorChecks({
@@ -35,7 +35,7 @@ test("T5.2 doctor warns when dist is missing",()=>{
  const checks=doctorChecks({
   piVersionOk:true,homeWritable:true,registryAvailable:true,
   profileValid:true,historyPrivate:true,telemetryConsentValid:true,
-  dist:{newestDistMtime:undefined,newestSrcMtime:1_000} as import("../src/runtime/doctor.js").DistFreshness,
+  dist:{newestDistMtime:undefined,newestSrcMtime:1_000} as import("../src/runtime/lifecycle/doctor.js").DistFreshness,
  });
  const check=checks.find(c=>c.name==="dist-freshness");
  assert.ok(check);

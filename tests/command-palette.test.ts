@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {inspectRegisteredCommands} from "../src/runtime/command-palette.js";
+import {inspectRegisteredCommands} from "../src/runtime/ui/command-palette.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
 test("live registration supplies names/descriptions; catalog supplies grouping only",()=>{

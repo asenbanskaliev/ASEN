@@ -4,7 +4,7 @@ import {mkdir,mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 import {hostContentColumns,truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 
 async function fixture(t:TestContext){

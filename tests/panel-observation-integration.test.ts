@@ -3,8 +3,8 @@ import test,{type TestContext} from "node:test";
 import {mkdir,mkdtemp,readFile,writeFile} from "node:fs/promises";
 import path from "node:path";
 import {createAsenExtension,createPiExtension} from "../extensions/asen.js";
-import type {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
+import type {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 import {hostContentColumns,truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 
 // All state, including incidental lifecycle usage, stays in this excluded project root.

@@ -6,10 +6,10 @@ import {selectSkills} from "../skills/registry.js";
 import {consumeIssuedWorkerContext,isIssuedSkillContext,matchesIssuedSkillContext,type IssuedSkillContext} from "../skills/context.js";
 import {verifySkillEvidence} from "../verify/verifier.js";
 import {consumePhaseGrant,issueAdmittedWriterPhaseGrant,retirePhaseGrant,consumeWriterAdmission,assertActiveWriterSnapshot,assertActiveWriterSnapshotOutcome,acquireActiveWriterLease} from "../lifecycle/skill-lifecycle.js";
-import type {AgentLifecycleSink} from "../runtime/agent-lifecycle.js";
+import type {AgentLifecycleSink} from "../runtime/agents/agent-lifecycle.js";
 import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
-import {isThinking,type Thinking} from "../runtime/profiles.js";
-import type {TerminalErrorCategory} from "../runtime/model-fallback-policy.js";
+import {isThinking,type Thinking} from "../runtime/lifecycle/profiles.js";
+import type {TerminalErrorCategory} from "../runtime/lifecycle/model-fallback-policy.js";
 
 export interface AgentModelFallbackStep{readonly model:string;readonly thinking?:Thinking}
 export interface AgentModelFallback{readonly profile?:string;readonly chain:readonly AgentModelFallbackStep[]}

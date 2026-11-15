@@ -4,10 +4,10 @@ import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
-import {PersistentAgentStore} from "../src/runtime/agent-store.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {writeProfilesFile} from "../src/runtime/profile-store.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
+import {PersistentAgentStore} from "../src/runtime/agents/agent-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 
 const root=process.env.ASEN_ECO06_SOURCE_ROOT;
 const home=process.env.ASEN_ECO06_HOME;

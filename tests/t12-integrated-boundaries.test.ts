@@ -7,8 +7,8 @@ import {join} from "node:path";
 import {createCodeGraphTool} from "../src/interaction/code-intelligence.js";
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
 import {snapshotWorkspaceRoots} from "../src/runtime/workspace-snapshot.js";
-import {SharedSessionDirectory} from "../src/runtime/shared-session-directory.js";
-import {uninstallManaged} from "../src/runtime/managed-lifecycle.js";
+import {SharedSessionDirectory} from "../src/runtime/lifecycle/shared-session-directory.js";
+import {uninstallManaged} from "../src/runtime/managed/managed-lifecycle.js";
 
 test("T12 integrates read-only code research, one-use workspace correction, session consent and maintenance isolation",async t=>{
  const temporary=realpathSync.native(mkdtempSync(join(tmpdir(),"asen-t12-integrated-")));

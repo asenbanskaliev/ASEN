@@ -8,7 +8,7 @@ import {planWorkUnitBoundary,type ReadyWorkUnitBoundary,type WorkUnitBoundaryInp
 import {recordCompletedWorkUnit,type CompletedWorkUnit,type WorkUnitEvidenceInput} from "../src/delivery/work-unit-evidence.js";
 import {recordWorkUnitReviewCandidate,type ReviewCandidateKind,type WorkUnitReviewCandidateInput} from "../src/delivery/work-unit-review-candidate.js";
 import {bindOrdinaryReviewCheckout,claimOrdinaryReviewCheckout,prepareOrdinaryReview,type OrdinaryReviewCheckout} from "../src/review/ordinary-review-controller.js";
-import {prepareReviewPanelDescriptor,renderReviewPanel,type ReviewPanelDescriptor} from "../src/runtime/review-panel.js";
+import {prepareReviewPanelDescriptor,renderReviewPanel,type ReviewPanelDescriptor} from "../src/runtime/ui/review-panel.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
 const tracker="odd/tasks/ui-runtime-delivery-order.md";
@@ -28,7 +28,7 @@ function completed(snapshot:{revision:string;treeIdentity:string;parentIdentity:
  const boundaryInput:WorkUnitBoundaryInput={
   featureIdentity:"R15-U1",taskIdentity:"R15-U1-review-panel",taskDocumentPath:tracker,purpose:"Project a candidate-only review descriptor",behaviorIds:["candidate-only-review-panel"],
   currentBranch:"feat/review-panel",defaultBranch:"main",authoredAdditions:120,authoredDeletions:0,
-  expectedChangedPaths:["src/runtime/review-panel.ts","tests/review-panel.test.ts","docs/asen-review-panel.md",tracker],rollbackBoundaries:["Revert R15-U1 review panel"],generatedArtifacts:[],previousReviewedBoundary:null,
+  expectedChangedPaths:["src/runtime/ui/review-panel.ts","tests/review-panel.test.ts","docs/asen-review-panel.md",tracker],rollbackBoundaries:["Revert R15-U1 review panel"],generatedArtifacts:[],previousReviewedBoundary:null,
   focusedTests:{kind:"required"},runtimeHarness:{kind:"n_a",reason:"Pure renderer slice"},documentation:{kind:"required"},deliveryRelationship:{kind:"single"},
  };
  const boundary=planWorkUnitBoundary(boundaryInput) as ReadyWorkUnitBoundary;
@@ -36,7 +36,7 @@ function completed(snapshot:{revision:string;treeIdentity:string;parentIdentity:
   featureIdentity:boundary.featureIdentity,taskIdentity:boundary.taskIdentity,taskDocumentPath:boundary.taskDocumentPath,boundaryId:boundary.boundaryId,repositoryIdentity,purpose:boundary.purpose,
   deliveryRelationship:boundary.deliveryRelationship,previousReviewedBoundary:boundary.previousReviewedBoundary,rollbackBoundary:boundary.rollbackBoundaries[0]!,
   commit:{identity:snapshot.revision,treeIdentity:snapshot.treeIdentity,parentIdentity:snapshot.parentIdentity,message:"feat(review): add candidate panel",currentTreeIdentity:snapshot.treeIdentity},
-  authoredAdditions:boundary.authoredAdditions,authoredDeletions:boundary.authoredDeletions,changedPaths:[...boundary.expectedChangedPaths],behaviorPaths:["src/runtime/review-panel.ts"],
+  authoredAdditions:boundary.authoredAdditions,authoredDeletions:boundary.authoredDeletions,changedPaths:[...boundary.expectedChangedPaths],behaviorPaths:["src/runtime/ui/review-panel.ts"],
   focusedTestPaths:["tests/review-panel.test.ts"],documentationPaths:["docs/asen-review-panel.md"],generatedArtifacts:[],
   focusedTests:{status:"pass",command:"node --import tsx --test tests/review-panel.test.ts",scenario:"candidate-only review panel",exitCode:0,summary:"Focused checks passed"},
   runtimeHarness:{status:"n_a",reason:"Pure renderer slice"},documentation:{status:"required",paths:["docs/asen-review-panel.md"]},taskDocumentCommitIdentity:snapshot.revision,

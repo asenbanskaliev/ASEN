@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type {HistoryEntry} from "../src/runtime/history.js";
-import {projectHistory, selectHistoryEntry, normalizeHistoryQuery} from "../src/runtime/history-selector.js";
+import type {HistoryEntry} from "../src/runtime/lifecycle/history.js";
+import {projectHistory, selectHistoryEntry, normalizeHistoryQuery} from "../src/runtime/lifecycle/history-selector.js";
 function entry(id: string, projectId: string, sessionId: string): HistoryEntry {
  return { id, text: `${id}:scope`, projectId, sessionId, createdAt: "2026-10-06T00:00:00Z", redacted: false };}
 

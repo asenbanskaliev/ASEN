@@ -7,9 +7,9 @@ import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {AgentRequest, AgentRunner} from "../src/agents/dispatcher.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
-import {ASEN_PROFILE_FALLBACKS_SCHEMA, serializeProfileFallbacks, type ProfileFallbacksFile} from "../src/runtime/profile-fallback-store.js";
-import {canonicalProfilePartition, readSessionProfile} from "../src/runtime/session-profile-binding.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
+import {ASEN_PROFILE_FALLBACKS_SCHEMA, serializeProfileFallbacks, type ProfileFallbacksFile} from "../src/runtime/lifecycle/profile-fallback-store.js";
+import {canonicalProfilePartition, readSessionProfile} from "../src/runtime/lifecycle/session-profile-binding.js";
 
 // Isolated public synthetic fixture only; not a replay of historical parent-admitted proof.
 const ownsRoot=process.env.P11_FIXTURE_ROOT===undefined;

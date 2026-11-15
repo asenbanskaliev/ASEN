@@ -3,7 +3,7 @@ import {execFileSync} from "node:child_process";
 import {closeSync,constants,fchmodSync,fsyncSync,lstatSync,openSync,readFileSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
 import {join,resolve,relative,sep} from "node:path";
 import {hasSensitiveName} from "../security/primary-tool-policy.js";
-import {acquireWorkspaceWriter} from "./workspace-writer-lease.js";
+import {acquireWorkspaceWriter} from "./lifecycle/workspace-writer-lease.js";
 import {assertWorkspaceRootIdentity,captureWorkspaceRootIdentity,type WorkspaceRootIdentity} from "./workspace-snapshot.js";
 
 const MAX_BYTES=262144;

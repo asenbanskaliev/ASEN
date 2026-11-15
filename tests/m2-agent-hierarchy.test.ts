@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createNativeM2Navigator} from "../src/runtime/native-m2-navigator.js";
-import {projectAgentHierarchy} from "../src/runtime/agents-panel.js";
-import type {AgentInspection} from "../src/runtime/agent-inspect.js";
-import type {PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
+import {createNativeM2Navigator} from "../src/runtime/ui/native-m2-navigator.js";
+import {projectAgentHierarchy} from "../src/runtime/ui/agents-panel.js";
+import type {AgentInspection} from "../src/runtime/agents/agent-inspect.js";
+import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
 const sessionId="hierarchy-session",projectId="D:/opaque/project";

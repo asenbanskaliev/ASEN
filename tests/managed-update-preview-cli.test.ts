@@ -7,7 +7,7 @@ import {syncBuiltinESMExports} from "node:module";
 import path from "node:path";
 import {performance} from "node:perf_hooks";
 import {runAsen} from "../src/cli.js";
-import {stageAdditionalManagedVersion,stageManagedInstall,selectManagedVersion} from "../src/runtime/managed-install.js";
+import {stageAdditionalManagedVersion,stageManagedInstall,selectManagedVersion} from "../src/runtime/managed/managed-install.js";
 
 const VERSION="1.2.3";
 const USAGE="Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n";

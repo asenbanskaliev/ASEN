@@ -39,7 +39,7 @@ function snapshotFromRepository(){
  const root=resolve(fileURLToPath(new URL("..",import.meta.url)));
  const read=path=>readFileSync(resolve(root,path),"utf8");
  const headSha=execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8",timeout:5000}).trim();
- return {expectedSha:process.env.ASEN_EXPECTED_SHA??"",headSha,claims:JSON.parse(read("registry/parity/ecosystem-claims-v1.json")),capability:read("odd/tasks/pi-capability-completion.md"),extension:read("extensions/asen.ts"),backgroundJobs:read("src/runtime/background-jobs.ts"),backgroundJournal:read("src/runtime/background-job-journal.ts"),projection:read("src/runtime/notification-projection.ts"),managedUninstall:read("src/runtime/managed-lifecycle.ts"),workflow:read(".github/workflows/r4-self-audit.yml"),f5:read("odd/tasks/hardening-exact-sha-r4.md")};
+ return {expectedSha:process.env.ASEN_EXPECTED_SHA??"",headSha,claims:JSON.parse(read("registry/parity/ecosystem-claims-v1.json")),capability:read("odd/tasks/pi-capability-completion.md"),extension:read("extensions/asen.ts"),backgroundJobs:read("src/runtime/agents/background-jobs.ts"),backgroundJournal:read("src/runtime/agents/background-job-journal.ts"),projection:read("src/runtime/lifecycle/notification-projection.ts"),managedUninstall:read("src/runtime/managed/managed-lifecycle.ts"),workflow:read(".github/workflows/r4-self-audit.yml"),f5:read("odd/tasks/hardening-exact-sha-r4.md")};
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  try{

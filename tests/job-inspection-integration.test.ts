@@ -3,7 +3,7 @@ import test,{type TestContext} from "node:test";
 import {mkdir,mkdtemp,readFile,writeFile} from "node:fs/promises";
 import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
-import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
+import {BackgroundJobRegistry} from "../src/runtime/agents/background-jobs.js";
 
 // Mocked public Pi host; all incidental startup files remain project-owned.
 async function fixture(t:TestContext){

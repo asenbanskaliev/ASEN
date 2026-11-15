@@ -8,7 +8,7 @@ import {
   executeUninstall,
   restoreUninstallSnapshot,
   type UninstallOptions
-} from "../src/runtime/asen-uninstall.js";
+} from "../src/runtime/managed/asen-uninstall.js";
 
 test("executeUninstall dryRun previews files to remove without modifying disk", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "asen-uninstall-test-"));

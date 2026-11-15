@@ -9,7 +9,7 @@ const t10=read("docs/t10-completion-plan.md");
 const ecosystem=read("odd/tasks/ecosystem-final-parity-map.md");
 const claims=JSON.parse(read("registry/parity/ecosystem-claims-v1.json")) as {rows:Array<{id:string;status:string}>};
 const extension=read("extensions/asen.ts");
-const managed=read("src/runtime/managed-lifecycle.ts");
+const managed=read("src/runtime/managed/managed-lifecycle.ts");
 const codegraph=read("src/interaction/code-intelligence.ts");
 const f5=read("odd/tasks/hardening-exact-sha-r4.md");
 const f501=read("odd/tasks/hardening-exact-sha-r4/F5-01.md");
@@ -63,11 +63,11 @@ test("legacy MEM checkboxes are reconciled against existing v3 scope, not global
 });
 
 test("notification bus is wired only as non-authoritative Pi status projection; durable enqueue is unchanged",()=>{
- const bus=read("src/runtime/session-notifications.ts");
+ const bus=read("src/runtime/lifecycle/session-notifications.ts");
  assert.match(bus,/export class SessionNotificationBus/u);
  assert.match(extension,/\bPiNotificationProjection\b/u);
  assert.match(extension,/notificationProjection\.publish\(/u);
- assert.match(read("src/runtime/notification-projection.ts"),/SessionNotificationBus/u);
+ assert.match(read("src/runtime/lifecycle/notification-projection.ts"),/SessionNotificationBus/u);
  assert.match(extension,/pendingBackgroundJobNotifications\(/u);
  assert.match(extension,/deliveryConfirmed:false/u);
  assert.match(extension,/setDeliveryStateScoped\(result\.id,result\.sessionId,result\.projectId,"enqueued"\)/u);

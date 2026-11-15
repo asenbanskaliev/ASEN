@@ -1,6 +1,6 @@
 import type {Candidate,TaskState} from "../core/types.js";
 import type {IssuedSkillContext} from "../skills/context.js";
-import {createAgentRecord,recoverAgentLifecycleRecords,transitionAgent,type PublicAgentRecord} from "../runtime/agent-lifecycle.js";
+import {createAgentRecord,recoverAgentLifecycleRecords,transitionAgent,type PublicAgentRecord} from "../runtime/agents/agent-lifecycle.js";
 import {open,readFile,realpath,rename,unlink} from "node:fs/promises";
 import {dirname,basename,join} from "node:path";
 import {randomUUID} from "node:crypto";

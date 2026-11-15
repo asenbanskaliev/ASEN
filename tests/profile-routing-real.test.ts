@@ -4,8 +4,8 @@ import {mkdtemp,rm,writeFile,mkdir,realpath} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
-import {writeProfilesFile} from "../src/runtime/profile-store.js";
-import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
+import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile} from "../src/runtime/lifecycle/profiles.js";
 
 async function layer(dir:string,name:string,model:string,thinking:"off"|"minimal"|"low"|"medium"|"high"="low"):Promise<void>{
  await mkdir(path.join(dir,".asen"),{recursive:true});

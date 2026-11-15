@@ -5,11 +5,11 @@ import {mkdir,readFile,realpath,rename,rmdir,stat,writeFile} from "node:fs/promi
 import path from "node:path";
 import {tmpdir} from "node:os";
 import {mkdtemp,rm} from "node:fs/promises";
-import {applySetupPlan} from "../src/runtime/setup.js";
+import {applySetupPlan} from "../src/runtime/lifecycle/setup.js";
 
 const fixtures:string[]=[];
 const digest=(value:string|Buffer)=>createHash("sha256").update(value).digest("hex");
-async function api(){return import("../src/runtime/managed-install.js");}
+async function api(){return import("../src/runtime/managed/managed-install.js");}
 async function fixture(){const root=await mkdtemp(path.join(tmpdir(),"asen-managed-install-"));fixtures.push(root);return root;}
 test.afterEach(async()=>{for(const root of fixtures.splice(0))await rm(root,{recursive:true,force:true});});
 

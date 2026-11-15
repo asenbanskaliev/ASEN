@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { renderAsenPanelWithLayout, renderAsenPanel, type AsenPanelSnapshot, ASEN_PANEL_SECTIONS } from "../src/runtime/ide-panel.js";
+import { renderAsenPanelWithLayout, renderAsenPanel, type AsenPanelSnapshot, ASEN_PANEL_SECTIONS } from "../src/runtime/ui/ide-panel.js";
 
 function emptySnapshot(): AsenPanelSnapshot {
  return {

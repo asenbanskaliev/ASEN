@@ -3,7 +3,7 @@ import test from "node:test";
 import {mkdtemp,rm,writeFile,readFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 test("ECO-07 links are idempotent, immutable, and session scoped",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-links-"));t.after(()=>rm(dir,{recursive:true,force:true}));
  const store=new TaskAgentLinkStore(join(dir,"links.json"));

@@ -3,14 +3,14 @@ import {execFileSync} from "node:child_process";
 import assert from "node:assert/strict";
 import {mkdtempSync,mkdirSync,readFileSync,rmSync,writeFileSync,readdirSync} from "node:fs";
 import path from "node:path";
-import {ASEN_COMMAND_CATALOG,implementedCommands} from "../src/runtime/command-catalog.js";
+import {ASEN_COMMAND_CATALOG,implementedCommands} from "../src/runtime/ui/command-catalog.js";
 import {createAsenExtension} from "../extensions/asen.js";
 import {
 	ASEN_KEYMAP_ACTIONS,KEYMAPS_FILE,KEYMAPS_SCHEMA,KEYMAP_RELOAD_NOTICE,RESERVED_PI_KEYBINDINGS,
 	assignKeymap,checkKeymap,commandKeymapId,effectiveKey,keyFromInput,keymapAction,keymapCommand,
 	keymapEnvLock,keymapLabel,keymapOwner,keymapSavedNotice,keymapSource,keymapsUnwritable,normalizeKeyId,
 	prepareKeymapChange,readKeymaps,resetKeymap,writeKeymaps,type KeymapBindings,type KeymapFile,type PiKeybindings,
-} from "../src/runtime/keymaps.js";
+} from "../src/runtime/ui/keymaps.js";
 
 function fixtureHome():{home:string,dispose:()=>void}{
 	const base=path.resolve(".cache");

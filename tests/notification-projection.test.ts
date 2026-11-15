@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {PiNotificationProjection} from "../src/runtime/notification-projection.js";
+import {PiNotificationProjection} from "../src/runtime/lifecycle/notification-projection.js";
 
 function widget(){
  const calls:Array<{key:string;content:string[]|undefined}>=[];

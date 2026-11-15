@@ -4,7 +4,7 @@ import {spawn} from "node:child_process";
 import {access,mkdtemp,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
-import {PersistentAgentStore} from "../src/runtime/agent-store.js";
+import {PersistentAgentStore} from "../src/runtime/agents/agent-store.js";
 
 const ready=async(file:string)=>{
  for(let i=0;i<500;i++){

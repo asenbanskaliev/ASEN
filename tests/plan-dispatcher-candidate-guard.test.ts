@@ -4,9 +4,9 @@ import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {dispatchNextPlanTask} from "../src/runtime/plan-dispatcher.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {selectSkills} from "../src/skills/registry.js";
 
 for(const [role,phase] of [["explorer","explore"],["reviewer","adversarial-review"],["verifier","verify"]] as const){

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type {HistoryEntry} from "../src/runtime/history.js";
-import {cancelHistorySelection,historyUnavailable,normalizeHistoryQuery,projectHistory,selectHistoryEntry} from "../src/runtime/history-selector.js";
+import type {HistoryEntry} from "../src/runtime/lifecycle/history.js";
+import {cancelHistorySelection,historyUnavailable,normalizeHistoryQuery,projectHistory,selectHistoryEntry} from "../src/runtime/lifecycle/history-selector.js";
 
 const entry=(id:string,projectId="p",text=id,createdAt=`2026-10-06T00:00:00Z`):HistoryEntry=>({id,sessionId:`session-${id}`,projectId,text,createdAt,redacted:id==="redacted"});
 

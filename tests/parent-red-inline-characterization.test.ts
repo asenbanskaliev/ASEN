@@ -8,8 +8,8 @@ import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import {registerAgentTools} from "../src/agents/pi-agent-tools.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {materializeExecutablePlan,type PlannedTask} from "../src/orchestration/executable-plan.js";
-import {SessionTodoStore,type TodoPlanDraft} from "../src/runtime/todo-store.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {SessionTodoStore,type TodoPlanDraft} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
 
 const at="2026-11-01T00:00:00.000Z";

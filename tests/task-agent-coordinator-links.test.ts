@@ -3,9 +3,9 @@ import test from "node:test";
 import {mkdtemp,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {TaskAgentCoordinator} from "../src/runtime/task-agent-coordinator.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {TaskAgentCoordinator} from "../src/runtime/agents/task-agent-coordinator.js";
 import {selectSkills} from "../src/skills/registry.js";
 test("ECO-07 explicit persisted links survive restart without altering Todo state",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-coordinator-links-"));t.after(()=>rm(dir,{recursive:true,force:true}));

@@ -4,7 +4,7 @@ import {mkdir,mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {execFileSync} from "node:child_process";
-import {inspectInterruptedWrite} from "../src/runtime/interrupted-write-inspection.js";
+import {inspectInterruptedWrite} from "../src/runtime/lifecycle/interrupted-write-inspection.js";
 
 test("interrupted writer inspection compares candidate, exact scope and Git changes without exposing file contents",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-interrupted-inspection-"));t.after(()=>rm(root,{recursive:true,force:true}));

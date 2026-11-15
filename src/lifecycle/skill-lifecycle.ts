@@ -17,7 +17,7 @@ import {claimStrictTddCompletion,type StrictTddCompletion} from "../test/strict-
 import {claimNonTddAlternativeResult,type NonTddAlternativeResult} from "../test/non-tdd-alternative.js";
 import {validateTddCompletionRecord,type TddCompletionRecord} from "../test/tdd-completion-record.js";
 import {captureWriterAuthorizationSnapshot,assertWriterAuthorizationSnapshotCurrent,assertWriterAuthorizationSnapshotOutcome,type WriterAuthorizationSnapshot} from "./writer-authorization-snapshot.js";
-import {acquireWorkspaceWriter} from "../runtime/workspace-writer-lease.js";
+import {acquireWorkspaceWriter} from "../runtime/lifecycle/workspace-writer-lease.js";
 
 export const lifecyclePhases=["context-init","explore","proposal","specification","design","tasks","apply","verify","archive"] as const;
 export type LifecyclePhase=typeof lifecyclePhases[number];

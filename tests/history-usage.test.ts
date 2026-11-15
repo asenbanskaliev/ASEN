@@ -5,13 +5,13 @@ import fsPromises,{mkdtemp,readFile,writeFile,rm} from "node:fs/promises";
 import {syncBuiltinESMExports} from "node:module";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {captureHistory,exportHistory,searchHistory,trimHistory,redactHistoryText} from "../src/runtime/history.js";
-import {runHistoryCommand,recordHistoryInput} from "../src/runtime/history-command.js";
-import {projectHistory} from "../src/runtime/history-selector.js";
-import {readHistoryStore} from "../src/runtime/history-store.js";
-import {emptyUsage,incrementUsage,maySendTelemetry,telemetryPreview} from "../src/runtime/usage.js";
-import {incrementUsageFile,parseUsageFile,readUsageFile,updateUsageFile} from "../src/runtime/usage-store.js";
-import {runUsageCommand} from "../src/runtime/usage-command.js";
+import {captureHistory,exportHistory,searchHistory,trimHistory,redactHistoryText} from "../src/runtime/lifecycle/history.js";
+import {runHistoryCommand,recordHistoryInput} from "../src/runtime/lifecycle/history-command.js";
+import {projectHistory} from "../src/runtime/lifecycle/history-selector.js";
+import {readHistoryStore} from "../src/runtime/lifecycle/history-store.js";
+import {emptyUsage,incrementUsage,maySendTelemetry,telemetryPreview} from "../src/runtime/lifecycle/usage.js";
+import {incrementUsageFile,parseUsageFile,readUsageFile,updateUsageFile} from "../src/runtime/lifecycle/usage-store.js";
+import {runUsageCommand} from "../src/runtime/lifecycle/usage-command.js";
 
 type OpenCall=(...args:Parameters<typeof fsPromises.open>)=>ReturnType<typeof fsPromises.open>;
 type LstatCall=(...args:Parameters<typeof fsPromises.lstat>)=>ReturnType<typeof fsPromises.lstat>;
@@ -178,7 +178,7 @@ test("history select rejects removal, reorder, and insertion changes to the offe
 test("bulk history delete requires confirmation and persists tombstones",async()=>{
  const directory=await mkdtemp(path.join(tmpdir(),"asen-history-delete-")),storePath=path.join(directory,"history.json"),base={storePath,projectId:"p",sessionId:"s",hasUI:true,confirm:async()=>true};
  await runHistoryCommand("enable",base);await recordHistoryInput(base,"first");assert.match(await runHistoryCommand("delete all",base),/tombstones/);
- const file=await import("../src/runtime/history-store.js").then(m=>m.readHistoryStore(storePath));assert.equal(file.entries.length,0);assert.equal(file.tombstones.length,1);
+ const file=await import("../src/runtime/lifecycle/history-store.js").then(m=>m.readHistoryStore(storePath));assert.equal(file.entries.length,0);assert.equal(file.tombstones.length,1);
 });
 
 test("corrupt history recovers only through confirmed full-store reset",async()=>{

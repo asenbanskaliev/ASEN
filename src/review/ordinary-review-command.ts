@@ -11,7 +11,7 @@ import {assertWorkspaceProjectionRepository,revalidateWorkspaceReviewProjection,
 import {captureReviewRepositoryBinding,assertReviewRepositoryBinding} from "./review-tree-inspection.js";
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
 import {hasSensitiveName} from "../security/primary-tool-policy.js";
-import {prepareReviewPanelDescriptor,renderReviewPanel} from "../runtime/review-panel.js";
+import {prepareReviewPanelDescriptor,renderReviewPanel} from "../runtime/ui/review-panel.js";
 import {createNativeRddControl,type NativeRddControl,type NativeRddObservation} from "./native-rdd-control.js";
 import type {ReviewLens,ReviewRiskInput} from "./review-risk.js";
 

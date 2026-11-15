@@ -4,9 +4,9 @@ import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {createAsenExtension} from "../extensions/asen.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {writeProfilesFile} from "../src/runtime/profile-store.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 import {selectSkills} from "../src/skills/registry.js";
 import type {AgentRequest} from "../src/agents/dispatcher.js";
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {buildProfileFallbackChain,MAX_PROFILE_FALLBACK_MODELS,recordProfileFallbackCooldown,selectProfileFallback,type ProfileFallbackCandidate,type SelectProfileFallbackOptions} from "../src/runtime/profile-fallback.js";
+import {buildProfileFallbackChain,MAX_PROFILE_FALLBACK_MODELS,recordProfileFallbackCooldown,selectProfileFallback,type ProfileFallbackCandidate,type SelectProfileFallbackOptions} from "../src/runtime/lifecycle/profile-fallback.js";
 
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort parity fallback selection preserves ${thinking??"inherit"}`,async()=>{

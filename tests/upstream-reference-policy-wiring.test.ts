@@ -70,10 +70,10 @@ test("declared wiring matches a real production importer", () => {
 
 test("entries without a live consumer are exactly the known ported-text set", () => {
   assert.deepEqual(listUnwiredCompatibilityEntries(), [
-    "src/runtime/desktop-rpc.ts",
-    "src/runtime/guide-tour.ts",
-    "src/runtime/image-disk-cache.ts",
-    "src/runtime/reply-language-anchor.ts",
-    "src/runtime/voice-dictation.ts",
+    "src/runtime/ui/desktop-rpc.ts",
+    "src/runtime/ui/guide-tour.ts",
+    "src/runtime/ui/image-disk-cache.ts",
+    "src/runtime/ui/reply-language-anchor.ts",
+    "src/runtime/ui/voice-dictation.ts",
   ]);
 });

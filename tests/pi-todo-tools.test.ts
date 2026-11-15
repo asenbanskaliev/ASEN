@@ -3,9 +3,9 @@ import test from "node:test";
 import {mkdtemp,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {registerTodoTools} from "../src/runtime/pi-todo-tools.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {registerTodoTools} from "../src/runtime/agents/pi-todo-tools.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 
 test("resuming a restart-blocked Todo requires explicit active Pi UI approval",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-todo-confirm-"));t.after(()=>rm(root,{recursive:true,force:true}));

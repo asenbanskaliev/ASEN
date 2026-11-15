@@ -10,11 +10,11 @@ import {execFileSync} from "node:child_process";
 import {mkdtemp,mkdir,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {acceptIndependentReview} from "../src/runtime/review-acceptance.js";
+import {acceptIndependentReview} from "../src/runtime/lifecycle/review-acceptance.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 import {selectSkills,type SkillSelectionContext} from "../src/skills/registry.js";
 
 const passing=JSON.stringify({verdict:"pass",evidence:["Test passed on the scoped candidate"]});

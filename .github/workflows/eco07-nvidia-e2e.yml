@@ -8,8 +8,8 @@ on:
       - .github/workflows/eco07-nvidia-e2e.yml
       - scripts/eco07-pi-recovery-e2e.mjs
       - scripts/eco07-pi-recovery-probe-extension.mjs
-      - src/runtime/todo-store.ts
-      - src/runtime/plan-dispatcher.ts
+      - src/runtime/lifecycle/todo-store.ts
+      - src/runtime/lifecycle/plan-dispatcher.ts
       - src/agents/pi-agent-tools.ts
       - src/agents/dispatcher.ts
       - src/agents/pi-process-runner.ts

@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import {copyManagedAcquisitionToStage,verifyManagedAcquisitionDestinationDirectoryClaim,MANAGED_ACQUISITION_COPY_DEADLINE_MS,type ManagedAcquisitionDestinationDirectoryClaim} from "../src/runtime/managed-acquisition-copy.js";
-import {MANAGED_ACQUISITION_DEADLINE_MS} from "../src/runtime/managed-acquisition-verification.js";
+import {copyManagedAcquisitionToStage,verifyManagedAcquisitionDestinationDirectoryClaim,MANAGED_ACQUISITION_COPY_DEADLINE_MS,type ManagedAcquisitionDestinationDirectoryClaim} from "../src/runtime/managed/managed-acquisition-copy.js";
+import {MANAGED_ACQUISITION_DEADLINE_MS} from "../src/runtime/managed/managed-acquisition-verification.js";
 import {performance} from "node:perf_hooks";
-import {ManagedAdditionalStageError,stageAdditionalManagedVersion,stageManagedInstall} from "../src/runtime/managed-install.js";
+import {ManagedAdditionalStageError,stageAdditionalManagedVersion,stageManagedInstall} from "../src/runtime/managed/managed-install.js";
 
 test("copy permits its own nested and sibling directories to change destination link counts",async()=>{
  const cache=path.join(process.cwd(),".cache");await fs.mkdir(cache,{recursive:true});

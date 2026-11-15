@@ -6,8 +6,8 @@ import {syncBuiltinESMExports} from "node:module";
 import {spawnSync} from "node:child_process";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {parseTodoFile} from "../src/runtime/todo-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {parseTodoFile} from "../src/runtime/lifecycle/todo-store.js";
 
 async function fixture(t:import("node:test").TestContext){const dir=await mkdtemp(join(tmpdir(),"asen-todo-"));t.after(()=>rm(dir,{recursive:true,force:true}));return join(dir,"todos.json");}
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
@@ -18,7 +18,7 @@ for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undef
   assert.equal(reopened.diagnostics(),undefined);assert.deepEqual((await reopened.list(one))[0]?.plan,plan);
   const before=await readFile(file,"utf8");
   for(const invalid of ["extreme","HIGH","inherit","",null,7]){
-   await assert.rejects(()=>reopened.addPlan([{...draft,requestId:"asen-plan:invalid",plan:{...plan,thinking:invalid as import("../src/runtime/profiles.js").Thinking}}],one),/Invalid ASEN Todo plan task/);
+   await assert.rejects(()=>reopened.addPlan([{...draft,requestId:"asen-plan:invalid",plan:{...plan,thinking:invalid as import("../src/runtime/lifecycle/profiles.js").Thinking}}],one),/Invalid ASEN Todo plan task/);
    assert.equal(await readFile(file,"utf8"),before);
   }
  });

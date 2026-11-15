@@ -5,10 +5,10 @@ import {tmpdir} from "node:os";
 import {readFileSync} from "node:fs";
 import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
-import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
-import {canonicalProfilePartition,captureSessionProfile,selectSessionProfile,resetSessionProfile,readSessionProfile,clearSessionProfiles} from "../src/runtime/session-profile-binding.js";
-import {selectPersonaStyle} from "../src/runtime/persona.js";
-import {readProfilesFile} from "../src/runtime/profile-store.js";
+import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile} from "../src/runtime/lifecycle/profiles.js";
+import {canonicalProfilePartition,captureSessionProfile,selectSessionProfile,resetSessionProfile,readSessionProfile,clearSessionProfiles} from "../src/runtime/lifecycle/session-profile-binding.js";
+import {selectPersonaStyle} from "../src/runtime/lifecycle/persona.js";
+import {readProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
 
 const ownedFixtureRoots=new Set<string>();
 after(async()=>{for(const root of ownedFixtureRoots)await rm(root,{recursive:true,force:true});});

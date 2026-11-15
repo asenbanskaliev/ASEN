@@ -5,11 +5,11 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {execFileSync,spawn,spawnSync} from "node:child_process";
 import {createPiExtension} from "../extensions/asen.js";
-import {PersistentAgentStore} from "../src/runtime/agent-store.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {PersistentAgentStore} from "../src/runtime/agents/agent-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {inspectInterruptedWrite} from "../src/runtime/interrupted-write-inspection.js";
+import {inspectInterruptedWrite} from "../src/runtime/lifecycle/interrupted-write-inspection.js";
 // @ts-expect-error Node-side disposable candidate setup is intentionally JavaScript.
 import {prepareEco06WriterCandidate} from "../scripts/eco06-writer-fixture.mjs";
 
@@ -54,7 +54,7 @@ test("ECO-06 interrupted writer preserves partial edits but cannot replay author
  const file=join(dir,"agents.json"),target=join(dir,"work.txt");
  await writeFile(target,"before\n");
  const child=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",`
-  import {PersistentAgentStore} from "./src/runtime/agent-store.ts";
+  import {PersistentAgentStore} from "./src/runtime/agents/agent-store.ts";
   import {appendFile} from "node:fs/promises";
   const file=process.argv[1],target=process.argv[2];
   const {store}=await PersistentAgentStore.open(file);
@@ -113,7 +113,7 @@ test("ECO-06 SIGKILL after a persisted partial edit quarantines the writer", {sk
  const journal=join(dir,"agents.json"),target=join(dir,"work.txt");
  await writeFile(target,"before\n");
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",`
-  import {PersistentAgentStore} from "./src/runtime/agent-store.ts";
+  import {PersistentAgentStore} from "./src/runtime/agents/agent-store.ts";
   import {appendFile} from "node:fs/promises";
   const journal=process.argv[1],target=process.argv[2];
   const {store}=await PersistentAgentStore.open(journal);

@@ -1,11 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {implementedCommands} from "../src/runtime/command-catalog.js";
+import {implementedCommands} from "../src/runtime/ui/command-catalog.js";
 import {
  ASEN_GUIDE_STEPS,EDITOR_OFFSET_ROWS,GUIDE_POPOVER_WIDTH,MIN_POPOVER_WIDTH,GuideTour,filterGuideSteps,guidePlacement,guideStepText,guideTryLine,
  type GuideStep,
-} from "../src/runtime/guide-tour.js";
-import {ASEN_KEYMAP_ACTIONS} from "../src/runtime/keymaps.js";
+} from "../src/runtime/ui/guide-tour.js";
+import {ASEN_KEYMAP_ACTIONS} from "../src/runtime/ui/keymaps.js";
 
 const welcome:GuideStep={id:"welcome",title:"Welcome to ASEN",body:"A short tour of the workbench.",region:"center"};
 const palette:GuideStep={id:"palette",title:"Command palette",body:"Every command from one filter.",region:"center",command:"asen-palette",keymap:"commands",requires:"asen-palette"};

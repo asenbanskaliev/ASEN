@@ -5,9 +5,9 @@ import {mkdtempSync,realpathSync} from "node:fs";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
-import {incrementUsageFile} from "../src/runtime/usage-store.js";
-import {readProfileFallbacksFile, resolveProfileFallbackChain, serializeProfileFallbacks, ASEN_PROFILE_FALLBACKS_SCHEMA} from "../src/runtime/profile-fallback-store.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
+import {incrementUsageFile} from "../src/runtime/lifecycle/usage-store.js";
+import {readProfileFallbacksFile, resolveProfileFallbackChain, serializeProfileFallbacks, ASEN_PROFILE_FALLBACKS_SCHEMA} from "../src/runtime/lifecycle/profile-fallback-store.js";
 
 const ACTION = "Edit fallback chain (ASEN parent)";
 // The synthetic CI owner creates a fresh root, never inferring old private authorization.

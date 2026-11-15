@@ -5,8 +5,8 @@ import {chmodSync,mkdirSync,mkdtempSync,readFileSync,rmSync,unlinkSync,writeFile
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
-import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
-import {pendingBackgroundJobNotifications} from "../src/runtime/background-jobs.js";
+import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
+import {pendingBackgroundJobNotifications} from "../src/runtime/agents/background-jobs.js";
 
 test("records terminal jobs for recovery without making them resumable",()=>{
  const root=mkdtempSync(join(tmpdir(),"asen-job-journal-"));try{const journal=new BackgroundJobJournal(join(root,"jobs.json"));journal.record({id:"j1",sessionId:"s1",projectId:root,command:"echo",mode:"background",state:"completed",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),exitCode:0,eventCount:1,tail:["ok"]});const rows=journal.load("s1");assert.equal(rows.length,1);assert.equal(rows[0]!.resumable,false);assert.equal(journal.load("s2").length,0);}finally{rmSync(root,{recursive:true,force:true});}
@@ -28,7 +28,7 @@ test("refuses a journal in an unsafe parent directory",t=>{
 });
 
 test("serializes journal updates from independent Pi processes without losing records",async t=>{
- const root=mkdtempSync(join(tmpdir(),"asen-job-journal-concurrent-"));t.after(()=>rmSync(root,{recursive:true,force:true}));const file=join(root,"jobs.json"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
+ const root=mkdtempSync(join(tmpdir(),"asen-job-journal-concurrent-"));t.after(()=>rmSync(root,{recursive:true,force:true}));const file=join(root,"jobs.json"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/agents/background-job-journal.ts")).href;
  const childScript=`import {BackgroundJobJournal} from ${JSON.stringify(moduleUrl)};const journal=new BackgroundJobJournal(process.env.ASEN_TEST_JOURNAL);const prefix=process.env.ASEN_TEST_PREFIX;const project=process.env.ASEN_TEST_PROJECT;for(let i=0;i<50;i++){const now=new Date().toISOString();journal.record({id:prefix+i,sessionId:"shared-session",projectId:project,command:"test",mode:"background",state:"completed",createdAt:now,updatedAt:now,exitCode:0,eventCount:0,tail:[]});}`;
  const run=(prefix:string)=>new Promise<void>((resolve,reject)=>{const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",childScript],{cwd:process.cwd(),env:{...process.env,ASEN_TEST_JOURNAL:file,ASEN_TEST_PREFIX:prefix,ASEN_TEST_PROJECT:root},stdio:["ignore","ignore","pipe"]});let stderr="";child.stderr.setEncoding("utf8").on("data",chunk=>{stderr+=chunk;});child.once("error",reject);child.once("close",code=>code===0?resolve():reject(new Error(`journal writer ${prefix} exited ${code}: ${stderr}`)));});
  const outcomes=await Promise.allSettled([run("first-"),run("second-")]);for(const outcome of outcomes)if(outcome.status==="rejected")throw outcome.reason;
@@ -41,7 +41,7 @@ test("journal refuses to reclaim an orphaned lock by pathname and resumes after 
 
 test("Windows lock EPERM and concurrent durable progress remain bounded without claiming another lock",t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-job-journal-eperm-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
- const moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
+ const moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/agents/background-job-journal.ts")).href;
  const script=`
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -138,7 +138,7 @@ test("delivery-state persistence preserves unresolved T04 retry entitlements",()
 
 test("forced termination of a real writer recovers interruption without replay or forged delivery",async t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-job-crash-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
- const journalPath=join(root,"jobs.json"),marker=join(root,"executions.txt"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
+ const journalPath=join(root,"jobs.json"),marker=join(root,"executions.txt"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/agents/background-job-journal.ts")).href;
  const childScript=`import {BackgroundJobJournal} from ${JSON.stringify(moduleUrl)};
 import {writeFileSync} from "node:fs";
 const journal=new BackgroundJobJournal(process.env.ASEN_TEST_JOURNAL);

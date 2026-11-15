@@ -7,11 +7,11 @@ import {join,resolve} from "node:path";
 import {createAsenExtension,createPiExtension} from "../extensions/asen.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
 import {ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
-import {ASEN_TODO_TOOL_NAMES} from "../src/runtime/pi-todo-tools.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {writeProfilesFile} from "../src/runtime/profile-store.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {ASEN_TODO_TOOL_NAMES} from "../src/runtime/agents/pi-todo-tools.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {SKILL_REGISTRY_RELATIVE_PATH,SKILL_REGISTRY_CACHE_RELATIVE_PATH} from "../src/skills/generated-registry.js";
@@ -1058,7 +1058,7 @@ for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undef
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort parity admission and agent store reopen ${thinking??"inherit"}`,async t=>{
   const home=await mkdtemp(join(tmpdir(),"asen-effort-parity-"));t.after(()=>rm(home,{recursive:true,force:true}));
-  const {snapshotAgentModelFallback}=await import("../src/agents/dispatcher.js"),{PersistentAgentStore}=await import("../src/runtime/agent-store.js");
+  const {snapshotAgentModelFallback}=await import("../src/agents/dispatcher.js"),{PersistentAgentStore}=await import("../src/runtime/agents/agent-store.js");
   const candidate=thinking===undefined?{model:"provider/backup"}:{model:"provider/backup",thinking};
   const fallback=snapshotAgentModelFallback({profile:"main",chain:[candidate]});
   assert.deepEqual(fallback,{profile:"main",chain:[candidate]});assert.equal(Object.isFrozen(fallback?.chain[0]),true);
@@ -1071,7 +1071,7 @@ for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undef
   assert.equal(Object.hasOwn(saved!,"thinking"),thinking!==undefined);
   const before=await readFile(file,"utf8");
   for(const invalid of ["extreme","HIGH","inherit","",null,7]){
-   const bad=invalid as import("../src/runtime/profiles.js").Thinking;
+   const bad=invalid as import("../src/runtime/lifecycle/profiles.js").Thinking;
    assert.throws(()=>snapshotAgentModelFallback({chain:[{model:"bad",thinking:bad}]}),/thinking/);
    await assert.rejects(()=>store.enqueue({...request,id:"bad-primary",thinking:bad},{kind:"user",id:"owner"}),/thinking/);
    await assert.rejects(()=>store.enqueue({...request,id:"bad-fallback",modelFallback:{chain:[{model:"bad",thinking:bad}]}},{kind:"user",id:"owner"}),/thinking/);

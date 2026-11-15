@@ -10,10 +10,10 @@ import {mkdtemp,mkdir,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
-import {acceptIndependentReview} from "../src/runtime/review-acceptance.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
+import {acceptIndependentReview} from "../src/runtime/lifecycle/review-acceptance.js";
 import {
   createReviewReceiptSigned,
   loadReceiptSigningKey,

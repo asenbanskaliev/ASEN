@@ -16,9 +16,9 @@ import {
  updateProfileFallbacksFile,
  writeProfileFallbacksFile,
  type ProfileFallbacksFile,
-} from "../src/runtime/profile-fallback-store.js";
+} from "../src/runtime/lifecycle/profile-fallback-store.js";
 
-import type {Thinking} from "../src/runtime/profiles.js";
+import type {Thinking} from "../src/runtime/lifecycle/profiles.js";
 
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort parity fallback store persists ${thinking??"inherit"}`,async t=>{

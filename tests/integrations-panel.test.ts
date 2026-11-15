@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {inspectIntegrationProfiles} from "../src/runtime/integration-profile-inspection.js";
-import {integrationPanel} from "../src/runtime/integrations-panel.js";
+import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
+import {integrationPanel} from "../src/runtime/ui/integrations-panel.js";
 
 test("integrations panel reports unavailable truthfully", () => {
  const result = inspectIntegrationProfiles({});

@@ -5,7 +5,7 @@ import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 import {selectSkills} from "../src/skills/registry.js";
 
 test("EF-603 two independent Pi-like processes cannot claim equivalent planned Explorers",async t=>{
@@ -20,7 +20,7 @@ test("EF-603 two independent Pi-like processes cannot claim equivalent planned E
   "asen-plan:independent-a:explorer",[],"Inspect frozen project without writing",plan);
  const second=await store.add("Equivalent B",context,undefined,undefined,
   "asen-plan:independent-b:explorer",[],"Inspect frozen project without writing",plan);
- const url=pathToFileURL(join(process.cwd(),"src/runtime/todo-store.ts")).href;
+ const url=pathToFileURL(join(process.cwd(),"src/runtime/lifecycle/todo-store.ts")).href;
  const childCode=`import {SessionTodoStore} from ${JSON.stringify(url)};
  const s=await SessionTodoStore.open(process.env.ASEN_TEST_TODO_FILE);
  const identity={sessionId:process.env.ASEN_TEST_SESSION,projectId:process.env.ASEN_TEST_PROJECT};

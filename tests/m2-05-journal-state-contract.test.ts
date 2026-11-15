@@ -5,7 +5,7 @@ import {readdirSync,readFileSync} from "node:fs";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {tmpdir} from "node:os";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 
 // UFC-M2-05 class (a) negative pins. These lock the ALREADY-SHIPPED journal
 // transition rules (no production behaviour is added here) and audit that no
@@ -95,7 +95,7 @@ function scan(dirUrl:URL):{file:string;text:string}[]{
 test("UFC-M2-05a shipped consumers cannot invent a coordinator acknowledgement",()=>{
  const sources=[...scan(new URL("../src/",import.meta.url)),...scan(new URL("../extensions/",import.meta.url))];
  assert.ok(sources.length>=40,"Source scan must cover the shipped tree");
- const journalPath=fileURLToPath(new URL("../src/runtime/agent-notification-journal.ts",import.meta.url));
+ const journalPath=fileURLToPath(new URL("../src/runtime/agents/agent-notification-journal.ts",import.meta.url));
  const callers=sources
   .filter(x=>x.file!==journalPath&&/\.acknowledge\(/.test(x.text))
   .map(x=>x.file.replace(/\\/g,"/"));

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/route-command.js";
+import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/lifecycle/route-command.js";
 
 test("ECO-06 plain instruction triage does not mint a route or execution authority",()=>{
  const result=JSON.parse(controlledInstructionPlanCommand("Inspect the repository and propose a safe fix","/repo"));

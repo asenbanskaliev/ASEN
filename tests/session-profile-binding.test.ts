@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {mkdtemp,mkdir,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
-import * as bindings from "../src/runtime/session-profile-binding.js";
+import * as bindings from "../src/runtime/lifecycle/session-profile-binding.js";
 import path from "node:path";
-import {canonicalProfilePartition,captureSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile} from "../src/runtime/session-profile-binding.js";
-import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
+import {canonicalProfilePartition,captureSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile} from "../src/runtime/lifecycle/session-profile-binding.js";
+import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type RuntimeProfilesFile} from "../src/runtime/lifecycle/profiles.js";
 
 const profile=(model:string):RuntimeProfilesFile=>({schema:ASEN_PROFILES_SCHEMA,active:"default",profiles:[{name:"default",routes:{explorer:{model,thinking:"high"}}}]});
 const identity=(sessionId="a",project="a")=>({sessionId,projectId:path.resolve(`profile-fixture-${project}`)});
@@ -150,7 +150,7 @@ test("empty profile snapshot stays empty and module reload keeps an existing bin
  const partition="test:reload",owner=identity();
  try{
   const empty=await captureSessionProfile(partition,owner,async()=>({schema:ASEN_PROFILES_SCHEMA,profiles:[]}));
-  const reloaded:typeof import("../src/runtime/session-profile-binding.js")=await import(new URL("../src/runtime/session-profile-binding.ts?reload=fixture",import.meta.url).href);
+  const reloaded:typeof import("../src/runtime/lifecycle/session-profile-binding.js")=await import(new URL("../src/runtime/lifecycle/session-profile-binding.ts?reload=fixture",import.meta.url).href);
   const same=await reloaded.captureSessionProfile(partition,owner,async()=>profile("later"));
   assert.deepEqual(same,empty);assert.equal(same.source,"inherited-default");assert.deepEqual(same.file.profiles,[]);
  }finally{clearSessionProfiles(partition,owner.sessionId);}

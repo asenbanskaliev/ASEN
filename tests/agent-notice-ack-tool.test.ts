@@ -3,7 +3,7 @@ import test from "node:test";
 import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 import {registerAgentTools} from "../src/agents/pi-agent-tools.js";
 test("EF-601 Pi ack only confirms an authenticated coordinator action in the same TUI session",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-ack-tool-"));

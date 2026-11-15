@@ -4,7 +4,7 @@ import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
 import {Dispatcher} from "../src/agents/dispatcher.js";
 import {EvidenceStore} from "../src/evidence/store.js";
-import {createAgentLifecycleSink} from "../src/runtime/agent-lifecycle.js";
+import {createAgentLifecycleSink} from "../src/runtime/agents/agent-lifecycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 type PosixProcessObservation={exitCode:number;stdout:string;stderr:string};
@@ -308,6 +308,23 @@ test("Pi failures never return model content or child stderr",async()=>{
  const failure=await runner(crashed.p).run({id:"crashed",role:"explorer",prompt:"hello",repository:crashed.d});
  assert.equal(failure.ok,false);assert.ok(!failure.output.includes(marker));
 });
+
+test("Pi native exits expose only bounded sanitized lifecycle diagnostics",async t=>{
+ const secret="PRIVATE_STDERR credential=abc123 session=model-output stack=trace";
+ const crashed=await fixture(`let input="";process.stdin.on("data",chunk=>input+=chunk);process.stdin.on("end",()=>{process.stdout.write("UNTRUSTED_STDOUT "+${JSON.stringify(secret)});process.stderr.write(${JSON.stringify(secret)});process.exit(3221226505);});`);
+ t.after(()=>rm(crashed.d,{recursive:true,force:true}));
+ const result=await runner(crashed.p).run({id:"native-windows-crash",role:"explorer",prompt:"hello",repository:crashed.d});
+ assert.equal(result.ok,false);
+ assert.equal(result.output,"pi process exited with code 3221226505 (phase: turn; windows status: 0xC0000409; signal: none; stderr-present: true)");
+ assert.ok(!result.output.includes(secret));assert.ok(!result.output.includes("UNTRUSTED_STDOUT"));
+});
+
+test("Pi native exit diagnostics retain ordinary nonzero failures without stderr",async t=>{
+ const crashed=await fixture('let input="";process.stdin.on("data",chunk=>input+=chunk);process.stdin.on("end",()=>process.exit(7));');
+ t.after(()=>rm(crashed.d,{recursive:true,force:true}));
+ const result=await runner(crashed.p).run({id:"native-no-stderr",role:"explorer",prompt:"hello",repository:crashed.d});
+ assert.deepEqual(result,{id:"native-no-stderr",ok:false,output:"pi process exited with code 7 (phase: turn; signal: none; stderr-present: false)"});
+});
 test("Pi RPC adapter rejects malformed structured output",async()=>{const {d,p}=await fixture('let input="";process.stdin.on("data",chunk=>input+=chunk);process.stdin.on("end",()=>console.log("not-json"));');const r=await runner(p,{}).run({id:"req-json",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/envelope invalid/);});
 test("Pi RPC adapter requires a correlated response by default",async()=>{const {d,p}=await fixture('console.log(JSON.stringify({type:"event",id:"req-default"}));');const r=await runner(p).run({id:"req-default",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,false);assert.match(r.output,/correlated response missing/);});
 
@@ -592,7 +609,7 @@ for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undef
 }
 test("effort runtime parity rejects invalid args and drops invalid child effort",async t=>{
  for(const thinking of ["extreme","HIGH","inherit","",null,7]){
-  assert.throws(()=>piRuntimeRouteArgs({thinking:thinking as import("../src/runtime/profiles.js").Thinking}),/Invalid routed Pi thinking/);
+  assert.throws(()=>piRuntimeRouteArgs({thinking:thinking as import("../src/runtime/lifecycle/profiles.js").Thinking}),/Invalid routed Pi thinking/);
   const {d,p}=await fallbackRpcFixture({selectionThinking:thinking});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],child=runner(p,{timeoutMs:5000});child.subscribeChildSelection(value=>seen.push(value));
   const result=await child.run({id:"invalid-observation",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true,result.output);assert.deepEqual(seen,[]);
  }

@@ -5,7 +5,7 @@ import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 import {selectSkills} from "../src/skills/registry.js";
 
 async function fixture(t:import("node:test").TestContext,hold=false){

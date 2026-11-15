@@ -1,6 +1,6 @@
 import {access,writeFile} from "node:fs/promises";
 import {join} from "node:path";
-import {PersistentAgentStore} from "../../src/runtime/agent-store.js";
+import {PersistentAgentStore} from "../../src/runtime/agents/agent-store.js";
 
 const [file,barrier,label]=process.argv.slice(2);
 if(!file||!barrier||(label!=="one"&&label!=="two"))throw new Error("Invalid EF-603 subprocess fixture arguments");

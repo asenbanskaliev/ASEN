@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, rmSync, truncateSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { BackgroundJobJournal } from "../src/runtime/background-job-journal.js";
+import { BackgroundJobJournal } from "../src/runtime/agents/background-job-journal.js";
 
 test("corrupt or oversized background journals fail closed instead of being treated as empty", (t) => {
   const parent = mkdtempSync(path.join(os.tmpdir(), "asen-journal-"));

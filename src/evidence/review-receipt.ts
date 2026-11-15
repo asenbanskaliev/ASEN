@@ -1,5 +1,5 @@
 /**
- * Wired into the live review acceptance path by `src/runtime/review-acceptance.ts`
+ * Wired into the live review acceptance path by `src/runtime/lifecycle/review-acceptance.ts`
  * through `src/evidence/receipt-verifier.ts`: the independent-review acceptance
  * authenticates the receipt of the candidate commit before any human confirmation
  * and refuses acceptance when a present receipt is not authentic or does not bind

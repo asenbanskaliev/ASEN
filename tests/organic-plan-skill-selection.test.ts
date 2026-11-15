@@ -9,10 +9,10 @@ import {buildOrchestrationPlan,type OrchestrationInput} from "../src/orchestrati
 import {materializeExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {consumeIssuedWorkerContext,isIssuedSkillContext,issueSkillContext,matchesIssuedSkillContext} from "../src/skills/context.js";
 import {getSkillContract,selectSkills,type SkillSelectionContext} from "../src/skills/registry.js";
-import {controlledInstructionPlanCommand} from "../src/runtime/route-command.js";
-import {dispatchNextPlanTask} from "../src/runtime/plan-dispatcher.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {equivalentPlannedExplorer,SessionTodoStore,type TodoPlanMetadata} from "../src/runtime/todo-store.js";
+import {controlledInstructionPlanCommand} from "../src/runtime/lifecycle/route-command.js";
+import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {equivalentPlannedExplorer,SessionTodoStore,type TodoPlanMetadata} from "../src/runtime/lifecycle/todo-store.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
 
 // Cast only the new optional field while production types still describe the legacy API.

@@ -13,7 +13,7 @@ const REQUIRED_FILES=Object.freeze([
  "scripts/eco07-provider-config.mjs",
  "scripts/eco07-pi-recovery-e2e.mjs",
  "scripts/eco07-pi-recovery-probe-extension.mjs",
- "src/runtime/eco07-provider-failure.ts",
+ "src/runtime/lifecycle/eco07-provider-failure.ts",
  "src/runtime/task-replay.ts",
  "docs/audit/eco07-closure-evidence-2026-10-12.md",
 ]);

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
-import {registerBackgroundJobTools} from "../src/runtime/background-job-tools.js";
+import {BackgroundJobRegistry} from "../src/runtime/agents/background-jobs.js";
+import {registerBackgroundJobTools} from "../src/runtime/agents/background-job-tools.js";
 
 test("registers public background start/status/stop tools with session ownership",async()=>{
  const tools=new Map<string,any>(),registry=new BackgroundJobRegistry(undefined,async(_command,_cwd,{signal})=>new Promise(resolve=>signal.addEventListener("abort",()=>resolve({exitCode:null}),{once:true})));registerBackgroundJobTools({registerTool(tool:any){tools.set(tool.name,tool);}},registry);

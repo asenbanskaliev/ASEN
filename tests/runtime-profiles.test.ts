@@ -1,5 +1,5 @@
-import test from "node:test";import assert from "node:assert/strict";import {ASEN_PROFILES_SCHEMA,parseRuntimeProfiles,resolveRuntimeRoute,removeProfile,renameProfile,serializeRuntimeProfiles,setActiveProfile,upsertProfile} from "../src/runtime/profiles.js";
-import type {Thinking} from "../src/runtime/profiles.js";
+import test from "node:test";import assert from "node:assert/strict";import {ASEN_PROFILES_SCHEMA,parseRuntimeProfiles,resolveRuntimeRoute,removeProfile,renameProfile,serializeRuntimeProfiles,setActiveProfile,upsertProfile} from "../src/runtime/lifecycle/profiles.js";
+import type {Thinking} from "../src/runtime/lifecycle/profiles.js";
 
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort parity profiles round-trip ${thinking??"inherit"}`,()=>{

@@ -3,8 +3,8 @@ import test,{type TestContext} from "node:test";
 import {mkdir,mkdtemp,readFile,realpath,writeFile,readdir} from "node:fs/promises";
 import path from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
-import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type RouteChoice,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
-import {canonicalProfilePartition,readSessionProfile,captureSessionProfile,selectSessionProfile,resetSessionProfile,clearSessionProfiles} from "../src/runtime/session-profile-binding.js";
+import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type RouteChoice,type RuntimeProfilesFile} from "../src/runtime/lifecycle/profiles.js";
+import {canonicalProfilePartition,readSessionProfile,captureSessionProfile,selectSessionProfile,resetSessionProfile,clearSessionProfiles} from "../src/runtime/lifecycle/session-profile-binding.js";
 
 const profile=(active:string,routes:Record<string,unknown>)=>({schema:ASEN_PROFILES_SCHEMA,active,profiles:[{name:active,routes}]});
 const routeFile=(name:string,routes:Record<string,RouteChoice>):RuntimeProfilesFile=>({schema:ASEN_PROFILES_SCHEMA,active:name,profiles:[{name,routes}]});

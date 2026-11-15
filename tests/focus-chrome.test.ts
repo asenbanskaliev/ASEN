@@ -4,7 +4,7 @@ import { stripVTControlCharacters } from 'node:util';
 import test from 'node:test';
 import { Theme } from '@earendil-works/pi-coding-agent';
 import { visibleWidth } from '@earendil-works/pi-tui';
-import { renderAsenFocusHeader } from '../src/runtime/focus-chrome.js';
+import { renderAsenFocusHeader } from '../src/runtime/ui/focus-chrome.js';
 
 // The renderer needs only public fg/bold methods; the real SDK instance exercises ANSI output.
 const fgKeys = 'accent border borderAccent borderMuted success error warning muted dim text thinkingText scrollbarTrack scrollbarThumb searchMatchText userMessageText customMessageText customMessageLabel toolTitle toolOutput mdHeading mdLink mdLinkUrl mdCode mdCodeBlock mdCodeBlockBorder mdQuote mdQuoteBorder mdHr mdListBullet toolDiffAdded toolDiffRemoved toolDiffContext syntaxComment syntaxKeyword syntaxFunction syntaxVariable syntaxString syntaxNumber syntaxType syntaxOperator syntaxPunctuation thinkingOff thinkingMinimal thinkingLow thinkingMedium thinkingHigh thinkingXhigh thinkingMax bashMode'.split(' ');
@@ -41,6 +41,6 @@ test('terminal escapes, newlines, C1 and bidi controls are removed before stylin
 test('header is deterministic and never mutates metadata or performs I/O', () => {
   const info = Object.freeze({ asenVersion: '0.1.0', profile: 'focus' });
   assert.deepEqual(renderAsenFocusHeader(info, 80, theme), renderAsenFocusHeader(info, 80, theme));
-  const source = readFileSync(new URL('../src/runtime/focus-chrome.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../src/runtime/ui/focus-chrome.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /\b(process|readFile|writeFile|setTheme|SettingsManager|createAgentSession)\b/);
 });

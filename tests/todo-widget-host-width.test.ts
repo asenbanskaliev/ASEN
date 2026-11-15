@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test,{type TestContext} from "node:test";
 import {createAsenExtension} from "../extensions/asen.js";
 import {hostContentColumns,visibleWidth} from "../src/runtime/responsive-layout.js";
-import type {TodoItem} from "../src/runtime/todo-store.js";
+import type {TodoItem} from "../src/runtime/lifecycle/todo-store.js";
 
 async function fixture(t:TestContext){
  const root=`${process.cwd()}/.cache/todo-widget-width-${process.pid}-${Date.now()}`,home=`${root}/home`,project=process.cwd();

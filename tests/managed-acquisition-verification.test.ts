@@ -9,8 +9,8 @@ import {performance} from "node:perf_hooks";
 import {
  ManagedAcquisitionVerificationError,
  verifyManagedAcquisitionPackage,
-} from "../src/runtime/managed-acquisition-verification.js";
-import {ManagedInstallError} from "../src/runtime/managed-install.js";
+} from "../src/runtime/managed/managed-acquisition-verification.js";
+import {ManagedInstallError} from "../src/runtime/managed/managed-install.js";
 
 const sha=(bytes:string|Buffer)=>createHash("sha256").update(bytes).digest("hex");
 const described=(sourcePath:string,bytes:string|Buffer,destinationPath=sourcePath)=>({sourcePath,destinationPath,size:Buffer.byteLength(bytes),sha256:sha(bytes)});

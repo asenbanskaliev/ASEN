@@ -5,8 +5,8 @@ import {tmpdir} from "node:os";
 import path from "node:path";
 import {spawnSync} from "node:child_process";
 import {pathToFileURL} from "node:url";
-import {BackgroundJobRegistry,backgroundJobTerminalNotification,formatBackgroundJobStatus,pendingBackgroundJobNotifications} from "../src/runtime/background-jobs.js";
-import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
+import {BackgroundJobRegistry,backgroundJobTerminalNotification,formatBackgroundJobStatus,pendingBackgroundJobNotifications} from "../src/runtime/agents/background-jobs.js";
+import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
 
 test("bounds output, emits completion once, and keeps session isolation",()=>{
  const registry=new BackgroundJobRegistry(),events=[] as string[],job=registry.start({sessionId:"s1",command:"long",maxTailLines:2,maxLineChars:4});
@@ -185,7 +185,7 @@ test("T10 live delivery state updates preserve newer cross-process terminal resu
  // A separate Pi process closes the shared running row before the stale owner
  // observes completion. The stale owner must not replace the new result.
  const later={...owned,state:"failed" as const,exitCode:7,updatedAt:new Date(Date.now()+60_000).toISOString(),tail:["newer terminal result"],eventCount:1};
- const moduleUrl=pathToFileURL(path.join(process.cwd(),"src/runtime/background-job-journal.ts")).href;
+ const moduleUrl=pathToFileURL(path.join(process.cwd(),"src/runtime/agents/background-job-journal.ts")).href;
  const script=`import {BackgroundJobJournal} from ${JSON.stringify(moduleUrl)};new BackgroundJobJournal(process.env.ASEN_CAS_FILE).record(JSON.parse(process.env.ASEN_CAS_SNAPSHOT));`;
  const child=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",script],{cwd:process.cwd(),windowsHide:true,encoding:"utf8",timeout:15000,env:{...process.env,ASEN_CAS_FILE:file,ASEN_CAS_SNAPSHOT:JSON.stringify(later)}});
  assert.equal(child.status,0,"independent writer must update the journal: "+child.stderr);

@@ -1,4 +1,4 @@
-import {PersistentAgentStore} from "../../src/runtime/agent-store.js";
+import {PersistentAgentStore} from "../../src/runtime/agents/agent-store.js";
 
 const [file, mode, parentId, sessionArg, projectArg, taskArg] = process.argv.slice(2);
 if (!file || !["running", "pair", "continue-running"].includes(mode ?? "")) throw new Error("Expected store path and a supported crash mode");

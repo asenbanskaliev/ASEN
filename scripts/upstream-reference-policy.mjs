@@ -60,19 +60,19 @@ const encodedCompatibilityLines = new Map([
   ]
  ],
  [
-  "src/runtime/desktop-rpc.ts",
+  "src/runtime/ui/desktop-rpc.ts",
   [
    " * Frphevgl fgnapr (ERN bs Tragyr Furyy i4.8.0 `yvo/qrfxgbc-ecp.gf`): gur"
   ]
  ],
  [
-  "src/runtime/guide-tour.ts",
+  "src/runtime/ui/guide-tour.ts",
   [
    "// Thvqrq gbhef: gur cher unys bs gur ersrerapr furyy'f tragyr-thvqr pbagenpg, cbegrq sbe NFRA. N"
   ]
  ],
  [
-  "src/runtime/image-disk-cache.ts",
+  "src/runtime/ui/image-disk-cache.ts",
   [
    " * Guvf vf gur fgbentr pbagenpg qvfgvyyrq sebz gur Tragyr Furyy i4.8.0",
    " * `yvo/vzntr-qvfx-pnpur.gf` (frr bqq/rivqrapr/tragyr-furyy-i4.8.0-qrygn-erpbapvyvngvba.zq,",
@@ -81,14 +81,14 @@ const encodedCompatibilityLines = new Map([
   ]
  ],
  [
-  "src/runtime/reply-language-anchor.ts",
+  "src/runtime/ui/reply-language-anchor.ts",
   [
    " * Cbeg bs Tragyr Furyy i4.8.0 yvo/ercyl-ynathntr-napube.gf.",
    " vs (pg === \"tragyr-gbqb-fgngr\" || pg === \"tragyr-gbqb-erzvaqre\") erghea gehr;"
   ]
  ],
  [
-  "src/runtime/voice-dictation.ts",
+  "src/runtime/ui/voice-dictation.ts",
   [
    " * Guvf vf gur yrtny-genafvgvba ybtvp qvfgvyyrq sebz gur Tragyr Furyy i4.8.0",
    " * `yvo/ibvpr-frffvba.gf` thneqf (frr bqq/rivqrapr/tragyr-furyy-i4.8.0-qrygn-erpbapvyvngvba.zq,"
@@ -164,11 +164,11 @@ const encodedCompatibilityLines = new Map([
 const compatibilityWiring = new Map([
  ["src/agents/tool-overlay.ts", { kind: "production", wired: true, consumer: "src/agents/pi-process-runner.ts" }],
  ["src/review/delivery-preflight.ts", { kind: "production", wired: true, consumer: "src/security/primary-tool-policy.ts" }],
- ["src/runtime/desktop-rpc.ts", { kind: "production", wired: false, consumer: null }],
- ["src/runtime/guide-tour.ts", { kind: "production", wired: false, consumer: null }],
- ["src/runtime/image-disk-cache.ts", { kind: "production", wired: false, consumer: null }],
- ["src/runtime/reply-language-anchor.ts", { kind: "production", wired: false, consumer: null }],
- ["src/runtime/voice-dictation.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/ui/desktop-rpc.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/ui/guide-tour.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/ui/image-disk-cache.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/ui/reply-language-anchor.ts", { kind: "production", wired: false, consumer: null }],
+ ["src/runtime/ui/voice-dictation.ts", { kind: "production", wired: false, consumer: null }],
  ["src/security/execution-surface-guard.ts", { kind: "production", wired: true, consumer: "src/security/primary-tool-policy.ts" }],
  ["tests/image-disk-cache.test.ts", { kind: "test", wired: false, consumer: null }],
  ["tests/ordinary-review-assessment.test.ts", { kind: "test", wired: false, consumer: null }],

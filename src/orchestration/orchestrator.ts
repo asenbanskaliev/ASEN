@@ -9,7 +9,7 @@ import {
 } from "../flow/odd-routing.js";
 import {selectSkills,validateSkillSelectionProfile,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
 import {issueSkillContext,type IssuedSkillContext} from "../skills/context.js";
-import {isThinking,resolveRuntimeRoute,type ProfileLayer} from "../runtime/profiles.js";
+import {isThinking,resolveRuntimeRoute,type ProfileLayer} from "../runtime/lifecycle/profiles.js";
 
 export interface OrchestrationInput extends Pick<SkillSelectionContext,"selectionProfile"> {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];

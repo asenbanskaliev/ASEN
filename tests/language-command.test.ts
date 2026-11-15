@@ -4,7 +4,7 @@ import {mkdir,mkdtemp,rm,writeFile} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {createAsenExtension,createPiExtension} from "../extensions/asen.js";
-import {languageConfigPath} from "../src/runtime/language.js";
+import {languageConfigPath} from "../src/runtime/ui/language.js";
 
 const note="Use `/asen-language show`, `/asen-language en` or `/asen-language es`";
 const usage={error:note};

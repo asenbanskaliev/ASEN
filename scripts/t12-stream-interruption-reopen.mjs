@@ -3,7 +3,7 @@
  */
 import assert from "node:assert/strict";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 const {ASEN_STREAM_STORE:store,ASEN_STREAM_JOURNAL:journal,
  ASEN_STREAM_AGENT:id,ASEN_STREAM_SESSION:sessionId,
  ASEN_STREAM_PROJECT:projectId}=process.env;

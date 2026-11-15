@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { installManaged, upgradeManaged, rollbackManaged } from "../src/runtime/managed-lifecycle.js";
-import { inspectManagedInstall } from "../src/runtime/managed-install.js";
-import { buildManagedManifest, generateManagedSigningKeyPair, signManagedManifest } from "../src/runtime/managed-trust.js";
+import { installManaged, upgradeManaged, rollbackManaged } from "../src/runtime/managed/managed-lifecycle.js";
+import { inspectManagedInstall } from "../src/runtime/managed/managed-install.js";
+import { buildManagedManifest, generateManagedSigningKeyPair, signManagedManifest } from "../src/runtime/managed/managed-trust.js";
 
 test("T09-U4 characterization: successful upgrade can be explicitly rolled back and reapplied", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "asen-t09-u4-char-"));

@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   SessionOrchestrator
-} from "../src/runtime/session-orchestrator.js";
+} from "../src/runtime/lifecycle/session-orchestrator.js";
 
 test("SessionOrchestrator coordinates all engine subsystems through a unified facade", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "asen-orchestrator-test-"));

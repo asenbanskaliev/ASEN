@@ -8,7 +8,7 @@ import {mkdir,mkdtemp,realpath,rm} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {createPiExtension} from "../extensions/asen.js";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 
 type RunResult={id:string;ok:boolean;output:string};
 function mockPi(sessionId:string,projectId:string,mode:"rpc"|"tui",throwTransport=false){

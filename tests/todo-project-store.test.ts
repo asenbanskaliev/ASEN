@@ -3,7 +3,7 @@ import {createHash,randomUUID} from "node:crypto";
 import {mkdtemp,readFile,readdir,realpath,rm,stat,writeFile} from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
-import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/todo-store.js";
+import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/lifecycle/todo-store.js";
 import {sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 
 test("project-scoped Todo migration splits the legacy file, verifies shards and keeps a backup",async t=>{

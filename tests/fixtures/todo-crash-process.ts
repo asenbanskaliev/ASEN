@@ -1,4 +1,4 @@
-import {SessionTodoStore} from "../../src/runtime/todo-store.js";
+import {SessionTodoStore} from "../../src/runtime/lifecycle/todo-store.js";
 
 const [file,projectId,otherProject]=process.argv.slice(2);
 if(!file||!projectId||!otherProject)throw new Error("Expected Todo store path and project identities");

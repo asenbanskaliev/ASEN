@@ -4,7 +4,7 @@ import {execFileSync} from "node:child_process";
 import {mkdir,mkdtemp,rm,writeFile,symlink} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/git-diff-preview.js";
+import {previewWorkspaceFileDiff,renderGitDiffPreview,gitChangesIndex} from "../src/runtime/ui/git-diff-preview.js";
 import {snapshotWorkspaceRoots} from "../src/runtime/workspace-snapshot.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 

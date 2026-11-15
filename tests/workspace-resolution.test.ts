@@ -4,7 +4,7 @@ import {execFileSync} from "node:child_process";
 import {chmodSync,mkdtempSync,readFileSync,rmSync,statSync,symlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {acquireWorkspaceWriter} from "../src/runtime/workspace-writer-lease.js";
+import {acquireWorkspaceWriter} from "../src/runtime/lifecycle/workspace-writer-lease.js";
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
 
 function fixture(t:test.TestContext){

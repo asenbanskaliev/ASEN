@@ -5,9 +5,9 @@ import {existsSync,watch} from "node:fs";
 import {syncBuiltinESMExports} from "node:module";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {stageManagedInstall} from "../src/runtime/managed-install.js";
-import {withManagedMaintenanceLock} from "../src/runtime/managed-maintenance-lock.js";
-import {probeManagedCliVersion} from "../src/runtime/managed-cli-version-probe.js";
+import {stageManagedInstall} from "../src/runtime/managed/managed-install.js";
+import {withManagedMaintenanceLock} from "../src/runtime/managed/managed-maintenance-lock.js";
+import {probeManagedCliVersion} from "../src/runtime/managed/managed-cli-version-probe.js";
 
 async function fixture(t:{after:(fn:()=>Promise<void>)=>void},mode="plain"){
  const root=await fs.mkdtemp(path.join(tmpdir(),"cl-"));t.after(()=>fs.rm(root,{recursive:true,force:true}));

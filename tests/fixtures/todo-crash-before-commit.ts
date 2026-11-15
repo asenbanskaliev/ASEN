@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import {writeSync} from "node:fs";
 import {syncBuiltinESMExports} from "node:module";
 import {resolve} from "node:path";
-import {SessionTodoStore} from "../../src/runtime/todo-store.js";
+import {SessionTodoStore} from "../../src/runtime/lifecycle/todo-store.js";
 
 const [file,taskId,sessionId,projectId]=process.argv.slice(2);
 if(!file||!taskId||!sessionId||!projectId)throw new Error("Expected Todo path, task and owning identities");

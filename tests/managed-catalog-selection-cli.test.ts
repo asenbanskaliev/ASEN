@@ -5,8 +5,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
 import {runAsen} from "../src/cli.js";
-import {stageAdditionalManagedVersion,stageManagedInstall,selectManagedVersion,type ManagedVersionSelectionReport} from "../src/runtime/managed-install.js";
-import {withManagedMaintenanceLock} from "../src/runtime/managed-maintenance-lock.js";
+import {stageAdditionalManagedVersion,stageManagedInstall,selectManagedVersion,type ManagedVersionSelectionReport} from "../src/runtime/managed/managed-install.js";
+import {withManagedMaintenanceLock} from "../src/runtime/managed/managed-maintenance-lock.js";
 
 const V1="1.2.0",V2="1.3.0";
 const USAGE="Unsupported ASEN managed select command. Expected: managed select <exact-target-version> --expected-current <exact-current-version>.\n";

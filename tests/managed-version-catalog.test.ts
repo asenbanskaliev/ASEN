@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
-import {inspectManagedInstall,stageManagedInstall} from "../src/runtime/managed-install.js";
-import {resolveManagedCliCandidate,verifyManagedVersion} from "../src/runtime/managed-version-verification.js";
+import {inspectManagedInstall,stageManagedInstall} from "../src/runtime/managed/managed-install.js";
+import {resolveManagedCliCandidate,verifyManagedVersion} from "../src/runtime/managed/managed-version-verification.js";
 
 async function fixture(t:{after:(fn:()=>Promise<void>)=>void},extra:Record<string,unknown>={}){
  const root=await fs.mkdtemp(path.join(tmpdir(),"vc-"));t.after(()=>fs.rm(root,{recursive:true,force:true}));

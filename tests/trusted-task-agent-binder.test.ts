@@ -3,9 +3,9 @@ import test from "node:test";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,TrustedTaskAgentBinder} from "../src/runtime/agents/trusted-task-agent-binder.js";
 import {selectSkills} from "../src/skills/registry.js";
 test("ECO-07 binder rejects unowned agents and foreign Todos without writing links",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-binder-"));t.after(()=>rm(dir,{recursive:true,force:true}));

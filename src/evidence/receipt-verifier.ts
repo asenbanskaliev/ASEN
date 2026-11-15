@@ -3,7 +3,7 @@
  * Accelerates verification pipelines by checking if a treeSha has already been
  * certified with an authentic, HMAC-signed PASSED receipt.
  *
- * Wired into the live review acceptance path by `src/runtime/review-acceptance.ts`:
+ * Wired into the live review acceptance path by `src/runtime/lifecycle/review-acceptance.ts`:
  * the independent-review acceptance resolves the receipt of the candidate commit
  * before any human confirmation and refuses acceptance when a present receipt is
  * not authentic. See `odd/tasks/asen-integral-runtime-architecture-stability-audit.md`

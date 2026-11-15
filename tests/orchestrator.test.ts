@@ -8,11 +8,11 @@ import {
 } from "../src/orchestration/orchestrator.js";
 import {materializeExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/profiles.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
-import {readProfilesFile,writeProfilesFile} from "../src/runtime/profile-store.js";
+import {readProfilesFile,writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
 
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort plan parity orchestration preserves ${thinking??"omission"}`,()=>{
@@ -25,7 +25,7 @@ for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undef
 }
 test("effort plan parity orchestration rejects invalid efforts",()=>{
  for(const thinking of ["extreme","HIGH","inherit","",null,7]){
-  const runtimeProfiles={global:{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{worker:{thinking:thinking as import("../src/runtime/profiles.js").Thinking}}}]}};
+  const runtimeProfiles={global:{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{worker:{thinking:thinking as import("../src/runtime/lifecycle/profiles.js").Thinking}}}]}};
   assert.throws(()=>buildOrchestrationPlan({taskId:"bad-effort",repository:"r",prompt:"inspect",candidate,runtimeProfiles},orchestrated("bad-effort")),/Invalid routed thinking/);
  }
 });

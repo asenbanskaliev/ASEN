@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
-import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions} from "../src/runtime/agent-terminal-delivery.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
+import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions} from "../src/runtime/agents/agent-terminal-delivery.js";
 
 test("EF-601 C13 host routing plus durable journal: busy, idle, compaction and headless stay distinct",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-t12-parent-route-"));

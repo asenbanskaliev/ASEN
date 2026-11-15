@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {renderAgentConversation} from "../src/runtime/agent-conversation.js";
-import {pendingAgentQuestion} from "../src/runtime/agent-store.js";
+import {renderAgentConversation} from "../src/runtime/agents/agent-conversation.js";
+import {pendingAgentQuestion} from "../src/runtime/agents/agent-store.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
-import type {AgentStoreEntry} from "../src/runtime/agent-store.js";
-import type {PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
+import type {AgentStoreEntry} from "../src/runtime/agents/agent-store.js";
+import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
 
 const record:PublicAgentRecord={id:"agent-safe-id",role:"explorer",owner:{kind:"user",id:"pi:safe-session"},sessionId:"safe-session",projectId:"/workspace",state:"completed",createdAt:"2026-11-05T08:00:00Z",updatedAt:"2026-11-05T08:05:00Z"};
 

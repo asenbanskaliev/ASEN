@@ -4,11 +4,11 @@ import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
-import {TaskAgentCoordinator} from "../src/runtime/task-agent-coordinator.js";
-import {TaskAgentTodoReconciler} from "../src/runtime/task-agent-reconciler.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {TrustedTaskAgentBinder} from "../src/runtime/agents/trusted-task-agent-binder.js";
+import {TaskAgentCoordinator} from "../src/runtime/agents/task-agent-coordinator.js";
+import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 
 test("ECO-07 failed link persistence prevents dispatch and never grants recovery",async t=>{
  const dir=await mkdtemp(join(tmpdir(),"asen-eco07-fail-"));t.after(()=>rm(dir,{recursive:true,force:true}));

@@ -5,7 +5,7 @@ import {mkdtemp,mkdir,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 
 test("EF-604 provider-free cancelled Explorer survives a separate coordinator process with no replay",
  {timeout:90000},async t=>{

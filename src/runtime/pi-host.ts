@@ -1,5 +1,5 @@
 import {types} from "node:util";
-import {checkPiVersion} from "./launcher.js";
+import {checkPiVersion} from "./lifecycle/launcher.js";
 
 const required=["on","registerCommand","registerTool","getCommands","getAllTools"] as const;
 export const ASEN_PI_MINIMUM_VERSION="1.2.0";

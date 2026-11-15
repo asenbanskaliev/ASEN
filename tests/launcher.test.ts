@@ -21,7 +21,7 @@ import {
   readAsenLauncherConfig,
   resolveAsenHome,
   resolvePiRuntime,
-} from "../src/runtime/launcher.js";
+} from "../src/runtime/lifecycle/launcher.js";
 import { ASEN_HELP, runAsen } from "../src/cli.js";
 
 test("launcher parses selectors and Pi passthrough", () => {

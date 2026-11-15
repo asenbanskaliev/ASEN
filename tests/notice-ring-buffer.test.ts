@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {
   NoticeRingBuffer,
   type SystemNotice
-} from "../src/runtime/notice-ring-buffer.js";
+} from "../src/runtime/lifecycle/notice-ring-buffer.js";
 
 test("NoticeRingBuffer stores and drains notices in FIFO order", () => {
   const buffer = new NoticeRingBuffer(10);

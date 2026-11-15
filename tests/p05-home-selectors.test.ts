@@ -7,7 +7,7 @@ import {syncBuiltinESMExports} from "node:module";
 import {EventEmitter} from "node:events";
 import path from "node:path";
 import {runAsen} from "../src/cli.js";
-import {parseAsenArgs} from "../src/runtime/launcher.js";
+import {parseAsenArgs} from "../src/runtime/lifecycle/launcher.js";
 
 // The admitted runner supplies a fresh owned root; never fall back to user state.
 // A fresh checkout owns only this synthetic run directory under .cache.

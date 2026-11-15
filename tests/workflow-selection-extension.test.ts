@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test,{after} from "node:test";
 import {createAsenExtension,createPiExtension} from "../extensions/asen.js";
-import {implementedCommands} from "../src/runtime/command-catalog.js";
+import {implementedCommands} from "../src/runtime/ui/command-catalog.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {issueOddDecision} from "./helpers/odd-routing.js";
 import {type LifecycleApplicabilityInput,tddObligationFor} from "../src/lifecycle/applicability.js";

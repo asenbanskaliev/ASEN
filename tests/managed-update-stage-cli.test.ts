@@ -6,8 +6,8 @@ import fs from "node:fs/promises";
 import {syncBuiltinESMExports} from "node:module";
 import path from "node:path";
 import {runAsen} from "../src/cli.js";
-import {parseManagedUpdatePreviewArgs,parseManagedUpdateStageArgs} from "../src/runtime/launcher.js";
-import {inspectManagedInstall,selectManagedVersion,stageManagedInstall} from "../src/runtime/managed-install.js";
+import {parseManagedUpdatePreviewArgs,parseManagedUpdateStageArgs} from "../src/runtime/lifecycle/launcher.js";
+import {inspectManagedInstall,selectManagedVersion,stageManagedInstall} from "../src/runtime/managed/managed-install.js";
 
 const USAGE="Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n";
 const NOT_CONFIRMED="Managed update staging is not confirmed; inspect the reported state before retrying.\n";

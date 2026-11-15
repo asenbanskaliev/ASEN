@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // UFC-M1-03: read-only integration probe receipt producer (the R08 evidence decision).
-// Wraps the shipped public-reader inventory vocabulary (src/runtime/integration-profile-inspection.ts)
+// Wraps the shipped public-reader inventory vocabulary (src/runtime/ui/integration-profile-inspection.ts)
 // and forces presence and connectivity into distinct fields: nothing this receipt emits may read as
 // a connected server unless an admissible handshake observation was supplied. No network, no model
 // calls, no registry/parity writes, no file writes at all — stdout only. A GAP verdict is the honest

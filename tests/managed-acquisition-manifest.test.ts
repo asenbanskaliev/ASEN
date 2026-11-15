@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {decodeManagedAcquisitionManifest,ManagedInstallError} from "../src/runtime/managed-install.js";
+import {decodeManagedAcquisitionManifest,ManagedInstallError} from "../src/runtime/managed/managed-install.js";
 
 const hash="0123456789abcdef".repeat(4);
 const file=(overrides:Record<string,unknown>={})=>({

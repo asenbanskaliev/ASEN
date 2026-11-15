@@ -4,8 +4,8 @@ import {mkdir,mkdtemp,writeFile,readFile,rename,symlink} from "node:fs/promises"
 import path from "node:path";
 import {execFileSync} from "node:child_process";
 import {createPiExtension} from "../extensions/asen.js";
-import {renderGitDiffPreview} from "../src/runtime/git-diff-preview.js";
-import {renderAsenPanelSection} from "../src/runtime/ide-panel.js";
+import {renderGitDiffPreview} from "../src/runtime/ui/git-diff-preview.js";
+import {renderAsenPanelSection} from "../src/runtime/ui/ide-panel.js";
 import {captureWorkspaceRootIdentity,assertWorkspaceRootIdentity,parseWorkspaceStatus} from "../src/runtime/workspace-snapshot.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 

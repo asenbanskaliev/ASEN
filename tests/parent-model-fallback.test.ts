@@ -4,13 +4,13 @@ import {
  createParentModelFallback,
  type ParentFallbackIdentity,
  type ParentModelFallbackHost,
-} from "../src/runtime/parent-model-fallback.js";
+} from "../src/runtime/lifecycle/parent-model-fallback.js";
 import {
  formatModelFallbackContinuation,
  formatModelFallbackNotice,
  type ModelFallbackChange,
-} from "../src/runtime/model-fallback-notice.js";
-import {ModelFallbackCooldown} from "../src/runtime/model-fallback-policy.js";
+} from "../src/runtime/lifecycle/model-fallback-notice.js";
+import {ModelFallbackCooldown} from "../src/runtime/lifecycle/model-fallback-policy.js";
 
 const failure=(message="429 rate limit")=>[{role:"assistant",stopReason:"error",errorMessage:message}];
 const identity=(profile="main"):ParentFallbackIdentity=>({sessionId:"session-1",projectId:"/project",profile});

@@ -5,13 +5,13 @@ import {tmpdir} from "node:os";
 import {createHash} from "node:crypto";
 import {snapshotAgentModelFallback,type AgentFallbackListener,type AgentFallbackObservation,type AgentRequest,type AgentResult,type AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
-import {checkPiVersion} from "../runtime/launcher.js";import {selectSkills} from "../skills/registry.js";
+import {checkPiVersion} from "../runtime/lifecycle/launcher.js";import {selectSkills} from "../skills/registry.js";
 import {authorizePiWriteGrant} from "../lifecycle/skill-lifecycle.js";
 import {consumeRunnerWriteReceiver} from "./dispatcher.js";
 import {spawnContained} from "../evidence/spawn-contained.js";
 import {authorityAssets} from "./pi-authority-assets.js";
-import {isThinking} from "../runtime/profiles.js";
-import {classifyAssistantError,getProcessModelFallbackCooldown,pickFallbackModel,shouldFallback,type TerminalErrorCategory} from "../runtime/model-fallback-policy.js";
+import {isThinking} from "../runtime/lifecycle/profiles.js";
+import {classifyAssistantError,getProcessModelFallbackCooldown,pickFallbackModel,shouldFallback,type TerminalErrorCategory} from "../runtime/lifecycle/model-fallback-policy.js";
 import {applyToolOverlay,loadToolOverlays} from "./tool-overlay.js";
 
 export interface PiProcessOptions{
@@ -146,6 +146,16 @@ function promptWithSkills(request:AgentRequest):string{
 
 /** Execution phases of a Pi child run, each with its own budget. */
 export type PiRunnerPhase="spawn"|"preflight"|"turn";
+
+/** Native-exit facts only: never include child output, environment, or errors. */
+function nativeExitDiagnostic(code:number|null,phase:PiRunnerPhase,signal:NodeJS.Signals|null,stderrPresent:boolean):string{
+ const decimal=code??"unknown",facts=[`phase: ${phase}`];
+ // NTSTATUS values arrive from Node as unsigned 32-bit process exit codes.
+ if(typeof code==="number"&&Number.isSafeInteger(code)&&code>=0x80000000&&code<=0xffffffff)
+  facts.push(`windows status: 0x${code.toString(16).toUpperCase().padStart(8,"0")}`);
+ facts.push(`signal: ${signal??"none"}`,`stderr-present: ${stderrPresent}`);
+ return `pi process exited with code ${decimal} (${facts.join("; ")})`;
+}
 
 /**
  * Write one JSON line to the child stdin, honoring stream backpressure.
@@ -554,7 +564,7 @@ export class PiProcessRunner implements AgentRunner{
     finish({
      id:request.id,
      ok:code===0&&!overflow,
-     output:overflow?`pi output exceeded ${max} bytes`:code===0?stdout:`pi process exited with code ${code??"unknown"}`
+     output:overflow?`pi output exceeded ${max} bytes`:code===0?stdout:nativeExitDiagnostic(code,phase,child.signalCode,stderr.length>0)
     });
    });
 

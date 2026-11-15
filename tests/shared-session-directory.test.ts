@@ -5,7 +5,7 @@ import {mkdtempSync,readdirSync,readFileSync,rmSync,symlinkSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
-import {SharedSessionDirectory} from "../src/runtime/shared-session-directory.js";
+import {SharedSessionDirectory} from "../src/runtime/lifecycle/shared-session-directory.js";
 
 const entry=(id:string,projectId="project-a")=>({sessionId:id,subject:"Pi test session",projectId,classification:"read" as const,updatedAt:new Date().toISOString()});
 test("shared session metadata remains project-bound with local one-use consent",t=>{
@@ -61,7 +61,7 @@ test("a concurrent replacement of an existing record fails closed before overwri
 });
 test("a separate Node process can publish and withdraw only its own session metadata",async t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-session-cross-process-"));t.after(()=>rmSync(root,{recursive:true,force:true,maxRetries:20,retryDelay:100}));
- const directory=join(root,"private"),source=pathToFileURL(join(process.cwd(),"src/runtime/shared-session-directory.ts")).href;
+ const directory=join(root,"private"),source=pathToFileURL(join(process.cwd(),"src/runtime/lifecycle/shared-session-directory.ts")).href;
  const childScript="import {SharedSessionDirectory} from "+JSON.stringify(source)+";"+
   "const d=new SharedSessionDirectory(process.env.ASEN_TEST_SESSION_DIR);"+
   "d.publish({sessionId:'child',subject:'Child Pi',projectId:'project-a',classification:'read',updatedAt:new Date().toISOString()});"+

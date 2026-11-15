@@ -5,8 +5,8 @@ import {mkdtempSync,rmSync,writeFileSync,symlinkSync,renameSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import test,{type TestContext} from "node:test";
-import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
-import {reconcileInterruptedAuthorizedWrite} from "../src/runtime/authorized-write-recovery.js";
+import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
+import {reconcileInterruptedAuthorizedWrite} from "../src/runtime/agents/authorized-write-recovery.js";
 
 function fixture(t:TestContext){
  const root=resolve(mkdtempSync(join(tmpdir(),"asen-write-recovery-"))),state=mkdtempSync(join(tmpdir(),"asen-write-recovery-state-"));

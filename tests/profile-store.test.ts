@@ -1,4 +1,4 @@
-import test,{after} from "node:test";import assert from "node:assert/strict";import {mkdtemp as createTempDir,readFile,writeFile,rm} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";import {mutateProfilesFile,readProfilesFile,writeProfilesFile} from "../src/runtime/profile-store.js";import {ASEN_PROFILES_SCHEMA,upsertProfile} from "../src/runtime/profiles.js";
+import test,{after} from "node:test";import assert from "node:assert/strict";import {mkdtemp as createTempDir,readFile,writeFile,rm} from "node:fs/promises";import {tmpdir} from "node:os";import path from "node:path";import {mutateProfilesFile,readProfilesFile,writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";import {ASEN_PROFILES_SCHEMA,upsertProfile} from "../src/runtime/lifecycle/profiles.js";
 const ownedFixtureRoots=new Set<string>();
 async function mkdtemp(prefix:string){const root=await createTempDir(prefix);ownedFixtureRoots.add(root);return root;}
 after(async()=>{for(const root of ownedFixtureRoots)await rm(root,{recursive:true,force:true});});

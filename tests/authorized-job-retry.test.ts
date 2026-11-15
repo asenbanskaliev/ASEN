@@ -4,9 +4,9 @@ import {execFileSync,spawn} from "node:child_process";
 import {mkdtempSync,rmSync,writeFileSync,readFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
-import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
-import {retryInterruptedAuthorized} from "../src/runtime/authorized-job-retry.js";
+import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
+import {BackgroundJobRegistry} from "../src/runtime/agents/background-jobs.js";
+import {retryInterruptedAuthorized} from "../src/runtime/agents/authorized-job-retry.js";
 import {pathToFileURL} from "node:url";
 
 test("authorized retry runs once; competing and stale writers fail closed",async t=>{
@@ -35,7 +35,7 @@ test("hard process death after the authorized write is recovered as interrupted 
  const childCode=`require("node:fs").appendFileSync(${JSON.stringify(target)},"written-once\\n");process.kill(process.ppid,"SIGKILL");process.exit(0);`;
  const originalArgs=["-e",childCode],journal=new BackgroundJobJournal(journalFile);journal.record({id:"interrupted-original",sessionId:"session",projectId:root,command:process.execPath,args:originalArgs,cwd:root,mode:"background",state:"running",createdAt:now,updatedAt:now,exitCode:null,eventCount:0,tail:[]});
  const sourceRoot=process.cwd(),url=(path:string)=>pathToFileURL(join(sourceRoot,path)).href;
- const host=`import {BackgroundJobJournal} from ${JSON.stringify(url("src/runtime/background-job-journal.ts"))};import {BackgroundJobRegistry} from ${JSON.stringify(url("src/runtime/background-jobs.ts"))};import {retryInterruptedAuthorized} from ${JSON.stringify(url("src/runtime/authorized-job-retry.ts"))};const journal=new BackgroundJobJournal(process.env.ASEN_TEST_JOURNAL),registry=new BackgroundJobRegistry(journal);await retryInterruptedAuthorized({journal,registry,interruptedJobId:"interrupted-original",newJobId:"e166e684-0601-40b1-b198-1e4c4e7678b1",authorizationId:"hard-kill-one-use",expectedHead:process.env.ASEN_TEST_HEAD,allowedPaths:["target.txt"],authorizationExpiresAt:${JSON.stringify(new Date(Date.now()+60_000).toISOString())},options:{sessionId:"session",projectId:process.env.ASEN_TEST_ROOT,cwd:process.env.ASEN_TEST_ROOT,command:process.execPath,args:${JSON.stringify(originalArgs)}}});`;
+ const host=`import {BackgroundJobJournal} from ${JSON.stringify(url("src/runtime/agents/background-job-journal.ts"))};import {BackgroundJobRegistry} from ${JSON.stringify(url("src/runtime/agents/background-jobs.ts"))};import {retryInterruptedAuthorized} from ${JSON.stringify(url("src/runtime/agents/authorized-job-retry.ts"))};const journal=new BackgroundJobJournal(process.env.ASEN_TEST_JOURNAL),registry=new BackgroundJobRegistry(journal);await retryInterruptedAuthorized({journal,registry,interruptedJobId:"interrupted-original",newJobId:"e166e684-0601-40b1-b198-1e4c4e7678b1",authorizationId:"hard-kill-one-use",expectedHead:process.env.ASEN_TEST_HEAD,allowedPaths:["target.txt"],authorizationExpiresAt:${JSON.stringify(new Date(Date.now()+60_000).toISOString())},options:{sessionId:"session",projectId:process.env.ASEN_TEST_ROOT,cwd:process.env.ASEN_TEST_ROOT,command:process.execPath,args:${JSON.stringify(originalArgs)}}});`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",host],{cwd:sourceRoot,env:{...process.env,ASEN_TEST_JOURNAL:journalFile,ASEN_TEST_ROOT:root,ASEN_TEST_HEAD:head},stdio:["ignore","ignore","pipe"]});
  let stderr="";child.stderr.setEncoding("utf8").on("data",chunk=>stderr+=chunk);
  const exit=await new Promise<{code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{const timer=setTimeout(()=>{child.kill("SIGKILL");reject(new Error("retry host did not reach the hard-kill boundary"));},10_000);child.once("error",error=>{clearTimeout(timer);reject(error);});child.once("close",(code,signal)=>{clearTimeout(timer);resolve({code,signal});});});

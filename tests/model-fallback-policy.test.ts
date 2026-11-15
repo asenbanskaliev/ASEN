@@ -10,7 +10,7 @@ import {
  pickFallbackModel,
  shouldFallback,
  type TerminalErrorCategory,
-} from "../src/runtime/model-fallback-policy.js";
+} from "../src/runtime/lifecycle/model-fallback-policy.js";
 
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort parity policy preserves ${thinking??"inherit"}`,()=>{

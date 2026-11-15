@@ -3,11 +3,11 @@ import test from "node:test";
 import {mkdtemp,rm} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import {registerAsenPlanRequestTool,ASEN_PLAN_REQUEST_TOOL} from "../src/runtime/natural-plan-tool.js";
-import {controlledInstructionPlanCommand} from "../src/runtime/route-command.js";
-import {addAsenRequestGuidance,ASEN_REQUEST_GUIDANCE_SECTION} from "../src/runtime/request-guidance.js";
+import {registerAsenPlanRequestTool,ASEN_PLAN_REQUEST_TOOL} from "../src/runtime/lifecycle/natural-plan-tool.js";
+import {controlledInstructionPlanCommand} from "../src/runtime/lifecycle/route-command.js";
+import {addAsenRequestGuidance,ASEN_REQUEST_GUIDANCE_SECTION} from "../src/runtime/ui/request-guidance.js";
 import {createAsenExtension} from "../extensions/asen.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 
 function request(){return {
  instruction:"Add email validation to the form",
@@ -155,7 +155,7 @@ test("natural-language plan request persists the real planner output without aut
   const pi={registerCommand(name:string,command:any){commands.set(name,command);},registerTool(tool:any){tools.set(tool.name,tool);},on(name:string,handler:(...args:any[])=>unknown){events.set(name,handler);}};
   createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,todoStoreFactory:async()=>todos})(pi);
   const tool=tools.get(ASEN_PLAN_REQUEST_TOOL);
-  const requestFacts={...request(),scope:{kind:"known",expectedPaths:["src/runtime/natural-plan-tool.ts","src/runtime/route-command.ts","src/orchestration/orchestrator.ts","tests/natural-plan-tool.test.ts"]},writes:[{path:"src/runtime/natural-plan-tool.ts",changeKind:"behavior"}],review:{kind:"dual_explicit",estimatedMinutes:5}};
+  const requestFacts={...request(),scope:{kind:"known",expectedPaths:["src/runtime/lifecycle/natural-plan-tool.ts","src/runtime/lifecycle/route-command.ts","src/orchestration/orchestrator.ts","tests/natural-plan-tool.test.ts"]},writes:[{path:"src/runtime/lifecycle/natural-plan-tool.ts",changeKind:"behavior"}],review:{kind:"dual_explicit",estimatedMinutes:5}};
   const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-plan-session"},ui:{notify(){}}};
   const result=await tool.execute("call",requestFacts,undefined,undefined,context);
   const persisted=await todos.list({sessionId:"natural-plan-session",projectId:process.cwd()});

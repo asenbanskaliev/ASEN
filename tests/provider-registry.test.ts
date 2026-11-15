@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createProviderRegistry, type ProviderConfig, type ProviderModel} from "../src/runtime/provider-registry.js";
+import {createProviderRegistry, type ProviderConfig, type ProviderModel} from "../src/runtime/lifecycle/provider-registry.js";
 
 const GLM: ProviderModel = {
  id: "glm5.3",

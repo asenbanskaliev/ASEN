@@ -18,7 +18,7 @@ import {
   defaultCacheRoot,
   safeSegment,
   sweepStale,
-} from "../src/runtime/image-disk-cache.js";
+} from "../src/runtime/ui/image-disk-cache.js";
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 const JPG = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);

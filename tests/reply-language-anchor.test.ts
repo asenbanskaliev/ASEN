@@ -4,7 +4,7 @@ import {
  createLanguageAnchorState, humanLanguageExcerpt,
  tailIdentity, isAutomatedMessage, isPassiveMessage, recordHumanInput,
  generateLanguageAnchor
-} from "../src/runtime/reply-language-anchor.js";
+} from "../src/runtime/ui/reply-language-anchor.js";
 
 describe("humanLanguageExcerpt", () => {
  it("collapses whitespace and trims", () => {

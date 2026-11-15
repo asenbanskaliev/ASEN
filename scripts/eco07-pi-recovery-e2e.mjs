@@ -6,8 +6,8 @@ import path from "node:path";
 import {spawn} from "node:child_process";
 import {execFileSync} from "node:child_process";
 import {fileURLToPath} from "node:url";
-import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/todo-store.ts";
-import {eco07ProviderRateLimitError} from "../src/runtime/eco07-provider-failure.ts";
+import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/lifecycle/todo-store.ts";
+import {eco07ProviderRateLimitError} from "../src/runtime/lifecycle/eco07-provider-failure.ts";
 import {resolveEco07Provider} from "./eco07-provider-config.mjs";
 import {createJsonlQueue,createRpcController,createSecretSanitizer,runCleanup} from "./eco07-recovery-io.mjs";
 

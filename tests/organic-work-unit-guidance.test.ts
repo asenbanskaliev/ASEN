@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {controlledInstructionPlanCommand} from "../src/runtime/route-command.js";
+import {controlledInstructionPlanCommand} from "../src/runtime/lifecycle/route-command.js";
 import {getSkillContract,selectSkills} from "../src/skills/registry.js";
 
 test("small organic planning stays inline without changing work-unit or delivery admission",()=>{

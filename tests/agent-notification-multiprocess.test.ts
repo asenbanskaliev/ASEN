@@ -5,7 +5,7 @@ import {mkdir,mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 
 /** Node child processes share only the durable journal. No Pi model, tool or
  * human consent is simulated. Enqueue != parent turn consumption. */
@@ -15,7 +15,7 @@ test("EF-601/604 two independent processes record and claim one exact terminal n
  const file=join(root,"notices.json"),projectId=join(root,"project");
  await mkdir(projectId);
  const subject={id:"agent-one",sessionId:"session-1",projectId,state:"completed"};
- const moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/agent-notification-journal.ts")).href;
+ const moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/agents/agent-notification-journal.ts")).href;
  const childCode=`import {AgentNotificationJournal} from ${JSON.stringify(moduleUrl)};
  const journal=new AgentNotificationJournal(process.env.ASEN_TEST_NOTICE_FILE);
  const subject=JSON.parse(process.env.ASEN_TEST_NOTICE_SUBJECT);
@@ -88,7 +88,7 @@ test("EF-601/604 two independent coordinators cannot both acknowledge one termin
  const row=await journal.record(subject);
  assert.equal(await journal.claim(row.eventId,subject),true);
  assert.equal(await journal.markEnqueued(row.eventId,subject),true);
- const moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/agent-notification-journal.ts")).href;
+ const moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/agents/agent-notification-journal.ts")).href;
  const childCode=`import {AgentNotificationJournal} from ${JSON.stringify(moduleUrl)};
  const journal=new AgentNotificationJournal(process.env.ASEN_TEST_NOTICE_FILE);
  const subject=JSON.parse(process.env.ASEN_TEST_NOTICE_SUBJECT);

@@ -13,7 +13,7 @@ import {join,dirname} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {SessionManager} from "@earendil-works/pi-coding-agent";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
-import {AgentNotificationJournal} from "../src/runtime/agent-notification-journal.js";
+import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 
 function piMessage():Parameters<SessionManager["appendMessage"]>[0]{
  return {role:"assistant" as const,content:[{type:"text" as const,text:"Local recovery fixture: no model invoked"}],

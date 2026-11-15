@@ -3,10 +3,10 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import {promises as fs} from "node:fs";
 import {createAsenExtension} from "../extensions/asen.js";
-import {createNativeM2Navigator} from "../src/runtime/native-m2-navigator.js";
+import {createNativeM2Navigator} from "../src/runtime/ui/native-m2-navigator.js";
 import type {AgentRuntime,AgentSessionIdentity} from "../src/agents/agent-runtime.js";
-import type {AgentInspection} from "../src/runtime/agent-inspect.js";
-import type {PublicAgentRecord,PublicAgentState} from "../src/runtime/agent-lifecycle.js";
+import type {AgentInspection} from "../src/runtime/agents/agent-inspect.js";
+import type {PublicAgentRecord,PublicAgentState} from "../src/runtime/agents/agent-lifecycle.js";
 
 const {mkdir,mkdtemp,realpath,rm}=fs;
 const at="2026-11-06T08:00:00.000Z",testTimeout=4_000;

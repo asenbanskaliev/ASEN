@@ -4,9 +4,9 @@ import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {registerAgentTools} from "../src/agents/pi-agent-tools.js";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";
-import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
-import {TrustedTaskAgentBinder} from "../src/runtime/trusted-task-agent-binder.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {TrustedTaskAgentBinder} from "../src/runtime/agents/trusted-task-agent-binder.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 test("EF-603 a terminal legacy Todo cannot be launched again before reconciliation",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-legacy-once-"));

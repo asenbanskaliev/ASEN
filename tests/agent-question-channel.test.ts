@@ -5,8 +5,8 @@ import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import type {AgentRequest} from "../src/agents/dispatcher.js";
-import type {PublicAgentRecord} from "../src/runtime/agent-lifecycle.js";
-import {PersistentAgentStore,parseAgentStore,type AgentPendingQuestion} from "../src/runtime/agent-store.js";
+import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
+import {PersistentAgentStore,parseAgentStore,type AgentPendingQuestion} from "../src/runtime/agents/agent-store.js";
 
 const owner={kind:"user" as const,id:"pi:session-a"},SESSION="session-a",PROJECT="/repo";
 /** Deterministic one-second-per-step clock; every durable leg needs a strictly later stamp. */

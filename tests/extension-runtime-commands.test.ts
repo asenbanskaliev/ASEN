@@ -1,6 +1,6 @@
-import assert from "node:assert/strict";import test from "node:test";import {createAsenExtension,createPiExtension} from "../extensions/asen.js";import authority from "../extensions/authority.js";import {implementedCommands} from "../src/runtime/command-catalog.js";
+import assert from "node:assert/strict";import test from "node:test";import {createAsenExtension,createPiExtension} from "../extensions/asen.js";import authority from "../extensions/authority.js";import {implementedCommands} from "../src/runtime/ui/command-catalog.js";
 import {execFileSync} from "node:child_process";import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import path,{join} from "node:path";
-import {SessionTodoStore} from "../src/runtime/todo-store.js";import {TaskAgentLinkStore} from "../src/runtime/task-agent-link-store.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {AgentSession,DefaultResourceLoader,SessionManager,SettingsManager} from "@earendil-works/pi-coding-agent";import {Agent,runToolCall} from "@earendil-works/pi-agent-core";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 function host(){const commands=new Map<string,{handler:(...args:any[])=>unknown}>();return {commands,pi:{registerCommand:(name:string,c:any)=>commands.set(name,c),on:()=>{}}};}

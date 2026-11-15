@@ -5,12 +5,12 @@ import {EvidenceStore} from "../evidence/store.js";
 import type {Candidate} from "../core/types.js";
 import type {OrchestrationRouteEvidence} from "../orchestration/orchestrator.js";
 import {issueSkillContext} from "../skills/context.js";
-import type {PublicAgentRecord} from "../runtime/agent-lifecycle.js";
-import {PersistentAgentStore} from "../runtime/agent-store.js";
+import type {PublicAgentRecord} from "../runtime/agents/agent-lifecycle.js";
+import {PersistentAgentStore} from "../runtime/agents/agent-store.js";
 import {workspaceIdentityPathKey} from "../runtime/workspace-store.js";
 import {issueControlledPlanPhaseGrant} from "../lifecycle/skill-lifecycle.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
-import {isThinking} from "../runtime/profiles.js";
+import {isThinking} from "../runtime/lifecycle/profiles.js";
 
 export interface AgentSessionIdentity{sessionId:string;projectId:string;}
 /** Production coordinator using the existing Dispatcher, with session checks around every public action. */

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {projectAgentHierarchy,type AgentHierarchyInput,type AgentHierarchyRecord} from "../src/runtime/agents-panel.js";
+import {projectAgentHierarchy,type AgentHierarchyInput,type AgentHierarchyRecord} from "../src/runtime/ui/agents-panel.js";
 
 const identity={sessionId:"session-owned",projectId:"D:/work/opaque-project"};
 const at=(minute:number)=>`2026-11-08T10:${String(minute).padStart(2,"0")}:00.000Z`;
@@ -66,8 +66,8 @@ test("sorts copied lifecycle events without mutating any input",()=>{
  assert.deepEqual(value,before);assert.deepEqual(rows[0]?.history.map(event=>event.revision),[1,2]);
  assert.notEqual(rows[0]?.history,owned.history);assert.notEqual(rows[0]?.owner,owned.owner);
 });
-import {renderAgentFollowTail,selectAgentFollowTail,type AgentFollowQuery} from "../src/runtime/agents-panel.js";
-import type {AgentNoticeRow} from "../src/runtime/agent-notification-journal.js";
+import {renderAgentFollowTail,selectAgentFollowTail,type AgentFollowQuery} from "../src/runtime/ui/agents-panel.js";
+import type {AgentNoticeRow} from "../src/runtime/agents/agent-notification-journal.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
 const notice=(overrides:Partial<AgentNoticeRow>&{agentId:string,sessionId:string,projectId:string,updatedAt:string}):AgentNoticeRow=>Object.freeze({

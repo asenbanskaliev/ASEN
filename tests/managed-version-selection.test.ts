@@ -3,11 +3,11 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
-import {inspectManagedInstall,stageAdditionalManagedVersion,stageManagedInstall,type ManagedVersionSelectionReport} from "../src/runtime/managed-install.js";
-import {withManagedMaintenanceLock} from "../src/runtime/managed-maintenance-lock.js";
+import {inspectManagedInstall,stageAdditionalManagedVersion,stageManagedInstall,type ManagedVersionSelectionReport} from "../src/runtime/managed/managed-install.js";
+import {withManagedMaintenanceLock} from "../src/runtime/managed/managed-maintenance-lock.js";
 
 const api=async()=>{
- const module=await import("../src/runtime/managed-install.js");
+ const module=await import("../src/runtime/managed/managed-install.js");
  assert.equal(typeof module.selectManagedVersion,"function","managed-version selection API missing");
  return module.selectManagedVersion;
 };

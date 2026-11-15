@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {SessionDirectory} from "../src/runtime/session-directory.js";
+import {SessionDirectory} from "../src/runtime/lifecycle/session-directory.js";
 
 test("cross-session consultation requires a fresh one-use grant bound to both sessions and project",()=>{
  const directory=new SessionDirectory(),updatedAt=new Date().toISOString();directory.publish({sessionId:"target",subject:"Target",projectId:"project",classification:"read",updatedAt});

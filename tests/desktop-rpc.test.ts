@@ -10,7 +10,7 @@ import {
  parseDesktopRpcRequest,
  validateRequest,
  type DesktopRpcRequest,
-} from "../src/runtime/desktop-rpc.js";
+} from "../src/runtime/ui/desktop-rpc.js";
 
 const req=(method:string,extra:Record<string,unknown>={})=>({requestId:"r-1",method,...extra});
 

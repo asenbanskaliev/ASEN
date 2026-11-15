@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {inspectIntegrationProfiles} from "../src/runtime/integration-profile-inspection.js";
-import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type ProfileLayer,type RuntimeProfilesFile} from "../src/runtime/profiles.js";
-import type {SessionProfileSnapshot} from "../src/runtime/session-profile-binding.js";
+import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
+import {ASEN_PROFILES_SCHEMA,resolveRuntimeRoute,type ProfileLayer,type RuntimeProfilesFile} from "../src/runtime/lifecycle/profiles.js";
+import type {SessionProfileSnapshot} from "../src/runtime/lifecycle/session-profile-binding.js";
 
 const file=(name:string,routes:RuntimeProfilesFile["profiles"][number]["routes"]):RuntimeProfilesFile=>
  ({schema:ASEN_PROFILES_SCHEMA,active:name,profiles:[{name,routes}]});

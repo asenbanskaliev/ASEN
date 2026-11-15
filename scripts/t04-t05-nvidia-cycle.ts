@@ -15,10 +15,10 @@ import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
 import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
-import {BackgroundJobJournal} from "../src/runtime/background-job-journal.js";
-import {BackgroundJobRegistry} from "../src/runtime/background-jobs.js";
-import {retryInterruptedAuthorized} from "../src/runtime/authorized-job-retry.js";
-import {reconcileInterruptedAuthorizedWrite} from "../src/runtime/authorized-write-recovery.js";
+import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
+import {BackgroundJobRegistry} from "../src/runtime/agents/background-jobs.js";
+import {retryInterruptedAuthorized} from "../src/runtime/agents/authorized-job-retry.js";
+import {reconcileInterruptedAuthorizedWrite} from "../src/runtime/agents/authorized-write-recovery.js";
 
 const sourceRoot=realpathSync(process.env.GITHUB_WORKSPACE??process.cwd());
 const expectedSha=process.env.ASEN_EXPECTED_SHA;

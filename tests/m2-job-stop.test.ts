@@ -3,9 +3,9 @@ import test from "node:test";
 import {promises as fs} from "node:fs";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
-import {createNativeM2Navigator} from "../src/runtime/native-m2-navigator.js";
-import {projectJobMetadata} from "../src/runtime/job-inspect.js";
-import type {BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
+import {createNativeM2Navigator} from "../src/runtime/ui/native-m2-navigator.js";
+import {projectJobMetadata} from "../src/runtime/agents/job-inspect.js";
+import type {BackgroundJobSnapshot} from "../src/runtime/agents/background-jobs.js";
 
 const {mkdir,mkdtemp,realpath}=fs;
 const at="2026-11-07T08:00:00.000Z";

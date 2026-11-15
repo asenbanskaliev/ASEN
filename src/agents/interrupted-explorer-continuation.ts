@@ -1,7 +1,7 @@
 import type {AgentRuntime,AgentSessionIdentity} from "./agent-runtime.js";
-import type {TrustedTaskAgentBinder} from "../runtime/trusted-task-agent-binder.js";
-import type {TaskAgentLinkStore} from "../runtime/task-agent-link-store.js";
-import type {SessionTodoStore} from "../runtime/todo-store.js";
+import type {TrustedTaskAgentBinder} from "../runtime/agents/trusted-task-agent-binder.js";
+import type {TaskAgentLinkStore} from "../runtime/agents/task-agent-link-store.js";
+import type {SessionTodoStore} from "../runtime/lifecycle/todo-store.js";
 
 const cancelled=():Error=>Object.assign(new Error("Agent task cancelled"),{name:"AbortError"});
 const throwIfCancelled=(signal?:AbortSignal):void=>{if(signal?.aborted)throw cancelled();};

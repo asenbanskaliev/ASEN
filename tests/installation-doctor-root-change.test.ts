@@ -5,7 +5,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {tmpdir} from "node:os";
 import {pathToFileURL} from "node:url";
-import {stageManagedInstall} from "../src/runtime/managed-install.js";
+import {stageManagedInstall} from "../src/runtime/managed/managed-install.js";
 
 const VERSION="1.2.0";
 const INCOMPLETE="Installation doctor could not complete all metadata observations.\n";

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {ExplorerBudgetTelemetry,EXPLORER_OUTPUT_LIMIT_BYTES} from "../src/runtime/explorer-budget.js";
+import {ExplorerBudgetTelemetry,EXPLORER_OUTPUT_LIMIT_BYTES} from "../src/runtime/agents/explorer-budget.js";
 const observation=(id:string,name="read",text="one")=>({toolCallId:id,toolName:name,result:{content:[{type:"text",text}]}});
 test("EF-202 three focused queries stay within budget",()=>{
  const tracker=new ExplorerBudgetTelemetry();

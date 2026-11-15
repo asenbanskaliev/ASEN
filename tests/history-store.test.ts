@@ -4,8 +4,8 @@ import {mkdtemp,readFile,stat,symlink,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {spawn} from "node:child_process";
-import {applyHistoryRetention,appendHistoryEntry,commitHistory,deleteHistoryEntry,deleteProjectHistory,emptyHistoryStore,migrateHistoryStore,parseHistoryStore,readHistoryStore} from "../src/runtime/history-store.js";
-import {exportHistory} from "../src/runtime/history.js";
+import {applyHistoryRetention,appendHistoryEntry,commitHistory,deleteHistoryEntry,deleteProjectHistory,emptyHistoryStore,migrateHistoryStore,parseHistoryStore,readHistoryStore} from "../src/runtime/lifecycle/history-store.js";
+import {exportHistory} from "../src/runtime/lifecycle/history.js";
 
 const entry=(id:string,projectId="p")=>({id,sessionId:"s",projectId,text:"safe",createdAt:"2026-10-06T00:00:00Z",redacted:false});
 type MigrationArguments=Parameters<typeof migrateHistoryStore>;
@@ -39,7 +39,7 @@ test("concurrent writes serialize without lost updates and preserve project isol
 test("independent Pi processes do not overwrite each other's history updates",async()=>{
  const directory=await mkdtemp(path.join(tmpdir(),"asen-history-processes-")),file=path.join(directory,"history.json");
  await commitHistory(file,0,value=>({...value,revision:1,policy:{enabled:true,maxEntries:20}}));
- const moduleUrl=new URL("../src/runtime/history-store.ts",import.meta.url).href;
+ const moduleUrl=new URL("../src/runtime/lifecycle/history-store.ts",import.meta.url).href;
  const run=(id:string)=>new Promise<void>((resolve,reject)=>{
   const code=`const store=await import(${JSON.stringify(moduleUrl)});await store.appendHistoryEntry(${JSON.stringify(file)},${JSON.stringify(entry(id))});`;
   const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",code],{cwd:process.cwd(),stdio:["ignore","ignore","pipe"]});let error="";

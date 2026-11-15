@@ -3,10 +3,10 @@ import test from "node:test";
 import {
  ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,
  renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,
-} from "../src/runtime/ide-panel.js";
+} from "../src/runtime/ui/ide-panel.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
-import {projectHostStatus} from "../src/runtime/host-status-projection.js";
-import {inspectIntegrationProfiles} from "../src/runtime/integration-profile-inspection.js";
+import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
+import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
 
 type Todo=AsenPanelSnapshot["todos"][number];
 type Agent=AsenPanelSnapshot["agents"][number];

@@ -3,7 +3,7 @@ import {mkdir,mkdtemp,readFile,readdir,rm,stat,writeFile} from "node:fs/promises
 import path from "node:path";
 import test,{type TestContext} from "node:test";
 import {runAsen} from "../src/cli.js";
-import {asenLauncherConfigPath,parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs} from "../src/runtime/launcher.js";
+import {asenLauncherConfigPath,parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs} from "../src/runtime/lifecycle/launcher.js";
 
 const USAGE="Unsupported ASEN backup project-memory command. Expected: backup project-memory --project <project-id> --destination <absolute-path> --dry-run.\n";
 const SCHEMA="asen.project-memory-backup-preview/v1";
@@ -133,7 +133,7 @@ test("preserves existing parser namespaces and literal Pi passthrough",async t=>
 });
 
 test("pure preview reports are deeply frozen",async t=>{
- const f=await fixture(t,"frozen"),before=await tree(f.root),moduleName="../src/runtime/project-memory-backup-preview.js",loaded=await import(moduleName) as Record<string,unknown>;
+ const f=await fixture(t,"frozen"),before=await tree(f.root),moduleName="../src/runtime/lifecycle/project-memory-backup-preview.js",loaded=await import(moduleName) as Record<string,unknown>;
  assert.equal(typeof loaded.createProjectMemoryBackupPreview,"function");
  const create=loaded.createProjectMemoryBackupPreview as (request:{projectId:string;destination:string;launcherDataHome:{mode:"isolated";dir:string;source:"default"}})=>Json;
  const report=create({projectId:"project-a",destination:f.destination,launcherDataHome:{mode:"isolated",dir:f.configuredHome,source:"default"}});

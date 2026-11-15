@@ -6,7 +6,7 @@ import {mkdtempSync,readFileSync,rmSync,writeFileSync,symlinkSync} from "node:fs
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {pathToFileURL} from "node:url";
-import {acquireWorkspaceWriter} from "../src/runtime/workspace-writer-lease.js";
+import {acquireWorkspaceWriter} from "../src/runtime/lifecycle/workspace-writer-lease.js";
 
 test("exclusive workspace writer rejects concurrent owners, stale revisions and unauthorized paths",t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-writer-lease-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
@@ -28,7 +28,7 @@ test("writer lease is exclusive across independent Node processes and releases c
  const root=mkdtempSync(join(tmpdir(),"asen-writer-process-race-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
  git("init","-q");git("config","user.name","ASEN test");git("config","user.email","asen@example.invalid");writeFileSync(join(root,"target.txt"),"base\n");git("add","target.txt");git("commit","-qm","base");
- const head=git("rev-parse","HEAD"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/workspace-writer-lease.ts")).href;
+ const head=git("rev-parse","HEAD"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/lifecycle/workspace-writer-lease.ts")).href;
  const script=`import {acquireWorkspaceWriter} from ${JSON.stringify(moduleUrl)};const lease=acquireWorkspaceWriter({root:process.env.ASEN_TEST_ROOT,expectedHead:process.env.ASEN_TEST_HEAD,authorizationId:"process-owner",allowedPaths:["target.txt"]});console.log("LOCKED");process.stdin.once("data",()=>{lease.release();process.exit(0)});`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",script],{cwd:process.cwd(),env:{...process.env,ASEN_TEST_ROOT:root,ASEN_TEST_HEAD:head},stdio:["pipe","pipe","pipe"]});
  let stderr="";child.stderr.setEncoding("utf8").on("data",chunk=>stderr+=chunk);
@@ -42,7 +42,7 @@ test("a process death releases an orphaned lease only after its recorded owner i
  const root=mkdtempSync(join(tmpdir(),"asen-writer-orphan-process-"));t.after(()=>rmSync(root,{recursive:true,force:true}));
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8"}).trim();
  git("init","-q");git("config","user.name","ASEN test");git("config","user.email","asen@example.invalid");writeFileSync(join(root,"target.txt"),"base\n");git("add","target.txt");git("commit","-qm","base");
- const head=git("rev-parse","HEAD"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/workspace-writer-lease.ts")).href;
+ const head=git("rev-parse","HEAD"),moduleUrl=pathToFileURL(join(process.cwd(),"src/runtime/lifecycle/workspace-writer-lease.ts")).href;
  const script=`import {acquireWorkspaceWriter} from ${JSON.stringify(moduleUrl)};acquireWorkspaceWriter({root:process.env.ASEN_TEST_ROOT,expectedHead:process.env.ASEN_TEST_HEAD,authorizationId:"doomed",allowedPaths:["target.txt"]});console.log("LOCKED");setInterval(()=>{},1000);`;
  const child=spawn(process.execPath,["--import","tsx","--input-type=module","-e",script],{cwd:process.cwd(),env:{...process.env,ASEN_TEST_ROOT:root,ASEN_TEST_HEAD:head},stdio:["ignore","pipe","pipe"]});
  let stderr="";child.stderr.setEncoding("utf8").on("data",chunk=>stderr+=chunk);

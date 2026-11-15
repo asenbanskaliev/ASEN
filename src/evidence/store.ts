@@ -5,7 +5,7 @@ import {open,readFile,rename,unlink} from "node:fs/promises";
 import {basename,dirname,join} from "node:path";
 import type { Candidate, Evidence } from "../core/types.js";
 import {isExecutedEvidence,type ExecutedEvidence} from "./execution.js";
-import {isExecutedReview,type ExecutedReview} from "./review-execution.js";
+import {isExecutedReview,type ExecutedReview} from "./executed-review.js";
 import {isIssuedTddStage,type IssuedTddStage} from "../test/tdd-cycle.js";
 import {assertDirectGitParent,assertGitAncestor} from "./git-lineage.js";
 import {claimOrchestrationRouteEvidence,type OrchestrationRouteEvidence} from "../orchestration/orchestrator.js";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {createJobMetadataBindings,projectJobMetadata,renderJobInspection,jobInspectionLabel,inspectOwnedJob} from "../src/runtime/job-inspect.js";
-import type {BackgroundJobSnapshot} from "../src/runtime/background-jobs.js";
+import {createJobMetadataBindings,projectJobMetadata,renderJobInspection,jobInspectionLabel,inspectOwnedJob} from "../src/runtime/agents/job-inspect.js";
+import type {BackgroundJobSnapshot} from "../src/runtime/agents/background-jobs.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 
 const secret="SECRET_SENTINEL";

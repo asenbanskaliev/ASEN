@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { Theme, type ThemeToken, type ThemeBg } from '@earendil-works/pi-coding-agent';
 import { colorToHex } from '@earendil-works/pi-tui';
-import { createAsenFocusTheme } from '../src/runtime/focus-theme.js';
+import { createAsenFocusTheme } from '../src/runtime/ui/focus-theme.js';
 
 const backgrounds: ThemeBg[] = ['selectedBg', 'searchMatchBg', 'userMessageBg', 'customMessageBg', 'toolPendingBg', 'toolSuccessBg', 'toolErrorBg'];
 const foregrounds = `accent border borderAccent borderMuted success error warning muted dim text thinkingText scrollbarTrack scrollbarThumb searchMatchText userMessageText customMessageText customMessageLabel toolTitle toolOutput mdHeading mdLink mdLinkUrl mdCode mdCodeBlock mdCodeBlockBorder mdQuote mdQuoteBorder mdHr mdListBullet toolDiffAdded toolDiffRemoved toolDiffContext syntaxComment syntaxKeyword syntaxFunction syntaxVariable syntaxString syntaxNumber syntaxType syntaxOperator syntaxPunctuation thinkingOff thinkingMinimal thinkingLow thinkingMedium thinkingHigh thinkingXhigh thinkingMax bashMode`.split(' ') as Exclude<ThemeToken, ThemeBg>[];
@@ -60,7 +60,7 @@ for (const appearance of ['dark', 'light'] as const) {
 }
 
 test('factory contains no settings, session, model or theme-application side effects', () => {
-  const source = readFileSync(new URL('../src/runtime/focus-theme.ts', import.meta.url), 'utf8');
+  const source = readFileSync(new URL('../src/runtime/ui/focus-theme.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /\b(setTheme|setThemeInstance|SettingsManager|createAgentSession|process|writeFile|readFile)\b/);
   assert.doesNotMatch(source, /pi-coding-agent\//);
 });

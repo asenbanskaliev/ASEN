@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createNativeM2Navigator} from "../src/runtime/native-m2-navigator.js";
-import {projectJobMetadata} from "../src/runtime/job-inspect.js";
+import {createNativeM2Navigator} from "../src/runtime/ui/native-m2-navigator.js";
+import {projectJobMetadata} from "../src/runtime/agents/job-inspect.js";
 import {workspaceIdentityPathKey} from "../src/runtime/workspace-store.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
-import type {AgentInspection} from "../src/runtime/agent-inspect.js";
-import type {AgentNoticeRecoveryView} from "../src/runtime/agent-notification-journal.js";
+import type {AgentInspection} from "../src/runtime/agents/agent-inspect.js";
+import type {AgentNoticeRecoveryView} from "../src/runtime/agents/agent-notification-journal.js";
 const time="2026-11-06T06:00:00.000Z";
 const agent=(id:string,state:"interrupted"|"running"|"completed"):AgentInspection=>({
  record:{id,role:"explorer",owner:{kind:"user",id:"pi:owned"},sessionId:"s",projectId:"p",
