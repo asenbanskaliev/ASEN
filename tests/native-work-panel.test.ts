@@ -345,6 +345,9 @@ test("T07 native overlay exposes linked Worker flow without a parent Agent or To
  });
  const rows=panel.render(130);
  assert.match(rows.join("\n"),/Linked source Todos: 2/u);
+ assert.match(rows.join("\n"),/TODOS.*2 linked/u);
+ assert.match(rows.join("\n"),/AGENTS.*1 child observed/u);
+ assert.doesNotMatch(rows.join("\n"),/No work in this session/u);
  assert.match(rows.join("\n"),/Worktree Workers: 1 active observed/u);
  assert.match(rows.join("\n"),/Linked worktrees: 1\/2/u);
  assert.match(rows.join("\n"),/Cross-session ODD: linked/u);
