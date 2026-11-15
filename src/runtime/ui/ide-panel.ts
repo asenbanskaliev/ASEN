@@ -6,6 +6,7 @@ import {projectJobMetadata,jobInspectionLabel,isObservedActiveJob} from "../agen
 import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "../responsive-layout.js";
 import type {HostStatusProjection} from "./host-status-projection.js";
 import type {IntegrationProfileInspection} from "./integration-profile-inspection.js";
+import type {AgentFlowPanelObservation} from "./agent-flow-panel-source.js";
 
 /** Read-only Pi UI projection: never grants a role, launches an agent, or replays a message. */
 export const ASEN_PANEL_SECTIONS=["TODOS","JOBS","AGENTS","CHANGES","REVIEW","INTEGRATIONS"] as const;
@@ -28,6 +29,9 @@ export interface AsenPanelSnapshot{
  readonly subscription?:boolean;
  readonly integrationStates?:readonly string[];
  readonly review?:{readonly pending:number;readonly label?:string};
+ /** Optional bounded observation, absent is not evidence of zero work. */
+ readonly agentFlow?:AgentFlowPanelObservation;
+ readonly agentFlowUnavailable?:boolean;
 }
 const clean=(value:string,max=200)=>sanitizeTerminalText(value).replace(/\s+/gu," ").trim().slice(0,max);
 const fit=(value:string,width:number)=>truncateForTerminal(value,Math.max(1,width));
@@ -84,6 +88,14 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    if(done)out.push("✓ "+done+" done");
    if(cancelled)out.push("✕ "+cancelled+" cancelled");
    if(open.length>itemLimit)out.push("… "+(open.length-itemLimit)+" more · /asen-todos");
+   const flow=snapshot.agentFlow;
+   if(flow?.overview.totalTasks){
+    out.push("Linked source Todos: "+flow.overview.totalTasks+
+     (flow.limited?" (latest worktree batches only)":""));
+    for(const task of flow.overview.tasks.slice(0,detail?12:3))
+     out.push("  ↳ "+clean(task.taskId,56)+" · "+task.stage);
+    out.push("Read-only source worktree flow · /asen-worktrees status");
+   }
    break;
   }
   case "JOBS":{
@@ -104,12 +116,25 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    for(const agent of agents.slice(0,secondaryLimit))out.push(glyph(agent.state)+" "+clean(agent.role,30)+" · "+agent.state+(agent.state==="interrupted"?" · inspect first":""));
    if(agents.length>secondaryLimit)out.push("… "+(agents.length-secondaryLimit)+" more · /asen-agents");
    // No real tokens/prices/model on the durable public agent record: never fabricate.
+   if(snapshot.agentFlow?.overview.totalTasks){
+    const flow=snapshot.agentFlow.overview;
+    out.push("Worktree Workers: "+flow.stages["running-observed"]+" active observed · "+
+     flow.stages["manual-review-required"]+" awaiting human review · "+
+     flow.stages.blocked+" blocked");
+    out.push("Worktree actual model: unknown (no authenticated model receipt)");
+   }
    break;
   }
   case "CHANGES":{
    const status=snapshot.changes;
    out.push(status?("Git "+clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")):"Git state unavailable");
    out.push(status&&status.files>0?"Panel: CHANGES + Enter to pick a file and preview its diff · /asen-changes-view":"Inspect read-only diffs with /asen-changes-view");
+   if(snapshot.agentFlow?.overview.totalTasks){
+    const flow=snapshot.agentFlow.overview;
+    const changed=flow.tasks.filter(task=>task.changeEvidence!=="clean").length;
+    out.push("Linked worktrees: "+changed+"/"+flow.totalTasks+" with unverified changes or provenance");
+    out.push("Inspect and reconcile manually · /asen-worktrees review · no auto-merge");
+   }
    break;
   }
   case "REVIEW":{
@@ -124,6 +149,10 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    break;
   }
   case "INTEGRATIONS":{
+   if(snapshot.agentFlow?.overview.totalTasks)
+    out.push("Cross-session ODD: linked flow observed · actual child model unknown");
+   else if(snapshot.agentFlowUnavailable)
+    out.push("Cross-session ODD: unavailable (no verified journal projection)");
    const inspection=snapshot.integrationInspection;
    if(inspection){
     const profiles=inspection.profiles,frozen=profiles.snapshot;
