@@ -10,6 +10,7 @@ import {bindParallelSourceTodos,type SourceTodoRow} from "../src/runtime/agents/
 import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
 import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
+import {ParentSupervisorClaimJournal} from "../src/runtime/agents/parallel-parent-supervisor-claims.js";
 import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../src/runtime/agents/task-agent-link-store.js";
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
@@ -29,7 +30,8 @@ function fixture(t:TestContext){
   journalFile=join(privateRoot,"parallel-worktrees.json"),journal=new ParallelTodoWorktreeJournal(journalFile),
   sessionLinksFile=join(privateRoot,"parallel-worktree-sessions.json"),sessions=new ParallelChildSessionJournal(sessionLinksFile,journal),
   planClaimsFile=join(privateRoot,"parallel-child-plan-claims.json"),
-  observationFile=join(privateRoot,"parallel-worker-observations.json"),handoffs:string[]=[],
+  observationFile=join(privateRoot,"parallel-worker-observations.json"),
+  supervisorClaimsFile=join(privateRoot,"parallel-parent-supervisor-claims.json"),handoffs:string[]=[],
   scopes=[{taskId:"todo-backend",writeSurfaces:["backend.txt"]},{taskId:"todo-frontend",writeSurfaces:["frontend.txt"]}],
   notifications:string[]=[],confirmMessages:string[]=[];
  const row=(taskId:string,file:string,revision=1,state="planned"):SourceTodoRow=>{
@@ -49,7 +51,7 @@ function fixture(t:TestContext){
   session=identity.sessionId,approve=true,editorAnswer=JSON.stringify({parentDir:parent,units:scopes});
  const commands=new Map<string,{handler:(args:string,ctx:unknown)=>Promise<unknown>}>();
  registerParallelWorktreeCommand((name,command)=>commands.set(name,command as never),{
-  journalFile,sessionLinksFile,planClaimsFile,observationFile,
+  journalFile,sessionLinksFile,planClaimsFile,observationFile,supervisorClaimsFile,
   planChildTodo:async input=>{handoffs.push(input);return {status:"model-free-ODD-planner-stub"};},
   loadTodos:async identity=>identity.sessionId==="pi-t06"?rows:childRows.get(identity.sessionId)??[],
   loadChildAgentRecords:async identity=>childAgentRecords.get(identity.sessionId)??[],
@@ -104,7 +106,7 @@ function fixture(t:TestContext){
   rmSync(privateRoot,{recursive:true,force:true});
  });
  return {source,parent,head,identity,scopes,rows,run,runChild,journal,sessions,handoffs,ctx,
-  journalFile,sessionLinksFile,planClaimsFile,observationFile,
+  journalFile,sessionLinksFile,planClaimsFile,observationFile,supervisorClaimsFile,
   setChildObservations:(id:string,todos:SourceTodoRow[],agents:PublicAgentRecord[],links:TaskAgentLink[])=>{
    childRows.set(id,todos);childAgentRecords.set(id,agents);childTaskLinks.set(id,links);
   },
@@ -627,4 +629,34 @@ test("T06 late child model substitution during second Worker consent stops subse
  const retry=await f.run("supervise") as {status:string};
  assert.equal(retry.status,"blocked");
  assert.equal(f.dispatchedChildren.length,1);
+});
+
+test("T06 global batch denial does not consume one-shot claim; approved launch does",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const claims=new ParentSupervisorClaimJournal(f.supervisorClaimsFile);
+ f.setConsent(false);
+ assert.equal((await f.run("supervise") as {status:string}).status,"declined");
+ assert.equal((await claims.listSource(f.identity)).length,0);
+ f.setConsent(true);
+ const result=await f.run("supervise") as {status:string};
+ assert.equal(result.status,"started");
+ const saved=await claims.listSource(f.identity);
+ assert.equal(saved.length,1);
+ assert.equal(saved[0]!.children.length,2);
+ assert.equal(saved[0]!.status,"claimed-not-verified");
+ assert.equal(saved[0]!.grantsAuthority,false);
+ assert.equal(saved[0]!.autoRetry,false);
+ assert.equal(saved[0]!.autoMerge,false);
+});
+
+test("T06 simultaneous parent supervisors cannot both claim or re-launch a batch",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const results=await Promise.all([
+  f.run("supervise"),f.run("supervise")
+ ]) as {status:string;started:readonly unknown[]}[];
+ assert.equal(results.filter(r=>r.status==="started").length,1);
+ assert.equal(results.filter(r=>r.status!=="started").length,1);
+ assert.equal(f.dispatchedChildren.length,2);
+ const saved=await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity);
+ assert.equal(saved.length,1);
 });
