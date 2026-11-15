@@ -54,6 +54,8 @@ export interface PreparedParallelWorktrees{
 export type ParallelWorktreeProposal={
  readonly sourceRoot:string;readonly parentDir:string;readonly expectedHead:string;
  readonly units:readonly ParallelWorkerUnit[];
+ /** Journal-reserved deterministic token; absent for standalone unlinked preparations. */
+ readonly batchId?:string;
  readonly confirm:(summary:Readonly<{sourceRoot:string;revision:string;taskIds:readonly string[];
   scopes:readonly Readonly<{taskId:string;writeSurfaces:readonly string[]}>[];creates:number;grantsAuthority:false}>)=>Promise<boolean>;
  readonly signal?:AbortSignal;
@@ -61,7 +63,9 @@ export type ParallelWorktreeProposal={
 const genuineAllocations=new WeakSet<object>();
 const dispatchedAllocations=new WeakSet<object>();
 function validateProposal(input:ParallelWorktreeProposal){
- if(!input||!revisionPattern.test(input.expectedHead)||!Array.isArray(input.units)||input.units.length<2||input.units.length>4||
+ if(!input||!revisionPattern.test(input.expectedHead)||
+  (input.batchId!==undefined&&!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(input.batchId))||
+  !Array.isArray(input.units)||input.units.length<2||input.units.length>4||
   typeof input.confirm!=="function")throw new Error("Parallel Worker request must contain 2 to 4 bounded units");
  const source=canonicalRoot(input.sourceRoot),parent=resolve(input.parentDir);
  if(!isAbsolute(input.parentDir))throw new Error("Worktree parent must be absolute");
@@ -123,7 +127,7 @@ export async function prepareParallelWorkerWorktrees(input:ParallelWorktreePropo
  for(const unit of units){
   if(input.signal?.aborted)throw new Error("Parallel Worker preparation cancelled; inspect already created worktrees");
   if(gitHead(source)!==input.expectedHead||!clean(source))throw new Error("Pinned source changed during worktree preparation");
-  const target=resolve(parent,"asen-worker-"+unit.taskId+"-"+randomUUID());
+  const target=resolve(parent,"asen-worker-"+unit.taskId+"-"+(input.batchId??randomUUID()));
   if(existsSync(target))throw new Error("New worktree location unexpectedly exists");
   // Creating a worktree is not permission to execute repository checkout hooks.
   const noHooks=resolve(parent,".asen-no-hooks-"+randomUUID());
