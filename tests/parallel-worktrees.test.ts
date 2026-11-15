@@ -7,6 +7,7 @@ import {join,resolve} from "node:path";
 import {acquireWorkspaceWriter} from "../src/runtime/lifecycle/workspace-writer-lease.js";
 import {prepareParallelWorkerWorktrees,assertPreparedParallelWorktree,dispatchApprovedParallelWorkers,type ParallelWorktreeAllocation} from "../src/runtime/agents/parallel-worktrees.js";
 import {Dispatcher,type AgentRequest} from "../src/agents/dispatcher.js";
+import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
@@ -190,4 +191,89 @@ test("T06 Git worktree staging cannot execute project post-checkout hooks",{
  assert.equal(staged.status,"prepared");if(staged.status!=="prepared")return;
  f.registered(staged.allocations);
  assert.equal(existsSync(marker),false,"staging is not permission to execute Git post-checkout hooks");
+});
+
+
+test("T06 real AgentRuntime overlaps two authorized scoped Workers in independent Git worktrees (no model API)",async t=>{
+ const f=fixture(t),prepared=await f.prepare();if(prepared.status!=="prepared")return;
+ f.registered(prepared.allocations);
+ let concurrent=0,peak=0,startedCount=0;
+ let release!:()=>void,notifyBoth!:()=>void,notifyTerminated!:()=>void;
+ const runningGate=new Promise<void>(r=>{release=r;});
+ const bothStarted=new Promise<void>(r=>{notifyBoth=r;});
+ const bothTerminal=new Promise<void>(r=>{notifyTerminated=r;});
+ let terminated=0;
+ const runner={run:async(request:AgentRequest)=>{
+  concurrent++;peak=Math.max(peak,concurrent);startedCount++;
+  if(startedCount===2)notifyBoth();
+  try{
+   await runningGate;
+   return {id:request.id,ok:true,output:"instrumented native AgentRuntime concurrency: no model consumed"};
+  }finally{concurrent--;}
+ }};
+ const runtime=await AgentRuntime.open({
+  storeFile:join(f.parent,"t06-native-agent-runtime.json"),runner,maxConcurrency:2
+ });
+ runtime.subscribeTerminal(()=>{terminated++;if(terminated===2)notifyTerminated();});
+ const launch=async(a:ParallelWorktreeAllocation,i:number)=>{
+  const taskIdentity="t06-native-worker-"+i,scope=a.writeSurfaces[0]!,
+   candidate={id:"native-"+i,repository:a.root,revision:a.baseRevision,
+    createdAt:new Date().toISOString()};
+  const decision=issueOddDecision({
+   taskId:taskIdentity,repository:a.root,paths:[scope],
+   writes:[{path:scope,changeKind:"behavior"}]
+  });
+  const plan=buildOrchestrationPlan({
+   taskId:taskIdentity,repository:a.root,prompt:"Apply only "+scope,
+   candidate,writeSurfaces:[scope]
+  },decision);
+  if(!plan.routeEvidence)throw new Error("Native Worker plan has no candidate-bound ODD evidence");
+  const applicability=decideLifecycleApplicability(decision,{
+   taskIdentity,repositoryIdentity:a.root,
+   candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},
+   explicitMode:"organic",affectedSubsystems:["t06"],expectedPaths:[scope],
+   requiredArtifacts:[]
+  });
+  if(applicability.outcome!=="organic")throw new Error("Expected organic scoped admission");
+  const admission=issueOrganicWriterAdmission(applicability,[scope]);
+  return runtime.startControlledWorker({
+   taskIdentity,prompt:"Apply only "+scope,
+   session:{sessionId:"t06-child-pi-"+i,projectId:a.root},
+   candidate,writeSurfaces:[scope],
+   skillSelection:{phase:"apply",codeChange:true},writerAdmission:admission,
+   routeEvidence:plan.routeEvidence,
+   onPrepared:async(_id,enqueue,dispatch)=>{await enqueue();dispatch();}
+  });
+ };
+ const wait=async(signal:Promise<void>,label:string)=>{
+  let timeout:ReturnType<typeof setTimeout>|undefined;
+  try{
+   await Promise.race([signal,new Promise<void>((_,reject)=>{
+    timeout=setTimeout(()=>reject(new Error(label+" did not complete within 15 seconds")),15000);
+   })]);
+  }finally{if(timeout)clearTimeout(timeout);}
+ };
+ try{
+  const ids=await Promise.all(prepared.allocations.map((a,i)=>launch(a,i)));
+  assert.equal(ids.length,2);
+  await wait(bothStarted,"Two native Workers");
+  assert.equal(peak,2,"two real AgentRuntime/Dispatcher calls must overlap");
+  for(let i=0;i<2;i++){
+   const rows=await runtime.list({sessionId:"t06-child-pi-"+i,
+    projectId:prepared.allocations[i]!.root});
+   assert.equal(rows.length,1);
+   assert.equal(rows[0]!.role,"worker");
+   assert.equal(rows[0]!.id,ids[i]);
+  }
+ }finally{release();}
+ await wait(bothTerminal,"Native Worker terminal persistence");
+ for(let i=0;i<2;i++){
+  const rows=await runtime.list({sessionId:"t06-child-pi-"+i,
+   projectId:prepared.allocations[i]!.root});
+  assert.equal(rows.length,1);
+  assert.equal(rows[0]!.state,"completed");
+ }
+ assert.equal(f.git(f.source,"status","--porcelain"),"");
+ assert.equal(readFileSync(join(f.source,"left.txt"),"utf8"),"original-left\n");
+ assert.equal(readFileSync(join(f.source,"right.txt"),"utf8"),"original-right\n");
 });
