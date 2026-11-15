@@ -106,7 +106,9 @@ Orden: T00 -> T01 -> T02; T01 -> T03 -> T04 -> T05; T04+T05 -> T06 -> T07; T03+T
 - Criticidad alta: revisión independiente, sin autovalidación silenciosa.
 - Estados ODD por tarea: NOT_STARTED / IMPLEMENTED_UNVERIFIED / TESTED_OFFLINE / LIVE_VALIDATED / AB_VALIDATED / BLOCKED. `FULL` no se deduce de DONE.
 - Riesgos bloqueantes: falta de WER para Windows, ausencia de credenciales gratuitas autorizadas, errores de Pi, consentimientos, conflict scope, coste de proveedor desconocido, desalineación upstream.
-- Documentar cada decisión y evidencia con commit, SHA de workflow, entorno y limitación en `## Auditoría de coherencia previa a implementar — 2026-11-15
+- Documentar cada decisión y evidencia con commit, SHA de workflow, entorno y limitación en **Registro de ejecución y auditorías**.
+
+## Auditoría de coherencia previa a implementar — 2026-11-15
 
 **Auditoría estática del código** efectuada contra el SHA de origen y del primer commit del plan; no es una revisión externa ni un smoke en el equipo Windows. Antes de declarar cada tarea terminada se exige corroborar CI del commit concreto.
 
@@ -141,8 +143,6 @@ Orden: T00 -> T01 -> T02; T01 -> T03 -> T04 -> T05; T04+T05 -> T06 -> T07; T03+T
 - La cancelación o una selección 'Back' no escribe configuración ni activa perfiles.
 - Ante pérdida del proceso, controles de aprobación caducados o identidad cambiada: detener sin nuevas escrituras/reintentos.
 - El PR permanece en borrador hasta que se documenten resultados completos, fallos conocidos y revisión independiente.
-
-## Registro de ejecución y auditorías`.
 
 ## Registro de ejecución y auditorías
 
