@@ -291,7 +291,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   }
   if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
   const consent=await context.ui.confirm(fourR?"Autorizar cuatro solicitudes de revisión 4R?":"Enviar el diff al modelo revisor?",[
-   fourR?"Pi enviará el mismo diff en CUATRO llamadas separadas al modelo seleccionado (posible coste por llamada):":"Pi enviará el diff completo del candidato a:",
+   fourR?"Pi enviará el mismo diff en CUATRO llamadas separadas a los modelos indicados abajo (posible coste por llamada):":"Pi enviará el diff completo del candidato a:",
    reviewerId,
    "",
    ...(fourR?["Lentes y modelos verificados: "+REVIEW_LENSES.map(lens=>lens+" = "+lensModels.get(lens)!.provider+"/"+lensModels.get(lens)!.id).join("; "),"Estas cuatro revisiones son análisis; no conceden autorización RDD ni de escritura."]:[]),
