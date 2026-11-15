@@ -2,6 +2,7 @@
  * record can mint an agent grant. A crash between reserve and commit leaves
  * an explicit requires-reconciliation record with deterministic expected paths. */
 import {randomUUID} from "node:crypto";
+import {realpathSync} from "node:fs";
 import {readFile} from "node:fs/promises";
 import {isAbsolute,join,resolve} from "node:path";
 import {atomicWriteText} from "../../io/atomic-write.js";
@@ -75,12 +76,13 @@ export class ParallelTodoWorktreeJournal{
    bindings.some(b=>!valid(b.taskId)||!valid(b.requestId)||b.baseRevision!==head||
     b.authority!=="none"||b.needsNewWorktreePlan!==true))
    throw new Error("Invalid parallel Todo worktree reservation identity or scopes");
+  const canonicalParent=realpathSync(resolve(parentDir));
   const record:ParallelTodoWorktreeRecord={
    id,sessionId:identity.sessionId,projectId:identity.projectId,sourceHead:head,
-   parentDir:resolve(parentDir),createdAt:new Date().toISOString(),state:"reserved",
+   parentDir:canonicalParent,createdAt:new Date().toISOString(),state:"reserved",
    tasks:bindings.map(b=>({
     taskId:b.taskId,requestId:b.requestId,taskRevision:b.taskRevision,
-    writeSurfaces:[...b.writeSurfaces],worktreeRoot:resolve(parentDir,"asen-worker-"+b.taskId+"-"+id)
+    writeSurfaces:[...b.writeSurfaces],worktreeRoot:resolve(canonicalParent,"asen-worker-"+b.taskId+"-"+id)
    })),grantsAuthority:false,autoMerge:false
   };
   parse(JSON.stringify({schema:SCHEMA,revision:1,records:[record]}));
