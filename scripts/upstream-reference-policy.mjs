@@ -157,9 +157,12 @@ export function maskApprovedReferenceTokens(path, content) {
  const counts = new Map();
  for (const line of approved.map(decodeLine)) counts.set(line, (counts.get(line) ?? 0) + 1);
  result = result.split("\n").map(line => {
-  const previous = counts.get(line) ?? 0;
+  // Git may materialize CRLF on Windows. Retain the strict line identity
+  // apart from that platform-owned line ending.
+  const comparable = line.endsWith("\r") ? line.slice(0, -1) : line;
+  const previous = counts.get(comparable) ?? 0;
   if (previous === 0) return line;
-  counts.set(line, previous - 1);
+  counts.set(comparable, previous - 1);
   // Mask only an unchanged, counted, known line, never a whole source file.
   return line.replace(new RegExp(["gen"+"tle","gen"+"tleman","eng"+"ram"].join("|"), "giu"), "<approved-compat>");
  }).join("\n");
