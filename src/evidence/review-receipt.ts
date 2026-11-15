@@ -108,16 +108,28 @@ function computeReceiptSignature(
  * Compute the keyed HMAC-SHA-256 signature over the canonical receipt payload.
  * Unlike the legacy checksum, this cannot be recomputed by anyone lacking the key.
  */
-function computeReceiptHmac(
-  key: Buffer,
-  treeSha: string,
-  passed: number,
-  verdict: "PASSED" | "FAILED",
-  commitSha: string
-): string {
-  return createHmac("sha256", key)
-    .update(`${treeSha}:${passed}:${verdict}:${commitSha}`)
-    .digest("hex");
+/** Canonical domain-separated payload: all outcome fields, metadata and identity. */
+function canonicalMetadata(value: unknown): unknown {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (Array.isArray(value)) return value.map(canonicalMetadata);
+  if (typeof value === "object" && value !== null &&
+      (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)) {
+    return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+      .map(([key, entry]) => [key, canonicalMetadata(entry)]));
+  }
+  throw new Error("Receipt metadata must contain plain JSON values");
+}
+function fullHmacPayload(r: ReviewReceipt): string {
+  return JSON.stringify([
+    "asen.review-receipt.full.v2", r.schemaVersion, r.receiptId, r.commitSha,
+    r.treeSha, r.oddTask, r.timestamp, r.testSuite.total, r.testSuite.passed,
+    r.testSuite.failed, r.testSuite.durationMs, r.testSuite.runner, r.verdict,
+    canonicalMetadata(r.metadata ?? null)
+  ]);
+}
+function computeReceiptHmac(key: Buffer, receipt: ReviewReceipt): string {
+  return createHmac("sha256", key).update(fullHmacPayload(receipt)).digest("hex");
 }
 
 /** Constant-time hex comparison (both strings must be valid equal-length hex). */
@@ -195,10 +207,9 @@ export function createReviewReceiptSigned(
     throw new Error(`Signing key must be a Buffer of ${SIGNING_KEY_BYTES} bytes`);
   }
   validateReceiptInput(input);
-  const signature =
-    HMAC_PREFIX +
-    computeReceiptHmac(key, input.treeSha, input.testSuite.passed, input.verdict, input.commitSha);
-  return buildReceipt(input, signature);
+  const unsigned = buildReceipt(input, "");
+  const signature = HMAC_PREFIX + computeReceiptHmac(key, unsigned);
+  return Object.freeze({ ...unsigned, signature });
 }
 
 /** Validate structural shape (without checking the cryptographic signature). */
@@ -266,15 +277,25 @@ export function verifyReviewReceiptSigned(
   }
 
   const actualHex = r.signature.slice(HMAC_PREFIX.length);
-  const expectedHex = computeReceiptHmac(
-    key,
-    r.treeSha,
-    r.testSuite.passed,
-    r.verdict,
-    r.commitSha
-  );
-
-  return safeHexEqual(actualHex, expectedHex);
+  if (!/^[a-f0-9]{64}$/i.test(actualHex)) return false;
+  // Signed receipts reject unexpected fields and must authenticate every field
+  // that can affect claims, audit identity or test outcome.
+  const expected = ["schemaVersion", "receiptId", "commitSha", "treeSha", "oddTask",
+    "timestamp", "testSuite", "verdict", ...(Object.hasOwn(r, "metadata") ? ["metadata"] : []), "signature"];
+  if (Object.keys(r).length !== expected.length || expected.some(key => !Object.hasOwn(r, key))) return false;
+  const suiteKeys = ["total", "passed", "failed", "durationMs", "runner"];
+  if (!r.testSuite || Object.keys(r.testSuite).length !== suiteKeys.length ||
+      suiteKeys.some(key => !Object.hasOwn(r.testSuite, key))) return false;
+  if (typeof r.oddTask !== "string" || r.oddTask.length === 0 ||
+      !Number.isFinite(Date.parse(r.timestamp)) ||
+      !Number.isSafeInteger(r.testSuite.total) || r.testSuite.total < 0 ||
+      !Number.isSafeInteger(r.testSuite.passed) || r.testSuite.passed < 0 ||
+      !Number.isSafeInteger(r.testSuite.failed) || r.testSuite.failed < 0 ||
+      r.testSuite.total !== r.testSuite.passed + r.testSuite.failed ||
+      !Number.isFinite(r.testSuite.durationMs) || r.testSuite.durationMs < 0 ||
+      typeof r.testSuite.runner !== "string") return false;
+  try { return safeHexEqual(actualHex, computeReceiptHmac(key, r)); }
+  catch { return false; }
 }
 
 /**
@@ -300,6 +321,12 @@ export async function writeReviewReceipt(
   if (!isPersistableReceipt(receipt)) {
     throw new Error("Cannot write invalid or unverified review receipt");
   }
+  if (receipt.signature.startsWith(HMAC_PREFIX)) {
+    const key = await loadReceiptSigningKey(storageDir);
+    if (!verifyReviewReceiptSigned(receipt, key)) {
+      throw new Error("Cannot persist an unauthenticated HMAC review receipt");
+    }
+  }
 
   await mkdir(storageDir, { recursive: true });
   const targetPath = join(storageDir, `${receipt.commitSha}.json`);
@@ -320,9 +347,9 @@ export async function readReviewReceipt(
   try {
     const raw = await readFile(targetPath, "utf8");
     const parsed = JSON.parse(raw);
-    if (!isPersistableReceipt(parsed)) {
-      return null;
-    }
+    if (!isPersistableReceipt(parsed)) return null;
+    if (parsed.signature.startsWith(HMAC_PREFIX) &&
+        !verifyReviewReceiptSigned(parsed, await loadReceiptSigningKey(storageDir))) return null;
     return parsed;
   } catch {
     return null;
