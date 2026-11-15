@@ -11,7 +11,8 @@ import {basename,isAbsolute,relative,resolve,sep} from "node:path";
 import {parseWorktreeListOutput} from "../workspace-snapshot.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import {validateWriteGrant} from "../../policies/scopes.js";
-import type {AgentRequest,AgentResult,Dispatcher} from "../../agents/dispatcher.js";
+import {Dispatcher,type AgentRequest,type AgentResult} from "../../agents/dispatcher.js";
+import {matchesIssuedSkillContext} from "../../skills/context.js";
 
 const revisionPattern=/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u;
 const taskPattern=/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/u;
@@ -140,11 +141,12 @@ export async function prepareParallelWorkerWorktrees(input:ParallelWorktreePropo
  * Caller inspects results and reconciles them manually. No automatic merge/retry.
  */
 export async function dispatchApprovedParallelWorkers(input:{
- readonly dispatcher:Pick<Dispatcher,"dispatch">;
+ readonly dispatcher:Dispatcher;
  readonly allocations:readonly ParallelWorktreeAllocation[];
  readonly requests:readonly AgentRequest[];
 }):Promise<Readonly<{status:"finished-needs-review";results:readonly Readonly<{taskId:string;ok:boolean;result?:AgentResult;reason?:string}>[];autoMerge:false}>>{
  const {allocations,requests}=input;
+ if(!(input.dispatcher instanceof Dispatcher))throw new Error("Parallel Workers require the genuine ASEN Dispatcher");
  if(!Array.isArray(allocations)||allocations.length<2||allocations.length>4||
   !Array.isArray(requests)||requests.length!==allocations.length)throw new Error("Parallel dispatch requires a matching bounded batch");
  const used=new Set<string>();
@@ -155,6 +157,7 @@ export async function dispatchApprovedParallelWorkers(input:{
    request.repository!==allocation.root||request.candidate?.repository!==allocation.root||
    request.candidate.revision!==allocation.baseRevision||!request.isolationKey||
    !request.writerAdmission||typeof request.writerAdmission!=="object"||!request.skillContext||
+   !matchesIssuedSkillContext(request.skillContext,request.id,request.repository,request.candidate)||
    request.writeSurfaces?.length!==allocation.writeSurfaces.length||
    !request.writeSurfaces.every((scope:string,j:number)=>scope===allocation.writeSurfaces[j]))
    throw new Error("Parallel dispatch requires separate freshly authorized exact worktree Workers");
