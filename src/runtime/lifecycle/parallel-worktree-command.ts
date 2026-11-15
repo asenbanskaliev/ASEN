@@ -11,6 +11,7 @@ import {projectParallelAgentFlow} from "../ui/agent-flow-overview.js";
 import {ParallelChildPlanClaimJournal} from "../agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../agents/parallel-worker-observation-journal.js";
 import {inspectParallelBatchWorkerOutcomes} from "../agents/parallel-batch-coordinator.js";
+import {launchParentApprovedWorkers,type ParentSupervisorReadyWorker} from "../agents/parallel-parent-supervisor.js";
 import {attributeParallelChildWorker} from "../agents/parallel-worker-attribution.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
@@ -18,7 +19,7 @@ import {controlledInstructionPlanCommand} from "./route-command.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | plan-todo | collect | status | review (collect archiva observaciones, nunca inicia ni fusiona)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | plan-todo | supervise | collect | status | review (supervise pide autorización separada por Worker; collect no fusiona)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
  sessionManager?:{getSessionId?:()=>string};
@@ -51,16 +52,84 @@ export function registerParallelWorktreeCommand(
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
   loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>;
   loadChildAgentRecords?:(identity:TodoContext)=>Promise<readonly PublicAgentRecord[]>;
-  loadChildTaskAgentLinks?:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>}
+  loadChildTaskAgentLinks?:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>;
+  launchChildWorker?:(unit:ParentSupervisorReadyWorker,confirm:(task:Readonly<{
+   id:string;title:string;role:string;instruction:string;
+   writeSurfaces?:readonly string[];candidateRevision?:string
+  }>)=>Promise<boolean>,validateParent:()=>Promise<void>)=>Promise<
+   {status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>}
 ):void{
  register(ASEN_WORKTREES_COMMAND,{
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:async(args,ctx)=>{
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="plan-todo"&&action!=="collect"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
+   if(action==="supervise"){
+    if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||
+     !ctx.ui.confirm||!options?.journalFile||!options.sessionLinksFile||
+     !options.planClaimsFile||!options.loadTodos||!options.loadChildAgentRecords||
+     !options.loadChildTaskAgentLinks||!options.launchChildWorker){
+     const denied={status:"unavailable" as const,reason:"T06 supervisor requires the active parent Pi TUI, prepared child ODD, trusted AgentRuntime and a fresh confirmation per Worker"};
+     ctx.ui.notify(denied.reason,"warning");return denied;
+    }
+    const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager,
+     identity:TodoContext={sessionId:id,projectId:root};
+    const validateParent=async()=>{
+     if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+      manager?.getSessionId?.()!==id||realpathSync(path.resolve(ctx.cwd))!==root)
+      throw new Error("Parent Pi session or worktree changed; stop supervised Worker launches");
+    };
+    const sourceJournal=new ParallelTodoWorktreeJournal(options.journalFile),
+     sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
+     claimJournal=new ParallelChildPlanClaimJournal(options.planClaimsFile),
+     batch=(await sourceJournal.list(identity)).at(-1);
+    await validateParent();
+    if(!batch||batch.state!=="prepared"){
+     const denied={status:"blocked" as const,reason:"No latest fully prepared source ODD batch; review worktrees before launching"};
+     ctx.ui.notify(denied.reason,"warning");return denied;
+    }
+    const result=await launchParentApprovedWorkers({
+     source:identity,batchId:batch.id,sourceJournal,sessionJournal,claimJournal,
+     loadTodos:options.loadTodos,loadAgents:options.loadChildAgentRecords,
+     loadTaskAgentLinks:options.loadChildTaskAgentLinks,validateParent,
+     confirmBatch:async ready=>{
+      await validateParent();
+      const answer=await ctx.ui.confirm!("Preparar lanzamiento Pi de Workers hijos?",[
+       "Lote ODD original: "+batch.id,
+       ...ready.tasks.map(unit=>unit.sourceTodoId+" · child: "+unit.childSessionId+
+        " · modelo solicitado: "+unit.model+" · scope: "+unit.writeSurfaces.join(", ")),
+       "Solo se usarán worktrees preparados y sesiones Pi hijas ya adjuntadas por el usuario.",
+       "Se solicitará una confirmación INDIVIDUAL por Worker con su instrucción y el candidato exacto.",
+       "El coste real/monetario del modelo es DESCONOCIDO; consulta proveedor antes de consentir.",
+       "Los Workers pueden ejecutarse simultáneamente tras lanzarse, bajo los límites del AgentRuntime.",
+       "Una denegación o fallo detendrá los lanzamientos restantes; los ya iniciados NO se reintentarán.",
+       "No se crearán sesiones ficticias, no habrá modelo de pago implícito, retry, PASS, limpieza ni merge."
+      ].join("\n"));
+      await validateParent();return answer===true;
+     },
+     confirmWorker:async(unit,task)=>{
+      await validateParent();
+      const answer=await ctx.ui.confirm!("Autorizar Worker Pi separado?",[
+       "Todo original: "+unit.sourceTodoId,"Todo hijo: "+unit.childTodoId,
+       "Sesión hija previamente adjunta: "+unit.childSessionId,
+       "Worktree: "+unit.childProjectId,"HEAD: "+unit.baseRevision,
+       "Modelo solicitado: "+unit.model+" (precio/uso efectivo: desconocido)",
+       "Write scope EXACTO: "+unit.writeSurfaces.join(", "),
+       "Instrucción exacta de planificación (dato no confiable): "+task.instruction,
+       "Solo autoriza este único intento Writer. Se aplica el Dispatcher ODD existente.",
+       "No se transferirán credenciales ni permisos del padre; no se ejecutará merge ni reintento."
+      ].join("\n"));
+      await validateParent();return answer===true;
+     },
+     launchChild:(unit,confirm)=>options.launchChildWorker!(unit,confirm,validateParent)
+    });
+    ctx.ui.notify(JSON.stringify(result,null,2),
+     result.status==="started"?"info":"warning");
+    return result;
+   }
    if(action==="collect"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||
      !options?.journalFile||!options.sessionLinksFile||!options.planClaimsFile||
