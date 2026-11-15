@@ -11,6 +11,7 @@ import {projectParallelAgentFlow} from "../ui/agent-flow-overview.js";
 import {ParallelChildPlanClaimJournal} from "../agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../agents/parallel-worker-observation-journal.js";
 import {inspectParallelBatchWorkerOutcomes} from "../agents/parallel-batch-coordinator.js";
+import {attributeParallelChildWorker} from "../agents/parallel-worker-attribution.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
 import {controlledInstructionPlanCommand} from "./route-command.js";
@@ -262,12 +263,21 @@ export function registerParallelWorktreeCommand(
      todos:readonly {taskId:string;role?:string;state:string}[]}>>();
     for(const link of linked){
      const identity={sessionId:link.childSessionId,projectId:link.childProjectId};
-     const [agents,todos]=await Promise.all([
-      options.loadChildAgents?options.loadChildAgents(identity):Promise.resolve([]),
-      options.loadTodos?options.loadTodos(identity):Promise.resolve([])
-     ]);
+     const task=records.find(batch=>batch.id===link.batchId)?.tasks.find(t=>t.taskId===link.sourceTodoId);
+     if(!task)throw new Error("Linked Pi child does not match any reserved source Todo");
+     const todos=options.loadTodos?await options.loadTodos(identity):[];
+     let attributed:readonly {id:string;role:string;state:string}[]=[];
+     if(claimedTasks.has(link.sourceTodoId)&&options.loadChildAgentRecords&&options.loadChildTaskAgentLinks){
+      const [records,links]=await Promise.all([
+       options.loadChildAgentRecords(identity),options.loadChildTaskAgentLinks(identity)
+      ]);
+      const worker=attributeParallelChildWorker({
+       owner:link,writeSurfaces:task.writeSurfaces,todos,agents:records,taskAgentLinks:links
+      });
+      if(worker)attributed=[{id:worker.agentId,role:"worker",state:worker.agentState}];
+     }
      childObserved.set(link.sourceTodoId,{
-      agents:agents.map(a=>({id:a.id,role:a.role,state:a.state})),
+      agents:attributed,
       todos:todos.map(t=>({taskId:t.taskId,...(t.plan?.role?{role:t.plan.role}:{}),state:t.current.state}))
      });
     }
