@@ -8,6 +8,20 @@ import {homedir} from "node:os";
 import {parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs,parseManagedUpdatePreviewArgs,parseManagedUpdateStageArgs,parseProjectMemoryBackupPreviewArgs,readAsenLauncherConfig,resolveAsenHome,resolvePiRuntime} from "./runtime/launcher.js";
 import {composeInstallationDoctor} from "./runtime/installation-doctor.js";
 import {createProjectMemoryBackupPreview} from "./runtime/project-memory-backup-preview.js";
+
+/**
+ * Resolve a child process exit into a conventional shell exit code.
+ *
+ * A child that dies by a signal maps to `128 + signal` (SIGINT → 130, SIGTERM
+ * → 143) so a normal Ctrl-C is not reported as a generic failure. A child
+ * with no code and no signal is a failure of the launcher itself.
+ */
+export function resolveChildExit(code:number|null,signal:string|null|undefined):number{
+ if(signal==="SIGINT")return 130;
+ if(signal==="SIGTERM")return 143;
+ if(signal)return 1;
+ return code??1;
+}
 import {createSetupMaintenancePlan} from "./runtime/maintenance-plan.js";
 import {ManagedAdditionalStageError,ManagedVersionSelectionError,selectManagedVersion} from "./runtime/managed-install.js";
 import {launchManagedSelectedVersion} from "./runtime/managed-selected-launch.js";
@@ -208,7 +222,7 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
  return await new Promise<number>(resolve=>{
   const child=spawn(runtime.command,args,{stdio:"inherit",env:{...env,PI_CODING_AGENT_DIR:home.dir,ASEN_PACKAGE_ROOT:packageRoot}});
   child.once("error",()=>resolve(1));
-  child.once("exit",(code:number|null)=>resolve(code??1));
+  child.once("exit",(code:number|null,signal:string|null)=>resolve(resolveChildExit(code,signal)));
  });
 }
 function isMain():boolean{if(!process.argv[1])return false;try{return realpathSync(process.argv[1])===realpathSync(fileURLToPath(import.meta.url));}catch{return false;}}
