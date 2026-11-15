@@ -109,11 +109,11 @@ export function registerParallelWorktreeCommand(
     const fresh=await inspect();current();
     if(fresh.status!=="ready-to-record"||JSON.stringify(fresh)!==JSON.stringify(preview))
      throw new Error("Parent batch or child Worker observations changed during consent; no receipts were recorded");
-    const recorded=[];
-    for(const unit of fresh.workers){
-     current();
-     recorded.push(await observations.record(unit));
-    }
+    current();
+    // All child receipts are persisted in ONE journal transaction.
+    // A failure cannot leave half the batch falsely collected.
+    const recorded=await observations.recordBatch(fresh.workers);
+    current();
     const output={status:"observed-needs-independent-review" as const,batchId:batch.id,
      observed:recorded.map(row=>({sourceTodoId:row.sourceTodoId,agentState:row.agentState,
       changeState:row.worktreeChangeState,modelActual:"unknown" as const})),
