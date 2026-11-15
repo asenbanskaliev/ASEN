@@ -6,6 +6,9 @@ import {ParallelTodoWorktreeJournal} from "../agents/parallel-todo-journal.js";
 import {ParallelChildSessionJournal} from "../agents/parallel-todo-session-links.js";
 import {ParallelChildPlanClaimJournal} from "../agents/parallel-child-plan-claims.js";
 import type {SourceTodoRow} from "../agents/parallel-todo-bindings.js";
+import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
+import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
+import {attributeParallelChildWorker} from "../agents/parallel-worker-attribution.js";
 import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change-inspection.js";
 import {projectParallelAgentFlow,type AgentFlowSourceBatch,type AgentFlowProjection} from "./agent-flow-overview.js";
 
@@ -20,7 +23,9 @@ export async function readAgentFlowPanelObservation(input:{
  readonly identity:TodoContext;
  readonly journalFile:string;readonly sessionLinksFile:string;readonly planClaimsFile:string;
  readonly loadTodos:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
- readonly loadChildAgents:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>;
+ /** Only exact ODD Todo -> TaskAgentLink -> AgentRuntime evidence is attributed. */
+ readonly loadChildAgentRecords?:(identity:TodoContext)=>Promise<readonly PublicAgentRecord[]>;
+ readonly loadChildTaskAgentLinks?:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>;
 }):Promise<AgentFlowPanelObservation>{
  const {identity}=input;
  if(!identity?.sessionId||!identity.projectId||
@@ -48,9 +53,21 @@ export async function readAgentFlowPanelObservation(input:{
  const childStates=new Map<string,{id:string;agents:readonly {id:string;role:string;state:string}[]}>();
  for(const link of links){
   const childIdentity={sessionId:link.childSessionId,projectId:link.childProjectId};
-  childStates.set(link.sourceTodoId,{
-   id:link.childSessionId,agents:await input.loadChildAgents(childIdentity)
-  });
+  const task=selected.find(record=>record.id===link.batchId)?.tasks.find(row=>row.taskId===link.sourceTodoId);
+  if(!task)throw new Error("Missing source scope for a supposedly linked child worktree");
+  let agents:readonly {id:string;role:string;state:string}[]=[];
+  if(claimTasks.has(link.sourceTodoId)&&input.loadChildAgentRecords&&input.loadChildTaskAgentLinks){
+   const [todos,records,taskLinks]=await Promise.all([
+    input.loadTodos(childIdentity),
+    input.loadChildAgentRecords(childIdentity),
+    input.loadChildTaskAgentLinks(childIdentity)
+   ]);
+   const actual=attributeParallelChildWorker({
+    owner:link,writeSurfaces:task.writeSurfaces,todos,agents:records,taskAgentLinks:taskLinks
+   });
+   if(actual)agents=[{id:actual.agentId,role:"worker",state:actual.agentState}];
+  }
+  childStates.set(link.sourceTodoId,{id:link.childSessionId,agents});
  }
  const batches:AgentFlowSourceBatch[]=selected.map(record=>({
   batchId:record.id,state:record.state,
