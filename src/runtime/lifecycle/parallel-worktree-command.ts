@@ -330,6 +330,10 @@ export function registerParallelWorktreeCommand(
      options.observationFile
     ).listSource({sessionId:id,projectId:root},linked):[];
     const receiptByTask=new Map(receipts.map(item=>[item.sourceTodoId,item]));
+    const supervisorClaims=options.supervisorClaimsFile?
+     await new ParentSupervisorClaimJournal(options.supervisorClaimsFile)
+      .listSource({sessionId:id,projectId:root}):[];
+    const supervisorClaimedBatches=new Set(supervisorClaims.map(item=>item.batchId));
     const childObserved=new Map<string,Readonly<{agents:readonly {id:string;role:string;state:string}[];
      todos:readonly {taskId:string;role?:string;state:string}[]}>>();
     for(const link of linked){
@@ -354,6 +358,7 @@ export function registerParallelWorktreeCommand(
     }
     const auditRows=records.map(record=>({
       batchId:record.id,createdAt:record.createdAt,state:record.state,sourceHead:record.sourceHead,
+      supervisorClaimed:supervisorClaimedBatches.has(record.id),
       tasks:record.tasks.map(task=>{
        const live=rows.find(row=>row.taskId===task.taskId);
        return {sourceTodoId:task.taskId,sourceRequestId:task.requestId,sourceRevision:task.taskRevision,
@@ -380,6 +385,10 @@ export function registerParallelWorktreeCommand(
      status:action==="review"?"review-preview" as const:"audit-only" as const,
      grantsAuthority:false as const,autoResume:false as const,autoMerge:false as const,
      records:auditRows,
+     supervisorAttempts:supervisorClaims.map(item=>({
+      batchId:item.batchId,claimedAt:item.claimedAt,status:item.status,
+      grantsAuthority:false as const,autoRetry:false as const,autoMerge:false as const
+     })),
      flowOverview:projectParallelAgentFlow(auditRows),
      ...(action==="review"?{reconciliation:auditRows.map(record=>({
       batchId:record.batchId,
