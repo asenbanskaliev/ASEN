@@ -94,8 +94,11 @@ export function registerParallelWorktreeCommand(
      const checked=JSON.parse(controlledInstructionPlanCommand(
       basis,root,{id:"source-todo-"+owner.taskId,repository:root,revision:owner.sourceHead,
        createdAt:new Date().toISOString()}
-     )) as {route?:string;executablePlan?:{tasks?:readonly {role:string}[]}};
-     if(checked.route!=="orchestrate"||!checked.executablePlan?.tasks?.some(task=>task.role==="worker"))
+     )) as {route?:string;executablePlan?:{tasks?:readonly {role:string;writeSurfaces?:readonly string[]}[]}};
+     const workerTasks=checked.executablePlan?.tasks?.filter(task=>task.role==="worker")??[];
+     if(checked.route!=="orchestrate"||workerTasks.length!==1||
+      workerTasks[0]!.writeSurfaces?.length!==owner.writeSurfaces.length||
+      workerTasks[0]!.writeSurfaces?.some((p,i)=>p!==owner.writeSurfaces[i]))
       throw new Error("Fresh child ODD policy does not produce a delegated Worker; rebuild manually");
      return basis;
     };
@@ -104,6 +107,7 @@ export function registerParallelWorktreeCommand(
     const approved=await ctx.ui.confirm("Reconstruir ODD en el worktree?",[
      "Source Todo: "+owner.taskId,"Worktree: "+root,"HEAD: "+owner.sourceHead,
      "Scope original: "+owner.writeSurfaces.join(", "),
+     "Instrucción ODD de origen (dato no confiable): "+String(JSON.parse(basis).instruction??"").slice(0,1200),
      "El plan será recalculado con el proyecto de esta sesión Pi (no importará grants previos).",
      "La planificación existente puede iniciar tareas de lectura; Writer exigirá un SEGUNDO consentimiento individual.",
      "Un intento interrumpido quedará registrado; NO habrá reintento automático ni merge."
