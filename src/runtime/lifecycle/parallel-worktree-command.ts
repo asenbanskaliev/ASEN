@@ -4,10 +4,11 @@ import path from "node:path";
 import {prepareParallelWorkerWorktrees,type ParallelWorkerUnit} from "../agents/parallel-worktrees.js";
 import {bindParallelSourceTodos,sameSourceTodoBindings,type SourceTodoRow} from "../agents/parallel-todo-bindings.js";
 import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../agents/parallel-todo-journal.js";
+import {ParallelChildSessionJournal} from "../agents/parallel-todo-session-links.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | status (prepara worktrees aislados con confirmación; solo prepare-todos registra el vínculo ODD/TODOS)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | status (attach vincula una sesión Pi real sin iniciar ni autorizar Workers)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
  sessionManager?:{getSessionId?:()=>string};
@@ -35,16 +36,51 @@ function readRequest(value:string):{parentDir:string;units:readonly ParallelWork
 }
 export function registerParallelWorktreeCommand(
  register:(name:string,command:WorktreeCommand)=>void,
- options?:{journalFile?:string;loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>}
+ options?:{journalFile?:string;sessionLinksFile?:string;
+  loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
+  loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>}
 ):void{
  register(ASEN_WORKTREES_COMMAND,{
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:async(args,ctx)=>{
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="status"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="status"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
+   if(action==="attach"){
+    if(!id||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||
+     !ctx.cwd||!options?.journalFile||!options?.sessionLinksFile){
+     const blocked={status:"unavailable" as const,reason:"Child session attachment requires live Pi TUI, consent and the private source journal"};
+     ctx.ui.notify(blocked.reason,"warning");return blocked;
+    }
+    const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
+    const validate=()=>{
+     if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+      manager?.getSessionId?.()!==id||
+      realpathSync(path.resolve(ctx.cwd))!==root)
+      throw new Error("Child Pi session or Git worktree changed during attachment");
+    };
+    const saved=await new ParallelChildSessionJournal(options.sessionLinksFile,
+     new ParallelTodoWorktreeJournal(options.journalFile)).attach({
+     childSessionId:id,childProjectId:root,validateSession:validate,
+     confirm:async owner=>{
+      validate();
+      const accepted=await ctx.ui.confirm!("Asociar sesión Pi con Todo de origen?",[
+       "Tarea original: "+owner.sourceTodoId,"Proyecto origen: "+owner.sourceProjectId,
+       "HEAD de origen: "+owner.sourceHead,"Worktree: "+owner.worktreeRoot,
+       "Scope original: "+owner.writeSurfaces.join(", "),
+       "No se iniciarán agentes. Esta asociación NO copia grants, credenciales ni permisos de escritura.",
+       "Para escribir, crea un plan ODD nuevo en este worktree y autoriza explícitamente su Worker."
+      ].join("\n"));
+      validate();return accepted===true;
+     }
+    });
+    const display={status:saved.status,grantsAuthority:false as const,autoDispatch:false as const,
+     ...(saved.link?{sourceTodoId:saved.link.sourceTodoId,childProjectId:saved.link.childProjectId,
+       childSessionId:saved.link.childSessionId}:{} )};
+    ctx.ui.notify(JSON.stringify(display,null,2),"info");return display;
+   }
    if(action==="status"){
     if(!id||!options?.journalFile||!ctx.cwd){
      const unavailable={status:"unavailable" as const,reason:"Worktree journal or owned Pi session unavailable"};
@@ -53,6 +89,23 @@ export function registerParallelWorktreeCommand(
     const root=realpathSync(path.resolve(ctx.cwd));
     const records=await new ParallelTodoWorktreeJournal(options.journalFile).list({sessionId:id,projectId:root});
     const rows=options.loadTodos?await options.loadTodos({sessionId:id,projectId:root}):[];
+    const linked=options.sessionLinksFile?await new ParallelChildSessionJournal(
+     options.sessionLinksFile,new ParallelTodoWorktreeJournal(options.journalFile)
+    ).listSource({sessionId:id,projectId:root}):[];
+    const linkedBySource=new Map(linked.map(link=>[link.sourceTodoId,link]));
+    const childObserved=new Map<string,Readonly<{agents:readonly {id:string;role:string;state:string}[];
+     todos:readonly {taskId:string;role?:string;state:string}[]}>>();
+    for(const link of linked){
+     const identity={sessionId:link.childSessionId,projectId:link.childProjectId};
+     const [agents,todos]=await Promise.all([
+      options.loadChildAgents?options.loadChildAgents(identity):Promise.resolve([]),
+      options.loadTodos?options.loadTodos(identity):Promise.resolve([])
+     ]);
+     childObserved.set(link.sourceTodoId,{
+      agents:agents.map(a=>({id:a.id,role:a.role,state:a.state})),
+      todos:todos.map(t=>({taskId:t.taskId,...(t.plan?.role?{role:t.plan.role}:{}),state:t.current.state}))
+     });
+    }
     const result={status:"audit-only" as const,grantsAuthority:false as const,autoResume:false as const,
      records:records.map(record=>({
       batchId:record.id,createdAt:record.createdAt,state:record.state,sourceHead:record.sourceHead,
@@ -62,7 +115,14 @@ export function registerParallelWorktreeCommand(
         sourceTodoState:live?.current.state??"missing",
         sourceTodoUnchanged:live?.current.revision===task.taskRevision&&live?.current.state==="planned",
         worktreeRoot:task.worktreeRoot,worktreePresent:existsSync(task.worktreeRoot),
-        writeSurfaces:task.writeSurfaces,acceptance:"not-accepted"};
+        writeSurfaces:task.writeSurfaces,
+        ...(linkedBySource.has(task.taskId)?{childSession:{
+         id:linkedBySource.get(task.taskId)!.childSessionId,
+         project:linkedBySource.get(task.taskId)!.childProjectId,
+         agents:childObserved.get(task.taskId)?.agents??[],
+         todos:childObserved.get(task.taskId)?.todos??[]
+        }}:{}),
+        acceptance:"not-accepted"};
       })
      }))
     };
