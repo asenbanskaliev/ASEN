@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import {readFileSync,mkdirSync,realpathSync,writeFileSync} from "node:fs";
+import {createHmac,timingSafeEqual} from "node:crypto";
 import {execFileSync} from "node:child_process";
 import {resolve} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -246,13 +247,34 @@ export function validateParityReviewRecord(record,run){
  return Object.freeze(record);
 }
 /**
+ * Only an out-of-band authority may supply these independent signing keys.
+ * Well-shaped, unkeyed owner/reviewer strings are NOT evidence of real consent
+ * or an independent review. Signed v2 records are bound to exactly one run.
+ */
+export function signParityProvenanceRecord(record,key){
+ assert.ok(Buffer.isBuffer(key)&&key.length>=32,"attestation key must be a 32+ byte secret");
+ assert.ok(record&&typeof record==="object"&&!Object.hasOwn(record,"signature"),
+  "cannot sign an already signed or malformed attestation record");
+ const canonical=Object.fromEntries(Object.entries(record).sort(([a],[b])=>a<b?-1:a>b?1:0));
+ return Object.freeze({...record,signature:"hmac-sha256:"+createHmac("sha256",key)
+  .update("asen.parity.attestation.v2\0").update(JSON.stringify(canonical)).digest("hex")});
+}
+function verifyParityProvenanceRecord(record,key){
+ if(!Buffer.isBuffer(key)||key.length<32||typeof record?.signature!=="string"||
+    !/^hmac-sha256:[a-f0-9]{64}$/iu.test(record.signature))return false;
+ const {signature,...data}=record;
+ const expected=signParityProvenanceRecord(data,key).signature;
+ return timingSafeEqual(Buffer.from(signature.slice(12),"hex"),Buffer.from(expected.slice(12),"hex"));
+}
+
+/**
  * UFC-M5-06 attestation: with NO inputs the comparison is returned byte-identical — genuine
  * runs must not stay inert, but nothing gets promoted either. A partial pair fails closed.
  * With both genuine inputs the per-case claim status moves from *_UNATTESTED to *_ATTESTED
  * for exactly this run identity; certified counters and globalFull remain untouched here.
  * Registry stage advancement stays owned by CI assembly and independent acceptance.
  */
-export function attestC01Comparison({comparison,consentReceipt,reviewRecord,runContext}){
+export function attestC01Comparison({comparison,consentReceipt,reviewRecord,runContext,provenance}){
  assert.equal(comparison?.schema,"asen-shell-asen-observable-comparison/v1");
  assert.equal(comparison?.referenceSha,trustedBaseline.commit,"the comparison must carry the frozen reference");
  assert.match(runContext?.candidateSha??"",EXACT_SHA,"run identity requires the exact candidate SHA");
@@ -264,8 +286,20 @@ export function attestC01Comparison({comparison,consentReceipt,reviewRecord,runC
  assert.ok(hasConsent===hasReview,
   "attestation requires both a consent receipt and an independent review record");
  if(!hasConsent)return comparison;
- validateParityConsentReceipt(consentReceipt,runContext);
- validateParityReviewRecord(reviewRecord,runContext);
+ // Neither a self-declared reviewerId nor matching run fields authenticates a human.
+ // Trust anchors come from the admission host, NEVER from the submitted records.
+ assert.ok(provenance&&Buffer.isBuffer(provenance.ownerKey)&&
+  Buffer.isBuffer(provenance.reviewerKey)&&provenance.ownerKey.length>=32&&
+  provenance.reviewerKey.length>=32&&!provenance.ownerKey.equals(provenance.reviewerKey),
+  "Attestation requires independent trusted owner and reviewer keys");
+ assert.ok(verifyParityProvenanceRecord(consentReceipt,provenance.ownerKey),
+  "Owner consent provenance is unverified");
+ assert.ok(verifyParityProvenanceRecord(reviewRecord,provenance.reviewerKey),
+  "Independent review provenance is unverified");
+ const {signature:ownerSignature,...ownerFacts}=consentReceipt;
+ const {signature:reviewSignature,...reviewFacts}=reviewRecord;
+ validateParityConsentReceipt(ownerFacts,runContext);
+ validateParityReviewRecord(reviewFacts,runContext);
  assert.notEqual(reviewRecord.reviewerId,consentReceipt.grantedBy,
   "the reviewer identity must be independent of the granting owner identity");
  const upgrade={MATCH_CLAIM_UNATTESTED:"MATCH_CLAIM_ATTESTED",
