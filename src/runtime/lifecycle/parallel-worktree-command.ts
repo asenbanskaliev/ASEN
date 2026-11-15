@@ -5,6 +5,7 @@ import {prepareParallelWorkerWorktrees,type ParallelWorkerUnit} from "../agents/
 import {bindParallelSourceTodos,sameSourceTodoBindings,type SourceTodoRow} from "../agents/parallel-todo-bindings.js";
 import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../agents/parallel-todo-journal.js";
 import {ParallelChildSessionJournal} from "../agents/parallel-todo-session-links.js";
+import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change-inspection.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
@@ -116,6 +117,11 @@ export function registerParallelWorktreeCommand(
         sourceTodoUnchanged:live?.current.revision===task.taskRevision&&live?.current.state==="planned",
         worktreeRoot:task.worktreeRoot,worktreePresent:existsSync(task.worktreeRoot),
         writeSurfaces:task.writeSurfaces,
+        changes:record.state==="prepared"?inspectParallelWorktreeChanges({
+         sourceRoot:record.projectId,worktreeRoot:task.worktreeRoot,
+         baseRevision:record.sourceHead,writeSurfaces:task.writeSurfaces
+        }):{status:"unavailable" as const,changedPaths:[],outOfScopePaths:[],
+         sourceVerified:false,headMatchesBase:false,acceptance:"not-accepted" as const,autoMerge:false as const},
         ...(linkedBySource.has(task.taskId)?{childSession:{
          id:linkedBySource.get(task.taskId)!.childSessionId,
          project:linkedBySource.get(task.taskId)!.childProjectId,
