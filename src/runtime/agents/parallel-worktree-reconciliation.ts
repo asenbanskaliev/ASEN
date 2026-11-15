@@ -9,7 +9,7 @@ export interface ParallelWorktreeReviewUnit{
  }>;
 }
 export interface ParallelBatchReconciliation{
- readonly disposition:"blocked"|"not-started"|"manual-review-required";
+ readonly disposition:"blocked"|"not-started"|"observed-active"|"manual-review-required";
  readonly blockers:readonly string[];
  readonly evidence:readonly Readonly<{
   taskId:string;changedPaths:readonly string[];changeState:string;
@@ -28,7 +28,7 @@ export function reconcileParallelWorktreeBatch(input:{
   throw new Error("Invalid bounded worktree reconciliation batch");
  const blockers:string[]=[],evidence:ParallelBatchReconciliation["evidence"][number][]=[];
  const observed=new Map<string,string>();
- let seenChanges=false,seenAllCompleted=true;
+ let seenActive=false,seenAllCompleted=true;
  if(input.batchState!=="prepared")blockers.push("Batch creation incomplete; inspect reserved Git paths manually");
  const units:readonly ParallelWorktreeReviewUnit[]=input.units;
  for(const unit of units){
@@ -42,7 +42,6 @@ export function reconcileParallelWorktreeBatch(input:{
   if(!changes.headMatchesBase||changes.status==="head-diverged")blockers.push(unit.taskId+": candidate HEAD drift");
   if(changes.status==="out-of-scope"||changes.outOfScopePaths.length)
    blockers.push(unit.taskId+": modifications outside authorized scope");
-  if(changes.changedPaths.length)seenChanges=true;
   for(const path of changes.changedPaths){
    const key=path.toLocaleLowerCase("en-US"),existing=observed.get(key);
    if(existing&&existing!==unit.taskId)
@@ -55,14 +54,15 @@ export function reconcileParallelWorktreeBatch(input:{
   else if(agentStates.some(s=>["queued","running"].includes(s)))agentState="active";
   else if(agentStates.includes("completed"))agentState="terminal";
   if(agentState!=="terminal")seenAllCompleted=false;
+  if(agentState==="active")seenActive=true;
   if(agentState==="unresolved")blockers.push(unit.taskId+": Worker terminated unsuccessfully or ambiguously");
   evidence.push(Object.freeze({
    taskId:unit.taskId,changedPaths:Object.freeze([...changes.changedPaths]),
    changeState:changes.status,agentState
   }));
  }
- const disposition=blockers.length?"blocked":seenChanges&&seenAllCompleted?
-  "manual-review-required":"not-started";
+ const disposition=blockers.length?"blocked":seenActive?"observed-active":
+  seenAllCompleted?"manual-review-required":"not-started";
  return Object.freeze({
   disposition,blockers:Object.freeze(blockers),evidence:Object.freeze(evidence),
   grantsAuthority:false,autoMerge:false,acceptance:"not-accepted"
