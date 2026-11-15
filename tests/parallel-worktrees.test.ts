@@ -153,6 +153,8 @@ test("T06 runs two genuinely authorized Dispatcher workers concurrently on separ
  f.registered(created.allocations);
  const evidence=new EvidenceStore();
  const requests=created.allocations.map((a,i)=>authorizedWorker(a,i,evidence));
+ const neverCalled=new Dispatcher({run:async req=>({id:req.id,ok:true,output:"not reached"})},evidence,2);
+ await assert.rejects(()=>dispatchApprovedParallelWorkers({dispatcher:neverCalled,allocations:created.allocations,requests:[requests[0]!,{...requests[1]!,id:requests[0]!.id}]}),/separate freshly authorized/u);
  let concurrent=0,highest=0;
  const dispatcher=new Dispatcher({run:async request=>{
   concurrent++;highest=Math.max(highest,concurrent);
