@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {spawnSync} from "node:child_process";
-import {mkdtempSync,copyFileSync,mkdirSync,rmSync,writeFileSync,existsSync} from "node:fs";
+import {mkdtempSync,copyFileSync,mkdirSync,rmSync,writeFileSync,existsSync,realpathSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname,join,resolve} from "node:path";
 import {authorityAssets} from "../src/agents/pi-authority-assets.js";
@@ -71,7 +71,11 @@ function probe(t:import("node:test").TestContext,mode:"bare"|"authority"){
  assert.equal(response?.success,true,"Pi RPC get_commands failed: "+sanitizedFailure(result));
  const policies=response?.data?.commands?.filter(x=>x.name==="asen-authority-status"&&x.source==="extension")??[];
  assert.equal(policies.length,mode==="authority"?1:0,"unexpected ASEN authority registration: "+sanitizedFailure(result));
- if(extensionPath)assert.equal(policies[0]?.sourceInfo?.path,extensionPath);
+ if(extensionPath){
+  const reportedPath=policies[0]?.sourceInfo?.path;
+  assert.equal(typeof reportedPath,"string","Authority command must report its source path");
+  assert.equal(realpathSync(reportedPath!),realpathSync(extensionPath));
+ }
 }
 
 test("native Pi RPC bare startup works without model, session or provider",t=>probe(t,"bare"));
