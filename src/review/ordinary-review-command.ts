@@ -336,7 +336,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
   if(judgmentDay){
    assertContextCurrent();assertReviewSessionOpen(workspace.session);
-   const report=await runJudgmentDay({registry,author,judgeA:judges![0],judgeB:judges![1],evidence,requirements,...(context.signal?{signal:context.signal}:{})});
+   const report=await runJudgmentDay({registry,author,judgeA:judges![0],judgeB:judges![1],evidence,requirements,...(context.signal?{signal:context.signal}:{}),validateBeforeJudge:()=>{assertContextCurrent();assertReviewSessionOpen(workspace.session);revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});}});
    revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
    assertContextCurrent();
    const visible=report.findings.slice(0,40).map(({judge,reviewerId,finding})=>({judge,reviewerId,...finding}));
