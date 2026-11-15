@@ -298,7 +298,8 @@ export class PiProcessRunner implements AgentRunner{
    };
    const closeSettled=(category?:TerminalErrorCategory)=>{if(!alive())return;finalFailure=category;try{child.stdin.end();}catch{stop({id:request.id,ok:false,output:"pi stdin error during settlement"});}};
    const settleCurrentTurn=()=>{
-    if(!alive())return;
+    // A completion already accepted for this turn cannot be replayed.
+    if(!alive()||finalAgentSettled)return;
     if(lastAssistantFailure&&shouldFallback(lastAssistantFailure)){
      finalAgentSettled=false;
      continueFallback(lastAssistantFailure);
