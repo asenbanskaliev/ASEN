@@ -50,7 +50,8 @@ const wrapper={
  }
 };
 const status={schema:"asen.t06.nvidia.pi-dual/v2",source:"native-PiProcessRunner-and-AgentRuntime",
- requestedModel:model,modelActual:"unknown",workers:[] as Array<Record<string,unknown>>,
+ requestedModel:model,modelActual:"unknown",costVerified:false,billingVerified:false,
+ workers:[] as Array<Record<string,unknown>>,
  concurrentlyRunning:false,providerAuthenticated:false,autoMerge:false,writerGranted:false,
  executionKind:"READ_ONLY_EXPLORER_VERIFIER_IN_GIT_WORKTREES_NOT_WRITER",
  gitWorktreesVerified:false,gitSourceClean:false,gitChildrenClean:false,
@@ -87,6 +88,8 @@ try{
    sessionId:item.identity.sessionId,agentRole:roles[i]!,
    recordState:entry?.record.state??"missing",modelSelected:reply.modelActual,
    messageVerified:verified,receiptReason:reply.reason,
+   piReportedUsage:verified?reply.piReportedUsage:null,
+   billingVerified:false,costVerified:false,
    pidObserved:item.observation.pid!==null,
    durationMs:item.observation.closedAt!==null&&item.observation.spawnedAt!==null?
     Math.round(item.observation.closedAt-item.observation.spawnedAt):null
