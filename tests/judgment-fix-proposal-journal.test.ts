@@ -15,7 +15,8 @@ function fixture(t:TestContext){
  const root=resolve(mkdtempSync(join(tmpdir(),"asen-fix-record-source-")));
  const view=resolve(mkdtempSync(join(tmpdir(),"asen-fix-record-view-")));
  const base=resolve(mkdtempSync(join(tmpdir(),"asen-fix-record-file-")));
- t.after(()=>{rmSync(root,{recursive:true,force:true});rmSync(view,{recursive:true,force:true});rmSync(base,{recursive:true,force:true});});
+ // El cierre genuino libera primero la vista protegida. Eliminar el padre
+ // antes hace fallar los permisos POSIX y además ocultaría un fallo real de cierre.
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{
   encoding:"utf8",stdio:["ignore","pipe","pipe"]});
  git("init","-q");git("config","user.name","ASEN prueba");
@@ -28,7 +29,12 @@ function fixture(t:TestContext){
   reviewerId:"free/juez-a",viewParent:view,
   risk:{riskId:"judgment",reason:"review",severity:"high",lenses:["risk","reliability"]}
  });
- t.after(()=>{try{closeWorkspaceReview(workspace);}catch{}});
+ t.after(()=>{
+  closeWorkspaceReview(workspace);
+  rmSync(root,{recursive:true,force:true});
+  rmSync(view,{recursive:true,force:true});
+  rmSync(base,{recursive:true,force:true});
+ });
  const evidence=readWorkspaceReviewEvidence(workspace);
  const registry:PiReviewRegistry={
   getAvailable:()=>[author,a,b],
