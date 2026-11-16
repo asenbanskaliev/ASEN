@@ -78,7 +78,7 @@ export function projectParallelAgentFlow(batches:readonly AgentFlowSourceBatch[]
      !Array.isArray(task.childSession.agents)||task.childSession.agents.length>128||
      (task.childSession.modelRequested!==undefined&&
       (inspectPlannedWorkerModelRoute(task.childSession.modelRequested).status!=="pinned"||
-       !task.handoffClaimed||!task.childSession.agents.some(a=>a.role==="worker")))||
+       !task.handoffClaimed||!task.childSession.agents.some((a:Readonly<{id:string;role:string;state:string}>)=>a.role==="worker")))||
      task.childSession.agents.some((agent:Readonly<{id:string;role:string;state:string}>)=>!safeId(agent.id)||!validStates.has(agent.state)))))
     throw new Error("Invalid or duplicate agent-flow evidence");
    ids.add(task.sourceTodoId);
