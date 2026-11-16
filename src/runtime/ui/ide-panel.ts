@@ -151,6 +151,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    // human-read state is inferred here.
    const {pending,known}=derivePanelReview(snapshot);
    out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:"No pending review results observed");
+   out.push("Fix proposals: /asen-review fixes · read-only, no Writer authority");
    if(snapshot.review?.label)out.push(clean(snapshot.review.label,140));
    else if(pending)out.push(`${pending} stored Todo result${pending===1?"":"s"} awaiting review`);
    const oddWorkers=snapshot.todos.filter(todo=>todo.current.state==="succeeded"&&todo.plan?.role==="worker");
