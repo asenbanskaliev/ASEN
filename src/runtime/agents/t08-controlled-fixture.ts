@@ -17,7 +17,8 @@ const forbidden=new Set(["process","globalThis","require","eval","Function","fet
 export function verifyT08Source(code:unknown):boolean{
  if(typeof code!=="string"||!code||code.length>10_000)return false;
  const ast=ts.createSourceFile(T08_TARGET,code,ts.ScriptTarget.ES2022,true,ts.ScriptKind.JS);
- if(ast.parseDiagnostics.length||ast.statements.length!==1)return false;
+ if(((ast as ts.SourceFile & {parseDiagnostics?: readonly ts.Diagnostic[]}).parseDiagnostics?.length??0)>0||
+  ast.statements.length!==1)return false;
  const fn=ast.statements[0];
  if(!fn||!ts.isFunctionDeclaration(fn)||fn.name?.text!=="sumEvenNumbers"||
   !fn.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword))return false;
