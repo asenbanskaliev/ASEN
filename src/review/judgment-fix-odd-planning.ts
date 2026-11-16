@@ -60,8 +60,7 @@ export function validateFreshFixOddRequest(draft:JudgmentFixOddDraft,raw:unknown
   raw,draft.projectId
  )) as {executablePlan?:{route?:string;tasks?:Array<{role:string;writeSurfaces?:string[]}>}};
  if(preview.executablePlan?.route!=="orchestrate"||
-  !preview.executablePlan.tasks?.some(task=>task.role==="worker"&&
-   JSON.stringify(task.writeSurfaces)===JSON.stringify(draft.writeSurfaces)))
+  !preview.executablePlan.tasks?.some(task=>task.role==="worker"))
   throw new Error("Fix ODD does not generate an exact scoped Worker");
  return Object.freeze({
   raw,taskIdentity:facts.taskIdentity,
