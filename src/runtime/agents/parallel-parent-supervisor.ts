@@ -192,7 +192,14 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    ["Supervisor intent already claimed or journal unavailable; inspect child Todos and agents, no replay"]);
  }
  for(const unit of initial.tasks){
-  await input.validateParent();
+  try{await input.validateParent();}
+  catch{
+   // A prior Worker may already be running. Never convert parent cancellation
+   // into a retry or erase the exact started IDs from the visible result.
+   return nonAuthorizing("partial-needs-review",initial.batchId,started,[
+    unit.sourceTodoId+": Parent Pi session cancelled or changed; inspect durable child Todo/Agent records before any further dispatch"
+   ]);
+  }
   // After earlier Workers start the full batch is no longer 'ready'.
   // Recheck ONLY this candidate: do not retarget or replan another unit.
   const link=(await input.sessionJournal.listSource(input.source)).find(l=>
@@ -261,7 +268,12 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     throw new Error("Child Pi provenance changed after parent Worker authorization; no new launch");
    await input.validateParent();
   };
-  await validateExact();
+  try{await validateExact();}
+  catch{
+   return nonAuthorizing("partial-needs-review",initial.batchId,started,[
+    unit.sourceTodoId+": Child Pi identity changed before consent; inspect durable child Todo/Agent records and do not retry"
+   ]);
+  }
   let wasApproved=false;
   let outcome:Awaited<ReturnType<ParentSupervisorInput["launchChild"]>>;
   try{
