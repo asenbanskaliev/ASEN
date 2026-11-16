@@ -679,3 +679,11 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 - **Protección nueva:** la ruta Ultra problemática queda temporalmente bloqueada en la preparación previa a aprobaciones de GitHub y en la comprobación del controlador, para impedir repetir gastos conocidos. Se conserva la condición de fallo ante dictámenes vacíos; **no** se aumenta ningún límite ni se inventa un dictamen. Pruebas negativas nuevas en `tests/t08-github-approvals.test.ts` y `tests/t08-github-workflow-boundary.test.ts`.
 - **Próxima prueba sugerida:** modelos `nvidia/nemotron-3.5-bolt-e4b` (revisor A), `nvidia/nemotron-3.5-super-vl-120b-a12b` (revisor B) y `nvidia/nemotron-3.5-lightning-30b-a3b` (Writer). Son rutas publicadas por NVIDIA, pero **no se han probado las tres juntas**; su disponibilidad y coste final dependen de la cuenta y del proveedor.
 - **Estado:** `T08_PENDING_REAL_APPROVED_RUN`, `globalFull:false`, sin fusión. Guía actualizada en `docs/t08-prueba-real-github.md`.
+
+## T08 — segunda respuesta vacía con modelo alternativo (2026-11-16)
+
+- En el run manual https://github.com/asenbanskaliev/ASEN/actions/runs/43944108837 con SHA `6ac8c6180d4d779c24ac94d5ae17dab33ca92919`, revisor A `nvidia/nemotron-3.5-bolt-e4b`, aprobación protegida y preparación correctas, pero el mensaje final Pi volvió a devolver **cero bloques de contenido**. El segundo juez, el Fix y el Writer no se ejecutaron.
+- Este hecho **descarta que el problema sea exclusivo del modelo Ultra** y deja pendiente localizar si la causa radica en proveedor, compatibilidad de modelo, Pi RPC o combinación. No se debe volver a recomendar cambios de modelo como solución demostrada.
+- Se agregó `describeT08ReviewFailure`, alimentado por el observador de fragmentos de texto nativo de Pi y el mensaje final, con **solo metadatos no sensibles** (eventos, caracteres vistos, tamaño final, motivo, indicio de error, fin del agente y número de herramientas), sin retener texto parcial, secretos ni razonamiento. Las respuestas vacías se siguen rechazando y no conceden permiso.
+- Pruebas sin modelo real: `tests/t08-pi-review-diagnostics.test.ts`; incluidas en compilación T08 y CI. El diagnóstico real necesita una futura llamada autorizada; **no se ha hecho otra llamada**.
+- Estado: `T08_REAL_REVIEW_BLOCKED_EMPTY_CONTENT`, `globalFull:false`, PR borrador sin fusión ni aceptación.
