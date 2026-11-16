@@ -72,10 +72,25 @@ function textContent(message:unknown):string{
  }
  return chunks.join("");
 }
+const reviewProvider=/^[a-z0-9][a-z0-9._-]{0,63}$/u;
+const reviewModelId=/^[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u;
+/** El catálogo Pi puede contener entradas malformadas o duplicadas. Ninguna
+ * ruta ni control de interfaz debe aceptar identidades con controles o vacíos. */
 export function availableIndependentPiReviewers(registry:PiReviewRegistry,author:PiReviewerModel|undefined):readonly PiReviewerModel[]{
- return Object.freeze(registry.getAvailable().filter(model=>model&&typeof model.provider==="string"&&typeof model.id==="string"
-  &&(!author||model.provider!==author.provider||model.id!==author.id)&&registry.hasConfiguredAuth(model)
-  &&!model.provider.includes("\0")&&!model.id.includes("\0")));
+ const seen=new Set<string>();
+ const available=registry.getAvailable().filter(model=>{
+  if(!model||typeof model.provider!=="string"||typeof model.id!=="string"||
+   !reviewProvider.test(model.provider)||!reviewModelId.test(model.id)||
+   model.id.split("/").some(part=>!part||part==="."||part==="..")||
+   model.id!==model.id.normalize("NFC")||
+   author?.provider===model.provider&&author.id===model.id)
+   return false;
+  const key=model.provider+"/"+model.id;
+  if(seen.has(key)||!registry.hasConfiguredAuth(model))return false;
+  seen.add(key);
+  return true;
+ });
+ return Object.freeze(available.map(model=>Object.freeze({provider:model.provider,id:model.id})));
 }
 /** Fresh, tool-free Pi provider call over exact evidence. It reports analysis only and grants no authority. */
 export async function runIndependentPiReview(input:{registry:PiReviewRegistry;model:PiReviewerModel;author?:PiReviewerModel;evidence:PiReviewEvidence;requirements:string;signal?:AbortSignal;lens?:ReviewLens;perspective?:"jd-judge-a"|"jd-judge-b"}):Promise<PiReviewVerdict>{
