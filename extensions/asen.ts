@@ -404,6 +404,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      identity,journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
      sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
      planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
+     supervisorClaimsFile:path.join(home(),".asen","parallel-parent-supervisor-claims.json"),
+     observationFile:path.join(home(),".asen","parallel-worker-observations.json"),
      loadTodos:async owner=>(await todoStorePromise).list(owner),
      ...(taskAgentLinks?{
       loadChildAgentRecords:async owner=>(await agentRuntimePromise).list(owner),
