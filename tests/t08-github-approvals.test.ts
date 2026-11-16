@@ -90,6 +90,6 @@ test("T08 rechaza historial incompleto o malformado sin conceder escritura",()=>
   [{state:"approved",environments:[{name:T08_REVIEW_ENVIRONMENT}],user:null}],
   [{state:"approved",environments:[null],user:{type:"User",login:"asenbanskaliev"}}]
  ]){
-  assert.equal(inspect("fix",context,run,bad).status,"blocked");
+  assert.equal(validateT08GithubApprovals({context,run,approvals:bad,stage:"fix"}).status,"blocked");
  }
 });
