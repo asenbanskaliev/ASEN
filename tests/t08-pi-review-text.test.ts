@@ -82,7 +82,7 @@ test("T08 acepta varios fragmentos de razonamiento Pi sin relajar tamaño ni aut
  const many:Array<{type:string;thinking?:string;text?:string}>=Array.from({length:63},()=>reasoning("pensamiento privado"));
  many.push(text(sample));
  assert.equal(parseT08NativeReviewText(final(many)),sample);
- const sixtyFive=Array.from({length:65},()=>reasoning("fragmento"));
+ const sixtyFive:Array<{type:string;thinking?:string;text?:string}>=Array.from({length:65},()=>reasoning("fragmento"));
  sixtyFive[64]=text(sample);
  assert.throws(()=>parseT08NativeReviewText(final(sixtyFive)),/más de 64 bloques/u);
  const tooMuchReasoning:Array<{type:string;thinking?:string;text?:string}>=Array.from({length:4},()=>reasoning("r".repeat(34_000)));
