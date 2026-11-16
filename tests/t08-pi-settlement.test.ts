@@ -24,6 +24,10 @@ process.stdin.on("data",chunk=>{
   emit({type:"message_start",message:{role:"assistant"}});
   emit({type:"message_end",message:{role:"assistant",content:[],stopReason:"error"}});
   emit({type:"agent_end",willRetry:true});
+  // Texto fuera de un intento activo: nunca debe persistirse ni acreditarse.
+  emit({type:"message_update",assistantMessageEvent:{
+   type:"text_delta",delta:"DATO_PRIVADO_FUERA_DE_TURNO"
+  }});
   setTimeout(()=>{
    emit({type:"agent_start"});
    emit({type:"message_start",message:{role:"assistant"}});
@@ -76,6 +80,7 @@ test("T08 espera agent_settled y recupera el dictamen final sin llamadas de pago
  assert.equal(result.ok,true,result.output);
  assert.match(result.output,/"willRetry":true/u);
  assert.match(result.output,/"agent_settled"/u);
+ assert.ok(!result.output.includes("DATO_PRIVADO_FUERA_DE_TURNO"),"no se conserva texto fuera de turno");
  assert.ok(seenText>0,"debe seguir observando texto después de agent_end inicial");
  assert.equal(parseT08NativeReviewText(result.output,{requireFinalSettlement:true}),recovered);
  assert.throws(()=>parseT08NativeReviewText(result.output),/un solo dictamen/u);
