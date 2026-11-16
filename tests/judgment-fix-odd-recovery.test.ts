@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {resolve} from "node:path";
+import {join,resolve} from "node:path";
+import {mkdtempSync,rmSync} from "node:fs";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 import {tmpdir} from "node:os";
 import {draftOddFromStoredFix} from "../src/review/judgment-fix-odd-draft.js";
 import {inspectFixOddRecovery} from "../src/review/judgment-fix-odd-recovery.js";
@@ -118,4 +120,38 @@ test("T08 rechaza duplicados cruzados, archivo no terminal y archivo falso",()=>
   assert.equal(result.workerTodoId,null);
   assert.equal(result.autoRetry,false);
  }
+});
+
+test("T08 recupera un Fix desde el archivo privado real, sin relanzar",async t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-fix-archive-real-"));
+ t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const store=await SessionTodoStore.openProjectScoped(root,join(root,"antiguo.json"));
+ const plan={
+  role:"worker" as const,skillPaths:["skills/asen-apply/SKILL.md"],
+  skillSelection:{phase:"apply" as const,risk:"medium" as const,
+   codeChange:true,behaviorChange:true,filesTouched:1},
+  candidate:{id:"fix-archivo",repository:projectId,revision:tree,createdAt:new Date().toISOString()},
+  writeSurfaces:["src/fix.ts"],
+  writerAuthorizationBasis:JSON.stringify({instruction:"Corregir defecto del informe"}),
+  fixSource:{proposalId:id,treeIdentity:tree}
+ };
+ const [saved]=await store.addPlan([{
+  title:"Fix archivado",requestId:request,dependsOn:[],
+  description:"Perform only the authorized, scoped work for: Corregir defecto del informe",
+  plan
+ }],identity);
+ assert.ok(saved);
+ await store.update(saved.taskId,identity,1,"running");
+ await store.update(saved.taskId,identity,2,"done","Resultado histórico, sin aceptación automática");
+ assert.equal((await store.list(identity)).length,0);
+ const archive=await store.archived(identity);
+ assert.equal(archive.length,1);
+ const result=inspectFixOddRecovery({draft,identity,
+  todos:await store.list(identity),archivedTodos:archive});
+ assert.equal(result.status,"archived-worker-observed");
+ assert.equal(result.workerTodoId,saved.taskId);
+ assert.equal(result.workerState,"done");
+ assert.equal(result.authorized,false);
+ assert.equal(result.writerAuthority,false);
+ assert.equal(result.autoRetry,false);
 });
