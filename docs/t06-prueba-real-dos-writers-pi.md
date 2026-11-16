@@ -1,3 +1,7 @@
+## Alternativa sin ordenador: GitHub Actions con doble aprobación
+
+El procedimiento anterior corresponde al **modo local** con dos confirmaciones en terminal. Para ejecutar desde GitHub sin terminal local existe ahora la vía **manual y protegida** documentada en [Prueba de dos Writers desde GitHub](./t06-prueba-en-github-dos-writers.md). Ese modo no finge respuestas TTY: utiliza dos revisiones humanas de entornos de GitHub verificadas por su API, y deja constancia de esta procedencia en el informe. **No está ejecutado todavía**: deben configurarse ambos entornos de GitHub y consentir expresamente el posible coste del modelo. No se concede permiso Writer por un simple botón ni por un estado verde del CI.
+
 # T06 — Prueba real de dos Workers Pi con NVIDIA
 
 ## Qué demuestra y qué no
