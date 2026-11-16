@@ -12,6 +12,7 @@
     "tests/t08-controlled-fixture.test.ts",
     "tests/t08-pi-review-text.test.ts",
     "tests/t08-pi-review-diagnostics.test.ts",
+    "tests/t08-pi-settlement.test.ts",
     "tests/t08-github-workflow-boundary.test.ts"
   ]
 }
