@@ -1,0 +1,47 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-review-receipt.js";
+
+const shaA="a".repeat(64),shaB="b".repeat(64);
+const sha={"t06-writer-a.mjs":shaA,"t06-writer-b.mjs":shaB};
+const good={
+ verdict:"pass",summary:"Código revisado sin errores detectados",
+ findings:[],
+ reviewedFiles:[{path:"t06-writer-a.mjs",sha256:shaA},{path:"t06-writer-b.mjs",sha256:shaB}]
+};
+const stream=(value:unknown)=>JSON.stringify({
+ type:"message_end",message:{role:"assistant",content:[{type:"text",text:JSON.stringify(value)}]}
+});
+test("T06 recibe revisión Pi de dos archivos y no crea aceptación automática",()=>{
+ const result=parseT06NativeReviewReceipt(stream(good),sha);
+ assert.equal(result.verdict,"pass");
+ assert.equal(result.findingCount,0);
+ assert.deepEqual(result.reviewedPaths,["t06-writer-a.mjs","t06-writer-b.mjs"]);
+ assert.equal(result.acceptance,"not-accepted");
+ assert.equal(result.writerAuthority,false);
+ assert.equal(Object.isFrozen(result),true);
+});
+test("T06 bloquea revisiones con ámbitos, huellas, hallazgos o respuestas manipuladas",()=>{
+ const invalid=[
+  {...good,reviewedFiles:good.reviewedFiles.slice(0,1)},
+  {...good,reviewedFiles:[good.reviewedFiles[0],good.reviewedFiles[0]]},
+  {...good,reviewedFiles:[{...good.reviewedFiles[0],sha256:"0".repeat(64)},good.reviewedFiles[1]]},
+  {...good,reviewedFiles:[{path:".env",sha256:shaA},good.reviewedFiles[1]]},
+  {...good,findings:[{path:"t06-writer-a.mjs",severity:"high",description:"Error"}]},
+  {...good,verdict:"fail"},
+  {...good,autorizaWriter:true},
+  {...good,summary:"texto\ncon caracteres prohibidos"},
+  {...good,findings:[{path:".env",severity:"medium",description:"Riesgo"}]}
+ ];
+ for(const altered of invalid){
+  assert.throws(()=>parseT06NativeReviewReceipt(stream(altered),sha),/T06 independent/u);
+ }
+});
+test("T06 revisiones sin mensaje Pi final o con herramientas no se aceptan",()=>{
+ for(const output of [
+  "", "no es JSON",JSON.stringify({type:"tool_execution_start",toolName:"write"}),
+  JSON.stringify({type:"message_end",message:{role:"assistant",content:[{type:"toolCall"}]}})
+ ]){
+  assert.throws(()=>parseT06NativeReviewReceipt(output,sha),/T06 independent/u);
+ }
+});
