@@ -246,6 +246,11 @@ export class PiProcessRunner implements AgentRunner{
    message
   ].join("\n");
   let routeArgs:string[],fallbackConfig:AgentRequest["modelFallback"];try{routeArgs=piRuntimeRouteArgs(request);fallbackConfig=snapshotAgentModelFallback(request.modelFallback);}catch(error){return Promise.resolve({id:request.id,ok:false,output:String(error)});}
+  // Un fallback no puede desactivar silenciosamente el cierre estricto.
+  // Rechazar antes de iniciar el proceso o consumir cuota.
+  if(this.options.requireFinalSettlement&&fallbackConfig?.chain.length)
+   return Promise.resolve({id:request.id,ok:false,
+    output:"Pi strict settlement cannot combine with automatic fallback"});
   let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined;
   try{receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
   const providerExtension=this.options.providerExtension;
