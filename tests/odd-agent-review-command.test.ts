@@ -165,5 +165,10 @@ test("4R no publica dictamen si el Todo cambia durante la respuesta del último 
  await assert.rejects(async()=>await fixtureState.run("todo "+fixtureState.taskId+" adaptive",ctx),
   /ODD Todo or Git HEAD changed/u);
  assert.equal(calls,1,"No debe llamar a otro revisor tras alterar la tarea");
- assert.equal(fixtureState.git("status","--porcelain")," M archivo.txt");
+ // Git porcelain distingue un cambio preparado del no preparado por
+ // un espacio inicial. El ayudante git() lo borra con trim().
+ const rawStatus=execFileSync("git",["-C",fixtureState.root,"status","--porcelain=v1"],{
+  encoding:"utf8"
+ }).trimEnd();
+ assert.equal(rawStatus," M archivo.txt");
 });
