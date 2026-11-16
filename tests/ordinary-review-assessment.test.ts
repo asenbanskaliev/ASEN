@@ -346,14 +346,16 @@ test("workspace judgment-day rejects duplicated or unauthenticated judge routing
 });
 
 
-test("resiliencia 4R: error del perfil Fix conserva los dos dictámenes y bloquea la reparación",async t=>{
- const state=setup(t,unconfigured(),true,{},true);
+test("resiliencia 4R: error del perfil Fix conserva los dictámenes con hallazgos y bloquea la reparación",async t=>{
+ // Sin hallazgos no hace falta resolver perfil Fix: ese caso es 'not-needed'.
+ // Con fallos confirmados la ruta es necesaria y debe bloquearse si falla.
+ const state=setup(t,unconfigured(),true,{},true,undefined,"fail");
  const result=await state.handler("workspace judgment-day",state.context) as {
   status:string;judges:Array<{judge:string}>;
   fixAgent:string;fixHandoff:{status:string;blockers:string[];autoLaunch:boolean};
   acceptance:string;
  };
- assert.equal(result.status,"analysis-complete");
+ assert.equal(result.status,"findings-require-review");
  assert.deepEqual(result.judges.map(x=>x.judge),["jd-judge-a","jd-judge-b"]);
  assert.deepEqual(state.modelCalls,["review-provider/reviewer-one","review-provider/reviewer-two"]);
  assert.equal(result.fixAgent,"not-launched");
