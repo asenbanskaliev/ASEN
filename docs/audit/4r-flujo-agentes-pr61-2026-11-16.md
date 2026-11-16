@@ -50,3 +50,15 @@ La extracción estructural de `ordinary-review-command.ts` se deja pendiente par
 - Pendientes prioritarios: T06 Writer dual autenticado por dos confirmaciones, T08 vinculación durable de Fix a nueva tarea ODD **sin autoridad heredada**, T07 comprobación TUI, T09 medición A/B auténtica y T10 revisión independiente.
 
 **Estado de aceptación:** `globalFull:false`; PR #61 en borrador. Prohibidos fusión automática, consentimiento Writer implícito y modelos de pago no autorizados.
+
+## Ampliación 4R — integridad de recibos de Workers (2026-11-16)
+
+**Risk:** hallazgo RISK-04, gravedad alta para la trazabilidad: el diario de observaciones T06 no impedía atribuir dos Workers a una misma sesión Pi si las raíces Git eran diferentes. Tampoco bloqueaba reutilizar una sesión hija en un lote posterior cuando cambiaba el directorio. Corregido en `parallel-worker-observation-journal.ts`: sesiones únicas dentro de cada lote y entre recibos ya almacenados; sin autorización ni ejecución nueva.
+
+**Readability:** READ-04, claridad de validación: se extrae `portablePath` como regla común para validar rutas en el momento de grabar y al volver a leer. Los estados `clean`, `scoped-changes`, `out-of-scope`, `head-diverged` y `unavailable` se tratan como hechos Git que deben ser compatibles con las listas de rutas y la verificación de origen; no como pruebas de calidad.
+
+**Reliability:** REL-05, gravedad media-alta: antes podían persistirse combinaciones imposibles de `status`, `headMatchesBase`, `sourceVerified`, `changedPaths` y `outOfScopePaths`. Un registro `clean` con archivos modificados creaba una apariencia falsa. El registro ahora rechaza dichos datos **antes de grabar** y bloquea registros antiguos alterados **al leer**, sin intentar repararlos silenciosamente. Nuevas pruebas negativas en `tests/parallel-worker-observation.test.ts`.
+
+**Resilience:** RES-05, gravedad media: los recibos de un lote siguen grabándose en una sola transacción y fallan por completo si uno está mal formado o si hay sesión repetida; no se reintenta automáticamente un Worker ni se sustituye un recibo anterior. Las pruebas existentes de competencia concurrente se conservan y se amplían con falsificación y corrupción en disco.
+
+**Alcance de esta ampliación:** revisión estática y pruebas publicadas; el resultado definitivo depende del CI/Release Gate del SHA exacto. No hay demostración de dos Workers Writer reales ni auditoría independiente. `globalFull:false` y PR #61 en borrador.
