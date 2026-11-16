@@ -22,6 +22,7 @@ import {issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {requireDistinctT06Approvals,t06LiveApprovalChallenge,type T06LiveWriterIntent} from "../src/runtime/agents/t06-live-consent.js";
+import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const definitions=[
@@ -217,6 +218,9 @@ async function main():Promise<void>{
   const intervals=results.flatMap(r=>r.status==="fulfilled"?[r.value]:[]);
   const concurrent=intervals.length===2&&intervals.every(r=>r.startedAt!==null&&r.endedAt!==null)&&
    Math.max(...intervals.map(r=>r.startedAt!))<Math.min(...intervals.map(r=>r.endedAt!));
+  const review=passed&&concurrent?
+   await runT06NativeIndependentReviews(roots,policyRoot,model):
+   {status:"NOT_RUN_WRITERS_UNVERIFIED" as const,reviews:[]};
   const evidence={
    schema:"asen.t06.native-dual-writer/v1",sha:expected,piVersion:version,
    executionKind:"NATIVE_PI_RPC_WRITER_WITH_TWO_MANUAL_TERMINAL_APPROVALS",
@@ -227,15 +231,21 @@ async function main():Promise<void>{
     const {startedAt:_start,endedAt:_end,...safe}=r;
     return safe;
    }),
-   independentReview:"NOT_RUN",autoRetry:false,autoMerge:false,
+   independentReview:review,autoRetry:false,autoMerge:false,
    accepted:false,globalFull:false,
-   result:passed&&concurrent?"PASS_TWO_REAL_WRITERS_NEEDS_INDEPENDENT_REVIEW":"BLOCKED_OR_PARTIAL_NEEDS_REVIEW"
+   result:passed&&concurrent?
+    (review.status==="PASS_TWO_PI_REVIEWS_NOT_T10"?
+     "PASS_TWO_REAL_WRITERS_AND_PI_REVIEWS_NEEDS_T10":
+     "PASS_TWO_REAL_WRITERS_NEEDS_INDEPENDENT_REVIEW"):
+    "BLOCKED_OR_PARTIAL_NEEDS_REVIEW"
   };
   const file=join(dir,"t06-dual-native-evidence.json");
   writeFileSync(file,JSON.stringify(evidence,null,2)+"\n",{mode:0o600,flag:"wx"});
   process.stdout.write(JSON.stringify({result:evidence.result,sha:expected,report:file,
-   independentReview:"NOT_RUN",worktreeRoots:roots})+"\n");
-  if(evidence.result!=="PASS_TWO_REAL_WRITERS_NEEDS_INDEPENDENT_REVIEW")process.exitCode=1;
+   independentReview:review.status,worktreeRoots:roots})+"\n");
+  if(!passed||!concurrent||
+   review.status==="REVIEW_FAILED_OR_UNVERIFIED"||
+   review.status==="REVIEW_DECLINED_NO_RETRY")process.exitCode=1;
  }finally{
   // Un intento de Writer que ha arrancado puede haber dejado efectos
   // ambiguos: no eliminar los worktrees ni reintentar automáticamente.
