@@ -130,6 +130,16 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
     out.push("Worktree Workers: "+flow.stages["running-observed"]+" active observed · "+
      flow.stages["manual-review-required"]+" awaiting human review · "+
      flow.stages.blocked+" blocked");
+    const pinned=flow.tasks.filter(task=>task.modelRequested!=="unknown");
+    if(pinned.length){
+     out.push("Requested child models: "+pinned.length+" · actual still unknown");
+     for(const task of pinned.slice(0,detail?6:2))
+      out.push("  ↳ "+clean(task.taskId,48)+" · requested "+clean(task.modelRequested,85)+" · actual unknown");
+    }
+    const attempts=flow.tasks.filter(task=>task.supervisorClaimed===true).length;
+    const collected=flow.tasks.filter(task=>task.receiptRecorded===true).length;
+    if(attempts)out.push("Supervisor attempts recorded: "+attempts+" tasks · no automatic retry");
+    if(collected)out.push("Collected Worker receipts: "+collected+" · human review required");
     out.push("Worktree actual model: unknown (no authenticated model receipt)");
    }
    break;
