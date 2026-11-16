@@ -518,8 +518,11 @@ export class PiProcessRunner implements AgentRunner{
       }
       continue; // Raw state is never part of the retained execution output.
      }
-     const keep=typeof record==="string"||agentEnded||type==="agent_end"||
-      strictNativeSettlement&&type==="agent_settled"||type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
+     // En revisiones estrictas, un evento parcial posterior a agent_end
+     // nunca se guarda como evidencia ni se expone al controlador.
+     const keep=typeof record==="string"||(agentEnded&&!strictNativeSettlement)||
+      type==="agent_end"||strictNativeSettlement&&type==="agent_settled"||
+      type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
      if(keep){
       const retained=line+"\n";retainedBytes+=Buffer.byteLength(retained);
       if(retainedBytes>max){overflow=true;stop({id:request.id,ok:false,output:`pi retained output exceeded ${max} bytes`});return;}
