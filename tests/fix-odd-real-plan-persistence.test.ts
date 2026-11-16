@@ -90,7 +90,7 @@ test("T04/T08 almacena un ODD real con origen Fix, sin ejecutar agentes",async t
   }
  }));
  const identity={sessionId:f.sessionId,projectId:f.root};
- const persisted=await store.addPlan(drafts as Parameters<typeof store.addPlan>[0],identity);
+ const persisted=await store.addPlan(drafts as unknown as Parameters<typeof store.addPlan>[0],identity);
  assert.ok(persisted.length>=2);
  const worker=(await store.list(identity)).find(row=>row.plan?.role==="worker");
  assert.ok(worker);
