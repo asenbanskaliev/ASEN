@@ -26,7 +26,7 @@ export function assessT06T07Trial(input:{
  const {report,expectedSha,uiTestPassed}=input;
  if(!/^[0-9a-f]{40}$/u.test(expectedSha))blockers.push("sha-invalido");
  if(!isRecord(report))blockers.push("informe-ausente");
- const r=isRecord(report)?report:{};
+ const r:Record<string,unknown>=isRecord(report)?report:{};
  if(r.schema!=="asen.t06.native-dual-writer/v1"||r.sha!==expectedSha)
   blockers.push("recibo-t06-candidato-no-coincide");
  if(typeof r.piVersion!=="string"||!/(?:^|\s)1\.2\.0(?:\s|$)/u.test(r.piVersion))
