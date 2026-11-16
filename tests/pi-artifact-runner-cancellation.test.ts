@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {PiArtifactRunner,isIssuedAgentArtifactProof} from "../src/agents/pi-artifact-runner.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import type {AgentRequest} from "../src/agents/dispatcher.js";
 import {createPiRpcFixture} from "./helpers/pi-rpc-fixture.js";
 
 const scenario=`
@@ -52,7 +53,7 @@ test("Cancelar una sesión no cancela otra y no autoriza artefactos tardíos",as
  // El proceso auténtico se prueba por separado. Aquí aislamos la
  // concurrencia y la procedencia del artefacto con dos resultados simulados.
  const adapter=new PiArtifactRunner({
-  run:async(request,signal)=>{
+  run:async(request:AgentRequest,signal?:AbortSignal)=>{
    if(request.id==="tarea-sana")return {
     id:request.id,ok:true,output:[
      JSON.stringify({type:"response",id:request.id,success:true}),
