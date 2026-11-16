@@ -87,7 +87,7 @@ test("T08 el Todo Worker conserva origen Fix sin reutilizar autorización",async
   writerAuthorizationBasis:JSON.stringify({instruction:"Corregir defecto verificado"}),
   fixSource:{proposalId:"b".repeat(64),treeIdentity:"c".repeat(40)}
  };
- const draft={title:"Fix acotado",requestId:"asen-plan:fix-fuente:worker",
+ const draft={title:"Fix acotado",requestId:`asen-plan:fix-${base.fixSource.proposalId.slice(0,24)}:worker`,
   dependsOn:[],description:"Perform only the authorized, scoped work for: Corregir defecto verificado",plan:base};
  const saved=await store.addPlan([draft],one);
  const reopened=await SessionTodoStore.open(file);
@@ -102,10 +102,16 @@ test("T08 el Todo Worker conserva origen Fix sin reutilizar autorización",async
   {...base,writeSurfaces:undefined}
  ]){
   await assert.rejects(()=>store.addPlan([{
-   ...draft,requestId:"asen-plan:otro-fix:worker",plan:bad as typeof base
+   ...draft,plan:bad as typeof base
   }],one),/Invalid ASEN Todo plan task/);
   assert.equal(await readFile(file,"utf8"),original);
  }
+ await assert.rejects(()=>store.addPlan([{
+  ...draft,requestId:"asen-plan:fix-otra-referencia:worker"
+ }],one),/Invalid ASEN Todo plan task/);
+ const tampered=JSON.parse(original) as {items:Array<{requestId:string}>};
+ tampered.items[0]!.requestId="asen-plan:fix-otra-referencia:worker";
+ assert.throws(()=>parseTodoFile(JSON.stringify(tampered)),/Invalid ASEN Todo store/);
 });
 
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
