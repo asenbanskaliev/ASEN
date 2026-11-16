@@ -1076,8 +1076,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // A source-supervised child must persist its own ODD without starting
     // any Pi agent here. The parent will authorize the independent Worker
     // through the existing dispatcher; no inherited grants or double launch.
-    output.execution={started:false,authorized:false,reason:"deferred-to-source-supervisor"};
-    output.notice="Child ODD was saved without starting any agent. The original Pi session may use its own authorized plan dispatcher, or the attached source /asen-worktrees supervise may launch a dependency-ready Worker after separate Pi confirmation. No model call, Writer admission or merge occurred during planning.";
+    output.execution={started:false,authorized:false,reason:fixSource?"deferred-to-new-writer-consent":"deferred-to-source-supervisor"};
+    output.notice=fixSource?"A new Fix ODD was saved without starting any agent. Its reviewed Git tree is pinned and must still match when the plan is dispatched. The original Pi session must request a fresh, exact Writer consent. No model call, inherited permission or merge occurred.":"Child ODD was saved without starting any agent. The original Pi session may use its own authorized plan dispatcher, or the attached source /asen-worktrees supervise may launch a dependency-ready Worker after separate Pi confirmation. No model call, Writer admission or merge occurred during planning.";
     await refreshTodoWidget(ctx);
     return JSON.stringify(output,null,2);
    }
