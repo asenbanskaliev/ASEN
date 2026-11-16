@@ -1,0 +1,79 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {resolve} from "node:path";
+import {tmpdir} from "node:os";
+import {draftOddFromStoredFix} from "../src/review/judgment-fix-odd-draft.js";
+import {inspectFixOddRecovery} from "../src/review/judgment-fix-odd-recovery.js";
+import type {ScopedOddTodo} from "../src/review/odd-agent-review-flow.js";
+import type {StoredJudgmentFixProposal} from "../src/review/judgment-fix-proposal-journal.js";
+
+const projectId=resolve(tmpdir(),"asen-fix-recovery-source");
+const sessionId="pi-recuperacion",requestId="informe-original",tree="a".repeat(40);
+const id=createHash("sha256").update([requestId,sessionId,projectId,tree].join("\0")).digest("hex");
+const proposal:StoredJudgmentFixProposal={
+ id,requestId,sessionId,repositoryRoot:projectId,
+ candidateRevision:tree,candidateTreeIdentity:tree,paths:["src/fix.ts"],
+ status:"proposal-only",requiredAction:"new-odd-plan",
+ modelRequested:"unknown",modelActual:"unknown",
+ createdAt:"2026-11-16T00:00:00.000Z",
+ requiresFreshWriterConsent:true,autoLaunch:false,autoMerge:false,acceptance:"not-accepted"
+};
+const identity={sessionId,projectId};
+const draft=draftOddFromStoredFix({proposal,identity});
+const taskId="todo-11111111-2222-4333-8444-555555555555";
+const request="asen-plan:fix-"+id.slice(0,24)+":worker";
+function worker():ScopedOddTodo{
+ return {
+  taskId,title:"Reparación pendiente",requestId:request,description:"No reutilizar permisos",
+  events:[{taskId,sessionId,projectId,revision:1,state:"planned",at:"2026-11-16T00:00:00.000Z"}],
+  current:{taskId,sessionId,projectId,revision:1,state:"planned",at:"2026-11-16T00:00:00.000Z"},
+  plan:{role:"worker",skillPaths:[],writeSurfaces:["src/fix.ts"],
+   fixSource:{proposalId:id,treeIdentity:tree}}
+ };
+}
+test("T08 identifica el Worker guardado tras perder la respuesta sin reintentar",()=>{
+ const result=inspectFixOddRecovery({draft,identity,todos:[worker()]});
+ assert.equal(result.status,"worker-observed");
+ assert.equal(result.workerTodoId,taskId);
+ assert.equal(result.workerState,"planned");
+ assert.equal(result.actualModel,"unknown");
+ assert.equal(result.autoLaunch,false);
+ assert.equal(result.autoRetry,false);
+ assert.equal(result.writerAuthority,false);
+ assert.equal(result.acceptance,"not-accepted");
+ assert.equal(Object.isFrozen(result),true);
+});
+test("T08 un diario activo vacío no demuestra que el plan nunca se guardó",()=>{
+ const result=inspectFixOddRecovery({draft,identity,todos:[]});
+ assert.equal(result.status,"not-observed");
+ assert.equal(result.workerTodoId,null);
+ assert.match(result.reason,/archived or interrupted/u);
+ assert.equal(result.autoRetry,false);
+});
+test("T08 rechazo de informes falsos, duplicados, ámbito distinto y sesión ajena",()=>{
+ const source=worker();
+ const cases=[
+  [source,{...source,taskId:"todo-b"}],
+  [{...source,plan:{...source.plan!,fixSource:{proposalId:id,treeIdentity:"b".repeat(40)}}}],
+  [{...source,plan:{...source.plan!,writeSurfaces:["src/otro.ts"]}}],
+  [{...source,requestId:"asen-plan:otra:worker"}],
+  [{...source,current:{...source.current,sessionId:"otra"}}]
+ ] as const;
+ for(const todos of cases){
+  const result=inspectFixOddRecovery({draft,identity,todos:todos as unknown as ScopedOddTodo[]});
+  assert.equal(result.status,"inconsistent");
+  assert.equal(result.autoRetry,false);
+  assert.equal(result.workerTodoId,null);
+  assert.equal(result.writerAuthority,false);
+ }
+});
+test("T08 no permite consultar el guardado de otra sesión o proyecto",()=>{
+ for(const other of [
+  {...identity,sessionId:"otra"},
+  {...identity,projectId:resolve(tmpdir(),"otro-proyecto")}
+ ]){
+  assert.throws(()=>inspectFixOddRecovery({draft,identity:other,todos:[worker()]}),
+   /original read-only Pi session/u);
+ }
+});
