@@ -77,3 +77,29 @@ test("T08 salida incompleta, incorrecta o excesiva nunca se toma por éxito",()=
   assert.throws(()=>parseT08NativeReviewText(output),/T08:/u);
  }
 });
+
+test("T08 acepta varios fragmentos de razonamiento Pi sin relajar tamaño ni autoridad",()=>{
+ const many=Array.from({length:63},()=>reasoning("pensamiento privado"));
+ many.push(text(sample));
+ assert.equal(parseT08NativeReviewText(final(many)),sample);
+ const sixtyFive=Array.from({length:65},()=>reasoning("fragmento"));
+ sixtyFive[64]=text(sample);
+ assert.throws(()=>parseT08NativeReviewText(final(sixtyFive)),/más de 64 bloques/u);
+ const tooMuchReasoning=Array.from({length:4},()=>reasoning("r".repeat(34_000)));
+ tooMuchReasoning.push(text(sample));
+ assert.throws(()=>parseT08NativeReviewText(final(tooMuchReasoning)),/límite total/u);
+});
+test("T08 distingue mensajes sin bloques y estructuras malformadas sin registrar datos del modelo",()=>{
+ for(const [body,reason] of [
+  [{type:"message_end",message:{role:"assistant",content:[]}},/sin bloques \(0\)/u],
+  [{type:"message_end",message:{role:"assistant",content:"texto privado"}},/sin lista de bloques/u],
+  [{type:"message_end",message:{role:"assistant"}},/sin lista de bloques/u],
+  [{type:"message_end",message:{role:"assistant",content:65}},/sin lista de bloques/u]
+ ] as const){
+  assert.throws(()=>parseT08NativeReviewText(JSON.stringify(body)),reason);
+ }
+ const unsupported=final([{type:"toolCall",arguments:"clave-privada"},text(sample)]);
+ assert.throws(()=>parseT08NativeReviewText(unsupported),error=>
+  error instanceof Error&&!error.message.includes("clave-privada")&&
+  /contenido Pi no permitido/u.test(error.message));
+});
