@@ -27,7 +27,13 @@ const digest=/^[a-f0-9]{64}$/u;
 const model=/^nvidia\/[A-Za-z0-9._-]{3,100}$/u;
 const scopes=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
 const workerIds=["t06-writer-a","t06-writer-b"] as const;
-const consentMethod="two-distinct-interactive-parent-terminal-prompts-not-native-pi-TUI";
+const manualConsentMethod="two-distinct-interactive-parent-terminal-prompts-not-native-pi-TUI";
+const githubConsentMethod="two-distinct-github-environment-human-approvals-not-native-pi-TUI";
+const validProvenance=(kind:unknown,method:unknown):boolean=>
+ kind==="NATIVE_PI_RPC_WRITER_WITH_TWO_MANUAL_TERMINAL_APPROVALS"&&
+ method===manualConsentMethod||
+ kind==="NATIVE_PI_RPC_WRITER_WITH_TWO_GITHUB_APPROVALS"&&
+ method===githubConsentMethod;
 const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{
  encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:12_000,maxBuffer:200_000
 }).trim();
@@ -47,8 +53,7 @@ export function verifyT06NativeSnapshot(input:{
  const report:Data=object(source)?source:{};
  if(!object(source)||report.schema!=="asen.t06.native-dual-writer/v1"||
   !sha.test(String(report.sha??""))||!model.test(String(report.requestedModel??""))||
-  report.executionKind!=="NATIVE_PI_RPC_WRITER_WITH_TWO_MANUAL_TERMINAL_APPROVALS"||
-  report.consentMethod!==consentMethod||
+  !validProvenance(report.executionKind,report.consentMethod)||
   report.autoRetry!==false||report.autoMerge!==false||
   report.accepted!==false||report.globalFull!==false||
   report.modelCostVerified!==false||report.billingVerified!==false||
