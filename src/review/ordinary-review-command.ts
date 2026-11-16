@@ -11,6 +11,7 @@ import {runJudgmentDay} from "./judgment-day.js";
 import {projectOddReviewHandoff,proposeJudgmentFixHandoff,type ScopedOddTodo,type JudgmentFixHandoff} from "./odd-agent-review-flow.js";
 import type {StoredJudgmentFixProposal} from "./judgment-fix-proposal-journal.js";
 import {draftOddFromStoredFix} from "./judgment-fix-odd-draft.js";
+import {inspectLiveFixCandidate} from "./judgment-fix-odd-preflight.js";
 import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
@@ -488,7 +489,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
    if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
    return fixProposals.list(context);
   }
-  const fixPlanMatch=/^fix-plan ([a-f0-9]{64})$/u.exec(command);
+  const fixPlanMatch=/^fix-plan ([a-f0-9]{64})(?: (verify))?$/u.exec(command);
   if(fixPlanMatch){
    if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
    return (async()=>{
@@ -510,8 +511,13 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     validate();
     if(!current||JSON.stringify(current)!==first)
      throw new Error("Fix proposal changed during ODD draft preparation");
-    context.ui.notify(JSON.stringify(draft,null,2),draft.status==="manual-triage-required"?"error":"info");
-    return draft;
+    // 'verify' reads the live Git candidate. A matching tree is evidence of
+    // source identity, never permission to write or an ODD plan submission.
+    const result=fixPlanMatch[2]==="verify"?
+     Object.freeze({draft,candidateCheck:inspectLiveFixCandidate(draft)}):draft;
+    validate();
+    context.ui.notify(JSON.stringify(result,null,2),draft.status==="manual-triage-required"?"error":"info");
+    return result;
    })();
   }
   const oddMatch=/^todo (todo-[a-f0-9-]{36})(?: (adaptive))?$/u.exec(command);
@@ -572,7 +578,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review fix-plan <id> | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");
