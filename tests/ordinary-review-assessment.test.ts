@@ -5,6 +5,7 @@ import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {registerOrdinaryReviewCommand,truncateClaim,boundedFindingClaims,REVIEW_FINDING_CLAIM_MAX_BYTES,REVIEW_FINDING_CLAIMS_MAX_BYTES} from "../src/review/ordinary-review-command.js";
+import {isIssuedJudgmentFixHandoff} from "../src/review/odd-agent-review-flow.js";
 import {createNativeRddControl,type ExecFileResult,type NativeRddObservation} from "../src/review/native-rdd-control.js";
 import type {PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-reviewer.js";
 import type {ReviewLens} from "../src/review/review-risk.js";
@@ -34,7 +35,7 @@ function editorAnswer(title:string):string{
  return "Check the task requirements";
 }
 /** One interactive workspace review driven by a host-injected read-only native control whose own notifications are recorded. */
-function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent",{model?:string;thinking?:"high"}>>={},failFixProfile=false){
+function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent",{model?:string;thinking?:"high"}>>={},failFixProfile=false,fixHooks?:NonNullable<Parameters<typeof registerOrdinaryReviewCommand>[4]>,judgeVerdict:"pass"|"fail"="pass"){
  const root=repository(t),messages:string[]=[],trace:{operation:string,notified:string[]}[]=[],modelCalls:string[]=[],consentPrompts:{title:string;message:string}[]=[];
  const control={async observe(operation:string,context:{ui:{notify(message:string,level:"info"|"error"):void}}):Promise<NativeRddObservation>{
   const notified:string[]=[];trace.push({operation,notified});
@@ -42,11 +43,11 @@ function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObse
   return typeof observation==="function"?observation():observation;
  }};
  const commands=new Map<string,Command>();
- registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control as never,async(_context,lens)=>{if(lens==="jd-fix-agent"&&failFixProfile)throw new Error("No se pudo cargar el perfil Fix");return lensChoices[lens];});
+ registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control as never,async(_context,lens)=>{if(lens==="jd-fix-agent"&&failFixProfile)throw new Error("No se pudo cargar el perfil Fix");return lensChoices[lens];},undefined,fixHooks);
  const registry={getAvailable:()=>[author,reviewer,reviewerTwo],hasConfiguredAuth:(model:PiReviewerModel)=>model.provider!=="author-provider",
   streamSimple:(model:PiReviewerModel)=>{
    modelCalls.push(model.provider+"/"+model.id);
-   const answer={verdict:"pass",summary:"Reviewed the exact diff",findings:[]};
+   const answer={verdict:judgeVerdict,summary:"Reviewed the exact diff",findings:judgeVerdict==="fail"?[{id:"R-1",severity:"high",path:"target.txt",description:"Corregir defecto confirmado"}]:[]};
    return (async function*(){yield {type:"done" as const,reason:"stop" as const,message:{content:[{type:"text",text:JSON.stringify(answer)}],role:"assistant",provider:model.provider}};})();
   }} as unknown as PiReviewRegistry;
  const context={cwd:root,hasUI:true,modelRegistry:registry,model:author,sessionManager:{getSessionId:()=>"session-assess"},
@@ -359,5 +360,54 @@ test("resiliencia 4R: error del perfil Fix conserva los dos dictámenes y bloque
  assert.equal(result.fixHandoff.status,"blocked");
  assert.ok(result.fixHandoff.blockers.some(x=>/profile lookup unavailable/u.test(x)));
  assert.equal(result.fixHandoff.autoLaunch,false);
+ assert.equal(result.acceptance,"not-accepted");
+});
+
+
+test("T08 propuesta de dos jueces se persiste sin autorizar Writer y se consulta solo en lectura",async t=>{
+ const received:{genuine:boolean;status:string;paths:readonly string[]}[]=[];
+ const id="b".repeat(64);
+ const hooks:NonNullable<Parameters<typeof registerOrdinaryReviewCommand>[4]>={
+  record:async(_context,proposal)=>{
+   received.push({genuine:isIssuedJudgmentFixHandoff(proposal),status:proposal.status,paths:proposal.paths});
+   return {id};
+  },
+  list:async()=>[]
+ };
+ const state=setup(t,unconfigured(),true,{},false,hooks,"fail");
+ const result=await state.handler("workspace judgment-day",state.context) as {
+  status:string;fixStorage:string;fixProposalId:string;
+  fixHandoff:{status:string;writerAuthority:boolean};
+  acceptance:string;autoMerge:boolean
+ };
+ assert.equal(result.status,"findings-require-review");
+ assert.deepEqual(state.modelCalls,["review-provider/reviewer-one","review-provider/reviewer-two"]);
+ assert.deepEqual(received,[{genuine:true,status:"fix-planning-required",paths:["target.txt"]}]);
+ assert.equal(result.fixStorage,"stored");
+ assert.equal(result.fixProposalId,id);
+ assert.equal(result.fixHandoff.writerAuthority,false);
+ assert.equal(result.acceptance,"not-accepted");
+ assert.equal(result.autoMerge,false);
+ assert.deepEqual(await state.handler("fixes",state.context),[]);
+});
+
+test("T08 error persistiendo Fix no invalida revisión genuina ni inicia otro Worker",async t=>{
+ let calls=0;
+ const hooks:NonNullable<Parameters<typeof registerOrdinaryReviewCommand>[4]>={
+  record:async()=>{calls++;throw new Error("disco inaccesible");},
+  list:async()=>[]
+ };
+ const state=setup(t,unconfigured(),true,{},false,hooks,"fail");
+ const result=await state.handler("workspace judgment-day",state.context) as {
+  status:string;fixStorage:string;fixProposalId?:string;
+  acceptance:string;fixAgent:string;fixHandoff:{status:string}
+ };
+ assert.equal(result.status,"findings-require-review");
+ assert.equal(result.fixStorage,"unavailable");
+ assert.equal(result.fixProposalId,undefined);
+ assert.equal(result.fixHandoff.status,"fix-planning-required");
+ assert.equal(result.fixAgent,"not-launched");
+ assert.deepEqual(state.modelCalls,["review-provider/reviewer-one","review-provider/reviewer-two"]);
+ assert.equal(calls,1);
  assert.equal(result.acceptance,"not-accepted");
 });
