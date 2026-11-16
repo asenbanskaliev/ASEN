@@ -1,6 +1,6 @@
 /** T09: comparación A/B de resultados observados, sin convertir un informe
  * aportado por un agente en una aprobación de calidad o equivalencia FULL. */
-export type AgentFlowBenchmarkSystem="asen"|"gentle-shell";
+export type AgentFlowBenchmarkSystem="asen"|"reference";
 export interface AgentFlowBenchmarkObservation{
  readonly system:AgentFlowBenchmarkSystem;
  readonly runId:string;
@@ -41,7 +41,7 @@ const digest=/^[0-9a-f]{64}$/u;
 const commit=/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u;
 const platforms=new Set(["linux","win32","darwin"]);
 const valid=(x:AgentFlowBenchmarkObservation):boolean=>!!x&&
- (x.system==="asen"||x.system==="gentle-shell")&&
+ (x.system==="asen"||x.system==="reference")&&
  typeof x.runId==="string"&&x.runId.length>0&&x.runId.length<=128&&
  /^[\w.-]+$/u.test(x.runId)&&commit.test(x.commit)&&
  [x.inputDigest,x.toolsDigest,x.permissionsDigest,x.evidenceDigest].every(v=>typeof v==="string"&&digest.test(v))&&
@@ -64,7 +64,7 @@ export function compareAgentFlowAB(input:{
  readonly reference:AgentFlowBenchmarkObservation;
 }):AgentFlowABComparison{
  if(!input||!valid(input.asen)||!valid(input.reference)||
-  input.asen.system!=="asen"||input.reference.system!=="gentle-shell")
+  input.asen.system!=="asen"||input.reference.system!=="reference")
   throw new Error("Invalid A/B agent-flow observations");
  const {asen,reference}=input,blockers:string[]=[];
  if(asen.runId===reference.runId)blockers.push("Duplicate benchmark run identity");
