@@ -3,6 +3,7 @@ import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime
 import type {ProfileLayer} from "./profiles.js";
 import type {Candidate} from "../../core/types.js";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../../flow/odd-routing.js";
+import {inspectStoredFixSourceTree} from "../../review/judgment-fix-odd-preflight.js";
 import {decideLifecycleApplicability} from "../../lifecycle/applicability.js";
 import {issueOrganicWriterAdmission} from "../../lifecycle/skill-lifecycle.js";
 import {buildOrchestrationPlan} from "../../orchestration/orchestrator.js";
@@ -52,6 +53,14 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  const originalScope=facts.scope;
  const exactSurfaces=facts.writes.map(write=>write.path);
  if(exactSurfaces.length!==surfaces.length||exactSurfaces.some((surface,index)=>surface!==surfaces[index])||exactSurfaces.some(surface=>!originalScope.expectedPaths.includes(surface)))return {reason:"The persisted worker write scope differs from the exact ODD request."};
+ if(metadata.fixSource){
+  try{
+   const observed=inspectStoredFixSourceTree(identity.projectId,exactSurfaces,
+    metadata.fixSource.treeIdentity);
+   if(observed.repositoryHead!==candidate.revision)
+    return {reason:"Fix ODD Git HEAD differs from its saved candidate"};
+  }catch{return {reason:"Fix ODD reviewed tree changed; rebuild the plan before Writer approval"};}
+ }
  const candidateBound={id:candidate.id,repository:candidate.repository,revision:candidate.revision,createdAt:candidate.createdAt},decision=planOddRoute(facts);
  let plan:ReturnType<typeof buildOrchestrationPlan>;
  try{plan=buildOrchestrationPlan({taskId:facts.taskIdentity,repository:identity.projectId,prompt:instruction,candidate:candidateBound,writeSurfaces:exactSurfaces,...(metadata.skillSelection.selectionProfile?{selectionProfile:metadata.skillSelection.selectionProfile}:{}),...(input.runtimeProfiles?{runtimeProfiles:input.runtimeProfiles}:{})},decision);}catch{return {reason:"The original ODD route no longer authorizes this worker plan."};}
@@ -122,6 +131,14 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   let head:string;try{head=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The project stopped being a readable Git candidate; no writer was launched."};}
   if(head!==prepared.candidate.revision)return {status:"blocked",reason:"The project changed while awaiting authorization; rebuild the plan against the current candidate."};
   await input.validateIdentity();
+  if(task.plan.fixSource){
+   try{
+    const observed=inspectStoredFixSourceTree(input.identity.projectId,
+     prepared.writeSurfaces,task.plan.fixSource.treeIdentity);
+    if(observed.repositoryHead!==prepared.candidate.revision)
+     return {status:"blocked",reason:"Fix ODD candidate changed while awaiting Writer approval"};
+   }catch{return {status:"blocked",reason:"Fix ODD reviewed tree changed while awaiting Writer approval"};}
+  }
   const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
   try{
    const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(fresh,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
