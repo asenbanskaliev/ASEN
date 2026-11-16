@@ -114,3 +114,15 @@ La extracción estructural de `ordinary-review-command.ts` se deja pendiente par
 **Resilience (resiliencia):** `not-observed` jamás dispara un reintento, porque el plan puede estar archivado o pudo completarse una operación con respuesta perdida. Un registro inconsistente se bloquea y exige consulta del diario antes de cualquier acción. La recuperación no añade tareas, no altera estados y no relanza agentes.
 
 **Cierre pendiente:** validar el SHA exacto con CI completo, Release Gate y pruebas negativas. No confundir la auditoría interna 4R con la revisión independiente T10, ni las sesiones NVIDIA de lectura con Writers Pi autorizados. PR #61 sin fusionar y `globalFull:false`.
+
+## Segunda revisión 4R — archivos históricos de un Fix (2026-11-16)
+
+**Risk:** antes `/asen-review fix-plan <id> status` solo leía tareas activas, por lo que no detectaba un Worker ya archivado. La nueva fuente `SessionTodoStore.archived` mantiene identidad por sesión y proyecto, sin reutilizar aprobaciones ni disparar intentos automáticos. Cada archivo se comprueba contra su huella SHA-256 y sus estados terminales; el fallo bloquea la lectura.
+
+**Readability:** `judgment-fix-odd-recovery.ts` separa el origen `active/archive` de sus estados `worker-observed/archived-worker-observed/not-observed/inconsistent`. El comando consulta cada fuente dos veces, valida estabilidad y compara la propuesta original por separado.
+
+**Reliability:** se rechazan tareas duplicadas entre almacén activo e histórico, referencias al informe falsas, rutas alteradas y estados no terminales en archivos. Se incorpora una prueba con `SessionTodoStore.openProjectScoped`, transición a `done` y archivado **real**, más corrupción con JSON válido y huella incorrecta.
+
+**Resilience:** el estado histórico no desencadena relanzamiento. Si el archivo no está disponible, ha cambiado o no es verificable, la consulta falla cerrada y pide inspección humana. `done` en el diario no demuestra que la corrección haya pasado una revisión independiente.
+
+**Límite de validez:** auditoría interna, no revisión independiente T10. A falta de CI y Release Gate correctos para el SHA final no se considera completada esta tanda. No se ha realizado Writer Pi de producción ni aprobación humana individual; `globalFull:false`.
