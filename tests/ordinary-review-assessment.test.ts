@@ -366,6 +366,23 @@ test("resiliencia 4R: error del perfil Fix conserva los dictámenes con hallazgo
 });
 
 
+test("resiliencia 4R: sin hallazgos no solicita el perfil Fix ni inventa una reparación",async t=>{
+ const state=setup(t,unconfigured(),true,{},true,undefined,"pass");
+ const result=await state.handler("workspace judgment-day",state.context) as {
+  status:string;fixAgent:string;
+  fixHandoff:{status:string;blockers:string[];autoLaunch:boolean;writerAuthority:boolean};
+  acceptance:string
+ };
+ assert.equal(result.status,"analysis-complete");
+ assert.deepEqual(state.modelCalls,["review-provider/reviewer-one","review-provider/reviewer-two"]);
+ assert.equal(result.fixHandoff.status,"not-needed");
+ assert.deepEqual(result.fixHandoff.blockers,[]);
+ assert.equal(result.fixHandoff.autoLaunch,false);
+ assert.equal(result.fixHandoff.writerAuthority,false);
+ assert.equal(result.fixAgent,"not-launched");
+ assert.equal(result.acceptance,"not-accepted");
+});
+
 test("T08 propuesta de dos jueces se persiste sin autorizar Writer y se consulta solo en lectura",async t=>{
  const received:{genuine:boolean;status:string;paths:readonly string[]}[]=[];
  const id="b".repeat(64);
