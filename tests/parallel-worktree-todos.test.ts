@@ -11,7 +11,7 @@ import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-s
 import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
 import {ParentSupervisorClaimJournal} from "../src/runtime/agents/parallel-parent-supervisor-claims.js";
-import {launchParentApprovedWorkers} from "../src/runtime/agents/parallel-parent-supervisor.js";
+import {launchParentApprovedWorkers,type ParentSupervisorReadyWorker} from "../src/runtime/agents/parallel-parent-supervisor.js";
 import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../src/runtime/agents/task-agent-link-store.js";
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
@@ -578,14 +578,15 @@ test("T06 cancelación entre Workers conserva el primero y prohíbe relanzar el 
   },
   confirmBatch:async()=>true,
   confirmWorker:async()=>true,
-  launchChild:async(unit:Readonly<{childTodoId:string}>,confirm:(task:Readonly<{
+  launchChild:async(unit:ParentSupervisorReadyWorker,confirm:(task:Readonly<{
    id:string;title:string;role:string;instruction:string;
    writeSurfaces?:readonly string[];candidateRevision?:string
   }>)=>Promise<boolean>,validateExact:()=>Promise<void>)=>{
    await validateExact();
    const approved=await confirm({
     id:unit.childTodoId,title:"Worker hijo",role:"worker",
-    instruction:"Solo los archivos aprobados"
+    instruction:"Solo los archivos aprobados",
+    writeSurfaces:unit.writeSurfaces,candidateRevision:unit.baseRevision
    });
    if(!approved)return {status:"blocked" as const,reason:"Permiso denegado"};
    launched++;
