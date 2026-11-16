@@ -20,6 +20,13 @@ export type T08ApprovalDecision=Readonly<{
  readonly costVerified:false;
 }>;
 const repo="asenbanskaliev/ASEN",branch="feat/flujo-de-agentes-20261115";
+/** Medida temporal: el proveedor ha recibido informes públicos de respuestas
+ * sin texto final del modelo Ultra. No es una autorización ni un cambio
+ * del límite de revisión: evita repetir llamadas fallidas con coste desconocido.
+ * https://forums.developer.nvidia.com/t/nemotron-3-ultra-550b-a55b-corrupted-reasoning-and-empty-responses-on-nvidia-api-and-playground/388780 */
+export const T08_UNRELIABLE_MODEL="nvidia/nemotron-3-ultra-550b-a55b";
+export const isT08UnreliableModel=(value:unknown):boolean=>
+ value===T08_UNRELIABLE_MODEL;
 const record=(v:unknown):v is Record<string,unknown>=>
  v!==null&&typeof v==="object"&&!Array.isArray(v)&&
  Object.getPrototypeOf(v)===Object.prototype;
@@ -46,6 +53,8 @@ export function validateT08GithubApprovals(input:{
   !/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u.test(model))||
   new Set(models).size!==3)
   return blocked("La prueba exige tres rutas NVIDIA explícitas y distintas");
+ if(models.some(isT08UnreliableModel))
+  return blocked("T08 bloquea temporalmente Nemotron 3 Ultra: el proveedor ha recibido informes de dictámenes vacíos");
  if(!record(run)||run.id!==Number(context.runId)||
   run.event!=="workflow_dispatch"||run.head_sha!==context.sha||
   run.head_branch!==branch||run.run_attempt!==1||
@@ -102,6 +111,8 @@ export async function requireLiveT08GithubApprovals(
     !/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u.test(model)
   )||new Set([context.reviewerA,context.reviewerB,context.writerModel]).size!==3)
   throw Error("T08 requiere identidad, SHA, coste y tres modelos NVIDIA distintos");
+ if([context.reviewerA,context.reviewerB,context.writerModel].some(isT08UnreliableModel))
+  throw Error("T08 bloqueado antes de llamar a NVIDIA: Nemotron 3 Ultra devuelve respuestas vacías conocidas");
  const token=env.GITHUB_TOKEN;
  if(!token||token.length<20)throw Error("T08 requiere un token GitHub con Actions:read");
  const base="https://api.github.com/repos/"+repo+"/actions/runs/"+context.runId;
