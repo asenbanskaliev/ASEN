@@ -42,3 +42,17 @@ test("T06 no incluye credenciales NVIDIA en preparación ni aprobación",()=>{
  assert.match(protectedWriter,/timeout 420s/u);
  assert.match(protectedWriter,/if-no-files-found: warn/u);
 });
+
+test("T06 conecta el diario privado de autoría antes de abrir el Writer",()=>{
+ const source=load("scripts/t06-nvidia-dual-writer-native.ts");
+ const pi=load("src/agents/pi-process-runner.ts");
+ const authority=load("extensions/authority.ts");
+ assert.match(source,/mkdtempSync\(join\(tmpdir\(\),"asen-t06-attribution-"\)\)/u);
+ assert.match(source,/const attributionFile=join\(attributionDir,"workspace.json"\)/u);
+ assert.match(source,/PersistentWorkspaceStore\.open\(attributionFile\)/u);
+ assert.match(source,/attributionFile,/u);
+ assert.match(source,/verifyT06WorkspaceAttribution\(/u);
+ assert.match(source,/assessment\.passed/u);
+ assert.match(pi,/this\.options\.attributionFile/u);
+ assert.match(authority,/!authority\.agentId\|\|!authority\.sessionId\|\|!authority\.attributionFile/u);
+});
