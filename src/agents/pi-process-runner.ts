@@ -463,6 +463,7 @@ export class PiProcessRunner implements AgentRunner{
      if(strictNativeSettlement&&type==="response"&&response.id===request.id&&
         response.success===true)strictPromptAck=true;
      if(strictNativeSettlement&&type==="agent_start"){
+      agentEnded=false;
       strictMessageEnd=false;strictAgentEnd=false;strictAgentWillRetry=false;
      }
      if(strictNativeSettlement&&type==="message_end"&&
