@@ -129,3 +129,22 @@ test("T08 disagreement requires human triage, not an automatic corrective task",
  assert.equal(result.writerAuthority,false);
  closeWorkspaceReview(workspace);
 });
+
+test("Resilience: un perfil Fix inaccesible bloquea el siguiente paso sin perder el dictamen",async t=>{
+ const {workspace,evidence}=fixture(t),models=registry("fail","fail");
+ const report=await runJudgmentDay({
+  registry:models.value,author,judgeA:a,judgeB:b,evidence,requirements:"Comprobar cambios"
+ });
+ const handoff=proposeJudgmentFixHandoff({
+  report,evidence,fixProfileUnavailable:true
+ });
+ assert.equal(isIssuedJudgmentDayReport(report),true);
+ assert.equal(report.status,"findings-require-review");
+ assert.equal(handoff.status,"blocked");
+ assert.deepEqual(handoff.paths,["code.ts"]);
+ assert.ok(handoff.blockers.some(x=>/profile lookup unavailable/u.test(x)));
+ assert.equal(handoff.fixModelActual,"unknown");
+ assert.equal(handoff.writerAuthority,false);
+ assert.equal(handoff.autoLaunch,false);
+ closeWorkspaceReview(workspace);
+});
