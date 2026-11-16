@@ -72,6 +72,7 @@ function nativeRegistry(
    const runner=new PiProcessRunner({
     command:process.env.PI_EXECUTABLE??"pi",policyRoot,
     providerCredential:"NVIDIA_API_KEY",noTools:true,
+    requireFinalSettlement:true,
     timeoutMs:150_000,maxOutputBytes:95_000,maxStreamBytes:512_000,
     onProcessStart:p=>{pid=p;},onToolExecution:()=>{toolEvents++;},
     onAssistantTextDelta:event=>{
@@ -97,7 +98,7 @@ function nativeRegistry(
    if(options?.signal?.aborted||!result.ok||!pid||observed!==requested||toolEvents)
     throw Error("No se pudo verificar el proceso, modelo o aislamiento del juez Pi");
    let text:string;
-   try{text=parseT08NativeReviewText(result.output);}
+   try{text=parseT08NativeReviewText(result.output,{requireFinalSettlement:true});}
    catch(error){
     // Nunca se usa el texto parcial para fingir un dictamen final.
     const reason=error instanceof Error?error.message:"formato Pi desconocido";
