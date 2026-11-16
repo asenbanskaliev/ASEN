@@ -51,7 +51,7 @@ test("No se admite ningún intento ambiguo, falso o abortado",()=>{
   assert.throws(()=>extractSettledPiArtifact(emit(records),id));
 });
 test("Se rechazan herramientas y contenido vacío incluso durante la recuperación",()=>{
- const tools=sample();
+ const tools:unknown[]=sample();
  tools.splice(2,1,{type:"message_end",message:{role:"assistant",
   stopReason:"error",content:[{type:"toolCall",name:"bash"}]}});
  assert.throws(()=>extractSettledPiArtifact(emit(tools),id),/tools/u);
