@@ -224,8 +224,12 @@ async function main():Promise<void>{
   }
   const evidence={
    schema:"asen.t06.native-dual-writer/v1",sha:expected,piVersion:version,
-   executionKind:"NATIVE_PI_RPC_WRITER_WITH_TWO_MANUAL_TERMINAL_APPROVALS",
-   consentMethod:"two-distinct-interactive-parent-terminal-prompts-not-native-pi-TUI",
+   executionKind:githubMode?
+    "NATIVE_PI_RPC_WRITER_WITH_TWO_GITHUB_APPROVALS":
+    "NATIVE_PI_RPC_WRITER_WITH_TWO_MANUAL_TERMINAL_APPROVALS",
+   consentMethod:githubMode?
+    "two-distinct-github-environment-human-approvals-not-native-pi-TUI":
+    "two-distinct-interactive-parent-terminal-prompts-not-native-pi-TUI",
    requestedModel:model,modelCostVerified:false,billingVerified:false,
    distinctWorktrees:true,distinctSessions:true,concurrent,
    workers:workers.map(r=>{
