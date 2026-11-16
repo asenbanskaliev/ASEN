@@ -23,7 +23,7 @@ function validChanges(changes:ParallelWorktreeChangeInspection):boolean{
  const path=(value:unknown):value is string=>
   typeof value==="string"&&value.length>0&&value.length<=1024&&
   value===value.normalize("NFC")&&
-  !/[\\\\:\\u0000-\\u001f\\u007f-\\u009f\\p{Cf}]/u.test(value)&&
+  !/[\\:\u0000-\u001f\u007f-\u009f\p{Cf}]/u.test(value)&&
   !value.startsWith("/")&&
   value.split("/").every(part=>part!==""&&part!=="."&&part!==".."&&part.toLowerCase()!==".git");
  const changed=changes.changedPaths,out=changes.outOfScopePaths;
