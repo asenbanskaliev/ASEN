@@ -483,7 +483,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
  record:(context:ReviewCommandContext,proposal:JudgmentFixHandoff)=>Promise<{id:string}>;
  list:(context:ReviewCommandContext)=>Promise<readonly StoredJudgmentFixProposal[]>;
  plan?:(context:ReviewCommandContext,raw:string,source:Readonly<{proposalId:string;treeIdentity:string}>)=>Promise<string>;
-}>):OrdinaryReviewCommandController{
+}>,readArchivedOddTodos?:(context:ReviewCommandContext)=>Promise<readonly ScopedOddTodo[]>):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
@@ -521,15 +521,20 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
       row.requestId===workerRequest||row.plan?.fixSource?.proposalId===draft.sourceProposalId);
      const firstTodos=relevant(await readOddTodos(context));
      validate();
+     const firstArchived=readArchivedOddTodos?relevant(await readArchivedOddTodos(context)):[];
+     validate();
      const secondTodos=relevant(await readOddTodos(context));
      validate();
-     if(JSON.stringify(firstTodos)!==JSON.stringify(secondTodos))
+     const secondArchived=readArchivedOddTodos?relevant(await readArchivedOddTodos(context)):[];
+     validate();
+     if(JSON.stringify(firstTodos)!==JSON.stringify(secondTodos)||
+      JSON.stringify(firstArchived)!==JSON.stringify(secondArchived))
       throw new Error("Fix Todo journal changed during recovery; do not retry any dispatch");
      const finalProposal=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
      validate();
      if(!finalProposal||JSON.stringify(finalProposal)!==first)
       throw new Error("Fix proposal changed during Todo recovery");
-     const result=inspectFixOddRecovery({draft,identity,todos:secondTodos});
+     const result=inspectFixOddRecovery({draft,identity,todos:secondTodos,archivedTodos:secondArchived});
      context.ui.notify(JSON.stringify(result,null,2),result.status==="inconsistent"?"error":"info");
      return result;
     }
