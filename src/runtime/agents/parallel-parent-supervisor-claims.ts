@@ -89,7 +89,7 @@ export class ParentSupervisorClaimJournal{
     sameWorkspaceIdentityPath(previous.sourceProjectId,claim.sourceProjectId)||
     previous.children.some(used=>claim.children.some(next=>
      used.childSessionId===next.childSessionId||
-     sameWorkspaceIdentityPath(used.childProjectId,next.childProjectId))))))
+     sameWorkspaceIdentityPath(used.childProjectId,next.childProjectId)))))
     throw new Error("Source supervisor batch previously claimed; inspect durable child results, never auto-retry");
    journal.claims.push(claim);journal.revision++;
    await atomicWriteText(this.file,JSON.stringify(validate(JSON.stringify(journal)))+"\n");
