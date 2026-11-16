@@ -1933,7 +1933,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      existing.candidateTreeIdentity!==source.treeIdentity)
      throw new Error("Fix ODD source proposal is unavailable or in dispute");
     inspectStoredFixSourceTree(projectId,existing.paths,source.treeIdentity);
-    const result=await preparePlan(raw,context as CommandContext,false,true,source);
+    const result=await preparePlan(raw,context as unknown as CommandContext,false,true,source);
     if(manager.getSessionId()!==sessionId||
      !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
      context.signal?.aborted)
