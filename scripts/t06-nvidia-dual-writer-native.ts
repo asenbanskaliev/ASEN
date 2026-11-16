@@ -234,6 +234,14 @@ async function main():Promise<void>{
   const intervals=results.flatMap(r=>r.status==="fulfilled"?[r.value]:[]);
   const concurrent=intervals.length===2&&intervals.every(r=>r.startedAt!==null&&r.endedAt!==null)&&
    Math.max(...intervals.map(r=>r.startedAt!))<Math.min(...intervals.map(r=>r.endedAt!));
+  // Intervalos reales observados por el proceso padre; no son latencia de red,
+  // coste ni una comparación con Gentle Shell.
+  const observedWindowMs=concurrent?
+   Math.ceil(Math.max(...intervals.map(r=>r.endedAt!))-
+    Math.min(...intervals.map(r=>r.startedAt!))):null;
+  const observedOverlapMs=concurrent?
+   Math.ceil(Math.min(...intervals.map(r=>r.endedAt!))-
+    Math.max(...intervals.map(r=>r.startedAt!))):null;
   let review:{status:string;reviews:readonly unknown[]}={
    status:"NOT_RUN_WRITERS_UNVERIFIED",reviews:[]
   };
@@ -255,6 +263,7 @@ async function main():Promise<void>{
     "two-distinct-interactive-parent-terminal-prompts-not-native-pi-TUI",
    requestedModel:model,modelCostVerified:false,billingVerified:false,
    distinctWorktrees:true,distinctSessions:true,concurrent,
+   observedWindowMs,observedOverlapMs,
    workers:workers.map(r=>{
     const {startedAt:_start,endedAt:_end,...safe}=r;
     return safe;
