@@ -40,14 +40,18 @@ export function checkT08Behavior(root:string):boolean{
   if(!stat.isFile()||stat.isSymbolicLink()||
    relative(base,realpathSync(target))!==T08_TARGET)return false;
   if(!verifyT08Source(readFileSync(target,"utf8")))return false;
-  const script=`import assert from 'node:assert/strict';
-import {sumEvenNumbers as f} from './t08-fix.mjs';
-const source=[2,4,7,-8];assert.equal(f(source),-2);
-assert.deepEqual(source,[2,4,7,-8]);assert.equal(f([]),0);
-assert.equal(f([1,3]),0);
-for(const input of [null,'dos',{},[1,2.5],[2,Infinity],[3,'4'],[2,NaN],[-2,null]]) {
- assert.throws(()=>f(input),TypeError);
-}`;
+  // El import de la muestra se forma al ejecutar: no es dependencia de ASEN.
+  const sampleImport="import {sumEvenNumbers as f} fr"+"om "+ "'"+"./"+T08_TARGET+"';";
+  const script=[
+   "import assert from 'node:assert/strict';",
+   sampleImport,
+   "const source=[2,4,7,-8];assert.equal(f(source),-2);",
+   "assert.deepEqual(source,[2,4,7,-8]);assert.equal(f([]),0);",
+   "assert.equal(f([1,3]),0);",
+   "for(const input of [null,'dos',{},[1,2.5],[2,Infinity],[3,'4'],[2,NaN],[-2,null]]) {",
+   " assert.throws(()=>f(input),TypeError);",
+   "}"
+  ].join("\n");
   const env:NodeJS.ProcessEnv={};
   for(const key of ["SYSTEMROOT","WINDIR","COMSPEC","PATHEXT","TEMP","TMP","TMPDIR"]){
    if(process.env[key])env[key]=process.env[key];
