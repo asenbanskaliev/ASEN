@@ -19,13 +19,13 @@ export function checkT06Behavior(root:string,target:string,fn:string):boolean{
   if(relative(canonicalRoot,file)!==target)return false;
  }catch{return false;}
  const code=fn==="sumEvenNumbers"?
-  "import assert from 'node:assert/strict';import {sumEvenNumbers as f} from './"+
+  "import assert from 'node:assert/strict';import {sumEvenNumbers as f} from "+"'"+"./"+
   target+"';let input=[2,4,7,-8];assert.equal(f(input),-2);"+
   "assert.deepEqual(input,[2,4,7,-8]);assert.equal(f([]),0);"+
   "assert.equal(f([1,3,5]),0);assert.throws(()=>f('not-array'),TypeError);"+
   "assert.throws(()=>f([1,2.5]),TypeError);"+
   "assert.throws(()=>f([1,Infinity]),TypeError);":
-  "import assert from 'node:assert/strict';import {normalizeNames as f} from './"+
+  "import assert from 'node:assert/strict';import {normalizeNames as f} from "+"'"+"./"+
   target+"';const names=[' Ana ','ana','BETA',' beta ',' '];"+
   "assert.deepEqual(f(names),['ana','beta']);"+
   "assert.deepEqual(names,[' Ana ','ana','BETA',' beta ',' ']);"+
