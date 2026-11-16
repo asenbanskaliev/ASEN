@@ -110,3 +110,30 @@ test("4R preserves blocking findings rather than synthesizing an approval",async
  assert.equal(bundle.acceptance,"not-accepted");
  closeWorkspaceReview(workspace);
 });
+
+test("T03 rechaza modelos Pi falsificados, controles y duplicados antes de ofrecer revisión 4R",()=>{
+ const valid={provider:"nvidia",id:"meta-llama/llama-3.3-70b-instruct"};
+ const malformed:PiReviewerModel[]=[
+  {provider:"nvidia\nengancho",id:"modelo"},
+  {provider:"nvidia/otro",id:"modelo"},
+  {provider:"nvidia",id:"modelo\nmalicioso"},
+  {provider:"nvidia",id:"modelo//invalido"},
+  {provider:"nvidia",id:"modelo/../escape"},
+  {provider:"nvidia",id:""},
+  {provider:"nvidia",id:"model\u0000evil"}
+ ];
+ const entries=[author,valid,{...valid},...malformed];
+ const eligible=availableIndependentPiReviewers({
+  getAvailable:()=>entries,
+  hasConfiguredAuth:()=>true,
+  streamSimple:()=>{throw new Error("No se debe ejecutar ninguna llamada");}
+ },author);
+ assert.deepEqual(eligible,[valid]);
+ assert.equal(Object.isFrozen(eligible),true);
+ assert.equal(Object.isFrozen(eligible[0]!),true);
+ assert.deepEqual(availableIndependentPiReviewers({
+  getAvailable:()=>malformed,
+  hasConfiguredAuth:()=>true,
+  streamSimple:()=>{throw new Error("Sin ejecución");}
+ },author),[]);
+});
