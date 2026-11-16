@@ -28,7 +28,9 @@ jobs:
           node-version: "22.19.0"
       - run: npm ci --no-audit --no-fund
       - name: Compilar contratos y tipos
-        run: npm run typecheck
+        run: |
+          npm run typecheck
+          npx --no-install tsc -p tsconfig.t08.json
       - name: Aislamiento, modelos, recibos y permisos por Worker
         run: |
           node --import tsx --test \
@@ -52,7 +54,8 @@ jobs:
             tests/t09-audit-script.test.ts \
             tests/t08-github-approvals.test.ts \
             tests/t08-controlled-fixture.test.ts \
-            tests/t08-github-workflow-boundary.test.ts
+            tests/t08-github-workflow-boundary.test.ts \
+            tests/t08-isolated-repository.test.ts
   test:
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
