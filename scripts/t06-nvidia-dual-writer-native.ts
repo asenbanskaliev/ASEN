@@ -27,6 +27,8 @@ import {requireDistinctT06Approvals,t06LiveApprovalChallenge,type T06LiveWriterI
 import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js";
 import {checkT06Behavior} from "../src/runtime/agents/t06-behavior-isolation.js";
 import {requireLiveT06GithubApprovals} from "../src/runtime/agents/t06-github-approvals.js";
+import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import {assessT06WriterEvidence} from "../src/runtime/agents/t06-writer-evidence.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const definitions=[
@@ -90,10 +92,17 @@ async function nativeWriter(
   evidence.add(candidate,{id:intent.taskId+":"+name,kind,status:"pass",
    summary:"Autorización humana individual para el único archivo declarado",createdAt:new Date().toISOString()});
  }
+ // La extensión de autoridad deniega cualquier write sin un diario atribuible.
+ // El diario debe existir FUERA del worktree, en un directorio privado por hijo:
+ // almacenarlo dentro produciría un cambio Git fuera del único archivo autorizado.
+ const attributionDir=mkdtempSync(join(tmpdir(),"asen-t06-attribution-"));
+ const attributionFile=join(attributionDir,"workspace.json");
+ const attributionStore=await PersistentWorkspaceStore.open(attributionFile);
  let pid:number|null=null,startedAt:number|null=null,endedAt:number|null=null,observedModel:string|null=null;
- const events:Array<{type:string;name?:string;id?:string;error?:boolean}>=[];
+ const events:Array<{type:"tool_execution_start"|"tool_execution_end";name?:string;id?:string;error?:boolean}>=[];
  const runner=new PiProcessRunner({
   command:process.env.PI_EXECUTABLE??"pi",policyRoot,providerCredential:"NVIDIA_API_KEY",
+  attributionFile,
   timeoutMs:180_000,maxOutputBytes:80_000,maxStreamBytes:512_000,
   onProcessStart:processId=>{pid=processId;startedAt=performance.now();},
   onProcessClose:()=>{endedAt=performance.now();},
@@ -107,21 +116,34 @@ async function nativeWriter(
    value.model.id:value.model.provider+"/"+value.model.id;
  });
  const prompt=[
-  "Trabajo real autorizado SOLO para este archivo: "+target+".",
+  "TAREA DE ESCRITURA REAL: usa exactamente UNA llamada a la herramienta nativa write de Pi.",
+  "Ruta EXACTA y ÚNICA permitida en el worktree actual: "+target+".",
+  "Escribe en esa ruta el contenido íntegro del archivo. No basta una respuesta de texto o un bloque de código.",
+  "Función exportada obligatoria: "+fn+"; JavaScript ES2022, un único export function.",
   instruction,
-  "Escribe código JavaScript ES2022 en un solo archivo .mjs. Incluye una sola función exportada con el nombre "+fn+".",
-  "Usa la herramienta nativa write de Pi y no respondas solo con código en el chat.",
-  "Sin imports, sin dependencias externas, sin acceder a la red ni ejecutar comandos.",
-  "No modifiques ningún otro archivo, no hagas commit ni fusiones."
+  "Esta prueba tiene comprobaciones de comportamiento ya definidas por el supervisor, que se ejecutarán fuera de Pi.",
+  "No crees archivos de pruebas ni otros archivos; sin imports, dependencias, red, comandos o fusiones.",
+  "Después de la llamada write confirma brevemente qué archivo solicitaste escribir. No afirmes haber ejecutado pruebas."
  ].join("\n");
  const result=await new Dispatcher(runner,evidence).dispatch({
   id:intent.taskId+":worker",role:"worker",repository:root,
   isolationKey:intent.sessionId,prompt,candidate,writeSurfaces:[target],
   skillContext,skillPaths,writerAdmission,model,thinking:"minimal"
  });
- const starts=events.filter(e=>e.type==="tool_execution_start"&&e.name==="write");
- const ends=events.filter(e=>e.type==="tool_execution_end"&&e.name==="write"&&e.error===false);
- const realWrite=starts.length===1&&ends.length===1&&starts[0]?.id===ends[0]?.id;
+ // No asumir escritura exitosa a partir del texto de Pi ni de result.ok.
+ // La extensión ASEN debe haber persistido una atribución del hijo correcto.
+ let attributionVerified=false,attributionEntries=0;
+ try{
+  const records=await attributionStore.list({
+   sessionId:intent.sessionId,projectId:root,worktree:root
+  });
+  attributionEntries=records.length;
+  attributionVerified=records.length===1&&
+   records[0]?.change.path===target&&
+   records[0]?.change.actor.kind==="agent"&&
+   records[0]?.change.actor.id===intent.taskId+":worker"&&
+   records[0]?.change.operation==="create";
+ }catch{/* Diario ilegible: falla cerrado; nunca se finge atribución. */}
  const file=join(root,target),present=existsSync(file);
  const observedPaths=git(root,"status","--porcelain=v1","--untracked-files=all")
   .split(/\r?\n/u).filter(Boolean).map(row=>row.slice(3));
@@ -130,15 +152,23 @@ async function nativeWriter(
  if(present&&exactScope){
   try{verifySource(file,fn);syntaxOk=true;behaviorOk=checkT06Behavior(root,target,fn);}catch{}
  }
+ const assessment=assessT06WriterEvidence({
+  events,requestedModel:model,observedModel,
+  processObserved:pid!==null,nativeResultOk:result.ok,
+  attributionVerified,exactScope,syntaxOk,behaviorOk
+ });
  return Object.freeze({
   worker:intent.taskId,session:intent.sessionId,scope:target,
   requestedModel:model,observedModel:observedModel??"unknown",
-  processObserved:pid!==null,writeToolObserved:realWrite,
+  processObserved:pid!==null,writeToolObserved:assessment.writeToolObserved,
   nativeResultOk:result.ok,exactScope,syntaxOk,behaviorOk,
+  attributionVerified,attributionEntries,
+  writeStarts:assessment.writeStarts,writeSuccesses:assessment.writeSuccesses,
+  writeFailures:assessment.writeFailures,blockers:assessment.blockers,
   durationMs:startedAt!==null&&endedAt!==null?Math.round(endedAt-startedAt):null,
   startedAt,endedAt,
   fileSha256:present?digest(readFileSync(file)):null,
-  passed:result.ok&&realWrite&&exactScope&&syntaxOk&&behaviorOk&&observedModel===model&&pid!==null
+  passed:assessment.passed
  });
 }
 async function main():Promise<void>{
@@ -205,7 +235,7 @@ async function main():Promise<void>{
   ));
   const workers=results.map((outcome,i)=>outcome.status==="fulfilled"?outcome.value:{
    worker:intents[i]!.taskId,scope:intents[i]!.writeSurface,
-   passed:false,error:"Worker failed ambiguously; inspect its worktree and Pi process; do not retry"
+   passed:false,blockers:["worker-exception-needs-manual-inspection"],error:"Worker failed ambiguously; inspect its worktree and Pi process; do not retry"
   });
   const passed=results.every(r=>r.status==="fulfilled"&&r.value.passed);
   const intervals=results.flatMap(r=>r.status==="fulfilled"?[r.value]:[]);
