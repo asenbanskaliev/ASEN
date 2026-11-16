@@ -106,8 +106,8 @@ test("T08 rechaza duplicados cruzados, archivo no terminal y archivo falso",()=>
   {todos:[],archivedTodos:[source]},
   {todos:[],archivedTodos:[{...source,current:{...source.current,state:"done" as const},
    plan:{...source.plan!,fixSource:{proposalId:id,treeIdentity:"b".repeat(40)}}}]},
-  {todos:[],archivedTodos:[{...source,current:{...source.current,state:"done" as const},
-   currentSessionId:"otra-sesion"} as typeof source]},
+  {todos:[],archivedTodos:[{...source,current:{...source.current,state:"done" as const,
+   sessionId:"otra-sesion"}}]},
   {todos:[],archivedTodos:[{...source,current:{...source.current,state:"done" as const},
    requestId:"asen-plan:otro-fix:worker"}]},
  ];
