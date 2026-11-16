@@ -43,8 +43,9 @@ export function verifyT06NativeSnapshot(input:{
  const problems:string[]=[];
  let matched=0;
  const stop=(reason:string)=>{if(!problems.includes(reason))problems.push(reason);};
- const report=input?.report;
- if(!object(report)||report.schema!=="asen.t06.native-dual-writer/v1"||
+ const source:unknown=input?.report;
+ const report:Data=object(source)?source:{};
+ if(!object(source)||report.schema!=="asen.t06.native-dual-writer/v1"||
   !sha.test(String(report.sha??""))||!model.test(String(report.requestedModel??""))||
   report.executionKind!=="NATIVE_PI_RPC_WRITER_WITH_TWO_MANUAL_TERMINAL_APPROVALS"||
   report.consentMethod!==consentMethod||
@@ -67,7 +68,6 @@ export function verifyT06NativeSnapshot(input:{
   const row=workers[i],expectedScope=scopes[i]!,expectedWorker=workerIds[i]!;
   if(!object(row)||row.worker!==expectedWorker||row.scope!==expectedScope||
    typeof row.session!=="string"||!/^t06-child-[a-f0-9-]{36}$/u.test(row.session)||
-   !row.session.endsWith(String(row.session).slice(-36))||
    row.requestedModel!==report?.requestedModel||
    row.observedModel!==report?.requestedModel||
    row.processObserved!==true||row.writeToolObserved!==true||

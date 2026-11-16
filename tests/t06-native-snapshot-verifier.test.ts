@@ -22,7 +22,7 @@ function fixture(t:TestContext){
  git(source,"-c","user.name=ASEN","-c","user.email=asen@example.invalid",
   "-c","commit.gpgsign=false","commit","-qm","base");
  const commit=git(source,"rev-parse","HEAD");
- const roots=[join(dir,"writer-a"),join(dir,"writer-b")];
+ const roots=[join(dir,"writer-a"),join(dir,"writer-b")] as const;
  for(const root of roots)git(source,"worktree","add","--detach",root,commit);
  const workerIds=["t06-writer-a","t06-writer-b"] as const;
  const scopes=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
