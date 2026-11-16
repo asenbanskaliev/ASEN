@@ -41,7 +41,8 @@ jobs:
             tests/t06-native-review-receipt.test.ts \
             tests/t06-github-approvals.test.ts \
             tests/t06-github-workflow-boundary.test.ts \
-            tests/t06-writer-evidence.test.ts
+            tests/t06-writer-evidence.test.ts \
+            tests/t09-native-trial-readiness.test.ts
   test:
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
