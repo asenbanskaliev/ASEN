@@ -14,6 +14,7 @@ import {ParallelChildPlanClaimJournal} from "./parallel-child-plan-claims.js";
 import {ParentSupervisorClaimJournal} from "./parallel-parent-supervisor-claims.js";
 import {inspectParallelWorktreeChanges} from "./parallel-worktree-change-inspection.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
+import {inspectPlannedWorkerModelRoute} from "./parallel-worker-model-route.js";
 
 export interface ParentSupervisorReadyWorker{
  readonly sourceTodoId:string;
@@ -23,7 +24,9 @@ export interface ParentSupervisorReadyWorker{
  readonly batchId:string;
  readonly baseRevision:string;
  readonly writeSurfaces:readonly string[];
- readonly model:"unknown"|string;
+ readonly model:string;
+ readonly modelActual:"unknown";readonly modelConsumedProven:false;
+ readonly costVerified:false;
  readonly authorization:"fresh-per-worker-confirmation-required";
  readonly grantsAuthority:false;
 }
@@ -76,7 +79,7 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
  await input.validateParent();
  const batch=(await input.sourceJournal.list(input.source)).find(b=>b.id===input.batchId);
  if(!batch)throw new Error("Supervisor batch does not belong to active source Pi session");
- const blockers:string[]=[],tasks:ParentSupervisorReadyWorker[]=[];
+ const blockers:string[]=[],tasks:ParentSupervisorReadyWorker[]=[],childSessions=new Set<string>();
  if(batch.state!=="prepared")blockers.push("Batch is not fully prepared");
  const [sourceTodos,allLinks]=await Promise.all([
   input.loadTodos(input.source),input.sessionJournal.listSource(input.source)
@@ -98,6 +101,10 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    link.autoDispatch===false&&link.autoMerge===false);
   if(links.length!==1){blockers.push(label+"Child Pi session is not uniquely attached");continue;}
   const link=links[0]!;
+  if(link.childSessionId===input.source.sessionId||childSessions.has(link.childSessionId)){
+   blockers.push(label+"Child Pi session is reused or equals the parent session");continue;
+  }
+  childSessions.add(link.childSessionId);
   if(claims.filter(c=>c.batchId===batch.id&&c.sourceTodoId===task.taskId&&
    c.childSessionId===link.childSessionId&&same(c.childProjectId,link.childProjectId)).length!==1){
    blockers.push(label+"Independent child ODD plan is not claimed");continue;
@@ -138,11 +145,16 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    next.plan.writeSurfaces.some((v,i)=>v!==task.writeSurfaces[i])){
    blockers.push(label+"Child ODD has no exact dependency-ready scoped Worker; continue its ODD first");continue;
   }
+  const route=inspectPlannedWorkerModelRoute(next.plan.model);
+  if(route.status!=="pinned"){
+   blockers.push(label+"Worker model is unspecified or not pinned to a concrete provider; no launch");continue;
+  }
   tasks.push(Object.freeze({
    batchId:batch.id,sourceTodoId:task.taskId,childTodoId:next.taskId,
    childSessionId:link.childSessionId,childProjectId:canonical,
    baseRevision:batch.sourceHead,writeSurfaces:Object.freeze([...task.writeSurfaces]),
-   model:next.plan.model??"unknown",
+   model:route.requested,modelActual:"unknown" as const,
+   modelConsumedProven:false as const,costVerified:false as const,
    authorization:"fresh-per-worker-confirmation-required" as const,grantsAuthority:false as const
   }));
  }
