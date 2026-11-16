@@ -86,3 +86,35 @@ test("T08 forged or decontextualized Judgment Day data cannot schedule Fix",()=>
   report:fake as never,evidence:{} as never,
  }),/genuine issued/u);
 });
+
+test("T04 bloquea un Todo cuyo identificador no coincide con su estado persistido",()=>{
+ const source=todo();
+ const result=projectOddReviewHandoff({identity,todo:{
+  ...source,current:{...source.current,taskId:"todo-otro"}
+ },currentHead:head,profiles});
+ assert.equal(result.status,"blocked");
+ assert.ok(result.blockers.some(value=>value.includes("identity")));
+ assert.equal(result.writerAuthority,false);
+ assert.equal(result.accepted,false);
+});
+test("T05 no anuncia perfiles con modelo inválido o esfuerzo no reconocido",()=>{
+ const changes=[
+  {model:"nvidia//modelo"},
+  {model:"nvidia/default"},
+  {model:"modelo-sin-proveedor"},
+  {thinking:"extreme"}
+ ];
+ for(const choice of changes){
+  assert.throws(()=>projectOddReviewHandoff({
+   identity,todo:todo(),currentHead:head,
+   profiles:[...profiles.slice(0,3),{lens:profiles[3]!.lens,choice}]
+  }),/Invalid ODD review handoff/u,JSON.stringify(choice));
+ }
+ const valid=projectOddReviewHandoff({
+  identity,todo:todo(),currentHead:head,
+  profiles:profiles.map(row=>({lens:row.lens,choice:{model:"nvidia/revisor",thinking:"minimal"}}))
+ });
+ assert.equal(valid.status,"review-setup-required");
+ assert.ok(valid.reviewerProfiles.every(x=>x.thinking==="minimal"));
+ assert.ok(valid.reviewerProfiles.every(x=>x.actual==="unknown"));
+});
