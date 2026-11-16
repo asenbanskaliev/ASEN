@@ -6,6 +6,7 @@ import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview} from "../src/review/workspace-review-session.js";
 import {runJudgmentDay,isIssuedJudgmentDayReport} from "../src/review/judgment-day.js";
+import {proposeJudgmentFixHandoff} from "../src/review/odd-agent-review-flow.js";
 import type {PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-reviewer.js";
 
 const author={provider:"author",id:"coder"},a={provider:"free",id:"judge-a"},b={provider:"free",id:"judge-b"};
@@ -20,13 +21,13 @@ function fixture(t:TestContext){
  return {workspace,evidence:readWorkspaceReviewEvidence(workspace)};
 }
 
-function registry(second:"pass"|"fail"="pass"){
+function registry(second:"pass"|"fail"="pass",first:"pass"|"fail"="pass"){
  const calls:{id:string;prompt:string;hasTools:boolean}[]=[];
  const value:PiReviewRegistry={
   getAvailable:()=>[author,a,b],hasConfiguredAuth:model=>model.provider==="free",
   streamSimple:(model:PiReviewerModel,context)=>{
    calls.push({id:model.id,prompt:context.systemPrompt,hasTools:"tools" in context});
-   const verdict=model.id==="judge-b"?second:"pass";
+   const verdict=model.id==="judge-b"?second:first;
    const findings=verdict==="fail"?[{id:"F1",severity:"high",path:"code.ts",description:"An observed concern"}]:[];
    const text=JSON.stringify({verdict,summary:"Reviewed exact candidate",findings});
    return (async function*(){yield {type:"done" as const,reason:"stop" as const,message:{content:[{type:"text",text}],role:"assistant",provider:model.provider}};})();
@@ -86,5 +87,45 @@ test("Judgment Day rechecks candidate identity before each judge and blocks stal
  }),/candidate changed/u);
  assert.deepEqual(checks,["jd-judge-a","jd-judge-b"]);
  assert.deepEqual(models.calls.map(x=>x.id),["judge-a"]);
+ closeWorkspaceReview(workspace);
+});
+
+test("T08 Judgment Day genuine without findings does not create a Fix",async t=>{
+ const {workspace,evidence}=fixture(t),models=registry();
+ const report=await runJudgmentDay({registry:models.value,author,judgeA:a,judgeB:b,evidence,requirements:"Inspect"});
+ const handoff=proposeJudgmentFixHandoff({report,evidence,fixProfile:{model:"nvidia/fix-proposed",thinking:"minimal"}});
+ assert.equal(handoff.status,"not-needed");
+ assert.deepEqual(handoff.paths,[]);
+ assert.equal(handoff.fixModelRequested,"nvidia/fix-proposed");
+ assert.equal(handoff.fixModelActual,"unknown");
+ assert.equal(handoff.writerAuthority,false);
+ assert.equal(handoff.autoLaunch,false);
+ assert.equal(handoff.acceptance,"not-accepted");
+ closeWorkspaceReview(workspace);
+});
+test("T08 two genuine failing judges propose only scoped files and fresh ODD approval",async t=>{
+ const {workspace,evidence}=fixture(t),models=registry("fail","fail");
+ const report=await runJudgmentDay({registry:models.value,author,judgeA:a,judgeB:b,evidence,requirements:"Inspect"});
+ const handoff=proposeJudgmentFixHandoff({report,evidence});
+ assert.equal(report.status,"findings-require-review");
+ assert.equal(handoff.status,"fix-planning-required");
+ assert.deepEqual(handoff.paths,["code.ts"]);
+ assert.equal(handoff.nextCommand,"/asen-plan");
+ assert.equal(handoff.requiresFreshOddPlan,true);
+ assert.equal(handoff.requiresFreshWriterConsent,true);
+ assert.equal(handoff.writerAuthority,false);
+ assert.equal(handoff.autoMerge,false);
+ assert.equal(handoff.fixModelActual,"unknown");
+ assert.throws(()=>proposeJudgmentFixHandoff({report:{...report},evidence}),/genuine issued/u);
+ closeWorkspaceReview(workspace);
+});
+test("T08 disagreement requires human triage, not an automatic corrective task",async t=>{
+ const {workspace,evidence}=fixture(t),models=registry("fail");
+ const report=await runJudgmentDay({registry:models.value,author,judgeA:a,judgeB:b,evidence,requirements:"Inspect"});
+ const result=proposeJudgmentFixHandoff({report,evidence});
+ assert.equal(result.status,"manual-triage-required");
+ assert.deepEqual(result.paths,["code.ts"]);
+ assert.equal(result.autoLaunch,false);
+ assert.equal(result.writerAuthority,false);
  closeWorkspaceReview(workspace);
 });
