@@ -12,7 +12,7 @@ import {isThinking,type Thinking} from "./profiles.js";
 
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
 export type TodoPlanRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
-export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;}
+export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;fixSource?:Readonly<{proposalId:string;treeIdentity:string}>;}
 export interface TodoPlanDraft{title:string;requestId:string;dependsOn:readonly string[];description:string;plan:TodoPlanMetadata;}
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
@@ -47,7 +47,7 @@ const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&
 const identity=(v:unknown)=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function validPlan(value:unknown):value is TodoPlanMetadata{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
- const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),hasModel=Object.hasOwn(value,"model"),hasThinking=Object.hasOwn(value,"thinking"),hasCandidate=Object.hasOwn(value,"candidate"),hasCandidateRevision=Object.hasOwn(value,"candidateRevision"),hasWriteSurfaces=Object.hasOwn(value,"writeSurfaces"),hasAuthorizationBasis=Object.hasOwn(value,"writerAuthorizationBasis"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[]),...(hasModel?["model"]:[]),...(hasThinking?["thinking"]:[]),...(hasCandidate?["candidate"]:[]),...(hasCandidateRevision?["candidateRevision"]:[]),...(hasWriteSurfaces?["writeSurfaces"]:[]),...(hasAuthorizationBasis?["writerAuthorizationBasis"]:[])];
+ const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),hasModel=Object.hasOwn(value,"model"),hasThinking=Object.hasOwn(value,"thinking"),hasCandidate=Object.hasOwn(value,"candidate"),hasCandidateRevision=Object.hasOwn(value,"candidateRevision"),hasWriteSurfaces=Object.hasOwn(value,"writeSurfaces"),hasAuthorizationBasis=Object.hasOwn(value,"writerAuthorizationBasis"),hasFixSource=Object.hasOwn(value,"fixSource"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[]),...(hasModel?["model"]:[]),...(hasThinking?["thinking"]:[]),...(hasCandidate?["candidate"]:[]),...(hasCandidateRevision?["candidateRevision"]:[]),...(hasWriteSurfaces?["writeSurfaces"]:[]),...(hasAuthorizationBasis?["writerAuthorizationBasis"]:[]),...(hasFixSource?["fixSource"]:[])];
  if(!exact(value,keys)||!(["primary","explorer","worker","reviewer","verifier","clarifier"] as unknown[]).includes(value.role)||!Array.isArray(value.skillPaths)||value.skillPaths.some(p=>typeof p!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/u.test(p))||new Set(value.skillPaths).size!==value.skillPaths.length)return false;
  if(hasPriority&&(!Number.isSafeInteger(value.priority)||Number(value.priority)<1||Number(value.priority)>100))return false;
  if(hasModel&&(typeof value.model!=="string"||!value.model||value.model!==value.model.trim()||value.model.length>256||/[\u0000-\u001f\u007f]/u.test(value.model)))return false;
@@ -56,6 +56,15 @@ function validPlan(value:unknown):value is TodoPlanMetadata{
  if(hasCandidate){const candidate=value.candidate;if(!candidate||typeof candidate!=="object"||Array.isArray(candidate)||!exact(candidate,["id","repository","revision","createdAt"])||!identity(candidate.id)||!identity(candidate.repository)||typeof candidate.revision!=="string"||!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(candidate.revision)||typeof candidate.createdAt!=="string"||!Number.isFinite(Date.parse(candidate.createdAt)))return false;}
  if(hasWriteSurfaces){const surfaces=value.writeSurfaces;if(!Array.isArray(surfaces)||surfaces.length<1||surfaces.length>256||surfaces.some(surface=>typeof surface!=="string"||!surface||surface!==surface.trim()||surface.startsWith("/")||surface.includes("\\")||surface.includes(":")||surface.split("/").some(part=>!part||part==="."||part===".."))||new Set(surfaces).size!==surfaces.length)return false;}
  if(hasAuthorizationBasis){if(typeof value.writerAuthorizationBasis!=="string"||!value.writerAuthorizationBasis||value.writerAuthorizationBasis.length>16_384)return false;try{const basis=JSON.parse(value.writerAuthorizationBasis);if(!basis||typeof basis!=="object"||Array.isArray(basis)||Object.getPrototypeOf(basis)!==Object.prototype)return false;}catch{return false;}}
+ if(hasFixSource){
+  const source=value.fixSource;
+  if(value.role!=="worker"||!hasCandidate||!hasWriteSurfaces||!hasAuthorizationBasis||
+   !exact(source,["proposalId","treeIdentity"])||
+   typeof source.proposalId!=="string"||!/^[a-f0-9]{64}$/u.test(source.proposalId)||
+   typeof source.treeIdentity!=="string"||
+   !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(source.treeIdentity))
+   return false;
+ }
  const writerMetadata=hasCandidate||hasWriteSurfaces||hasAuthorizationBasis;if(writerMetadata&&(value.role!=="worker"||!hasCandidate||!hasWriteSurfaces||!hasAuthorizationBasis||!hasSelection||(value.skillSelection as SkillSelectionContext).phase!=="apply"))return false;
  if(!hasSelection)return value.role==="primary"||value.role==="clarifier";
  const selectionRaw=value.skillSelection;if(!selectionRaw||typeof selectionRaw!=="object"||Array.isArray(selectionRaw)||Object.getPrototypeOf(selectionRaw)!==Object.prototype)return false;const selection=selectionRaw as SkillSelectionContext,role=value.role as TodoPlanRole;
