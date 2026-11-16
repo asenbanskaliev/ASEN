@@ -103,3 +103,22 @@ test("T06 cotejar un informe nunca ejecuta funciones generadas",t=>{
  assert.equal(result.status,"local-files-consistent-claims-unverified");
  assert.equal(result.behaviorRetested,false,"Los tests se comprueban fuera del lector de informes");
 });
+
+test("T06 coteja una procedencia GitHub real como declaración, nunca como permiso retrospectivo",t=>{
+ const f=fixture(t);
+ const onGithub={...f.report,
+  executionKind:"NATIVE_PI_RPC_WRITER_WITH_TWO_GITHUB_APPROVALS",
+  consentMethod:"two-distinct-github-environment-human-approvals-not-native-pi-TUI"};
+ const status=verifyT06NativeSnapshot({report:onGithub,worktreeRoots:f.roots});
+ assert.equal(status.status,"local-files-consistent-claims-unverified");
+ assert.equal(status.humanConsentVerified,false);
+ assert.equal(status.actualProviderVerified,false);
+ assert.equal(status.globalFull,false);
+ for(const forged of [
+  {...onGithub,consentMethod:f.report.consentMethod},
+  {...f.report,consentMethod:onGithub.consentMethod},
+  {...onGithub,executionKind:"NATIVE_PI_RPC_WRITER_WITH_APPROVAL_BYPASS"}
+ ]){
+  assert.equal(verifyT06NativeSnapshot({report:forged,worktreeRoots:f.roots}).status,"blocked");
+ }
+});
