@@ -126,3 +126,15 @@ La extracción estructural de `ordinary-review-command.ts` se deja pendiente par
 **Resilience:** el estado histórico no desencadena relanzamiento. Si el archivo no está disponible, ha cambiado o no es verificable, la consulta falla cerrada y pide inspección humana. `done` en el diario no demuestra que la corrección haya pasado una revisión independiente.
 
 **Límite de validez:** auditoría interna, no revisión independiente T10. A falta de CI y Release Gate correctos para el SHA final no se considera completada esta tanda. No se ha realizado Writer Pi de producción ni aprobación humana individual; `globalFull:false`.
+
+## Auditoría interna 4R — cancelación del supervisor T06 (2026-11-16)
+
+**Riesgo:** si la sesión Pi padre cambiaba después de lanzar un Worker pero antes de preparar el siguiente, una excepción podía impedir que el resultado de la operación mostrara los identificadores ya observados. Se sustituyeron esas dos salidas por un resultado explícito `partial-needs-review`. No se fabrican permisos ni se interpreta una excepción como garantía de que el Worker no comenzó.
+
+**Legibilidad:** se identifica por separado la cancelación de la sesión padre y la deriva de procedencia de un hijo. Ambas ordenan inspeccionar el diario y no reintentar.
+
+**Confiabilidad:** la prueba negativa `tests/parallel-worktree-todos.test.ts` utiliza dos worktrees reales y un despachador instrumentado. Interrumpe el supervisor entre dos lanzamientos, conserva el primer identificador y confirma que el segundo no empezó. A continuación comprueba que el diario de intentos impide consumir de nuevo el lote.
+
+**Resiliencia:** un error ambiguo nunca autoriza relanzar automáticamente, aunque un agente anterior siga vivo. `autoRetry:false`, `autoMerge:false` y `acceptance:not-accepted` se conservan.
+
+**Pendientes:** probar estos escenarios en una sesión Pi TUI real con dos Workers Writer y consentimiento humano independiente; comprobar CI completo y Release Gate del SHA final; auditoría T10 verdaderamente independiente. T06 sigue parcial y `globalFull:false`.
