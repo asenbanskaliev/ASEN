@@ -12,7 +12,7 @@ test("T06 GitHub NO se ejecuta por push, PR ni una actualización de código",()
  assert.doesNotMatch(protectedWriter,/^  (?:push|pull_request|schedule|workflow_dispatch):/mu);
  assert.match(manual,/^  workflow_dispatch:\s*\n    inputs:/mu);
  assert.match(manual,/if: inputs\.modo == 't06'/u);
- assert.match(manual,/if: inputs\.modo != 't06'/u);
+ assert.match(manual,/if: inputs\.modo == 'memoria'/u);
  assert.match(manual,/cost_acknowledged: /u);
 });
 test("T06 requiere dos aprobaciones individuales antes de ejecutar Writer",()=>{
