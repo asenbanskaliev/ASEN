@@ -1,3 +1,8 @@
+import {mkdtempSync,rmSync,realpathSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
+import {verifyT06WorkspaceAttribution} from "../src/runtime/agents/t06-writer-evidence.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 import {assessT06WriterEvidence} from "../src/runtime/agents/t06-writer-evidence.js";
@@ -71,4 +76,38 @@ test("T06 los diagnósticos no pueden contener salida del modelo ni claves",()=>
  assert.equal(flat.includes("NVIDIA_API_KEY"),false);
  assert.equal(flat.includes(good.requestedModel),false);
  assert.equal(flat.includes("console.log"),false);
+});
+
+test("T06 acepta solo el registro real del agente y sesión en su fichero privado",async t=>{
+ const root=realpathSync(mkdtempSync(join(tmpdir(),"asen-t06-attrib-test-")));
+ t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const sessionId="t06-child-11111111-1111-4111-8111-111111111111";
+ const agentId="t06-writer-a:worker",target="t06-writer-a.mjs";
+ const store=await PersistentWorkspaceStore.open(join(root,"private","journal.json"));
+ const verify=(override:Record<string,string>={})=>
+  verifyT06WorkspaceAttribution({store,root,sessionId,agentId,target,...override});
+ const empty=await verify();
+ assert.deepEqual(empty,{verified:false,entries:0});
+ await store.append({path:target,actor:{kind:"agent",id:agentId},sessionId,
+  projectId:root,worktree:root,operation:"create",at:new Date().toISOString()});
+ const ok=await verify();
+ assert.deepEqual(ok,{verified:true,entries:1});
+ assert.equal((await verify({agentId:"t06-writer-b:worker"})).verified,false);
+ assert.equal((await verify({sessionId:"t06-child-22222222-2222-4222-8222-222222222222"})).verified,false);
+ assert.equal((await verify({target:"t06-writer-b.mjs"})).verified,false);
+ assert.equal((await verify({target:"../fuga.mjs"})).verified,false);
+ await store.append({path:target,actor:{kind:"agent",id:agentId},sessionId,
+  projectId:root,worktree:root,operation:"modify",at:new Date().toISOString()});
+ const duplicate=await verify();
+ assert.equal(duplicate.verified,false);
+ assert.equal(duplicate.entries,2);
+});
+
+test("T06 falla cerrado si el fichero de atribución no puede comprobarse",async()=>{
+ const failed=await verifyT06WorkspaceAttribution({
+  store:{list:async()=>{throw new Error("corrupt");}} as Pick<PersistentWorkspaceStore,"list">,
+  root:"/tmp/asan-sin-escritura",sessionId:"sesion",
+  agentId:"t06-writer-a:worker",target:"t06-writer-a.mjs"
+ });
+ assert.deepEqual(failed,{verified:false,entries:0});
 });
