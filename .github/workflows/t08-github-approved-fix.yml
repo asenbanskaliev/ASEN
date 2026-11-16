@@ -72,7 +72,8 @@ jobs:
           set -euo pipefail
           npm ci --ignore-scripts --no-audit --no-fund
           npm run typecheck
-          node --import tsx --test tests/t08-github-approvals.test.ts tests/t08-controlled-fixture.test.ts
+          npx --no-install tsc -p tsconfig.t08.json
+          node --import tsx --test tests/t08-github-approvals.test.ts tests/t08-controlled-fixture.test.ts tests/t08-isolated-repository.test.ts
           test -z "$(git status --porcelain=v1)"
   aprobar-revisores:
     needs: [preparar]
