@@ -40,7 +40,7 @@ function fixture(t:TestContext){
    events:[event],current:event,plan:{role:"worker",skillPaths:["skills/asen-apply/SKILL.md"],
     skillSelection:{phase:"apply",codeChange:true},
     candidate:{id:"source",repository:source,revision:head,createdAt:"2026-11-15T17:00:00.000Z"},
-    writeSurfaces:[file],writerAuthorizationBasis:'{"instruction":"work"}'}
+    writeSurfaces:[file],model:"nvidia/nemotron-3.5-lightning-30b-a3b",writerAuthorizationBasis:'{"instruction":"work"}'}
   } as unknown as SourceTodoRow;
  };
  const childRows=new Map<string,SourceTodoRow[]>(),
@@ -667,4 +667,37 @@ test("T06 simultaneous parent supervisors cannot both claim or re-launch a batch
  assert.equal(f.dispatchedChildren.length,2);
  const saved=await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity);
  assert.equal(saved.length,1);
+});
+
+test("T02/T05/T06 supervisor rechaza modelos implícitos antes de solicitar permisos",async t=>{
+ const f=fixture(t);
+ await prepareSupervisorChildren(f);
+ const original=f.getChildObservations("child-pi-1");
+ f.setChildObservations("child-pi-1",original.todos.map(row=>({
+  ...row,plan:{...row.plan!,model:undefined}
+ } as SourceTodoRow)),original.agents,original.links);
+ const result=await f.run("supervise") as {status:string;blockers:readonly string[]};
+ assert.equal(result.status,"blocked");
+ assert.ok(result.blockers.some(x=>/model is unspecified/u.test(x)));
+ assert.equal(f.dispatchedChildren.length,0);
+ assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,0);
+});
+test("T02/T05/T06 superposición entre sesión padre e hijo no abre despacho ni consentimiento",async t=>{
+ const f=fixture(t);
+ await prepareSupervisorChildren(f);
+ const original=f.getChildObservations("child-pi-1");
+ // Las asociaciones guardadas deben permanecer atribuidas a la sesión original.
+ // Cambiar el identificador de la sesión no permite reclamar la del padre.
+ const journal=new ParentSupervisorClaimJournal(f.supervisorClaimsFile);
+ await assert.rejects(()=>journal.claim({
+  source:f.identity,batchId:"parent-conflict",
+  children:[
+   {sourceTodoId:"todo-backend",childTodoId:"child-todo-1",
+    childSessionId:f.identity.sessionId,childProjectId:original.todos[0]!.current.projectId},
+   {sourceTodoId:"todo-frontend",childTodoId:"child-todo-2",
+    childSessionId:f.identity.sessionId,childProjectId:resolve(tmpdir(),"second-worktree")}
+  ]
+ }),/duplicate/u);
+ assert.equal((await journal.listSource(f.identity)).length,0);
+ assert.equal(f.dispatchedChildren.length,0);
 });
