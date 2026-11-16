@@ -563,7 +563,7 @@ test("T06 parent supervisor launches two exact independently consented child Wor
 test("T06 cancelación entre Workers conserva el primero y prohíbe relanzar el lote",async t=>{
  const f=fixture(t);await prepareSupervisorChildren(f);
  const batch=(await f.journal.list(f.identity))[0]!;
- let launched=0,checksAfterFirst=0;
+ let launched=0,checksAfterFirst=0,cancelParent=true;
  const sourceJournal=f.journal,sessionJournal=f.sessions;
  const claimJournal=new ParallelChildPlanClaimJournal(f.planClaimsFile),
   attemptJournal=new ParentSupervisorClaimJournal(f.supervisorClaimsFile);
@@ -574,7 +574,7 @@ test("T06 cancelación entre Workers conserva el primero y prohíbe relanzar el 
   loadAgents:async(identity:TodoContext)=>f.getChildObservations(identity.sessionId).agents,
   loadTaskAgentLinks:async(identity:TodoContext)=>f.getChildObservations(identity.sessionId).links,
   validateParent:async()=>{
-   if(launched>0&&++checksAfterFirst>1)throw new Error("Sesión padre cancelada");
+   if(cancelParent&&launched>0&&++checksAfterFirst>1)throw new Error("Sesión padre cancelada");
   },
   confirmBatch:async()=>true,
   confirmWorker:async()=>true,
@@ -604,6 +604,7 @@ test("T06 cancelación entre Workers conserva el primero y prohíbe relanzar el 
  assert.equal(result.autoMerge,false);
  assert.equal(result.acceptance,"not-accepted");
  assert.ok(result.blockers.some(x=>/Parent Pi session cancelled/u.test(x)));
+ cancelParent=false; // La sesión se reabre, pero el lote ya está consumido.
  const again=await launchParentApprovedWorkers(input);
  assert.equal(again.status,"blocked");
  assert.equal(launched,1);
