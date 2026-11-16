@@ -52,7 +52,7 @@ export function assessT06T07Trial(input:{
    blockers.push(expected.worker+"-sin-sesion-pi");
   else uniqueSessions.add(w.session);
   if(w.scope!==expected.scope)blockers.push(expected.worker+"-scope-incorrecto");
-  else uniqueScopes.add(w.scope);
+  else uniqueScopes.add(expected.scope);
   if(w.requestedModel!==expectedModel||w.observedModel!==expectedModel)
    blockers.push(expected.worker+"-modelo-no-verificado");
   if(w.processObserved!==true||w.nativeResultOk!==true||
