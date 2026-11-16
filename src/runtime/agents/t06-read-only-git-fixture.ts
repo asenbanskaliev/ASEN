@@ -46,7 +46,7 @@ export function createT06ReadOnlyGitFixture():T06ReadOnlyGitFixture{
   for(const child of children)git(sourceRoot,"worktree","add","--detach","--quiet",child,head);
   const observe=():T06GitObservation=>{
    const linked=git(sourceRoot,"worktree","list","--porcelain")
-    .split(/\\r?\\n/u).filter(line=>line.startsWith("worktree "))
+    .split(/\r?\n/u).filter(line=>line.startsWith("worktree "))
     .map(line=>line.slice("worktree ".length));
    const childStates=children.map(child=>({
     pinned:git(child,"rev-parse","HEAD")===head,
