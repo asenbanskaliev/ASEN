@@ -53,7 +53,7 @@ export function createT08IsolatedRepository(input:{
    GIT_AUTHOR_DATE:fixedGitDate,GIT_COMMITTER_DATE:fixedGitDate
   };
   execFileSync("git",[
-   "-C",root,"-c","core.hooksPath=/dev/null","commit","--quiet",
+   "-C",root,"-c","core.hooksPath=.git/hooks-disabled","commit","--quiet",
    "--allow-empty","-m","Base mínima reproducible para la prueba T08"
   ],{env:gitEnv,stdio:["ignore","pipe","pipe"],timeout:12_000});
   const fixtureHead=git(root,"rev-parse","HEAD");
