@@ -19,7 +19,8 @@ test("T06 acepta solo dos respuestas humanas exactas e independientes",()=>{
 });
 test("T06 deniega consentimiento ausente, aproximado, delegado o de otro Worker",()=>{
  for(const value of [undefined,null,"true",true,"SI",t06LiveApprovalChallenge(b),
-  t06LiveApprovalChallenge(a)+" ",t06LiveApprovalChallenge(a).replace("AUTORIZO","autorizo")]){
+  t06LiveApprovalChallenge(a)+" ",t06LiveApprovalChallenge(a).replace("AUTORIZO","autorizo"),
+  t06LiveApprovalChallenge(a).replace("AUTORIZO","AUTORIZÓ")]){
   assert.equal(acceptT06LiveApproval(a,value),false);
   assert.throws(()=>requireDistinctT06Approvals(a,value,b,t06LiveApprovalChallenge(b)),
    /separate explicit human approvals/u);
