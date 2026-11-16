@@ -37,10 +37,10 @@ function fixture(t:TestContext){
  const commands=new Map<string,{handler:(args:string|undefined,ctx:unknown)=>Promise<unknown>|unknown}>();
  const register=(reader:()=>Promise<readonly ScopedOddTodo[]>)=>
   registerOrdinaryReviewCommand((name,command)=>commands.set(name,command as never),
-   undefined,async()=>({model:"nvidia/reviewer"}),async()=>{
+   {observe:async()=>({status:"unavailable"})} as never,async()=>({model:"nvidia/reviewer"}),async()=>{
     reads++;return reader();
    });
- const run=(args:string)=>commands.get("asen-review")!.handler(args,context);
+ const run=(args:string,provided:unknown=context)=>commands.get("asen-review")!.handler(args,provided);
  return {root,sha,task,taskId,register,run,context,notifications,
   setSession:(value:string)=>{session=value;},reads:()=>reads,git};
 }
@@ -78,4 +78,58 @@ test("T04 no permite inspección sin interfaz ni acceso al almacén ODD",async t
  f.register(async()=>[f.task]);
  f.context.hasUI=false;
  await assert.rejects(async()=>await f.run("todo "+f.taskId),/active Pi UI/u);
+});
+
+test("T04/T05 ODD adaptativo conserva el ámbito y no usa modelos si se rechaza el consentimiento",async t=>{
+ const f=fixture(t);
+ f.register(async()=>[f.task]);
+ writeFileSync(join(f.root,"archivo.txt"),"cambio\n");
+ let modelCalls=0,consentCalls=0,editPaths=0;
+ const author={provider:"author",id:"original"},reviewer={provider:"free",id:"independiente"};
+ const context={
+  ...f.context,model:author,
+  modelRegistry:{
+   getAvailable:()=>[author,reviewer],
+   hasConfiguredAuth:(model:{provider:string})=>model.provider==="free",
+   streamSimple:()=>{modelCalls++;return (async function*(){yield {type:"done"};})();},
+  },
+  ui:{
+   notify:()=>{},
+   select:async(_title:string,options:string[])=>options[0],
+   editor:async(title:string)=>{
+    if(title.includes("Rutas exactas"))editPaths++;
+    return title.includes("untracked")?"[]":"Inspeccionar únicamente el cambio ODD";
+   },
+   confirm:async()=>{consentCalls++;return false;}
+  }
+ };
+ const result=await f.run("todo "+f.taskId+" adaptive",context) as {status:string};
+ assert.equal(result.status,"cancelled");
+ assert.equal(editPaths,0,"El ámbito procede del Todo verificado, no de texto libre");
+ assert.equal(consentCalls,1);
+ assert.equal(modelCalls,0);
+ assert.equal(f.git("status","--porcelain").includes("archivo.txt"),true);
+});
+test("T04 ODD adaptativo bloquea ampliación de archivos sin ejecutar el revisor",async t=>{
+ const f=fixture(t);
+ f.register(async()=>[f.task]);
+ writeFileSync(join(f.root,"archivo.txt"),"cambio\n");
+ let calls=0;
+ const author={provider:"author",id:"original"},reviewer={provider:"free",id:"revisor"};
+ const ctx={
+  ...f.context,model:author,
+  modelRegistry:{
+   getAvailable:()=>[author,reviewer],
+   hasConfiguredAuth:(model:{provider:string})=>model.provider==="free",
+   streamSimple:()=>{calls++;return (async function*(){yield {type:"done"};})();},
+  },
+  ui:{
+   notify:()=>{},
+   select:async(_title:string,options:string[])=>options[0],
+   editor:async(title:string)=>title.includes("untracked")?'["otro.txt"]':"Validar",
+   confirm:async()=>true
+  }
+ };
+ await assert.rejects(async()=>await f.run("todo "+f.taskId+" adaptive",ctx),/alcance untracked|outside the frozen task scope/u);
+ assert.equal(calls,0);
 });
