@@ -9,6 +9,34 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  agentes-t02-t05-t06:
+    name: Agentes T02 T05 T06 (pruebas negativas)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Comprobar SHA exacto
+        run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci --no-audit --no-fund
+      - name: Compilar contratos y tipos
+        run: npm run typecheck
+      - name: Aislamiento, modelos, recibos y permisos por Worker
+        run: |
+          node --import tsx --test \
+            tests/parallel-parent-supervisor-claims.test.ts \
+            tests/parallel-worker-model-route.test.ts \
+            tests/parallel-worktree-todos.test.ts \
+            tests/t06-pi-receipt-validator.test.ts \
+            tests/t06-read-only-git-fixture.test.ts
   test:
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
