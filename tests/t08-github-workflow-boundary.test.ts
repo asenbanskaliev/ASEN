@@ -18,7 +18,7 @@ test("T08 solo se inicia manualmente y exige el SHA exacto",()=>{
  assert.match(workflow,/test "\$GITHUB_SHA" = "\$SHA_ESPERADO"/u);
  assert.match(workflow,/COSTE_AUTORIZADO" = true/u);
  assert.match(workflow,/T08 bloqueado: Nemotron 3 Ultra/u);
- assert.match(workflow,/model" == "nvidia\\/nemotron-3-ultra-550b-a55b"/u);
+ assert.ok(workflow.includes('if [[ "$model" == "nvidia/nemotron-3-ultra-550b-a55b" ]]'));
  assert.match(workflow,/persist-credentials: false/u);
  assert.match(workflow,/cancel-in-progress: false/u);
 });
