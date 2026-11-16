@@ -173,7 +173,15 @@ export class SessionTodoStore{
   await write(file,emptyTodoFile(snapshot.revision+1));await rm(markerFile,{force:true});
  }
  async #readSnapshot(context:TodoContext):Promise<TodoFile>{const file=this.#file(context);await preparePrivateFile(file,true);return read(file);}
- async #archivedItems(file:string,context:TodoContext):Promise<(TodoItem&{current:TaskEvent})[]>{const directory=path.join(path.dirname(file),"archive");let names:string[]=[];try{names=await readdir(directory);}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return [];throw error;}const items:(TodoItem&{current:TaskEvent})[]=[];for(const name of names.filter(value=>/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(value)).sort()){const data=await read(path.join(directory,name));items.push(...data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];}));}return items;}
+ async #archivedItems(file:string,context:TodoContext):Promise<(TodoItem&{current:TaskEvent})[]>{const directory=path.join(path.dirname(file),"archive");let names:string[]=[];try{names=await readdir(directory);}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return [];throw error;}const items:(TodoItem&{current:TaskEvent})[]=[];for(const name of names.filter(value=>/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(value)).sort()){
+  const file=path.join(directory,name);
+  await preparePrivateFile(file,true);
+  const raw=await readFile(file,"utf8"),digest=createHash("sha256").update(raw).digest("hex");
+  if(!name.endsWith(`-${digest.slice(0,12)}.json`))
+   throw new Error("ASEN Todo archived snapshot checksum mismatch; no recovery result is trusted");
+  const data=parseTodoFile(raw);
+  if(!allTerminal(data))throw new Error("ASEN Todo archive has nonterminal tasks; no recovery result is trusted");
+  items.push(...data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];}));}return items;}
  async add(title:string,context:TodoContext,signal?:AbortSignal,validateContext?:()=>void,requestId?:string,dependsOn:readonly string[]=[],description?:string,plan?:TodoPlanMetadata):Promise<TodoItem>{
   throwIfCancelled(signal);
   if(typeof title!=="string"||!title.trim()||title!==title.trim()||title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(title)||!identity(context.sessionId)||!identity(context.projectId)||(requestId!==undefined&&!identity(requestId))||!Array.isArray(dependsOn)||dependsOn.some(id=>!identity(id))||new Set(dependsOn).size!==dependsOn.length||(description!==undefined&&(typeof description!=="string"||!description||description!==description.trim()||description.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(description)))||(plan!==undefined&&!validPlan(plan))||(plan!==undefined&&(requestId===undefined||!requestId.startsWith("asen-plan:")||!validFixTaskIdentity(requestId,plan))))throw new Error("Invalid ASEN Todo task");
