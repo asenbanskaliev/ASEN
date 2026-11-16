@@ -32,7 +32,7 @@ function validate(raw:string):Journal{
   !Number.isSafeInteger(v.revision)||Number(v.revision)<0||
   !Array.isArray(v.claims)||v.claims.length>256||v.revision!==v.claims.length)
   throw new Error("Invalid one-shot supervisor claim journal");
- const seen=new Set<string>();
+ const seen=new Set<string>(),seenSessions=new Set<string>();
  for(const claim of v.claims){
   if(!exact(claim,keys)||!safe(claim.batchId)||!safe(claim.sourceSessionId)||
    typeof claim.sourceProjectId!=="string"||!isAbsolute(claim.sourceProjectId)||
@@ -42,14 +42,18 @@ function validate(raw:string):Journal{
    claim.status!=="claimed-not-verified"||claim.grantsAuthority!==false||
    claim.autoRetry!==false||claim.autoMerge!==false)
    throw new Error("Invalid one-shot supervisor claim");
-  const childIds=new Set<string>(),roots=new Set<string>();
+  const childIds=new Set<string>(),childTodoIds=new Set<string>(),roots=new Set<string>(),sessions=new Set<string>();
   for(const child of claim.children){
    if(!exact(child,childKeys)||!safe(child.sourceTodoId)||!safe(child.childTodoId)||
     !safe(child.childSessionId)||typeof child.childProjectId!=="string"||
     !isAbsolute(child.childProjectId)||
-    childIds.has(child.sourceTodoId)||roots.has(child.childProjectId.toLocaleLowerCase("en-US")))
+    childIds.has(child.sourceTodoId)||childTodoIds.has(child.childTodoId)||
+    sessions.has(child.childSessionId)||seenSessions.has(child.childSessionId)||
+    roots.has(child.childProjectId.toLocaleLowerCase("en-US")))
     throw new Error("Invalid or duplicate supervisor child claim");
-   childIds.add(child.sourceTodoId);roots.add(child.childProjectId.toLocaleLowerCase("en-US"));
+   childIds.add(child.sourceTodoId);childTodoIds.add(child.childTodoId);
+   sessions.add(child.childSessionId);seenSessions.add(child.childSessionId);
+   roots.add(child.childProjectId.toLocaleLowerCase("en-US"));
   }
   const key=claim.batchId+"|"+claim.sourceSessionId+"|"+claim.sourceProjectId.toLowerCase();
   if(seen.has(key))throw new Error("Duplicate supervisor batch claim");seen.add(key);
@@ -84,8 +88,8 @@ export class ParentSupervisorClaimJournal{
     previous.batchId===claim.batchId&&previous.sourceSessionId===claim.sourceSessionId&&
     sameWorkspaceIdentityPath(previous.sourceProjectId,claim.sourceProjectId)||
     previous.children.some(used=>claim.children.some(next=>
-     used.childSessionId===next.childSessionId&&
-     sameWorkspaceIdentityPath(used.childProjectId,next.childProjectId)))))
+     used.childSessionId===next.childSessionId||
+     sameWorkspaceIdentityPath(used.childProjectId,next.childProjectId))))))
     throw new Error("Source supervisor batch previously claimed; inspect durable child results, never auto-retry");
    journal.claims.push(claim);journal.revision++;
    await atomicWriteText(this.file,JSON.stringify(validate(JSON.stringify(journal)))+"\n");
