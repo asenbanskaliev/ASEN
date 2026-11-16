@@ -3,11 +3,11 @@
  * Explorer y Verifier sin herramientas ni escritura, con prompts sintéticos.
  * No demuestra todavía Writer/grants del flujo completo.
  */
-import assert from "node:assert/strict";
 import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
+import {createT06ReadOnlyGitFixture} from "../src/runtime/agents/t06-read-only-git-fixture.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
@@ -17,8 +17,9 @@ const root=resolve(process.env.GITHUB_WORKSPACE??process.cwd());
 const evidenceFile=process.env.ASEN_NVIDIA_PI_REPORT;
 if(!process.env.NVIDIA_API_KEY||!evidenceFile)throw Error("Prueba Pi NVIDIA BLOQUEADA: faltan credenciales o ubicación privada de evidencias");
 const base=mkdtempSync(join(tmpdir(),"asen-pi-nvidia-t06-"));
+const gitFixture=createT06ReadOnlyGitFixture();
 const instances=[0,1].map(index=>{
- const dir=join(base,"hijo-"+(index+1));mkdirSync(dir,{recursive:true,mode:0o700});
+ const dir=gitFixture.children[index]!;
  const identity={sessionId:"asen-t06-nvidia-pi-"+(index+1),projectId:dir};
  const observation:{pid:number|null;spawnedAt:number|null;closedAt:number|null;reportedModel:string|null;result:string}={
   pid:null,spawnedAt:null,closedAt:null,reportedModel:null,result:"pending"
@@ -50,7 +51,9 @@ const wrapper={
 const status={schema:"asen.t06.nvidia.pi-dual/v2",source:"native-PiProcessRunner-and-AgentRuntime",
  requestedModel:model,modelActual:"unknown",workers:[] as Array<Record<string,unknown>>,
  concurrentlyRunning:false,providerAuthenticated:false,autoMerge:false,writerGranted:false,
- executionKind:"READ_ONLY_EXPLORER_VERIFIER_NOT_WRITER",result:"BLOCKED",at:new Date().toISOString()};
+ executionKind:"READ_ONLY_EXPLORER_VERIFIER_IN_GIT_WORKTREES_NOT_WRITER",
+ gitWorktreesVerified:false,gitSourceClean:false,gitChildrenClean:false,
+ result:"BLOCKED",at:new Date().toISOString()};
 try{
  const runtime=await AgentRuntime.open({storeFile:join(base,"agents.json"),runner:wrapper,maxConcurrency:2});
  const ids=await Promise.all(instances.map((x,i)=>runtime.startReadOnly({
@@ -96,13 +99,22 @@ try{
  status.modelActual=status.providerAuthenticated?model:"unknown";
  status.result=status.providerAuthenticated&&status.concurrentlyRunning?"PASS_READ_ONLY_PI_CONCURRENT":"BLOCKED";
 }finally{
+ try{
+  const git=gitFixture.observe();
+  status.gitSourceClean=git.sourceClean;
+  status.gitChildrenClean=git.children.length===2&&git.children.every(x=>x.clean);
+  status.gitWorktreesVerified=git.isolated&&git.sourceClean&&
+   git.children.length===2&&git.children.every(x=>x.pinned&&x.clean&&x.linked);
+ }catch{status.gitWorktreesVerified=false;}
+ if(!status.gitWorktreesVerified)status.result="BLOCKED";
  const output=resolve(evidenceFile);
  mkdirSync(resolve(output,".."),{recursive:true,mode:0o700});
  writeFileSync(output,JSON.stringify(status,null,2)+"\n",{encoding:"utf8",mode:0o600,flag:"wx"});
+ gitFixture.cleanup();
  rmSync(base,{recursive:true,force:true});
  process.stdout.write(JSON.stringify({
   result:status.result,model:status.modelActual,
-  concurrent:status.concurrentlyRunning,
+  concurrent:status.concurrentlyRunning,gitWorktreesVerified:status.gitWorktreesVerified,
   states:status.workers.map(w=>w.recordState)
  })+"\n");
 }
