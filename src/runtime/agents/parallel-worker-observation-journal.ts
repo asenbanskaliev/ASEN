@@ -13,6 +13,13 @@ import type {ParallelWorktreeChangeInspection} from "./parallel-worktree-change-
 
 const SCHEMA="asen.parallel-worker-observations/v1" as const;
 const allowed=new Set(["completed","failed","cancelled","interrupted"]);
+const portablePath=(value:unknown):value is string=>
+ typeof value==="string"&&value.length>0&&value.length<=1024&&
+ value===value.normalize("NFC")&&
+ !/[\\:\u0000-\u001f\u007f-\u009f\p{Cf}]/u.test(value)&&
+ !value.startsWith("/")&&
+ value.split("/").every(part=>part!==""&&part!=="."&&part!==".."&&part.toLowerCase()!==".git");
+
 /** La inspección Git no admite estados incompatibles ni rutas sin normalizar.
  * Un recibo incoherente debe fallar antes de persistir el lote completo. */
 function validChanges(changes:ParallelWorktreeChangeInspection):boolean{
@@ -20,14 +27,8 @@ function validChanges(changes:ParallelWorktreeChangeInspection):boolean{
   !Array.isArray(changes.changedPaths)||!Array.isArray(changes.outOfScopePaths)||
   typeof changes.sourceVerified!=="boolean"||typeof changes.headMatchesBase!=="boolean"||
   changes.changedPaths.length>512||changes.outOfScopePaths.length>512)return false;
- const path=(value:unknown):value is string=>
-  typeof value==="string"&&value.length>0&&value.length<=1024&&
-  value===value.normalize("NFC")&&
-  !/[\\:\u0000-\u001f\u007f-\u009f\p{Cf}]/u.test(value)&&
-  !value.startsWith("/")&&
-  value.split("/").every(part=>part!==""&&part!=="."&&part!==".."&&part.toLowerCase()!==".git");
  const changed=changes.changedPaths,out=changes.outOfScopePaths;
- if(changed.some(item=>!path(item))||out.some(item=>!path(item))||
+ if(changed.some(item=>!portablePath(item))||out.some(item=>!portablePath(item))||
   new Set(changed).size!==changed.length||new Set(out).size!==out.length||
   out.some(item=>!changed.includes(item)))return false;
  switch(changes.status){
@@ -78,7 +79,13 @@ function parse(raw:string):Journal{
    !allowed.has(String(row.agentState))||!validTime(row.agentUpdatedAt)||!validTime(row.recordedAt)||
    !["clean","scoped-changes","out-of-scope","head-diverged","unavailable"].includes(String(row.worktreeChangeState))||
    !Array.isArray(row.changedPaths)||row.changedPaths.length>512||
-   row.changedPaths.some(path=>!safe(path))||row.modelActual!=="unknown"||
+   row.changedPaths.some(path=>!portablePath(path))||
+   new Set(row.changedPaths).size!==row.changedPaths.length||
+   (row.worktreeChangeState==="clean"&&row.changedPaths.length>0)||
+   (row.worktreeChangeState==="unavailable"&&row.changedPaths.length>0)||
+   (row.worktreeChangeState==="scoped-changes"&&row.changedPaths.length===0)||
+   (row.worktreeChangeState==="out-of-scope"&&row.changedPaths.length===0)||
+   row.modelActual!=="unknown"||
    row.modelConsumedProven!==false||row.acceptance!=="not-accepted"||
    row.grantsAuthority!==false||row.autoRetry!==false||row.autoMerge!==false)
    throw new Error("Invalid parallel Worker observation");
