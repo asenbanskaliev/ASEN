@@ -116,4 +116,18 @@ test("T04/T08 almacena un ODD real con origen Fix, sin ejecutar agentes",async t
  assert.match(stale.status==="blocked"?stale.reason:"",/Fix ODD reviewed tree changed/u);
  assert.equal(asks,1,"Un candidato alterado se bloquea ANTES del diálogo Writer");
  assert.equal(starts,0);
+ // Un cambio durante el diálogo no puede aprovechar el consentimiento dado
+ // para un árbol distinto, aunque el HEAD de Git permanezca igual.
+ writeFileSync(join(f.root,"src","fix.ts"),"cambio revisado\n");
+ const changedDuringConsent=await dispatchNextPlanTask({
+  ...input,confirm:async()=>{
+   asks++;writeFileSync(join(f.root,"src","fix.ts"),"alterado en el diálogo\n");
+   return true;
+  }
+ });
+ assert.equal(changedDuringConsent.status,"blocked");
+ assert.match(changedDuringConsent.status==="blocked"?changedDuringConsent.reason:"",
+  /Fix ODD reviewed tree changed while awaiting Writer approval/u);
+ assert.equal(asks,2);
+ assert.equal(starts,0,"No se ejecuta Writer sobre una versión distinta de la aceptada");
 });
