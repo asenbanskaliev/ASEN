@@ -80,7 +80,7 @@ export function projectOddReviewHandoff(input:{
   writeSurfaces:Object.freeze([...scope]),
   workerModelRequested:plan?.model??"unknown",
   reviewerProfiles:profiles,reviewerModelActual:"unknown" as const,
-  nextCommand:"/asen-review workspace adaptive" as const,
+  nextCommand:"/asen-review todo "+todo.taskId+" adaptive",
   requiresNewConsent:true as const,accepted:false as const,writerAuthority:false as const
  });
 }
