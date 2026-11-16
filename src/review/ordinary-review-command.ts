@@ -354,6 +354,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   if(judgmentDay){
    assertContextCurrent();await assertOddCurrent();assertReviewSessionOpen(workspace.session);
    const report=await runJudgmentDay({registry,author,judgeA:judges![0],judgeB:judges![1],evidence,requirements,...(context.signal?{signal:context.signal}:{}),validateBeforeJudge:async()=>{await assertOddCurrent();assertContextCurrent();assertReviewSessionOpen(workspace.session);revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});}});
+   await assertOddCurrent();
    revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
    assertContextCurrent();
    const fixProfile=await resolveLensRoute?.(context,"jd-fix-agent");
@@ -378,6 +379,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
     revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
     reports.push(await runPiLensReview({registry,model:lensModels.get(lens)!,author,evidence,requirements,lens,...(context.signal?{signal:context.signal}:{})}));
    }
+   await assertOddCurrent();
    const bundle=consolidatePiLensReviews({
     requestId:evidence.requestId,sessionId:evidence.sessionId,
     candidateTreeIdentity:evidence.candidate.treeIdentity,candidateRevision:evidence.candidate.revision,
