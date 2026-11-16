@@ -11,6 +11,7 @@ import {runJudgmentDay} from "./judgment-day.js";
 import {projectOddReviewHandoff,proposeJudgmentFixHandoff,type ScopedOddTodo,type JudgmentFixHandoff} from "./odd-agent-review-flow.js";
 import type {StoredJudgmentFixProposal} from "./judgment-fix-proposal-journal.js";
 import {draftOddFromStoredFix} from "./judgment-fix-odd-draft.js";
+import {inspectFixOddRecovery} from "./judgment-fix-odd-recovery.js";
 import {inspectLiveFixCandidate} from "./judgment-fix-odd-preflight.js";
 import {validateFreshFixOddRequest} from "./judgment-fix-odd-planning.js";
 import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
@@ -491,7 +492,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
    if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
    return fixProposals.list(context);
   }
-  const fixPlanMatch=/^fix-plan ([a-f0-9]{64})(?: (verify|save))?$/u.exec(command);
+  const fixPlanMatch=/^fix-plan ([a-f0-9]{64})(?: (verify|save|status))?$/u.exec(command);
   if(fixPlanMatch){
    if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
    return (async()=>{
@@ -513,6 +514,25 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     validate();
     if(!current||JSON.stringify(current)!==first)
      throw new Error("Fix proposal changed during ODD draft preparation");
+    if(fixPlanMatch[2]==="status"){
+     if(!readOddTodos)return {status:"unavailable" as const,reason:"ODD Todo store is not enabled"};
+     const workerRequest="asen-plan:fix-"+draft.sourceProposalId.slice(0,24)+":worker";
+     const relevant=(rows:readonly ScopedOddTodo[])=>rows.filter(row=>
+      row.requestId===workerRequest||row.plan?.fixSource?.proposalId===draft.sourceProposalId);
+     const firstTodos=relevant(await readOddTodos(context));
+     validate();
+     const secondTodos=relevant(await readOddTodos(context));
+     validate();
+     if(JSON.stringify(firstTodos)!==JSON.stringify(secondTodos))
+      throw new Error("Fix Todo journal changed during recovery; do not retry any dispatch");
+     const finalProposal=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
+     validate();
+     if(!finalProposal||JSON.stringify(finalProposal)!==first)
+      throw new Error("Fix proposal changed during Todo recovery");
+     const result=inspectFixOddRecovery({draft,identity,todos:secondTodos});
+     context.ui.notify(JSON.stringify(result,null,2),result.status==="inconsistent"?"error":"info");
+     return result;
+    }
     if(fixPlanMatch[2]==="save"){
      if(draft.status!=="draft-only")
       return {status:"blocked" as const,reason:"Fix disagreement requires human triage first"};
@@ -646,7 +666,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review fix-plan <id> status | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");
