@@ -81,6 +81,16 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
  if(!batch)throw new Error("Supervisor batch does not belong to active source Pi session");
  const blockers:string[]=[],tasks:ParentSupervisorReadyWorker[]=[],childSessions=new Set<string>();
  if(batch.state!=="prepared")blockers.push("Batch is not fully prepared");
+ // A consumed batch must not prompt for fresh approvals: it cannot be replayed.
+ // The one-shot claim() below remains the atomic guard for concurrent previews.
+ if((await input.attemptJournal.listSource(input.source)).some(row=>row.batchId===batch.id)){
+  await input.validateParent();
+  return Object.freeze({
+   status:"blocked" as const,batchId:batch.id,tasks:Object.freeze([]),
+   blockers:Object.freeze(["Supervisor batch already claimed: inspect durable child Todos and Agents; never retry"]),
+   grantsAuthority:false as const,autoRetry:false as const,autoMerge:false as const
+  });
+ }
  const [sourceTodos,allLinks]=await Promise.all([
   input.loadTodos(input.source),input.sessionJournal.listSource(input.source)
  ]);

@@ -739,6 +739,38 @@ test("T06 error de lectura tras primera ejecución conserva el intento sin repla
  assert.equal((await claims.listSource(f.identity)).length,1);
 });
 
+test("T06/T07 intento registrado sin Worker visible exige inspección y evita nuevas preguntas",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const batch=(await f.journal.list(f.identity))[0]!;
+ const links=await f.sessions.listSource(f.identity);
+ const children=links.map(link=>{
+  const todo=f.getChildObservations(link.childSessionId).todos[0]!;
+  return {sourceTodoId:link.sourceTodoId,childTodoId:todo.taskId,
+   childSessionId:link.childSessionId,childProjectId:link.childProjectId};
+ });
+ await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).claim({
+  source:f.identity,batchId:batch.id,children
+ });
+ const consentBefore=f.confirmMessages.length;
+ const blocked=await f.run("supervise") as {status:string;blockers:readonly string[]};
+ assert.equal(blocked.status,"blocked");
+ assert.ok(blocked.blockers.some(s=>/already claimed/u.test(s)));
+ assert.equal(f.confirmMessages.length,consentBefore);
+ assert.equal(f.dispatchedChildren.length,0);
+ const projection=await readAgentFlowPanelObservation({
+  identity:f.identity,journalFile:f.journalFile,sessionLinksFile:f.sessionLinksFile,
+  planClaimsFile:f.planClaimsFile,supervisorClaimsFile:f.supervisorClaimsFile,
+  loadTodos:async id=>id.sessionId===f.identity.sessionId?f.rows:f.getChildObservations(id.sessionId).todos,
+  loadChildAgentRecords:async id=>f.getChildObservations(id.sessionId).agents,
+  loadChildTaskAgentLinks:async id=>f.getChildObservations(id.sessionId).links
+ });
+ assert.equal(projection.overview.stages["launch-unverified"],2);
+ assert.equal(projection.overview.tasks.every(row=>row.workerObserved==="not-observed"),true);
+ assert.equal(projection.overview.tasks.every(row=>row.modelActual==="unknown"),true);
+ assert.equal(projection.overview.autoRetry,false);
+ assert.equal(projection.overview.acceptance,"not-accepted");
+});
+
 test("T06 global batch denial does not consume one-shot claim; approved launch does",async t=>{
  const f=fixture(t);await prepareSupervisorChildren(f);
  const claims=new ParentSupervisorClaimJournal(f.supervisorClaimsFile);

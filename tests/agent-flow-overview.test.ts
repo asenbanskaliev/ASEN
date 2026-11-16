@@ -31,6 +31,28 @@ test("T07 flow summary shows child session as required, not an automatically lau
  assert.equal(p.grantsAuthority,false);assert.equal(p.autoRetry,false);assert.equal(p.autoMerge,false);
 });
 
+test("T06/T07 distingue lote consumido sin Worker de uno no iniciado; no autoriza un relanzamiento",()=>{
+ const p=projectParallelAgentFlow([batch({supervisorClaimed:true,tasks:[
+  task("worker-a",{handoffClaimed:true,childSession:{id:"child-a",agents:[]}}),
+  task("worker-b",{handoffClaimed:true,childSession:{id:"child-b",agents:[{
+   id:"agente-b",role:"worker",state:"queued"
+  }]}})
+ ]})]);
+ assert.equal(p.stages["launch-unverified"],1);
+ assert.equal(p.stages["queued-observed"],1);
+ assert.equal(p.stages["running-observed"],0);
+ assert.equal(p.tasks[0]?.nextAction,"inspect-launch");
+ assert.equal(p.tasks[0]?.workerObserved,"not-observed");
+ assert.equal(p.tasks[1]?.workerObserved,"queued");
+ assert.equal(p.autoLaunch,false);assert.equal(p.autoRetry,false);
+ assert.equal(p.autoMerge,false);assert.equal(p.acceptance,"not-accepted");
+ const notClaimed=projectParallelAgentFlow([batch({supervisorClaimed:false,tasks:[
+  task("worker-a",{handoffClaimed:true,childSession:{id:"child-a",agents:[]}}),
+  task("worker-b",{handoffClaimed:true,childSession:{id:"child-b",agents:[]}})
+ ]})]);
+ assert.equal(notClaimed.stages["handoff-unverified"],2);
+});
+
 test("T07 attached Pi session, claimed handoff, and active model-free Worker have different honest states",()=>{
  const p=projectParallelAgentFlow([batch({tasks:[
   task("worker-a",{childSession:{id:"child-a",agents:[]}}),

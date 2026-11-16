@@ -130,6 +130,11 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
     out.push("Worktree Workers: "+flow.stages["running-observed"]+" active observed · "+
      flow.stages["manual-review-required"]+" awaiting human review · "+
      flow.stages.blocked+" blocked");
+    if(flow.stages["queued-observed"])
+     out.push("Child Workers queued (not running): "+flow.stages["queued-observed"]);
+    if(flow.stages["launch-unverified"])
+     out.push("Child launches unverified: "+flow.stages["launch-unverified"]+
+      " · inspect claim and child evidence · no replay");
     const pinned=flow.tasks.filter(task=>task.modelRequested!=="unknown");
     if(pinned.length){
      out.push("Requested child models: "+pinned.length+" · actual still unknown");

@@ -220,6 +220,30 @@ test("T07 existing Pi panel shows cross-session flow in TODOS AGENTS CHANGES INT
  assert.deepEqual(source,before);
 });
 
+test("T06/T07 distingue cola y lanzamiento no acreditado en TODOS y AGENTS",()=>{
+ const overview=projectParallelAgentFlow([{batchId:"lote-pendiente",state:"prepared",
+  supervisorClaimed:true,tasks:[
+   {sourceTodoId:"origen-a",sourceTodoUnchanged:true,worktreePresent:true,
+    handoffClaimed:true,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"child-a",agents:[]}},
+   {sourceTodoId:"origen-b",sourceTodoUnchanged:true,worktreePresent:true,
+    handoffClaimed:true,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"child-b",agents:[{id:"worker-b",role:"worker",state:"queued"}]}}
+  ]}]);
+ const scope=snapshot({todos:[],agents:[],jobs:[],
+  agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const todos=renderAsenPanelSection(scope,"TODOS",140).join("\n");
+ const agents=renderAsenPanelSection(scope,"AGENTS",140).join("\n");
+ assert.match(todos,/launch-unverified/u);
+ assert.match(todos,/queued-observed/u);
+ assert.match(agents,/Child launches unverified: 1/u);
+ assert.match(agents,/Child Workers queued \(not running\): 1/u);
+ assert.match(agents,/Worktree Workers: 0 active observed/u);
+ assert.doesNotMatch(todos+"\n"+agents,/merged|accepted:true|model actually used/iu);
+});
+
 test("T07 missing or unreadable flow never claims a model, Worker or successful integration",()=>{
  const rows=renderAsenPanelSection(snapshot({agentFlowUnavailable:true}),"INTEGRATIONS",90).join("\n");
  assert.match(rows,/Cross-session ODD: unavailable/u);

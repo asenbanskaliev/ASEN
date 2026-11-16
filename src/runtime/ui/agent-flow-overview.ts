@@ -6,10 +6,10 @@ import {inspectPlannedWorkerModelRoute} from "../agents/parallel-worker-model-ro
 
 export type AgentFlowStage=
  "blocked"|"reserved-needs-inspection"|"attach-required"|"child-plan-required"|
- "handoff-unverified"|"running-observed"|"manual-review-required"|"not-started";
+ "handoff-unverified"|"launch-unverified"|"queued-observed"|"running-observed"|"manual-review-required"|"not-started";
 export type AgentFlowAction=
  "inspect-blocker"|"inspect-reservation"|"attach-child-session"|
- "request-fresh-child-odd"|"inspect-handoff"|"observe-agent"|"review-changes";
+ "request-fresh-child-odd"|"inspect-handoff"|"inspect-launch"|"observe-agent"|"review-changes";
 export interface AgentFlowSourceBatch{
  readonly batchId:string;
  readonly state:"reserved"|"prepared";
@@ -40,7 +40,7 @@ export interface AgentFlowProjection{
  readonly stages:Readonly<Record<AgentFlowStage,number>>;
  readonly tasks:readonly Readonly<{
   batchId:string;taskId:string;stage:AgentFlowStage;nextAction:AgentFlowAction;
-  workerObserved:"not-observed"|"active"|"terminal-unverified"|"failure-or-interruption";
+  workerObserved:"not-observed"|"queued"|"active"|"terminal-unverified"|"failure-or-interruption";
   changeEvidence:"unavailable"|"clean"|"scoped-changes"|"out-of-scope"|"head-diverged";
   supervisorClaimed:boolean|null;receiptRecorded:boolean|null;
   modelRequested:string;modelResolved:"unknown";modelActual:"unknown";
@@ -55,7 +55,7 @@ const safeId=(v:unknown):v is string=>typeof v==="string"&&v.length>0&&v.length<
 const validStates=new Set(["queued","running","waiting","completed","failed","interrupted","cancelled"]);
 const initialized=():Record<AgentFlowStage,number>=>({
  "blocked":0,"reserved-needs-inspection":0,"attach-required":0,
- "child-plan-required":0,"handoff-unverified":0,"running-observed":0,
+ "child-plan-required":0,"handoff-unverified":0,"launch-unverified":0,"queued-observed":0,"running-observed":0,
  "manual-review-required":0,"not-started":0
 });
 export function projectParallelAgentFlow(batches:readonly AgentFlowSourceBatch[]):AgentFlowProjection{
@@ -85,7 +85,8 @@ export function projectParallelAgentFlow(batches:readonly AgentFlowSourceBatch[]
    const workerStates=task.childSession?.agents.filter((a:Readonly<{id:string;role:string;state:string}>)=>a.role==="worker").map((a:Readonly<{id:string;role:string;state:string}>)=>a.state)??[];
    const workerObserved:AgentFlowProjection["tasks"][number]["workerObserved"]=
     workerStates.some((s:string)=>["failed","interrupted","cancelled"].includes(s))?"failure-or-interruption":
-    workerStates.some((s:string)=>["queued","running","waiting"].includes(s))?"active":
+    workerStates.some((s:string)=>s==="running")?"active":
+    workerStates.some((s:string)=>["queued","waiting"].includes(s))?"queued":
     workerStates.some((s:string)=>s==="completed")?"terminal-unverified":"not-observed";
    const invalidSource=!task.sourceTodoUnchanged;
    const invalidDiff=task.changes.status==="out-of-scope"||
@@ -99,8 +100,14 @@ export function projectParallelAgentFlow(batches:readonly AgentFlowSourceBatch[]
     stage="reserved-needs-inspection";nextAction="inspect-reservation";
    }else if(workerObserved==="active"){
     stage="running-observed";nextAction="observe-agent";
+   }else if(workerObserved==="queued"){
+    stage="queued-observed";nextAction="observe-agent";
    }else if(workerObserved==="terminal-unverified"){
     stage="manual-review-required";nextAction="review-changes";
+   }else if(batch.supervisorClaimed===true&&task.handoffClaimed&&task.childSession){
+    // A consumed one-shot claim does NOT prove the Worker started.
+    // A missing child result must be inspected, never replayed or marked PASS.
+    stage="launch-unverified";nextAction="inspect-launch";
    }else if(!task.childSession){
     stage="attach-required";nextAction="attach-child-session";
    }else if(!task.handoffClaimed){
