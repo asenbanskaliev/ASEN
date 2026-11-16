@@ -11,6 +11,7 @@ import type {OddRouteDecision} from "../src/flow/odd-routing.js";
 import type {ExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
 import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
+import {inspectStoredFixSourceTree} from "../src/review/judgment-fix-odd-preflight.js";
 import {createNativeRddControl,type NativeRddOptions} from "../src/review/native-rdd-control.js";
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
 import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
@@ -1921,6 +1922,23 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
      context.signal?.aborted)throw new Error("Fix proposal session changed while reading");
     return rows;
+   },
+   plan:async(context,raw,source)=>{
+    const manager=context.sessionManager,sessionId=manager.getSessionId(),
+     projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+    if(context.signal?.aborted)throw new Error("Fix ODD planning was cancelled");
+    const existing=(await fixJournal.list({sessionId,projectId}))
+     .find(row=>row.id===source.proposalId);
+    if(!existing||existing.requiredAction!=="new-odd-plan"||
+     existing.candidateTreeIdentity!==source.treeIdentity)
+     throw new Error("Fix ODD source proposal is unavailable or in dispute");
+    inspectStoredFixSourceTree(projectId,existing.paths,source.treeIdentity);
+    const result=await preparePlan(raw,context as CommandContext,false,true,source);
+    if(manager.getSessionId()!==sessionId||
+     !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+     context.signal?.aborted)
+     throw new Error("Fix ODD session changed; inspect saved Todos before any retry");
+    return result;
    }
   });
   // Public work is ODD-only. Legacy selection/recovery remains in lifecycle modules,
