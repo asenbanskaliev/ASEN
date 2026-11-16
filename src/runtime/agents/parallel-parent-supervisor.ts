@@ -202,10 +202,12 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   }
   // After earlier Workers start the full batch is no longer 'ready'.
   // Recheck ONLY this candidate: do not retarget or replan another unit.
+  const child:TodoContext={sessionId:unit.childSessionId,projectId:unit.childProjectId};
+  try{
   const link=(await input.sessionJournal.listSource(input.source)).find(l=>
    l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId&&
    l.childSessionId===unit.childSessionId&&same(l.childProjectId,unit.childProjectId));
-  const child:TodoContext={sessionId:unit.childSessionId,projectId:unit.childProjectId};
+
   const [rows,agents,links]=await Promise.all([
    input.loadTodos(child),input.loadAgents(child),input.loadTaskAgentLinks(child)
   ]);
@@ -225,6 +227,11 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    git.status!=="clean"||!git.sourceVerified||!git.headMatchesBase)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": Child identity, worker or Git candidate changed; inspect before any new launch"]);
+  }catch{
+   // Tras consumir el intento único, toda lectura fallida requiere revisión.
+   return nonAuthorizing("partial-needs-review",initial.batchId,started,
+    [unit.sourceTodoId+": Child records or Git verification could not be read; inspect durable evidence, do not retry"]);
+  }
   // The parent can only dispatch into its previously attached, independently
   // planned child. This exact provenance must remain true before AND after Pi
   // user consent, including while TrustedTaskAgentBinder performs its CAS.

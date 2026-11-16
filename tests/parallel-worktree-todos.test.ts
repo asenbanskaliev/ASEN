@@ -50,6 +50,7 @@ function fixture(t:TestContext){
   dispatchedChildren:{sourceTodoId:string;childTodoId:string;model:string}[]=[];
  let rows=[row("todo-backend","backend.txt"),row("todo-frontend","frontend.txt")],
   session=identity.sessionId,approve=true,editorAnswer=JSON.stringify({parentDir:parent,units:scopes});
+ let afterWorkerApproval:((unit:ParentSupervisorReadyWorker)=>void)|undefined;
  const commands=new Map<string,{handler:(args:string,ctx:unknown)=>Promise<unknown>}>();
  registerParallelWorktreeCommand((name,command)=>commands.set(name,command as never),{
   journalFile,sessionLinksFile,planClaimsFile,observationFile,supervisorClaimsFile,
@@ -65,6 +66,9 @@ function fixture(t:TestContext){
     instruction:"Perform only authorized child scope",writeSurfaces:unit.writeSurfaces,
     candidateRevision:unit.baseRevision});
    if(!authorized)return {status:"blocked" as const,reason:"Per-Worker Pi consent declined"};
+   afterWorkerApproval?.(unit);
+   // El despachador comprueba de nuevo la identidad tras el permiso.
+   await validateParent();
    dispatchedChildren.push({sourceTodoId:unit.sourceTodoId,childTodoId:unit.childTodoId,model:unit.model});
    const current=childRows.get(unit.childSessionId)??[];
    childRows.set(unit.childSessionId,current.map(t=>t.taskId===unit.childTodoId?
@@ -120,7 +124,8 @@ function fixture(t:TestContext){
   dispatchedChildren,
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
-  setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},row};
+  setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},
+  onWorkerApproved:(callback?:((unit:ParentSupervisorReadyWorker)=>void))=>{afterWorkerApproval=callback;},row};
 }
 
 test("T06 linked worktree command reserves actual ODD Todo identities before creating Git worktrees",async t=>{
@@ -684,6 +689,54 @@ test("T06 late child model substitution during second Worker consent stops subse
  const retry=await f.run("supervise") as {status:string};
  assert.equal(retry.status,"blocked");
  assert.equal(f.dispatchedChildren.length,1);
+});
+
+
+test("T06 rechaza un cambio del modelo hijo entre permiso y despacho",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ f.onWorkerApproved(unit=>{
+  if(unit.sourceTodoId!=="todo-backend")return;
+  const observed=f.getChildObservations(unit.childSessionId);
+  f.setChildObservations(unit.childSessionId,observed.todos.map(row=>
+   row.taskId===unit.childTodoId?{...row,plan:{...row.plan!,model:"modelo-no-autorizado/otro"}} as SourceTodoRow:row
+  ),observed.agents,observed.links);
+ });
+ const result=await f.run("supervise") as {status:string;started:readonly unknown[];autoRetry:boolean};
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(result.started.length,0);assert.equal(result.autoRetry,false);
+ assert.equal(f.dispatchedChildren.length,0);
+ assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,1);
+ assert.equal((await f.run("supervise") as {status:string}).status,"blocked");
+});
+
+test("T06 error de lectura tras primera ejecución conserva el intento sin replay",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const batch=(await f.journal.list(f.identity))[0]!;
+ const claims=new ParentSupervisorClaimJournal(f.supervisorClaimsFile);
+ let count=0;
+ const result=await launchParentApprovedWorkers({
+  source:f.identity,batchId:batch.id,sourceJournal:f.journal,
+  sessionJournal:f.sessions,claimJournal:new ParallelChildPlanClaimJournal(f.planClaimsFile),attemptJournal:claims,
+  loadTodos:async identity=>{
+   if(count>0&&identity.sessionId==="child-pi-2")throw Error("error del almacenamiento");
+   return identity.sessionId===f.identity.sessionId?f.rows:f.getChildObservations(identity.sessionId).todos;
+  },
+  loadAgents:async identity=>f.getChildObservations(identity.sessionId).agents,
+  loadTaskAgentLinks:async identity=>f.getChildObservations(identity.sessionId).links,
+  validateParent:async()=>{},confirmBatch:async()=>true,confirmWorker:async()=>true,
+  launchChild:async(unit,confirm)=>{
+   if(!await confirm({id:unit.childTodoId,title:"Worker",role:"worker",
+    instruction:"Prueba",writeSurfaces:unit.writeSurfaces,candidateRevision:unit.baseRevision}))
+    return {status:"blocked",reason:"denegado"} as const;
+   count++;
+   return {status:"dispatched",todoId:unit.childTodoId,agentId:"agent-"+count,role:"worker"} as const;
+  }
+ });
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(result.started.length,1);assert.equal(count,1);
+ assert.equal(result.autoRetry,false);assert.equal(result.autoMerge,false);
+ assert.ok(result.blockers.some(x=>/could not be read/u.test(x)));
+ assert.equal((await claims.listSource(f.identity)).length,1);
 });
 
 test("T06 global batch denial does not consume one-shot claim; approved launch does",async t=>{

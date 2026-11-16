@@ -126,7 +126,7 @@ export function registerParallelWorktreeCommand(
       ].join("\n"));
       await validateParent();return answer===true;
      },
-     launchChild:(unit,confirm)=>options.launchChildWorker!(unit,confirm,validateParent)
+     launchChild:(unit,confirm,validateExact)=>options.launchChildWorker!(unit,confirm,validateExact)
     });
     ctx.ui.notify(JSON.stringify(result,null,2),
      result.status==="started"?"info":"warning");
