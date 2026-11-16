@@ -11,6 +11,7 @@ import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-s
 import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
 import {ParentSupervisorClaimJournal} from "../src/runtime/agents/parallel-parent-supervisor-claims.js";
+import {launchParentApprovedWorkers} from "../src/runtime/agents/parallel-parent-supervisor.js";
 import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../src/runtime/agents/task-agent-link-store.js";
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
@@ -556,6 +557,56 @@ test("T06 parent supervisor launches two exact independently consented child Wor
  const again=await f.run("supervise") as {status:string;started:readonly unknown[]};
  assert.equal(again.status,"blocked");assert.equal(again.started.length,0);
  assert.equal(f.dispatchedChildren.length,2);
+});
+
+
+test("T06 cancelación entre Workers conserva el primero y prohíbe relanzar el lote",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const batch=(await f.journal.list(f.identity))[0]!;
+ let launched=0,checksAfterFirst=0;
+ const sourceJournal=f.journal,sessionJournal=f.sessions;
+ const claimJournal=new ParallelChildPlanClaimJournal(f.planClaimsFile),
+  attemptJournal=new ParentSupervisorClaimJournal(f.supervisorClaimsFile);
+ const input={
+  source:f.identity,batchId:batch.id,sourceJournal,sessionJournal,claimJournal,attemptJournal,
+  loadTodos:async(identity:TodoContext)=>identity.sessionId===f.identity.sessionId?
+   f.rows:f.getChildObservations(identity.sessionId).todos,
+  loadAgents:async(identity:TodoContext)=>f.getChildObservations(identity.sessionId).agents,
+  loadTaskAgentLinks:async(identity:TodoContext)=>f.getChildObservations(identity.sessionId).links,
+  validateParent:async()=>{
+   if(launched>0&&++checksAfterFirst>1)throw new Error("Sesión padre cancelada");
+  },
+  confirmBatch:async()=>true,
+  confirmWorker:async()=>true,
+  launchChild:async(unit:Readonly<{childTodoId:string}>,confirm:(task:Readonly<{
+   id:string;title:string;role:string;instruction:string;
+   writeSurfaces?:readonly string[];candidateRevision?:string
+  }>)=>Promise<boolean>,validateExact:()=>Promise<void>)=>{
+   await validateExact();
+   const approved=await confirm({
+    id:unit.childTodoId,title:"Worker hijo",role:"worker",
+    instruction:"Solo los archivos aprobados"
+   });
+   if(!approved)return {status:"blocked" as const,reason:"Permiso denegado"};
+   launched++;
+   return {status:"dispatched" as const,role:"worker" as const,
+    todoId:unit.childTodoId,agentId:"agente-"+launched};
+  }
+ };
+ const result=await launchParentApprovedWorkers(input);
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(result.started.length,1);
+ assert.equal(result.started[0]?.agentId,"agente-1");
+ assert.equal(launched,1);
+ assert.equal(result.autoRetry,false);
+ assert.equal(result.grantsAuthority,false);
+ assert.equal(result.autoMerge,false);
+ assert.equal(result.acceptance,"not-accepted");
+ assert.ok(result.blockers.some(x=>/Parent Pi session cancelled/u.test(x)));
+ const again=await launchParentApprovedWorkers(input);
+ assert.equal(again.status,"blocked");
+ assert.equal(launched,1);
+ assert.equal((await attemptJournal.listSource(f.identity)).length,1);
 });
 
 test("T06 supervisor refuses after consent declined for second Worker, never retries first",async t=>{
