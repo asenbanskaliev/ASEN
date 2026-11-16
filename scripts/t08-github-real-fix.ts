@@ -298,7 +298,11 @@ async function fixWorker(
  dir:string,approval:{writerId:string;session:string}
 ){
  const expected=git(root,"rev-parse","HEAD");
- const taskId="t08-fix",workerId=taskId+":worker";
+ // El agente que recibe autoridad es EXACTAMENTE el Todo creado y validado
+ // por ODD, no un identificador nuevo decidido por el controlador del ensayo.
+ const taskId=approval.writerId,workerId=taskId+":worker";
+ if(!/^todo-[a-z0-9-]{6,128}$/u.test(taskId))
+  throw Error("T08 no concede Writer a un identificador ajeno al Todo guardado");
  const candidate={id:taskId,repository:root,revision:expected,
   createdAt:new Date().toISOString()};
  const instruction="Corregir la validación de enteros finitos en sumEvenNumbers, "+
