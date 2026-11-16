@@ -57,7 +57,8 @@ jobs:
             tests/t08-github-workflow-boundary.test.ts \
             tests/t08-isolated-repository.test.ts \
             tests/t08-pi-review-text.test.ts \
-            tests/t08-pi-review-diagnostics.test.ts
+            tests/t08-pi-review-diagnostics.test.ts \
+            tests/t08-pi-settlement.test.ts
   test:
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
