@@ -1886,9 +1886,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   });
   const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
    const sessionId=context.sessionManager.getSessionId(),projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
-   const target=lens==="jd-judge-a"||lens==="jd-judge-b"?lens:`review-${lens}` as const;
+   const target=lens==="jd-judge-a"||lens==="jd-judge-b"||lens==="jd-fix-agent"?lens:`review-${lens}` as const;
    return resolveAgentProfileTarget(await profileLayer({sessionId,projectId}),target).choice;
-  });
+  },todoStorePromise?async context=>{
+   const manager=context.sessionManager,sessionId=manager.getSessionId(),
+    projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+   const rows=await (await todoStorePromise).list({sessionId,projectId});
+   if(manager.getSessionId()!==sessionId||
+    path.normalize(realpathSync(path.resolve(context.cwd)))!==projectId||
+    context.signal?.aborted)throw new Error("ODD review session changed during Todo retrieval");
+   return rows;
+  }:undefined);
   // Public work is ODD-only. Legacy selection/recovery remains in lifecycle modules,
   // not a product command or an implicit conversion into fresh write authority.
   return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability});
