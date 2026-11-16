@@ -50,7 +50,7 @@ test("T08 un diario activo vacío no demuestra que el plan nunca se guardó",()=
  const result=inspectFixOddRecovery({draft,identity,todos:[]});
  assert.equal(result.status,"not-observed");
  assert.equal(result.workerTodoId,null);
- assert.match(result.reason,/archived or interrupted/u);
+ assert.match(result.reason,/interrupted save or earlier unavailable archive/u);
  assert.equal(result.autoRetry,false);
 });
 test("T08 rechazo de informes falsos, duplicados, ámbito distinto y sesión ajena",()=>{
