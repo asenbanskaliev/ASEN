@@ -90,21 +90,18 @@ export async function requireLiveT08GithubApprovals(
   reviewerA:env.ASEN_T08_REVIEW_A??"",reviewerB:env.ASEN_T08_REVIEW_B??"",
   writerModel:env.ASEN_T08_WRITER_MODEL??""
  };
- // No consultar el proveedor, ni gastar, antes de revisar incluso los argumentos.
- const precheck=validateT08GithubApprovals({context,stage,
-  run:{id:Number(context.runId),event:"workflow_dispatch",head_sha:context.sha,
-   head_branch:branch,run_attempt:1,repository:{full_name:repo},
-   actor:{login:context.actor}},
-  approvals:stage==="review"?[
-   {state:"approved",environments:[{name:T08_REVIEW_ENVIRONMENT}],
-    user:{type:"User",login:"asenbanskaliev"}}]:[
-   {state:"approved",environments:[{name:T08_REVIEW_ENVIRONMENT}],
-    user:{type:"User",login:"asenbanskaliev"}},
-   {state:"approved",environments:[{name:T08_FIX_ENVIRONMENT}],
-    user:{type:"User",login:"asenbanskaliev"}}]
- });
- if(precheck.status!=="approved-environments-only")
-  throw Error("T08 bloqueado antes de consultar GitHub: "+precheck.reason);
+ // Validación puramente local: jamás se construyen aprobaciones simuladas.
+ if(context.repository!==repo||context.actor!=="asenbanskaliev"||
+  context.eventName!=="workflow_dispatch"||
+  context.ref!=="refs/heads/"+branch||context.actions!=="true"||
+  !/^[a-f0-9]{40}$/u.test(context.sha)||context.sha!==context.expectedSha||
+  !/^[1-9][0-9]{0,14}$/u.test(context.runId)||
+  context.attempt!=="1"||context.costAcknowledged!=="true"||
+  [context.reviewerA,context.reviewerB,context.writerModel].some(
+   model=>inspectPlannedWorkerModelRoute(model).status!=="pinned"||
+    !/^nvidia\\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u.test(model)
+  )||new Set([context.reviewerA,context.reviewerB,context.writerModel]).size!==3)
+  throw Error("T08 requiere identidad, SHA, coste y tres modelos NVIDIA distintos");
  const token=env.GITHUB_TOKEN;
  if(!token||token.length<20)throw Error("T08 requiere un token GitHub con Actions:read");
  const base="https://api.github.com/repos/"+repo+"/actions/runs/"+context.runId;
