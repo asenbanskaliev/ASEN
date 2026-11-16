@@ -673,9 +673,10 @@ test("T02/T05/T06 supervisor rechaza modelos implícitos antes de solicitar perm
  const f=fixture(t);
  await prepareSupervisorChildren(f);
  const original=f.getChildObservations("child-pi-1");
- f.setChildObservations("child-pi-1",original.todos.map(row=>({
-  ...row,plan:{...row.plan!,model:undefined}
- } as SourceTodoRow)),original.agents,original.links);
+ f.setChildObservations("child-pi-1",original.todos.map(row=>{
+  const {model:_missing,...plan}=row.plan!;
+  return {...row,plan} as SourceTodoRow;
+ }),original.agents,original.links);
  const result=await f.run("supervise") as {status:string;blockers:readonly string[]};
  assert.equal(result.status,"blocked");
  assert.ok(result.blockers.some(x=>/model is unspecified/u.test(x)));
