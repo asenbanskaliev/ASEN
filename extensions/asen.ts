@@ -421,6 +421,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     hostStatus,integrationInspection,permission:permissionSession.mode(ctx),
     ...(agentFlow?{agentFlow}:{}),...(agentFlowUnavailable?{agentFlowUnavailable:true}:{})};
   };
+  // La observación de hijos se hace SOLO cuando se abre el panel.
+  // No consultar Git ni diarios externos en cada refresco del editor.
+  const publishInspectedWorkRow=(ctx:CommandContext,snapshot:AsenPanelSnapshot):void=>{
+   if(ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
+   const width=terminalColumns();
+   if(width>=140)return; // La barra auxiliar no se dibuja en el diseño ancho.
+   const row=renderAsenWorkRow(snapshot,width);
+   ctx.ui.setWidget("asen-live-work",row?[row]:undefined,{placement:"aboveEditor"});
+  };
   const m1Cache=createM1SurfaceCache();
   let workRowGeneration=0;
   const refreshWorkRow=async(ctx:CommandContext):Promise<void>=>{
@@ -1101,6 +1110,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // It is modal and read-only; it does not replace the persistent fullscreen rail.
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
      const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;assertCurrent();
+     publishInspectedWorkRow(ctx,snapshot);
      const action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
       const close=()=>done(undefined);
       return createNativeWorkPanel(snapshot,{
@@ -1140,6 +1150,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
      return ["ASEN panel scope changed. No action performed."];
     const snapshot=await getPanelSnapshot(ctx),width=Math.max(12,terminalColumns());assertCurrent();
+    publishInspectedWorkRow(ctx,snapshot);
     if(section)return [...renderAsenPanelSection(snapshot,section,width)];
     if(view==="STATUS")return [renderAsenStatusLine(snapshot,width)];
     return [...renderAsenPanel(snapshot,width)];
