@@ -69,7 +69,7 @@ test("T08 salida incompleta, incorrecta o excesiva nunca se toma por éxito",()=
  for(const output of [
   "", "{", "no es JSON", JSON.stringify({type:"agent_end"}),
   JSON.stringify({type:"message_end",message:{role:"user",content:[text(sample)]}}),
-  final(Array.from({length:9},()=>text("x"))),
+  final(Array.from({length:65},()=>text("x"))),
   "x".repeat(512_001),
   flow(final([text(sample)]),"no-json"),
   final([reasoning("sin dictamen")])
