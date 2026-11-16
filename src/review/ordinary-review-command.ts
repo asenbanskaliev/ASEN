@@ -15,6 +15,7 @@ import {inspectFixOddRecovery} from "./judgment-fix-odd-recovery.js";
 import {inspectLiveFixCandidate} from "./judgment-fix-odd-preflight.js";
 import {validateFreshFixOddRequest} from "./judgment-fix-odd-planning.js";
 import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
+import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
 import {openBoundedCorrection,validateBoundedCorrection,type CorrectionRequest,type CorrectionValidation} from "./bounded-correction.js";
@@ -541,8 +542,8 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     if(fixPlanMatch[2]==="save"){
      if(draft.status!=="draft-only")
       return {status:"blocked" as const,reason:"Fix disagreement requires human triage first"};
-     if(!fixProposals.plan||!context.hasUI||!context.ui.editor||!context.ui.confirm)
-      return {status:"unavailable" as const,reason:"Saving Fix ODD requires a live Pi editor and a bounded Todo planner"};
+     if(!fixProposals.plan||!readOddTodos||!context.hasUI||!context.ui.editor||!context.ui.confirm)
+      return {status:"unavailable" as const,reason:"Saving Fix ODD requires a live Pi editor, a bounded Todo planner and a readable Todo store"};
      const baseline=inspectLiveFixCandidate(draft);
      const seed={
       instruction:"",taskIdentity:"fix-"+draft.sourceProposalId.slice(0,24),
@@ -593,6 +594,35 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
       !("route" in outcome.executablePlan)||outcome.executablePlan.route!=="orchestrate"||
       !("persistedTasks" in outcome)||!Array.isArray(outcome.persistedTasks))
       throw new Error("Fix ODD could not prove a saved, non-running plan; inspect Todos before any retry");
+     // La confirmación del planificador no acredita un Todo guardado.
+     // Comprobar el Worker persistido y la propuesta original antes de afirmar éxito.
+     const observed1=await readOddTodos(context);
+     validate();
+     const archived1=readArchivedOddTodos?await readArchivedOddTodos(context):[];
+     validate();
+     const observed2=await readOddTodos(context);
+     validate();
+     const archived2=readArchivedOddTodos?await readArchivedOddTodos(context):[];
+     validate();
+     if(JSON.stringify(observed1)!==JSON.stringify(observed2)||
+      JSON.stringify(archived1)!==JSON.stringify(archived2))
+      throw new Error("Fix ODD Todo changed during save verification; inspect the journal, no retry");
+     const recovered=inspectFixOddRecovery({
+      draft,identity,todos:observed2,archivedTodos:archived2
+     });
+     const receiptIds=outcome.persistedTasks.flatMap(item=>
+      item&&typeof item==="object"&&"todoId" in item&&
+      typeof item.todoId==="string"?[item.todoId]:[]);
+     const actualWorker=observed2.find(row=>row.taskId===recovered.workerTodoId);
+     if(recovered.status!=="worker-observed"||recovered.workerState!=="planned"||
+      !actualWorker||new Set(receiptIds).size!==receiptIds.length||
+      !receiptIds.includes(actualWorker.taskId)||
+      !actualWorker.plan?.writerAuthorizationBasis||
+      !actualWorker.plan.candidate||
+      actualWorker.plan.candidate.revision!==baseline.repositoryHead||
+      !sameWorkspaceIdentityPath(actualWorker.plan.candidate.repository,projectId))
+      throw new Error("Fix ODD plan not confirmed in its Todo store; inspect original records before retrying");
+     await revalidate();
      const result=Object.freeze({
       status:"plan-saved-no-dispatch" as const,sourceProposalId:draft.sourceProposalId,
       plannedTaskCount:outcome.persistedTasks.length,
