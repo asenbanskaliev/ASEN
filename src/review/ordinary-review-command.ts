@@ -357,9 +357,13 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    await assertOddCurrent();
    revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
    assertContextCurrent();
-   const fixProfile=await resolveLensRoute?.(context,"jd-fix-agent");
-   assertContextCurrent();
-   const fixHandoff=proposeJudgmentFixHandoff({report,evidence,...(fixProfile?{fixProfile}:{})});
+   let fixProfile:RouteChoice|undefined,fixProfileUnavailable=false;
+   try{fixProfile=await resolveLensRoute?.(context,"jd-fix-agent");}
+   catch{fixProfileUnavailable=true;}
+   await assertOddCurrent();assertContextCurrent();
+   const fixHandoff=proposeJudgmentFixHandoff({
+    report,evidence,...(fixProfile?{fixProfile}:{}),fixProfileUnavailable
+   });
    const visible=report.findings.slice(0,40).map(({judge,reviewerId,finding})=>({judge,reviewerId,...finding}));
    const result=Object.freeze({
     status:report.status,requestId:report.requestId,candidate:evidence.candidate,judges:report.judges,
