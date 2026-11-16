@@ -70,6 +70,9 @@ test("T08 no acepta autorizaciones de otro SHA, run, actor ni intento",()=>{
   {reviewerB:context.reviewerA},
   {writerModel:context.reviewerA},
   {reviewerA:"nvidia//invalido"},
+  {reviewerA:"nvidia/nemotron-3-ultra-550b-a55b"},
+  {reviewerB:"nvidia/nemotron-3-ultra-550b-a55b"},
+  {writerModel:"nvidia/nemotron-3-ultra-550b-a55b"},
   {writerModel:"nvidia/default"}
  ]){
   assert.equal(inspect("review",{...context,...changed}).status,"blocked",
@@ -91,5 +94,18 @@ test("T08 rechaza historial incompleto o malformado sin conceder escritura",()=>
   [{state:"approved",environments:[null],user:{type:"User",login:"asenbanskaliev"}}]
  ]){
   assert.equal(validateT08GithubApprovals({context,run,approvals:bad,stage:"fix"}).status,"blocked");
+ }
+});
+
+test("T08 bloquea el modelo con respuestas vacías conocidas aunque tenga aprobaciones",()=>{
+ for(const change of [
+  {reviewerA:"nvidia/nemotron-3-ultra-550b-a55b"},
+  {reviewerB:"nvidia/nemotron-3-ultra-550b-a55b"},
+  {writerModel:"nvidia/nemotron-3-ultra-550b-a55b"}
+ ]){
+  const result=inspect("fix",{...context,...change});
+  assert.equal(result.status,"blocked");
+  assert.match(result.reason,/dictámenes vacíos/u);
+  assert.equal(result.writerAuthority,false);
  }
 });
