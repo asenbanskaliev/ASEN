@@ -109,7 +109,7 @@ export class JudgmentFixProposalJournal{
    candidateTreeIdentity:handoff.candidateTreeIdentity,
    paths:Object.freeze([...handoff.paths]),
    status:"proposal-only" as const,
-   requiredAction:handoff.status==="manual-triage"?"manual-triage" as const:"new-odd-plan" as const,
+   requiredAction:handoff.status==="manual-triage-required"?"manual-triage" as const:"new-odd-plan" as const,
    modelRequested:handoff.fixModelRequested,modelActual:"unknown" as const,
    createdAt:new Date().toISOString(),
    requiresFreshWriterConsent:true as const,
