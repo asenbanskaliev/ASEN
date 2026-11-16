@@ -82,3 +82,14 @@ La extracción estructural de `ordinary-review-command.ts` se deja pendiente par
 - **Cierre condicionado:** los cuatro errores identificados solo pasan a `corregido y verificado` cuando el CI completo de un mismo SHA final sea correcto en los tres sistemas. Release Gate y Pi 1.2 también deben superar **ese SHA**, sin considerar los trabajos omitidos como PASS.
 - PR #61 sigue en borrador; `globalFull:false`. T06 Writer dual, T08 Fix autorizado, T09 y T10 siguen sin evidencia FULL.
 
+## Ampliación 4R — conexión de Fix persistido con borrador ODD (2026-11-16)
+
+**RISK / Seguridad.** El nuevo comando `/asen-review fix-plan <id>` verifica que la propuesta almacenada pertenece a la **sesión Pi y proyecto originales**, compara la identidad persistida del informe, bloquea ámbitos sensibles o fuera del proyecto y vuelve a leer el registro antes de presentar el borrador. No hereda credenciales, aprobación Writer ni facultad de fusión. La salida queda en `authorized:false` y `modelActuallyUsed:unknown`. Un atacante que falsifique un registro solo puede intentar producir un **borrador no ejecutable**, nunca un permiso; el diario privado existente continúa siendo una frontera de confianza.
+
+**READABILITY / Legibilidad.** La transformación está aislada en `src/review/judgment-fix-odd-draft.ts`. El comando principal solo verifica sesión, consulta registro y devuelve el resultado. Se distinguen `draft-only` y `manual-triage-required`. No se expone contenido textual libre de los modelos como instrucciones de programación.
+
+**RELIABILITY / Confiabilidad.** Dos grupos de pruebas negativas cubren identidad manipulada, otra sesión/proyecto, rutas inseguras y duplicadas, permisos heredados, registro ausente y modificación durante su lectura. Se preservan explícitamente `sourceCandidateTree` y `candidateStatus:not-revalidated`: **no se declara verificado el árbol Git actual**.
+
+**RESILIENCE / Resiliencia.** Si la sesión cambia, el diario no está disponible, el registro se modifica o existe desacuerdo entre jueces, se bloquea o requiere revisión humana. El comando no escribe un Todo, no lanza Worker, no consulta modelos y no ejecuta reintentos que pudieran duplicar escrituras.
+
+**Limitaciones que impiden T08 FULL:** no existe todavía una conversión segura del borrador a un nuevo ODD/Todo ejecutable con instrucciones humanas concretas, candidato vigente y autorización individual. También falta auditoría independiente T10 y evidencia de dos Writers Pi reales. **Solo se podrá acreditar esta tanda con CI y Release Gate correctos para su SHA exacto; globalFull:false.**
