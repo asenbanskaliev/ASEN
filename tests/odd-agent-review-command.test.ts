@@ -60,7 +60,7 @@ test("T04 revisión de ODD desde el comando real sin permisos ni modelo lanzado"
 test("T04 sesión ajena o candidato cambiado detiene el enlace antes de revisión",async t=>{
  const f=fixture(t);
  f.register(async()=>[f.task]);
- const changed={...f.task,current:{...f.task.current,sessionId:"ajena"}};
+ const changed:ScopedOddTodo={...f.task,current:{...f.task.current,sessionId:"ajena"}};
  f.register(async()=>[changed]);
  const result=await f.run("todo "+f.taskId) as {status:string;blockers:string[]};
  assert.equal(result.status,"blocked");
