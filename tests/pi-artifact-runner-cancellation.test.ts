@@ -60,7 +60,7 @@ test("Cancelar una sesión no cancela otra y no autoriza artefactos tardíos",as
       stopReason:"stop",content:[{type:"text",
        text:JSON.stringify({content:"completado"})}]}}),
      JSON.stringify({type:"agent_end"})
-    ].join("\\n")
+    ].join("\n")
    };
    return new Promise<{id:string;ok:boolean;output:string}>(resolve=>{
     const cancel=()=>resolve({id:request.id,ok:false,output:"pi process cancelled"});
