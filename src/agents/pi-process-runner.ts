@@ -25,6 +25,9 @@ export interface PiProcessOptions{
  signal?:AbortSignal;
  providerExtension?:string;
  noTools?:boolean;
+ /** Esperar agent_settled cuando Pi pueda continuar después de agent_end.
+  * Activar solo para revisiones con evidencia de fin de sesión. */
+ requireFinalSettlement?:boolean;
  attributionFile?:string;
  /**
   * Binds a worker turn to one exact file result.  The authority extension
@@ -299,12 +302,16 @@ export class PiProcessRunner implements AgentRunner{
    if(child.pid!==undefined){try{this.options.onProcessStart?.(child.pid);}catch{/* Evidence observers cannot alter Pi execution. */}}
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
    const fallbackChain=fallbackConfig?.chain??[],fallbackEnabled=fallbackChain.length>0,triedModels=new Set<string>(),cooldown=getProcessModelFallbackCooldown();
-   // Settlement contract (pinned by tests/pi-process-runner-no-fallback-settlement.test.ts):
-   // without a fallback chain a correlated response plus a clean exit completes the
-   // run; with a fallback chain the turn must also settle, because the runner may
-   // otherwise replace the turn with another model.
-   const settlementRequired=fallbackEnabled;
+   // Compatibilidad: la ruta antigua sin fallback conserva su contrato.
+   // T08 puede exigir agent_settled incluso sin cambiar de modelo: agent_end
+   // solo cierra una tentativa de Pi y puede preceder a una recuperación.
+   const strictNativeSettlement=this.options.requireFinalSettlement===true&&!fallbackEnabled;
+   const settlementRequired=fallbackEnabled||strictNativeSettlement;
    let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!settlementRequired,rpcSequence=0,currentModel=request.model;
+   // Solo se usan marcadores del hijo Pi, nunca texto del modelo como prueba
+   // de cierre. La respuesta RPC debe pertenecer a la petición actual.
+   let strictPromptAck=false,strictMessageEnd=false,strictAgentEnd=false,
+    strictAgentWillRetry=false;
    // A correlated continuation RPC response and its completion events can
    // arrive together in one stdout chunk, before the sendRpc await resumes.
    // Hold only a *validated* new-turn completion until the transition commits.
@@ -453,6 +460,18 @@ export class PiProcessRunner implements AgentRunner{
        pendingRpc.delete(response.id);pending.resolve(record as Record<string,unknown>);continue;
       }
      }
+     if(strictNativeSettlement&&type==="response"&&response.id===request.id&&
+        response.success===true)strictPromptAck=true;
+     if(strictNativeSettlement&&type==="agent_start"){
+      strictMessageEnd=false;strictAgentEnd=false;strictAgentWillRetry=false;
+     }
+     if(strictNativeSettlement&&type==="message_end"&&
+        (record as {message?:{role?:unknown}}).message?.role==="assistant")
+      strictMessageEnd=true;
+     if(strictNativeSettlement&&type==="agent_end"){
+      strictAgentEnd=true;
+      strictAgentWillRetry=(record as {willRetry?:unknown}).willRetry===true;
+     }
      if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant"&&
         (!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
       lastAssistantFailure=classifyAssistantError((record as {message?:Parameters<typeof classifyAssistantError>[0]}).message);
@@ -498,7 +517,8 @@ export class PiProcessRunner implements AgentRunner{
       }
       continue; // Raw state is never part of the retained execution output.
      }
-     const keep=typeof record==="string"||agentEnded||type==="agent_end"||type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
+     const keep=typeof record==="string"||agentEnded||type==="agent_end"||
+      strictNativeSettlement&&type==="agent_settled"||type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
      if(keep){
       const retained=line+"\n";retainedBytes+=Buffer.byteLength(retained);
       if(retainedBytes>max){overflow=true;stop({id:request.id,ok:false,output:`pi retained output exceeded ${max} bytes`});return;}
@@ -509,7 +529,18 @@ export class PiProcessRunner implements AgentRunner{
       if(continuationTurnPending&&continuationAcked)continuationAgentEnded=true;
      }
      if(response.type==="tool_execution_start"&&this.options.noTools){toolAttempted=true;stop({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});return;}
-     if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled){child.stdin.end();continue;}
+     if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled&&
+        !strictNativeSettlement){child.stdin.end();continue;}
+     if(type==="agent_settled"&&policyLoaded&&strictNativeSettlement){
+      if(!strictPromptAck||!strictMessageEnd||!strictAgentEnd||strictAgentWillRetry){
+       stop({id:request.id,ok:false,
+        output:"pi agent_settled without a completed final assistant turn"});
+       return;
+      }
+      finalAgentSettled=true;
+      closeSettled(lastAssistantFailure);
+      continue;
+     }
      if(response.type==="agent_settled"&&policyLoaded&&settlementRequired){
       if(fallbackInProgress){
        // Before the correlated continuation response this may be a stale
