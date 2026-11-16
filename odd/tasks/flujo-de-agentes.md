@@ -443,3 +443,12 @@ Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
 3. Faltan recibos de modelo consumido, costes, interfaz Pi real y dos Workers programadores autenticados con permisos separados.
 4. Permanecen abiertas la incidencia Windows, la comparación A/B y la revisión independiente.
 5. Estado: T04/T05/T07/T08 parciales; globalFull:false. PR #61 borrador sin fusión, CI y Release Gate exact-SHA obligatorios.
+
+### T04/T05/T07 — Revisión adaptativa directa del Todo (ampliación 2026-11-16)
+
+- Se incorpora /asen-review todo <id> adaptive. Tras comprobar sesión, Todo y HEAD, pasa el conjunto exacto de archivos ODD a la revisión adaptativa nativa, con perfiles 4R ya existentes.
+- La lista de archivos revisados queda fijada: no puede ampliarse mediante el editor, ni añadirse un archivo untracked ajeno al Todo. El sistema vuelve a leer el Todo y el HEAD antes de preparar el candidato, tras los diálogos y antes de cada envío al modelo.
+- El diálogo de consentimiento habitual sigue siendo obligatorio antes de enviar el diff; la ruta de modelo especializada sigue verificando autenticación y rechaza esfuerzo de razonamiento que no pueda aplicarse de forma comprobable.
+- Los paneles TODOS/REVIEW muestran el comando para entrar al recorrido real, indicando que se requiere aprobación. La consulta simple /asen-review todo <id> continúa siendo exclusivamente de lectura.
+- Nuevas pruebas en tests/odd-agent-review-command.test.ts: rechazo de consentimiento no ejecuta ni una llamada de modelo y no abre editor de ámbito libre; intentar introducir un archivo ajeno queda bloqueado. Las pruebas siguen necesitando CI del SHA exacto.
+- Aún pendiente: persistir la cadena informe de revisión → nueva tarea de reparación, pruebas reales de dos Workers Writer simultáneos, evidencia auténtica de modelo consumido por cada hijo y auditoría independiente. No declarar T04/T05/T07/T08 FULL.
