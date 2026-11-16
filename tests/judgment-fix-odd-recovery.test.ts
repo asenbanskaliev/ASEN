@@ -203,3 +203,28 @@ test("T08 recuperación indica inspección segura sin prometer reintentos ni una
   assert.equal(result.acceptance,"not-accepted");
  }
 });
+
+test("T08 un archivo ajeno no invalida el Fix consultado, ni se convierte en autorización",()=>{
+ const matched={...worker(),current:{...worker().current,state:"done" as const}};
+ const unrelated={
+  ...worker(),taskId:"todo-tarea-no-relacionada",requestId:"asen-plan:otra:worker",
+  current:{...worker().current,taskId:"todo-tarea-no-relacionada",state:"running" as const},
+  plan:{...worker().plan!,fixSource:{proposalId:"b".repeat(64),treeIdentity:"b".repeat(40)}}
+ };
+ const active=inspectFixOddRecovery({draft,identity,todos:[worker()],archivedTodos:[unrelated]});
+ assert.equal(active.status,"worker-observed");
+ assert.equal(active.workerTodoId,taskId);
+ assert.equal(active.nextAction,"inspect-active-worker");
+ const archived=inspectFixOddRecovery({draft,identity,todos:[],archivedTodos:[unrelated,matched]});
+ assert.equal(archived.status,"archived-worker-observed");
+ assert.equal(archived.workerTodoId,taskId);
+ assert.equal(archived.nextAction,"inspect-archived-worker");
+ const missing=inspectFixOddRecovery({draft,identity,todos:[],archivedTodos:[unrelated]});
+ assert.equal(missing.status,"not-observed");
+ for(const state of [active,archived,missing]){
+  assert.equal(state.writerAuthority,false);
+  assert.equal(state.autoRetry,false);
+  assert.equal(state.autoLaunch,false);
+  assert.equal(state.acceptance,"not-accepted");
+ }
+});
