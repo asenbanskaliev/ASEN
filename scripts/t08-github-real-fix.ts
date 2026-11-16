@@ -33,6 +33,7 @@ import {selectSkills} from "../src/skills/registry.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {assessT06WriterEvidence} from "../src/runtime/agents/t06-writer-evidence.js";
+import {parseT08NativeReviewText} from "../src/runtime/agents/t08-pi-review-text.js";
 import {createT08IsolatedRepository,removeT08IsolatedRepository,t08TemporaryRoot}
  from "../src/runtime/agents/t08-isolated-repository.js";
 
@@ -51,30 +52,6 @@ const required="sumEvenNumbers(numbers) recibe exclusivamente un array de entero
 
 type Models=Readonly<{reviewerA:string;reviewerB:string;writer:string}>;
 const reviewer=(value:string):PiReviewerModel=>({provider:"nvidia",id:value.slice("nvidia/".length)});
-function nativeReviewerOutput(output:string):string{
- if(output.length>512_000)throw Error("Respuesta Pi demasiado grande");
- let lines:unknown[];
- try{lines=output.trim().split(/\r?\n/u).filter(Boolean).map(s=>JSON.parse(s));}
- catch{throw Error("Flujo de revisión Pi no válido");}
- const tools=lines.filter(e=>typeof e==="object"&&e!==null&&"type" in e&&
-  typeof e.type==="string"&&(e.type.startsWith("tool_execution_")||
-   e.type.startsWith("toolcall_")));
- if(tools.length)throw Error("Un revisor intentó utilizar herramientas");
- const messages=lines.filter(e=>typeof e==="object"&&e!==null&&
-  "type" in e&&e.type==="message_end"&&"message" in e&&
-  !!e.message&&typeof e.message==="object"&&
-  "role" in e.message&&e.message.role==="assistant");
- if(messages.length!==1)throw Error("El revisor no emitió un único dictamen Pi final");
- const msg=messages[0] as {message:{content:unknown}};
- if(!Array.isArray(msg.message.content)||msg.message.content.length!==1)
-  throw Error("El dictamen Pi tiene contenido no permitido");
- const first:unknown=msg.message.content[0];
- if(!first||typeof first!=="object"||!("type" in first)||
-  first.type!=="text"||!("text" in first)||typeof first.text!=="string"||
-  first.text.length>24_000)
-  throw Error("El revisor no devolvió solo texto acotado");
- return first.text;
-}
 /** Adaptador del modelo nativo Pi al protocolo de revisores auténticos de ASEN.
  * No fabrica aprobaciones ni respuestas: un error Pi aborta toda la etapa. */
 function nativeRegistry(
@@ -114,7 +91,7 @@ function nativeRegistry(
    });
    if(options?.signal?.aborted||!result.ok||!pid||observed!==requested||toolEvents)
     throw Error("No se pudo verificar el proceso, modelo o aislamiento del juez Pi");
-   const text=nativeReviewerOutput(result.output);
+   const text=parseT08NativeReviewText(result.output);
    yield {type:"done",reason:"stop",message:{content:[{type:"text",text}]}};
   })()
  };
