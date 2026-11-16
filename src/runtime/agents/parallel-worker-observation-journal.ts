@@ -13,6 +13,32 @@ import type {ParallelWorktreeChangeInspection} from "./parallel-worktree-change-
 
 const SCHEMA="asen.parallel-worker-observations/v1" as const;
 const allowed=new Set(["completed","failed","cancelled","interrupted"]);
+/** La inspección Git no admite estados incompatibles ni rutas sin normalizar.
+ * Un recibo incoherente debe fallar antes de persistir el lote completo. */
+function validChanges(changes:ParallelWorktreeChangeInspection):boolean{
+ if(!changes||changes.acceptance!=="not-accepted"||changes.autoMerge!==false||
+  !Array.isArray(changes.changedPaths)||!Array.isArray(changes.outOfScopePaths)||
+  typeof changes.sourceVerified!=="boolean"||typeof changes.headMatchesBase!=="boolean"||
+  changes.changedPaths.length>512||changes.outOfScopePaths.length>512)return false;
+ const path=(value:unknown):value is string=>
+  typeof value==="string"&&value.length>0&&value.length<=1024&&
+  value===value.normalize("NFC")&&
+  !/[\\\\:\\u0000-\\u001f\\u007f-\\u009f\\p{Cf}]/u.test(value)&&
+  !value.startsWith("/")&&
+  value.split("/").every(part=>part!==""&&part!=="."&&part!==".."&&part.toLowerCase()!==".git");
+ const changed=changes.changedPaths,out=changes.outOfScopePaths;
+ if(changed.some(item=>!path(item))||out.some(item=>!path(item))||
+  new Set(changed).size!==changed.length||new Set(out).size!==out.length||
+  out.some(item=>!changed.includes(item)))return false;
+ switch(changes.status){
+  case "unavailable":return !changes.sourceVerified&&!changes.headMatchesBase&&changed.length===0&&out.length===0;
+  case "clean":return changes.sourceVerified&&changes.headMatchesBase&&changed.length===0&&out.length===0;
+  case "scoped-changes":return changes.sourceVerified&&changes.headMatchesBase&&changed.length>0&&out.length===0;
+  case "head-diverged":return changes.sourceVerified&&!changes.headMatchesBase&&out.length===0;
+  case "out-of-scope":return changes.sourceVerified&&out.length>0;
+  default:return false;
+ }
+}
 const safe=(s:unknown):s is string=>typeof s==="string"&&s.length>0&&s.length<=1024&&
  s===s.trim()&&s===s.normalize("NFC")&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(s);
 const validTime=(s:unknown):s is string=>typeof s==="string"&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
@@ -79,7 +105,7 @@ function createObservationReceipt(input:ParallelWorkerObservationInput):Parallel
    worker.acceptance!=="not-accepted"||worker.autoMerge!==false||worker.modelConsumedProven!==false||
    !Number.isSafeInteger(sourceTodoRevision)||sourceTodoRevision!==link.sourceTodoRevision||
    !changes||changes.acceptance!=="not-accepted"||changes.autoMerge!==false||
-   !Array.isArray(changes.changedPaths))
+   !validChanges(changes))
    throw new Error("Only a terminal exact native child Worker observation may be recorded");
   const receipt:ParallelWorkerObservation={
    batchId:link.batchId,sourceSessionId:link.sourceSessionId,sourceProjectId:link.sourceProjectId,
@@ -110,14 +136,16 @@ export class ParallelWorkerObservationJournal{
   if(!Array.isArray(inputs)||inputs.length<(allowSingle?1:2)||inputs.length>4)
    throw new Error("An observation batch must contain two to four terminal Workers");
   const receipts=inputs.map(createObservationReceipt),first=receipts[0]!;
-  const seenTasks=new Set<string>(),seenAgents=new Set<string>(),seenRoots=new Set<string>();
+  const seenTasks=new Set<string>(),seenAgents=new Set<string>(),seenRoots=new Set<string>(),seenSessions=new Set<string>();
   for(const r of receipts){
    const root=r.childProjectId.toLocaleLowerCase("en-US");
    if(r.batchId!==first.batchId||r.sourceSessionId!==first.sourceSessionId||
     !sameWorkspaceIdentityPath(r.sourceProjectId,first.sourceProjectId)||
-    seenTasks.has(r.sourceTodoId)||seenAgents.has(r.agentId)||seenRoots.has(root))
+    seenTasks.has(r.sourceTodoId)||seenAgents.has(r.agentId)||seenRoots.has(root)||
+    seenSessions.has(r.childSessionId))
     throw new Error("Observation batch has mixed owners, duplicated tasks, agents or worktrees");
    seenTasks.add(r.sourceTodoId);seenAgents.add(r.agentId);seenRoots.add(root);
+   seenSessions.add(r.childSessionId);
   }
   await preparePrivateFile(this.file,true);
   return withExclusiveFileLock(this.file,async()=>{
@@ -126,7 +154,7 @@ export class ParallelWorkerObservationJournal{
    for(const fresh of receipts){
     if(journal.receipts.some(row=>row.batchId===fresh.batchId&&row.sourceTodoId===fresh.sourceTodoId||
      row.agentId===fresh.agentId||
-     row.childSessionId===fresh.childSessionId&&sameWorkspaceIdentityPath(row.childProjectId,fresh.childProjectId)))
+     row.childSessionId===fresh.childSessionId))
      throw new Error("Worker observation already recorded; inspect the original receipt, no replay or replacement");
    }
    journal.receipts.push(...receipts);journal.revision+=receipts.length;
