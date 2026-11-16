@@ -455,7 +455,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
   if(command==="native status"||command==="native assess")return nativeRdd.observe(command==="native status"?"status":"assess",context);
-  const oddMatch=/^todo (todo-[a-f0-9-]{36})$/u.exec(command);
+  const oddMatch=/^todo (todo-[a-f0-9-]{36})(?: (adaptive))?$/u.exec(command);
   if(oddMatch){
    if(!readOddTodos)return Promise.resolve({status:"unavailable",reason:"ODD Todo store is not enabled"});
    return (async()=>{
@@ -486,6 +486,22 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     if(!current||JSON.stringify(current)!==JSON.stringify(first)||head!==gitHead())
      throw new Error("ODD Todo or Git candidate changed while preparing review");
     const result=projectOddReviewHandoff({identity,todo:current,currentHead:head,profiles});
+    if(oddMatch[2]==="adaptive"&&result.status==="review-setup-required"){
+     const snapshot=JSON.stringify(current);
+     const revalidate=async()=>{
+      validate();
+      const latest=(await readOddTodos(context)).find(row=>row.taskId===oddMatch[1]);
+      validate();
+      if(!latest||JSON.stringify(latest)!==snapshot||gitHead()!==head)
+       throw new Error("ODD Todo or Git HEAD changed; review cancelled before model use");
+     };
+     await revalidate();
+     return runWorkspaceReview(context,nativeRdd,undefined,false,resolveLensRoute,true,false,{
+      writeSurfaces:result.writeSurfaces,
+      requirements:(current.description??current.title).slice(0,2048),
+      revalidate
+     });
+    }
     context.ui.notify(JSON.stringify(result,null,2),result.status==="blocked"?"error":"info");
     return result;
    })();
@@ -497,7 +513,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");
