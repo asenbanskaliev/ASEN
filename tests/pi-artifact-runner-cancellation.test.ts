@@ -49,10 +49,26 @@ test("El adaptador de artefactos propaga la cancelación a Pi real",async t=>{
 
 test("Cancelar una sesión no cancela otra y no autoriza artefactos tardíos",async t=>{
  const fixture=await createPiRpcFixture(t,scenario);
- const adapter=new PiArtifactRunner(new PiProcessRunner({
-  command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],
-  noTools:true,timeoutMs:4_000
- }));
+ // El proceso auténtico se prueba por separado. Aquí aislamos la
+ // concurrencia y la procedencia del artefacto con dos resultados simulados.
+ const adapter=new PiArtifactRunner({
+  run:async(request,signal)=>{
+   if(request.id==="tarea-sana")return {
+    id:request.id,ok:true,output:[
+     JSON.stringify({type:"response",id:request.id,success:true}),
+     JSON.stringify({type:"message_end",message:{role:"assistant",
+      stopReason:"stop",content:[{type:"text",
+       text:JSON.stringify({content:"completado"})}]}}),
+     JSON.stringify({type:"agent_end"})
+    ].join("\\n")
+   };
+   return new Promise<{id:string;ok:boolean;output:string}>(resolve=>{
+    const cancel=()=>resolve({id:request.id,ok:false,output:"pi process cancelled"});
+    if(signal?.aborted)cancel();
+    else signal?.addEventListener("abort",cancel,{once:true});
+   });
+  }
+ } as unknown as PiProcessRunner);
  const cancelOne=new AbortController(),keepOther=new AbortController();
  const revision="a".repeat(40);
  const bad=adapter.run({id:"tarea-cancelada",role:"explorer",
