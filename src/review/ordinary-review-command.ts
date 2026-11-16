@@ -12,6 +12,7 @@ import {projectOddReviewHandoff,proposeJudgmentFixHandoff,type ScopedOddTodo,typ
 import type {StoredJudgmentFixProposal} from "./judgment-fix-proposal-journal.js";
 import {draftOddFromStoredFix} from "./judgment-fix-odd-draft.js";
 import {inspectLiveFixCandidate} from "./judgment-fix-odd-preflight.js";
+import {validateFreshFixOddRequest} from "./judgment-fix-odd-planning.js";
 import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
@@ -480,6 +481,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
 export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl(),resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,readOddTodos?:(context:ReviewCommandContext)=>Promise<readonly ScopedOddTodo[]>,fixProposals?:Readonly<{
  record:(context:ReviewCommandContext,proposal:JudgmentFixHandoff)=>Promise<{id:string}>;
  list:(context:ReviewCommandContext)=>Promise<readonly StoredJudgmentFixProposal[]>;
+ plan?:(context:ReviewCommandContext,raw:string,source:Readonly<{proposalId:string;treeIdentity:string}>)=>Promise<string>;
 }>):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
@@ -489,7 +491,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
    if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
    return fixProposals.list(context);
   }
-  const fixPlanMatch=/^fix-plan ([a-f0-9]{64})(?: (verify))?$/u.exec(command);
+  const fixPlanMatch=/^fix-plan ([a-f0-9]{64})(?: (verify|save))?$/u.exec(command);
   if(fixPlanMatch){
    if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
    return (async()=>{
@@ -511,8 +513,74 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     validate();
     if(!current||JSON.stringify(current)!==first)
      throw new Error("Fix proposal changed during ODD draft preparation");
-    // 'verify' reads the live Git candidate. A matching tree is evidence of
-    // source identity, never permission to write or an ODD plan submission.
+    if(fixPlanMatch[2]==="save"){
+     if(draft.status!=="draft-only")
+      return {status:"blocked" as const,reason:"Fix disagreement requires human triage first"};
+     if(!fixProposals.plan||!context.hasUI||!context.ui.editor||!context.ui.confirm)
+      return {status:"unavailable" as const,reason:"Saving Fix ODD requires a live Pi editor and a bounded Todo planner"};
+     const baseline=inspectLiveFixCandidate(draft);
+     const seed={
+      instruction:"",taskIdentity:"fix-"+draft.sourceProposalId.slice(0,24),
+      intent:"defect",scope:{kind:"known",expectedPaths:[...draft.writeSurfaces]},
+      writes:draft.writeSurfaces.map(path=>({path,changeKind:"ELEGIR_TIPO_DE_CAMBIO"})),
+      riskOperations:[],session:{estimatedMinutes:30,continuation:false},
+      testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:15},
+      unresolvedDecisions:[]
+     };
+     const edited=await context.ui.editor("Nueva instrucción y datos ODD: rellenar y comprobar",JSON.stringify(seed,null,2));
+     validate();
+     if(!edited)return {status:"cancelled" as const,reason:"User did not provide fresh ODD facts"};
+     const prepared=validateFreshFixOddRequest(draft,edited);
+     const revalidate=async()=>{
+      validate();
+      const latest=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
+      validate();
+      if(!latest||JSON.stringify(latest)!==first)
+       throw new Error("Stored Fix proposal changed before planning; no automatic retry");
+      const live=inspectLiveFixCandidate(draft);
+      if(live.repositoryHead!==baseline.repositoryHead||
+       live.candidateTreeIdentity!==baseline.candidateTreeIdentity)
+       throw new Error("Fix Git candidate changed during planning; no agent launched");
+     };
+     await revalidate();
+     const approved=await context.ui.confirm(
+      "Guardar un plan ODD nuevo, sin ejecutar agentes ni conceder permisos",
+      "Origen Fix: "+draft.sourceProposalId+"; ámbito exacto: "+
+      draft.writeSurfaces.join(", ")+". Se guardará un plan nuevo; el permiso Writer se pedirá aparte."
+     );
+     if(!approved)return {status:"cancelled" as const,reason:"User declined new ODD plan persistence"};
+     await revalidate();
+     const stored=await fixProposals.plan(context,prepared.raw,{
+      proposalId:draft.sourceProposalId,treeIdentity:draft.sourceCandidateTree
+     });
+     await revalidate();
+     const outcome:unknown=JSON.parse(stored);
+     if(!outcome||typeof outcome!=="object"||
+      !("persistence" in outcome)||!outcome.persistence||
+      typeof outcome.persistence!=="object"||!("status" in outcome.persistence)||
+      outcome.persistence.status!=="saved"||
+      !("execution" in outcome)||!outcome.execution||
+      typeof outcome.execution!=="object"||
+      !("started" in outcome.execution)||outcome.execution.started!==false||
+      !("authorized" in outcome.execution)||outcome.execution.authorized!==false||
+      !("executablePlan" in outcome)||!outcome.executablePlan||
+      typeof outcome.executablePlan!=="object"||
+      !("route" in outcome.executablePlan)||outcome.executablePlan.route!=="orchestrate"||
+      !("persistedTasks" in outcome)||!Array.isArray(outcome.persistedTasks))
+      throw new Error("Fix ODD could not prove a saved, non-running plan; inspect Todos before any retry");
+     const result=Object.freeze({
+      status:"plan-saved-no-dispatch" as const,sourceProposalId:draft.sourceProposalId,
+      plannedTaskCount:outcome.persistedTasks.length,
+      candidateTreeIdentity:draft.sourceCandidateTree,
+      instructionFromHuman:true as const,requiresFreshWriterConsent:true as const,
+      authorized:false as const,writerAuthority:false as const,
+      autoLaunch:false as const,autoMerge:false as const,
+      acceptance:"not-accepted" as const
+     });
+     context.ui.notify(JSON.stringify(result,null,2),"info");
+     return result;
+    }
+    // 'verify' reads the live Git candidate, without issuing write authority.
     const result=fixPlanMatch[2]==="verify"?
      Object.freeze({draft,candidateCheck:inspectLiveFixCandidate(draft)}):draft;
     validate();
@@ -578,7 +646,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");
