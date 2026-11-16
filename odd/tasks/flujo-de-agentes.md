@@ -464,3 +464,13 @@ Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
 - **Pruebas:** `tests/t06-pi-receipt-validator.test.ts`, `tests/odd-agent-review-command.test.ts`, `tests/judgment-day.test.ts`, `tests/ordinary-review-assessment.test.ts`, `tests/judgment-fix-proposal-journal.test.ts`, más la corrección del texto de ayuda en los tres sistemas. Ninguna cuenta como aprobada sin CI del SHA exacto.
 - **Bloqueos:** 2 Writers reales requieren dos aprobaciones nuevas; sin escritor autorizado no se ejecuta reparación. Falta medir A/B T09 en referencia externa, concluir el error nativo Windows T01 y obtener auditoría T10 independiente.
 - **Estado honesto:** T02/T03/T04/T05/T06/T07/T08/T09/T10 no FULL. `globalFull:false`; PR #61 sin merge ni permiso de pago.
+
+## Ampliación de auditoría 4R — registros de Workers T06 (2026-11-16)
+
+- Auditoría interna de cuatro áreas: `docs/audit/4r-flujo-agentes-pr61-2026-11-16.md`. No sustituye a la revisión independiente T10.
+- **Riesgo:** el registro duradero podía aceptar sesiones Pi repetidas para distintas raíces Git; se bloquea dentro del lote y en grabaciones posteriores. No concede permisos.
+- **Legibilidad:** se reutiliza una única regla `portablePath` para rutas de entrada y registros recuperados.
+- **Confiabilidad:** se rechazan estados Git contradictorios, listas de cambios duplicadas y rutas inseguras, tanto antes de grabar como al leer registros conservados.
+- **Resiliencia:** las escrituras del lote siguen siendo atómicas; la segunda observación inválida no deja una primera anotación parcial; no se reintentan Writers de forma automática.
+- Pruebas negativas ampliadas en `tests/parallel-worker-observation.test.ts`: estado `clean` con cambios, origen no verificado, HEAD incompatible, rutas ajenas, sesión repetida, falsificación del fichero y recuperación segura.
+- **Estado:** implementado en la PR, pendiente del CI/Release Gate del SHA exacto. T06 parcial; T08 dispone de diario de propuestas (no un Fix Writer), T09 sin mediciones A/B auténticas, T10 sin revisión independiente. `globalFull:false`.
