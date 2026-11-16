@@ -8,6 +8,7 @@ import {join} from "node:path";
 import {registerOrdinaryReviewCommand} from "../src/review/ordinary-review-command.js";
 import {captureWorkspaceReviewProjection} from "../src/review/workspace-review-projection.js";
 import type {StoredJudgmentFixProposal} from "../src/review/judgment-fix-proposal-journal.js";
+import type {ScopedOddTodo} from "../src/review/odd-agent-review-flow.js";
 
 type Command=Parameters<Parameters<typeof registerOrdinaryReviewCommand>[0]>[1];
 function setup(t:TestContext){
@@ -45,7 +46,19 @@ function setup(t:TestContext){
   testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:10},
   unresolvedDecisions:[]
  });
- let session=sessionId,plans=0,confirms=0,reads=0,consent=true,changed=false;
+ let session=sessionId,plans=0,confirms=0,reads=0,consent=true,changed=false,storeVisible=true;
+ const workerTodoId="todo-11111111-2222-4333-8444-555555555555";
+ const savedWorker:ScopedOddTodo={
+  taskId:workerTodoId,title:"Reparación ODD",description:"Corrección con autorización nueva",
+  requestId:"asen-plan:fix-"+id.slice(0,24)+":worker",events:[],
+  current:{taskId:workerTodoId,sessionId,projectId:root,
+   revision:1,state:"planned",at:"2026-11-16T00:00:00.000Z"},
+  plan:{role:"worker",skillPaths:[],writeSurfaces:["src/reparar.ts"],
+   candidate:{id:"fix-guardado",repository:root,revision:git("rev-parse","HEAD"),
+    createdAt:"2026-11-16T00:00:00.000Z"},
+   writerAuthorizationBasis:"Autorización nueva requerida",
+   fixSource:{proposalId:id,treeIdentity:tree}}
+ };
  const commands=new Map<string,Command>();
  const captured:Array<{raw:string;source:{proposalId:string;treeIdentity:string}}>=[];
  const context={
@@ -57,7 +70,8 @@ function setup(t:TestContext){
   }
  };
  const registration=(inDispute=false)=>registerOrdinaryReviewCommand(
-  (name,cmd)=>commands.set(name,cmd),undefined,undefined,undefined,{
+  (name,cmd)=>commands.set(name,cmd),undefined,undefined,
+  async()=>plans>0&&storeVisible?[savedWorker]:[],{
    record:async()=>{throw new Error("No se debe registrar una segunda propuesta");},
    list:async()=>{reads++;return [{
     ...proposal,...(inDispute?{requiredAction:"manual-triage" as const}:{})
@@ -66,7 +80,7 @@ function setup(t:TestContext){
     plans++;captured.push({raw,source});
     return JSON.stringify({
      persistence:{status:"saved"},execution:{started:false,authorized:false},
-     executablePlan:{route:"orchestrate"},persistedTasks:[{todoId:"todo-fix-test"}]
+     executablePlan:{route:"orchestrate"},persistedTasks:[{todoId:workerTodoId}]
     });
    }
   });
@@ -74,6 +88,7 @@ function setup(t:TestContext){
  return {root,git,proposal,human,context,registration,run,captured,
   setConsent:(value:boolean)=>{consent=value;},
   setChanged:(value:boolean)=>{changed=value;},
+  hideStoredWorker:()=>{storeVisible=false;},
   setSession:(value:string)=>{session=value;},
   plans:()=>plans,confirms:()=>confirms,reads:()=>reads};
 }
@@ -124,4 +139,12 @@ test("T08 cambio de sesión impide persistencia tras consentimiento",async t=>{
  await assert.rejects(async()=>f.run("fix-plan "+f.proposal.id+" save"),
   /session changed/u);
  assert.equal(f.plans(),0);
+});
+
+test("T08 un recibo de plan sin Todo persistido no confirma reparación",async t=>{
+ const f=setup(t);f.registration();f.hideStoredWorker();
+ await assert.rejects(async()=>f.run("fix-plan "+f.proposal.id+" save"),
+  /plan not confirmed in its Todo store/u);
+ assert.equal(f.plans(),1,"El plan puede haberse guardado: está prohibido reintentarlo automáticamente");
+ assert.equal(f.confirms(),1);
 });
