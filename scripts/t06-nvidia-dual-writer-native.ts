@@ -176,7 +176,7 @@ async function main():Promise<void>{
   process.env.ASEN_T06_WRITER_REPORT_DIR:mkdtempSync(join(tmpdir(),"asen-t06-native-receipts-"));
  if(!isAbsolute(dir))throw Error("Directorio de informe T06 inválido");
  mkdirSync(dir,{recursive:true,mode:0o700});
- const roots=definitions.map(item=>mkdtempSync(join(tmpdir(),"asen-pi-writer-"+item.suffix+"-")));
+ const roots=definitions.map(item=>realpathSync(mkdtempSync(join(tmpdir(),"asen-pi-writer-"+item.suffix+"-"))));
  let prepared=false,launched=false;
  try{
   for(const root of roots){
@@ -218,9 +218,17 @@ async function main():Promise<void>{
   const intervals=results.flatMap(r=>r.status==="fulfilled"?[r.value]:[]);
   const concurrent=intervals.length===2&&intervals.every(r=>r.startedAt!==null&&r.endedAt!==null)&&
    Math.max(...intervals.map(r=>r.startedAt!))<Math.min(...intervals.map(r=>r.endedAt!));
-  const review=passed&&concurrent?
-   await runT06NativeIndependentReviews(roots,policyRoot,model):
-   {status:"NOT_RUN_WRITERS_UNVERIFIED" as const,reviews:[]};
+  let review:{status:string;reviews:readonly unknown[]}={
+   status:"NOT_RUN_WRITERS_UNVERIFIED",reviews:[]
+  };
+  if(passed&&concurrent){
+   try{review=await runT06NativeIndependentReviews(roots,policyRoot,model);}
+   catch{
+    // La escritura ya ocurrió: guardar siempre un informe de la ejecución,
+    // aunque la selección o el proveedor revisor sean erróneos.
+    review={status:"REVIEW_BLOCKED_CONFIG_OR_PROVIDER",reviews:[]};
+   }
+  }
   const evidence={
    schema:"asen.t06.native-dual-writer/v1",sha:expected,piVersion:version,
    executionKind:"NATIVE_PI_RPC_WRITER_WITH_TWO_MANUAL_TERMINAL_APPROVALS",
@@ -245,7 +253,8 @@ async function main():Promise<void>{
    independentReview:review.status,worktreeRoots:roots})+"\n");
   if(!passed||!concurrent||
    review.status==="REVIEW_FAILED_OR_UNVERIFIED"||
-   review.status==="REVIEW_DECLINED_NO_RETRY")process.exitCode=1;
+   review.status==="REVIEW_DECLINED_NO_RETRY"||
+   review.status==="REVIEW_BLOCKED_CONFIG_OR_PROVIDER")process.exitCode=1;
  }finally{
   // Un intento de Writer que ha arrancado puede haber dejado efectos
   // ambiguos: no eliminar los worktrees ni reintentar automáticamente.
