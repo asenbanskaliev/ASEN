@@ -1,0 +1,85 @@
+import test,{type TestContext} from "node:test";
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
+import {mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {captureWorkspaceReviewProjection} from "../src/review/workspace-review-projection.js";
+import {draftOddFromStoredFix} from "../src/review/judgment-fix-odd-draft.js";
+import {inspectLiveFixCandidate} from "../src/review/judgment-fix-odd-preflight.js";
+import type {StoredJudgmentFixProposal} from "../src/review/judgment-fix-proposal-journal.js";
+
+function fixture(t:TestContext,addUntracked=false){
+ const projectId=realpathSync(mkdtempSync(join(tmpdir(),"asen-fix-tree-")));
+ t.after(()=>rmSync(projectId,{recursive:true,force:true}));
+ const git=(...args:string[])=>execFileSync("git",["-C",projectId,...args],{
+  encoding:"utf8",stdio:["ignore","pipe","pipe"]
+ }).trim();
+ git("init","-q");git("config","user.name","Pruebas ASEN");
+ git("config","user.email","asen-test@example.invalid");
+ writeFileSync(join(projectId,"code.ts"),"valor original\n");
+ git("add","code.ts");git("commit","-qm","candidato inicial");
+ writeFileSync(join(projectId,"code.ts"),"valor corregible\n");
+ if(addUntracked)writeFileSync(join(projectId,"nuevo.ts"),"archivo nuevo\n");
+ const paths=addUntracked?["code.ts","nuevo.ts"]:["code.ts"];
+ const observed=captureWorkspaceReviewProjection({
+  repositoryRoot:projectId,intendedUntracked:addUntracked?["nuevo.ts"]:[]
+ },paths);
+ const tree=observed.candidateTree,sessionId="pi-fix-propietaria",requestId="revisión-original";
+ const id=createHash("sha256").update([requestId,sessionId,projectId,tree].join("\0")).digest("hex");
+ const proposal:StoredJudgmentFixProposal={
+  id,requestId,sessionId,repositoryRoot:projectId,
+  candidateRevision:tree,candidateTreeIdentity:tree,paths,
+  status:"proposal-only",requiredAction:"new-odd-plan",
+  modelRequested:"unknown",modelActual:"unknown",
+  createdAt:"2026-11-16T00:00:00.000Z",
+  requiresFreshWriterConsent:true,autoLaunch:false,autoMerge:false,
+  acceptance:"not-accepted"
+ };
+ const identity={sessionId,projectId};
+ return {projectId,git,proposal,identity,draft:draftOddFromStoredFix({proposal,identity})};
+}
+test("T08 verifica un árbol Git real sin marcar revisión aceptada ni autorizar escritura",t=>{
+ const f=fixture(t);
+ const before=f.git("status","--porcelain");
+ const result=inspectLiveFixCandidate(f.draft);
+ assert.equal(result.status,"candidate-revalidated");
+ assert.equal(result.candidateTreeIdentity,f.proposal.candidateTreeIdentity);
+ assert.equal(result.matchedSource,true);
+ assert.equal(result.repositoryHead,f.git("rev-parse","HEAD"));
+ assert.equal(result.writerAuthority,false);
+ assert.equal(result.autoLaunch,false);
+ assert.equal(result.acceptance,"not-accepted");
+ assert.equal(f.git("status","--porcelain"),before);
+});
+test("T08 bloquea un cambio del contenido revisado aunque Git HEAD no cambie",t=>{
+ const f=fixture(t);
+ writeFileSync(join(f.projectId,"code.ts"),"alterado después del juicio\n");
+ assert.throws(()=>inspectLiveFixCandidate(f.draft),
+  /candidate changed after the original/u);
+});
+test("T08 bloquea archivos nuevos fuera del alcance aprobado por los jueces",t=>{
+ const f=fixture(t);
+ writeFileSync(join(f.projectId,"extra.ts"),"contenido ajeno\n");
+ assert.throws(()=>inspectLiveFixCandidate(f.draft),/unreviewed files outside/u);
+});
+test("T08 verifica archivos nuevos si aparecen expresamente en el informe",t=>{
+ const f=fixture(t,true);
+ const result=inspectLiveFixCandidate(f.draft);
+ assert.equal(result.candidateTreeIdentity,f.proposal.candidateTreeIdentity);
+ assert.deepEqual(f.draft.writeSurfaces,["code.ts","nuevo.ts"]);
+});
+test("T08 nunca convierte una disputa entre jueces en árbol autorizado",t=>{
+ const f=fixture(t);
+ const disputed=draftOddFromStoredFix({
+  proposal:{...f.proposal,requiredAction:"manual-triage"},identity:f.identity
+ });
+ assert.throws(()=>inspectLiveFixCandidate(disputed),/not eligible/u);
+});
+test("T08 bloquea la revisión si cambia el commit original",t=>{
+ const f=fixture(t);
+ f.git("add","code.ts");
+ f.git("commit","-qm","código actualizado sin revisión nueva");
+ assert.throws(()=>inspectLiveFixCandidate(f.draft),/candidate changed after the original/u);
+});
