@@ -97,3 +97,35 @@ es **cambiar de modelo** y conservar el rechazo de dictámenes vacíos.
 Una prueba unitaria con un modelo falso no valida esta misión.
 El cierre requiere el informe real, la revisión de resultados y una
 auditoría separada de seguridad y permisos.
+
+## Incidente adicional — 16/11/2026, ejecución 43944108837
+
+La prueba con un modelo alternativo para el juez A,
+`nvidia/nemotron-3.5-bolt-e4b`, volvió a bloquearse en el
+mismo punto: `T08: dictamen Pi sin bloques (0)`. Preparación y
+primera aprobación correctas, pero sin segundo juez, propuesta Fix,
+segunda aprobación, escritura ni informe final.
+
+**Consecuencia:** la anomalía no se limita al modelo Ultra. La causa
+puede estar en el proveedor, el ajuste de Pi, el protocolo RPC o en una
+combinación. **No hay pruebas para afirmar una causa raíz definitiva.**
+
+Se incorporó un observador de señales ya disponibles en Pi
+(`onAssistantTextDelta`) y el módulo
+`src/runtime/agents/t08-pi-review-diagnostics.ts`. En un fallo solo
+se informa de: número de bloques finales, señal de fin, presencia de
+error, salida en tokens si Pi la facilita, número de fragmentos de texto
+observados y si hubo herramientas. **No se publica contenido, texto
+parcial, razonamiento, mensaje de error del proveedor ni credenciales.**
+El texto parcial nunca suple un dictamen final vacío.
+
+**Antes de consumir cuota otra vez:** comprobar CI del controlador,
+revisar la configuración de Pi/NVIDIA y, si se autoriza una nueva
+ejecución, interpretar los contadores del diagnóstico. Si se observan
+fragmentos de texto y el final está vacío, investigar el contrato RPC y
+el proveedor; si no hay fragmentos ni tokens de salida, revisar el
+modelo y la respuesta de la API. Ninguno de estos indicios equivale
+por sí mismo a una prueba de causa raíz.
+
+Estado: `PENDIENTE_DIAGNOSTICO_REAL`; sin fusión, sin permiso Writer
+y `globalFull:false`.
