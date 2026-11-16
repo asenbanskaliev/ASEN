@@ -31,30 +31,27 @@ test("profile mutations preserve explicit active selection",()=>{const a=file();
 
 test("profile rename/remove/export preserve active semantics",()=>{const a=renameProfile(file(),"base","daily");assert.equal(a.active,"daily");assert.throws(()=>removeProfile(a,"daily"),/active/);const b=upsertProfile(a,{name:"other",routes:{}});const c=setActiveProfile(b,"other");assert.equal(removeProfile(c,"daily").profiles.length,1);assert.match(serializeRuntimeProfiles(c),/asen.runtime-profiles\/v1/);});
 
-test("T05 conserva __proto__ como dato sin contaminar el prototipo de rutas",()=>{
+test("T05 rechaza claves __proto__ en rutas, sin alterar prototipos",()=>{
  const raw='{"schema":"asen.runtime-profiles/v1","active":"base","profiles":[{"name":"base","routes":{"__proto__":{"model":"nvidia/modelo-aislado"},"worker":{"model":"nvidia/modelo-worker"}}}]}';
+ assert.equal(parseRuntimeProfiles(raw),undefined);
+ const parsed=JSON.parse(raw) as {profiles:{name:string;routes:Record<string,{model:string}>}[]};
+ assert.throws(()=>upsertProfile(file(),parsed.profiles[0]!),/Invalid profile/u);
+ assert.equal(({} as Record<string,unknown>)["model"],undefined);
+});
+test("T05 preserva constructor y toString como datos propios sin heredar modelos",()=>{
+ const raw='{"schema":"asen.runtime-profiles/v1","active":"base","profiles":[{"name":"base","routes":{"constructor":{"model":"nvidia/revisor"},"toString":{"thinking":"low"}}}]}';
  const parsed=parseRuntimeProfiles(raw);
  assert.ok(parsed);
  const routes=parsed.profiles[0]!.routes;
  assert.equal(Object.getPrototypeOf(routes),Object.prototype);
- assert.equal(Object.hasOwn(routes,"__proto__"),true);
- assert.equal(Object.hasOwn(routes,"worker"),true);
- assert.deepEqual(resolveRuntimeRoute({global:parsed},"__proto__"),{
-  choice:{model:"nvidia/modelo-aislado"},source:"global"
+ assert.equal(Object.hasOwn(routes,"constructor"),true);
+ assert.equal(Object.hasOwn(routes,"toString"),true);
+ assert.deepEqual(resolveRuntimeRoute({global:parsed},"constructor"),{
+  source:"global",choice:{model:"nvidia/revisor"}
  });
- assert.equal(resolveRuntimeRoute({global:parsed},"worker").choice?.model,"nvidia/modelo-worker");
- const encoded=serializeRuntimeProfiles(parsed);
- const obj=JSON.parse(encoded) as {profiles:{routes:Record<string,{model:string}>}[]};
- assert.equal(Object.hasOwn(obj.profiles[0]!.routes,"__proto__"),true);
- assert.equal(obj.profiles[0]!.routes["__proto__"]?.model,"nvidia/modelo-aislado");
- assert.equal(({} as Record<string,unknown>)["model"],undefined);
-});
-test("T05 no interpreta propiedades heredadas como rutas explícitas",()=>{
- const parsed=parseRuntimeProfiles('{"schema":"asen.runtime-profiles/v1","active":"base","profiles":[{"name":"base","routes":{"__proto__":{"thinking":"low"}}}]}');
- assert.ok(parsed);
- assert.equal(resolveRuntimeRoute({global:parsed},"toString").source,"default");
  assert.equal(resolveRuntimeRoute({global:parsed},"worker").source,"default");
- const next=upsertProfile(parsed,{name:"otro",routes:{worker:{model:"nvidia/worker"}}});
- assert.equal(resolveRuntimeRoute({global:next},"worker").source,"default");
+ const serialized=serializeRuntimeProfiles(parsed);
+ assert.match(serialized,/"constructor"/u);
+ assert.match(serialized,/"toString"/u);
  assert.equal(({} as Record<string,unknown>)["thinking"],undefined);
 });
