@@ -2,7 +2,12 @@
  * Pi puede devolver bloques de razonamiento y texto en un mismo mensaje.
  * El razonamiento NO es el dictamen, NO se guarda y NO concede autorización.
  * Cualquier llamada a herramientas, contenido extraño o texto excesivo bloquea. */
-export function parseT08NativeReviewText(output:unknown):string{
+/** En modo estricto solo se acepta el último dictamen después de
+ * agent_settled. Las respuestas intermedias se permiten exclusivamente
+ * si Pi acreditó un nuevo intento con agent_end(willRetry:true). */
+export function parseT08NativeReviewText(
+ output:unknown,options:Readonly<{requireFinalSettlement?:boolean}>={}
+):string{
  if(typeof output!=="string"||!output.trim()||output.length>512_000)
   throw new Error("T08: la salida Pi está vacía o excede el límite");
  let records:unknown[];
@@ -25,9 +30,44 @@ export function parseT08NativeReviewText(output:unknown):string{
   object(record)&&record.type==="message_end"&&
   object(record.message)&&record.message.role==="assistant"
  );
- if(finals.length!==1)
+ if(!options.requireFinalSettlement&&finals.length!==1)
   throw new Error("T08: se requiere un solo dictamen final de Pi");
- const message=(finals[0] as {message:Record<string,unknown>}).message;
+ if(options.requireFinalSettlement){
+  if(finals.length<1||finals.length>8)
+   throw new Error("T08: cantidad de dictámenes Pi inválida");
+  const settlements=records.map((row,index)=>({row,index})).filter(
+   x=>object(x.row)&&x.row.type==="agent_settled"
+  );
+  if(settlements.length!==1)
+   throw new Error("T08: falta una única señal real agent_settled");
+  const settledAt=settlements[0]!.index;
+  let previousEnd=-1;
+  const assistantMessages=records.map((row,index)=>({row,index})).filter(
+   x=>object(x.row)&&x.row.type==="message_end"&&
+    object(x.row.message)&&x.row.message.role==="assistant"
+  );
+  for(const [i,item] of assistantMessages.entries()){
+   const nextMessage=assistantMessages[i+1]?.index??settledAt;
+   if(item.index<=previousEnd||item.index>=nextMessage)
+    throw new Error("T08: orden Pi del dictamen final inválido");
+   const endings=records.slice(item.index+1,nextMessage).filter(
+    row=>object(row)&&row.type==="agent_end"
+   );
+   if(endings.length!==1)
+    throw new Error("T08: el dictamen Pi no tiene fin de intento verificable");
+   const ending=endings[0] as Record<string,unknown>;
+   if(i<assistantMessages.length-1&&ending.willRetry!==true)
+    throw new Error("T08: mensaje anterior sin recuperación autorizada por Pi");
+   if(i===assistantMessages.length-1&&ending.willRetry===true)
+    throw new Error("T08: Pi sigue en recuperación y no hay dictamen definitivo");
+   previousEnd=records.findIndex((row,index)=>
+    index>item.index&&index<nextMessage&&row===endings[0]
+   );
+  }
+  if(settledAt<=previousEnd)
+   throw new Error("T08: cierre Pi anterior al último dictamen");
+ }
+ const message=(finals[finals.length-1] as {message:Record<string,unknown>}).message;
  const blocks=message.content;
  // Pi puede distribuir la respuesta entre varios bloques de texto y
  // razonamiento. El límite de 8 era demasiado estrecho; la respuesta sigue
