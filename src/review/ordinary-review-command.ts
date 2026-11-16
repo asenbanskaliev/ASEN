@@ -441,7 +441,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   if(command==="native status"||command==="native assess")return nativeRdd.observe(command==="native status"?"status":"assess",context);
   const oddMatch=/^todo (todo-[a-f0-9-]{36})$/u.exec(command);
   if(oddMatch){
-   if(!readOddTodos)return {status:"unavailable",reason:"ODD Todo store is not enabled"};
+   if(!readOddTodos)return Promise.resolve({status:"unavailable",reason:"ODD Todo store is not enabled"});
    return (async()=>{
     const manager=context.sessionManager,sessionId=manager?.getSessionId?.(),cwd=context.cwd;
     if(!sessionId||!context.hasUI||!cwd||context.signal?.aborted)
@@ -460,7 +460,10 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     if(!first)throw new Error("The requested ODD Todo is absent from the owning session");
     const head=gitHead();
     const lenses=["risk","resilience","reliability","readability"] as const;
-    const profiles=await Promise.all(lenses.map(async lens=>({lens,choice:await resolveLensRoute?.(context,lens)})));
+    const profiles=await Promise.all(lenses.map(async lens=>{
+     const choice=await resolveLensRoute?.(context,lens);
+     return {lens,...(choice?{choice}:{})};
+    }));
     validate();
     const current=(await readOddTodos(context)).find(row=>row.taskId===oddMatch[1]);
     validate();
