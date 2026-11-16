@@ -125,3 +125,42 @@ test("T06 concurrent competing same-batch observations cannot be duplicated or p
  assert.equal(outcomes.filter(result=>result.status==="rejected").length,1);
  assert.equal((await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo])).length,2);
 });
+
+test("T06 4R reliability: contradicting Git inspection facts cannot produce durable receipts",async t=>{
+ const {journal}=fixture(t);
+ const cases:ParallelWorktreeChangeInspection[]=[
+  {...changes,status:"clean"},
+  {...changes,status:"head-diverged",headMatchesBase:true},
+  {...changes,status:"unavailable",sourceVerified:true},
+  {...changes,status:"out-of-scope",outOfScopePaths:[]},
+  {...changes,status:"out-of-scope",outOfScopePaths:["src/not-reported.ts"]},
+  {...changes,status:"scoped-changes",changedPaths:[]},
+  {...changes,status:"scoped-changes",changedPaths:["../escape.ts"]},
+  {...changes,status:"scoped-changes",changedPaths:[".git/config"]},
+  {...changes,status:"scoped-changes",changedPaths:["src/a.ts","src/a.ts"]},
+  {...changes,status:"scoped-changes",changedPaths:["src\\archivo.ts"]},
+ ];
+ for(const item of cases){
+  await assert.rejects(()=>journal.record({
+   link,worker,sourceTodoRevision:2,changes:item
+  }),/terminal exact/u);
+ }
+ assert.equal((await journal.listSource({sessionId:"source",projectId:root},[link])).length,0);
+});
+test("T06 4R risk: one child Pi session cannot claim two separate Workers",async t=>{
+ const {journal}=fixture(t);
+ await assert.rejects(()=>journal.recordBatch([
+  firstInput,{...secondInput,link:{...linkTwo,childSessionId:link.childSessionId}}
+ ]),/mixed owners/u);
+ assert.equal((await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo])).length,0);
+});
+test("T06 4R resilience: a prior Pi child session cannot be reused in a later batch",async t=>{
+ const {journal}=fixture(t);
+ await journal.record(firstInput);
+ await assert.rejects(()=>journal.record({
+  ...secondInput,link:{...linkTwo,batchId:"different-batch",childSessionId:link.childSessionId}
+ }),/already recorded/u);
+ const saved=await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo]);
+ assert.equal(saved.length,1);
+ assert.equal(saved[0]?.sourceTodoId,"source-todo-a");
+});
