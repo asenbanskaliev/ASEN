@@ -28,12 +28,12 @@ function fixture(t:TestContext){
   cwd:projectId,hasUI:false,sessionManager:{getSessionId:()=>session},
   ui:{notify:(message:string,level:"info"|"error")=>notifications.push({message,level})}
  };
- function register(reader:()=>Promise<readonly StoredJudgmentFixProposal[]>,readTodos?:()=>Promise<readonly ScopedOddTodo[]>){
+ function register(reader:()=>Promise<readonly StoredJudgmentFixProposal[]>,readTodos?:()=>Promise<readonly ScopedOddTodo[]>,readArchive?:()=>Promise<readonly ScopedOddTodo[]>){
   return registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),
    undefined,undefined,readTodos?async()=>readTodos():undefined,{
     record:async()=>{writes++;throw new Error("No se deben escribir propuestas al consultar");},
     list:async()=>{reads++;return reader();}
-   });
+   },readArchive?async()=>readArchive():undefined);
  }
  const run=(args:string)=>commands.get("asen-review")!.handler(args,context);
  return {proposal,context,register,run,notifications,
@@ -154,5 +154,51 @@ test("T08 recuperación sin lector ODD no inventa tareas",async t=>{
  f.register(async()=>[f.proposal]);
  const result=await f.run("fix-plan "+f.proposal.id+" status") as {status:string};
  assert.equal(result.status,"unavailable");
+ assert.equal(f.writeCount(),0);
+});
+
+test("T08 comando recupera un Worker archivado sin reautorizar ni reiniciar",async t=>{
+ const f=fixture(t),taskId="todo-33333333-2222-4333-8444-555555555555";
+ let archiveReads=0;
+ const archived:ScopedOddTodo={
+  taskId,title:"Fix archivado",
+  requestId:"asen-plan:fix-"+f.proposal.id.slice(0,24)+":worker",
+  events:[{taskId,sessionId:f.context.sessionManager.getSessionId(),
+   projectId:f.context.cwd,revision:1,state:"done",at:"2026-11-16T00:00:00.000Z"}],
+  current:{taskId,sessionId:f.context.sessionManager.getSessionId(),
+   projectId:f.context.cwd,revision:1,state:"done",at:"2026-11-16T00:00:00.000Z"},
+  plan:{role:"worker",skillPaths:[],writeSurfaces:["src/reparar.ts"],
+   fixSource:{proposalId:f.proposal.id,treeIdentity:f.proposal.candidateTreeIdentity}}
+ };
+ f.register(async()=>[f.proposal],async()=>[],async()=>{archiveReads++;return [archived];});
+ const result=await f.run("fix-plan "+f.proposal.id+" status") as {
+  status:string;observedIn:string;workerTodoId:string;autoRetry:boolean;authorized:boolean
+ };
+ assert.equal(result.status,"archived-worker-observed");
+ assert.equal(result.observedIn,"archive");
+ assert.equal(result.workerTodoId,taskId);
+ assert.equal(result.autoRetry,false);
+ assert.equal(result.authorized,false);
+ assert.equal(archiveReads,2);
+ assert.equal(f.writeCount(),0);
+});
+test("T08 impide recuperar de un archivo que cambia entre lecturas",async t=>{
+ const f=fixture(t),taskId="todo-44444444-2222-4333-8444-555555555555";
+ let archiveReads=0;
+ const row:ScopedOddTodo={
+  taskId,title:"Fix archivado",
+  requestId:"asen-plan:fix-"+f.proposal.id.slice(0,24)+":worker",
+  events:[{taskId,sessionId:f.context.sessionManager.getSessionId(),
+   projectId:f.context.cwd,revision:1,state:"done",at:"2026-11-16T00:00:00.000Z"}],
+  current:{taskId,sessionId:f.context.sessionManager.getSessionId(),
+   projectId:f.context.cwd,revision:1,state:"done",at:"2026-11-16T00:00:00.000Z"},
+  plan:{role:"worker",skillPaths:[],writeSurfaces:["src/reparar.ts"],
+   fixSource:{proposalId:f.proposal.id,treeIdentity:f.proposal.candidateTreeIdentity}}
+ };
+ f.register(async()=>[f.proposal],async()=>[],async()=>{
+  archiveReads++;return [{...row,current:{...row.current,revision:archiveReads}}];
+ });
+ await assert.rejects(async()=>f.run("fix-plan "+f.proposal.id+" status"),
+  /journal changed during recovery/u);
  assert.equal(f.writeCount(),0);
 });
