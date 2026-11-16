@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   agentes-t02-t05-t06:
-    name: Agentes T02 T05 T06 (pruebas negativas)
+    name: Agentes T02 T03 T04 T05 T06 T08 (pruebas negativas)
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     permissions:
@@ -32,6 +32,12 @@ jobs:
       - name: Aislamiento, modelos, recibos y permisos por Worker
         run: |
           node --import tsx --test \
+            tests/runtime-profiles.test.ts \
+            tests/odd-agent-review-flow.test.ts \
+            tests/pi-model-reviewer.test.ts \
+            tests/judgment-day.test.ts \
+            tests/judgment-fix-odd-save.test.ts \
+            tests/fix-odd-real-plan-persistence.test.ts \
             tests/parallel-parent-supervisor-claims.test.ts \
             tests/parallel-worker-model-route.test.ts \
             tests/parallel-worktree-todos.test.ts \
