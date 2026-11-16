@@ -1,6 +1,6 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,rmSync,readFileSync} from "node:fs";
+import {mkdtempSync,rmSync,readFileSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
@@ -163,4 +163,28 @@ test("T06 4R resilience: a prior Pi child session cannot be reused in a later ba
  const saved=await journal.listSource({sessionId:"source",projectId:root},[link,linkTwo]);
  assert.equal(saved.length,1);
  assert.equal(saved[0]?.sourceTodoId,"source-todo-a");
+});
+
+test("T06 4R: el diario rechaza recibos alterados tras su persistencia",async t=>{
+ const {journal,file}=fixture(t);
+ await journal.record(firstInput);
+ const original=readFileSync(file,"utf8");
+ const source=JSON.parse(original) as {receipts:Array<Record<string,unknown>>};
+ for(const changed of [
+  {worktreeChangeState:"clean"},
+  {worktreeChangeState:"unavailable"},
+  {changedPaths:["../secreto.ts"]},
+  {changedPaths:["src/a.ts","src/a.ts"]},
+  {changedPaths:[]}
+ ]){
+  const corrupted=structuredClone(source);
+  Object.assign(corrupted.receipts[0]!,changed);
+  writeFileSync(file,JSON.stringify(corrupted));
+  await assert.rejects(
+   ()=>journal.listSource({sessionId:"source",projectId:root},[link]),
+   /Invalid parallel Worker observation/u
+  );
+ }
+ writeFileSync(file,original);
+ assert.equal((await journal.listSource({sessionId:"source",projectId:root},[link])).length,1);
 });
