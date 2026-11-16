@@ -755,3 +755,60 @@ test("T02/T05/T06 superposición entre sesión padre e hijo no abre despacho ni 
  assert.equal((await journal.listSource(f.identity)).length,0);
  assert.equal(f.dispatchedChildren.length,0);
 });
+
+test("T02/T04/T05/T06/T07 el panel enlaza modelo fijado, intento y recogida reales sin aceptación",async t=>{
+ const f=fixture(t);
+ await prepareAttributedChildren(f);
+ const links=await f.sessions.listSource(f.identity);
+ const batch=(await f.journal.list(f.identity))[0]!;
+ const children=links.map(link=>{
+  const row=f.getChildObservations(link.childSessionId).todos[0]!;
+  return {sourceTodoId:link.sourceTodoId,childTodoId:row.taskId,
+   childSessionId:link.childSessionId,childProjectId:link.childProjectId};
+ });
+ await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).claim({
+  source:f.identity,batchId:batch.id,children
+ });
+ const load=()=>readAgentFlowPanelObservation({
+  identity:f.identity,journalFile:f.journalFile,sessionLinksFile:f.sessionLinksFile,
+  planClaimsFile:f.planClaimsFile,supervisorClaimsFile:f.supervisorClaimsFile,
+  observationFile:f.observationFile,
+  loadTodos:async id=>id.sessionId===f.identity.sessionId?f.rows:f.getChildObservations(id.sessionId).todos,
+  loadChildAgentRecords:async id=>f.getChildObservations(id.sessionId).agents,
+  loadChildTaskAgentLinks:async id=>f.getChildObservations(id.sessionId).links
+ });
+ const before=await load();
+ assert.equal(before.overview.tasks.filter(row=>row.supervisorClaimed===true).length,2);
+ assert.equal(before.overview.tasks.filter(row=>row.receiptRecorded===true).length,0);
+ assert.equal(before.overview.tasks[0]?.modelRequested,"nvidia/nemotron-3.5-lightning-30b-a3b");
+ assert.equal(before.overview.tasks[0]?.modelActual,"unknown");
+ assert.equal(before.overview.tasks[0]?.modelConsumedProven,false);
+ assert.equal(before.overview.acceptance,"not-accepted");
+ assert.equal((await f.run("collect") as {status:string}).status,"observed-needs-independent-review");
+ const after=await load();
+ assert.equal(after.overview.tasks.filter(row=>row.receiptRecorded===true).length,2);
+ assert.equal(after.overview.stages["manual-review-required"],2);
+ assert.equal(after.overview.autoMerge,false);
+});
+test("T06/T07 bloquea intento de supervisor que no corresponde al hijo Pi reservado",async t=>{
+ const f=fixture(t);
+ await prepareAttributedChildren(f);
+ const links=await f.sessions.listSource(f.identity);
+ const batch=(await f.journal.list(f.identity))[0]!;
+ const children=links.map((link,i)=>({
+  sourceTodoId:link.sourceTodoId,
+  childTodoId:f.getChildObservations(link.childSessionId).todos[0]!.taskId,
+  childSessionId:i===0?"sesion-falsificada":link.childSessionId,
+  childProjectId:link.childProjectId
+ }));
+ await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).claim({
+  source:f.identity,batchId:batch.id,children
+ });
+ await assert.rejects(()=>readAgentFlowPanelObservation({
+  identity:f.identity,journalFile:f.journalFile,sessionLinksFile:f.sessionLinksFile,
+  planClaimsFile:f.planClaimsFile,supervisorClaimsFile:f.supervisorClaimsFile,
+  loadTodos:async id=>id.sessionId===f.identity.sessionId?f.rows:f.getChildObservations(id.sessionId).todos,
+  loadChildAgentRecords:async id=>f.getChildObservations(id.sessionId).agents,
+  loadChildTaskAgentLinks:async id=>f.getChildObservations(id.sessionId).links
+ }),/Supervisor attempt does not match/u);
+});
