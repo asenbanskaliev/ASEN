@@ -235,7 +235,7 @@ async function main():Promise<void>{
   const concurrent=intervals.length===2&&intervals.every(r=>r.startedAt!==null&&r.endedAt!==null)&&
    Math.max(...intervals.map(r=>r.startedAt!))<Math.min(...intervals.map(r=>r.endedAt!));
   // Intervalos reales observados por el proceso padre; no son latencia de red,
-  // coste ni una comparación con Gentle Shell.
+  // coste ni una comparación con un sistema externo.
   const observedWindowMs=concurrent?
    Math.ceil(Math.max(...intervals.map(r=>r.endedAt!))-
     Math.min(...intervals.map(r=>r.startedAt!))):null;
