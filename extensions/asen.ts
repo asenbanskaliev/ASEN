@@ -1940,7 +1940,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      throw new Error("Fix ODD session changed; inspect saved Todos before any retry");
     return result;
    }
-  });
+  },todoStorePromise?async context=>{
+   const manager=context.sessionManager,sessionId=manager.getSessionId(),
+    projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+   if(context.signal?.aborted)throw new Error("Fix ODD archived read was cancelled");
+   const rows=await (await todoStorePromise).archived({sessionId,projectId});
+   if(manager.getSessionId()!==sessionId||
+    !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+    context.signal?.aborted)throw new Error("Fix ODD archived session changed during retrieval");
+   return rows;
+  }:undefined);
   // Public work is ODD-only. Legacy selection/recovery remains in lifecycle modules,
   // not a product command or an implicit conversion into fresh write authority.
   return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability});
