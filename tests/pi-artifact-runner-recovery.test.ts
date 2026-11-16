@@ -45,7 +45,7 @@ test("No se admite ningún intento ambiguo, falso o abortado",()=>{
    stopReason:"stop",content:[{type:"text",text:"inyectado"}]}},...valid.slice(-1)],
   [...valid,{type:"agent_start"}],
   [...valid,{type:"agent_end",willRetry:false}],
-  [valid[0],...valid.slice(4)]
+  [valid[0],...valid.slice(2)]
  ];
  for(const records of cases)
   assert.throws(()=>extractSettledPiArtifact(emit(records),id));
