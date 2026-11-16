@@ -133,3 +133,37 @@ test("T04 ODD adaptativo bloquea ampliación de archivos sin ejecutar el revisor
  await assert.rejects(async()=>await f.run("todo "+f.taskId+" adaptive",ctx),/alcance untracked|outside the frozen task scope/u);
  assert.equal(calls,0);
 });
+
+test("4R no publica dictamen si el Todo cambia durante la respuesta del último revisor",async t=>{
+ const fixtureState=fixture(t);
+ let current=fixtureState.task,calls=0;
+ fixtureState.register(async()=>[current]);
+ writeFileSync(join(fixtureState.root,"archivo.txt"),"cambio bajo revisión\n");
+ const author={provider:"author",id:"original"},reviewer={provider:"free",id:"independiente"};
+ const ctx={
+  ...fixtureState.context,model:author,
+  modelRegistry:{
+   getAvailable:()=>[author,reviewer],
+   hasConfiguredAuth:(model:{provider:string})=>model.provider==="free",
+   streamSimple:()=>{
+    calls++;
+    return (async function*(){
+     const answer={verdict:"pass",summary:"El candidato no tiene hallazgos",findings:[]};
+     if(calls===1)current={...current,current:{...current.current,state:"blocked" as const}};
+     yield {type:"done" as const,reason:"stop" as const,
+      message:{role:"assistant",provider:"free",content:[{type:"text",text:JSON.stringify(answer)}]}};
+    })();
+   }
+  },
+  ui:{
+   notify:()=>{},
+   select:async(_title:string,options:string[])=>options[0],
+   editor:async(title:string)=>title.includes("untracked")?"[]":"Revisar solamente los cambios aprobados",
+   confirm:async()=>true
+  }
+ };
+ await assert.rejects(async()=>await fixtureState.run("todo "+fixtureState.taskId+" adaptive",ctx),
+  /ODD Todo or Git HEAD changed/u);
+ assert.equal(calls,1,"No debe llamar a otro revisor tras alterar la tarea");
+ assert.equal(fixtureState.git("status","--porcelain")," M archivo.txt");
+});
