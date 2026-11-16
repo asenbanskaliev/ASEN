@@ -28,7 +28,7 @@ import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js
 import {checkT06Behavior} from "../src/runtime/agents/t06-behavior-isolation.js";
 import {requireLiveT06GithubApprovals} from "../src/runtime/agents/t06-github-approvals.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
-import {assessT06WriterEvidence} from "../src/runtime/agents/t06-writer-evidence.js";
+import {assessT06WriterEvidence,verifyT06WorkspaceAttribution} from "../src/runtime/agents/t06-writer-evidence.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const definitions=[
@@ -132,18 +132,11 @@ async function nativeWriter(
  });
  // No asumir escritura exitosa a partir del texto de Pi ni de result.ok.
  // La extensión ASEN debe haber persistido una atribución del hijo correcto.
- let attributionVerified=false,attributionEntries=0;
- try{
-  const records=await attributionStore.list({
-   sessionId:intent.sessionId,projectId:root,worktree:root
-  });
-  attributionEntries=records.length;
-  attributionVerified=records.length===1&&
-   records[0]?.change.path===target&&
-   records[0]?.change.actor.kind==="agent"&&
-   records[0]?.change.actor.id===intent.taskId+":worker"&&
-   records[0]?.change.operation==="create";
- }catch{/* Diario ilegible: falla cerrado; nunca se finge atribución. */}
+ const attribution=await verifyT06WorkspaceAttribution({
+  store:attributionStore,root,sessionId:intent.sessionId,
+  agentId:intent.taskId+":worker",target
+ });
+ const {verified:attributionVerified,entries:attributionEntries}=attribution;
  const file=join(root,target),present=existsSync(file);
  const observedPaths=git(root,"status","--porcelain=v1","--untracked-files=all")
   .split(/\r?\n/u).filter(Boolean).map(row=>row.slice(3));
