@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {spawnSync} from "node:child_process";
 
 const file=(path:string)=>readFileSync(path,"utf8");
 test("T08 solo se inicia manualmente y exige el SHA exacto",()=>{
@@ -61,4 +62,19 @@ test("T08 las claves solo aparecen después de aprobaciones protegidas",()=>{
  assert.match(script,/checkT08Behavior/u);
  assert.match(script,/requireLiveT08GithubApprovals\("fix"\)/u);
  assert.match(script,/globalFull:false/u);
+});
+
+test("T08 la entrada real falla sin SHA ni aprobación, sin gastar API ni escribir",()=>{
+ for(const stage of ["review","fix"]){
+  const child=spawnSync(process.execPath,["--import","tsx",
+   "scripts/t08-github-real-fix.ts",stage],{
+   cwd:process.cwd(),encoding:"utf8",timeout:20_000,
+   env:{PATH:process.env.PATH,HOME:process.env.HOME,
+    ASEN_T08_EXPECTED_SHA:"",NVIDIA_API_KEY:"",
+    GITHUB_ACTIONS:"false"}
+  });
+  assert.equal(child.status,1,child.stderr);
+  assert.match(child.stderr,/T08 BLOQUEADO/u);
+  assert.doesNotMatch(child.stderr,/nvapi-|NVIDIA_API_KEY=|Bearer [A-Za-z]/u);
+ }
 });
