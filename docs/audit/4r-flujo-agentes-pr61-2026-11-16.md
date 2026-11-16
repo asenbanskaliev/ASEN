@@ -102,3 +102,15 @@ La extracción estructural de `ordinary-review-command.ts` se deja pendiente par
 - **Resilience (resiliencia):** las interrupciones durante edición, consulta o consentimiento no inician nada. El plan se guarda con lanzamiento diferido y no se reintenta automáticamente. Si el guardado se completa pero cambia el árbol o se pierde la respuesta, las tareas deben inspeccionarse antes de reintentarlo; las comprobaciones de origen en cada Worker siguen bloqueando una ejecución insegura.
 
 **Pruebas negativas:** `tests/judgment-fix-odd-preflight.test.ts`, `tests/judgment-fix-odd-planning.test.ts`, `tests/judgment-fix-odd-save.test.ts` y `tests/todo-store.test.ts`. Estas afirmaciones son una **auditoría interna sobre código y pruebas**, no una aceptación independiente T10. Para declarar la tanda verificada, debe aprobar CI y Release Gate del SHA exacto en las tres plataformas; `globalFull:false`.
+
+## Auditoría 4R — recuperar una respuesta perdida de guardado Fix (2026-11-16)
+
+**Risk (riesgo):** antes, si el plan ODD quedaba guardado pero el cliente perdía la respuesta, el usuario podía intentar repetir la operación sin saber si el Worker ya existía. `fix-plan <id> status` observa el almacén ODD **sin ejecutar, confirmar permisos, registrar ni reintentar**. Solo devuelve identificador y estado mínimos, sin instrucciones ni salida del modelo. Verifica que el origen pertenece a la sesión y al proyecto y que su identificador, árbol y rutas coinciden.
+
+**Readability (legibilidad):** la inspección pura queda en `judgment-fix-odd-recovery.ts`; el comando `ordinary-review-command.ts` hace dos lecturas del diario, vuelve a validar sesión y propuesta, y devuelve un estado inequívoco. Las respuestas separan `not-observed`, `worker-observed` e `inconsistent`.
+
+**Reliability (confiabilidad):** pruebas negativas de registros duplicados, asociación falsa al informe, sesión ajena, rutas cambiadas, cambios concurrentes y almacén ausente. `worker-observed` es únicamente evidencia de que existe una tarea en el diario activo; NO certifica que el código se reparó ni que el Writer fue autorizado.
+
+**Resilience (resiliencia):** `not-observed` jamás dispara un reintento, porque el plan puede estar archivado o pudo completarse una operación con respuesta perdida. Un registro inconsistente se bloquea y exige consulta del diario antes de cualquier acción. La recuperación no añade tareas, no altera estados y no relanza agentes.
+
+**Cierre pendiente:** validar el SHA exacto con CI completo, Release Gate y pruebas negativas. No confundir la auditoría interna 4R con la revisión independiente T10, ni las sesiones NVIDIA de lectura con Writers Pi autorizados. PR #61 sin fusionar y `globalFull:false`.
