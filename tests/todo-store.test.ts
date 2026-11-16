@@ -75,6 +75,39 @@ test("controlled Todo plans preserve a validated provider route but never write 
  await assert.rejects(()=>store.addPlan([{...draft,requestId:"asen-plan:invalid-route",plan:{...draft.plan,model:"nvidia\nmalicious"}}],one),/Invalid ASEN Todo plan task/);
 });
 
+test("T08 el Todo Worker conserva origen Fix sin reutilizar autorización",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file);
+ const base={
+  role:"worker" as const,skillPaths:["skills/asen-apply/SKILL.md"],
+  skillSelection:{phase:"apply" as const,risk:"medium" as const,
+   codeChange:true,behaviorChange:true,filesTouched:1},
+  candidate:{id:"candidate-fix",repository:one.projectId,
+   revision:"a".repeat(40),createdAt:new Date().toISOString()},
+  writeSurfaces:["src/reparar.ts"],
+  writerAuthorizationBasis:JSON.stringify({instruction:"Corregir defecto verificado"}),
+  fixSource:{proposalId:"b".repeat(64),treeIdentity:"c".repeat(40)}
+ };
+ const draft={title:"Fix acotado",requestId:"asen-plan:fix-fuente:worker",
+  dependsOn:[],description:"Perform only the authorized, scoped work for: Corregir defecto verificado",plan:base};
+ const saved=await store.addPlan([draft],one);
+ const reopened=await SessionTodoStore.open(file);
+ assert.deepEqual((await reopened.list(one)).find(row=>row.taskId===saved[0]?.taskId)?.plan?.fixSource,
+  base.fixSource);
+ const original=await readFile(file,"utf8");
+ for(const bad of [
+  {...base,fixSource:{...base.fixSource,proposalId:"no-valido"}},
+  {...base,fixSource:{...base.fixSource,treeIdentity:"x"}},
+  {...base,fixSource:{...base.fixSource,autorizaWriter:true}},
+  {...base,role:"primary" as const},
+  {...base,writeSurfaces:undefined}
+ ]){
+  await assert.rejects(()=>store.addPlan([{
+   ...draft,requestId:"asen-plan:otro-fix:worker",plan:bad as typeof base
+  }],one),/Invalid ASEN Todo plan task/);
+  assert.equal(await readFile(file,"utf8"),original);
+ }
+});
+
 test("running Todo work becomes blocked after restart and is never resumed automatically",async t=>{
  const file=await fixture(t),store=await SessionTodoStore.open(file),todo=await store.add("Validate deployment",one);await store.update(todo.taskId,one,1,"running");
  const reopened=await SessionTodoStore.open(file);await reopened.recover(one);const current=(await reopened.list(one))[0]!.current;assert.equal(current.state,"blocked");assert.match(current.reason!,/restarted.*explicit review/i);assert.equal(current.revision,3);assert.equal((await reopened.history(todo.taskId,one)).at(-1)?.state,"blocked");
