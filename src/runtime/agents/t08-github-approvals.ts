@@ -99,7 +99,7 @@ export async function requireLiveT08GithubApprovals(
   context.attempt!=="1"||context.costAcknowledged!=="true"||
   [context.reviewerA,context.reviewerB,context.writerModel].some(
    model=>inspectPlannedWorkerModelRoute(model).status!=="pinned"||
-    !/^nvidia\\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u.test(model)
+    !/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u.test(model)
   )||new Set([context.reviewerA,context.reviewerB,context.writerModel]).size!==3)
   throw Error("T08 requiere identidad, SHA, coste y tres modelos NVIDIA distintos");
  const token=env.GITHUB_TOKEN;
