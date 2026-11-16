@@ -15,7 +15,7 @@ const explicitModel=/^[a-z0-9][a-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9_./:@-]{0,
 export function inspectPlannedWorkerModelRoute(model:unknown):PlannedWorkerModelRoute{
  const valid=typeof model==="string"&&model.length<=256&&
   model===model.trim()&&model===model.normalize("NFC")&&
-  explicitModel.test(model)&&!model.split("/").some(part=>part==="."||part===".."||
+  explicitModel.test(model)&&!model.split("/").some(part=>!part||part==="."||part===".."||
    part.toLowerCase()==="unknown"||part.toLowerCase()==="default"||part.toLowerCase()==="auto");
  return Object.freeze({
   status:valid?"pinned" as const:"blocked" as const,
