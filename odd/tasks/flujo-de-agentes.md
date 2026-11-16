@@ -569,3 +569,11 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 - `src/runtime/agents/t06-live-consent.ts` y `t06-native-review-receipt.ts` validan prohibición de permisos falsos, sesiones/nonce repetidos, respuestas malformadas, huellas y hallazgos contradictorios. Pruebas negativas `tests/t06-live-consent.test.ts` y `tests/t06-native-review-receipt.test.ts`, añadidas a CI rápido de T02/T05/T06.
 - Instrucciones detalladas en `docs/t06-prueba-real-dos-writers-pi.md`; prueba **únicamente** mediante intervención en una terminal interactiva real, sin ejecución remota del asistente ni aceptación autoaprobada. El procedimiento no equivale a un consentimiento en Pi TUI, sino a dos consentimientos humanos del operador antes de arrancar hijos Pi RPC.
 - **Evidencia actual:** implementación en candidato GitHub y pruebas offline/CI; la ejecución real Writer dual y la revisión con modelos distintos **NO SE HAN REALIZADO EN ESTE ENTORNO**. Este procedimiento no sustituye las vinculaciones reales del supervisor ODD/Todo/T06 ni prueba sus costes monetarios. T06 PARCIAL, `globalFull:false` hasta ejecución auténtica verificada y revisión T10.
+
+## Tanda agrupada T06 + T09 + comprobaciones T04/T07/T08/T10 (2026-11-16)
+
+- T06: el evaluador de comportamiento de los dos Writers de demostración usa proceso Node con `--permission`, lectura limitada al archivo creado, sin red, escritura ni lanzamiento de procesos, y pruebas negativas de acceso ajeno y rutas simbólicas. No sustituye aislamiento de sistema operativo.
+- T09: `compareAgentFlowABSeries` agrupa 1, 2 y 4 Workers para ambos productos, exige seis observaciones con recibos únicos y contexto comparable, y calcula velocidad relativa únicamente si todas las mediciones son válidas. Coste sigue sin verificar.
+- T04/T07/T08: se mantienen las barreras existentes de revisión, estado no aceptado y Fix con ODD/Writer nuevos; no se han ejecutado nuevos modelos Writer ni se ha demostrado E2E.
+- T10: pendiente revisión externa independiente, ensayo auténtico de dos Writers y comparativa A/B real. Ver `docs/audit/flujo-agentes-tanda-agrupada-2026-11-16.md`.
+- Se requiere CI exact-SHA y Release Gate tras este cambio. PR #61 sigue borrador, sin fusión y `globalFull:false`.

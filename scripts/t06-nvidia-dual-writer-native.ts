@@ -23,6 +23,7 @@ import {issueSkillContext} from "../src/skills/context.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {requireDistinctT06Approvals,t06LiveApprovalChallenge,type T06LiveWriterIntent} from "../src/runtime/agents/t06-live-consent.js";
 import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js";
+import {checkT06Behavior} from "../src/runtime/agents/t06-behavior-isolation.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const definitions=[
@@ -57,26 +58,6 @@ function verifySource(file:string,fn:string):void{
  walk(declaration);
 }
 /** Las pruebas semánticas se ejecutan en otro proceso SIN claves de proveedor. */
-function checkBehavior(root:string,target:string,fn:string):boolean{
- const code=fn==="sumEvenNumbers"?
-  `import assert from 'node:assert/strict';import {sumEvenNumbers as f} from './${target}';
-   let input=[2,4,7,-8];assert.equal(f(input),-2);assert.deepEqual(input,[2,4,7,-8]);
-   assert.equal(f([]),0);assert.equal(f([1,3,5]),0);
-   assert.throws(()=>f("not-array"),TypeError);assert.throws(()=>f([1,2.5]),TypeError);
-   assert.throws(()=>f([1,Infinity]),TypeError);`:
-  `import assert from 'node:assert/strict';import {normalizeNames as f} from './${target}';
-   const names=[" Ana ","ana","BETA"," beta "," "];
-   assert.deepEqual(f(names),["ana","beta"]);assert.deepEqual(names,[" Ana ","ana","BETA"," beta "," "]);
-   assert.deepEqual(f([]),[]);assert.throws(()=>f("Ana"),TypeError);
-   assert.throws(()=>f(["Ana",7]),TypeError);`;
- const env:NodeJS.ProcessEnv={};
- for(const key of ["PATH","SYSTEMROOT","WINDIR","COMSPEC","PATHEXT","TEMP","TMP","TMPDIR","HOME","USERPROFILE"]){
-  if(process.env[key])env[key]=process.env[key];
- }
- try{execFileSync(process.execPath,["--input-type=module","--eval",code],{
-  cwd:root,env,stdio:["ignore","pipe","pipe"],timeout:4_000,maxBuffer:65_536
- });return true;}catch{return false;}
-}
 async function nativeWriter(
  root:string,intent:T06LiveWriterIntent,fn:string,instruction:string,policyRoot:string
 ){
@@ -144,7 +125,7 @@ async function nativeWriter(
  const exactScope=observedPaths.length===1&&observedPaths[0]===target;
  let syntaxOk=false,behaviorOk=false;
  if(present&&exactScope){
-  try{verifySource(file,fn);syntaxOk=true;behaviorOk=checkBehavior(root,target,fn);}catch{}
+  try{verifySource(file,fn);syntaxOk=true;behaviorOk=checkT06Behavior(root,target,fn);}catch{}
  }
  return Object.freeze({
   worker:intent.taskId,session:intent.sessionId,scope:target,
