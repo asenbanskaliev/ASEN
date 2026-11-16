@@ -94,6 +94,8 @@ test("T08 las propuestas en disputa no inician correcciones",async t=>{
   status:string;autoLaunch:boolean;requiresFreshWriterConsent:boolean
  };
  assert.equal(result.status,"manual-triage-required");
+ assert.equal((result as {nextCommand:string|null}).nextCommand,null);
+ assert.equal((result as {requiresHumanTriage:boolean}).requiresHumanTriage,true);
  assert.equal(result.autoLaunch,false);
  assert.equal(result.requiresFreshWriterConsent,true);
  assert.equal(f.notifications[0]?.level,"error");
