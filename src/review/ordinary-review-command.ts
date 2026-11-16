@@ -10,6 +10,7 @@ import {selectAdaptiveReviewLenses} from "./review-lens-selection.js";
 import {runJudgmentDay} from "./judgment-day.js";
 import {projectOddReviewHandoff,proposeJudgmentFixHandoff,type ScopedOddTodo,type JudgmentFixHandoff} from "./odd-agent-review-flow.js";
 import type {StoredJudgmentFixProposal} from "./judgment-fix-proposal-journal.js";
+import {draftOddFromStoredFix} from "./judgment-fix-odd-draft.js";
 import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
@@ -487,6 +488,32 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
    if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
    return fixProposals.list(context);
   }
+  const fixPlanMatch=/^fix-plan ([a-f0-9]{64})$/u.exec(command);
+  if(fixPlanMatch){
+   if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
+   return (async()=>{
+    const manager=context.sessionManager,sessionId=manager?.getSessionId?.();
+    if(!manager||!sessionId||!context.cwd||context.signal?.aborted)
+     throw new Error("Fix ODD draft requires the original live Pi session");
+    const projectId=realpathSync(context.cwd),identity={sessionId,projectId};
+    const validate=()=>{
+     if(context.signal?.aborted||context.sessionManager!==manager||
+      manager.getSessionId()!==sessionId||realpathSync(context.cwd)!==projectId)
+      throw new Error("Fix ODD draft session changed; new inspection required");
+    };
+    const original=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
+    validate();
+    if(!original)return {status:"blocked" as const,reason:"The original Fix proposal is not available to this Pi session"};
+    const first=JSON.stringify(original);
+    const draft=draftOddFromStoredFix({proposal:original,identity});
+    const current=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
+    validate();
+    if(!current||JSON.stringify(current)!==first)
+     throw new Error("Fix proposal changed during ODD draft preparation");
+    context.ui.notify(JSON.stringify(draft,null,2),draft.status==="manual-triage-required"?"error":"info");
+    return draft;
+   })();
+  }
   const oddMatch=/^todo (todo-[a-f0-9-]{36})(?: (adaptive))?$/u.exec(command);
   if(oddMatch){
    if(!readOddTodos)return Promise.resolve({status:"unavailable",reason:"ODD Todo store is not enabled"});
@@ -545,7 +572,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review fix-plan <id> | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");
