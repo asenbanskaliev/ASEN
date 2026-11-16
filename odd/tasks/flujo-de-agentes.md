@@ -535,3 +535,12 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 **Pruebas nuevas:** `tests/judgment-fix-odd-preflight.test.ts`, `tests/judgment-fix-odd-planning.test.ts`, `tests/judgment-fix-odd-save.test.ts` y ampliación de `tests/todo-store.test.ts`. Incluyen casos negativos de código alterado, archivos ajenos, confirmación denegada, sesión cambiada, disputa entre jueces, rutas ampliadas, riesgo sin resolver y falsificación de metadatos.
 
 **No declarar FULL:** la persistencia no demuestra que el Writer haya trabajado, cobrado correctamente, revisado ni reparado. Faltan la ejecución auténtica con aprobación individual, recuperación segura, comprobación de resultados, comparación A/B y auditoría independiente. El CI y Release Gate deben pasar en el SHA final en Windows/Linux/macOS. Pi Free Smoke omitido no cuenta como PASS. PR #61 en borrador; `globalFull:false`.
+
+## T08 — Recuperación segura de un guardado ODD interrumpido (2026-11-16)
+
+- Nuevo comando de **solo lectura**: `/asen-review fix-plan <id> status`. Busca el Worker del informe Fix exacto en el almacén de la **misma sesión Pi y proyecto**, sin utilizar modelos, guardar datos ni volver a despachar.
+- Valida tres veces la estabilidad de sus fuentes: propuesta original; dos lecturas coherentes de los Todos relacionados; propuesta original todavía idéntica. Si hay cambios o interferencias, rechaza el resultado. El código no intenta solucionar silenciosamente un diario ambiguo.
+- `src/review/judgment-fix-odd-recovery.ts` comprueba solicitud, identificador de propuesta, árbol revisado, rutas, sesión y estado de la tarea, y solo devuelve `not-observed`, `worker-observed` o `inconsistent`, todos con `autoRetry:false`, `writerAuthority:false` y `acceptance:not-accepted`.
+- **Importante:** `not-observed` significa que no se encontró un Worker *activo*, no que se haya demostrado que nunca existió: podría haberse archivado o interrumpido el guardado. Hay que inspeccionar el historial antes de un nuevo intento. `worker-observed` no significa código reparado ni aprobado.
+- Pruebas negativas en `tests/judgment-fix-odd-recovery.test.ts` y `tests/judgment-fix-odd-command.test.ts`: sesión y proyecto ajenos, rutas e identidad falsificadas, registros repetidos, cambios entre lecturas, ausencia de lector y cero reintentos.
+- Estado: mejora de resiliencia **implementada en la PR**. Las pruebas del SHA definitivo deben aprobarse en Windows, macOS y Linux. No sustituye Writer Pi auténtico autorizado individualmente ni auditoría independiente T10; `globalFull:false`.
