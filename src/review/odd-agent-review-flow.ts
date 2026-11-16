@@ -123,7 +123,7 @@ export function proposeJudgmentFixHandoff(input:{
  if(report.status!=="analysis-complete"){
   try{
    const allowed=validatePortableReviewPaths(evidence.modifiedFiles.map(f=>f.path));
-   const requested=validatePortableReviewPaths(report.findings.map(x=>x.finding.path));
+   const requested=validatePortableReviewPaths([...new Set(report.findings.map(x=>x.finding.path))]);
    if(requested.length===0||requested.length>100||
     requested.some(path=>!allowed.includes(path)||hasSensitiveName(path)))
     throw new Error("unsafe finding path");
