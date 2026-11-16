@@ -106,6 +106,7 @@ export function proposeJudgmentFixHandoff(input:{
  readonly report:JudgmentDayReport;
  readonly evidence:PiReviewEvidence;
  readonly fixProfile?:RouteChoice;
+ readonly fixProfileUnavailable?:boolean;
 }):JudgmentFixHandoff{
  const {report,evidence,fixProfile}=input;
  if(!isIssuedJudgmentDayReport(report)||!isWorkspaceReviewEvidenceGenuine(evidence))
@@ -119,6 +120,7 @@ export function proposeJudgmentFixHandoff(input:{
   (fixProfile?.thinking!==undefined&&!safe(fixProfile.thinking,32)))
   throw new Error("Judgment Day candidate or model route changed");
  const blockers:string[]=[];
+ if(input.fixProfileUnavailable===true)blockers.push("Fix profile lookup unavailable; no Fix dispatch permitted");
  let paths:readonly string[]=[];
  if(report.status!=="analysis-complete"){
   try{
