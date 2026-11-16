@@ -85,6 +85,7 @@ export function projectOddReviewHandoff(input:{
  });
 }
 export interface JudgmentFixHandoff{
+ readonly requestId:string;readonly sessionId:string;readonly repositoryRoot:string;
  readonly status:"not-needed"|"manual-triage-required"|"fix-planning-required"|"blocked";
  readonly paths:readonly string[];
  readonly blockers:readonly string[];
@@ -100,6 +101,11 @@ export interface JudgmentFixHandoff{
  readonly autoLaunch:false;
  readonly autoMerge:false;
  readonly acceptance:"not-accepted";
+}
+const issuedFixHandoffs=new WeakSet<object>();
+/** Solo un resultado inmutable emitido a partir de jueces y candidato auténticos es persistible. */
+export function isIssuedJudgmentFixHandoff(value:unknown):value is JudgmentFixHandoff{
+ return typeof value==="object"&&value!==null&&issuedFixHandoffs.has(value);
 }
 /** Una recomendación verificable para planificar correcciones: NUNCA un Fix lanzado. */
 export function proposeJudgmentFixHandoff(input:{
@@ -136,7 +142,9 @@ export function proposeJudgmentFixHandoff(input:{
   report.status==="analysis-complete"?"not-needed" as const:
   report.status==="disagreement-requires-review"?"manual-triage-required" as const:
   "fix-planning-required" as const;
- return Object.freeze({
+ const handoff=Object.freeze({
+  requestId:report.requestId,sessionId:report.sessionId,
+  repositoryRoot:evidence.candidate.repositoryRoot,
   status,paths,blockers:Object.freeze(blockers),
   candidateRevision:report.candidateRevision,
   candidateTreeIdentity:report.candidateTreeIdentity,
@@ -148,4 +156,6 @@ export function proposeJudgmentFixHandoff(input:{
   writerAuthority:false as const,autoLaunch:false as const,autoMerge:false as const,
   acceptance:"not-accepted" as const
  });
+ issuedFixHandoffs.add(handoff);
+ return handoff;
 }
