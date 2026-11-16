@@ -129,3 +129,29 @@ por sí mismo a una prueba de causa raíz.
 
 Estado: `PENDIENTE_DIAGNOSTICO_REAL`; sin fusión, sin permiso Writer
 y `globalFull:false`.
+
+## Prueba del cierre de Pi sin NVIDIA
+
+En los intentos reales 43941733529 y 43944108837, el juez A produjo
+`message_end` con `content:[]`. **No está probado** que lo provocara el
+cierre temprano de ASEN; también puede ocurrir si NVIDIA no generó texto.
+
+Se ha demostrado un riesgo distinto mediante una prueba de Pi simulado:
+
+1. Un primer intento emite respuesta vacía y `agent_end(willRetry:true)`.
+2. Pi inicia automáticamente un segundo intento y sí produce texto.
+3. Solo `agent_settled` certifica el final de toda la ejecución.
+
+El controlador T08 espera ahora `agent_settled`. Si el segundo intento
+produce texto, ASEN conserva el resultado final comprobado; si Pi no recupera
+el texto o no emite el cierre definitivo, **la revisión sigue bloqueada**.
+No se reconstruyen dictámenes con textos parciales, ni se deshabilitan
+herramientas prohibidas, controles de coste o aprobaciones.
+
+`tests/t08-pi-settlement.test.ts` reproduce el caso sin ninguna API real,
+y prueba también cierres incompletos y falsos finales. El resto de usos
+de Pi conserva su contrato anterior. El paso siguiente es una revisión
+independiente y, solo con autorización expresa de la prueba de modelos,
+una comprobación real y pequeña, inspeccionando los contadores seguros.
+
+Referencia del protocolo: https://docs.pi.dev/latest/rpc
