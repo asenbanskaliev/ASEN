@@ -812,3 +812,18 @@ test("T06/T07 bloquea intento de supervisor que no corresponde al hijo Pi reserv
   loadChildTaskAgentLinks:async id=>f.getChildObservations(id.sessionId).links
  }),/Supervisor attempt does not match/u);
 });
+
+test("T02/T05/T06 el supervisor no solicita consentimientos para rutas de modelo vacías",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const original=f.getChildObservations("child-pi-1");
+ for(const invalid of ["nvidia//modelo","nvidia/modelo//otro","nvidia/default"]){
+  f.setChildObservations("child-pi-1",original.todos.map(row=>({
+   ...row,plan:{...row.plan!,model:invalid}
+  })),original.agents,original.links);
+  const result=await f.run("supervise") as {status:string;blockers:readonly string[]};
+  assert.equal(result.status,"blocked",invalid);
+  assert.ok(result.blockers.some(s=>/model is unspecified/u.test(s)));
+  assert.equal(f.dispatchedChildren.length,0);
+  assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,0);
+ }
+});
