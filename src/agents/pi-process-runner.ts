@@ -185,6 +185,11 @@ export class PiProcessRunner implements AgentRunner{
  readonly #fallbackSubscriptions=new Set<Readonly<{listener:AgentFallbackListener}>>();
  #runtimeVerified=false;
  constructor(private readonly options:PiProcessOptions={}){}
+ /** Capability only: request-level fallback still fails closed in run(). */
+ supportsStrictReadOnlySettlement():boolean{
+  return this.options.requireFinalSettlement===true&&this.options.noTools===true&&
+   this.options.exactWriteReceipt===undefined;
+ }
  subscribeModelFallback(listener:AgentFallbackListener):()=>void{if(typeof listener!=="function")throw new TypeError("Model fallback observer must be a function");const subscription=Object.freeze({listener});this.#fallbackSubscriptions.add(subscription);return()=>{this.#fallbackSubscriptions.delete(subscription);};}
  /** Optional, nonpersistent selection reports; subscription replacement never revives old launches. */
  subscribeChildSelection(listener:ChildSelectionListener):()=>void{
@@ -526,7 +531,7 @@ export class PiProcessRunner implements AgentRunner{
      // En revisiones estrictas, un evento parcial posterior a agent_end
      // nunca se guarda como evidencia ni se expone al controlador.
      const keep=typeof record==="string"||(agentEnded&&!strictNativeSettlement)||
-      type==="agent_end"||strictNativeSettlement&&type==="agent_settled"||
+      type==="agent_end"||strictNativeSettlement&&(type==="agent_settled"||type==="agent_start")||
       type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
      if(keep){
       const retained=line+"\n";retainedBytes+=Buffer.byteLength(retained);
