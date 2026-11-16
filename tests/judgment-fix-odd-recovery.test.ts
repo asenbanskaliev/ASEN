@@ -165,3 +165,22 @@ test("T08 recupera un Fix desde el archivo privado real, sin relanzar",async t=>
  writeFileSync(archiveFile,original);
  assert.equal((await store.archived(identity)).length,1);
 });
+
+test("T08 no recupera un Fix con permisos o procedencia falseados",()=>{
+ for(const change of [
+  {requiresFreshWriterConsent:false},{requiresNewOddPlan:false},
+  {requiresFreshCandidate:false},{autoMerge:true},
+  {acceptance:"accepted"},{globalFull:true},{writeSurfaces:[]}
+ ]){
+  assert.throws(()=>inspectFixOddRecovery({
+   draft:{...draft,...change} as typeof draft,identity,todos:[worker()]
+  }),/original read-only Pi session/u);
+ }
+ const row=worker();
+ const inconsistent=inspectFixOddRecovery({draft,identity,todos:[{
+  ...row,current:{...row.current,taskId:"todo-other-id"}
+ }]});
+ assert.equal(inconsistent.status,"inconsistent");
+ assert.equal(inconsistent.writerAuthority,false);
+ assert.equal(inconsistent.autoRetry,false);
+});

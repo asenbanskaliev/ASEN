@@ -577,3 +577,9 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 - T04/T07/T08: se mantienen las barreras existentes de revisión, estado no aceptado y Fix con ODD/Writer nuevos; no se han ejecutado nuevos modelos Writer ni se ha demostrado E2E.
 - T10: pendiente revisión externa independiente, ensayo auténtico de dos Writers y comparativa A/B real. Ver `docs/audit/flujo-agentes-tanda-agrupada-2026-11-16.md`.
 - Se requiere CI exact-SHA y Release Gate tras este cambio. PR #61 sigue borrador, sin fusión y `globalFull:false`.
+
+## Tanda T07 + T08 — vista de sesiones hijas y recuperación fail-closed (2026-11-16)
+
+- T07: el panel diferencia de forma explícita una sesión local sin tareas/agentes y el trabajo observado de sesiones hijas. Muestra la siguiente acción segura por tarea, sin convertirla en control de ejecución.
+- T08: la recuperación de un Fix rechaza proyecciones con permisos reaprovechados, autorización de fusión, ausencia de consentimiento nuevo o procedencia de Todo contradictoria. Añadidas pruebas negativas.
+- Estos cambios no autentican Writers, no ejecutan reparaciones y no conceden FULL. Se exige CI exact-SHA y revisión independiente antes de cerrar. PR #61 sigue borrador; `globalFull:false`.

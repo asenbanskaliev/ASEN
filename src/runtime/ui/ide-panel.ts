@@ -81,7 +81,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
  switch(section){
   case "TODOS":{
    const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
-   if(!snapshot.todos.length)out.push("No tasks in this session");
+   if(!snapshot.todos.length)out.push(snapshot.agentFlow?.overview.totalTasks?
+    "No local Todos · linked worktree tasks observed":"No tasks in this session");
    for(const item of open.slice(0,itemLimit)){
     const state=item.current.state==="succeeded"?"awaiting independent review":item.current.state;
     out.push(glyph(item.current.state)+" "+clean(item.title,240)+" ["+state+"]");
@@ -100,7 +101,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
     out.push("Linked source Todos: "+flow.overview.totalTasks+
      (flow.limited?" (latest worktree batches only)":""));
     for(const task of flow.overview.tasks.slice(0,detail?12:3))
-     out.push("  ↳ "+clean(task.taskId,56)+" · "+task.stage);
+     out.push("  ↳ "+clean(task.taskId,56)+" · "+task.stage+" · next "+task.nextAction);
     out.push("Read-only source worktree flow · /asen-worktrees status");
    }
    break;
@@ -119,7 +120,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
   case "AGENTS":{
    const priority:Record<string,number>={interrupted:0,running:1,queued:2,failed:3,cancelled:4,completed:5};
    const agents=[...snapshot.agents].sort((a,b)=>(priority[a.state]??9)-(priority[b.state]??9)||b.updatedAt.localeCompare(a.updatedAt));
-   if(!agents.length)out.push("No agents · /asen-agents");
+   if(!agents.length)out.push(snapshot.agentFlow?.overview.totalTasks?
+    "No local agents · linked child Workers observed":"No agents · /asen-agents");
    for(const agent of agents.slice(0,secondaryLimit))out.push(glyph(agent.state)+" "+clean(agent.role,30)+" · "+agent.state+(agent.state==="interrupted"?" · inspect first":""));
    if(agents.length>secondaryLimit)out.push("… "+(agents.length-secondaryLimit)+" more · /asen-agents");
    // No real tokens/prices/model on the durable public agent record: never fabricate.

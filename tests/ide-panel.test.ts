@@ -225,3 +225,28 @@ test("T07 missing or unreadable flow never claims a model, Worker or successful 
  assert.match(rows,/Cross-session ODD: unavailable/u);
  assert.doesNotMatch(rows,/PASS|actual model [^u]|healthy/u);
 });
+
+test("T07 distingue sesión local vacía del trabajo de hijos y enseña el siguiente paso sin ejecutar",()=>{
+ const overview=projectParallelAgentFlow([{batchId:"batch-ui",state:"prepared",tasks:[
+  {sourceTodoId:"worker-ui-a",sourceTodoUnchanged:true,worktreePresent:true,
+   handoffClaimed:true,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"pi-child-a",agents:[{id:"real-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"worker-ui-b",sourceTodoUnchanged:true,worktreePresent:true,
+   handoffClaimed:false,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false}}
+ ]}]);
+ const base=snapshot({todos:[],agents:[],jobs:[],
+  agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const before=structuredClone(base);
+ const todos=renderAsenPanelSection(base,"TODOS",140).join("\n");
+ const agents=renderAsenPanelSection(base,"AGENTS",140).join("\n");
+ assert.match(todos,/No local Todos · linked worktree tasks observed/u);
+ assert.match(todos,/next observe-agent/u);
+ assert.match(todos,/next attach-child-session/u);
+ assert.match(agents,/No local agents · linked child Workers observed/u);
+ assert.match(agents,/Worktree Workers: 1 active observed/u);
+ assert.doesNotMatch(todos+"\n"+agents,/model verified|accepted:true|merge complete/iu);
+ assert.equal(base.agentFlow?.overview.tasks[0]?.modelActual,"unknown");
+ assert.deepEqual(base,before);
+});

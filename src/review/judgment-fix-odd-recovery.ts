@@ -28,7 +28,12 @@ export function inspectFixOddRecovery(input:{
  if(!draft||!identity||draft.sessionId!==identity.sessionId||
   !sameWorkspaceIdentityPath(draft.projectId,identity.projectId)||
   draft.writerAuthority!==false||draft.authorized!==false||
-  draft.autoLaunch!==false||!Array.isArray(todos)||todos.length>2000||
+  draft.autoLaunch!==false||draft.autoMerge!==false||
+  draft.requiresFreshWriterConsent!==true||draft.requiresNewOddPlan!==true||
+  draft.requiresFreshCandidate!==true||draft.acceptance!=="not-accepted"||
+  draft.globalFull!==false||!Array.isArray(draft.writeSurfaces)||
+  draft.writeSurfaces.length<1||draft.writeSurfaces.length>100||
+  !Array.isArray(todos)||todos.length>2000||
   !Array.isArray(archivedTodos)||archivedTodos.length>2000)
   throw new Error("Fix Todo recovery requires the original read-only Pi session");
  const requestId="asen-plan:fix-"+draft.sourceProposalId.slice(0,24)+":worker";
@@ -37,6 +42,7 @@ export function inspectFixOddRecovery(input:{
  const active=todos.filter(matches),archived=archivedTodos.filter(matches);
  const rows=[...active,...archived];
  const wrong=rows.some(row=>!row||!row.current||
+  row.current.taskId!==row.taskId||
   row.current.sessionId!==identity.sessionId||
   !sameWorkspaceIdentityPath(row.current.projectId,identity.projectId)||
   row.plan?.role!=="worker"||
