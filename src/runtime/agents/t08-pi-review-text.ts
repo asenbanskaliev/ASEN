@@ -29,17 +29,27 @@ export function parseT08NativeReviewText(output:unknown):string{
   throw new Error("T08: se requiere un solo dictamen final de Pi");
  const message=(finals[0] as {message:Record<string,unknown>}).message;
  const blocks=message.content;
- if(!Array.isArray(blocks)||blocks.length<1||blocks.length>8)
-  throw new Error("T08: contenido de dictamen Pi inválido");
+ // Pi puede distribuir la respuesta entre varios bloques de texto y
+ // razonamiento. El límite de 8 era demasiado estrecho; la respuesta sigue
+ // acotada por bytes y cada bloque se valida antes de usar su contenido.
+ if(!Array.isArray(blocks))
+  throw new Error("T08: dictamen Pi sin lista de bloques (forma inválida)");
+ if(blocks.length===0)
+  throw new Error("T08: dictamen Pi sin bloques (0)");
+ if(blocks.length>64)
+  throw new Error("T08: dictamen Pi con más de 64 bloques");
  const chunks:string[]=[];
- let count=0;
+ let count=0,thinkingCharacters=0;
  for(const block of blocks){
   if(!object(block))throw new Error("T08: bloque Pi inválido");
   if(block.type==="thinking"){
    // Compatible con los modelos que devuelven razonamiento por separado.
    // No se consulta ni se incorpora el razonamiento al resultado.
-   if(typeof block.thinking!=="string"||block.thinking.length>128_000)
+   if(typeof block.thinking!=="string")
     throw new Error("T08: bloque de razonamiento Pi inválido");
+   thinkingCharacters+=block.thinking.length;
+   if(thinkingCharacters>128_000)
+    throw new Error("T08: razonamiento Pi supera el límite total");
    continue;
   }
   if(block.type!=="text"||typeof block.text!=="string")
