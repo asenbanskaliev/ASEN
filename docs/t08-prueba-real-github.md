@@ -6,7 +6,7 @@ Comprobar una cadena auténtica **dos jueces Pi -> propuesta Fix genuina ->
 nueva tarea ODD persistida -> autorización humana de escritura ->
 Pi Writer -> prueba de comportamiento -> dos jueces Pi posteriores**.
 
-La prueba opera exclusivamente en un **worktree temporal de Git**, sin modificar
+La prueba opera exclusivamente en un **repositorio Git mínimo y temporal**, sin modificar
 el árbol original de la PR, sin fusionar ramas ni usar credenciales Git de escritura.
 El código generado se verifica estáticamente y, si supera el filtro, se ejecuta
 en un **proceso Node con restricciones de lectura, sin red ni permiso de escritura**.
@@ -26,6 +26,17 @@ Ninguna revisión de la IA constituye por sí sola una autorización de entrega.
    `t08_revisor_a`, `t08_revisor_b`, `t08_modelo_reparador`.
    Deben existir en la cuenta y permitir llamadas Pi. No se presupone
    que sean gratuitos ni que estén operativos.
+   Para el próximo intento se proponen estos modelos diferentes:
+   - Revisor A: `nvidia/nemotron-3.5-bolt-e4b`.
+   - Revisor B: `nvidia/nemotron-3.5-super-vl-120b-a12b`.
+   - Reparador: `nvidia/nemotron-3.5-lightning-30b-a3b`.
+   Son rutas publicadas por NVIDIA, pero su funcionamiento con la clave y
+   esta versión de Pi debe comprobarse; no se garantiza coste cero.
+   **No utilizar** `nvidia/nemotron-3-ultra-550b-a55b` en T08:
+   el 11/11/2026 se notificaron respuestas vacías con HTTP 200 en la API
+   y en el entorno de pruebas oficial. Como prevención, la ejecución se
+   bloquea **antes de pedir aprobaciones o consumir cuota**.
+   Referencia: https://forums.developer.nvidia.com/t/nemotron-3-ultra-550b-a55b-corrupted-reasoning-and-empty-responses-on-nvidia-api-and-playground/388780
 5. Marcar `coste_desconocido_autorizado` solamente si se acepta el posible
    coste desconocido de **hasta cinco llamadas** (dos iniciales, una escritura,
    dos finales) y las posibles operaciones del proveedor.
@@ -55,7 +66,7 @@ Ninguna revisión de la IA constituye por sí sola una autorización de entrega.
 - Informe inicial descargado exclusivamente del mismo workflow run; se
   revalida su identidad, propuesta, ámbito y hash de la fuente antes de usarlo.
 - El reparador no dispone de la aprobación para revisar como permiso Writer.
-  El ámbito de escritura es solo `t08-fix.mjs` en un worktree temporal.
+  El ámbito de escritura es solo `t08-fix.mjs` en un repositorio Git temporal.
 - El defecto se define por código fuente estático suministrado por la prueba,
   no por instrucciones propuestas por los modelos.
 - Si hay error o interrupción **no hay reintento automático** ni fusión.
@@ -67,6 +78,18 @@ Ninguna revisión de la IA constituye por sí sola una autorización de entrega.
   controlador controlado por GitHub**.
 - Se declara siempre `accepted:false`, `autoRetry:false`,
   `autoMerge:false` y `globalFull:false`. No se afirma T08 FULL.
+
+## Incidente del 16/11/2026 — respuesta vacía del proveedor
+
+La ejecución https://github.com/asenbanskaliev/ASEN/actions/runs/43941733529
+superó preparación y primera aprobación. El revisor devolvió un mensaje
+Pi con **cero bloques de respuesta** y ASEN bloqueó correctamente el
+proceso: sin segundo juez acreditado, tarea Fix, Writer ni segunda aprobación.
+
+Un informe público de NVIDIA de cinco días antes reproduce el mismo
+resultado para el modelo revisor A. No es lícito interpretar el mensaje
+vacío como dictamen ni fabricar texto a partir del razonamiento. La medida
+es **cambiar de modelo** y conservar el rechazo de dictámenes vacíos.
 
 ## Estado al publicar
 
