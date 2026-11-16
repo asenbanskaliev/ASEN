@@ -103,6 +103,7 @@ async function nativeWriter(
  const runner=new PiProcessRunner({
   command:process.env.PI_EXECUTABLE??"pi",policyRoot,providerCredential:"NVIDIA_API_KEY",
   attributionFile,
+  oneShotWritePath:target,
   timeoutMs:180_000,maxOutputBytes:80_000,maxStreamBytes:512_000,
   onProcessStart:processId=>{pid=processId;startedAt=performance.now();},
   onProcessClose:()=>{endedAt=performance.now();},

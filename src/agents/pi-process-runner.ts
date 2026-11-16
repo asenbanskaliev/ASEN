@@ -37,6 +37,8 @@ export interface PiProcessOptions{
   * are durable, before Pi is allowed to process the tool result.
   */
  exactWriteReceipt?:Readonly<{path:string;fileSha256:string;barrierFile?:string}>;
+ /** Límite optativo exclusivo del ensayo T06, no de los Writers normales. */
+ oneShotWritePath?:string;
  policyRoot?:string;
  validateRuntimeVersion?:boolean;
  minimumRuntimeVersion?:string;
@@ -99,9 +101,18 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
-const authorityDigest="35731adec8525b6043dec7e06d8c35406388bd5d61f6fc2b9ace5c6528b199dd";
+const authorityDigest="286de61ac2e47b15de1e51c762d7a07899628e1a59c3f09d310bd34e769ba630";
 
 
+function oneShotWritePath(value:PiProcessOptions["oneShotWritePath"],request:AgentRequest):string|undefined{
+ if(value===undefined)return undefined;
+ if(request.role!=="worker"||request.writeSurfaces?.length!==1||
+  typeof value!=="string"||!value||value!==value.trim()||isAbsolute(value)||
+  value.includes("\\")||value.split("/").some(part=>!part||part==="."||part==="..")||
+  request.writeSurfaces[0]!==value)
+  throw new Error("T06 one-shot write requires one exact Worker write surface");
+ return value;
+}
 function exactWriteReceipt(value:PiProcessOptions["exactWriteReceipt"],request:AgentRequest):{path:string;fileSha256:string;barrierFile?:string}|undefined{
  if(value===undefined)return undefined;
  if(request.role!=="worker"||!request.writeSurfaces?.length)throw new Error("Exact write receipt requires a worker with write authority");
@@ -256,8 +267,13 @@ export class PiProcessRunner implements AgentRunner{
   if(this.options.requireFinalSettlement&&fallbackConfig?.chain.length)
    return Promise.resolve({id:request.id,ok:false,
     output:"Pi strict settlement cannot combine with automatic fallback"});
-  let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined;
-  try{receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
+  let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined,oneShot:string|undefined;
+  try{
+   receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);
+   oneShot=oneShotWritePath(this.options.oneShotWritePath,request);
+   if(oneShot&&receipt&&receipt.path!==oneShot)throw new Error("T06 one-shot and receipt paths differ");
+   if(oneShot&&fallbackConfig?.chain.length)throw new Error("T06 one-shot cannot use model fallback");
+  }catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
   const providerExtension=this.options.providerExtension;
   if(providerExtension!==undefined&&!trustedProviderExtensions.has(providerExtension))return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const policyRoot=this.options.policyRoot??request.repository,candidatePolicy=resolvePath(policyRoot,"extensions/authority.ts");
@@ -298,7 +314,7 @@ export class PiProcessRunner implements AgentRunner{
    try{
     child=spawnContained(command,args,{
      cwd:request.repository,
-     env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{})})},
+     env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{}),...(oneShot?{oneShotWritePath:oneShot}:{})})},
      stdio:["pipe","pipe","pipe"],
      detached:process.platform!=="win32"
     }) as ChildProcessWithoutNullStreams;
