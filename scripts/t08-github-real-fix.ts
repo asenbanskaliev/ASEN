@@ -290,6 +290,7 @@ async function saveOddPlan(root:string,source:FirstReviewData,dir:string){
  const live=inspectLiveFixCandidate(draft);
  if(live.candidateTreeIdentity!==source.sourceTree)
   throw Error("La fuente revisada cambió durante el plan ODD");
+ if(!recovery.workerTodoId)throw Error("T08 no encontró la identidad del Worker ODD");
  return {identity,workerId:recovery.workerTodoId,proposalId:proposal.id,
   planSaved:true,writerAuthorized:false as const};
 }
