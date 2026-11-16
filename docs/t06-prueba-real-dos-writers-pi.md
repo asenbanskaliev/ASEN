@@ -55,3 +55,14 @@ Los tests sin modelos `tests/t06-live-consent.test.ts` y `tests/t06-native-revie
 La salida `PASS_TWO_REAL_WRITERS_NEEDS_INDEPENDENT_REVIEW` solo prueba dos escrituras Pi simultáneas y comprobadas en el **escenario de ejemplo**, no que ASEN complete por sí solo el supervisor ODD en producción.
 
 La salida `PASS_TWO_REAL_WRITERS_AND_PI_REVIEWS_NEEDS_T10` añade dos revisores Pi con modelos separados, sin conceder aceptación T10. Para marcar T06 FULL aún son necesarias: prueba TUI de permisos individuales, revisión independiente de PR, evidencias de coste y modelos reales y aceptación del flujo integrado bajo el mismo SHA. Hasta entonces `globalFull:false`.
+
+## Verificación posterior de archivos y recibos (T06/T10)
+
+Después de ejecutar **manualmente** el ensayo con dos autorizaciones humanas y conservar ambos directorios de trabajo, se puede comprobar que el informe no se ha separado del código local:
+
+```powershell
+Set-Location D:\Asen
+npx tsx scripts/t06-verificar-informe.ts "RUTA_AL_INFORME\t06-dual-native-evidence.json" "RUTA_AL_WORKTREE_A" "RUTA_AL_WORKTREE_B"
+```
+
+El comando solo lee Git y los dos archivos generados. Compara commit, rutas exactas, estados Git, huellas, sesiones y valores de seguridad del informe. No ejecuta código generado ni llama a modelos. Un resultado `local-files-consistent-claims-unverified` **no acredita** retrospectivamente que hubo consentimiento humano real, llamadas autenticadas, pruebas de comportamiento o dos procesos simultáneos. Es una comprobación de **consistencia local**, no una auditoría externa T10. Si hay discrepancias devuelve `blocked` y no debe repetirse la escritura sin inspección.

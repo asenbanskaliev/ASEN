@@ -590,3 +590,10 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 - Continúa sin declarar `PASS`, modelo real o permisos a partir de estados del panel. Pruebas con fuente enlazada y ancho estrecho.
 - T06: pruebas negativas conservan variables esenciales de Windows al ejecutar Node con permisos limitados, sin propagar claves ni `NODE_OPTIONS`.
 - Pendiente CI/Release Gate del último SHA, ejecución auténtica de dos Writers y revisión externa. `globalFull:false`.
+
+## T06 + T10 — cotejo posterior de evidencias de dos Writers (2026-11-16)
+
+- Añadido `verifyT06NativeSnapshot` y comando `scripts/t06-verificar-informe.ts` para comprobar un informe **ya creado** contra dos worktrees reales de Git. Solo lectura, sin ejecutar funciones, sin llamadas al proveedor, sin permisos ni fusión.
+- Valida identidad exacta del escenario, SHA, archivos nuevos separados, estados Git, huellas SHA-256, sesiones diferentes, campos de seguridad sin aceptación y dos resultados declarados satisfactorios. Bloquea registros corruptos, cambios adicionales, modelos distintos y directorios reutilizados.
+- Distingue rigurosamente **consistencia local** frente a **prueba independiente**. Aunque haya coincidencia, las autorizaciones humanas, la concurrencia, el consumo real, las pruebas dinámicas y la revisión independiente siguen **no verificados por este comprobador**.
+- Pruebas negativas de manipulación y no ejecución de código generado; la demostración manual sigue pendiente. No declarar T06/T10 FULL. PR #61 en borrador, `globalFull:false`.
