@@ -21,7 +21,8 @@ export interface JudgmentFixOddDraft{
  readonly modelActuallyUsed:"unknown";
  readonly instructionStatus:"not-provided";
  readonly candidateStatus:"not-revalidated";
- readonly nextCommand:"/asen-plan";
+ readonly nextCommand:"/asen-plan"|null;
+ readonly requiresHumanTriage:boolean;
  readonly requiresNewOddPlan:true;
  readonly requiresFreshCandidate:true;
  readonly requiresFreshWriterConsent:true;
@@ -87,7 +88,8 @@ export function draftOddFromStoredFix(input:{
   writeSurfaces:Object.freeze([...paths]),
   modelRequested:"unknown" as const,modelActuallyUsed:"unknown" as const,
   instructionStatus:"not-provided" as const,candidateStatus:"not-revalidated" as const,
-  nextCommand:"/asen-plan" as const,
+  nextCommand:proposal.requiredAction==="manual-triage"?null:"/asen-plan" as const,
+  requiresHumanTriage:proposal.requiredAction==="manual-triage",
   requiresNewOddPlan:true as const,requiresFreshCandidate:true as const,
   requiresFreshWriterConsent:true as const,requiresUserInstruction:true as const,
   writerAuthority:false as const,authorized:false as const,
