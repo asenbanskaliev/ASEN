@@ -272,3 +272,29 @@ test("T07 barra inferior reconoce Workers hijos reales sin actividades locales",
  for(const width of [12,32,80,120])
   assert.ok(visibleWidth(renderAsenWorkRow(source,width)!)<=width);
 });
+
+test("T02/T05/T06/T07 panel diferencia modelo solicitado, intento y recibo de modelo real",()=>{
+ const overview=projectParallelAgentFlow([{batchId:"lote-pi-observado",state:"prepared",
+  supervisorClaimed:true,tasks:[
+   {sourceTodoId:"todo-origen-a",sourceTodoUnchanged:true,worktreePresent:true,
+    handoffClaimed:true,receiptRecorded:true,
+    changes:{status:"scoped-changes",changedPaths:["codigo.ts"],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"sesion-a",modelRequested:"nvidia/modelo-solicitado",
+     agents:[{id:"agente-a",role:"worker",state:"completed"}]}},
+   {sourceTodoId:"todo-origen-b",sourceTodoUnchanged:true,worktreePresent:true,
+    handoffClaimed:false,receiptRecorded:false,
+    changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false}}
+  ]}]);
+ const panel=snapshot({agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const before=structuredClone(panel);
+ const rows=renderAsenPanelSection(panel,"AGENTS",140).join("\n");
+ assert.match(rows,/requested nvidia\/modelo-solicitado · actual unknown/u);
+ assert.match(rows,/Supervisor attempts recorded: 2 tasks/u);
+ assert.match(rows,/Collected Worker receipts: 1 · human review required/u);
+ assert.doesNotMatch(rows,/actual nvidia|FULL|automatically approved/iu);
+ assert.equal(overview.tasks[0]!.modelActual,"unknown");
+ assert.equal(overview.tasks[0]!.modelConsumedProven,false);
+ assert.deepEqual(panel,before);
+});
