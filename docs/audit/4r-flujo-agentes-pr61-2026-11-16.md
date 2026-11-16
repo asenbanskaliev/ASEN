@@ -62,3 +62,23 @@ La extracción estructural de `ordinary-review-command.ts` se deja pendiente par
 **Resilience:** RES-05, gravedad media: los recibos de un lote siguen grabándose en una sola transacción y fallan por completo si uno está mal formado o si hay sesión repetida; no se reintenta automáticamente un Worker ni se sustituye un recibo anterior. Las pruebas existentes de competencia concurrente se conservan y se amplían con falsificación y corrupción en disco.
 
 **Alcance de esta ampliación:** revisión estática y pruebas publicadas; el resultado definitivo depende del CI/Release Gate del SHA exacto. No hay demostración de dos Workers Writer reales ni auditoría independiente. `globalFull:false` y PR #61 en borrador.
+
+## Verificación 4R de tres fallos CI multiplataforma (16 de noviembre de 2026)
+
+**Alcance comprobado:** ejecución CI `43825122036` del SHA `9d4766038b65`, revisión del código de las pruebas y de los contratos de revisión. Estos hallazgos son de una revisión interna, **no** equivalen a la auditoría independiente T10.
+
+| Área | Hallazgo y causa | Corrección segura | Prueba de cierre |
+| --- | --- | --- | --- |
+| **Risk** | En T08 la prueba borraba el directorio padre de la vista protegida antes de llamar a `closeWorkspaceReview`; la limpieza fallaba por `EACCES` en POSIX. La vista está protegida deliberadamente. | Se cierra mediante la función de propiedad verificada **antes** de borrar directorios, y no se ignoran las excepciones del cierre. No se cambian permisos ni se eliminan las comprobaciones de pertenencia. | `tests/judgment-fix-proposal-journal.test.ts` en Linux y macOS, incluyendo ambos escenarios anteriores con `hookFailed`. |
+| **Readability** | El ayudante `git()` de las pruebas aplica `trim()`, que borra el primer espacio significativo del formato `--porcelain`. | La comprobación que necesita distinguir índice y árbol de trabajo lee Git sin `trim()` y elimina solo espacios finales. | `tests/odd-agent-review-command.test.ts` en los tres sistemas. |
+| **Reliability** | La prueba del perfil Fix esperaba `blocked` aunque ambos jueces daban `pass` y no había ninguna reparación que preparar. | La prueba negativa pide dictámenes genuinos con fallos para verificar el bloqueo de Fix cuando su perfil no se puede consultar; un segundo caso prueba `not-needed` sin hallazgos. No se transforma un PASS en permiso de escritura. | `tests/ordinary-review-assessment.test.ts` en Windows, macOS y Linux. |
+| **Resilience** | El orden de los ganchos de fin de prueba ocultaba un fallo de limpieza al convertirlo en fallo incidental de permisos. | Un solo gancho cierra la vista genuina y después elimina los directorios creados para la prueba. Si el cierre no funciona, **la prueba falla** en lugar de suprimir el error. | Repetir CI completo y comprobar que no aparece `hookFailed`, `EACCES` ni trabajo omitido contado como aprobado. |
+
+### Evidencia anterior y criterio de cierre
+
+- `43825122036` tenía las pruebas específicas T02/T05/T06, NVIDIA API y Pi nativo en verde, pero el **CI general falló**. Release Gate, Phase 0 y Pi 1.2 habían pasado para ese SHA.
+- Los fallos generales eran reproducibles en los registros de Linux, macOS y Windows y no justifican relajar ninguna barrera de autorización.
+- Los cambios de esta corrección se limitan a archivos de **pruebas y documentación**; no se altera el código de producción, el flujo de permisos ni el límite de gasto.
+- **Cierre condicionado:** los cuatro errores identificados solo pasan a `corregido y verificado` cuando el CI completo de un mismo SHA final sea correcto en los tres sistemas. Release Gate y Pi 1.2 también deben superar **ese SHA**, sin considerar los trabajos omitidos como PASS.
+- PR #61 sigue en borrador; `globalFull:false`. T06 Writer dual, T08 Fix autorizado, T09 y T10 siguen sin evidencia FULL.
+
