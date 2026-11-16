@@ -1,8 +1,10 @@
 /**
  * T06: prueba OPCIONAL y MANUAL de dos Writers Pi reales en Git worktrees.
- * Requiere dos respuestas humanas distintas en una terminal TTY.
- * NO es una prueba de consentimiento dentro del TUI de Pi ni un merge.
- * No ejecutar en CI con respuestas automatizadas ni generar PASS ficticio.
+ * Modo local: dos respuestas humanas distintas en una terminal TTY.
+ * Modo GitHub: DOS revisiones de entornos independientes, comprobadas mediante
+ * la API oficial para el mismo run y SHA ANTES de cada intento de escritura.
+ * Nunca acepta un parámetro, archivo o respuesta simulada como consentimiento.
+ * No sustituye la confirmación dentro de Pi TUI ni permite merge.
  */
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
@@ -24,6 +26,7 @@ import {selectSkills} from "../src/skills/registry.js";
 import {requireDistinctT06Approvals,t06LiveApprovalChallenge,type T06LiveWriterIntent} from "../src/runtime/agents/t06-live-consent.js";
 import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js";
 import {checkT06Behavior} from "../src/runtime/agents/t06-behavior-isolation.js";
+import {requireLiveT06GithubApprovals} from "../src/runtime/agents/t06-github-approvals.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const definitions=[
@@ -151,8 +154,10 @@ async function main():Promise<void>{
   encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:5_000
  }).trim();
  if(!/(?:^|\s)1\.2\.0(?:\s|$)/u.test(version))throw Error("T06 bloqueado: se requiere Pi 1.2.0");
- if(!process.stdin.isTTY||!process.stdout.isTTY)
-  throw Error("T06 bloqueado: dos consentimientos humanos deben introducirse en una terminal interactiva, no en CI");
+ const githubMode=process.env.ASEN_T06_GITHUB_MODE==="1";
+ if(githubMode)await requireLiveT06GithubApprovals();
+ else if(!process.stdin.isTTY||!process.stdout.isTTY)
+  throw Error("T06 bloqueado: exige dos consentimientos humanos TTY o dos revisiones reales de GitHub");
  const dir=process.env.ASEN_T06_WRITER_REPORT_DIR?
   process.env.ASEN_T06_WRITER_REPORT_DIR:mkdtempSync(join(tmpdir(),"asen-t06-native-receipts-"));
  if(!isAbsolute(dir))throw Error("Directorio de informe T06 inválido");
@@ -173,21 +178,28 @@ async function main():Promise<void>{
    candidateSha:expected,model,writeSurface:item.target,
    nonce:randomBytes(8).toString("hex")
   }));
-  const reader=createInterface({input:process.stdin,output:process.stdout});
-  let replies:string[]=[];
-  try{
-   for(let i=0;i<intents.length;i++){
-    const task=intents[i]!,root=roots[i]!,spec=definitions[i]!;
-    process.stdout.write("\nWorker "+(i+1)+"/2 · Modelo: "+model+
-     " · Coste real: DESCONOCIDO · Archivo: "+task.writeSurface+
-     " · SHA: "+expected+"\n"+
-     "Sesión Pi propia, worktree separado. Tarea: "+spec.instruction+"\n"+
-     "No habrá commits, fusiones ni reintentos automáticos.\n");
-    replies.push(await reader.question("Escribe EXACTAMENTE «"+t06LiveApprovalChallenge(task)+"» o pulsa Intro para denegar: "));
-   }
-  }finally{reader.close();}
-  requireDistinctT06Approvals(intents[0]!,replies[0],intents[1]!,replies[1]);
-  replies=[];launched=true;
+  if(githubMode){
+   // Segunda consulta DESPUÉS de crear los worktrees y justo antes de lanzar
+   // ambos Writers. El run no puede heredar aprobaciones de otro intento.
+   await requireLiveT06GithubApprovals();
+  }else{
+   const reader=createInterface({input:process.stdin,output:process.stdout});
+   let replies:string[]=[];
+   try{
+    for(let i=0;i<intents.length;i++){
+     const task=intents[i]!,spec=definitions[i]!;
+     process.stdout.write("\nWorker "+(i+1)+"/2 · Modelo: "+model+
+      " · Coste real: DESCONOCIDO · Archivo: "+task.writeSurface+
+      " · SHA: "+expected+"\n"+
+      "Sesión Pi propia, worktree separado. Tarea: "+spec.instruction+"\n"+
+      "No habrá commits, fusiones ni reintentos automáticos.\n");
+     replies.push(await reader.question("Escribe EXACTAMENTE «"+t06LiveApprovalChallenge(task)+"» o pulsa Intro para denegar: "));
+    }
+   }finally{reader.close();}
+   requireDistinctT06Approvals(intents[0]!,replies[0],intents[1]!,replies[1]);
+   replies=[];
+  }
+  launched=true;
   const results=await Promise.allSettled(definitions.map((item,i)=>
    nativeWriter(roots[i]!,intents[i]!,item.fn,item.instruction,policyRoot)
   ));
