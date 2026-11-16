@@ -77,9 +77,15 @@ test("T08 nunca convierte una disputa entre jueces en árbol autorizado",t=>{
  });
  assert.throws(()=>inspectLiveFixCandidate(disputed),/not eligible/u);
 });
-test("T08 bloquea la revisión si cambia el commit original",t=>{
+test("T08 reconoce un nuevo HEAD con el mismo árbol completo y exige autorización nueva",t=>{
  const f=fixture(t);
  f.git("add","code.ts");
- f.git("commit","-qm","código actualizado sin revisión nueva");
- assert.throws(()=>inspectLiveFixCandidate(f.draft),/candidate changed after the original/u);
+ f.git("commit","-qm","código revisado incorporado al historial");
+ // Judgment Day revisó el árbol completo, no la identidad histórica del
+ // commit padre. Cambiar únicamente el historial no modifica esos bytes.
+ const observed=inspectLiveFixCandidate(f.draft);
+ assert.equal(observed.repositoryHead,f.git("rev-parse","HEAD"));
+ assert.equal(observed.candidateTreeIdentity,f.proposal.candidateTreeIdentity);
+ assert.equal(observed.writerAuthority,false);
+ assert.equal(observed.autoLaunch,false);
 });
