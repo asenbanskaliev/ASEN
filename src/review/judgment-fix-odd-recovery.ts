@@ -5,10 +5,11 @@ import type {ScopedOddTodo} from "./odd-agent-review-flow.js";
 import type {JudgmentFixOddDraft} from "./judgment-fix-odd-draft.js";
 
 export interface FixOddRecovery{
- readonly status:"not-observed"|"worker-observed"|"inconsistent";
+ readonly status:"not-observed"|"worker-observed"|"archived-worker-observed"|"inconsistent";
  readonly sourceProposalId:string;
  readonly workerTodoId:string|null;
  readonly workerState:string|null;
+ readonly observedIn:"active"|"archive"|null;
  readonly reason:string;
  readonly actualModel:"unknown";
  readonly writerAuthority:false;
@@ -20,17 +21,21 @@ export interface FixOddRecovery{
 export function inspectFixOddRecovery(input:{
  readonly draft:JudgmentFixOddDraft;
  readonly todos:readonly ScopedOddTodo[];
+ readonly archivedTodos?:readonly ScopedOddTodo[];
  readonly identity:Readonly<{sessionId:string;projectId:string}>;
 }):FixOddRecovery{
- const {draft,todos,identity}=input??{};
+ const {draft,todos,archivedTodos=[],identity}=input??{};
  if(!draft||!identity||draft.sessionId!==identity.sessionId||
   !sameWorkspaceIdentityPath(draft.projectId,identity.projectId)||
   draft.writerAuthority!==false||draft.authorized!==false||
-  draft.autoLaunch!==false||!Array.isArray(todos)||todos.length>2000)
+  draft.autoLaunch!==false||!Array.isArray(todos)||todos.length>2000||
+  !Array.isArray(archivedTodos)||archivedTodos.length>2000)
   throw new Error("Fix Todo recovery requires the original read-only Pi session");
  const requestId="asen-plan:fix-"+draft.sourceProposalId.slice(0,24)+":worker";
- const rows=todos.filter(row=>
-  row.requestId===requestId||row.plan?.fixSource?.proposalId===draft.sourceProposalId);
+ const matches=(row:ScopedOddTodo)=>row&&
+  (row.requestId===requestId||row.plan?.fixSource?.proposalId===draft.sourceProposalId);
+ const active=todos.filter(matches),archived=archivedTodos.filter(matches);
+ const rows=[...active,...archived];
  const wrong=rows.some(row=>!row||!row.current||
   row.current.sessionId!==identity.sessionId||
   !sameWorkspaceIdentityPath(row.current.projectId,identity.projectId)||
@@ -39,19 +44,23 @@ export function inspectFixOddRecovery(input:{
   row.plan.fixSource?.proposalId!==draft.sourceProposalId||
   row.plan.fixSource.treeIdentity!==draft.sourceCandidateTree||
   JSON.stringify(row.plan.writeSurfaces)!==JSON.stringify(draft.writeSurfaces));
- const consistent=rows.length===1&&!wrong;
+ const invalidArchive=archived.some(row=>!["done","cancelled"].includes(row.current?.state??""));
+ const consistent=rows.length===1&&!wrong&&!invalidArchive;
  const row=consistent?rows[0]!:null;
+ const observedIn=consistent?(active.length===1?"active" as const:"archive" as const):null;
  return Object.freeze({
   status:rows.length===0?"not-observed" as const:
-   !consistent?"inconsistent" as const:"worker-observed" as const,
+   !consistent?"inconsistent" as const:
+   observedIn==="archive"?"archived-worker-observed" as const:"worker-observed" as const,
   sourceProposalId:draft.sourceProposalId,
   workerTodoId:row?.taskId??null,
   workerState:row?.current.state??null,
+  observedIn,
   reason:rows.length===0?
-   "No active Fix Worker was observed. An archived or interrupted save may exist; inspect the Todo journal before retrying.":
+   "No active or archived Fix Worker was observed. An interrupted save or earlier unavailable archive may exist; inspect the Todo journal before retrying.":
    !consistent?
    "Ambiguous or forged Fix Worker provenance; inspect the Todo journal and do not retry automatically.":
-   "An exact Fix Worker exists; its current state does not imply completed repair or permission to write.",
+   observedIn==="archive"?"A matching archived Fix Worker was observed; archived does not mean reviewed, authorized or repaired.":"An exact active Fix Worker exists; its current state does not imply completed repair or permission to write.",
   actualModel:"unknown" as const,
   writerAuthority:false as const,authorized:false as const,
   autoRetry:false as const,autoLaunch:false as const,
