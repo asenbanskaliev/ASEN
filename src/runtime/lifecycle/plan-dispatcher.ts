@@ -54,6 +54,9 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  const exactSurfaces=facts.writes.map(write=>write.path);
  if(exactSurfaces.length!==surfaces.length||exactSurfaces.some((surface,index)=>surface!==surfaces[index])||exactSurfaces.some(surface=>!originalScope.expectedPaths.includes(surface)))return {reason:"The persisted worker write scope differs from the exact ODD request."};
  if(metadata.fixSource){
+  if(facts.taskIdentity!==`fix-${metadata.fixSource.proposalId.slice(0,24)}`||
+   task.requestId!==`asen-plan:fix-${metadata.fixSource.proposalId.slice(0,24)}:worker`)
+   return {reason:"Fix ODD proposal identity does not match the exact Writer task"};
   try{
    const observed=inspectStoredFixSourceTree(identity.projectId,exactSurfaces,
     metadata.fixSource.treeIdentity);
