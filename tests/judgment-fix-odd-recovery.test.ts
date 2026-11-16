@@ -184,3 +184,22 @@ test("T08 no recupera un Fix con permisos o procedencia falseados",()=>{
  assert.equal(inconsistent.writerAuthority,false);
  assert.equal(inconsistent.autoRetry,false);
 });
+
+test("T08 recuperación indica inspección segura sin prometer reintentos ni una reparación",()=>{
+ const active=inspectFixOddRecovery({draft,identity,todos:[worker()]});
+ const archived=inspectFixOddRecovery({draft,identity,todos:[],archivedTodos:[{
+  ...worker(),current:{...worker().current,state:"done"}
+ }]});
+ const missing=inspectFixOddRecovery({draft,identity,todos:[]});
+ const inconsistent=inspectFixOddRecovery({draft,identity,todos:[worker(),worker()]});
+ assert.equal(active.nextAction,"inspect-active-worker");
+ assert.equal(archived.nextAction,"inspect-archived-worker");
+ assert.equal(missing.nextAction,"inspect-original-journals");
+ assert.equal(inconsistent.nextAction,"inspect-original-journals");
+ for(const result of [active,archived,missing,inconsistent]){
+  assert.equal(result.writerAuthority,false);
+  assert.equal(result.autoRetry,false);
+  assert.equal(result.autoLaunch,false);
+  assert.equal(result.acceptance,"not-accepted");
+ }
+});
