@@ -497,3 +497,14 @@ Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
 - Pruebas negativas adicionales en `tests/parallel-parent-supervisor-claims.test.ts` y `tests/parallel-worktree-todos.test.ts`.
 
 **No completado ni declarado FULL:** hacen falta dos Workers Pi Writer **auténticos** en dos sesiones con consentimientos humanos separados, mediciones reales de coste si el proveedor las facilita, observaciones de cancelación y recuperación, y revisión independiente. Las comprobaciones CI/Release Gate deben ser del SHA exacto que incluye esta tanda. `globalFull:false`.
+
+## Estabilización agrupada del CI y comprobación 4R (2026-11-16)
+
+- **Entrada:** CI `43825122036` del SHA `9d4766038b65` falló en Linux, macOS y Windows aunque el trabajo específico T02/T05/T06 y Release Gate estaban correctos.
+- **Corrección 1:** `tests/judgment-fix-proposal-journal.test.ts` ahora cierra la vista protegida mediante su propia función **antes** de eliminar el árbol temporal. No se rebajan permisos ni se silencian fallos de cierre.
+- **Corrección 2:** `tests/odd-agent-review-command.test.ts` conserva el carácter inicial de `git status --porcelain` para distinguir un cambio en el índice de uno solo en el árbol de trabajo.
+- **Corrección 3:** `tests/ordinary-review-assessment.test.ts` prueba `blocked` cuando dos jueces genuinos encuentran errores y falta el perfil Fix; `not-needed` cuando ambos aprueban y no es necesaria reparación. La primera situación nunca lanza Writer.
+- **Auditoría de cuatro enfoques:** `docs/audit/4r-flujo-agentes-pr61-2026-11-16.md`, apartado sobre las tres causas de error, riesgos, legibilidad, confiabilidad y resistencia a fallos.
+- **Evidencia:** pendientes CI y Release Gate **sobre el HEAD final** tras publicar los cambios. El CI verde anterior del bloque T02/T05/T06 **no valida** el conjunto completo ni autoriza T06 Writer.
+- **Estado:** las tareas funcionales siguen parciales, `globalFull:false`, PR #61 en borrador. Sin fusión ni autorización Writer implícita.
+
