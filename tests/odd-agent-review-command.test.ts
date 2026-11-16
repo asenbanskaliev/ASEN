@@ -71,11 +71,11 @@ test("T04 cualquier cambio de sesión durante la consulta obliga a repetirla",as
  const f=fixture(t);
  let count=0;
  f.register(async()=>{count++;if(count===2)f.setSession("pi-distinta");return [f.task];});
- await assert.rejects(()=>f.run("todo "+f.taskId),/session changed/u);
+ await assert.rejects(async()=>await f.run("todo "+f.taskId),/session changed/u);
 });
 test("T04 no permite inspección sin interfaz ni acceso al almacén ODD",async t=>{
  const f=fixture(t);
  f.register(async()=>[f.task]);
  f.context.hasUI=false;
- await assert.rejects(()=>f.run("todo "+f.taskId),/active Pi UI/u);
+ await assert.rejects(async()=>await f.run("todo "+f.taskId),/active Pi UI/u);
 });
