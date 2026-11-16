@@ -687,3 +687,13 @@ test("fallback-child does not continue for a noneligible final failure",async t=
 test("fallback-child aborts before settled without sending a continuation RPC",async t=>{
  const {d,p,log}=await fallbackRpcFixture({settleDelayMs:250});t.after(()=>rm(d,{recursive:true,force:true}));const controller=new AbortController(),pending=runner(p,{timeoutMs:10_000}).run({id:"fallback-abort",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}},controller.signal);for(let i=0;i<100;i++){try{const trace=JSON.parse(await readFile(log,"utf8"));if(trace.commands.some((command:any)=>command.type==="prompt"))break;}catch{/* Wait for the scripted child to create its trace. */}await new Promise(resolve=>setTimeout(resolve,5));}controller.abort();const result=await pending;assert.equal(result.ok,false);assert.match(result.output,/cancelled/u);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.some((command:any)=>command.type==="set_model"),false);
 });
+
+test("T06 rechaza one-shot en agente de lectura sin lanzar una operación Writer",async()=>{
+ const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"falso",success:true}));');
+ const result=await runner(p,{oneShotWritePath:"solo.mjs"}).run({
+  id:"t06-solo-lectura",role:"explorer",prompt:"leer",repository:d
+ });
+ assert.equal(result.ok,false);
+ assert.match(result.output,/one-shot.*Worker/u);
+});
+
