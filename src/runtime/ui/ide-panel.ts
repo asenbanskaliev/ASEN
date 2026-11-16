@@ -236,11 +236,17 @@ export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|un
  const running=snapshot.agents.filter(a=>a.state==="running").length;
  const attention=snapshot.agents.filter(a=>a.state==="interrupted"||a.state==="failed").length;
  const jobs=snapshot.jobs.filter(isObservedActiveJob).length;
- if(!open.length&&!running&&!attention&&!jobs)return undefined;
+ const childActive=snapshot.agentFlow?.overview.stages["running-observed"]??0;
+ const childReview=snapshot.agentFlow?.overview.stages["manual-review-required"]??0;
+ const childBlocked=snapshot.agentFlow?.overview.stages.blocked??0;
+ if(!open.length&&!running&&!attention&&!jobs&&!childActive&&!childReview&&!childBlocked)return undefined;
  const parts:string[]=[];
  if(running)parts.push("◐ "+running+" agents");
  if(attention)parts.push("! "+attention+" inspect");
  if(jobs)parts.push("⧗ "+jobs+" jobs");
+ if(childActive)parts.push("◐ "+childActive+" child Workers observed");
+ if(childReview)parts.push("◇ "+childReview+" child review pending");
+ if(childBlocked)parts.push("! "+childBlocked+" child tasks blocked");
  if(snapshot.todos.length)parts.push(snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length+" todos");
  return fit("▸ "+parts.join(" · ")+" · /asen-panel",width);
 }

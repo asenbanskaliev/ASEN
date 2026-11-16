@@ -27,7 +27,10 @@ test("T06 el proceso de pruebas no puede leer archivos ajenos",()=>{
   writeFileSync(join(root,"privado.txt"),"NO LEER");
   const result=spawnSync(process.execPath,["--permission","--input-type=module",
    "--eval","import {readFileSync} from 'node:fs';readFileSync('./privado.txt');"],
-   {cwd:root,encoding:"utf8",env:{},timeout:4000});
+   {cwd:root,encoding:"utf8",
+    env:Object.fromEntries(["SYSTEMROOT","WINDIR","COMSPEC","PATHEXT","TEMP","TMP","TMPDIR"]
+     .filter(key=>process.env[key]!==undefined).map(key=>[key,process.env[key]!])),
+    timeout:4000});
   assert.notEqual(result.status,0);
   assert.match(result.stderr,/ERR_ACCESS_DENIED|Access to this API has been restricted/u);
  }finally{rmSync(root,{recursive:true,force:true});}

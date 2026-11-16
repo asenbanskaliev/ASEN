@@ -250,3 +250,25 @@ test("T07 distingue sesión local vacía del trabajo de hijos y enseña el sigui
  assert.equal(base.agentFlow?.overview.tasks[0]?.modelActual,"unknown");
  assert.deepEqual(base,before);
 });
+
+test("T07 barra inferior reconoce Workers hijos reales sin actividades locales",()=>{
+ const overview=projectParallelAgentFlow([{batchId:"batch-bar",state:"prepared",tasks:[
+  {sourceTodoId:"bar-worker-a",sourceTodoUnchanged:true,worktreePresent:true,
+   handoffClaimed:true,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"bar-child-a",agents:[{id:"bar-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"bar-worker-b",sourceTodoUnchanged:true,worktreePresent:true,
+   handoffClaimed:true,changes:{status:"scoped-changes",changedPaths:["x.ts"],outOfScopePaths:[],
+    headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"bar-child-b",agents:[{id:"bar-b",role:"worker",state:"completed"}]}}
+ ]}]);
+ const source=snapshot({todos:[],agents:[],jobs:[],
+  agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const row=renderAsenWorkRow(source,120);
+ assert.ok(row);assert.match(row,/1 child Workers observed/u);
+ assert.match(row,/1 child review pending/u);
+ assert.doesNotMatch(row,/accepted|completed successfully|merged/iu);
+ assert.equal(renderAsenWorkRow(snapshot(),120),undefined);
+ for(const width of [12,32,80,120])
+  assert.ok(visibleWidth(renderAsenWorkRow(source,width)!)<=width);
+});

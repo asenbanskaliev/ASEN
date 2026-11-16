@@ -583,3 +583,10 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 - T07: el panel diferencia de forma explícita una sesión local sin tareas/agentes y el trabajo observado de sesiones hijas. Muestra la siguiente acción segura por tarea, sin convertirla en control de ejecución.
 - T08: la recuperación de un Fix rechaza proyecciones con permisos reaprovechados, autorización de fusión, ausencia de consentimiento nuevo o procedencia de Todo contradictoria. Añadidas pruebas negativas.
 - Estos cambios no autentican Writers, no ejecutan reparaciones y no conceden FULL. Se exige CI exact-SHA y revisión independiente antes de cerrar. PR #61 sigue borrador; `globalFull:false`.
+
+## T07 — Barra inferior consciente de Workers hijos (2026-11-16)
+
+- `renderAsenWorkRow` ya no desaparece cuando la sesión local está vacía pero existe actividad observada de Workers Pi hijos. Distingue activos, pendientes de revisión y bloqueados.
+- Continúa sin declarar `PASS`, modelo real o permisos a partir de estados del panel. Pruebas con fuente enlazada y ancho estrecho.
+- T06: pruebas negativas conservan variables esenciales de Windows al ejecutar Node con permisos limitados, sin propagar claves ni `NODE_OPTIONS`.
+- Pendiente CI/Release Gate del último SHA, ejecución auténtica de dos Writers y revisión externa. `globalFull:false`.
