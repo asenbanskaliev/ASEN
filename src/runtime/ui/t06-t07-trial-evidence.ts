@@ -61,7 +61,7 @@ export function assessT06T07Trial(input:{
    w.attributionVerified!==true||w.attributionEntries!==1||
    w.writeStarts!==1||w.writeSuccesses!==1||w.writeFailures!==0||
    w.passed!==true||!Array.isArray(w.blockers)||w.blockers.length!==0||
-   typeof w.fileSha256!=="string"||!/^[0-9a-f]{64}$/u.test(w.fileSha256)||
+   typeof w.fileSha256!=="string"||!/^[0-9a-f]{64}$/u.test(String(w.fileSha256))||
    typeof w.durationMs!=="number"||!Number.isFinite(w.durationMs)||w.durationMs<0)
    blockers.push(expected.worker+"-escritura-real-sin-demostrar");
  }
@@ -73,8 +73,8 @@ export function assessT06T07Trial(input:{
  if(uiTestPassed!==true)blockers.push("pruebas-ui-fallidas");
  return Object.freeze({
   status:blockers.length===0?"two-real-writers-ui-renderer-tests-only":"blocked",
-  blockers:Object.freeze(blockers),nativePiWritersVerified:blockers.every(b=>b==="pruebas-ui-fallidas")&&
-   !blockers.includes("recibo-t06-candidato-no-coincide")&&isRecord(report),
+  blockers:Object.freeze(blockers),
+  nativePiWritersVerified:blockers.filter(b=>b!=="pruebas-ui-fallidas").length===0&&isRecord(report),
   uiRendererTestedInSameRun:uiTestPassed===true,
   uiConnectedToLivePiSessions:false as const,
   realPiTuiObserved:false as const,
