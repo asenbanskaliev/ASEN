@@ -160,7 +160,7 @@ async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:Revi
   return reviewRiskFromNativeAssessment(observation);
  }catch{return reviewRiskFromNativeAssessment(undefined);}
 }
-async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,adaptive=false,judgmentDay=false):Promise<unknown>{
+async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,adaptive=false,judgmentDay=false):Promise<unknown>{
  const sessionId=context.sessionManager?.getSessionId?.(),registry=context.modelRegistry,author=context.model;
  if(!context.hasUI||!sessionId||!registry||!author||!context.ui.select||!context.ui.editor||!context.ui.confirm){
   const unavailable="Revisión independiente no disponible: se requiere una sesión Pi interactiva, modelo autor conocido y un modelo revisor autenticado distinto.";
@@ -434,7 +434,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  }
 }
 /** Registro propio de ASEN: prepara el traspaso; no emite dictamen ni autorización RDD. */
-export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl(),resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b")=>Promise<RouteChoice|undefined>,readOddTodos?:(context:ReviewCommandContext)=>Promise<readonly ScopedOddTodo[]>):OrdinaryReviewCommandController{
+export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl(),resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,readOddTodos?:(context:ReviewCommandContext)=>Promise<readonly ScopedOddTodo[]>):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
