@@ -173,3 +173,41 @@ process.stdin.on("data",chunk=>{
  assert.equal(result.ok,false);
  assert.match(result.output,/aborted run/u);
 });
+
+test("Todos los roles de lectura pueden esperar al cierre real sin usar modelos",async t=>{
+ const fixture=await createPiRpcFixture(t,recoveringPi);
+ const roles=["clarifier","explorer","reviewer","verifier"] as const;
+ const runner=new PiProcessRunner({
+  command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],
+  noTools:true,requireFinalSettlement:true,timeoutMs:6_000
+ });
+ const results=await Promise.all(roles.map((role,index)=>runner.run({
+  id:"t08-rol-"+index,role,prompt:"Prueba de cierre",
+  repository:fixture.repository,isolationKey:"t08-role-"+index
+ })));
+ results.forEach((result,index)=>{
+  assert.equal(result.ok,true,roles[index]+": "+result.output);
+  assert.equal(parseT08NativeReviewText(result.output,{
+   requireFinalSettlement:true
+  }),recovered);
+ });
+});
+
+test("Cierre estricto y cambio automático de modelo no se combinan silenciosamente",async t=>{
+ const fixture=await createPiRpcFixture(t,recoveringPi);
+ let started=0;
+ const runner=new PiProcessRunner({
+  command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],
+  noTools:true,requireFinalSettlement:true,timeoutMs:4_000,
+  onProcessStart:()=>{started++;}
+ });
+ const result=await runner.run({
+  id:"t08-fallback-incompatible",role:"reviewer",
+  repository:fixture.repository,prompt:"Prueba",
+  model:"proveedor/modelo-a",
+  modelFallback:{chain:[{model:"proveedor/modelo-b"}]}
+ });
+ assert.equal(result.ok,false);
+ assert.match(result.output,/strict settlement cannot combine/u);
+ assert.equal(started,0,"debe fallar antes de abrir Pi y consumir modelos");
+});
