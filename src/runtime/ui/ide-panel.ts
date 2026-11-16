@@ -87,6 +87,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
     out.push(glyph(item.current.state)+" "+clean(item.title,240)+" ["+state+"]");
     if(item.current.state==="blocked"||item.current.state==="succeeded")
      out.push("  └ "+clean(item.current.reason||"Review required",200));
+    if(item.current.state==="succeeded"&&item.plan?.role==="worker")
+     out.push("  ↳ /asen-review todo "+clean(item.taskId,100)+" · inspect only");
    }
    const done=snapshot.todos.filter(t=>t.current.state==="done").length;
    const cancelled=snapshot.todos.filter(t=>t.current.state==="cancelled").length;
@@ -151,6 +153,14 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:"No pending review results observed");
    if(snapshot.review?.label)out.push(clean(snapshot.review.label,140));
    else if(pending)out.push(`${pending} stored Todo result${pending===1?"":"s"} awaiting review`);
+   const oddWorkers=snapshot.todos.filter(todo=>todo.current.state==="succeeded"&&todo.plan?.role==="worker");
+   if(oddWorkers.length){
+    out.push("ODD Workers awaiting inspection: "+oddWorkers.length+" · actual model unknown");
+    for(const todo of oddWorkers.slice(0,detail?8:3))
+     out.push("  /asen-review todo "+clean(todo.taskId,100)+" · review not approved");
+    out.push("4R/JD: /asen-review workspace adaptive | judgment-day");
+    out.push("Fix findings require new /asen-plan and fresh Writer consent");
+   }
    break;
   }
   case "INTEGRATIONS":{
