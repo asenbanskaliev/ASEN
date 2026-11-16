@@ -37,7 +37,7 @@ function fixture(t:TestContext){
  const commands=new Map<string,{handler:(args:string|undefined,ctx:unknown)=>Promise<unknown>|unknown}>();
  const register=(reader:()=>Promise<readonly ScopedOddTodo[]>)=>
   registerOrdinaryReviewCommand((name,command)=>commands.set(name,command as never),
-   {observe:async()=>({status:"unavailable"})} as never,async()=>({model:"nvidia/reviewer"}),async()=>{
+   {observe:async()=>({status:"unavailable"})} as never,async()=>undefined,async()=>{
     reads++;return reader();
    });
  const run=(args:string,provided:unknown=context)=>commands.get("asen-review")!.handler(args,provided);
