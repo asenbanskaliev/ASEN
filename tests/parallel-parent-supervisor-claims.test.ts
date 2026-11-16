@@ -60,3 +60,41 @@ test("T06 journal fails closed on malformed children, duplicate worktree or corr
  await assert.rejects(()=>journal.listSource(source),/Invalid one-shot supervisor claim journal/u);
  assert.equal(JSON.parse(readFileSync(file,"utf8")).schema,"corrupted");
 });
+
+test("T06 prohíbe dos Workers con la misma sesión Pi aunque tengan distintos worktrees",async t=>{
+ const {journal}=fixture(t);
+ await assert.rejects(()=>journal.claim({...request,children:[
+  children[0]!,{...children[1]!,childSessionId:children[0]!.childSessionId}
+ ]}),/duplicate supervisor child claim/u);
+ assert.equal((await journal.listSource(source)).length,0);
+});
+test("T06 sesión Pi hija consumida en un lote previo nunca puede prestarse a otro lote",async t=>{
+ const {journal}=fixture(t);
+ await journal.claim(request);
+ await assert.rejects(()=>journal.claim({
+  ...request,batchId:"source-batch-2",
+  children:[
+   {...children[0]!,sourceTodoId:"source-c",childTodoId:"child-c",
+    childProjectId:resolve(tmpdir(),"otro-worktree-a")},
+   {...children[1]!,sourceTodoId:"source-d",childTodoId:"child-d",
+    childSessionId:"pi-c",childProjectId:resolve(tmpdir(),"otro-worktree-b")}
+  ]
+ }),/previously claimed/u);
+ assert.equal((await journal.listSource(source)).length,1);
+});
+test("T06 la lectura de un diario alterado no admite sesiones duplicadas de otro lote",async t=>{
+ const {journal,file}=fixture(t);
+ await journal.claim(request);
+ const data=JSON.parse(readFileSync(file,"utf8")) as {schema:string;revision:number;claims:Array<{
+  batchId:string;children:Array<Record<string,string>>
+ }>};
+ const duplicate=structuredClone(data.claims[0]!);
+ duplicate.batchId="source-batch-2";
+ duplicate.children=duplicate.children.map((child,i)=>({
+  ...child,sourceTodoId:"otra-"+i,childTodoId:"hijo-"+i,
+  childProjectId:resolve(tmpdir(),"otra-raiz-"+i)
+ }));
+ data.claims.push(duplicate);data.revision=2;
+ writeFileSync(file,JSON.stringify(data));
+ await assert.rejects(()=>journal.listSource(source),/Invalid or duplicate supervisor child claim/u);
+});
