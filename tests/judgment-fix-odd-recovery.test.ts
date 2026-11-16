@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {join,resolve} from "node:path";
-import {mkdtempSync,rmSync} from "node:fs";
-import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {dirname,join,resolve} from "node:path";
+import {mkdtempSync,rmSync,readdirSync,readFileSync,writeFileSync} from "node:fs";
+import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/lifecycle/todo-store.js";
 import {tmpdir} from "node:os";
 import {draftOddFromStoredFix} from "../src/review/judgment-fix-odd-draft.js";
 import {inspectFixOddRecovery} from "../src/review/judgment-fix-odd-recovery.js";
@@ -154,4 +154,14 @@ test("T08 recupera un Fix desde el archivo privado real, sin relanzar",async t=>
  assert.equal(result.authorized,false);
  assert.equal(result.writerAuthority,false);
  assert.equal(result.autoRetry,false);
+ const archiveDir=join(dirname(todoProjectStorageFile(root,projectId)),"archive");
+ const archiveName=readdirSync(archiveDir).find(name=>name.startsWith("archive-"));
+ assert.ok(archiveName);
+ const archiveFile=join(archiveDir,archiveName);
+ const original=readFileSync(archiveFile,"utf8");
+ // Se mantiene un JSON válido, pero su huella ya no coincide con el nombre.
+ writeFileSync(archiveFile,original+" ");
+ await assert.rejects(()=>store.archived(identity),/checksum mismatch/u);
+ writeFileSync(archiveFile,original);
+ assert.equal((await store.archived(identity)).length,1);
 });
