@@ -77,3 +77,45 @@ test("T08 no permite consultar el guardado de otra sesión o proyecto",()=>{
    /original read-only Pi session/u);
  }
 });
+
+test("T08 recupera un Worker archivado, sin inferir éxito ni permiso",()=>{
+ const source=worker();
+ const saved={...source,current:{...source.current,state:"done" as const}};
+ const result=inspectFixOddRecovery({draft,identity,todos:[],archivedTodos:[saved]});
+ assert.equal(result.status,"archived-worker-observed");
+ assert.equal(result.observedIn,"archive");
+ assert.equal(result.workerTodoId,taskId);
+ assert.equal(result.workerState,"done");
+ assert.equal(result.authorized,false);
+ assert.equal(result.writerAuthority,false);
+ assert.equal(result.autoRetry,false);
+ assert.equal(result.autoLaunch,false);
+ assert.equal(result.acceptance,"not-accepted");
+});
+test("T08 un archivo terminal cancelado no se confunde con una reparación",()=>{
+ const saved={...worker(),current:{...worker().current,state:"cancelled" as const}};
+ const result=inspectFixOddRecovery({draft,identity,todos:[],archivedTodos:[saved]});
+ assert.equal(result.status,"archived-worker-observed");
+ assert.equal(result.workerState,"cancelled");
+ assert.match(result.reason,/archived does not mean reviewed/u);
+});
+test("T08 rechaza duplicados cruzados, archivo no terminal y archivo falso",()=>{
+ const source=worker();
+ const cases=[
+  {todos:[source],archivedTodos:[{...source,current:{...source.current,state:"done" as const}}]},
+  {todos:[],archivedTodos:[source]},
+  {todos:[],archivedTodos:[{...source,current:{...source.current,state:"done" as const},
+   plan:{...source.plan!,fixSource:{proposalId:id,treeIdentity:"b".repeat(40)}}}]},
+  {todos:[],archivedTodos:[{...source,current:{...source.current,state:"done" as const},
+   currentSessionId:"otra-sesion"} as typeof source]},
+  {todos:[],archivedTodos:[{...source,current:{...source.current,state:"done" as const},
+   requestId:"asen-plan:otro-fix:worker"}]},
+ ];
+ for(const caseInput of cases){
+  const result=inspectFixOddRecovery({draft,identity,
+   todos:caseInput.todos as ScopedOddTodo[],archivedTodos:caseInput.archivedTodos as ScopedOddTodo[]});
+  assert.equal(result.status,"inconsistent");
+  assert.equal(result.workerTodoId,null);
+  assert.equal(result.autoRetry,false);
+ }
+});
