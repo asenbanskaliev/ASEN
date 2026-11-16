@@ -34,7 +34,7 @@ function editorAnswer(title:string):string{
  return "Check the task requirements";
 }
 /** One interactive workspace review driven by a host-injected read-only native control whose own notifications are recorded. */
-function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens|"jd-judge-a"|"jd-judge-b",{model?:string;thinking?:"high"}>>={}){
+function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent",{model?:string;thinking?:"high"}>>={}){
  const root=repository(t),messages:string[]=[],trace:{operation:string,notified:string[]}[]=[],modelCalls:string[]=[],consentPrompts:{title:string;message:string}[]=[];
  const control={async observe(operation:string,context:{ui:{notify(message:string,level:"info"|"error"):void}}):Promise<NativeRddObservation>{
   const notified:string[]=[];trace.push({operation,notified});
