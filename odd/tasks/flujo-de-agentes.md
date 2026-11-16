@@ -671,3 +671,11 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 - **Limitación:** ejecutar el controlador aislado desde GitHub **no** sustituye validar las pantallas Pi, el comando interactivo productivo de guardar Fix y el despacho real del Worker desde TODOS. Se necesitan pruebas posteriores de esos caminos. La revisión independiente T10 aún falta.
 - **Estado:** `IMPLEMENTED_PENDING_REAL_APPROVED_T08_RUN` (aplicable después de CI verde, no equivale a T08 FULL); `autoMerge:false`, `globalFull:false`.
 - **Guía de la ejecución:** `docs/t08-prueba-real-github.md`.
+
+## T08 — cierre del diagnóstico de respuestas vacías de NVIDIA (2026-11-16)
+
+- Ejecución manual `43941733529`: preparada y aprobada para revisores; primer modelo Pi produjo `message_end` con `content:[]`; ASEN rechazó correctamente el dictamen. Sin segundo dictamen, propuesta ODD Fix, permiso Writer ni fusión.
+- **Causa probable externa:** NVIDIA publicó un informe en sus foros con la misma anomalía de respuestas HTTP 200, razonamiento defectuoso y texto final vacío para `nvidia/nemotron-3-ultra-550b-a55b` el 11/11/2026: https://forums.developer.nvidia.com/t/nemotron-3-ultra-550b-a55b-corrupted-reasoning-and-empty-responses-on-nvidia-api-and-playground/388780. El reporte es de un usuario, no una confirmación oficial de causa raíz ni garantía de que toda la infraestructura falle.
+- **Protección nueva:** la ruta Ultra problemática queda temporalmente bloqueada en la preparación previa a aprobaciones de GitHub y en la comprobación del controlador, para impedir repetir gastos conocidos. Se conserva la condición de fallo ante dictámenes vacíos; **no** se aumenta ningún límite ni se inventa un dictamen. Pruebas negativas nuevas en `tests/t08-github-approvals.test.ts` y `tests/t08-github-workflow-boundary.test.ts`.
+- **Próxima prueba sugerida:** modelos `nvidia/nemotron-3.5-bolt-e4b` (revisor A), `nvidia/nemotron-3.5-super-vl-120b-a12b` (revisor B) y `nvidia/nemotron-3.5-lightning-30b-a3b` (Writer). Son rutas publicadas por NVIDIA, pero **no se han probado las tres juntas**; su disponibilidad y coste final dependen de la cuenta y del proveedor.
+- **Estado:** `T08_PENDING_REAL_APPROVED_RUN`, `globalFull:false`, sin fusión. Guía actualizada en `docs/t08-prueba-real-github.md`.
