@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {resolve} from "node:path";
 import {tmpdir} from "node:os";
 import {projectOddReviewHandoff,proposeJudgmentFixHandoff,type ScopedOddTodo} from "../src/review/odd-agent-review-flow.js";
+import type {RouteChoice} from "../src/runtime/lifecycle/profiles.js";
 import {renderAsenPanelSection,type AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
 
 const projectId=resolve(tmpdir(),"asen-odd-review-test");
@@ -107,7 +108,7 @@ test("T05 no anuncia perfiles con modelo inválido o esfuerzo no reconocido",()=
  for(const choice of changes){
   assert.throws(()=>projectOddReviewHandoff({
    identity,todo:todo(),currentHead:head,
-   profiles:[...profiles.slice(0,3),{lens:profiles[3]!.lens,choice}]
+   profiles:[...profiles.slice(0,3),{lens:profiles[3]!.lens,choice:choice as unknown as RouteChoice}]
   }),/Invalid ODD review handoff/u,JSON.stringify(choice));
  }
  const valid=projectOddReviewHandoff({
