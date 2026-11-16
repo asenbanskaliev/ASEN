@@ -34,7 +34,7 @@ function editorAnswer(title:string):string{
  return "Check the task requirements";
 }
 /** One interactive workspace review driven by a host-injected read-only native control whose own notifications are recorded. */
-function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent",{model?:string;thinking?:"high"}>>={}){
+function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObservation),allowExternalReview=true,lensChoices:Partial<Record<ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent",{model?:string;thinking?:"high"}>>={},failFixProfile=false){
  const root=repository(t),messages:string[]=[],trace:{operation:string,notified:string[]}[]=[],modelCalls:string[]=[],consentPrompts:{title:string;message:string}[]=[];
  const control={async observe(operation:string,context:{ui:{notify(message:string,level:"info"|"error"):void}}):Promise<NativeRddObservation>{
   const notified:string[]=[];trace.push({operation,notified});
@@ -42,7 +42,7 @@ function setup(t:TestContext,observation:NativeRddObservation|(()=>NativeRddObse
   return typeof observation==="function"?observation():observation;
  }};
  const commands=new Map<string,Command>();
- registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control as never,async(_context,lens)=>lensChoices[lens]);
+ registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),control as never,async(_context,lens)=>{if(lens==="jd-fix-agent"&&failFixProfile)throw new Error("No se pudo cargar el perfil Fix");return lensChoices[lens];});
  const registry={getAvailable:()=>[author,reviewer,reviewerTwo],hasConfiguredAuth:(model:PiReviewerModel)=>model.provider!=="author-provider",
   streamSimple:(model:PiReviewerModel)=>{
    modelCalls.push(model.provider+"/"+model.id);
@@ -342,4 +342,22 @@ test("workspace judgment-day rejects duplicated or unauthenticated judge routing
  const missing=setup(t,unconfigured(),true,{"jd-judge-b":{model:"not-authenticated/missing"}});
  await assert.rejects(async()=>await missing.handler("workspace judgment-day",missing.context),/must be different/u);
  assert.equal(missing.modelCalls.length,0);assert.equal(missing.consentPrompts.length,0);
+});
+
+
+test("resiliencia 4R: error del perfil Fix conserva los dos dictámenes y bloquea la reparación",async t=>{
+ const state=setup(t,unconfigured(),true,{},true);
+ const result=await state.handler("workspace judgment-day",state.context) as {
+  status:string;judges:Array<{judge:string}>;
+  fixAgent:string;fixHandoff:{status:string;blockers:string[];autoLaunch:boolean};
+  acceptance:string;
+ };
+ assert.equal(result.status,"analysis-complete");
+ assert.deepEqual(result.judges.map(x=>x.judge),["jd-judge-a","jd-judge-b"]);
+ assert.deepEqual(state.modelCalls,["review-provider/reviewer-one","review-provider/reviewer-two"]);
+ assert.equal(result.fixAgent,"not-launched");
+ assert.equal(result.fixHandoff.status,"blocked");
+ assert.ok(result.fixHandoff.blockers.some(x=>/profile lookup unavailable/u.test(x)));
+ assert.equal(result.fixHandoff.autoLaunch,false);
+ assert.equal(result.acceptance,"not-accepted");
 });
