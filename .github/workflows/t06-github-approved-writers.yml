@@ -74,7 +74,9 @@ jobs:
       - name: Primer consentimiento humano de GitHub
         run: echo "GitHub registró el acceso al entorno A; se verificará el historial."
   aprobar-b:
-    needs: [preparar]
+    # GitHub puede agrupar dos entornos pendientes en una sola aprobación.
+    # Esperar a A obliga a pedir el segundo consentimiento después del primero.
+    needs: [aprobar-a]
     runs-on: ubuntu-24.04
     timeout-minutes: 6
     environment:

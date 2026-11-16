@@ -31,6 +31,18 @@ test("T06 requiere dos aprobaciones individuales antes de ejecutar Writer",()=>{
  assert.match(protectedWriter,/GITHUB_RUN_ATTEMPT.*1/u);
  assert.doesNotMatch(protectedWriter,/permissions:\s*\n\s*contents: write/mu);
 });
+test("T06 solicita cada aprobación humana por separado para evitar agrupaciones de GitHub",()=>{
+ const first=protectedWriter.indexOf("  aprobar-a:");
+ const second=protectedWriter.indexOf("  aprobar-b:");
+ const execute=protectedWriter.indexOf("  ejecutar:");
+ assert.ok(first>=0&&second>first&&execute>second);
+ const a=protectedWriter.slice(first,second),b=protectedWriter.slice(second,execute);
+ assert.match(a,/needs: \[preparar\]/u);
+ assert.match(b,/needs: \[aprobar-a\]/u);
+ assert.doesNotMatch(b,/needs: \[preparar\]/u);
+ assert.match(protectedWriter.slice(execute),/needs: \[aprobar-a, aprobar-b\]/u);
+});
+
 test("T06 no incluye credenciales NVIDIA en preparación ni aprobación",()=>{
  const firstUse=protectedWriter.indexOf("NVIDIA_API_KEY:");
  const jobExecution=protectedWriter.indexOf("\n  ejecutar:");
