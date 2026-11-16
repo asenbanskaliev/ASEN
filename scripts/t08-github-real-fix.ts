@@ -33,6 +33,8 @@ import {selectSkills} from "../src/skills/registry.js";
 import {EvidenceStore} from "../src/evidence/store.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {assessT06WriterEvidence} from "../src/runtime/agents/t06-writer-evidence.js";
+import {createT08IsolatedRepository,removeT08IsolatedRepository,t08TemporaryRoot}
+ from "../src/runtime/agents/t08-isolated-repository.js";
 
 const sha256=(x:string|Buffer)=>createHash("sha256").update(x).digest("hex");
 const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{
@@ -49,26 +51,6 @@ const required="sumEvenNumbers(numbers) recibe exclusivamente un array de entero
 
 type Models=Readonly<{reviewerA:string;reviewerB:string;writer:string}>;
 const reviewer=(value:string):PiReviewerModel=>({provider:"nvidia",id:value.slice("nvidia/".length)});
-function isolatedRoot(runId:string):string{
- if(!/^[1-9][0-9]{0,14}$/u.test(runId))throw Error("ID de ejecución inválido");
- return join(tmpdir(),"asen-t08-"+runId);
-}
-function fixture(root:string,source:string,expectedSha:string,repository:string):void{
- if(existsSync(root))throw Error("La copia aislada ya existe: no se permite reutilizarla");
- execFileSync("git",["-C",repository,"worktree","add","--detach",root,expectedSha],{
-  timeout:20_000,stdio:"ignore"
- });
- if(git(root,"rev-parse","HEAD")!==expectedSha||git(root,"status","--porcelain"))
-  throw Error("La copia no coincide con el SHA aprobado");
- writeFileSync(join(root,T08_TARGET),source,{flag:"wx",mode:0o600});
- if(git(root,"status","--porcelain","--untracked-files=all")!=="?? "+T08_TARGET)
-  throw Error("El escenario contiene cambios ajenos");
-}
-function cleanWorktree(repository:string,root:string):void{
- try{execFileSync("git",["-C",repository,"worktree","remove","--force",root],{
-  timeout:20_000,stdio:"ignore"
- });}catch{/* El trabajo no continúa ni se reintenta al fallar una limpieza. */}
-}
 function nativeReviewerOutput(output:string):string{
  if(output.length>512_000)throw Error("Respuesta Pi demasiado grande");
  let lines:unknown[];
@@ -190,6 +172,7 @@ async function firstReview(root:string,policyRoot:string,models:Models,dir:strin
  const record={
   schema:sourceSchema,sha,runId:process.env.GITHUB_RUN_ID,attempt:1,
   sourceFileSha256:sha256(T08_BUGGY_SOURCE),
+  fixtureHead:git(root,"rev-parse","HEAD"),
   sourceTree:result.candidateTreeIdentity,
   judgeCount:2,judgeVerdicts:result.judges.map(x=>x.verdict),
   models,proposal,writerExecuted:false,autoMerge:false,
@@ -204,6 +187,7 @@ async function firstReview(root:string,policyRoot:string,models:Models,dir:strin
 interface FirstReviewData{
  readonly schema:string;readonly sha:string;readonly runId:string;readonly attempt:number;
  readonly sourceFileSha256:string;readonly sourceTree:string;
+ readonly fixtureHead:string;
  readonly judgeCount:number;readonly judgeVerdicts:readonly string[];
  readonly models:Models;readonly proposal:StoredJudgmentFixProposal;
  readonly writerExecuted:false;readonly autoMerge:false;
@@ -219,6 +203,8 @@ function parseFirstReview(dir:string,root:string,sha:string,models:Models):First
   report.runId!==process.env.GITHUB_RUN_ID||report.attempt!==1||
   report.sourceFileSha256!==sha256(T08_BUGGY_SOURCE)||
   !/^[a-f0-9]{40}$/u.test(report.sourceTree)||
+  !/^[a-f0-9]{40}$/u.test(report.fixtureHead)||
+  report.fixtureHead!==git(root,"rev-parse","HEAD")||
   report.judgeCount!==2||
   JSON.stringify(report.judgeVerdicts)!=='["fail","fail"]'||
   JSON.stringify(report.models)!==JSON.stringify(models)||
@@ -237,7 +223,7 @@ function parseFirstReview(dir:string,root:string,sha:string,models:Models):First
  });
  const live=inspectLiveFixCandidate(draft);
  if(live.candidateTreeIdentity!==report.sourceTree||
-  live.repositoryHead!==sha)
+  live.repositoryHead!==report.fixtureHead)
   throw Error("El código cambió desde los dictámenes, prohibido reparar");
  return report;
 }
@@ -459,13 +445,20 @@ async function main():Promise<void>{
   encoding:"utf8",timeout:5_000,stdio:["ignore","pipe","pipe"]
  }).trim();
  if(!/(?:^|\s)1\.2\.0(?:\s|$)/u.test(version))throw Error("T08 requiere Pi 1.2.0");
- const models=checkModels(),root=isolatedRoot(process.env.GITHUB_RUN_ID??"");
+ const models=checkModels(),runId=process.env.GITHUB_RUN_ID??"";
+ const root=t08TemporaryRoot(runId);
  await requireLiveT08GithubApprovals(phase);
+ let created=false;
  try{
-  fixture(root,T08_BUGGY_SOURCE,sha,policyRoot);
+  const fixture=createT08IsolatedRepository({
+   root,controllerSha:sha,originalSource:T08_BUGGY_SOURCE
+  });
+  created=true;
+  if(fixture.controllerSha!==sha||fixture.target!==T08_TARGET)
+   throw Error("La identidad del controlador T08 cambió");
   if(phase==="review")await firstReview(root,policyRoot,models,dir,sha);
   else await finalFix(root,policyRoot,models,dir,sha);
- }finally{cleanWorktree(policyRoot,root);}
+ }finally{if(created)removeT08IsolatedRepository(root,runId);}
 }
 try{await main();}
 catch(error){
