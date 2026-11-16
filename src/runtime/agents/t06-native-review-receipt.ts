@@ -23,11 +23,16 @@ export function parseT06NativeReviewReceipt(
  let records:unknown[];
  try{records=output.trim().split(/\r?\n/u).filter(Boolean).map(line=>JSON.parse(line));}
  catch{throw new Error("T06 independent Pi review stream is invalid");}
+ if(records.some(row=>typeof row==="object"&&row!==null&&"type" in row&&
+  typeof row.type==="string"&&(row.type.startsWith("tool_execution_")||
+  row.type.startsWith("toolcall_"))))
+  throw new Error("T06 independent review cannot include any tool execution");
  const messages=records.filter(row=>typeof row==="object"&&row!==null&&
   "type" in row&&row.type==="message_end"&&"message" in row&&
   typeof row.message==="object"&&row.message!==null&&
   "role" in row.message&&row.message.role==="assistant");
- const message=messages.at(-1);
+ if(messages.length!==1)throw new Error("T06 independent review requires exactly one final assistant verdict");
+ const message=messages[0];
  if(!message||typeof message!=="object"||!("message" in message)||
   !message.message||typeof message.message!=="object"||
   !("content" in message.message)||!Array.isArray(message.message.content))
