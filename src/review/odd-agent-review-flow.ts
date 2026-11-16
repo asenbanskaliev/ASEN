@@ -2,7 +2,8 @@
  * No ejecuta modelos, no crea Todos, ni transfiere autoridad Writer. */
 import type {TodoContext,TodoItem} from "../runtime/lifecycle/todo-store.js";
 import type {TaskEvent} from "../runtime/task-replay.js";
-import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
+import {isThinking,type RouteChoice} from "../runtime/lifecycle/profiles.js";
+import {inspectPlannedWorkerModelRoute} from "../runtime/agents/parallel-worker-model-route.js";
 import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 import {isReviewLens} from "./review-lens-contracts.js";
 import type {ReviewLens} from "./review-risk.js";
@@ -46,11 +47,14 @@ export function projectOddReviewHandoff(input:{
   !todo||!safe(todo.taskId,128)||!todo.current||!Array.isArray(input.profiles)||
   input.profiles.length!==4||new Set(input.profiles.map(x=>x.lens)).size!==4||
   input.profiles.some(x=>!x||!isReviewLens(x.lens)||
-   (x.choice?.model!==undefined&&!safe(x.choice.model))||
-   (x.choice?.thinking!==undefined&&!safe(x.choice.thinking,32))))
+   (x.choice?.model!==undefined&&
+    inspectPlannedWorkerModelRoute(x.choice.model).status!=="pinned")||
+   (x.choice?.thinking!==undefined&&!isThinking(x.choice.thinking))))
   throw new Error("Invalid ODD review handoff request");
  const blockers:string[]=[];
  const plan=todo.plan;
+ if(!safe(todo.taskId,128)||todo.current.taskId!==todo.taskId)
+  blockers.push("Todo identity differs from its recorded current state");
  if(todo.current.sessionId!==identity.sessionId||
   !sameWorkspaceIdentityPath(todo.current.projectId,identity.projectId))
   blockers.push("Todo belongs to another Pi session or Git project");
