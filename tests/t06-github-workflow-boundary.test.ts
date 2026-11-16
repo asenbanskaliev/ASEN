@@ -56,3 +56,18 @@ test("T06 conecta el diario privado de autoría antes de abrir el Writer",()=>{
  assert.match(pi,/this\.options\.attributionFile/u);
  assert.match(authority,/!authority\.agentId\|\|!authority\.sessionId\|\|!authority\.attributionFile/u);
 });
+
+test("T09 solo lee el informe guardado y no sustituye el resultado del Writer",()=>{
+ const source=load(".github/workflows/t06-github-approved-writers.yml");
+ const script=load("scripts/t09-auditar-ensayo-t06.ts");
+ const writerIndex=source.indexOf("scripts/t06-nvidia-dual-writer-native.ts");
+ const analysisIndex=source.indexOf("scripts/t09-auditar-ensayo-t06.ts");
+ const uploadIndex=source.indexOf("actions/upload-artifact@");
+ assert.ok(writerIndex>=0&&analysisIndex>writerIndex&&uploadIndex>analysisIndex);
+ assert.match(source,/name: Evaluar el informe T06 para T09[^]*?if: always\(\)/u);
+ assert.match(source,/path: \$\{\{ runner.temp \}\}\/asen-t06-evidence\//u);
+ assert.match(script,/assessT09NativeTrialReadiness/u);
+ assert.doesNotMatch(script,/NVIDIA_API_KEY|OPENROUTER_API_KEY|fetch\(|spawn\(/u);
+ assert.match(script,/providerUsageVerified:false,billingVerified:false/u);
+ assert.match(script,/globalFull:false/u);
+});
