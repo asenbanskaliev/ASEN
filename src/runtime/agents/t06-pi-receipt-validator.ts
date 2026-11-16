@@ -3,6 +3,11 @@
 export type T06PiReplyValidation=Readonly<{
  readonly verified:boolean;
  readonly modelActual:"unknown"|string;
+ /** Datos informados por Pi, no factura ni verificación de gasto. */
+ readonly piReportedUsage:Readonly<{
+  inputTokens:number;outputTokens:number;totalTokens:number|null;
+  costUsd:number|null;billingVerified:false
+ }> | null;
  readonly reason:"verified"|"missing-selection"|"missing-assistant-end"|"multiple-assistant-ends"|
   "model-mismatch"|"unexpected-reply"|"invalid-input";
 }>;
@@ -13,7 +18,7 @@ export function validateT06PiReply(input:{
  readonly modelObservedByRunner:string|null;
 }):T06PiReplyValidation{
  const rejected=(reason:Exclude<T06PiReplyValidation["reason"],"verified">):T06PiReplyValidation=>
-  Object.freeze({verified:false,modelActual:"unknown" as const,reason});
+  Object.freeze({verified:false,modelActual:"unknown" as const,piReportedUsage:null,reason});
  if(!input||typeof input.output!=="string"||input.output.length>128_000||
   typeof input.expectedMarker!=="string"||!/^ASEN_PI_NVIDIA_[AB]_OK$/u.test(input.expectedMarker)||
   input.expectedModel!=="nvidia/nemotron-3.5-lightning-30b-a3b")
@@ -49,5 +54,21 @@ export function validateT06PiReply(input:{
   return rejected("unexpected-reply");
  const answer=textParts.map(part=>(part as {text:string}).text).join("").trim();
  if(answer!==input.expectedMarker)return rejected("unexpected-reply");
- return Object.freeze({verified:true,modelActual:input.expectedModel,reason:"verified"});
+ const usage=reply.usage,plain=usage&&typeof usage==="object"&&!Array.isArray(usage)?
+  usage as Record<string,unknown>:null;
+ const whole=(value:unknown):value is number=>
+  typeof value==="number"&&Number.isSafeInteger(value)&&value>=0&&value<=1_000_000_000;
+ const money=(value:unknown):value is number=>
+  typeof value==="number"&&Number.isFinite(value)&&value>=0&&value<=1_000_000;
+ const cost=plain?.cost&&typeof plain.cost==="object"&&!Array.isArray(plain.cost)?
+  plain.cost as Record<string,unknown>:null;
+ const piReportedUsage=plain&&whole(plain.input)&&whole(plain.output)?
+  Object.freeze({
+   inputTokens:plain.input,outputTokens:plain.output,
+   totalTokens:whole(plain.totalTokens)?plain.totalTokens:null,
+   costUsd:cost&&money(cost.total)?cost.total:null,
+   billingVerified:false as const
+  }):null;
+ return Object.freeze({verified:true,modelActual:input.expectedModel,
+  piReportedUsage,reason:"verified"});
 }
