@@ -88,7 +88,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
     if(item.current.state==="blocked"||item.current.state==="succeeded")
      out.push("  └ "+clean(item.current.reason||"Review required",200));
     if(item.current.state==="succeeded"&&item.plan?.role==="worker")
-     out.push("  ↳ /asen-review todo "+clean(item.taskId,100)+" · inspect only");
+     out.push("  ↳ /asen-review todo "+clean(item.taskId,100)+" adaptive · consent required");
    }
    const done=snapshot.todos.filter(t=>t.current.state==="done").length;
    const cancelled=snapshot.todos.filter(t=>t.current.state==="cancelled").length;
@@ -157,7 +157,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    if(oddWorkers.length){
     out.push("ODD Workers awaiting inspection: "+oddWorkers.length+" · actual model unknown");
     for(const todo of oddWorkers.slice(0,detail?8:3))
-     out.push("  /asen-review todo "+clean(todo.taskId,100)+" · review not approved");
+     out.push("  /asen-review todo "+clean(todo.taskId,100)+" adaptive · needs consent");
     out.push("4R/JD: /asen-review workspace adaptive | judgment-day");
     out.push("Fix findings require new /asen-plan and fresh Writer consent");
    }
