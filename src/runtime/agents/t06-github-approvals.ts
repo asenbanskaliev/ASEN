@@ -95,8 +95,6 @@ export async function requireLiveT06GithubApprovals(env:NodeJS.ProcessEnv=proces
   runAttempt:env.GITHUB_RUN_ATTEMPT??"",
   costAcknowledged:env.ASEN_T06_COST_ACK??""
  };
- const dummy={workflowRun:null,reviewHistory:null};
- const initial=validateT06GithubApprovals({context,...dummy});
  if(!/^[1-9][0-9]{0,14}$/u.test(context.runId)||
   context.repository!==repo||context.eventName!=="workflow_dispatch"||
   context.ref!=="refs/heads/"+branch||
