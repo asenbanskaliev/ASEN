@@ -70,6 +70,10 @@ async function showPreparedReviewCandidate(context:ReviewCommandContext,checkout
  if(descriptor()===null)throw unavailable();
  return complete();
 }
+interface BoundOddReview{
+ readonly writeSurfaces:readonly string[];readonly requirements:string;
+ readonly revalidate:()=>Promise<void>;
+}
 interface CorrectionState{
  readonly request:CorrectionRequest;readonly repository:string;readonly sessionId:string;readonly priorRevision:string;readonly priorReviewerId:string;
  readonly baseCommit:string|null;readonly baseTree:string;
@@ -160,7 +164,7 @@ async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:Revi
   return reviewRiskFromNativeAssessment(observation);
  }catch{return reviewRiskFromNativeAssessment(undefined);}
 }
-async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,adaptive=false,judgmentDay=false):Promise<unknown>{
+async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,adaptive=false,judgmentDay=false,boundOdd?:BoundOddReview):Promise<unknown>{
  const sessionId=context.sessionManager?.getSessionId?.(),registry=context.modelRegistry,author=context.model;
  if(!context.hasUI||!sessionId||!registry||!author||!context.ui.select||!context.ui.editor||!context.ui.confirm){
   const unavailable="Revisión independiente no disponible: se requiere una sesión Pi interactiva, modelo autor conocido y un modelo revisor autenticado distinto.";
@@ -183,8 +187,10 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   try{if(context.sessionManager.getSessionId()!==sessionId||realpathSync(context.cwd)!==projectRoot)throw new Error();assertReviewRepositoryBinding(projectBinding);}
   catch{if(correction)retireCorrection=true;throw new Error("Review session or project changed; start a new review");}
  };
+ const assertOddCurrent=async()=>{if(boundOdd){await boundOdd.revalidate();assertContextCurrent();}};
  try{
  assertCorrectionReserved();
+ await assertOddCurrent();
  const reviewers=availableIndependentPiReviewers(registry,author).filter(model=>!correction||"pi-model:"+model.provider+"/"+model.id!==correction.priorReviewerId),labels=reviewers.map(model=>model.provider+"/"+model.id);
  if(!reviewers.length){const unavailable="Revisión independiente no disponible: no hay otro modelo Pi autenticado en el registro.";context.ui.notify(unavailable,"error");return {status:"unavailable",reason:unavailable};}
  const selected=await context.ui.select("Selecciona un modelo revisor independiente",labels,context.signal?{signal:context.signal}:undefined);
@@ -192,12 +198,16 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  if(!selected)return {status:"cancelled"};
  const model=reviewers[labels.indexOf(selected)];
  if(!model)throw new Error("El modelo revisor seleccionado ya no está disponible");
- const requirements=correction?.requirements??await context.ui.editor("Requisitos que debe comprobar el revisor","Revisar el cambio completo, alcance autorizado, errores funcionales, riesgos de seguridad, regresiones y pruebas ausentes.");
+ const requirements=correction?.requirements??await context.ui.editor("Requisitos que debe comprobar el revisor",boundOdd?.requirements??"Revisar el cambio completo, alcance autorizado, errores funcionales, riesgos de seguridad, regresiones y pruebas ausentes.");
  assertContextCurrent();
  if(!requirements?.trim())return {status:"cancelled"};
  let reviewPaths:readonly string[];
  if(correction)reviewPaths=correction.reviewPaths;
- else{
+ else if(boundOdd){
+  reviewPaths=validatePortableReviewPaths([...boundOdd.writeSurfaces]);
+  assertNoSensitiveReviewPaths(reviewPaths);
+  await assertOddCurrent();
+ }else{
   const reviewPathsText=await context.ui.editor("Rutas exactas incluidas en esta revisión (JSON array; incluye archivos eliminados)","[]");
   assertContextCurrent();
   if(!reviewPathsText)return {status:"cancelled"};
@@ -223,13 +233,17 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   if(!untrackedText)return {status:"cancelled"};
   try{
    const parsed:unknown=JSON.parse(untrackedText);if(!Array.isArray(parsed))throw new Error();
-   const validated=validatePortableReviewPaths(parsed);assertNoSensitiveReviewPaths(validated);intendedUntracked=[...validated];
+   const validated=validatePortableReviewPaths(parsed);assertNoSensitiveReviewPaths(validated);
+   if(boundOdd&&validated.some(path=>!boundOdd.writeSurfaces.includes(path)))
+    throw new Error("ODD review cannot add untracked paths outside the frozen task scope");
+   intendedUntracked=[...validated];
   }catch(error){
    if(error instanceof Error&&error.message.startsWith("La revisión independiente no puede incluir rutas sensibles"))throw error;
    throw new Error("El alcance untracked debe ser un array JSON válido y no incluir rutas sensibles");
   }
  }
  assertNoSensitiveReviewPaths([...reviewPaths,...intendedUntracked]);
+ await assertOddCurrent();
  const assessed=await assessWorkspaceReviewRisk(nativeRdd,context);
  const selectedLenses:readonly ReviewLens[]=fourR?[...REVIEW_LENSES]:adaptive?selectAdaptiveReviewLenses(assessed).lenses:[];
  const specialized=fourR||adaptive;
@@ -274,6 +288,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   if(!judgeB)throw new Error("Judgment Day Judge B must be different, authenticated and available");
   judges=[judgeA,judgeB];
  }
+ await assertOddCurrent();
  const reviewerId="pi-model:"+(judges?judges[0].provider+"/"+judges[0].id:model.provider+"/"+model.id);
  let workspace:ReturnType<typeof openWorkspaceReview>;
  try{workspace=openWorkspaceReview({repositoryRoot:projectRoot,intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
@@ -331,14 +346,14 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    "Archivos: "+(paths.join(", ")||"(sin cambios)"),
    "El índice real no se modifica. No se ejecutan pruebas en la vista.",
   ].join("\n"));
-  assertContextCurrent();assertReviewSessionOpen(workspace.session);
+  assertContextCurrent();await assertOddCurrent();assertReviewSessionOpen(workspace.session);
   if(!consent)return {status:"cancelled",requestId:workspace.requestId,candidate:evidence.candidate};
   assertCorrectionReserved();
   assertNoSensitiveReviewPaths([...evidence.modifiedFiles.map(file=>file.path),...evidence.candidateFiles.map(file=>file.path)]);
   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
   if(judgmentDay){
-   assertContextCurrent();assertReviewSessionOpen(workspace.session);
-   const report=await runJudgmentDay({registry,author,judgeA:judges![0],judgeB:judges![1],evidence,requirements,...(context.signal?{signal:context.signal}:{}),validateBeforeJudge:()=>{assertContextCurrent();assertReviewSessionOpen(workspace.session);revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});}});
+   assertContextCurrent();await assertOddCurrent();assertReviewSessionOpen(workspace.session);
+   const report=await runJudgmentDay({registry,author,judgeA:judges![0],judgeB:judges![1],evidence,requirements,...(context.signal?{signal:context.signal}:{}),validateBeforeJudge:async()=>{await assertOddCurrent();assertContextCurrent();assertReviewSessionOpen(workspace.session);revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});}});
    revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
    assertContextCurrent();
    const fixProfile=await resolveLensRoute?.(context,"jd-fix-agent");
@@ -359,7 +374,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   if(specialized){
    const reports=[];
    for(const lens of selectedLenses){
-    assertCorrectionReserved();assertContextCurrent();assertReviewSessionOpen(workspace.session);
+    assertCorrectionReserved();assertContextCurrent();await assertOddCurrent();assertReviewSessionOpen(workspace.session);
     revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
     reports.push(await runPiLensReview({registry,model:lensModels.get(lens)!,author,evidence,requirements,lens,...(context.signal?{signal:context.signal}:{})}));
    }
@@ -383,8 +398,9 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    assertContextCurrent();context.ui.notify(JSON.stringify(result,null,2),bundle.status==="fail"?"error":"info");
    return result;
   }
+  await assertOddCurrent();
   const verdict=await runIndependentPiReview({registry,model,author,evidence,requirements,...(context.signal?{signal:context.signal}:{})});
-  assertCorrectionReserved();assertContextCurrent();
+  assertCorrectionReserved();assertContextCurrent();await assertOddCurrent();
   if(context.signal?.aborted)throw new Error("Independent review was cancelled");
   const rddProbe={schemaVersion:1,requestId:evidence.requestId,sessionId:evidence.sessionId,revision:evidence.candidate.revision,
    treeIdentity:evidence.candidate.treeIdentity,parentIdentity:evidence.candidate.parentIdentity,reviewerId:verdict.reviewerId,
