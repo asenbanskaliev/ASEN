@@ -10,6 +10,8 @@ export interface FixOddRecovery{
  readonly workerTodoId:string|null;
  readonly workerState:string|null;
  readonly observedIn:"active"|"archive"|null;
+ /** Recomendación de inspección. Nunca ejecuta ni reautoriza un Worker. */
+ readonly nextAction:"inspect-original-journals"|"inspect-active-worker"|"inspect-archived-worker";
  readonly reason:string;
  readonly actualModel:"unknown";
  readonly writerAuthority:false;
@@ -62,6 +64,8 @@ export function inspectFixOddRecovery(input:{
   workerTodoId:row?.taskId??null,
   workerState:row?.current.state??null,
   observedIn,
+  nextAction:!consistent?"inspect-original-journals" as const:
+   observedIn==="archive"?"inspect-archived-worker" as const:"inspect-active-worker" as const,
   reason:rows.length===0?
    "No active or archived Fix Worker was observed. An interrupted save or earlier unavailable archive may exist; inspect the Todo journal before retrying.":
    !consistent?
