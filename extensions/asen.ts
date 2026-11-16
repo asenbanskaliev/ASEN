@@ -10,6 +10,7 @@ import {decideLifecycleApplicability,type LifecycleApplicability,type LifecycleA
 import type {OddRouteDecision} from "../src/flow/odd-routing.js";
 import type {ExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
+import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
 import {createNativeRddControl,type NativeRddOptions} from "../src/review/native-rdd-control.js";
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
 import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
@@ -1884,6 +1885,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    ...(todoStorePromise?{loadTodos:async identity=>(await todoStorePromise).list(identity)}:{}),
    ...(agentRuntimePromise?{loadChildAgents:async identity=>(await agentRuntimePromise).list(identity)}:{})
   });
+  const fixJournal=new JudgmentFixProposalJournal(path.join(home(),".asen","judgment-fix-proposals.json"));
   const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
    const sessionId=context.sessionManager.getSessionId(),projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
    const target=lens==="jd-judge-a"||lens==="jd-judge-b"||lens==="jd-fix-agent"?lens:`review-${lens}` as const;
@@ -1896,7 +1898,31 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     path.normalize(realpathSync(path.resolve(context.cwd)))!==projectId||
     context.signal?.aborted)throw new Error("ODD review session changed during Todo retrieval");
    return rows;
-  }:undefined);
+  }:undefined,{
+   record:async(context,proposal)=>{
+    const manager=context.sessionManager,sessionId=manager.getSessionId(),
+     projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+    if(proposal.sessionId!==sessionId||
+     !sameWorkspaceIdentityPath(proposal.repositoryRoot,projectId)||
+     context.signal?.aborted)
+     throw new Error("Fix proposal belongs to another Pi session or Git candidate");
+    const row=await fixJournal.record(proposal);
+    if(manager.getSessionId()!==sessionId||
+     !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+     context.signal?.aborted)
+     throw new Error("Fix proposal session changed while persisting");
+    return {id:row.id};
+   },
+   list:async context=>{
+    const manager=context.sessionManager,sessionId=manager.getSessionId(),
+     projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+    const rows=await fixJournal.list({sessionId,projectId});
+    if(manager.getSessionId()!==sessionId||
+     !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+     context.signal?.aborted)throw new Error("Fix proposal session changed while reading");
+    return rows;
+   }
+  });
   // Public work is ODD-only. Legacy selection/recovery remains in lifecycle modules,
   // not a product command or an implicit conversion into fresh write authority.
   return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability});
