@@ -474,3 +474,26 @@ Se mantiene la PR #61 en **draft** y `globalFull:false`, sin merge automático.
 - **Resiliencia:** las escrituras del lote siguen siendo atómicas; la segunda observación inválida no deja una primera anotación parcial; no se reintentan Writers de forma automática.
 - Pruebas negativas ampliadas en `tests/parallel-worker-observation.test.ts`: estado `clean` con cambios, origen no verificado, HEAD incompatible, rutas ajenas, sesión repetida, falsificación del fichero y recuperación segura.
 - **Estado:** implementado en la PR, pendiente del CI/Release Gate del SHA exacto. T06 parcial; T08 dispone de diario de propuestas (no un Fix Writer), T09 sin mediciones A/B auténticas, T10 sin revisión independiente. `globalFull:false`.
+
+## Tanda agrupada T02 + T05 + T06 — rutas explícitas, dos sesiones Pi y uso observado (2026-11-16)
+
+**Objetivo de esta tanda:** corregir puntos seguros de la cadena nativa sin fabricar consentimiento Writer, simular facturación ni confundir el ensayo Pi de lectura con dos programadores reales.
+
+### T02 — NVIDIA autenticada y señales reales de consumo
+- La prueba CI `t06-nvidia-pi-native` conserva dos sesiones Pi RPC reales Explorer + Verifier con NVIDIA, árboles Git de prueba separados y sin herramientas. El validador exige coincidencia del modelo seleccionado mediante Pi y del mensaje nativo final.
+- `src/runtime/agents/t06-pi-receipt-validator.ts` ahora puede extraer números de tokens de `message_end.usage` **solo cuando existen y son válidos**. Nunca infiere precios: `piReportedUsage.costUsd` es una cifra comunicada por Pi, no cobro bancario; `billingVerified:false` incluso si vale cero. Si Pi no informa consumo, el valor sigue siendo `null`.
+- `scripts/t06-nvidia-pi-concurrent.ts` conserva estas cifras individualmente, sin incluir claves, instrucciones privadas ni salida textual del modelo. Se mantienen `writerGranted:false` y `costVerified:false`. Tests adversarios en `tests/t06-pi-receipt-validator.test.ts`.
+
+### T05 — perfil y modelo solicitado no equivalen a factura ni ejecución
+- `src/runtime/agents/parallel-worker-model-route.ts` diferencia modelo concretamente configurado frente a `selectedActual:unknown`, `providerAuthenticated:false`, `modelConsumedProven:false` y `costVerified:false`.
+- Ningún Worker supervisado puede aprovechar un modelo implícito, `unknown`, `auto`, `default`, ausente o malformado. Se requiere la ruta `proveedor/identificador` explícita desde el plan hijo ODD.
+- Esa condición **no** demuestra que el modelo sea gratuito, ni sustituye la aprobación individual del Worker. Se mantienen las comprobaciones de identidad y cambios de modelo durante las confirmaciones.
+- Tests: `tests/parallel-worker-model-route.test.ts`, `tests/parallel-worktree-todos.test.ts`.
+
+### T06 — sesiones independientes y permisos separados
+- El diario `parallel-parent-supervisor-claims.ts` rechaza dos Workers atribuidos a la misma sesión Pi, incluso si tienen worktrees distintos, y bloquea reutilizar la sesión hija en otro lote o recuperar un diario corrupto que intente duplicarla.
+- El supervisor `parallel-parent-supervisor.ts` verifica la unicidad de cada sesión hija **antes** de reclamar el lote y antes de solicitar autorizaciones; si encuentra duplicados o modelos ausentes, no lanza nada.
+- La confirmación global y el consentimiento individual por Worker permanecen obligatorios. No hay auto-reintento, pago, escritura sin aprobación, fusión ni aceptación automática.
+- Pruebas negativas adicionales en `tests/parallel-parent-supervisor-claims.test.ts` y `tests/parallel-worktree-todos.test.ts`.
+
+**No completado ni declarado FULL:** hacen falta dos Workers Pi Writer **auténticos** en dos sesiones con consentimientos humanos separados, mediciones reales de coste si el proveedor las facilita, observaciones de cancelación y recuperación, y revisión independiente. Las comprobaciones CI/Release Gate deben ser del SHA exacto que incluye esta tanda. `globalFull:false`.
