@@ -59,3 +59,39 @@ test("T06 mensajes duplicados, parciales o falsos nunca son recibos válidos",()
   assert.equal(result.modelActual,"unknown");
  }
 });
+
+test("T02/T05 reporta tokens y coste únicamente como cifras informadas por Pi",()=>{
+ const result=call(message(expectedMarker,{usage:{
+  input:12,output:7,totalTokens:19,cost:{total:0.003}
+ }}));
+ assert.equal(result.verified,true);
+ assert.deepEqual(result.piReportedUsage,{
+  inputTokens:12,outputTokens:7,totalTokens:19,
+  costUsd:0.003,billingVerified:false
+ });
+});
+test("T02/T05 nunca inventa consumo si faltan datos o son inválidos",()=>{
+ for(const usage of [
+  undefined,null,{input:"12",output:7},{input:-1,output:7},
+  {input:Infinity,output:7},{input:3,output:-1},
+  {input:3.1,output:7}
+ ]){
+  const result=call(message(expectedMarker,{usage}));
+  assert.equal(result.verified,true);
+  assert.equal(result.piReportedUsage,null);
+ }
+ const valid=call(message(expectedMarker,{usage:{input:12,output:7,
+  totalTokens:"desconocido",cost:{total:-45}}}));
+ assert.equal(valid.verified,true);
+ assert.deepEqual(valid.piReportedUsage,{
+  inputTokens:12,outputTokens:7,totalTokens:null,
+  costUsd:null,billingVerified:false
+ });
+});
+test("T02/T05 un recibo de modelo falso no puede presentar métricas verificadas",()=>{
+ const result=call(message(expectedMarker,{provider:"inventado",
+  usage:{input:20,output:30,cost:{total:0}}}));
+ assert.equal(result.verified,false);
+ assert.equal(result.modelActual,"unknown");
+ assert.equal(result.piReportedUsage,null);
+});
