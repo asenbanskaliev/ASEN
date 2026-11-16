@@ -36,7 +36,9 @@ jobs:
             tests/parallel-worker-model-route.test.ts \
             tests/parallel-worktree-todos.test.ts \
             tests/t06-pi-receipt-validator.test.ts \
-            tests/t06-read-only-git-fixture.test.ts
+            tests/t06-read-only-git-fixture.test.ts \
+            tests/t06-live-consent.test.ts \
+            tests/t06-native-review-receipt.test.ts
   test:
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
