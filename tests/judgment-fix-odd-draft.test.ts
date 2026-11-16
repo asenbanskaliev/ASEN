@@ -35,6 +35,7 @@ test("T04/T08 propone un borrador ODD limitado, sin ejecutar Writer ni modelo",t
  assert.equal(result.candidateStatus,"not-revalidated");
  assert.equal(result.instructionStatus,"not-provided");
  assert.equal(result.nextCommand,"/asen-plan");
+ assert.equal(result.requiresHumanTriage,false);
  assert.equal(result.modelRequested,"unknown");
  assert.equal(result.modelActuallyUsed,"unknown");
  assert.equal(result.requiresFreshCandidate,true);
