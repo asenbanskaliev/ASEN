@@ -24,7 +24,7 @@ export interface OddReviewHandoff{
  readonly workerModelRequested:string;
  readonly reviewerProfiles:readonly ReviewProfileObservation[];
  readonly reviewerModelActual:"unknown";
- readonly nextCommand:"/asen-review workspace adaptive";
+ readonly nextCommand:string;
  readonly requiresNewConsent:true;
  readonly accepted:false;
  readonly writerAuthority:false;
