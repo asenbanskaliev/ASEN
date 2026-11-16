@@ -18,6 +18,8 @@ Fecha: 16/11/2026. Base PR #61: `56274aa20203acb106da2106fde36a2c1184a63e`.
   Worker asociado, con paso `inspect-launch` y ningún permiso de reejecución.
 - Nueva fase `queued-observed`, separada de `running-observed`;
   TODOS y AGENTS enseñan los dos estados sin afirmar ejecución.
+- La barra inferior muestra las tareas hijas en cola y los lanzamientos inciertos
+  aunque no existan agentes locales, sin darles estado de ejecución confirmada.
 - Pruebas negativas de proyección, paneles y registros privados reales.
 
 ## Alcance y límites

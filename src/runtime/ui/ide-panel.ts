@@ -121,7 +121,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    const priority:Record<string,number>={interrupted:0,running:1,queued:2,failed:3,cancelled:4,completed:5};
    const agents=[...snapshot.agents].sort((a,b)=>(priority[a.state]??9)-(priority[b.state]??9)||b.updatedAt.localeCompare(a.updatedAt));
    if(!agents.length)out.push(snapshot.agentFlow?.overview.totalTasks?
-    "No local agents · linked child Workers observed":"No agents · /asen-agents");
+    "Sin agentes locales · tareas hijas vinculadas (ejecución sin acreditar)":"No agents · /asen-agents");
    for(const agent of agents.slice(0,secondaryLimit))out.push(glyph(agent.state)+" "+clean(agent.role,30)+" · "+agent.state+(agent.state==="interrupted"?" · inspect first":""));
    if(agents.length>secondaryLimit)out.push("… "+(agents.length-secondaryLimit)+" more · /asen-agents");
    // No real tokens/prices/model on the durable public agent record: never fabricate.
@@ -131,10 +131,10 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
      flow.stages["manual-review-required"]+" awaiting human review · "+
      flow.stages.blocked+" blocked");
     if(flow.stages["queued-observed"])
-     out.push("Child Workers queued (not running): "+flow.stages["queued-observed"]);
+     out.push("Agentes hijos en cola (sin ejecutar): "+flow.stages["queued-observed"]);
     if(flow.stages["launch-unverified"])
-     out.push("Child launches unverified: "+flow.stages["launch-unverified"]+
-      " · inspect claim and child evidence · no replay");
+     out.push("Lanzamientos sin verificar: "+flow.stages["launch-unverified"]+
+      " · revisar registros e hijos · sin reintentos");
     const pinned=flow.tasks.filter(task=>task.modelRequested!=="unknown");
     if(pinned.length){
      out.push("Requested child models: "+pinned.length+" · actual still unknown");
@@ -252,14 +252,19 @@ export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|un
  const attention=snapshot.agents.filter(a=>a.state==="interrupted"||a.state==="failed").length;
  const jobs=snapshot.jobs.filter(isObservedActiveJob).length;
  const childActive=snapshot.agentFlow?.overview.stages["running-observed"]??0;
+ const childQueued=snapshot.agentFlow?.overview.stages["queued-observed"]??0;
+ const childLaunchUnverified=snapshot.agentFlow?.overview.stages["launch-unverified"]??0;
  const childReview=snapshot.agentFlow?.overview.stages["manual-review-required"]??0;
  const childBlocked=snapshot.agentFlow?.overview.stages.blocked??0;
- if(!open.length&&!running&&!attention&&!jobs&&!childActive&&!childReview&&!childBlocked)return undefined;
+ if(!open.length&&!running&&!attention&&!jobs&&!childActive&&!childQueued&&
+  !childLaunchUnverified&&!childReview&&!childBlocked)return undefined;
  const parts:string[]=[];
  if(running)parts.push("◐ "+running+" agents");
  if(attention)parts.push("! "+attention+" inspect");
  if(jobs)parts.push("⧗ "+jobs+" jobs");
  if(childActive)parts.push("◐ "+childActive+" child Workers observed");
+ if(childQueued)parts.push("○ "+childQueued+" hijos en cola");
+ if(childLaunchUnverified)parts.push("! "+childLaunchUnverified+" lanzamientos sin verificar");
  if(childReview)parts.push("◇ "+childReview+" child review pending");
  if(childBlocked)parts.push("! "+childBlocked+" child tasks blocked");
  if(snapshot.todos.length)parts.push(snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length+" todos");

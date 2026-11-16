@@ -238,9 +238,14 @@ test("T06/T07 distingue cola y lanzamiento no acreditado en TODOS y AGENTS",()=>
  const agents=renderAsenPanelSection(scope,"AGENTS",140).join("\n");
  assert.match(todos,/launch-unverified/u);
  assert.match(todos,/queued-observed/u);
- assert.match(agents,/Child launches unverified: 1/u);
- assert.match(agents,/Child Workers queued \(not running\): 1/u);
+ assert.match(agents,/Lanzamientos sin verificar: 1/u);
+ assert.match(agents,/Agentes hijos en cola \(sin ejecutar\): 1/u);
  assert.match(agents,/Worktree Workers: 0 active observed/u);
+ const status=renderAsenWorkRow(scope,160);
+ assert.ok(status);
+ assert.match(status,/1 hijos en cola/u);
+ assert.match(status,/1 lanzamientos sin verificar/u);
+ assert.doesNotMatch(status,/child Workers observed|merged|accepted/iu);
  assert.doesNotMatch(todos+"\n"+agents,/merged|accepted:true|model actually used/iu);
 });
 
@@ -268,7 +273,7 @@ test("T07 distingue sesión local vacía del trabajo de hijos y enseña el sigui
  assert.match(todos,/No local Todos · linked worktree tasks observed/u);
  assert.match(todos,/next observe-agent/u);
  assert.match(todos,/next attach-child-session/u);
- assert.match(agents,/No local agents · linked child Workers observed/u);
+ assert.match(agents,/Sin agentes locales · tareas hijas vinculadas/u);
  assert.match(agents,/Worktree Workers: 1 active observed/u);
  assert.doesNotMatch(todos+"\n"+agents,/model verified|accepted:true|merge complete/iu);
  assert.equal(base.agentFlow?.overview.tasks[0]?.modelActual,"unknown");
