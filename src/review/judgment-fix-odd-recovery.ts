@@ -52,6 +52,8 @@ export function inspectFixOddRecovery(input:{
   row.plan.fixSource?.proposalId!==draft.sourceProposalId||
   row.plan.fixSource.treeIdentity!==draft.sourceCandidateTree||
   JSON.stringify(row.plan.writeSurfaces)!==JSON.stringify(draft.writeSurfaces));
+ // Solo importa el archivo del Fix buscado: un Todo ajeno, aunque todavía
+ // esté en curso, nunca invalida la recuperación de esta propuesta.
  const invalidArchive=archived.some(row=>!["done","cancelled"].includes(row.current?.state??""));
  const consistent=rows.length===1&&!wrong&&!invalidArchive;
  const row=consistent?rows[0]!:null;
