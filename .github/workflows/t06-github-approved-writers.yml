@@ -141,11 +141,24 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
           mkdir -p "$PI_CODING_AGENT_DIR" "$ASEN_T06_WRITER_REPORT_DIR"
           timeout 420s npx --no-install tsx scripts/t06-nvidia-dual-writer-native.ts
-      - name: Conservar informe acotado sin secretos
+      - name: Evaluar el informe T06 para T09, sin inferir coste o equivalencia
+        if: always()
+        shell: bash
+        env:
+          ASEN_T06_EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          ASEN_T06_WRITER_REPORT_DIR: ${{ runner.temp }}/asen-t06-evidence
+        run: |
+          set -euo pipefail
+          if [ -d node_modules ]; then
+            npx --no-install tsx scripts/t09-auditar-ensayo-t06.ts
+          else
+            echo "T09 no ejecutado: faltan las dependencias; no se admite ninguna evidencia"
+          fi
+      - name: Conservar ambos informes acotados sin secretos
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
         with:
           name: asen-t06-dos-writers-${{ github.sha }}-${{ github.run_id }}
-          path: ${{ runner.temp }}/asen-t06-evidence/t06-dual-native-evidence.json
+          path: ${{ runner.temp }}/asen-t06-evidence/
           if-no-files-found: warn
           retention-days: 7
