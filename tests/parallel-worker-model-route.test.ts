@@ -15,7 +15,7 @@ test("T05 una ruta concreta NVIDIA no demuestra autenticación, uso, gratuidad n
 });
 test("T05 bloquea modelo de proveedor por defecto, ausente, ambiguo o malformado",()=>{
  for(const value of [undefined,null,"", "unknown","default","nvidia", "nvidia/",
-  "/modelo","nvidia/default","nvidia/unknown","nvidia/auto",
+  "/modelo","nvidia//modelo","nvidia/modelo//otro","nvidia/default","nvidia/unknown","nvidia/auto",
   "nvidia/../otro","nvidia/./otro","nvidia/modelo mal formado",
   "nvidia/modelo\nMALICIOSO"," nvidia/modelo","nvidia/modelo " ]){
   const result=inspectPlannedWorkerModelRoute(value);
