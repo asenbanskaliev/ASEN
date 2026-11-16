@@ -696,3 +696,33 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 - **Evidencia de prueba sin proveedor:** `tests/t08-pi-settlement.test.ts` usa un proceso Pi simulado que primero devuelve un mensaje vacío, anuncia recuperación, devuelve texto en el siguiente intento y finaliza correctamente; también prueba la falta de `agent_settled`, la señal adelantada y la duplicación de mensajes. Se mantiene el contrato antiguo para las demás tareas, respaldado por `tests/pi-process-runner-no-fallback-settlement.test.ts`.
 - **Resultado:** 164 pruebas específicas correctas, 0 errores en CI de agentes (SHA `301b04c96f9fa336f40d9ae3858e374a3773abee`). El CI completo sigue sujeto a sus comprobaciones independientes. **No se ha hecho ninguna llamada NVIDIA** para probar estos cambios.
 - **Estado:** `T08_SETTLEMENT_SIMULADO_VERIFICADO_PENDIENTE_IA_REAL`; `globalFull:false`, `autoMerge:false`; revisión de producción y validación Pi/NVIDIA reales todavía pendientes. Documentación Pi: https://docs.pi.dev/latest/rpc .
+
+## Tanda transversal — auditoría y reparación del ciclo Pi (16/11/2026)
+
+Documento de auditoría: `docs/audit/t08-auditoria-cierre-pi-agentes-20261116.md`.
+
+- [x] Revisar el ciclo de Pi para clarificador, explorador, revisor,
+      verificador, Worker, resultados de ciclo de vida y agente principal.
+- [x] Corregir `PiArtifactRunner` para transmitir `AbortSignal` al
+      proceso Pi y denegar un artefacto si se canceló antes de entregarlo.
+- [x] Evitar la retención de texto parcial fuera de turno en el modo
+      `requireFinalSettlement:true` usado por T08.
+- [x] Bloquear cierre estricto junto a cadena automática de modelos
+      **antes** de abrir un proceso o consumir cuota.
+- [x] Añadir pruebas simuladas de cancelación, resultados tardíos,
+      sesiones simultáneas y cierre de los cuatro roles de lectura.
+- [ ] Comprobar todas las verificaciones del **último SHA** de la rama
+      (CI y Release Gate), no solo las pruebas dirigidas.
+- [ ] Revisión independiente de seguridad, fiabilidad, resiliencia y
+      efectos sobre el ciclo de vida, sin confundir CI con auditoría humana.
+- [ ] Decidir e implementar, con contrato propio y controles negativos,
+      la recuperación de múltiples `agent_end` en `PiArtifactRunner`.
+      La implementación actual rechaza de forma segura dicha secuencia.
+- [ ] Validar compatibilidad del cierre estricto con Pi real antes de
+      extenderlo a otros agentes, especialmente a los de escritura.
+- [ ] Confirmar T08 con IA real y dos jueces, aprobación separada
+      y un Writer limitado; no reutilizar aprobaciones antiguas.
+
+Estado: **TANDA_TRANSVERSAL_SIMULADA_PENDIENTE_CI_Y_REVISION**.
+No se declara equivalencia `FULL` ni se modifica `globalFull:false`.
+No se ha consumido NVIDIA ni fusionado ninguna rama.
