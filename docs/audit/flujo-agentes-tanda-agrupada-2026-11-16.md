@@ -9,7 +9,7 @@
 
 ## T09 — comparación conjunta 1/2/4
 
-- `compareAgentFlowABSeries` exige **seis observaciones**, una de ASEN y una de Gentle Shell para 1, 2 y 4 agentes.
+- `compareAgentFlowABSeries` exige **seis observaciones**, una de ASEN y una de producto de referencia para 1, 2 y 4 agentes.
 - Los pares deben compartir entradas, herramientas, permisos, sistema operativo, modelo y grado de razonamiento; dentro de cada producto la misma revisión y contexto deben mantenerse para los tres grados de paralelismo.
 - Se bloquean recibos o identidades repetidas, falta de consumo medido, defectos críticos y requisitos incumplidos. Solo compara duración y velocidad relativa cuando todos los pares son admisibles; coste sigue **desconocido** sin verificación de cobro.
 - No se han ejecutado seis pruebas reales en este cambio. Los datos de las pruebas unitarias son sintéticos y no se pueden publicar como cifras de rendimiento.
@@ -26,7 +26,7 @@
 1. Auditor distinto del autor revisa el cambio y la separación de permisos; la auditoría interna no equivale a T10.
 2. Ejecutar CI, Release Gate, Phase 0 y Pi runtime para el SHA exacto tras publicar.
 3. Ejecutar manualmente dos Writers auténticos, mantener los dos consentimientos independientes y conservar recibos sin secretos.
-4. Contrastar los recibos A/B verdaderos de ASEN y Gentle Shell en los tres niveles, sin inferir coste a partir de precio publicado.
+4. Contrastar los recibos A/B verdaderos de ASEN y producto de referencia en los tres niveles, sin inferir coste a partir de precio publicado.
 5. Mantener abierta la incidencia Windows `0xC0000409` hasta evidencia reproducible de causa y corrección.
 
 **Estado:** T06/T09/T10 parciales; T04/T07/T08 conectados en fases previas pero pendientes de pruebas funcionales finales. `globalFull:false`. Sin fusión ni pago autorizado.
