@@ -597,3 +597,15 @@ La ruta `/asen-review fix-plan <id> save` incorpora el siguiente paso funcional 
 - Valida identidad exacta del escenario, SHA, archivos nuevos separados, estados Git, huellas SHA-256, sesiones diferentes, campos de seguridad sin aceptación y dos resultados declarados satisfactorios. Bloquea registros corruptos, cambios adicionales, modelos distintos y directorios reutilizados.
 - Distingue rigurosamente **consistencia local** frente a **prueba independiente**. Aunque haya coincidencia, las autorizaciones humanas, la concurrencia, el consumo real, las pruebas dinámicas y la revisión independiente siguen **no verificados por este comprobador**.
 - Pruebas negativas de manipulación y no ejecución de código generado; la demostración manual sigue pendiente. No declarar T06/T10 FULL. PR #61 en borrador, `globalFull:false`.
+
+## Megatanda conjunta T02 + T04 + T05 + T06 + T07 + T08 (2026-11-16)
+
+**Alcance implementado dentro de PR #61, sin Writer autónomo ni fusión:**
+
+- **T02/T04/T05 → T07:** la lectura de tareas hijas se vincula a la identidad real de una sesión Pi, su Todo planificado, la relación Todo→agente y el estado persistido de AgentRuntime. Cuando ese vínculo se verifica y el modelo de la tarea está fijado, el panel muestra **modelo solicitado**. No confunde modelo solicitado con seleccionado o consumido: ambos permanecen desconocidos hasta tener un comprobante autenticado independiente.
+- **T06 → T07:** el panel Pi existente lee los diarios privados de intentos irreversibles del supervisor y de recopilaciones de resultados. Comprueba que lote, tarea de origen, sesión hija, carpeta Git y revisión del Todo coinciden antes de presentar el dato; los recibos no conceden permiso de reintento, aprobación ni integración.
+- **T07:** la pestaña AGENTS distingue agentes hijos en curso, tareas pendientes de revisión, modelo solicitado, intento registrado y recibo registrado. No añade un segundo almacén ni tareas ficticias.
+- **T08:** la consulta de recuperación de un plan Fix archivado, activo, inexistente o contradictorio devuelve una **siguiente inspección** distinta; nunca despacha ni reautoriza un agente.
+- **Pruebas negativas:** modelo sin Worker realmente atribuido, recibos o banderas malformados, intento de supervisor vinculado a otra sesión, separación de modelo solicitado y efectivo, historial Fix ambiguo y no reintento.
+
+**Criterio de aceptación:** comprobar pruebas de GitHub Actions y Release Gate para el último commit de esta tanda, sin dar por realizadas las comprobaciones omitidas. T06 (dos Writers reales), T08 (reparación completa con autorización humana), T01 (causa Windows), T09 (comparativa real) y T10 (revisión independiente) siguen **pendientes**. Los scripts de pruebas locales no se han ejecutado en el ordenador del usuario. PR #61 permanece en borrador y `globalFull:false`.
