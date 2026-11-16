@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {compareAgentFlowAB,type AgentFlowBenchmarkObservation} from "../src/review/agent-flow-ab-comparison.js";
 
 const d="a".repeat(64),e="b".repeat(64),sha="a".repeat(40);
-function observation(system:"asen"|"gentle-shell"):AgentFlowBenchmarkObservation{
+function observation(system:"asen"|"reference"):AgentFlowBenchmarkObservation{
  return {
   system,runId:system+"-test-1",commit:sha,
   inputDigest:d,toolsDigest:d,permissionsDigest:d,evidenceDigest:e,
@@ -17,7 +17,7 @@ function observation(system:"asen"|"gentle-shell"):AgentFlowBenchmarkObservation
 }
 test("T09 comparación provisional calcula tiempo/tokens, no coste desconocido ni FULL",()=>{
  const result=compareAgentFlowAB({
-  asen:observation("asen"),reference:observation("gentle-shell")
+  asen:observation("asen"),reference:observation("reference")
  });
  assert.equal(result.status,"ready-for-independent-review");
  assert.deepEqual(result.blockers,[]);
@@ -30,7 +30,7 @@ test("T09 comparación provisional calcula tiempo/tokens, no coste desconocido n
  assert.equal(result.acceptance,"not-accepted");
 });
 test("T09 rechaza contextos no equivalentes, sin aparentar comparación",()=>{
- const a=observation("asen"),reference=observation("gentle-shell");
+ const a=observation("asen"),reference=observation("reference");
  for(const field of ["inputDigest","toolsDigest","permissionsDigest","platform",
   "modelActual","thinkingActual","workerCount"] as const){
   const different=field==="platform"?"darwin":field==="workerCount"?4:field.endsWith("Digest")?e:"otro";
@@ -44,7 +44,7 @@ test("T09 rechaza contextos no equivalentes, sin aparentar comparación",()=>{
  }
 });
 test("T09 bloquea falsos recibos, consumos desconocidos y defectos críticos",()=>{
- const a=observation("asen"),b=observation("gentle-shell");
+ const a=observation("asen"),b=observation("reference");
  const cases=[
   {...a,providerReceiptObserved:false},
   {...a,totalTokens:null},
@@ -60,7 +60,7 @@ test("T09 bloquea falsos recibos, consumos desconocidos y defectos críticos",()
  }
 });
 test("T09 entradas malformadas no producen mediciones ni aprobación",()=>{
- const a=observation("asen"),b=observation("gentle-shell");
+ const a=observation("asen"),b=observation("reference");
  for(const malformed of [
   {...a,durationMs:-1},{...a,totalTokens:-1},
   {...a,costUsd:-0.1},{...a,inputDigest:"sin huella"},
