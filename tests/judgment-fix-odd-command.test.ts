@@ -6,6 +6,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {registerOrdinaryReviewCommand} from "../src/review/ordinary-review-command.js";
 import type {StoredJudgmentFixProposal} from "../src/review/judgment-fix-proposal-journal.js";
+import type {ScopedOddTodo} from "../src/review/odd-agent-review-flow.js";
 
 type Command=Parameters<Parameters<typeof registerOrdinaryReviewCommand>[0]>[1];
 function fixture(t:TestContext){
@@ -27,9 +28,9 @@ function fixture(t:TestContext){
   cwd:projectId,hasUI:false,sessionManager:{getSessionId:()=>session},
   ui:{notify:(message:string,level:"info"|"error")=>notifications.push({message,level})}
  };
- function register(reader:()=>Promise<readonly StoredJudgmentFixProposal[]>){
+ function register(reader:()=>Promise<readonly StoredJudgmentFixProposal[]>,readTodos?:()=>Promise<readonly ScopedOddTodo[]>){
   return registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),
-   undefined,undefined,undefined,{
+   undefined,undefined,readTodos?async()=>readTodos():undefined,{
     record:async()=>{writes++;throw new Error("No se deben escribir propuestas al consultar");},
     list:async()=>{reads++;return reader();}
    });
@@ -100,5 +101,58 @@ test("T08 las propuestas en disputa no inician correcciones",async t=>{
  assert.equal(result.autoLaunch,false);
  assert.equal(result.requiresFreshWriterConsent,true);
  assert.equal(f.notifications[0]?.level,"error");
+ assert.equal(f.writeCount(),0);
+});
+
+test("T08 recuperación de Fix lee el almacén real, sin reintentos ni permisos",async t=>{
+ const f=fixture(t),taskId="todo-11111111-2222-4333-8444-555555555555";
+ let todoReads=0;
+ const todo:ScopedOddTodo={
+  taskId,title:"Fix almacenado",
+  requestId:"asen-plan:fix-"+f.proposal.id.slice(0,24)+":worker",
+  events:[{taskId,sessionId:f.context.sessionManager.getSessionId(),
+   projectId:f.context.cwd,revision:1,state:"planned",at:"2026-11-16T00:00:00.000Z"}],
+  current:{taskId,sessionId:f.context.sessionManager.getSessionId(),
+   projectId:f.context.cwd,revision:1,state:"planned",at:"2026-11-16T00:00:00.000Z"},
+  plan:{role:"worker",skillPaths:[],writeSurfaces:["src/reparar.ts"],
+   fixSource:{proposalId:f.proposal.id,treeIdentity:f.proposal.candidateTreeIdentity}}
+ };
+ f.register(async()=>[f.proposal],async()=>{todoReads++;return [todo];});
+ const recovered=await f.run("fix-plan "+f.proposal.id+" status") as {
+  status:string;workerTodoId:string;writerAuthority:boolean;autoRetry:boolean
+ };
+ assert.equal(recovered.status,"worker-observed");
+ assert.equal(recovered.workerTodoId,taskId);
+ assert.equal(recovered.writerAuthority,false);
+ assert.equal(recovered.autoRetry,false);
+ assert.equal(todoReads,2);
+ assert.equal(f.readCount(),3);
+ assert.equal(f.writeCount(),0);
+});
+test("T08 recuperación tras fallo ambiguo bloquea un diario que cambie entre lecturas",async t=>{
+ const f=fixture(t),taskId="todo-22222222-2222-4333-8444-555555555555";
+ let calls=0;
+ const row:ScopedOddTodo={
+  taskId,title:"Worker",
+  requestId:"asen-plan:fix-"+f.proposal.id.slice(0,24)+":worker",
+  events:[{taskId,sessionId:f.context.sessionManager.getSessionId(),
+   projectId:f.context.cwd,revision:1,state:"planned",at:"2026-11-16T00:00:00.000Z"}],
+  current:{taskId,sessionId:f.context.sessionManager.getSessionId(),
+   projectId:f.context.cwd,revision:1,state:"planned",at:"2026-11-16T00:00:00.000Z"},
+  plan:{role:"worker",skillPaths:[],writeSurfaces:["src/reparar.ts"],
+   fixSource:{proposalId:f.proposal.id,treeIdentity:f.proposal.candidateTreeIdentity}}
+ };
+ f.register(async()=>[f.proposal],async()=>{
+  calls++;return [{...row,current:{...row.current,revision:calls}}];
+ });
+ await assert.rejects(async()=>f.run("fix-plan "+f.proposal.id+" status"),
+  /journal changed during recovery/u);
+ assert.equal(f.writeCount(),0);
+});
+test("T08 recuperación sin lector ODD no inventa tareas",async t=>{
+ const f=fixture(t);
+ f.register(async()=>[f.proposal]);
+ const result=await f.run("fix-plan "+f.proposal.id+" status") as {status:string};
+ assert.equal(result.status,"unavailable");
  assert.equal(f.writeCount(),0);
 });
