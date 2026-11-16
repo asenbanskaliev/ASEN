@@ -67,8 +67,11 @@ function issueArtifactProof(request:AgentRequest):AgentArtifactProof{const proof
 /** The lifecycle receives a Pi-produced artifact, never the raw RPC envelope. */
 export class PiArtifactRunner implements AgentRunner{
  constructor(private readonly pi:PiProcessRunner){}
- async run(request:AgentRequest):Promise<AgentResult>{
-  const response=await this.pi.run(request);
+ async run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>{
+  // El Dispatcher es dueño de la cancelación. El adaptador de artefactos
+  // debe transmitirla al mismo proceso Pi, no esperar a que termine solo.
+  const response=await this.pi.run(request,signal);
+  if(signal?.aborted)return {id:request.id,ok:false,output:"Pi artifact cancellation requested"};
   if(!response.ok||response.id!==request.id)return {...response,ok:false};
   try{return {id:request.id,ok:true,output:bindPiArtifactIdentity(response.output,request),artifactProof:issueArtifactProof(request)};}
   catch(error){return {id:request.id,ok:false,output:String(error)};}
