@@ -1,10 +1,30 @@
 name: Memory OpenRouter E2E
 on:
   workflow_dispatch:
+    inputs:
+      modo:
+        description: 'Elegir memoria existente o prueba T06 con dos Writers'
+        required: true
+        type: choice
+        default: memoria
+        options:
+          - memoria
+          - t06
+      candidate_sha:
+        description: 'SHA exacto de 40 caracteres en feat/flujo-de-agentes-20261115'
+        required: false
+        type: string
+      coste_desconocido_autorizado:
+        description: 'Acepto expresamente el posible coste desconocido de NVIDIA'
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: read
+  actions: read
 jobs:
   memory-openrouter:
+    if: inputs.modo != 't06'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -26,3 +46,12 @@ jobs:
         run: |
           test -n "$OPENROUTER_API_KEY"
           node --import tsx scripts/pi-free-memory-e2e.mjs
+
+  t06-escritura-con-aprobaciones:
+    if: inputs.modo == 't06' && github.repository == 'asenbanskaliev/ASEN' && github.ref == 'refs/heads/feat/flujo-de-agentes-20261115'
+    uses: ./.github/workflows/t06-github-approved-writers.yml
+    with:
+      candidate_sha: ${{ inputs.candidate_sha }}
+      cost_acknowledged: ${{ inputs.coste_desconocido_autorizado }}
+    secrets:
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
