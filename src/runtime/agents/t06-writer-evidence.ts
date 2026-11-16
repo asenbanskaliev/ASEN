@@ -1,3 +1,4 @@
+import type {PersistentWorkspaceStore} from "../workspace-store.js";
 /** T06 — Evaluación estricta de un Writer Pi. No usa respuestas del modelo
  * como prueba de escritura; exige eventos de herramienta, archivo y atribución.
  * Las causas son códigos cerrados, sin respuestas, secretos o código generado. */
@@ -60,4 +61,31 @@ export function assessT06WriterEvidence(input:T06WriterEvidenceInput):T06WriterE
   writeStarts:starts.length,writeSuccesses:successes.length,
   writeFailures:failures.length,blockers:Object.freeze(blockers)
  });
+}
+
+/** Consulta el fichero de atribución persistido por la extensión nativa Pi.
+ * No confunde tool_execution_end con escritura exitosa ni acepta un actor
+ * distinto. Una excepción o registro extra bloquea el reconocimiento. */
+export async function verifyT06WorkspaceAttribution(input:{
+ readonly store:Pick<PersistentWorkspaceStore,"list">;
+ readonly root:string;
+ readonly sessionId:string;
+ readonly agentId:string;
+ readonly target:string;
+}):Promise<Readonly<{verified:boolean;entries:number}>>{
+ try{
+  if(!input||!/^t06-writer-[ab]\.mjs$/u.test(input.target)||
+   !/^t06-writer-[ab]:worker$/u.test(input.agentId)||
+   !input.root||!input.sessionId)
+   return Object.freeze({verified:false,entries:0});
+  const rows=await input.store.list({
+   sessionId:input.sessionId,projectId:input.root,worktree:input.root
+  });
+  const change=rows.length===1?rows[0]?.change:undefined;
+  const verified=!!change&&change.path===input.target&&
+   change.actor.kind==="agent"&&change.actor.id===input.agentId&&
+   change.sessionId===input.sessionId&&change.projectId===input.root&&
+   change.worktree===input.root&&change.operation==="create";
+  return Object.freeze({verified,entries:rows.length});
+ }catch{return Object.freeze({verified:false,entries:0});}
 }
