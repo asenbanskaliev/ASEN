@@ -135,3 +135,36 @@ test("T08 rechaza mensajes repetidos que Pi no marcó para recuperación",()=>{
  assert.throws(()=>parseT08NativeReviewText(output,{requireFinalSettlement:true}),
   /sin recuperación autorizada/u);
 });
+
+test("T08 no acepta una finalización Pi abortada como un dictamen correcto",async t=>{
+ const scenario=`
+const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
+let buf="";
+process.stdin.on("data",chunk=>{
+ buf+=String(chunk);
+ let i;
+ while((i=buf.indexOf("\\n"))>=0){
+  const line=buf.slice(0,i);buf=buf.slice(i+1);
+  if(!line.trim())continue;
+  const cmd=JSON.parse(line);
+  if(cmd.type!=="prompt")continue;
+  emit({type:"response",id:cmd.id,success:true,command:"prompt"});
+  emit({type:"agent_start"});
+  emit({type:"message_end",message:{role:"assistant",
+   content:[{type:"text",text:"respuesta parcial"}],stopReason:"stop"}});
+  emit({type:"agent_end",willRetry:false});
+  emit({type:"agent_settled",aborted:true});
+ }
+});
+`;
+ const fixture=await createPiRpcFixture(t,scenario);
+ const runner=new PiProcessRunner({
+  command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],
+  noTools:true,requireFinalSettlement:true,timeoutMs:3_000
+ });
+ const result=await runner.run({
+  id:"t08-aborted",role:"reviewer",repository:fixture.repository,prompt:"Prueba"
+ });
+ assert.equal(result.ok,false);
+ assert.match(result.output,/aborted run/u);
+});
