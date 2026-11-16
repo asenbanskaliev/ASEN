@@ -359,8 +359,10 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
    assertContextCurrent();
    let fixProfile:RouteChoice|undefined,fixProfileUnavailable=false;
-   try{fixProfile=await resolveLensRoute?.(context,"jd-fix-agent");}
-   catch{fixProfileUnavailable=true;}
+   if(report.status!=="analysis-complete"){
+    try{fixProfile=await resolveLensRoute?.(context,"jd-fix-agent");}
+    catch{fixProfileUnavailable=true;}
+   }
    await assertOddCurrent();assertContextCurrent();
    const fixHandoff=proposeJudgmentFixHandoff({
     report,evidence,...(fixProfile?{fixProfile}:{}),fixProfileUnavailable
