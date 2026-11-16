@@ -11,7 +11,7 @@ El informe nunca declara `accepted:true`, `writerAuthority:true` ni `globalFull:
 ## Preparación manual en Windows (solo D:\\Asen)
 
 1. Abrir una terminal PowerShell **interactiva** en `D:\\Asen`.
-2. Confirmar que la rama es `feat/flujo-de-agentes-20261115`, con árbol limpio y última versión descargada. No usar `D:\\gentle-shell` ni modificar `main`.
+2. Confirmar que la rama es `feat/flujo-de-agentes-20261115`, con árbol limpio y última versión descargada. No utilizar otras carpetas de código ni modificar `main`.
 3. Instalar dependencias locales: `npm ci`. Comprobar Node >= 22.19 y Pi exactamente 1.2.0.
 4. Disponer de `NVIDIA_API_KEY` en el entorno local. La clave **no** se copia al informe ni se pega en la conversación. El modelo Writer está fijado a `nvidia/nemotron-3.5-lightning-30b-a3b`; **su precio real no está verificado**. Confirmarlo con el proveedor antes de autorizar consumo.
 5. Configurar las variables de la sesión y ejecutar:
