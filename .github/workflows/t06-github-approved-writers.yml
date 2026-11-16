@@ -154,6 +154,20 @@ jobs:
           else
             echo "T09 no ejecutado: faltan las dependencias; no se admite ninguna evidencia"
           fi
+      - name: Contrastar T06 real con T07 sin simular Pi TUI ni nuevos modelos
+        if: always()
+        shell: bash
+        env:
+          ASEN_T06_EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          ASEN_T06_WRITER_REPORT_DIR: ${{ runner.temp }}/asen-t06-evidence
+        run: |
+          set -euo pipefail
+          if [ -f "$ASEN_T06_WRITER_REPORT_DIR/t06-dual-native-evidence.json" ] && [ -d node_modules ]; then
+            npx --no-install tsx scripts/t06-t07-verify-trial.ts
+          else
+            echo "::error::T06+T07 BLOCKED: falta el recibo Writer real del mismo run"
+            exit 1
+          fi
       - name: Conservar ambos informes acotados sin secretos
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
