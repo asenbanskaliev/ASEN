@@ -45,13 +45,15 @@ export function createT06ReadOnlyGitFixture():T06ReadOnlyGitFixture{
   const head=git(sourceRoot,"rev-parse","HEAD");
   for(const child of children)git(sourceRoot,"worktree","add","--detach","--quiet",child,head);
   const observe=():T06GitObservation=>{
-   const linked=git(sourceRoot,"worktree","list","--porcelain");
+   const linked=git(sourceRoot,"worktree","list","--porcelain")
+    .split(/\\r?\\n/u).filter(line=>line.startsWith("worktree "))
+    .map(line=>line.slice("worktree ".length));
    const childStates=children.map(child=>({
     pinned:git(child,"rev-parse","HEAD")===head,
     clean:git(child,"status","--porcelain=v1","--untracked-files=all")==="",
     linked:existsSync(child)&&
      realpathSync(git(child,"rev-parse","--show-toplevel"))===realpathSync(child)&&
-     linked.includes("worktree "+child)
+     linked.some(path=>existsSync(path)&&realpathSync(path)===realpathSync(child))
    }));
    return Object.freeze({
     sourceClean:git(sourceRoot,"rev-parse","HEAD")===head&&
