@@ -34,7 +34,7 @@ test("T04/T05 ODD Todo vincula candidato y perfil sin ejecutar modelo ni Writer"
  assert.equal(result.reviewerProfiles.length,4);
  assert.ok(result.reviewerProfiles.every(row=>row.model==="nvidia/free-reviewer"&&row.actual==="unknown"));
  assert.equal(result.reviewerModelActual,"unknown");
- assert.equal(result.nextCommand,"/asen-review workspace adaptive");
+ assert.equal(result.nextCommand,"/asen-review todo "+taskId+" adaptive");
  assert.equal(result.requiresNewConsent,true);
  assert.equal(result.writerAuthority,false);
  assert.equal(result.accepted,false);
