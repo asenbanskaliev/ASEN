@@ -27,7 +27,8 @@ export function t06LiveApprovalChallenge(intent:T06LiveWriterIntent):string{
 export function acceptT06LiveApproval(intent:T06LiveWriterIntent,reply:unknown):boolean{
  const expected=t06LiveApprovalChallenge(intent);
  if(typeof reply!=="string"||reply.length!==expected.length)return false;
- return timingSafeEqual(Buffer.from(reply,"utf8"),Buffer.from(expected,"utf8"));
+ const supplied=Buffer.from(reply,"utf8"),approved=Buffer.from(expected,"utf8");
+ return supplied.length===approved.length&&timingSafeEqual(supplied,approved);
 }
 export function requireDistinctT06Approvals(
  first:T06LiveWriterIntent,firstReply:unknown,
