@@ -88,3 +88,36 @@ test("T07 summary rejects malformed, duplicated or misleading persisted projecti
  assert.throws(()=>projectParallelAgentFlow([batch({tasks:[good]})]));
  assert.throws(()=>projectParallelAgentFlow([batch(),batch({batchId:"batch-2"})]),/duplicate/u);
 });
+
+test("T02/T05/T07 muestra modelo solicitado únicamente con vínculo y Worker observable",()=>{
+ const p=projectParallelAgentFlow([batch({supervisorClaimed:true,tasks:[
+  task("worker-a",{handoffClaimed:true,receiptRecorded:true,childSession:{
+   id:"child-a",modelRequested:"nvidia/nemotron-3.5-lightning-30b-a3b",
+   agents:[{id:"a",role:"worker",state:"completed"}]}}),
+  task("worker-b",{handoffClaimed:false,receiptRecorded:false})
+ ]})]);
+ assert.equal(p.tasks[0]?.modelRequested,"nvidia/nemotron-3.5-lightning-30b-a3b");
+ assert.equal(p.tasks[0]?.modelActual,"unknown");
+ assert.equal(p.tasks[0]?.modelConsumedProven,false);
+ assert.equal(p.tasks[0]?.supervisorClaimed,true);
+ assert.equal(p.tasks[0]?.receiptRecorded,true);
+ assert.equal(p.tasks[0]?.stage,"manual-review-required");
+ assert.equal(p.tasks[0]?.acceptance,"not-accepted");
+ assert.equal(p.tasks[1]?.modelRequested,"unknown");
+ assert.equal(p.tasks[1]?.receiptRecorded,false);
+ assert.equal(p.autoMerge,false);
+});
+test("T06/T07 no acepta modelo solicitado sin Worker realmente vinculado",()=>{
+ for(const input of [
+  batch({supervisorClaimed:"sí"}),
+  batch({tasks:[task("worker-a",{receiptRecorded:"true"}),task("worker-b")]}),
+  batch({tasks:[task("worker-a",{childSession:{
+   id:"child-a",modelRequested:"nvidia/otro",agents:[]}}),task("worker-b")]}),
+  batch({tasks:[task("worker-a",{childSession:{
+   id:"child-a",modelRequested:"nvidia/otro",
+   agents:[{id:"a",role:"worker",state:"running"}]}}),task("worker-b")]}),
+  batch({tasks:[task("worker-a",{handoffClaimed:true,childSession:{
+   id:"child-a",modelRequested:"unknown",
+   agents:[{id:"a",role:"worker",state:"running"}]}}),task("worker-b")]})
+ ])assert.throws(()=>projectParallelAgentFlow([input]));
+});
