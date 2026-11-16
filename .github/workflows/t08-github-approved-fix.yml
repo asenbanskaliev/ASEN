@@ -55,6 +55,10 @@ jobs:
           test "$COSTE_AUTORIZADO" = true
           for model in "$REVISOR_A" "$REVISOR_B" "$MODELO_REPARADOR"; do
             [[ "$model" =~ ^nvidia/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$ ]]
+            if [[ "$model" == "nvidia/nemotron-3-ultra-550b-a55b" ]]; then
+              echo "T08 bloqueado: Nemotron 3 Ultra presenta respuestas vacías; elegir otro modelo" >&2
+              exit 1
+            fi
           done
           test "$REVISOR_A" != "$REVISOR_B"
           test "$REVISOR_A" != "$MODELO_REPARADOR"
