@@ -40,7 +40,9 @@ test("T06 bloquea revisiones con ámbitos, huellas, hallazgos o respuestas manip
 test("T06 revisiones sin mensaje Pi final o con herramientas no se aceptan",()=>{
  for(const output of [
   "", "no es JSON",JSON.stringify({type:"tool_execution_start",toolName:"write"}),
-  JSON.stringify({type:"message_end",message:{role:"assistant",content:[{type:"toolCall"}]}})
+  JSON.stringify({type:"message_end",message:{role:"assistant",content:[{type:"toolCall"}]}}),
+  JSON.stringify({type:"tool_execution_start",toolName:"write"})+"\n"+stream(good),
+  stream(good)+"\n"+stream(good)
  ]){
   assert.throws(()=>parseT06NativeReviewReceipt(output,sha),/T06 independent/u);
  }
