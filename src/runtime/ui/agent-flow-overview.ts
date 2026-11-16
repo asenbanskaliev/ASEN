@@ -2,6 +2,7 @@
  * scoped changes -> human review. It derives a UX stage from observed data,
  * never from a user-supplied plan or a claimed model selection. */
 import type {ParallelWorktreeChangeInspection} from "../agents/parallel-worktree-change-inspection.js";
+import {inspectPlannedWorkerModelRoute} from "../agents/parallel-worker-model-route.js";
 
 export type AgentFlowStage=
  "blocked"|"reserved-needs-inspection"|"attach-required"|"child-plan-required"|
@@ -12,14 +13,20 @@ export type AgentFlowAction=
 export interface AgentFlowSourceBatch{
  readonly batchId:string;
  readonly state:"reserved"|"prepared";
+ /** Un intento persistido no equivale a una ejecución completada. */
+ readonly supervisorClaimed?:boolean;
  readonly tasks:readonly Readonly<{
   sourceTodoId:string;
   sourceTodoUnchanged:boolean;
   worktreePresent:boolean;
   handoffClaimed:boolean;
+  /** Recibo de recopilación: no es aceptación de los cambios. */
+  receiptRecorded?:boolean;
   changes:ParallelWorktreeChangeInspection;
   childSession?:Readonly<{
    id:string;
+   /** Modelo solicitado en el Todo Writer genuinamente atribuido. */
+   modelRequested?:string;
    agents:readonly Readonly<{id:string;role:string;state:string}>[];
    todos?:readonly Readonly<{taskId:string;state:string}>[];
   }>;
@@ -35,7 +42,8 @@ export interface AgentFlowProjection{
   batchId:string;taskId:string;stage:AgentFlowStage;nextAction:AgentFlowAction;
   workerObserved:"not-observed"|"active"|"terminal-unverified"|"failure-or-interruption";
   changeEvidence:"unavailable"|"clean"|"scoped-changes"|"out-of-scope"|"head-diverged";
-  modelRequested:"unknown";modelResolved:"unknown";modelActual:"unknown";
+  supervisorClaimed:boolean|null;receiptRecorded:boolean|null;
+  modelRequested:string;modelResolved:"unknown";modelActual:"unknown";
   modelConsumedProven:false;
   acceptance:"not-accepted";
  }>[];
@@ -55,17 +63,22 @@ export function projectParallelAgentFlow(batches:readonly AgentFlowSourceBatch[]
  const tasks:AgentFlowProjection["tasks"][number][]=[],stages=initialized(),ids=new Set<string>();
  for(const batch of batches){
   if(!batch||!safeId(batch.batchId)||!["reserved","prepared"].includes(batch.state)||
-   !Array.isArray(batch.tasks)||batch.tasks.length<2||batch.tasks.length>4)
+   !Array.isArray(batch.tasks)||batch.tasks.length<2||batch.tasks.length>4||
+   (batch.supervisorClaimed!==undefined&&typeof batch.supervisorClaimed!=="boolean"))
    throw new Error("Invalid persisted agent-flow batch");
   for(const task of batch.tasks){
    if(!task||!safeId(task.sourceTodoId)||ids.has(task.sourceTodoId)||typeof task.sourceTodoUnchanged!=="boolean"||
     typeof task.worktreePresent!=="boolean"||typeof task.handoffClaimed!=="boolean"||
+    (task.receiptRecorded!==undefined&&typeof task.receiptRecorded!=="boolean")||
     !task.changes||!["clean","scoped-changes","out-of-scope","head-diverged","unavailable"].includes(task.changes.status)||
     typeof task.changes.sourceVerified!=="boolean"||typeof task.changes.headMatchesBase!=="boolean"||
     !Array.isArray(task.changes.outOfScopePaths)||!Array.isArray(task.changes.changedPaths)||
     task.changes.acceptance!=="not-accepted"||task.changes.autoMerge!==false||
     (task.childSession!==undefined&&(!safeId(task.childSession.id)||
      !Array.isArray(task.childSession.agents)||task.childSession.agents.length>128||
+     (task.childSession.modelRequested!==undefined&&
+      (inspectPlannedWorkerModelRoute(task.childSession.modelRequested).status!=="pinned"||
+       !task.handoffClaimed||!task.childSession.agents.some(a=>a.role==="worker")))||
      task.childSession.agents.some((agent:Readonly<{id:string;role:string;state:string}>)=>!safeId(agent.id)||!validStates.has(agent.state)))))
     throw new Error("Invalid or duplicate agent-flow evidence");
    ids.add(task.sourceTodoId);
@@ -98,7 +111,10 @@ export function projectParallelAgentFlow(batches:readonly AgentFlowSourceBatch[]
    stages[stage]++;
    tasks.push(Object.freeze({
     batchId:batch.batchId,taskId:task.sourceTodoId,stage,nextAction,workerObserved,
-    changeEvidence:task.changes.status,modelRequested:"unknown" as const,
+    supervisorClaimed:batch.supervisorClaimed??null,
+    receiptRecorded:task.receiptRecorded??null,
+    changeEvidence:task.changes.status,
+    modelRequested:task.childSession?.modelRequested??"unknown",
     modelResolved:"unknown" as const,modelActual:"unknown" as const,
     modelConsumedProven:false as const,acceptance:"not-accepted" as const
    }));
