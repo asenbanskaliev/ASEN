@@ -533,6 +533,10 @@ export class PiProcessRunner implements AgentRunner{
      if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled&&
         !strictNativeSettlement){child.stdin.end();continue;}
      if(type==="agent_settled"&&policyLoaded&&strictNativeSettlement){
+      if((record as {aborted?:unknown}).aborted===true){
+       stop({id:request.id,ok:false,output:"pi agent_settled reported an aborted run"});
+       return;
+      }
       if(!strictPromptAck||!strictMessageEnd||!strictAgentEnd||strictAgentWillRetry){
        stop({id:request.id,ok:false,
         output:"pi agent_settled without a completed final assistant turn"});
