@@ -226,6 +226,10 @@ export class PiProcessRunner implements AgentRunner{
    if(requiredPhase&&request.skillContext.phase!==requiredPhase)return Promise.resolve({id:request.id,ok:false,output:"Pi skill context phase does not match agent role"});
   }
   if(request.writeSurfaces?.length&&request.skillContext?.phase!=="apply")return Promise.resolve({id:request.id,ok:false,output:"Pi write authority requires issued apply phase"});
+  // El receptor de escritura se consume arriba incluso si la tarea se canceló.
+  // No comprobar versiones, crear archivos temporales ni abrir Pi tras cancelar.
+  if(runSignal?.aborted||this.options.signal?.aborted)
+   return Promise.resolve({id:request.id,ok:false,output:"pi process cancelled"});
   const command=this.options.command??"pi";
   if (this.options.validateRuntimeVersion && !this.#runtimeVerified) {
    const minimumRuntimeVersion = this.options.minimumRuntimeVersion ?? "1.2.0";
