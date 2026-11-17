@@ -155,3 +155,10 @@ Solicitud del usuario: ejecutar ya la tarea horaria. En la PR #61, SHA `d05f98da
 - Al contrastar el tag congelado Gentle Shell 4.8.0 se comprobó que `tinted` debe afectar también al **lateral fijo**, no solo a la cabecera. La siguiente mejora pinta cada fila del lateral con `customMessageBg` cuando el host ofrece `theme.bg`, hasta completar su ancho nativo. `transparent` conserva el dibujo original y los datos, sin colorear. El ajuste en caliente conserva los plegados y no modifica el estado de tareas.
 - Prueba nueva: transición transparente → tintado, mismo contenido y número de filas, exactamente 50 columnas pintadas, sin inventar datos ni tocar permisos/modelos. El tema del host que carezca de `bg` mantiene un resultado legible.
 - Diferencias conscientes respecto a la referencia: no se pinta todavía toda la barra inferior ni se dispone de fotografías equivalentes de ambas versiones. **Estado: IMPLEMENTADO_PENDIENTE_CI** de esta mejora. `globalFull:false`, PR #61 sin fusión.
+
+## 17/11/2026 — T11-E: comprobar cabecera inferior en salida nativa Pi
+
+- Basado en HEAD `abc5e7e226963a8af45b5c6c2d869075711ac6ce`. La geometría, clic y foco ya se comprobaron en tres plataformas en SHAs previos; no se repite un ensayo Writer.
+- Se amplía la cuarta sesión Pi 1.2 existente del ensayo nativo (posición `bottom`) con preferencia real persistida `header=below-input`, `surface=tinted`. El pseudoterminal debe **dibujar** la marca `π ASEN` y la versión `Pi 1.2.0` durante la sesión; un renderizador aislado no basta. Se exige además que todas las sesiones cierren y se mantiene la geometría vertical.
+- El recibo guarda únicamente dos indicadores de texto visible, no pantallas, claves ni salida cruda del terminal. **Limitación:** demostrar caracteres en la salida del host no demuestra todavía ubicación exacta, color real del fondo, capturas comparables ni paridad completa con Gentle Shell.
+- Estado de esta ampliación: `IMPLEMENTADO_PENDIENTE_CI`; no hubo un RED/GREEN local separado, la prueba Pi nativa debe verificarse en CI del SHA nuevo. `globalFull:false`, T07/T11 abiertos, PR #61 sin fusión.

@@ -133,3 +133,9 @@ La referencia permanece Gentle Shell v4.8.0 en tag congelado. Las implementacion
 ### Validación confirmada de interacción del lateral
 
 El SHA `d6a18ed75db09fc35dac526a4668accb53d1335f` ha superado los tres trabajos nativos Pi, el CI completo, la puerta de publicación, arquitectura y Pi 1.2. La incorporación de la cabecera y superficie en la siguiente tanda requiere verificaciones propias; mantener `globalFull:false` hasta que exista revisión visual comparada.
+
+### T11-E — Ensayo de cabecera en Pi 1.2 auténtico (17/11/2026)
+
+El host nativo se amplía para cargar `t11-chrome.json` con `below-input` y `tinted` antes de la sesión real que ya verifica el panel inferior. El pseudoterminal debe mostrar la marca ASEN y la versión Pi. La comprobación va vinculada al SHA exacto, a la terminación de las cuatro sesiones y a las pruebas de geometría/ratón previas.
+
+Este control **no** demuestra por sí solo que la cabecera esté debajo del editor, que los 50 caracteres reciban fondo real ni una comparación fotográfica con Gentle Shell v4.8.0. Continúan pendientes la captura/contraste y la revisión independiente. `globalFull:false`.

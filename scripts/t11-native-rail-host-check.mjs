@@ -39,7 +39,8 @@ writeFileSync(join(project,"README.md"),"medir reparto del espacio\n");
 git(project,"add","README.md");git(project,"commit","-qm","base prueba T11");
 const report={schema:"asen.t11.native-rail/v1",sha:expected,piVersion:pi.version,
  modelCalls:0,nvidiaCalls:0,baselineWidth:null,withRailWidth:null,realReservation:null,
- wideTree:null,narrowTree:null,restored:false,bottomTree:null,bottomAt139:null,bottomRestored:false,interaction:null,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
+ wideTree:null,narrowTree:null,restored:false,bottomTree:null,bottomAt139:null,bottomRestored:false,interaction:null,
+ chromeRender:null,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async(fn,msg,timeout=25000)=>{const start=Date.now();while(Date.now()-start<timeout){if(fn())return;await sleep(150);}throw Error(msg);};
 const read=file=>{try{return readFileSync(file,"utf8").split("\n").filter(Boolean).map(JSON.parse);}catch{return [];}};
@@ -103,6 +104,17 @@ async function run(label,withAsen,resize,interaction=false){
   assert.equal(exited,false,label+": Pi salió durante el dibujo");
   await sleep(600);
   const wide=samples(read(records),180);
+  // La cabecera inferior debe aparecer en la salida del pseudoterminal de Pi,
+  // no únicamente en un renderizador simulado. No infiere la posición en píxeles.
+  let chromeRender;
+  if(label==="asen-bottom"){
+   await until(()=>output.includes("π ASEN")&&output.includes("Pi 1.2.0")||exited,
+    label+": cabecera inferior no observada en el host Pi");
+   assert.equal(exited,false,label+": Pi salió antes de renderizar la cabecera");
+   chromeRender={source:"native-pty-output",brandObserved:output.includes("π ASEN"),
+    piVersionObserved:output.includes("Pi 1.2.0"),
+    placementConfigured:"below-input",surfaceConfigured:"tinted"};
+  }
   if(interaction){
    await until(()=>samples(read(records),180).some(row=>
     Number.isSafeInteger(row.mouseX)&&Number.isSafeInteger(row.mouseY)&&row.mouseY>0&&row.todosOpen),
@@ -133,7 +145,7 @@ async function run(label,withAsen,resize,interaction=false){
   terminal.resize(180,40);
   await until(()=>read(records).filter(row=>row.kind==="render"&&row.columns===180).length>before||exited,label+": no redibujó al volver a 180");
   assert.equal(exited,false,label+": Pi salió al ampliar");
-  return {wide,small,restored:samples(read(records),180)};
+  return {wide,small,restored:samples(read(records),180),chromeRender};
  }catch(error){throw Error(label+": "+String(error)+", salida host "+output.slice(-1600));}
  finally{
   writeFileSync(stop,"ok");
@@ -167,7 +179,13 @@ try{
  // Preferencia real guardada en el HOME aislado; prueba Pi 1.2 nativo, no maqueta.
  const prefDir=join(home,".asen");mkdirSync(prefDir,{recursive:true,mode:0o700});
  writeFileSync(join(prefDir,"t11-layout.json"),JSON.stringify({schema:1,position:"bottom",density:"compact"})+"\n",{mode:0o600});
+ writeFileSync(join(prefDir,"t11-chrome.json"),
+  JSON.stringify({schema:1,header:"below-input",surface:"tinted"})+"\n",{mode:0o600});
  const bottom=await run("asen-bottom",true,true);
+ assert.equal(bottom.chromeRender?.source,"native-pty-output");
+ assert.equal(bottom.chromeRender?.brandObserved,true,"El host real no dibujó la marca de ASEN");
+ assert.equal(bottom.chromeRender?.piVersionObserved,true,"El host real no dibujó la versión Pi");
+ report.chromeRender=bottom.chromeRender;
  const bottomWide=bottom.wide.at(-1),bottomSmall=bottom.small.at(-1),bottomBack=bottom.restored.at(-1);
  assert.ok(bottomWide&&bottomSmall&&bottomBack,"Pi bottom debe emitir geometría nativa");
  Object.assign(report,{
