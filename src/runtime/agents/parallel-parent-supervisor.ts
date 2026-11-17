@@ -172,7 +172,12 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    (b.plan?.priority??Number.MAX_SAFE_INTEGER));
   const next=ready[0],candidate=next?.plan?.candidate;
   if(!next||next.plan?.role!=="worker"||!next.requestId?.endsWith(":worker")||
-   !next.description||!next.plan?.writerAuthorizationBasis||!candidate||
+   // El plan del hijo debe proceder de la MISMA petición ODD de origen.
+   // Coincidir en modelo, SHA y rutas no basta para autorizar otra instrucción.
+   next.requestId!==source.requestId||
+   !source.plan?.writerAuthorizationBasis||
+   next.plan?.writerAuthorizationBasis!==source.plan.writerAuthorizationBasis||
+   !next.description||!candidate||
    candidate.revision!==batch.sourceHead||!same(candidate.repository,canonical)||
    next.current.sessionId!==child.sessionId||!same(next.current.projectId,canonical)||
    !next.plan.writeSurfaces||next.plan.writeSurfaces.length!==task.writeSurfaces.length||
@@ -294,6 +299,9 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     sourceTask.taskRevision!==currentSource.current.revision||
     currentSource.current.state!=="planned"||
     sourceTask.requestId!==currentSource.requestId||
+    !currentSource.plan?.writerAuthorizationBasis||
+    childTodo?.requestId!==currentSource.requestId||
+    childTodo.plan?.writerAuthorizationBasis!==currentSource.plan.writerAuthorizationBasis||
     sourceTask.writeSurfaces.length!==unit.writeSurfaces.length||
     sourceTask.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i])||
     owners.length!==1||

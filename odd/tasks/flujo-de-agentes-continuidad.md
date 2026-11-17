@@ -262,3 +262,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - **Corrección:** tras fallar la lectura, vista mínima marcada `activityUnavailable` y `agentFlowUnavailable`; el panel muestra «no disponible» y conserva el acceso a cerrar y refrescar. Solo una lectura nueva y correcta restablece datos actuales. No se modifican permisos, Dispatcher, aprobaciones ni lógica de Writer.
 - **Prueba negativa:** datos previos de revisión bloqueada y rama Git, fallo del origen, ausencia de datos antiguos, posterior lectura satisfactoria sin aceptar ninguna revisión. Se añadió al conjunto `native-work-panel.test.ts`.
 - **Estado:** `IMPLEMENTADO_PENDIENTE_CI`; no se ha acreditado un RED ejecutado. T06/T07 continúan parciales, T11-E visual pendiente y `globalFull:false`. NVIDIA y ensayo manual de dos Writers no ejecutados; ninguna fusión.
+
+## 17/11/2026 — T04 + T05 + T06: asegurar el origen ODD del Worker hijo
+
+- CI, Release Gate, Arquitectura y Pi 1.2 del SHA de partida `d0d6ba7ffcf3432b4559e7553777dd70a9cf0024` comprobados como SUCCESS; Pi Free Smoke omitido.
+- Se detectó que `/asen-worktrees supervise` comprobaba modelo solicitado, candidato y ámbito del Worker hijo, pero no exigía que su petición ODD y datos originales de autorización coincidieran con el Worker reservado en la sesión padre. Otra petición con el mismo modelo y los mismos archivos podía aparecer como lista para ejecutar.
+- Se exige igualdad exacta de `requestId` y `writerAuthorizationBasis` entre origen e hijo durante la preparación y otra vez al verificar identidad antes, durante y después del consentimiento individual. No se concede autoridad por esa igualdad: el Dispatcher y el binder siguen emitiendo el permiso nuevo y comprobando el ámbito exacto.
+- Pruebas negativas: modificación de la instrucción ODD sin cambiar modelo/HEAD/scope; sustitución de la identidad de petición. Ambas deben bloquear antes del diálogo del lote y no consumir el intento irreversible.
+- Prueba positiva existente de dos Workers instrumentados pasa a usar la identidad de petición original, como produce `plan-todo` en el flujo real. **Estado: IMPLEMENTADO_PENDIENTE_CI** del SHA nuevo; faltan ensayos reales TUI/Writer y revisión independiente. `globalFull:false`, sin modelos de pago ni fusión.

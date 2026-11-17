@@ -409,7 +409,8 @@ async function prepareAttributedChildren(f:ReturnType<typeof fixture>,withoutLin
   const childId="child-pi-"+(i+1),project=prepared.worktrees[i]!.root;
   assert.equal((await f.runChild("attach",project,childId) as {status:string}).status,"attached");
   const file=i?"frontend.txt":"backend.txt",taskId="child-todo-"+(i+1),
-   requestId="asen-plan:child-"+(i+1)+":worker";
+   sourceId=i?"todo-frontend":"todo-backend",
+   requestId=f.rows.find(row=>row.taskId===sourceId)!.requestId!;
   const base=f.row(taskId,file),current={
    ...base.current,sessionId:childId,projectId:project,state:"succeeded" as const
   };
@@ -595,6 +596,32 @@ async function prepareSupervisorChildren(f:ReturnType<typeof fixture>){
   } as SourceTodoRow)),[],[]);
  }
 }
+
+test("T04/T05/T06 bloquea un plan hijo reemplazado aunque conserve modelo, SHA y ámbitos",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const before=f.getChildObservations("child-pi-1");
+ f.setChildObservations("child-pi-1",before.todos.map(row=>({
+  ...row,plan:{...row.plan!,writerAuthorizationBasis:'{"instruction":"sustituida tras el enlace"}'}
+ } as SourceTodoRow)),before.agents,before.links);
+ const result=await f.run("supervise") as {status:string;blockers:readonly string[]};
+ assert.equal(result.status,"blocked");
+ assert.ok(result.blockers.some(x=>/exact dependency-ready scoped Worker/u.test(x)));
+ assert.equal(f.dispatchedChildren.length,0);
+ assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,0);
+});
+
+test("T04/T06 bloquea el cambio de identidad ODD del hijo sin consumir un permiso Writer",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const before=f.getChildObservations("child-pi-1");
+ f.setChildObservations("child-pi-1",before.todos.map(row=>({
+  ...row,requestId:"asen-plan:otra-tarea:worker"
+ } as SourceTodoRow)),before.agents,before.links);
+ const result=await f.run("supervise") as {status:string;blockers:readonly string[]};
+ assert.equal(result.status,"blocked");
+ assert.ok(result.blockers.some(x=>/exact dependency-ready scoped Worker/u.test(x)));
+ assert.equal(f.dispatchedChildren.length,0);
+ assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,0);
+});
 
 test("T06 parent supervisor launches two exact independently consented child Workers via delegated dispatcher",async t=>{
  const f=fixture(t);await prepareSupervisorChildren(f);
