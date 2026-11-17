@@ -288,6 +288,14 @@ export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|un
  if(childReview)parts.push("◇ "+childReview+" child review pending");
  if(childBlocked)parts.push("! "+childBlocked+" child tasks blocked");
  if(snapshot.todos.length)parts.push(snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length+" todos");
+ if(childUnknown){
+  // Ante pérdida de hijos, conservar el aviso y el acceso al detalle aunque
+  // una terminal estrecha deba retirar los indicadores locales secundarios.
+  const candidate=()=> "▸ "+parts.join(" · ")+" · /asen-panel";
+  while(parts.length>1&&visibleWidth(candidate())>width)parts.pop();
+  if(visibleWidth(candidate())<=width)return candidate();
+  return fit(width>=24?"! hijos ? · /asen-panel":"! /asen-panel",width);
+ }
  return fit("▸ "+parts.join(" · ")+" · /asen-panel",width);
 }
 /** No unsupported runtime model, context, pricing or quota claims. */

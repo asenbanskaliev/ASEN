@@ -553,7 +553,7 @@ test("T11/T07 modal: pérdida del registro hijo no reutiliza una ejecución prev
  const rows=panel.render(120).join("\n");
  assert.match(rows,/hijos no disponibles|Cross-session ODD: unavailable/u);
  assert.doesNotMatch(rows,/Worktree Workers: 1 active observed|No work in this session|old-task|old-child|old-agent/u);
- for(let i=0;i<6;i++)panel.handleInput("\t");
+ for(let i=0;i<5;i++)panel.handleInput("\t");
  panel.handleInput("\r");
  const detail=panel.render(120).join("\n");
  assert.match(detail,/Cross-session ODD: unavailable/u);

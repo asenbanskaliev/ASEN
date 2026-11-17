@@ -302,3 +302,9 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - **Corrección:** se da prioridad al error de origen sobre fotografías antiguas de hijos; se muestra `! hijos no disponibles` con acceso `/asen-panel` en tamaños estrechos, el modal conserva solo observaciones vigentes y el widget M1 se retira al perderse el origen. No se alteran permisos, modelos, Dispatcher ni reservas T06.
 - **Pruebas negativas:** datos contradictorios (hijo observado como activo y origen marcado no disponible), tamaños 24/40/50/80/120/139/140/180, ausencia de ejecuciones antiguas y de declaraciones de éxito, navegación del modal y caso vacío legítimo. Sin llamadas NVIDIA, aprobaciones ni merge.
 - **Estado provisional:** `IMPLEMENTADO_PENDIENTE_CI`. Comprobar typecheck y tests exact-SHA con CI, Pi 1.2 y Release Gate. No se presume GREEN antes del CI. T11-E aún requiere contraste visual independiente con Gentle Shell 4.8.0, y T07 no certifica dos Workers Pi TUI productivos. `globalFull:false`.
+
+### Ajuste de aceptación de terminal estrecha (misma megatanda)
+
+- La revisión de las pruebas nuevas del commit `eeaffead4cc91b286e990babdf31f5753bdc03f3` detectó dos errores de expectativa: a 24/40 columnas el mensaje completo no cabe, y el modal necesita cinco avances `Tab` desde TODOS para llegar a INTEGRATIONS, no seis.
+- Se conserva el acceso literal `/asen-panel` al comprimir el aviso; si no cabe el texto largo se muestra `! hijos ?`, nunca un falso «sin hijos». La prueba verifica el comando y el ancho en todos los tamaños y selecciona realmente INTEGRATIONS.
+- **No se declara GREEN por inspección.** Se exige CI, Pi y Release Gate del SHA final. Ni T07 live ni T11-E visual se dan por cerrados. `globalFull:false`.

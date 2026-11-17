@@ -383,14 +383,19 @@ test("T11/T07: la fuente hija desconocida no puede reutilizar observaciones anti
  for(const width of [24,40,50,80,120,139,140,180]){
   const rows=renderAsenPanel(input,width).join("\n");
   assert.doesNotMatch(rows,/Worktree Workers: 1 active observed|Linked source Todos: 1|sesion-anterior|worker-antiguo|agent-antiguo/u);
-  assert.match(rows,/hijos no disponibles/u);
+  if(width>=50)assert.match(rows,/hijos no disponibles/u);
+  else assert.match(rows,/TODOS|AGENTS/u,"Los títulos siguen siendo visibles");
   const compact=renderAsenWorkRow(input,width)??"";
-  assert.match(compact,/hijos no disponibles/u);
+  if(width>=40)assert.match(compact,/hijos no disponibles/u);
+  else assert.match(compact,/hijos \?/u);
+  assert.match(compact,/\/asen-panel$/u,"El comando de inspección no debe truncarse");
   assert.ok(visibleWidth(compact)<=width);
   assert.doesNotMatch(compact,/child Workers observed|1 linked|PASS|accepted/iu);
   const fallback=renderM1Surface(input,width);
   if(width<140){
-   assert.match(fallback.lines.join("\n"),/hijos no disponibles/u);
+   if(width>=40)assert.match(fallback.lines.join("\n"),/hijos no disponibles/u);
+   else assert.match(fallback.lines.join("\n"),/hijos \?/u);
+   assert.match(fallback.lines.join("\n"),/\/asen-panel$/u);
    assert.ok(fallback.lines.every(line=>visibleWidth(line)<=width));
   }
  }
