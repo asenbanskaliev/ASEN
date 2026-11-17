@@ -80,7 +80,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
  const rowsFor=(width:number):Row[]=>{
   const layout=renderAsenPanelWithLayout(snapshot,width,[...collapsed]);
   const rows:Row[]=[];
-  const noWork=!snapshot.activityUnavailable&&!snapshot.todos.length&&!snapshot.jobs.length&&!snapshot.agents.length&&
+  const noWork=!snapshot.activityUnavailable&&!snapshot.agentFlowUnavailable&&!snapshot.todos.length&&!snapshot.jobs.length&&!snapshot.agents.length&&
    !(snapshot.agentFlow?.overview.totalTasks);
   for(const group of layout.groups){
    const section=group.section;
@@ -105,10 +105,10 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
      "  Tools: "+inspection.tools.state+(inspection.tools.limited?" · limited":"")+" · connection: unknown",
      "  Enter details · /asen-integrations",
     ]:layout.lines.slice(group.start+1,group.end).slice(0,3);
-   }else if(section==="TODOS"?snapshot.todos.length||!!snapshot.agentFlow?.overview.totalTasks:
+   }else if(section==="TODOS"?snapshot.todos.length||!!snapshot.agentFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
     section==="JOBS"?snapshot.jobs.length:
-    section==="AGENTS"?snapshot.agents.length||!!snapshot.agentFlow?.overview.totalTasks:
-    section==="CHANGES"?(snapshot.changes&&snapshot.changes.files>0)||!!snapshot.agentFlow?.overview.totalTasks:
+    section==="AGENTS"?snapshot.agents.length||!!snapshot.agentFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
+    section==="CHANGES"?(snapshot.changes&&snapshot.changes.files>0)||!!snapshot.agentFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
     section==="REVIEW"?!/no pending results|unverified/u.test(summary):false){
     source=layout.lines.slice(group.start+1,group.end);
    }

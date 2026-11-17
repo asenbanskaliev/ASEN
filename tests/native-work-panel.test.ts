@@ -494,3 +494,43 @@ test("T06/T07: lectura fallida retira tareas, revisiones y Git antiguos; la recu
  assert.equal(reads,2);assert.equal(paints,2);
  panel.dispose();
 });
+
+test("T07: fallo aislado del origen hijo no declara que no exista trabajo",async()=>{
+ const unavailable={...snapshot,todosObserved:true,agentFlowUnavailable:true};
+ const before=structuredClone(unavailable);
+ const flat=renderAsenPanel(unavailable,140).join("\n");
+ assert.match(flat,/TODOS.*hijos no disponibles/u);
+ assert.match(flat,/AGENTS.*hijos no disponibles/u);
+ assert.match(flat,/CHANGES.*cambios hijos no disponibles/u);
+ assert.match(flat,/estado de tareas hijas no disponible/u);
+ assert.match(flat,/estado de agentes hijos no disponible/u);
+ assert.match(flat,/Cambios de worktrees hijos: no disponibles/u);
+ assert.doesNotMatch(flat,/No tasks in this session|No agents ·/u);
+ const recoveredFlow=projectParallelAgentFlow([{
+  batchId:"lote-observado",state:"prepared",tasks:[{
+   sourceTodoId:"tarea-real",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"sesion-hija",agents:[{id:"agente-hijo",role:"worker",state:"running"}]}
+  }]
+ }]);
+ let redraws=0,reads=0;
+ const pane=createNativeWorkPanel(unavailable,{
+  requestRender(){redraws++;},close(){},terminalRows:()=>150,
+  refresh:async()=>{reads++;return {...snapshot,todosObserved:true,agentFlow:{
+   state:"observed" as const,totalRecordedBatches:1,limited:false,overview:recoveredFlow
+  }};}
+ });
+ const visible=pane.render(140).join("\n");
+ assert.match(visible,/estado de agentes hijos no disponible/u);
+ assert.match(visible,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(visible,/No work in this session|No tasks in this session|No agents ·/u);
+ await pane.refreshNow();
+ const fresh=pane.render(140).join("\n");
+ assert.match(fresh,/Worktree Workers: 1 active observed/u);
+ assert.match(fresh,/Linked source Todos: 1/u);
+ assert.doesNotMatch(fresh,/hijos no disponibles|estado de agentes hijos no disponible/u);
+ assert.equal(reads,1);assert.equal(redraws,1);
+ assert.deepEqual(unavailable,before,"La proyección no modifica datos de origen");
+ pane.dispose();
+});

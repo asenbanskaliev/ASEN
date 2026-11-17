@@ -62,14 +62,16 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
  if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"))return "unavailable";
  const linked=snapshot.agentFlow?.overview.totalTasks??0;
  const childRunning=snapshot.agentFlow?.overview.stages["running-observed"]??0;
+ // Desconocer el estado de los hijos no equivale a observar cero hijos.
+ const childUnknown=snapshot.agentFlowUnavailable===true;
  switch(section){
   case "TODOS":return snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length+
-   (linked?" local · "+linked+" linked":"");
+   (childUnknown?" local · hijos no disponibles":linked?" local · "+linked+" linked":"");
   case "JOBS":return snapshot.jobs.filter(isObservedActiveJob).length+" running";
   case "AGENTS":return snapshot.agents.filter(a=>a.state==="running").length+
-   (linked?" local running · "+childRunning+" child observed":" running");
+   (childUnknown?" local activos · hijos no disponibles":linked?" local running · "+childRunning+" child observed":" running");
   case "CHANGES":return (snapshot.changes?snapshot.changes.files+" files":"unavailable")+
-   (linked?" · "+linked+" linked worktree tasks":"");
+   (childUnknown?" · cambios hijos no disponibles":linked?" · "+linked+" linked worktree tasks":"");
   case "REVIEW":{const review=derivePanelReview(snapshot);return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";}
   case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
  }
@@ -88,7 +90,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
  switch(section){
   case "TODOS":{
    const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
-   if(!snapshot.todos.length)out.push(snapshot.agentFlow?.overview.totalTasks?
+   if(!snapshot.todos.length)out.push(snapshot.agentFlowUnavailable?
+    "No hay tareas locales · estado de tareas hijas no disponible":snapshot.agentFlow?.overview.totalTasks?
     "No local Todos · linked worktree tasks observed":"No tasks in this session");
    for(const item of open.slice(0,itemLimit)){
     const state=item.current.state==="succeeded"?"awaiting independent review":item.current.state;
@@ -127,7 +130,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
   case "AGENTS":{
    const priority:Record<string,number>={interrupted:0,running:1,queued:2,failed:3,cancelled:4,completed:5};
    const agents=[...snapshot.agents].sort((a,b)=>(priority[a.state]??9)-(priority[b.state]??9)||b.updatedAt.localeCompare(a.updatedAt));
-   if(!agents.length)out.push(snapshot.agentFlow?.overview.totalTasks?
+   if(!agents.length)out.push(snapshot.agentFlowUnavailable?
+    "Sin agentes locales · estado de agentes hijos no disponible":snapshot.agentFlow?.overview.totalTasks?
     "Sin agentes locales · tareas hijas vinculadas (ejecución sin acreditar)":"No agents · /asen-agents");
    for(const agent of agents.slice(0,secondaryLimit))out.push(glyph(agent.state)+" "+clean(agent.role,30)+" · "+agent.state+(agent.state==="interrupted"?" · inspect first":""));
    if(agents.length>secondaryLimit)out.push("… "+(agents.length-secondaryLimit)+" more · /asen-agents");
@@ -160,6 +164,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    const status=snapshot.changes;
    out.push(status?("Git "+clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")):"Git state unavailable");
    out.push(status&&status.files>0?"Panel: CHANGES + Enter to pick a file and preview its diff · /asen-changes-view":"Inspect read-only diffs with /asen-changes-view");
+   if(snapshot.agentFlowUnavailable)out.push("Cambios de worktrees hijos: no disponibles · refrescar antes de revisar");
    if(snapshot.agentFlow?.overview.totalTasks){
     const flow=snapshot.agentFlow.overview;
     const changed=flow.tasks.filter(task=>task.changeEvidence!=="clean").length;

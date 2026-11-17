@@ -278,3 +278,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Pruebas negativas: Explorer sin `read` no puede sustituirlo por `grep`; Explorer con `read` no anuncia `bash`; Worker legítimo con complemento malicioso sigue disponiendo solo de `read,edit,write` bajo la autorización emitida por el Dispatcher.
 - Se añade una prueba positiva T04/T05/T06 con `controlledInstructionPlanCommand` en proyectos origen/hijo reales: mismo ID, datos ODD y archivos, candidato con raíz distinta y SHA igual. No se atribuyen permisos ni modelo consumido.
 - Estado: **IMPLEMENTADO_PENDIENTE_CI** de este nuevo SHA. Pi Free Smoke y NVIDIA siguen fuera del alcance del ensayo, no se proclama FULL. PR #61 en borrador y sin merge.
+
+## 17/11/2026 — T07: distinguir la lectura local del estado desconocido de los hijos
+
+- La ruta real `getPanelSnapshot` puede cargar Todos/agentes locales cuando `readAgentFlowPanelObservation` falla y comunica `agentFlowUnavailable:true`. El panel nativo mostraba equivocadamente `No work in this session` y ocultaba la advertencia en secciones locales vacías.
+- Se conservan los recuentos locales verificados y se marca explícitamente como **no disponible** el estado de tareas, agentes y cambios de los worktrees hijos. Un fallo de fuente no se convierte en un cero observado ni en aceptación.
+- Prueba negativa del panel completo y del modal nativo, seguida de refresco con un Worker hijo observado como activo. El modal no concede permisos, no ejecuta herramientas ni inicia modelos.
+- **IMPLEMENTADO_PENDIENTE_CI** del nuevo SHA. T07 no es FULL: faltan comparativa visual real e integración autenticada Pi completa. `globalFull:false`; PR #61 en borrador, sin merge.
