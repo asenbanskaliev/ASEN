@@ -792,6 +792,48 @@ test("T06 no acepta que un Worker deje de estar planificado después del permiso
  assert.equal((await f.run("supervise") as {status:string}).status,"blocked");
 });
 
+test("T06 permite únicamente la transición real del binder de planificada a ejecutándose",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const batch=(await f.journal.list(f.identity))[0]!;
+ const started:string[]=[];
+ const result=await launchParentApprovedWorkers({
+  source:f.identity,batchId:batch.id,sourceJournal:f.journal,
+  sessionJournal:f.sessions,claimJournal:new ParallelChildPlanClaimJournal(f.planClaimsFile),
+  attemptJournal:new ParentSupervisorClaimJournal(f.supervisorClaimsFile),
+  loadTodos:async identity=>identity.sessionId===f.identity.sessionId?f.rows:
+   f.getChildObservations(identity.sessionId).todos,
+  loadAgents:async identity=>f.getChildObservations(identity.sessionId).agents,
+  loadTaskAgentLinks:async identity=>f.getChildObservations(identity.sessionId).links,
+  validateParent:async()=>{},confirmBatch:async()=>true,confirmWorker:async()=>true,
+  launchChild:async(unit,confirm,validateExact)=>{
+   await validateExact();
+   const approved=await confirm({
+    id:unit.childTodoId,title:"Worker comprobado",role:"worker",
+    instruction:"Trabajo limitado",writeSurfaces:unit.writeSurfaces,
+    candidateRevision:unit.baseRevision
+   });
+   if(!approved)return {status:"blocked" as const,reason:"Permiso denegado"};
+   const observation=f.getChildObservations(unit.childSessionId);
+   const next=observation.todos.map(row=>{
+    if(row.taskId!==unit.childTodoId)return row;
+    const current={...row.current,revision:row.current.revision+1,
+     state:"running" as const,reason:"Agent launch claimed before dispatch",
+     at:"2026-11-17T17:00:00.000Z"};
+    return {...row,current,events:[...row.events,current]} as SourceTodoRow;
+   });
+   f.setChildObservations(unit.childSessionId,next,observation.agents,observation.links);
+   await validateExact();
+   started.push(unit.childTodoId);
+   return {status:"dispatched" as const,todoId:unit.childTodoId,
+    agentId:"agente-"+unit.childTodoId,role:"worker" as const};
+  }
+ });
+ assert.equal(result.status,"started");
+ assert.equal(result.started.length,2);
+ assert.equal(started.length,2);
+ assert.equal(result.autoRetry,false);assert.equal(result.autoMerge,false);
+});
+
 test("T06 error de lectura tras primera ejecución conserva el intento sin replay",async t=>{
  const f=fixture(t);await prepareSupervisorChildren(f);
  const batch=(await f.journal.list(f.identity))[0]!;

@@ -227,3 +227,8 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Se añade una fotografía de la tarea hija antes de solicitar permiso: ID, petición, título, instrucción, dependencias, estado/revisión y plan completo. `validateExact` exige igualdad antes y después de aprobar, además de las verificaciones Git y de identidad existentes. No concede Writer ni amplía permisos.
 - Pruebas negativas para cambio de instrucción y cancelación de Todo tras el permiso: sin despacho, sin repetición silenciosa y con intento único persistente.
 - **Estado: IMPLEMENTADO_PENDIENTE_CI** del nuevo SHA. T06 sigue parcial: falta prueba productiva completa Pi y modelo real, revisión independiente y reconciliación de aceptación. `globalFull:false`, sin fusionar.
+
+### Corrección de integración con el binder (misma tarea T06)
+- `TrustedTaskAgentBinder` guarda una transición `planned → running` tras registrar el vínculo y **antes** del despacho. La comprobación del supervisor también se llama después de ese registro; por ello no debe bloquear el cambio legítimo.
+- Ahora acepta exclusivamente la tarea planificada idéntica o un evento adicional auténtico `Agent launch claimed before dispatch`, con revisión siguiente y todo el historial anterior intacto. Cualquier instrucción, permiso, estado cancelado o salto de revisión distinto sigue bloqueado.
+- Prueba positiva añadida para dos Workers con la transición; conservadas las dos pruebas negativas de cambio tras consentimiento. La verificación de CI del nuevo SHA sigue pendiente.
