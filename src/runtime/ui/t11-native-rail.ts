@@ -33,6 +33,7 @@ export function installAsenNativeRail(
  const host=tui as Host;
  let closed=false,originalRoot:Root|undefined,originalNode:(()=>LayoutNode)|undefined;
  let ownNode:(()=>LayoutNode)|undefined,ownDescriptor:PropertyDescriptor|undefined;
+ let rebindTimer:ReturnType<typeof setInterval>|undefined;
  const content:Component={
   render(width:number):string[]{
    const cols=Math.max(12,Math.min(1000,Math.floor(width)-2));
@@ -77,11 +78,19 @@ export function installAsenNativeRail(
   };
   try{root[NODE]=composed;}catch{return;}
   originalRoot=root;originalNode=before;ownNode=composed;ownDescriptor=descriptor;
+  try{tui.requestRender();}catch{/* La composición visual es opcional. */}
  };
  const hostSupported=()=>!!(originalRoot&&ownNode&&originalRoot[NODE]===ownNode);
  const active=()=>hostSupported()&&eligible();
  const refresh=()=>{if(closed)return;scroll.invalidate();try{tui.requestRender();}catch{/* Es una vista auxiliar. */}};
- const dispose=()=>{if(closed)return;closed=true;detach();try{tui.requestRender();}catch{/* No bloquear el cierre. */}};
+ const dispose=()=>{if(closed)return;closed=true;
+  if(rebindTimer!==undefined)clearInterval(rebindTimer);rebindTimer=undefined;
+  detach();try{tui.requestRender();}catch{/* No bloquear el cierre. */}};
  sync();
+ // El host sustituye el árbol al cambiar entre regular/fullscreen. No
+ // alcanza con conectar al crear la cabecera: reanudar sin invadir otros
+ // propietarios y cerrar el temporizador al terminar la sesión.
+ rebindTimer=setInterval(sync,100);
+ rebindTimer.unref?.();
  return {hostSupported,active,sync,refresh,dispose};
 }

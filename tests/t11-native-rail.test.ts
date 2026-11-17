@@ -64,3 +64,20 @@ test("T11 no suplanta un árbol ajeno ni repara automáticamente un host distint
  assert.equal(h2.active(),false);
  h2.dispose();
 });
+
+test("T11 reconecta al nuevo árbol del host sin una llamada manual y detiene la reconexión al cerrar",async()=>{
+ const f=host(180),rail=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot);
+ const replacement:Record<symbol,unknown>={[NODE]:()=>({type:"vstack",entries:[]})};
+ (f.ui as unknown as {layoutRoot:Record<symbol,unknown>}).layoutRoot=replacement;
+ await new Promise(resolve=>setTimeout(resolve,240));
+ const installed=(replacement[NODE] as ()=>any)();
+ assert.equal(installed.type,"hstack");
+ assert.equal(installed.gap,3);
+ rail.dispose();
+ assert.equal((replacement[NODE] as ()=>any)().type,"vstack");
+ const other:Record<symbol,unknown>={[NODE]:()=>({type:"vstack",entries:[]})};
+ (f.ui as unknown as {layoutRoot:Record<symbol,unknown>}).layoutRoot=other;
+ await new Promise(resolve=>setTimeout(resolve,180));
+ assert.equal((other[NODE] as ()=>any)().type,"vstack","no debe quedar ningún temporizador modificando el siguiente host");
+});
+
