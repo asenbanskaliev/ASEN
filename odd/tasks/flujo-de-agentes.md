@@ -772,3 +772,7 @@ Se añaden pruebas de reanudación con la misma identidad, competencia por la mi
 ## Gasto y disparo de ensayos autenticados en CI (2026-11-17)
 
 Los trabajos NVIDIA de lectura T06 del CI se limitan a la acción `labeled` de la PR #61 realizada por `asenbanskaliev` con `asen-t06-nvidia-una-vez`; una sincronización de cambios visuales T11 ya no los vuelve a ejecutar. La etiqueta no equivale a aprobaciones de Writer: esas permanecen separadas en los dos entornos GitHub protegidos. Una omisión NVIDIA por falta de evento no es PASS ni prueba de proveedor. CI general, Pi 1.2 y Release Gate siguen siendo obligatorios en el SHA final.
+
+## Tanda D — aceptación de revisiones (17/11/2026)
+
+No se permite finalizar `/asen-accept-review` sin recibo HMAC de pruebas vinculado a HEAD/árbol Git. La evidencia estructural queda provisional y el Todo sigue bloqueado. Un recibo `PASSED` con cero pruebas también se rechaza. Se incorporan pruebas negativas P9 y positivos con firma real. La revisión independiente, Judgment Day/Fix completo y T11-E continúan pendientes; `globalFull:false`.

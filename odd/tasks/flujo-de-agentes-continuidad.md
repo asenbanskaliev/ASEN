@@ -238,3 +238,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Se corrigió la propuesta ODD Fix para rechazar rutas de modelo sin proveedor, rutas reservadas `default` y niveles de esfuerzo no admitidos. Se reutiliza el mismo validador que T05/T06 para el modelo solicitado del Worker y `isThinking` para el esfuerzo.
 - Se añadió prueba con informe genuino emitido por dos jueces instrumentados: perfiles mal formados bloqueados, perfil válido permitido pero `fixModelActual:unknown`, sin autoridad Writer, sin lanzamiento y con nuevo consentimiento obligatorio.
 - Estado: **IMPLEMENTADO_PENDIENTE_CI** del SHA de esta tanda. Este control valida configuraciones, no prueba autenticación del proveedor ni que el modelo haya respondido. No se ejecutaron llamadas a modelos de pago. `globalFull:false`.
+
+## 17/11/2026 — Tanda D/P9: cerrar aceptación de revisiones sin pruebas firmadas
+
+- Ruta productiva inspeccionada: `/asen-accept-review` → `acceptIndependentReview` → `resolveReviewVerification`. El resto de controles ya exigía sesión, Todo bloqueado, agente completado, Git limpio y confirmación humana. La **ausencia de recibo** podía transformarse en `structural-fallback` y finalizar el Todo con `done`.
+- Ahora sin lector de recibos o sin recibo **se bloquea antes de mostrar el diálogo humano**; la evidencia estructural sigue siendo únicamente provisional. Una firma `PASSED` requiere al menos una prueba, todas superadas, cero fallos y ejecutor indicado, además de árbol/commit vinculados.
+- Pruebas negativas P9: recibo ausente, lector ausente, firma `PASSED` con cero pruebas; se conservan las pruebas de firma alterada, SHA/árbol distinto, rechazo humano, candidato sucio y aceptación concurrente. Los escenarios positivos pasan a generar recibos HMAC reales.
+- **RED estático:** el código original devolvía `structural-fallback` para recibos ausentes y la antigua prueba esperaba `accepted`. **GREEN y CI reales pendientes** del nuevo SHA; no atribuir ejecuciones de pruebas no observadas.
+- Estado `IMPLEMENTADO_PENDIENTE_CI`. Sin nuevas autorizaciones Writer, ejecuciones de modelos ni fusiones. T11-E/T07/D completa siguen pendientes, `globalFull:false`.

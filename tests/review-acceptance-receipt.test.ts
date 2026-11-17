@@ -1,8 +1,8 @@
 // T3.2: the live independent-review acceptance path must authenticate an
 // HMAC-signed review receipt when one exists for the candidate commit, bind it
 // to the exact candidate tree, and expose the signed test counts to the human
-// confirmation. Without a receipt, acceptance falls back to structural
-// verification and must declare that fallback.
+// confirmation. Without a receipt, only provisional inspection is available;
+// no Todo may be finalized.
 import test from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
@@ -116,14 +116,35 @@ test("T3.2 a receipt for a different tree cannot certify the current candidate",
   assert.match((result as {reason:string}).reason,/tree/i);
 });
 
-test("T3.2 without a receipt the acceptance declares the structural fallback",async t=>{
-  const f=await makeFixture(t);
-  let verification:unknown;
-  const result=await acceptIndependentReview({
-   todos:f.todos,agents:f.agents,links:f.links,identity:f.identity,taskId:f.task.taskId,
-   receipts:new ReceiptVerifierService(f.receiptsDir),
-   validateIdentity:async()=>{},
-   confirm:async details=>{verification=details.verification;return true;}});
-  assert.deepEqual(result,{status:"accepted",taskId:f.task.taskId,role:"reviewer"});
-  assert.deepEqual(verification,{mode:"structural-fallback"});
+test("P9 la ausencia de recibo firmado bloquea la aceptación sin preguntar",async t=>{
+ const f=await makeFixture(t);let prompts=0;
+ const result=await acceptIndependentReview({
+  todos:f.todos,agents:f.agents,links:f.links,identity:f.identity,taskId:f.task.taskId,
+  receipts:new ReceiptVerifierService(f.receiptsDir),
+  validateIdentity:async()=>{},confirm:async()=>{prompts++;return true;}});
+ assert.equal(result.status,"blocked");
+ assert.match(result.status==="blocked"?result.reason:"",/receipt absent|provisional/u);
+ assert.equal(prompts,0);
+ assert.deepEqual((await f.todos.history(f.task.taskId,f.identity)).map(x=>x.state),["planned","running","blocked"]);
+});
+test("P9 la ausencia del lector de recibos tampoco permite aceptar",async t=>{
+ const f=await makeFixture(t);let prompts=0;
+ const result=await acceptIndependentReview({
+  todos:f.todos,agents:f.agents,links:f.links,identity:f.identity,taskId:f.task.taskId,
+  validateIdentity:async()=>{},confirm:async()=>{prompts++;return true;}});
+ assert.equal(result.status,"blocked");assert.equal(prompts,0);
+});
+test("P9 un recibo firmado con cero pruebas no certifica el candidato",async t=>{
+ const f=await makeFixture(t),key=await loadReceiptSigningKey(f.receiptsDir);
+ await writeReviewReceipt(f.receiptsDir,createReviewReceiptSigned({
+  commitSha:f.sha,treeSha:f.treeSha,oddTask:"odd/tasks/example.md",
+  testSuite:{total:0,passed:0,failed:0,durationMs:0,runner:"node --test"},verdict:"PASSED"},key));
+ let prompts=0;
+ const result=await acceptIndependentReview({
+  todos:f.todos,agents:f.agents,links:f.links,identity:f.identity,taskId:f.task.taskId,
+  receipts:new ReceiptVerifierService(f.receiptsDir),
+  validateIdentity:async()=>{},confirm:async()=>{prompts++;return true;}});
+ assert.equal(result.status,"blocked");
+ assert.match(result.status==="blocked"?result.reason:"",/at least one passing test/u);
+ assert.equal(prompts,0);
 });
