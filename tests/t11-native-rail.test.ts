@@ -92,3 +92,35 @@ test("T11 Light retira el lateral y Power mantiene la reserva real",()=>{
  assert.equal((f.root[NODE] as ()=>any)().entries[1].basis,50);
  h.dispose();assert.equal(f.root[NODE],f.original);
 });
+
+test("T11 bottom conserva el editor; hidden y 12 filas desactivan el panel fijo",()=>{
+ const f=host(180);(f.ui.terminal as any).rows=40;
+ let position:"auto"|"right"|"bottom"|"hidden"="bottom";
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot,()=>"neutral",()=>position);
+ const layout=(f.root[NODE] as ()=>any)();
+ assert.equal(layout.type,"vstack");assert.equal(layout.gap,1);
+ assert.equal(layout.entries[1].basis,8);assert.equal(layout.entries[0].grow,1);
+ (f.ui.terminal as any).columns=80;
+ assert.equal(h.active(),true);
+ (f.ui.terminal as any).rows=12;
+ assert.equal(h.active(),false);
+ (f.ui.terminal as any).rows=40;
+ position="hidden";assert.equal(h.active(),false);
+ assert.equal((f.root[NODE] as ()=>any)(),f.node);
+ position="right";assert.equal(h.active(),false);
+ (f.ui.terminal as any).columns=140;
+ assert.equal((f.root[NODE] as ()=>any)().type,"hstack");
+ h.dispose();assert.equal(f.root[NODE],f.original);
+});
+test("T11 la densidad minimal muestra únicamente títulos observados, sin cambiar el snapshot",()=>{
+ const f=host(180);let density:"comfortable"|"compact"|"minimal"="comfortable";
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot,()=>"neutral",()=>"right",()=>density);
+ const component=(f.root[NODE] as ()=>any)().entries[1].component;
+ const comfortable=component.render(50);
+ density="compact";const compact=component.render(50);
+ density="minimal";const minimal=component.render(50);
+ assert.ok(minimal.length<=compact.length&&compact.length<=comfortable.length);
+ assert.ok(minimal.some((row:string)=>row.includes("REVIEW")));
+ assert.deepEqual(snapshot,{todos:[],agents:[],jobs:[],changes:{branch:"feat/revision",files:1}});
+ h.dispose();
+});

@@ -453,3 +453,16 @@ test("T07 descarta lecturas tardías y marca como no disponible un registro de h
  assert.doesNotMatch(after,/datos privados/u);
  failing.dispose();
 });
+
+test("T11 ratón y teclado pliegan la misma sección sin lanzar agentes",()=>{
+ const options={requestRender(){},close(){},terminalRows:()=>60};
+ const keyboard=createNativeWorkPanel(snapshot,options),mouse=createNativeWorkPanel(snapshot,options);
+ for(let i=0;i<3;i++)keyboard.handleInput("\t");
+ keyboard.handleInput(" ");
+ const before=mouse.render(100);
+ const y=before.findIndex(line=>/▾ CHANGES/u.test(line));
+ assert.ok(y>0);
+ assert.equal(mouse.handleMouse({type:"press",button:"left",x:1,y} as any)?.handled,true);
+ assert.deepEqual(mouse.render(100),keyboard.render(100));
+ mouse.handleInput("q");keyboard.handleInput("q");
+});

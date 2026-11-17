@@ -107,3 +107,12 @@ Solicitud del usuario: ejecutar ya la tarea horaria. En la PR #61, SHA `d05f98da
 
 ## 17/11/2026 — T11-D: prueba del comando real de preferencias
 - Tras el primer commit de presets se detectó por lectura de código que el separador de argumentos podía interpretar `appearance power` como una sola cadena. Se corrige para separar espacios reales y se añade una prueba de la ruta de comandos Pi que guarda Power/Light y rechaza `super-yolo`. No se toca la política de permisos. `globalFull:false`, estado pendiente de CI del nuevo SHA.
+
+## 17/11/2026 — T11: distribución, densidad y controles
+- Corregida la prueba de inventario de `/asen-customize` que falló en CI Linux `44088781713` porque esperaba siete superficies antiguas y no incluía la entrada `appearance`.
+- Se añade `~/.asen/t11-layout.json` con `schema:1` independiente de la preferencia existente de color/preset. Solo admite `position=auto/right/bottom/hidden` y `density=comfortable/compact/minimal`. El archivo se sustituye mediante temporal privado; los enlaces, datos corruptos, otras versiones o claves adicionales se rechazan.
+- `/asen-customize position` y `/asen-customize density` permiten selección nativa si hay TUI, o argumentos directos para automatización explícita. El cambio se aplica al lateral en la sesión y se recupera al iniciar otra sesión. Ninguna preferencia activa herramientas, cambia la ruta de modelos ni toca los permisos Writer.
+- `auto`: lateral derecho solo en fullscreen >=140 (Light lo desactiva). `right`: fuerza lateral ancho desde 140. `bottom`: reserva 8 filas bajo la conversación en fullscreen, con al menos 24 columnas y 16 filas; pantallas menores usan el panel manual. `hidden`: sin panel fijo, pero `/asen-panel` sigue disponible. El árbol de Pi se restaura al cerrar.
+- `comfortable`: listado habitual; `compact`: cada sección con cabecera y hasta dos líneas reales; `minimal`: solo cabeceras y contadores del estado observado.
+- Pruebas añadidas de persistencia, enlaces simbólicos, campos que intentan colar permisos, posición en 140/80 columnas, 12 filas, limpieza del árbol y misma acción de plegado mediante ratón y teclado. No ejecutan agentes ni modelos.
+- **Estado al publicar: IMPLEMENTADO_PENDIENTE_CI**. El modo `bottom` requiere todavía una comprobación de geometría con Pi real en macOS, Windows y Linux. No se declara equivalencia total con Gentle Shell ni `globalFull:true`; no se fusiona la PR.

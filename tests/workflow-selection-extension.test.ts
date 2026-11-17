@@ -39,7 +39,7 @@ await test("public ODD-only registration and discovery retire only the SDD selec
  assert.equal(implementedCommands().filter(name=>name==="asen-task-agents").length,1);
  assert.deepEqual([...commands.keys()].sort(),implementedCommands().filter(name=>name!=="asen-authority-status").sort());
  const hub=await commands.get("asen-customize")!.handler("",context("").ctx) as {customize_surfaces:{name:string}[]};
- assert.deepEqual(hub.customize_surfaces.map(row=>row.name),["asen-profiles","asen-persona","asen-mode","asen-history","asen-usage","asen-stats","asen-keymaps"]);
+ assert.deepEqual(hub.customize_surfaces.map(row=>row.name),["asen-profiles","asen-persona","asen-mode","asen-history","asen-usage","asen-stats","asen-keymaps","asen-customize appearance","asen-customize position","asen-customize density"]);
 });
 
 await test("public ODD-only production factory registers without a host SDD command",async t=>{

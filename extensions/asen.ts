@@ -88,6 +88,7 @@ import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
 import {renderAsenFocusHeader} from "../src/runtime/ui/focus-chrome.js";
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
+import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
 import {createT11RailObserver,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {createM1SurfaceCache} from "../src/runtime/ui/m1-readonly-rail.js";
@@ -358,7 +359,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   let panelEpoch=0,hostStatusClosed=false;
   let t11Rail:AsenRailHandle|undefined,t11Snapshot:AsenPanelSnapshot|undefined;
-  let t11Preset:AsenAppearancePreset="neutral";
+  let t11Preset:AsenAppearancePreset="neutral",t11Position:T11Position="auto",t11Density:T11Density="comfortable";
   let t11Observer:T11RailObserver|undefined;
   const panelScope=(ctx:CommandContext)=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd,epoch=panelEpoch;
@@ -455,9 +456,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!t11Rail?.active()||!t11Snapshot)t11Snapshot=snapshot;
     t11Rail?.sync();t11Rail?.refresh();
     const surface=m1Cache.next(snapshot,width,identity.sessionId+"|"+identity.projectId);
-    if(t11Preset==="light"||t11Rail?.active()){ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();}
+    if(t11Position==="hidden"||(t11Position==="auto"&&t11Preset==="light")||t11Rail?.active()){ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();}
     else if(surface)ctx.ui.setWidget("asen:m1-rail",surface.mode==="rail"?[...surface.lines]:undefined,{placement:"aboveEditor"});
-    const line=width>=140?undefined:renderAsenWorkRow(snapshot,width);
+    const line=width>=140||t11Rail?.active()||t11Position==="hidden"?undefined:renderAsenWorkRow(snapshot,width);
     ctx.ui.setWidget("asen-live-work",line?[line]:undefined,{placement:"aboveEditor"});
    }catch{/* Presentation must not block the host or confer permission. */}
   };
@@ -508,6 +509,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
+   const layout=readT11Layout(home());t11Position=layout.position;t11Density=layout.density;
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
     typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
@@ -529,7 +531,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(allowed&&parentGeneration===parentBindingGeneration){
       ctx.ui.setHeader((tui,theme)=>{
        t11Rail?.dispose();
-       t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot,()=>t11Preset);
+       t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot,()=>t11Preset,()=>t11Position,()=>t11Density);
        return {
         render(width:number){
          t11Rail?.sync();
@@ -1009,6 +1011,32 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
 
   registerData("asen-customize",{description:"Show ASEN visual preferences and primary permission modes",handler:async(raw:string|undefined,ctx:CommandContext)=>{
+   const visualParts=String(raw??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
+   if(visualParts[0]==="position"||visualParts[0]==="density"){
+    const setting=visualParts[0];
+    if(visualParts.length>2)return {error:"Use /asen-customize position auto|right|bottom|hidden or density comfortable|compact|minimal"};
+    const stored=readT11Layout(home());
+    const choices=setting==="position"?["auto","right","bottom","hidden"]:["comfortable","compact","minimal"];
+    let selected=visualParts[1];
+    if(!selected&&ctx?.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui?.select==="function"){
+     const guard=panelScope(ctx),identity=await sessionIdentity(ctx);guard();
+     const picked=await ctx.ui.select("ASEN "+setting,[...choices,"Cancel"],ctx.signal?{signal:ctx.signal}:undefined);
+     guard();const now=await sessionIdentity(ctx);guard();
+     if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw Error("ASEN visual preferences session changed");
+     if(ctx.signal?.aborted||!picked||picked==="Cancel")return {cancelled:true,...stored};
+     if(!choices.includes(picked))throw Error("Unknown ASEN visual preference");
+     selected=picked;
+    }
+    if(!selected||selected==="status")return {...stored,note:"Use /asen-customize "+setting+" "+choices.join("|")};
+    if(setting==="position"&&!validT11Position(selected)||setting==="density"&&!validT11Density(selected))
+     return {error:"Invalid ASEN "+setting+"; expected "+choices.join("|")};
+    const next={position:setting==="position"?selected as T11Position:stored.position,
+     density:setting==="density"?selected as T11Density:stored.density};
+    writeT11Layout(home(),next);
+    t11Position=next.position;t11Density=next.density;t11Rail?.refresh();
+    if(ctx?.mode==="tui"&&ctx.hasUI===true)await refreshWorkRow(ctx);
+    return {...next,source:"saved",scope:"user",note:"Only visual preferences changed. No permission or model changes."};
+   }
    const appearanceArgs=String(raw??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
    if(appearanceArgs[0]==="appearance"){
     if(appearanceArgs.length>2)return {error:"Use /asen-customize appearance [light|neutral|power|status]"};
@@ -1038,7 +1066,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     {name:"asen-usage",role:"runtime usage and accounting"},
     {name:"asen-stats",role:"Pi history aggregates"},
     {name:"asen-keymaps",role:"keyboard shortcut bindings"},
-    {name:"asen-customize appearance",role:"Light/Neutral/Power visual presets"}],
+    {name:"asen-customize appearance",role:"Light/Neutral/Power visual presets"},
+    {name:"asen-customize position",role:"auto/right/bottom/hidden layout position"},
+    {name:"asen-customize density",role:"comfortable/compact/minimal panel density"}],
     implemented:true,note:"Use /asen-customize permissions for the live primary selection menu. Use /asen-customize keymaps to edit shortcuts."};
    if(String(raw??"").trim()==="keymaps"){
     if(ctx?.mode!=="tui"||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return "Keymap editing requires interactive TUI.";
