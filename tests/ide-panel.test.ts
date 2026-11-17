@@ -347,3 +347,23 @@ test("T11: un origen fallido no dibuja cero tareas o agentes como si se hubieran
  }
  assert.deepEqual(data,snapshot({activityUnavailable:true,todos:[],agents:[],jobs:[]}));
 });
+
+test("T11: revisión y actividad no reutilizan resultados previos ante fallo de lectura",()=>{
+ const old=snapshot({
+  activityUnavailable:true,todosObserved:true,
+  todos:[task("succeeded","Revisión antigua"),task("blocked")],
+  agents:[agent("running")],jobs:[job("running")],review:{pending:2},
+ });
+ const review=renderAsenPanelSection(old,"REVIEW",100).join("\n");
+ assert.match(review,/Actividad no disponible/u);
+ assert.doesNotMatch(review,/Results awaiting review|ODD Workers|2 stored/u);
+ const headings=renderAsenPanel(old,100).join("\n");
+ assert.match(headings,/REVIEW · unverified/u);
+ assert.doesNotMatch(headings,/REVIEW · 2 needs review/u);
+ const row=renderAsenWorkRow(old,100)??"";
+ assert.match(row,/actividad no disponible/u);
+ assert.doesNotMatch(row,/agents|jobs|todos|review pending/iu);
+ const recovered={...old,activityUnavailable:false};
+ assert.match(renderAsenPanelSection(recovered,"REVIEW",100).join("\n"),/Results awaiting review · 2/u);
+ assert.match(renderAsenWorkRow(recovered,100)??"",/1 agents/u);
+});

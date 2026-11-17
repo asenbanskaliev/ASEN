@@ -246,3 +246,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Pruebas negativas P9: recibo ausente, lector ausente, firma `PASSED` con cero pruebas; se conservan las pruebas de firma alterada, SHA/árbol distinto, rechazo humano, candidato sucio y aceptación concurrente. Los escenarios positivos pasan a generar recibos HMAC reales.
 - **RED estático:** el código original devolvía `structural-fallback` para recibos ausentes y la antigua prueba esperaba `accepted`. **GREEN y CI reales pendientes** del nuevo SHA; no atribuir ejecuciones de pruebas no observadas.
 - Estado `IMPLEMENTADO_PENDIENTE_CI`. Sin nuevas autorizaciones Writer, ejecuciones de modelos ni fusiones. T11-E/T07/D completa siguen pendientes, `globalFull:false`.
+
+## 17/11/2026 — Megatanda 1 / T11-E: evitar estados caducados tras error de lectura
+
+- **SHA base verificado:** `39771eae42dfb940cbe780df983b1a15946e46ee`, con CI, Arquitectura, Pi 1.2 y Release Gate en `success`. Pi Free Smoke: `skipped`.
+- **Ruta productiva:** `renderAsenT11CompactStatus`, `derivePanelReview`, `renderAsenPanelSection` y `renderAsenWorkRow`. El origen de actividad fallido no debe mostrar como actuales bloqueos, revisiones ni trabajos que pertenecen a la lectura anterior.
+- **Cambio:** prevalencia de `activityUnavailable` en snapshot o en el aviso del llamador; la barra no muestra contadores caducados, REVIEW queda sin verificar y la línea de actividad ofrece `/asen-panel`. Se preserva el estado local del host y no se alteran fuentes de autoridad, permisos o Workers.
+- **Pruebas nuevas:** lectura fallida tras actividad observada, aviso externo con snapshot antiguo, recuperación explícita, revisión antigua y fila con agente/trabajo antiguo. La inspección estática de la versión anterior revela el defecto; **no se afirma un RED ejecutado**. GREEN/CI del commit que añade esta sección **pendientes de comprobar**.
+- **Estado:** `IMPLEMENTADO_PENDIENTE_CI`; T11-E visual continúa abierta por contraste de capturas, navegación y revisión independiente. T06/T07 no cerrados; `globalFull:false`. Sin NVIDIA, Writer, aprobación fingida ni merge.

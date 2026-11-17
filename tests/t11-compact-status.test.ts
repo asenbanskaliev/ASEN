@@ -81,3 +81,22 @@ test("T11: en terminal pequeña se ve antes el bloqueo de un Worker que el conte
  const wide=renderAsenT11CompactStatus(input,100);
  assert.match(wide,/^! 1 bloqueos · ! ctx 95%/);
 });
+
+test("T11: el estado no muestra contadores antiguos cuando la lectura falla y se recupera",()=>{
+ const oldTodo={current:{state:"blocked"}} as AsenPanelSnapshot["todos"][number];
+ const oldAgent={state:"interrupted"} as AsenPanelSnapshot["agents"][number];
+ const stale=sample({todos:[oldTodo],agents:[oldAgent],review:{pending:3},hostStatus:active,activityUnavailable:true});
+ for(const width of [24,40,80,139]){
+  const line=renderAsenT11CompactStatus(stale,width);
+  assert.ok(visibleWidth(line)<=width);
+  assert.doesNotMatch(line,/bloqueos|revisiones/u);
+  if(width>=40)assert.match(line,/actividad no disponible/u);
+ }
+ const forced=renderAsenT11CompactStatus({...stale,activityUnavailable:false},139,{activityUnavailable:true});
+ assert.match(forced,/actividad no disponible/u);
+ assert.doesNotMatch(forced,/bloqueos|revisiones/u);
+ const fresh=renderAsenT11CompactStatus({...stale,activityUnavailable:false},139);
+ assert.match(fresh,/! 2 bloqueos/u);
+ assert.match(fresh,/! 3 revisiones/u);
+ assert.doesNotMatch(fresh,/actividad no disponible/u);
+});

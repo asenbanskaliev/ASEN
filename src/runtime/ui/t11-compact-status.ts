@@ -14,15 +14,17 @@ export function renderAsenT11CompactStatus(
 ):string{
  if(!Number.isSafeInteger(width)||width<1||width>1000)throw Error("Invalid T11 status width");
  const host=snapshot.hostStatus,items:Segment[]=[];
+ // La pérdida de la fuente prevalece sobre contadores recibidos antes del fallo.
+ const activityUnavailable=options.activityUnavailable===true||snapshot.activityUnavailable===true;
  const ctx=host?.context;
- if(options.activityUnavailable===true)
+ if(activityUnavailable)
   items.push({text:"! actividad no disponible",priority:0});
  if(ctx?.state==="warning"||ctx?.state==="error")
   items.push({text:"! ctx "+(ctx.percent===null?"?":Math.round(ctx.percent)+"%"),priority:0});
- const blocked=snapshot.todos.filter(x=>x.current.state==="blocked").length;
- const interrupted=snapshot.agents.filter(x=>x.state==="failed"||x.state==="interrupted").length;
+ const blocked=activityUnavailable?0:snapshot.todos.filter(x=>x.current.state==="blocked").length;
+ const interrupted=activityUnavailable?0:snapshot.agents.filter(x=>x.state==="failed"||x.state==="interrupted").length;
  if(interrupted||blocked)items.push({text:"! "+(interrupted+blocked)+" bloqueos",priority:-2});
- if(snapshot.review?.pending&&Number.isSafeInteger(snapshot.review.pending)&&snapshot.review.pending>0)
+ if(!activityUnavailable&&snapshot.review?.pending&&Number.isSafeInteger(snapshot.review.pending)&&snapshot.review.pending>0)
   items.push({text:"! "+snapshot.review.pending+" revisiones",priority:-1});
  const permission=snapshot.permission;
  if(permission&&permission.toLowerCase()!=="normal")

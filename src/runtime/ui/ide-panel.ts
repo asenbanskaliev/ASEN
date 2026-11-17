@@ -50,6 +50,8 @@ export const ASEN_PERMISSION_MODE_MEANINGS:Readonly<Record<string,string>>=Objec
  "super-yolo":"no routine permission prompts · sensitive-path and critical guards remain",
 });
 export function derivePanelReview(snapshot:AsenPanelSnapshot):{pending:number;known:boolean}{
+ // Un recibo de revisión anterior no demuestra que la lectura presente siga viva.
+ if(snapshot.activityUnavailable)return {pending:0,known:false};
  const explicit=snapshot.review?.pending;
  if(typeof explicit==="number"&&Number.isSafeInteger(explicit)&&explicit>=0)return {pending:explicit,known:true};
  if(snapshot.todosObserved!==true)return {pending:0,known:false};
@@ -80,7 +82,7 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
 export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPanelSection,width=72,detail=false):readonly string[]{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const out:string[]=[];
- if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"))
+ if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"||section==="REVIEW"))
   return Object.freeze([fit("  Actividad no disponible · datos pendientes de nueva lectura",width)]);
  const itemLimit=detail?100:12,secondaryLimit=detail?100:8;
  switch(section){
@@ -252,6 +254,8 @@ export function renderAsenPanelWithLayout(snapshot:AsenPanelSnapshot,width=72,co
  return Object.freeze({lines:Object.freeze(lines),groups:Object.freeze(groups),loose:Object.freeze(loose)});
 }
 export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|undefined{
+ // No reutilizar cuentas antiguas tras una lectura fallida de la sesión.
+ if(snapshot.activityUnavailable)return fit("! actividad no disponible · /asen-panel",width);
  const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
  const running=snapshot.agents.filter(a=>a.state==="running").length;
  const attention=snapshot.agents.filter(a=>a.state==="interrupted"||a.state==="failed").length;
