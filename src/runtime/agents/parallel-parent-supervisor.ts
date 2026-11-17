@@ -300,7 +300,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     claims.filter(claim=>claim.batchId===unit.batchId&&
      claim.sourceTodoId===unit.sourceTodoId&&
      claim.childSessionId===unit.childSessionId).length!==1||
-    !sameAuthorizedChildTodo(expectedChildTodo,childTodo)||
+    !childTodo||!sameAuthorizedChildTodo(expectedChildTodo,childTodo)||
     childTodo.plan?.role!=="worker"||
     childTodo.plan.candidate?.revision!==unit.baseRevision||
     (childTodo.plan.model??"unknown")!==unit.model||
