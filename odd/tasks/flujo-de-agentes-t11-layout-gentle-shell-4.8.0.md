@@ -145,3 +145,16 @@ La referencia selecciona una sola barra informativa en anchuras estrechas y elim
 
 ### T11-C — Corrección de regresión en barra estrecha (17/11/2026)
 La integración del pie es un contrato público: los ensayos de sesión, permisos y tema no deben fallar por textos obsoletos. La corrección conserva esas verificaciones sobre el nuevo formato compacto y restaura un hecho observable que se había perdido, `effectiveThinking`. `respondingModel` se sigue mostrando como desconocido cuando no hay observación de una respuesta. No se cambia el permiso actual ni el modelo real. Pendiente de CI del SHA de corrección y contraste visual.
+
+## Comparación específica con Gentle Shell 4.8.0 — T11-E (17/11/2026)
+| Comportamiento observado en la referencia congelada | ASEN después de las tandas recientes | Juicio sin extrapolar |
+|---|---|---|
+| Lateral derecho 50 columnas y separación 3, que desaparece bajo 140 | Adaptación nativa `t11-native-rail.ts`, comprobada con Pi 1.2 en 180 y 139 | Conectado, faltan 120/80/50/40/24 y contraste visual |
+| Ratón en encabezados, scroll de lateral y escape de foco | Clic SGR real en Pi, plegado y Escape; atajos de Pi incluidos | Conectado; falta verificar otros elementos de cada fila |
+| Cabecera `top/below-input/split` y superficie `transparent/tinted` | `t11-chrome-settings.ts`, cabecera y lateral tintado; ensayo de salida del host | Opciones reales, pero no hay comparación de capturas ni estado visual por ancho |
+| Barra inferior prioriza datos de contexto y de ejecución, sin duplicados | Pi conserva el pie propio y ASEN añade estado compacto `asen:host` | Diferencia conocida: ASEN no reemplaza el pie ni ofrece la misma distribución o acciones que Gentle |
+| Contadores de trabajos, fallos y revisión | Barra toma listas solo de una observación vinculada a sesión/proyecto | Mejora de continuidad; pendiente prueba real con varios Workers |
+| Coste/tokens/cuota y STATS opcional con fuente verificada | Modelo seleccionado y contexto público; costes/cuotas sin fuente, muestran ? | **No equivalente**: está prohibido inventar datos |
+| Apariencia completa / diseño exacto | Prioridad de alertas y relleno tintado de lateral | **No equivalente todavía**: faltan controles, márgenes, resaltados y prueba visual comparada |
+
+**Criterio de cierre:** T11-E requiere matriz nativa exacta, revisión de las diferencias de tabla y contraste visual con medidas idénticas. El CI por sí solo **no demuestra paridad**. Mantener `globalFull:false`, PR #61 en borrador y sin fusión.

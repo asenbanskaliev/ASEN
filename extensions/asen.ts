@@ -87,6 +87,7 @@ import {createNativeCommandPalette} from "../src/runtime/ui/native-command-palet
 import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
 import {renderAsenFocusHeader,t11ChromeParts} from "../src/runtime/ui/focus-chrome.js";
 import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
+import {createT11ActivityCache} from "../src/runtime/ui/t11-activity-cache.js";
 import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11HeaderPlacement,type T11Surface} from "../src/runtime/ui/t11-chrome-settings.js";
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
@@ -369,6 +370,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd,epoch=panelEpoch;
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
   };
+  const t11ActivityCache=createT11ActivityCache();
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostRefreshGeneration=0;
   const clearHostStatus=()=>{
@@ -389,7 +391,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const changes=observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
     const permission=permissionSession.mode(ctx);
-    const width=terminalColumns(),info:AsenPanelSnapshot={todos:[],agents:[],jobs:[],hostStatus,
+    const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
+    const width=terminalColumns(),info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus,
      ...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})};
     // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
     // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
@@ -465,6 +468,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const now=await sessionIdentity(ctx);
     if(generation!==workRowGeneration||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
+    t11ActivityCache.put(identity.sessionId,identity.projectId,snapshot);
     if(!t11Rail?.active()||!t11Snapshot)t11Snapshot=snapshot;
     t11Rail?.sync();t11Rail?.refresh();
     const surface=m1Cache.next(snapshot,width,identity.sessionId+"|"+identity.projectId);
@@ -472,6 +476,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     else if(surface)ctx.ui.setWidget("asen:m1-rail",surface.mode==="rail"?[...surface.lines]:undefined,{placement:"aboveEditor"});
     const line=width>=140||t11Rail?.active()||t11Position==="hidden"?undefined:renderAsenWorkRow(snapshot,width);
     ctx.ui.setWidget("asen-live-work",line?[line]:undefined,{placement:"aboveEditor"});
+    await refreshHostStatus(ctx);
    }catch{/* Presentation must not block the host or confer permission. */}
   };
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
@@ -526,7 +531,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
@@ -857,7 +862,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");

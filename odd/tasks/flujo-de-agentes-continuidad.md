@@ -184,3 +184,16 @@ Solicitud del usuario: ejecutar ya la tarea horaria. En la PR #61, SHA `d05f98da
 - Hallazgo funcional adicional: el renderizador compacto omitía el nivel de razonamiento `effectiveThinking`, aunque se observaba desde Pi, y omitía el hecho `respondingModel=unknown`. Se restauran `modelo … · high` cuando el nivel observado existe y `respuesta ?` cuando no existe un modelo respondedor validado; nunca se equipara al modelo seleccionado.
 - Se actualizan **sin suprimir controles** las aserciones de entrada/salida en `panel-observation-integration`, `permission-modes` y `focus-extension-integration`, conservando su validación de sesión vigente, ausencia de acciones y permisos, pie original de Pi, colores y modo normal. El comando `/asen-panel status` mantiene su representación detallada anterior y sus pruebas.
 - **Estado: REPARADO_PENDIENTE_CI** del nuevo SHA. Las puertas de arquitectura y Pi 1.2 del SHA anterior pasaron, pero no reparan el CI. `globalFull:false`, PR #61 sin merge.
+
+## 17/11/2026 — T11-E: matriz nativa de pantallas pequeñas
+- Se prepara una ampliación del ensayo `scripts/t11-native-rail-host-check.mjs` para pasar de 180 → 139 → **120×40, 80×40, 50×40, 40×40, 24×12** → 180 sin detener Pi, iniciar modelos ni intervenir en el editor. Cada paso exige nueva medición real del ancho y ausencia del lateral fijo de 50 columnas. El árbol amplio debe restaurarse.
+- Los cinco tamaños y las filas observadas se guardan como `narrowMatrix` vinculada al SHA exacto; `tests/t11-native-rail-host.test.ts` valida cada par de dimensiones en macOS, Windows y Linux. No se altera el límite temporal ni se omite ninguna comprobación anterior.
+- **Esta matriz comprueba geometría, no paridad fotográfica**. T11 sigue pendiente de comparación de interfaz con Gentle Shell 4.8.0, pruebas de interacción de toda la interfaz y revisión independiente. `globalFull:false`. PR #61 no fusionada.
+
+## 17/11/2026 — T11-C: bloqueo observable en barra, aislado por sesión
+- El pie compacto no debe calcular bloqueos desde listas vacías ficticias cuando existen listas observadas. `refreshWorkRow` ya recibe Todos, agentes y trabajos del `sessionIdentity` vigente; ahora entrega una copia de las listas a `t11-activity-cache.ts` solo después de verificar generación, sesión y proyecto.
+- `refreshHostStatus` reutiliza las listas solo si coincide **sessionId y projectId**; si no hay observación válida, no añade conteos inventados. `session_start` y `session_shutdown` limpian la memoria. El pie se refresca al observar nueva actividad; no abre diarios adicionales, no lanza agentes, no altera Writer ni consentimientos.
+- Pruebas del cache: aislamiento al cambiar sesión, aislamiento al cambiar proyecto, rechazo de identidades vacías, limpieza, copia de arrays y representación de dos bloqueos reales sin contaminación de otra sesión. `globalFull:false`. Evidencia de CI del nuevo SHA pendiente.
+
+### Validación de la base antes de la megatanda
+El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = SUCCESS**, con seis fragmentos de pruebas y `test-shard-coverage` correctos en Windows, macOS y Linux. También completaron correctamente Release Gate #44114997729, Arquitectura #44114997603 y Pi 1.2 #44114997712. La megatanda siguiente se valida de manera independiente por su nuevo SHA; estos resultados no se trasladan automáticamente.

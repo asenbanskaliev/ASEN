@@ -34,6 +34,12 @@ test("T11: el Pi real reserva 53 columnas sin tapar el editor y se adapta a 139"
  assert.equal(report.bottomTree?.rail,8);
  assert.equal(report.bottomAt139?.type,"vstack");
  assert.equal(report.bottomRestored,true);
+ assert.deepEqual(report.narrowMatrix.map((row:{columns:number;rows:number})=>[row.columns,row.rows]),
+  [[120,40],[80,40],[50,40],[40,40],[24,12]]);
+ for(const row of report.narrowMatrix){
+  assert.ok(row.width>0&&row.width<=row.columns,row.columns+" columnas: el editor sigue dentro");
+  assert.notEqual(row.rail,50,"ningún lateral fijo debajo de 140 columnas");
+ }
  assert.deepEqual(report.chromeRender,{
   source:"native-pty-output",brandObserved:true,piVersionObserved:true,
   placementConfigured:"below-input",surfaceConfigured:"tinted"

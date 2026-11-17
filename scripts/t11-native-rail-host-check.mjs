@@ -40,7 +40,7 @@ git(project,"add","README.md");git(project,"commit","-qm","base prueba T11");
 const report={schema:"asen.t11.native-rail/v1",sha:expected,piVersion:pi.version,
  modelCalls:0,nvidiaCalls:0,baselineWidth:null,withRailWidth:null,realReservation:null,
  wideTree:null,narrowTree:null,restored:false,bottomTree:null,bottomAt139:null,bottomRestored:false,interaction:null,
- chromeRender:null,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
+ chromeRender:null,narrowMatrix:[],closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async(fn,msg,timeout=25000)=>{const start=Date.now();while(Date.now()-start<timeout){if(fn())return;await sleep(150);}throw Error(msg);};
 const read=file=>{try{return readFileSync(file,"utf8").split("\n").filter(Boolean).map(JSON.parse);}catch{return [];}};
@@ -70,7 +70,7 @@ async function run(label,withAsen,resize,interaction=false){
   '     const heading=railRows.findIndex(line=>line.includes("TODOS"));',
   '     function seek(box){if(!box)return;if(box.component===railContent)railBox=box;for(const child of box.children??[])seek(child);}',
   '     seek(tui.currentLayout?.root);',
-  '     appendFileSync(out,JSON.stringify({kind:"render",width,columns:tui.terminal?.columns??null,mode:tui.mode??null,',
+  '     appendFileSync(out,JSON.stringify({kind:"render",width,columns:tui.terminal?.columns??null,rows:tui.terminal?.rows??null,mode:tui.mode??null,',
   '      type:node?.type??null,gap:node?.gap??null,count:node?.entries?.length??null,rail:node?.entries?.[1]?.basis??null,',
   '      mouseX:railBox&&heading>=0?railBox.rect.x+3:null,mouseY:railBox&&heading>=0?railBox.rect.y+heading+1:null,',
   '      todosOpen:railRows.some(row=>row.includes("▾ TODOS")),todosClosed:railRows.some(row=>row.includes("▸ TODOS")),',
@@ -141,11 +141,26 @@ async function run(label,withAsen,resize,interaction=false){
   await until(()=>samples(read(records),139).length>0||exited,label+": no hubo dibujo a 139");
   assert.equal(exited,false,label+": Pi salió al redimensionar");
   const small=samples(read(records),139);
+  const narrowMatrix=[];
+  if(label==="asen"){
+   for(const [columns,rows] of [[120,40],[80,40],[50,40],[40,40],[24,12]]){
+    terminal.resize(columns,rows);
+    await until(()=>samples(read(records),columns).some(row=>row.rows===rows)||exited,
+     label+": no se redibujó Pi a "+columns+"x"+rows);
+    assert.equal(exited,false,label+": Pi terminó al cambiar a "+columns+"x"+rows);
+    const actual=samples(read(records),columns).filter(row=>row.rows===rows).at(-1);
+    assert.ok(actual,label+": medición ausente a "+columns+"x"+rows);
+    assert.notEqual(actual.rail,50,"Lateral derecho no permitido bajo 140 columnas");
+    assert.ok(Number.isSafeInteger(actual.width)&&actual.width>0&&actual.width<=columns,
+     "Anchura nativa de conversación inválida a "+columns+"x"+rows);
+    narrowMatrix.push({columns,rows,width:actual.width,type:actual.type,rail:actual.rail});
+   }
+  }
   const before=read(records).filter(row=>row.kind==="render"&&row.columns===180).length;
   terminal.resize(180,40);
   await until(()=>read(records).filter(row=>row.kind==="render"&&row.columns===180).length>before||exited,label+": no redibujó al volver a 180");
   assert.equal(exited,false,label+": Pi salió al ampliar");
-  return {wide,small,restored:samples(read(records),180),chromeRender};
+  return {wide,small,restored:samples(read(records),180),chromeRender,narrowMatrix};
  }catch(error){throw Error(label+": "+String(error)+", salida host "+output.slice(-1600));}
  finally{
   writeFileSync(stop,"ok");
@@ -165,7 +180,7 @@ try{
  Object.assign(report,{baselineWidth:base.width,withRailWidth:wide.width,realReservation:base.width-wide.width,
   wideTree:{mode:wide.mode,type:wide.type,gap:wide.gap,count:wide.count,rail:wide.rail,rootHookName:wide.rootHookName,hasRootHook:wide.hasRootHook,themeName:wide.themeName,themeConstructor:wide.themeConstructor},
   narrowTree:{mode:narrow.mode,type:narrow.type,gap:narrow.gap,count:narrow.count,rail:narrow.rail,rootHookName:narrow.rootHookName,hasRootHook:narrow.hasRootHook},
-  restored:restored.type==="hstack"&&restored.rail===50});
+  restored:restored.type==="hstack"&&restored.rail===50,narrowMatrix:actual.narrowMatrix});
  assert.equal(wide.type,"hstack","El host debe dividir el ancho");
  assert.equal(wide.gap,3);assert.equal(wide.count,2);assert.equal(wide.rail,50);
  assert.ok(base.width-wide.width>=51&&base.width-wide.width<=55,"Debe reservar cerca de 53 columnas reales");
