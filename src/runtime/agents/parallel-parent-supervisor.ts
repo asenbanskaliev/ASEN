@@ -301,7 +301,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     sourceTask.requestId!==currentSource.requestId||
     !currentSource.plan?.writerAuthorizationBasis||
     childTodo?.requestId!==currentSource.requestId||
-    childTodo.plan?.writerAuthorizationBasis!==currentSource.plan.writerAuthorizationBasis||
+    childTodo?.plan?.writerAuthorizationBasis!==currentSource.plan.writerAuthorizationBasis||
     sourceTask.writeSurfaces.length!==unit.writeSurfaces.length||
     sourceTask.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i])||
     owners.length!==1||
