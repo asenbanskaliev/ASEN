@@ -466,3 +466,31 @@ test("T11 ratón y teclado pliegan la misma sección sin lanzar agentes",()=>{
  assert.deepEqual(mouse.render(100),keyboard.render(100));
  mouse.handleInput("q");keyboard.handleInput("q");
 });
+
+test("T06/T07: lectura fallida retira tareas, revisiones y Git antiguos; la recuperación exige nueva lectura",async()=>{
+ const todo={title:"Tarea anterior",current:{state:"blocked",reason:"Consentimiento pendiente"}} as AsenPanelSnapshot["todos"][number];
+ const previous={...snapshot,todosObserved:true,todos:[todo],review:{pending:3},
+  changes:{branch:"rama-obsoleta",files:4}};
+ const fresh={...snapshot,todosObserved:true,review:{pending:1},
+  changes:{branch:"rama-actual",files:0}};
+ let fail=true,reads=0,paints=0;
+ const panel=createNativeWorkPanel(previous,{
+  requestRender(){paints++;},close(){},terminalRows:()=>150,
+  refresh:async()=>{reads++;if(fail)throw Error("lectura privada");return fresh;}
+ });
+ const before=panel.render(120).join("\n");
+ assert.match(before,/3 needs review/u);
+ await panel.refreshNow();
+ const missing=panel.render(120).join("\n");
+ assert.match(missing,/TODOS\s+unavailable/u);
+ assert.match(missing,/REVIEW\s+unverified/u);
+ assert.match(missing,/Actividad no disponible/u);
+ assert.match(missing,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(missing,/No work in this session|rama-obsoleta|3 needs review|Tarea anterior|Consentimiento pendiente/iu);
+ fail=false;await panel.refreshNow();
+ const recovered=panel.render(120).join("\n");
+ assert.match(recovered,/1 needs review/u);
+ assert.doesNotMatch(recovered,/Actividad no disponible|rama-obsoleta|3 needs review/u);
+ assert.equal(reads,2);assert.equal(paints,2);
+ panel.dispose();
+});

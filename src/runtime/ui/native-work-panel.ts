@@ -50,8 +50,9 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    if(disposed)return;
    if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
    // Ante lectura fallida no conservar estados hijos activos obsoletos.
-   const {agentFlow:_anterior,...safe}=snapshot;
-   snapshot={...safe,agentFlowUnavailable:true};
+   // La lectura falló: no reutilizar listas, revisión, Git o integraciones
+   // anteriores como si fueran observaciones vivas del mismo momento.
+   snapshot={todos:[],agents:[],jobs:[],activityUnavailable:true,agentFlowUnavailable:true};
    controls.requestRender();
   }finally{refreshing=false;}
  };
@@ -79,7 +80,7 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
  const rowsFor=(width:number):Row[]=>{
   const layout=renderAsenPanelWithLayout(snapshot,width,[...collapsed]);
   const rows:Row[]=[];
-  const noWork=!snapshot.todos.length&&!snapshot.jobs.length&&!snapshot.agents.length&&
+  const noWork=!snapshot.activityUnavailable&&!snapshot.todos.length&&!snapshot.jobs.length&&!snapshot.agents.length&&
    !(snapshot.agentFlow?.overview.totalTasks);
   for(const group of layout.groups){
    const section=group.section;
@@ -91,7 +92,8 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    if(!selectedOnly&&section==="AGENTS"&&noWork)rows.push({text:"  No work in this session"});
    if(!open)continue;
    let source:readonly string[]=[];
-   if(selectedOnly)source=renderAsenPanelSection(snapshot,section,width,true);
+   if(snapshot.activityUnavailable)source=layout.lines.slice(group.start+1,group.end);
+   else if(selectedOnly)source=renderAsenPanelSection(snapshot,section,width,true);
    else if(section==="INTEGRATIONS"){
     const inspection=snapshot.integrationInspection;
     const flowLine=snapshot.agentFlow?.overview.totalTasks?
