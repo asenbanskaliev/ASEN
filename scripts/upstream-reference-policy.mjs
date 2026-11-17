@@ -25,7 +25,7 @@ const exactProvenanceDocs=new Set([
   "odd/tasks/flujo-de-agentes.md",
   // T11: trazabilidad humana de layout, no código ejecutable ni un import.
   "odd/tasks/flujo-de-agentes-continuidad.md",
-  "odd/tasks/flujo-de-agentes-t11-layout-"+providerTerm+"-4.8.0.md",
+  "odd/tasks/flujo-de-agentes-t11-layout-"+providerTerm+"-shell-4.8.0.md",
   // Pinned static product objective; never exempts runtime sources.
   "odd/tasks/flujo-de-agentes-objetivo.md",
   "odd/tasks/asen-focus-experience.md",
