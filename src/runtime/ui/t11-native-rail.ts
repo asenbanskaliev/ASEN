@@ -7,6 +7,7 @@ import {ScrollView,type Component,type TUI} from "@earendil-works/pi-tui";
 import type {Theme} from "@earendil-works/pi-coding-agent";
 import {renderAsenPanel,type AsenPanelSnapshot} from "./ide-panel.js";
 import {truncateForTerminal} from "../responsive-layout.js";
+import type {AsenAppearancePreset} from "./t11-appearance.js";
 
 export const ASEN_RAIL_BREAKPOINT=140;
 export const ASEN_RAIL_WIDTH=50;
@@ -28,7 +29,8 @@ function supported(root:Root|undefined):root is Root{
  return !descriptor||descriptor.writable===true||descriptor.configurable===true;
 }
 export function installAsenNativeRail(
- tui:TUI,theme:Pick<Theme,"fg"|"bold">,read:()=>AsenPanelSnapshot|undefined
+ tui:TUI,theme:Pick<Theme,"fg"|"bold">,read:()=>AsenPanelSnapshot|undefined,
+ readPreset:()=>AsenAppearancePreset=()=>"neutral"
 ):AsenRailHandle{
  const host=tui as Host;
  let closed=false,originalRoot:Root|undefined,originalNode:(()=>LayoutNode)|undefined;
@@ -38,7 +40,7 @@ export function installAsenNativeRail(
   render(width:number):string[]{
    const cols=Math.max(12,Math.min(1000,Math.floor(width)-2));
    const snapshot=read()??{todos:[],agents:[],jobs:[]};
-   const lines=renderAsenPanel(snapshot,cols);
+   const lines=renderAsenPanel(snapshot,cols,[],readPreset()==="power");
    return ["",...lines].map((line)=>{
     const value=truncateForTerminal(line,cols);
     const heading=/^[▾▸] /u.test(value),dim=/unknown|unverified|unavailable|No (?:agents|tasks|owned jobs)/iu.test(value);
@@ -51,7 +53,7 @@ export function installAsenNativeRail(
  const leaf:Component&Record<symbol,unknown>={
   render:()=>[],invalidate(){},
  };
- const eligible=()=>!closed&&host.mode==="fullscreen"&&(tui.terminal?.columns??0)>=ASEN_RAIL_BREAKPOINT;
+ const eligible=()=>!closed&&readPreset()!=="light"&&host.mode==="fullscreen"&&(tui.terminal?.columns??0)>=ASEN_RAIL_BREAKPOINT;
  const detach=()=>{
   if(originalRoot&&originalNode&&ownNode&&originalRoot[NODE]===ownNode){
    if(ownDescriptor)Object.defineProperty(originalRoot,NODE,ownDescriptor);

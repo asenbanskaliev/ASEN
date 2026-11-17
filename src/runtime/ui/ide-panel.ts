@@ -214,13 +214,13 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
  }
  return Object.freeze(out.map(value=>fit("  "+value,width)));
 }
-export function renderAsenPanel(snapshot:AsenPanelSnapshot,width=72,collapsed:readonly AsenPanelSection[]=[]):readonly string[]{
+export function renderAsenPanel(snapshot:AsenPanelSnapshot,width=72,collapsed:readonly AsenPanelSection[]=[],detail=false):readonly string[]{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const lines:string[]=[];
  for(const section of ASEN_PANEL_SECTIONS){
   const open=!collapsed.includes(section);
   lines.push(fit((open?"▾ ":"▸ ")+section+" · "+count(snapshot,section),width));
-  if(open)lines.push(...renderAsenPanelSection(snapshot,section,width));
+  if(open)lines.push(...renderAsenPanelSection(snapshot,section,width,detail));
  }
  return Object.freeze(lines);
 }

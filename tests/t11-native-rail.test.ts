@@ -81,3 +81,14 @@ test("T11 reconecta al nuevo árbol del host sin una llamada manual y detiene la
  assert.equal((other[NODE] as ()=>any)().type,"vstack","no debe quedar ningún temporizador modificando el siguiente host");
 });
 
+
+test("T11 Light retira el lateral y Power mantiene la reserva real",()=>{
+ const f=host(180);let preset:"light"|"neutral"|"power"="neutral";
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot,()=>preset);
+ assert.equal(h.active(),true);
+ preset="light";h.refresh();assert.equal(h.active(),false);
+ assert.equal((f.root[NODE] as ()=>any)().type,"vstack");
+ preset="power";h.refresh();assert.equal(h.active(),true);
+ assert.equal((f.root[NODE] as ()=>any)().entries[1].basis,50);
+ h.dispose();assert.equal(f.root[NODE],f.original);
+});

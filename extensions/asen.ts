@@ -87,6 +87,7 @@ import {createNativeCommandPalette} from "../src/runtime/ui/native-command-palet
 import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
 import {renderAsenFocusHeader} from "../src/runtime/ui/focus-chrome.js";
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
+import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
 import {createT11RailObserver,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {createM1SurfaceCache} from "../src/runtime/ui/m1-readonly-rail.js";
@@ -357,6 +358,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   let panelEpoch=0,hostStatusClosed=false;
   let t11Rail:AsenRailHandle|undefined,t11Snapshot:AsenPanelSnapshot|undefined;
+  let t11Preset:AsenAppearancePreset="neutral";
   let t11Observer:T11RailObserver|undefined;
   const panelScope=(ctx:CommandContext)=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd,epoch=panelEpoch;
@@ -453,7 +455,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!t11Rail?.active()||!t11Snapshot)t11Snapshot=snapshot;
     t11Rail?.sync();t11Rail?.refresh();
     const surface=m1Cache.next(snapshot,width,identity.sessionId+"|"+identity.projectId);
-    if(t11Rail?.active()){ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();}
+    if(t11Preset==="light"||t11Rail?.active()){ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();}
     else if(surface)ctx.ui.setWidget("asen:m1-rail",surface.mode==="rail"?[...surface.lines]:undefined,{placement:"aboveEditor"});
     const line=width>=140?undefined:renderAsenWorkRow(snapshot,width);
     ctx.ui.setWidget("asen-live-work",line?[line]:undefined,{placement:"aboveEditor"});
@@ -505,6 +507,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11Observer?.stop();t11Observer=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
+   t11Preset=readAsenAppearance(home()).preset;
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
     typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
@@ -526,7 +529,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(allowed&&parentGeneration===parentBindingGeneration){
       ctx.ui.setHeader((tui,theme)=>{
        t11Rail?.dispose();
-       t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot);
+       t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot,()=>t11Preset);
        return {
         render(width:number){
          t11Rail?.sync();
@@ -1005,7 +1008,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return {error:"Use /asen presentation status, /asen presentation compact or /asen presentation complete"};
   }});
 
-  registerData("asen-customize",{description:"Show ASEN customization surfaces or choose current/default permission modes with /asen-customize permissions",handler:async(raw:string|undefined,ctx:CommandContext)=>{
+  registerData("asen-customize",{description:"Show ASEN visual preferences and primary permission modes",handler:async(raw:string|undefined,ctx:CommandContext)=>{
+   const appearanceArgs=String(raw??"").trim().toLowerCase().split(/\\s+/u).filter(Boolean);
+   if(appearanceArgs[0]==="appearance"){
+    if(appearanceArgs.length>2)return {error:"Use /asen-customize appearance [light|neutral|power|status]"};
+    const saved=readAsenAppearance(home());
+    let choice=appearanceArgs[1];
+    if(!choice&&ctx?.mode==="tui"&&ctx?.hasUI===true&&typeof ctx.ui?.select==="function"){
+     const guard=panelScope(ctx),identity=await sessionIdentity(ctx);guard();
+     const picked=await ctx.ui.select("ASEN visual preset",["Light","Neutral","Power","Cancel"],ctx.signal?{signal:ctx.signal}:undefined);
+     guard();const current=await sessionIdentity(ctx);guard();
+     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw Error("ASEN appearance session changed");
+     if(ctx.signal?.aborted||picked===undefined||picked==="Cancel")return {cancelled:true,...saved};
+     if(!["Light","Neutral","Power"].includes(picked))throw Error("Unknown ASEN appearance choice");
+     choice=picked.toLowerCase();
+    }
+    if(!choice||choice==="status")return {...saved,note:"Use /asen-customize appearance light|neutral|power (presentation only)."};
+    if(!isAsenAppearancePreset(choice))return {error:"Use /asen-customize appearance [light|neutral|power|status]"};
+    saveAsenAppearance(home(),choice);
+    t11Preset=choice;t11Rail?.refresh();
+    if(ctx?.mode==="tui"&&ctx.hasUI===true)await refreshWorkRow(ctx);
+    return {preset:choice,source:"saved",scope:"user",note:"Presentation only; model and permissions unchanged."};
+   }
    if(String(raw??"").trim()!=="permissions")return {customize_surfaces:[
     {name:"asen-profiles",role:"model and routing profiles"},
     {name:"asen-persona",role:"reply tone and persona"},
@@ -1013,7 +1037,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     {name:"asen-history",role:"local task/session history"},
     {name:"asen-usage",role:"runtime usage and accounting"},
     {name:"asen-stats",role:"Pi history aggregates"},
-    {name:"asen-keymaps",role:"keyboard shortcut bindings"}],
+    {name:"asen-keymaps",role:"keyboard shortcut bindings"},
+    {name:"asen-customize appearance",role:"Light/Neutral/Power visual presets"}],
     implemented:true,note:"Use /asen-customize permissions for the live primary selection menu. Use /asen-customize keymaps to edit shortcuts."};
    if(String(raw??"").trim()==="keymaps"){
     if(ctx?.mode!=="tui"||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return "Keymap editing requires interactive TUI.";
