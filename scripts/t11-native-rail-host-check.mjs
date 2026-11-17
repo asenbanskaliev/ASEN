@@ -50,7 +50,8 @@ async function run(label,withAsen,resize){
   '     const root=tui.layoutRoot;const fn=root?.[NODE];let node;',
   '     try{node=typeof fn==="function"?fn.call(root):undefined;}catch{}',
   '     appendFileSync(out,JSON.stringify({kind:"render",width,columns:tui.terminal?.columns??null,mode:tui.mode??null,',
-  '      type:node?.type??null,gap:node?.gap??null,count:node?.entries?.length??null,rail:node?.entries?.[1]?.basis??null})+String.fromCharCode(10));',
+  '      type:node?.type??null,gap:node?.gap??null,count:node?.entries?.length??null,rail:node?.entries?.[1]?.basis??null,',
+  '      hasRootHook:typeof fn==="function",rootHookName:typeof fn==="function"?fn.name:null})+String.fromCharCode(10));',
   '    }',
   '    return ["ASEN T11 medida nativa"];',
   '   },invalidate(){}',
@@ -66,7 +67,7 @@ async function run(label,withAsen,resize){
   ASEN_NO_SKILL_REGISTRY:"1",PI_TELEMETRY:"0",TERM:"xterm-256color",COLORTERM:"",NO_COLOR:"1",FORCE_COLOR:"0"};
  for(const key of Object.keys(env))if(key.startsWith("GIT_")||/(?:KEY|TOKEN|PASSWORD|SECRET|CREDENTIAL)/iu.test(key))delete env[key];
  const opts=["--no-extensions",...(withAsen?["--extension",join(repo,"extensions","asen.ts")]:[]),
-  "--extension",probe,"--no-skills","--no-builtin-tools","--provider","openai","--model","gpt-4o"];
+  "--extension",probe,"--no-skills","--no-builtin-tools","--tui-mode","fullscreen","--provider","openai","--model","gpt-4o"];
  const terminal=spawn(process.execPath,[binary,...opts],{cwd:project,env,cols:180,rows:40,name:"xterm-256color"});
  let exited=false,output="";
  terminal.onExit(()=>{exited=true;});
@@ -101,8 +102,8 @@ try{
  const base=baseline.wide.at(-1),wide=actual.wide.at(-1),narrow=actual.small.at(-1),restored=actual.restored.at(-1);
  assert.ok(base&&wide&&narrow&&restored,"Pi debe emitir lecturas de geometría");
  Object.assign(report,{baselineWidth:base.width,withRailWidth:wide.width,realReservation:base.width-wide.width,
-  wideTree:{type:wide.type,gap:wide.gap,count:wide.count,rail:wide.rail},
-  narrowTree:{type:narrow.type,gap:narrow.gap,count:narrow.count,rail:narrow.rail},
+  wideTree:{mode:wide.mode,type:wide.type,gap:wide.gap,count:wide.count,rail:wide.rail,rootHookName:wide.rootHookName,hasRootHook:wide.hasRootHook},
+  narrowTree:{mode:narrow.mode,type:narrow.type,gap:narrow.gap,count:narrow.count,rail:narrow.rail,rootHookName:narrow.rootHookName,hasRootHook:narrow.hasRootHook},
   restored:restored.type==="hstack"&&restored.rail===50});
  assert.equal(wide.type,"hstack","El host debe dividir el ancho");
  assert.equal(wide.gap,3);assert.equal(wide.count,2);assert.equal(wide.rail,50);
