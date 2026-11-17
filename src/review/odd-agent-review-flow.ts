@@ -126,8 +126,9 @@ export function proposeJudgmentFixHandoff(input:{
   report.candidateTreeIdentity!==evidence.candidate.treeIdentity||
   report.fixAgent!=="not-launched"||report.acceptance!=="not-accepted"||
   report.deliveryAuthority!==false||report.autoMerge!==false||
-  (fixProfile?.model!==undefined&&!safe(fixProfile.model))||
-  (fixProfile?.thinking!==undefined&&!safe(fixProfile.thinking,32)))
+  (fixProfile?.model!==undefined&&
+   inspectPlannedWorkerModelRoute(fixProfile.model).status!=="pinned")||
+  (fixProfile?.thinking!==undefined&&!isThinking(fixProfile.thinking)))
   throw new Error("Judgment Day candidate or model route changed");
  const blockers:string[]=[];
  if(input.fixProfileUnavailable===true)blockers.push("Fix profile lookup unavailable; no Fix dispatch permitted");

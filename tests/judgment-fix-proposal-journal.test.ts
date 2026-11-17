@@ -9,6 +9,7 @@ import {runJudgmentDay} from "../src/review/judgment-day.js";
 import {proposeJudgmentFixHandoff} from "../src/review/odd-agent-review-flow.js";
 import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
 import type {PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-reviewer.js";
+import type {RouteChoice} from "../src/runtime/lifecycle/profiles.js";
 
 const author={provider:"base",id:"writer"},a={provider:"free",id:"juez-a"},b={provider:"free",id:"juez-b"};
 function fixture(t:TestContext){
@@ -90,4 +91,32 @@ test("T08 jamás persiste propuestas fabricadas, no aplicables o corruptas",asyn
   sessionId:evidence.sessionId,projectId:evidence.candidate.repositoryRoot
  }),/Invalid Fix proposal journal/u);
  assert.equal(readFileSync(journal.file,"utf8"),corrupt,"No se sobrescriben registros corruptos");
+});
+
+test("T05/T08 solo admite un perfil Fix con proveedor, modelo y esfuerzo válidos",async t=>{
+ const {evidence,registry}=fixture(t);
+ const report=await runJudgmentDay({
+  registry,author,judgeA:a,judgeB:b,evidence,requirements:"Validar candidato"
+ });
+ for(const fixProfile of [
+  {model:"modelo-sin-proveedor"},
+  {model:"nvidia/default"},
+  {model:"nvidia//modelo"},
+  {thinking:"extreme"},
+  {model:"nvidia/reparador",thinking:"muy-alto"}
+ ]){
+  assert.throws(()=>proposeJudgmentFixHandoff({
+   report,evidence,fixProfile:fixProfile as RouteChoice
+  }),/Judgment Day candidate or model route changed/u,
+  "No conservar un perfil Fix inválido: "+JSON.stringify(fixProfile));
+ }
+ const correct=proposeJudgmentFixHandoff({
+  report,evidence,fixProfile:{model:"nvidia/reparador",thinking:"low"}
+ });
+ assert.equal(correct.fixModelRequested,"nvidia/reparador");
+ assert.equal(correct.fixThinkingRequested,"low");
+ assert.equal(correct.fixModelActual,"unknown");
+ assert.equal(correct.requiresFreshWriterConsent,true);
+ assert.equal(correct.writerAuthority,false);
+ assert.equal(correct.autoLaunch,false);
 });

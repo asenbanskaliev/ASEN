@@ -232,3 +232,9 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - `TrustedTaskAgentBinder` guarda una transición `planned → running` tras registrar el vínculo y **antes** del despacho. La comprobación del supervisor también se llama después de ese registro; por ello no debe bloquear el cambio legítimo.
 - Ahora acepta exclusivamente la tarea planificada idéntica o un evento adicional auténtico `Agent launch claimed before dispatch`, con revisión siguiente y todo el historial anterior intacto. Cualquier instrucción, permiso, estado cancelado o salto de revisión distinto sigue bloqueado.
 - Prueba positiva añadida para dos Workers con la transición; conservadas las dos pruebas negativas de cambio tras consentimiento. La verificación de CI del nuevo SHA sigue pendiente.
+
+## 17/11/2026 — T05/T08: ruta de modelo Fix con validación previa
+
+- Se corrigió la propuesta ODD Fix para rechazar rutas de modelo sin proveedor, rutas reservadas `default` y niveles de esfuerzo no admitidos. Se reutiliza el mismo validador que T05/T06 para el modelo solicitado del Worker y `isThinking` para el esfuerzo.
+- Se añadió prueba con informe genuino emitido por dos jueces instrumentados: perfiles mal formados bloqueados, perfil válido permitido pero `fixModelActual:unknown`, sin autoridad Writer, sin lanzamiento y con nuevo consentimiento obligatorio.
+- Estado: **IMPLEMENTADO_PENDIENTE_CI** del SHA de esta tanda. Este control valida configuraciones, no prueba autenticación del proveedor ni que el modelo haya respondido. No se ejecutaron llamadas a modelos de pago. `globalFull:false`.
