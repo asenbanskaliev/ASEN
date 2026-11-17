@@ -157,14 +157,18 @@ try{
  const refreshFrom=output.length;
  for(const state of children){
   writeFileSync(join(state.allocated.root,state.spec.file),"export const resultado=1;\n");
-  await agents.completed(state.agentId,{id:state.agentId,ok:true,output:"Prueba local sin modelo"});
+  // Un resultado COMPLETED exige un recibo irrepetible del Dispatcher real.
+  // No fabricar tal recibo en un ensayo sin modelo: producir un fallo genuino
+  // instrumentado y comprobar que T07 lo bloquea, nunca que lo acepta.
+  await agents.failed(state.agentId,"Fallo controlado de prueba sin proveedor");
   const todo=(await todos.list(state.child)).find(item=>item.taskId===state.taskId);
   assert.ok(todo);
-  await todos.update(todo.taskId,state.child,todo.current.revision,"succeeded");
+  await todos.update(todo.taskId,state.child,todo.current.revision,"blocked",
+   "Fallo controlado de Worker en ensayo visual sin modelo");
  }
  await until(()=>plain(output.slice(refreshFrom)).includes("Worktree Workers: 0 active observed")&&
-  plain(output.slice(refreshFrom)).includes("awaiting human review"),
-  "Actualización del panel Pi tras terminar",20000);
+  plain(output.slice(refreshFrom)).includes("2 blocked"),
+  "Actualización del panel Pi al bloquear ambos hijos",20000);
  report.terminalRefreshObserved=true;
  terminal.write("q");
  writeFileSync(shutdown,"1");
