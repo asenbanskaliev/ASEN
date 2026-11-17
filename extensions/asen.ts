@@ -2053,6 +2053,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      // The parent controls confirmation, not the child agent identity or scope.
      const result=await dispatchNextPlanTask({
       todos,agents,links:taskAgentLinks,identity,
+      expectedTodoId:unit.childTodoId,
       runtimeProfiles:await profileLayer(identity),
       validateIdentity:async()=>{
        await validateParent();
@@ -2124,6 +2125,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(context.signal?.aborted)throw new Error("Fix ODD planning was cancelled");
     const existing=(await fixJournal.list({sessionId,projectId}))
      .find(row=>row.id===source.proposalId);
+    if(context.sessionManager!==manager||manager.getSessionId()!==sessionId||
+     !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+     context.signal?.aborted)
+     throw new Error("Fix ODD planning scope changed while reading the source proposal");
     if(!existing||existing.requiredAction!=="new-odd-plan"||
      existing.candidateTreeIdentity!==source.treeIdentity)
      throw new Error("Fix ODD source proposal is unavailable or in dispute");

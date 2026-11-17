@@ -330,3 +330,12 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Al revisar el código antes del cierre de CI del SHA `e024e15ddc6be8c9317d23a8559e728adf1be05f` se detectó que la cadena `▸ Panel ASEN · /asen-panel` supera 24 columnas y un resumen con actividad también puede truncar el propio comando.
 - Se reserva primero el espacio de `/asen-panel`; solo se acorta la descripción. En 12 columnas se enseña únicamente la orden. Se añaden pruebas con/sin agente activo en 12/24/40/80/139/140/180 columnas.
 - RED por inspección estática (sin ejecutar todavía), GREEN y CI del nuevo SHA pendientes. No se alteran permisos, sesiones, Writer, NVIDIA ni el lateral nativo real. `globalFull:false`.
+
+## 17/11/2026 — CodeRabbit PR #61: triaje y primera tanda de correcciones mayores
+
+- Revisión CodeRabbit recibida para `0e749c7cca3467ab0c83661ac90b12f10b3e0c7d`: **10 avisos Major en línea + 17 Minor** en resumen. CI, Release Gate, Arquitectura y Pi 1.2 de ese SHA aprobados. El CI no acredita ausencia de defectos.
+- Correcciones de esta tanda: ruta de archivo Git comparada **con la misma capitalización** que el permiso (evitar que `case.ts` herede permiso para `Case.ts`); enumerar archivos nuevos anidados individualmente, sin `--directory`; impedir que el padre T06 inicie el Todo hijo equivocado por prioridad; revalidar el proyecto Fix bajo el bloqueo antes de despachar, además de revisarlo antes del diálogo; comprobar la sesión de Fix tras la lectura del diario y **antes** de guardar el plan.
+- Pruebas negativas nuevas: ruta con mayúsculas distintas, archivo nuevo anidado y dos tareas de distinta prioridad en la misma sesión hija. Sin llamadas NVIDIA, sin nuevos grants, sin fusión.
+- **Estado: IMPLEMENTADO_PENDIENTE_CI** del SHA de esta tanda. Mantener abiertos los avisos hasta que pasen todas las comprobaciones del SHA exacto y se valore cada comentario.
+- **Bloqueo prioritario aparte:** CodeRabbit detectó en T08 un problema de ejecución de código generado sin límite de red efectivo y la posibilidad de salida 0 sin completar las afirmaciones. No se declara validación de seguridad de T08 ni ejecución fiable de ensayo real hasta aislar el proceso y acreditar el fin de las pruebas. No ampliar `--permission` ni confiar en una lista de identificadores como sustituto.
+- Después: resolver los avisos restantes agrupados por módulo, integrar con T06/T07/T11, completar revisión independiente y ensayos Pi/TUI; `globalFull:false`.

@@ -31,11 +31,8 @@ function plainRelative(path:string):boolean{
  path.split("/").every(part=>!!part&&part!=="."&&part!==".."&&part.toLowerCase()!==".git");
 }
 function includesPath(paths:readonly string[],value:string):boolean{
- const p=value.toLocaleLowerCase("en-US");
- return paths.some(scope=>{
-  const s=scope.toLocaleLowerCase("en-US");
-  return p===s||p.startsWith(s+"/");
- });
+ // Las rutas Git se comparan exactamente: Foo.ts y foo.ts no comparten permiso.
+ return paths.some(scope=>value===scope||value.startsWith(scope+"/"));
 }
 function commonDir(root:string):string{
  return realpathSync(resolve(root,git(root,"rev-parse","--git-common-dir").trim()));
@@ -66,7 +63,7 @@ export function inspectParallelWorktreeChanges(input:{
   // Compare against base, not HEAD, so local commits remain visible.
   const tracked=git(root,"diff","--name-only","--no-ext-diff","--no-textconv","--no-renames","-z",input.baseRevision);
   // Includes ignored worktree files: absence of an ignore rule is not a write grant.
-  const untracked=git(root,"ls-files","--others","--directory","-z");
+  const untracked=git(root,"ls-files","--others","-z");
   const raw=[...tracked.split("\0"),...untracked.split("\0")].filter(Boolean);
   if(raw.length>changedLimit||raw.some(x=>!plainRelative(x)))return unavailable();
   const changedPaths=Object.freeze([...new Set(raw)].sort());

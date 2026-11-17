@@ -29,7 +29,7 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 }
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer};
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"inline";todoId:string;revision:number;role:"primary";instruction:string}|{status:"blocked";reason:string};
 
 function currentRevision(repository:string):string{
@@ -106,6 +106,9 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  if(!ready.length)return {status:"blocked",reason:"No persisted plan task is dependency-ready; complete independent verification or resolve the plan clarification first."};
  ready.sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-(b.plan?.priority??Number.MAX_SAFE_INTEGER));
  const task=ready[0]!;
+ // Un supervisor padre no puede lanzar otro Todo de la sesión hija, aunque tenga prioridad.
+ if(input.expectedTodoId!==undefined&&task.taskId!==input.expectedTodoId)
+  return {status:"blocked",reason:"The selected child Worker is not the next dependency-ready Todo; no confirmation or agent was started."};
  if(!task.plan)return {status:"blocked",reason:"The next plan task has no persisted role or skill selection."};
  const role=task.plan.role;
  if(role==="primary"){
@@ -145,14 +148,19 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
   try{
    const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
-    await input.validateIdentity();
-    if(task.plan?.fixSource){
-     const current=inspectStoredFixSourceTree(input.identity.projectId,
-      prepared.writeSurfaces,task.plan.fixSource.treeIdentity);
-     if(current.repositoryHead!==prepared.candidate.revision)
-      throw new Error("Fix ODD reviewed source changed before the Pi agent launch");
-    }
-    await binder.launchExact(fresh,id,input.identity,enqueue,dispatch,input.validateIdentity);
+    const validateLaunch=async()=>{
+     await input.validateIdentity();
+     if(task.plan?.fixSource){
+      const current=inspectStoredFixSourceTree(input.identity.projectId,
+       prepared.writeSurfaces,task.plan.fixSource.treeIdentity);
+      if(current.repositoryHead!==prepared.candidate.revision)
+       throw new Error("Fix ODD reviewed source changed before the Pi agent launch");
+     }
+    };
+    await validateLaunch();
+    // El almacén vuelve a ejecutar esta verificación dentro del bloqueo,
+    // inmediatamente antes de arrancar el agente.
+    await binder.launchExact(fresh,id,input.identity,enqueue,dispatch,validateLaunch);
    }});
    return {status:"dispatched",todoId:task.taskId,agentId,role};
   }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};throw error;}

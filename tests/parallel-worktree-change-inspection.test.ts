@@ -1,7 +1,7 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {existsSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {existsSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {inspectParallelWorktreeChanges} from "../src/runtime/agents/parallel-worktree-change-inspection.js";
@@ -79,4 +79,27 @@ test("T06 missing, unrelated or malformed worktree evidence fails closed",t=>{
   assert.equal(result.status,"unavailable");assert.equal(result.sourceVerified,false);
   assert.equal(result.autoMerge,false);
  }
+});
+
+test("T06 el permiso exacto distingue mayúsculas en rutas Git",t=>{
+ const f=fixture(t);
+ writeFileSync(join(f.root,"case.ts"),"export const v=1;\n");
+ const result=f.inspect({writeSurfaces:["Case.ts"]});
+ assert.equal(result.status,"out-of-scope","La ruta diferente no recibe autorización");
+ assert.deepEqual(result.changedPaths,["case.ts"]);
+ assert.deepEqual(result.outOfScopePaths,["case.ts"]);
+ assert.equal(result.autoMerge,false);
+});
+
+test("T06 enumera archivos nuevos anidados y conserva su ámbito exacto",t=>{
+ const f=fixture(t);
+ mkdirSync(join(f.root,"nuevo"),{recursive:true});
+ writeFileSync(join(f.root,"nuevo","dentro.ts"),"export const v=1;\n");
+ const permitted=f.inspect({writeSurfaces:["nuevo/dentro.ts"]});
+ assert.equal(permitted.status,"scoped-changes");
+ assert.deepEqual(permitted.changedPaths,["nuevo/dentro.ts"]);
+ assert.deepEqual(permitted.outOfScopePaths,[]);
+ const forbidden=f.inspect({writeSurfaces:["a.ts"]});
+ assert.equal(forbidden.status,"out-of-scope");
+ assert.deepEqual(forbidden.outOfScopePaths,["nuevo/dentro.ts"]);
 });
