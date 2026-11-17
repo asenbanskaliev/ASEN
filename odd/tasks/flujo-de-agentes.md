@@ -754,3 +754,9 @@ No se ha consumido NVIDIA ni fusionado ninguna rama.
 8. Evitar trabajos paralelos sobre los mismos archivos, reintentos de intentos de escritura ambiguos, pérdida de estado, cambios de \`main\` o merges automáticos. La programación horaria no concede autoridad nueva.
 
 **Primer trabajo autónomo prioritario:** Tanda A. La evidencia del fallo real obliga a un límite en tiempo de ejecución, no a aceptar dos \`write\` ni a repetir el ensayo NVIDIA como primer paso.
+
+## Megatanda A + B — refuerzo de permiso tras reinicio y cancelación (2026-11-17)
+
+A partir del SHA `7d7f7dcaae0d1047ef4a6a78c2eb92ad6407e751`, se conserva el control previo de una escritura T06 y se añade un fichero de reserva exclusivo y persistente en la carpeta privada del diario de atribución. La reserva se registra antes de la llamada nativa y no se libera por error o reinicio: estado `claimed-not-verified` hasta inspección, sin reintento automático. El supervisor ya tenía un registro persistente por lote y se mantiene; este control adicional cubre también la ruta de prueba Pi independiente. Los Writers generales no reciben esta opción.
+
+Se añaden pruebas de reanudación con la misma identidad, competencia por la misma reserva y ausencia de `tool_result`. Para B se ejecutan dos procesos Pi RPC instrumentados en paralelo, se cancela uno y se exige la terminación correcta del otro. Estas pruebas no autorizan proveedores, escrituras reales ni equivalencia FULL. Estado pendiente de CI del SHA nuevo.

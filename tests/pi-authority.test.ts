@@ -67,7 +67,11 @@ test("T06 impide la segunda llamada antes de escribir sin alterar Writers normal
  const fire=(hook:Hook,toolName:string,id:string,path="solo.mjs")=>
   hook({toolName,input:{path},toolCallId:id});
  try{
-  const hook=install({...base,oneShotWritePath:"solo.mjs"}),file=join(root,"solo.mjs");
+  const asOneShot=(config:typeof base)=>({
+   ...config,oneShotWritePath:"solo.mjs",
+   oneShotClaimFile:config.attributionFile+".t06-claim"
+  });
+  const hook=install(asOneShot(base)),file=join(root,"solo.mjs");
   assert.equal(fire(hook,"edit","edit-inicial")?.block,true);
   const first=fire(hook,"write","primero");assert.equal(first?.block,undefined);
   if(!first?.block)writeFileSync(file,"export const primera=1;\n");
@@ -76,11 +80,28 @@ test("T06 impide la segunda llamada antes de escribir sin alterar Writers normal
   assert.equal(readFileSync(file,"utf8"),"export const primera=1;\n");
   assert.equal(fire(hook,"edit","edit-posterior")?.block,true);
   assert.equal(fire(hook,"write","fuera","../fuera.mjs")?.block,true);
-  // Incluso sin tool_result, la tentativa anterior consumió el permiso.
-  const abortado=install({...base,oneShotWritePath:"solo.mjs"});
+  assert.equal(existsSync(base.attributionFile+".t06-claim"),true);
+  // Un proceso Pi reiniciado con la MISMA identidad no puede volver a escribir.
+  const reiniciado=install(asOneShot(base));
+  assert.equal(fire(reiniciado,"write","tras-reinicio")?.block,true);
+  assert.equal(readFileSync(file,"utf8"),"export const primera=1;\n");
+  // La ausencia del registro persistente se considera configuración inválida.
+  const sinDiario=install({...base,oneShotWritePath:"solo.mjs"});
+  assert.equal(fire(sinDiario,"write","sin-claim")?.block,true);
+  // Dos extensiones que compiten con la misma reserva admiten solo una.
+  const competidor={...base,sessionId:"t06-competidor",
+   attributionFile:join(root,"diario-competidor.json")};
+  const izquierda=install(asOneShot(competidor)),derecha=install(asOneShot(competidor));
+  const puertas=[fire(izquierda,"write","competidor-1"),fire(derecha,"write","competidor-2")];
+  assert.equal(puertas.filter(p=>p?.block!==true).length,1);
+  // Incluso sin tool_result, la tentativa consumió el permiso duradero.
+  const otro={...base,sessionId:"t06-otra-sesion",
+   attributionFile:join(root,"diario-otro.json")};
+  const abortado=install(asOneShot(otro));
   assert.equal(fire(abortado,"write","sin-respuesta")?.block,undefined);
   assert.equal(fire(abortado,"write","reintento")?.block,true);
-  const malicioso=install({...base,oneShotWritePath:"otro.mjs"});
+  assert.equal(fire(install(asOneShot(otro)),"write","reinicio-sin-respuesta")?.block,true);
+  const malicioso=install({...base,oneShotWritePath:"otro.mjs",oneShotClaimFile:base.attributionFile+".t06-claim"});
   assert.equal(fire(malicioso,"write","falso")?.block,true);
   assert.equal(existsSync(join(root,"otro.mjs")),false);
   // Sin la opción nueva se conserva el contrato del Writer productivo.

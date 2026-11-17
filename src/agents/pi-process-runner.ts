@@ -101,7 +101,7 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
-const authorityDigest="286de61ac2e47b15de1e51c762d7a07899628e1a59c3f09d310bd34e769ba630";
+const authorityDigest="a79b0c1a50cc3d049eaeccf3c674989e2106a52b71b430bac56a0b398bc70b1b";
 
 
 function oneShotWritePath(value:PiProcessOptions["oneShotWritePath"],request:AgentRequest):string|undefined{
@@ -273,6 +273,8 @@ export class PiProcessRunner implements AgentRunner{
    oneShot=oneShotWritePath(this.options.oneShotWritePath,request);
    if(oneShot&&receipt&&receipt.path!==oneShot)throw new Error("T06 one-shot and receipt paths differ");
    if(oneShot&&fallbackConfig?.chain.length)throw new Error("T06 one-shot cannot use model fallback");
+   if(oneShot&&(!this.options.attributionFile||!isAbsolute(this.options.attributionFile)))
+    throw new Error("T06 one-shot requires an absolute private attribution file for its durable claim");
   }catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
   const providerExtension=this.options.providerExtension;
   if(providerExtension!==undefined&&!trustedProviderExtensions.has(providerExtension))return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
@@ -314,7 +316,7 @@ export class PiProcessRunner implements AgentRunner{
    try{
     child=spawnContained(command,args,{
      cwd:request.repository,
-     env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{}),...(oneShot?{oneShotWritePath:oneShot}:{})})},
+     env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{}),...(oneShot?{oneShotWritePath:oneShot,oneShotClaimFile:this.options.attributionFile!+".t06-claim"}:{})})},
      stdio:["pipe","pipe","pipe"],
      detached:process.platform!=="win32"
     }) as ChildProcessWithoutNullStreams;

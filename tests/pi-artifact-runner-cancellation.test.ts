@@ -117,3 +117,25 @@ test("Un resultado tardío no revive una sesión de artefactos cancelada",async(
  assert.equal(outcome.artifactProof,undefined);
  assert.match(outcome.output,/cancellation requested/u);
 });
+
+test("B: dos procesos Pi RPC aislados, cancelar uno no interrumpe al otro",{timeout:process.platform==="win32"?60_000:30_000},async t=>{
+ const fixture=await createPiRpcFixture(t,scenario);
+ let pidA:number|undefined,pidB:number|undefined;
+ const options={command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],
+  noTools:true,timeoutMs:12_000};
+ const slow=new PiProcessRunner({...options,onProcessStart:pid=>{pidA=pid;}});
+ const fast=new PiProcessRunner({...options,onProcessStart:pid=>{pidB=pid;}});
+ const controller=new AbortController();
+ const cancelled=slow.run({id:"tarea-cancelada",role:"explorer",
+  repository:fixture.repository,prompt:"Esperar cancelación"},controller.signal);
+ const completed=fast.run({id:"tarea-sana",role:"explorer",
+  repository:fixture.repository,prompt:"Finalizar sin afectar a la otra"});
+ const timer=setTimeout(()=>controller.abort(),750);
+ t.after(()=>clearTimeout(timer));
+ const [a,b]=await Promise.all([cancelled,completed]);
+ assert.equal(a.ok,false);
+ assert.match(a.output,/cancel/u);
+ assert.equal(b.ok,true,b.output);
+ assert.match(b.output,/completado/u);
+ assert.ok(pidA&&pidB&&pidA!==pidB,"Pi debe usar procesos independientes");
+});
