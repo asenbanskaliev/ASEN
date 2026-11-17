@@ -87,6 +87,7 @@ import {createNativeCommandPalette} from "../src/runtime/ui/native-command-palet
 import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
 import {renderAsenFocusHeader} from "../src/runtime/ui/focus-chrome.js";
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
+import {createT11RailObserver,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {createM1SurfaceCache} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
@@ -356,6 +357,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   let panelEpoch=0,hostStatusClosed=false;
   let t11Rail:AsenRailHandle|undefined,t11Snapshot:AsenPanelSnapshot|undefined;
+  let t11Observer:T11RailObserver|undefined;
   const panelScope=(ctx:CommandContext)=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd,epoch=panelEpoch;
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
@@ -448,7 +450,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const now=await sessionIdentity(ctx);
     if(generation!==workRowGeneration||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
-    t11Snapshot=snapshot;t11Rail?.sync();t11Rail?.refresh();
+    if(!t11Rail?.active()||!t11Snapshot)t11Snapshot=snapshot;
+    t11Rail?.sync();t11Rail?.refresh();
     const surface=m1Cache.next(snapshot,width,identity.sessionId+"|"+identity.projectId);
     if(t11Rail?.active()){ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();}
     else if(surface)ctx.ui.setWidget("asen:m1-rail",surface.mode==="rail"?[...surface.lines]:undefined,{placement:"aboveEditor"});
@@ -499,6 +502,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }finally{advancingPlans.delete(key);}
   };
   const startSession=async(ctx:CommandContext)=>{
+   t11Observer?.stop();t11Observer=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    const preference=permissionDefault();
@@ -526,6 +530,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }catch{/* Optional presentation must not interrupt startup or confer authority. */}
    }
    await refreshHostStatus(ctx);
+   // Lecturas de los dos agentes Pi hijos cada cinco segundos, solo con lateral
+   // realmente visible. Cualquier error retira los estados antiguos.
+   if(ctx.mode==="tui"&&ctx.hasUI===true){
+    const guard=panelScope(ctx);
+    t11Observer=createT11RailObserver({
+     active:()=>t11Rail?.active()===true,
+     current:()=>{try{guard();return true;}catch{return false;}},
+     read:()=>getPanelSnapshot(ctx),
+     onSnapshot:snapshot=>{t11Snapshot=snapshot;t11Rail?.refresh();},
+     onUnavailable:()=>{t11Snapshot={todos:[],agents:[],jobs:[],agentFlowUnavailable:true};t11Rail?.refresh();},
+    });
+   }
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.()){
@@ -803,6 +819,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   for(const event of ["model_select","thinking_level_select","session_compact","session_compact_failed","session_tree","turn_end","agent_settled"])
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
+   t11Observer?.stop();t11Observer=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
