@@ -371,6 +371,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
   };
   const t11ActivityCache=createT11ActivityCache();
+  let t11ActivityUnavailable=false;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostRefreshGeneration=0;
   const clearHostStatus=()=>{
@@ -401,7 +402,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
     // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
     const line=width<140?renderAsenT11CompactStatus(info,Math.max(1,width),
-     {headerAtTop:t11Header!=="below-input",panelCommand:true}):
+     {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable}):
      renderAsenStatusLine(info,width);
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
    }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
@@ -461,9 +462,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let workRowGeneration=0;
   const refreshWorkRow=async(ctx:CommandContext):Promise<void>=>{
    if(ctx?.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
-   const generation=++workRowGeneration;
+   const generation=++workRowGeneration,guard=panelScope(ctx);
    try{
-    const guard=panelScope(ctx),identity=await sessionIdentity(ctx);guard();
+    const identity=await sessionIdentity(ctx);guard();
     const [todos,agents]=await Promise.all([
      todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
      agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve((dependencies.agents?.()??[]).filter(record=>record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(record.projectId,identity.projectId))),
@@ -473,6 +474,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(generation!==workRowGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
     t11ActivityCache.put(identity.sessionId,identity.projectId,snapshot);
+    t11ActivityUnavailable=false;
     if(!t11Rail?.active()||!t11Snapshot)t11Snapshot=snapshot;
     t11Rail?.sync();t11Rail?.refresh();
     const surface=m1Cache.next(snapshot,width,identity.sessionId+"|"+identity.projectId);
@@ -481,7 +483,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const line=width>=140||t11Rail?.active()||t11Position==="hidden"?undefined:renderAsenWorkRow(snapshot,width);
     ctx.ui.setWidget("asen-live-work",line?[line]:undefined,{placement:"aboveEditor"});
     await refreshHostStatus(ctx);
-   }catch{/* Presentation must not block the host or confer permission. */}
+   }catch{
+    if(generation!==workRowGeneration||hostStatusClosed)return;
+    try{guard();}catch{return;}
+    // El proveedor falló: borrar avisos anteriores, no publicarlos como actuales.
+    t11ActivityCache.clear();t11ActivityUnavailable=true;
+    t11Snapshot=undefined;t11Rail?.refresh();
+    try{ctx.ui.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});}catch{}
+    await refreshHostStatus(ctx);
+   }
   };
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
    if(!ctx?.ui?.setWidget)return;
@@ -535,7 +545,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
@@ -866,7 +876,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");

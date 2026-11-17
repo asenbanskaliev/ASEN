@@ -64,7 +64,7 @@ export function installAsenNativeRail(
  const content:Component={
   render(width:number):string[]{
    const cols=Math.max(12,Math.min(1000,Math.floor(width)-2));
-   const snapshot=read()??{todos:[],agents:[],jobs:[]};
+   const snapshot=read()??{todos:[],agents:[],jobs:[],activityUnavailable:true};
    const density=readDensity();
    const detail=readPreset()==="power"&&density==="comfortable";
    const layout=renderAsenPanelWithLayout(snapshot,cols,[...folded],detail);

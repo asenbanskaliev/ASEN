@@ -54,3 +54,30 @@ test("T11 el modo oculto puede retirar la sugerencia de panel, sin barra duplica
  assert.doesNotMatch(line,/\/asen-panel/);
  assert.equal((line.match(/ctx/g)??[]).length,1);
 });
+
+test("T11: un error de lectura advierte indisponibilidad en vez de conservar bloqueos antiguos",()=>{
+ const before=sample({hostStatus:projectHostStatus(),todos:[
+  {current:{state:"blocked"}} as AsenPanelSnapshot["todos"][number]
+ ]});
+ assert.match(renderAsenT11CompactStatus(before,80),/! 1 bloqueos/);
+ const unavailable=renderAsenT11CompactStatus(sample({hostStatus:projectHostStatus()}),80,{
+  activityUnavailable:true
+ });
+ assert.match(unavailable,/! actividad no disponible/);
+ assert.doesNotMatch(unavailable,/bloqueos|revisiones|aceptad[oa]|PASS/u);
+ assert.match(unavailable,/\/asen-panel$/);
+ for(const width of [12,24,40])assert.ok(visibleWidth(renderAsenT11CompactStatus(sample(),width,{
+  activityUnavailable:true
+ }))<=width);
+});
+
+test("T11: en terminal pequeña se ve antes el bloqueo de un Worker que el contexto alto",()=>{
+ const todo={current:{state:"blocked"}} as AsenPanelSnapshot["todos"][number];
+ const input=sample({todos:[todo],hostStatus:active});
+ const narrow=renderAsenT11CompactStatus(input,28);
+ assert.match(narrow,/! 1 bloqueos/);
+ assert.match(narrow,/\/asen-panel$/);
+ assert.doesNotMatch(narrow,/ctx 95%/);
+ const wide=renderAsenT11CompactStatus(input,100);
+ assert.match(wide,/^! 1 bloqueos · ! ctx 95%/);
+});

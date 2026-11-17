@@ -289,3 +289,17 @@ test("T11 superficie: tintado rellena el lateral real y transparente mantiene su
   transparent.map((row:string)=>row.trimEnd()));
  h.dispose();
 });
+
+test("T11: sin observación viva, el lateral indica indisponibilidad en vez de ceros inventados",()=>{
+ const f=host();
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>undefined);
+ const scroll=(f.root[NODE] as ()=>any)().entries[1].component;
+ const content=scroll[NODE]().component;
+ const rows=content.render(50).join("\n");
+ assert.match(rows,/TODOS · unavailable/);
+ assert.match(rows,/JOBS · unavailable/);
+ assert.match(rows,/AGENTS · unavailable/);
+ assert.match(rows,/Actividad no disponible/);
+ assert.doesNotMatch(rows,/No tasks in this session|No owned jobs|No agents|0 running/);
+ h.dispose();
+});

@@ -4,7 +4,7 @@
 import type {AsenPanelSnapshot} from "./ide-panel.js";
 import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "../responsive-layout.js";
 
-export interface T11StatusOptions{readonly headerAtTop?:boolean;readonly panelCommand?:boolean}
+export interface T11StatusOptions{readonly headerAtTop?:boolean;readonly panelCommand?:boolean;readonly activityUnavailable?:boolean}
 type Segment={text:string;priority:number};
 function clean(text:string,limit=60):string{
  return truncateForTerminal(sanitizeTerminalText(text).replace(/\s+/gu," ").trim(),limit);
@@ -15,13 +15,15 @@ export function renderAsenT11CompactStatus(
  if(!Number.isSafeInteger(width)||width<1||width>1000)throw Error("Invalid T11 status width");
  const host=snapshot.hostStatus,items:Segment[]=[];
  const ctx=host?.context;
+ if(options.activityUnavailable===true)
+  items.push({text:"! actividad no disponible",priority:0});
  if(ctx?.state==="warning"||ctx?.state==="error")
   items.push({text:"! ctx "+(ctx.percent===null?"?":Math.round(ctx.percent)+"%"),priority:0});
  const blocked=snapshot.todos.filter(x=>x.current.state==="blocked").length;
  const interrupted=snapshot.agents.filter(x=>x.state==="failed"||x.state==="interrupted").length;
- if(interrupted||blocked)items.push({text:"! "+(interrupted+blocked)+" bloqueos",priority:0});
+ if(interrupted||blocked)items.push({text:"! "+(interrupted+blocked)+" bloqueos",priority:-2});
  if(snapshot.review?.pending&&Number.isSafeInteger(snapshot.review.pending)&&snapshot.review.pending>0)
-  items.push({text:"! "+snapshot.review.pending+" revisiones",priority:0});
+  items.push({text:"! "+snapshot.review.pending+" revisiones",priority:-1});
  const permission=snapshot.permission;
  if(permission&&permission.toLowerCase()!=="normal")
   items.push({text:"modo "+clean(permission,18),priority:1});

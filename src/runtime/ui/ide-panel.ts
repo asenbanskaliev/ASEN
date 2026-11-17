@@ -14,6 +14,8 @@ export type AsenPanelSection=(typeof ASEN_PANEL_SECTIONS)[number];
 export interface AsenPanelSnapshot{
  readonly todos:readonly (TodoItem&{current:TaskEvent})[];
  readonly todosObserved?:boolean;
+ /** La lectura viva falló: nunca representar listas vacías como cero confirmado. */
+ readonly activityUnavailable?:boolean;
  readonly agents:readonly PublicAgentRecord[];
  readonly jobs:readonly BackgroundJobSnapshot[];
  readonly changes?:{readonly branch:string;readonly files:number};
@@ -55,6 +57,7 @@ export function derivePanelReview(snapshot:AsenPanelSnapshot):{pending:number;kn
   todo.current.state==="blocked"&&todo.current.reason==="Linked review result requires explicit user acceptance").length,known:true};
 }
 function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
+ if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"))return "unavailable";
  const linked=snapshot.agentFlow?.overview.totalTasks??0;
  const childRunning=snapshot.agentFlow?.overview.stages["running-observed"]??0;
  switch(section){
@@ -77,6 +80,8 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
 export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPanelSection,width=72,detail=false):readonly string[]{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const out:string[]=[];
+ if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"))
+  return Object.freeze([fit("  Actividad no disponible · datos pendientes de nueva lectura",width)]);
  const itemLimit=detail?100:12,secondaryLimit=detail?100:8;
  switch(section){
   case "TODOS":{

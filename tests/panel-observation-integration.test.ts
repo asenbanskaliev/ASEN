@@ -18,7 +18,7 @@ async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"thr
   await mkdir(value,{recursive:true});const prior=process.env[key];process.env[key]=value;
   t.after(()=>{if(prior===undefined)delete process.env[key];else process.env[key]=prior;});
  }
- const commands=new Map<string,any>(),events=new Map<string,Function[]>(),statuses=new Map<string,string|undefined>(),notices:string[]=[];
+ const commands=new Map<string,any>(),events=new Map<string,Function[]>(),statuses=new Map<string,string|undefined>(),widgets=new Map<string,unknown>(),notices:string[]=[];
  const inputs=Object.freeze([{name:"inspect",source:"extension",sourceInfo:{scope:"project",origin:"top-level"},description:"private description"}]);
  let effects=0,id="session-a",inventoryState=inventory;
  if(production){
@@ -30,7 +30,7 @@ async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"thr
   ...(inventory==="missing"?{}:{getCommands(){assert.equal(this,pi,"Command reader must retain its public host receiver");if(inventoryState==="throwing")throw Error("private error");return inventoryState==="empty"?[]:inputs;},getAllTools(){assert.equal(this,pi,"Tool reader must retain its public host receiver");if(inventoryState==="throwing")throw Error("private error");return inventoryState==="empty"?[]:[{name:"lookup",namespace:{name:"mcp__docs"},description:"private description"}];}}),
   setModel(){effects++;return false;},setActiveTools(){effects++;},sendMessage(){effects++;}};
  const ctx:any={cwd:project,mode:"tui",hasUI:true,model:{provider:"p",id:"m"},thinkingLevel:"high",getContextUsage(){return {tokens:80,contextWindow:100,percent:80};},
-  sessionManager:{getSessionId:()=>id},ui:{notify(message:string){notices.push(message);},setStatus(key:string,value:string|undefined){statuses.set(key,value);},setWidget(){},setFooter(){effects++;},confirm(){effects++;return false;}}};
+  sessionManager:{getSessionId:()=>id},ui:{notify(message:string){notices.push(message);},setStatus(key:string,value:string|undefined){statuses.set(key,value);},setWidget(key:string,value:unknown){widgets.set(key,value);},setFooter(){effects++;},confirm(){effects++;return false;}}};
  const dependencies={homeDir:()=>home,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,...(listGate?{todoStoreFactory:async()=>({async list(){await listGate();return [];}} as unknown as SessionTodoStore)}:{})};
  if(production)createPiExtension(dependencies)(pi as any);else createAsenExtension(dependencies)(pi);
  const emit=async(name:string)=>{for(const fn of events.get(name)??[])await fn({},ctx);};
@@ -39,7 +39,7 @@ async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"thr
   return production?notices.at(-1)!.split("\n"):result;
  };
  t.after(()=>{assert.equal(effects,0,"Inspection must not select, consent, dispatch or replace the footer");assert.equal(inputs[0]?.description,"private description");});
- return {root,home,project,ctx,statuses,notices,commands,emit,panel,setId(value:string){id=value;},setInventory(value:typeof inventory){inventoryState=value;}};
+ return {root,home,project,ctx,statuses,widgets,notices,commands,emit,panel,setId(value:string){id=value;},setInventory(value:typeof inventory){inventoryState=value;}};
 }
 
 test("production facade forwards public inventories with receiver binding and truthful unavailability",async t=>{
@@ -214,4 +214,39 @@ test("local status projects inventory states without connection or count claims"
  f.setInventory("throwing");
  const failed=await f.commands.get("asen-status").handler(undefined,f.ctx);
  assert.ok(failed.includes("integrations: commands unavailable · tools unavailable"),failed.join("\n"));
+});
+
+test("T11: una lectura tardía no repone tareas ni estado tras cerrar y cambiar de sesión",async t=>{
+ let unblock!:()=>void,entered!:()=>void,blocked=false;
+ const started=new Promise<void>(resolve=>{entered=resolve;});
+ const gate=new Promise<void>(resolve=>{unblock=resolve;});
+ const f=await fixture(t,"reported",async()=>{
+  if(blocked){entered();await gate;}
+ });
+ // Inicio inicial sin bloqueo para que la única espera sea el refresco pendiente.
+ await f.emit("session_start");
+ blocked=true;
+ const oldWork=f.emit("turn_end");
+ await started;
+ blocked=false;f.setId("sesion-nueva");
+ await f.emit("session_shutdown");
+ unblock();await oldWork;
+ assert.equal(f.statuses.get("asen:host"),undefined,"no se restaura el estado tras el cierre");
+ assert.equal(f.widgets.get("asen-live-work"),undefined,"no se reconstruye una fila de tareas caducada");
+ assert.equal(f.widgets.get("asen:m1-rail"),undefined,"no se reconstruye un lateral caducado");
+});
+
+test("T11: una lectura fallida retira avisos anteriores y se recupera al volver el proveedor",async t=>{
+ let failing=false;
+ const f=await fixture(t,"reported",async()=>{if(failing)throw Error("No se puede leer tareas");});
+ await f.emit("session_start");
+ await f.emit("turn_end");
+ assert.doesNotMatch(f.statuses.get("asen:host")??"",/actividad no disponible/);
+ failing=true;await f.emit("turn_end");
+ assert.match(f.statuses.get("asen:host")??"",/! actividad no disponible/);
+ assert.equal(f.widgets.get("asen-live-work"),undefined,"el aviso de trabajo antiguo se retira");
+ failing=false;await f.emit("turn_end");
+ assert.doesNotMatch(f.statuses.get("asen:host")??"",/actividad no disponible/);
+ await f.emit("session_shutdown");
+ assert.equal(f.statuses.get("asen:host"),undefined);
 });

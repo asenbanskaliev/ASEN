@@ -204,3 +204,19 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - La proyección de revisiones usa `derivePanelReview` **solo cuando existe una lista de Todos observada** en el cache de la sesión actual; no supone que cero tareas sin proveedor implique cero revisiones. Se refuerza `refreshWorkRow` con `panelScope`, invalidación por `workRowGeneration` en inicio/cierre y rechazo si `hostStatusClosed`; los trabajos asíncronos antiguos no deben reintroducir avisos después de sustituir la sesión.
 - Se añaden pruebas negativas de Todo `succeeded` y bloqueo con motivo explícito de revisión: dos pendientes solo en la sesión propietaria, sin declararlos aceptados, sin afirmar `PASS` y sin coste inventado. Las pruebas de matriz exigen `fresh-pi-render`, cada medida del umbral y que el editor conserve ancho positivo.
 - **Estado: IMPLEMENTADO_PENDIENTE_CI** del SHA de esta tanda; no declarar T11 completa ni `globalFull:true`. La comparación con Gentle Shell 4.8.0 sigue siendo parcial y falta revisar la interfaz mediante capturas equivalentes. PR #61 en borrador; **sin fusión**.
+
+## 17/11/2026 — Siguiente tanda T11: fallo de origen de datos, sin estado caducado
+- En `refreshWorkRow`, tras una lectura satisfactoria se conservan listas ligadas a sesión/proyecto. **Caso negativo pendiente:** si el origen de Todos o agentes falla a continuación, la barra no debe continuar mostrando los bloqueos anteriores como actuales.
+- Se prepara comportamiento fail-closed: ante fallo de observación de la generación vigente se descartan las listas y el widget de actividad de la sesión, se marca `! actividad no disponible` y se repinta únicamente el estado local verificable del host. Cuando el origen se recupera, desaparece el aviso y vuelve a mostrarse la lectura fresca.
+- La limpieza se aplica solo si `panelScope` y generación siguen vigentes: una lectura antigua fallida no puede retirar la barra correcta de la nueva sesión ni restaurar el estado de la anterior. Se incluyen pruebas con lectura que falla y se recupera, y con finalización tardía tras cambio y cierre de sesión.
+- **Estado: IMPLEMENTADO_PENDIENTE_CI del nuevo SHA tras publicación.** T11-E permanece abierta por contraste visual, no declarar `globalFull:true`, PR #61 sin fusión.
+
+### Contrato complementario: no convertir una observación ausente en cero
+- `AsenPanelSnapshot.activityUnavailable` distingue «lectura fallida» de «lista vacía observada». Cuando se marca, `TODOS/JOBS/AGENTS` publican `unavailable`, sin `0 running`, `0/0` ni textos «No tasks in this session». La vista nativa hace lo mismo si todavía no ha recibido su primer snapshot.
+- El pie compacto advierte `! actividad no disponible`. El cambio afecta únicamente a datos y representación; no crea tareas, no reintenta proveedores y no concede permisos. Pruebas de 12/24/40/50/140 columnas, pérdida de fuente, recuperación y aislamiento de sesiones.
+
+### Prioridad de pantalla estrecha
+- Con 28 columnas, un bloqueo observado de Worker tiene prioridad visual sobre el aviso de contexto alto. Después se muestran revisiones pendientes y contexto, siempre conservando `/asen-panel` cuando cabe. A 100 columnas los dos avisos aparecen en la misma barra. Esto no altera prioridades reales de tareas ni el estado de los Workers.
+
+### Cierre de la tanda de observación y tamaño
+- Los ensayos nativos del SHA base `e402690087cf698beb8f2edb852c40c39f007dcc` demostraron los seis tamaños en Linux, macOS y Windows; Architecture, Pi 1.2 y Release Gate pasaron. La tanda de indisponibilidad que sigue tiene **nuevas pruebas y nuevo SHA**, por lo que exige CI propio: no se trasladan automáticamente los resultados anteriores.

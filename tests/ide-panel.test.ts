@@ -327,3 +327,23 @@ test("T02/T05/T06/T07 panel diferencia modelo solicitado, intento y recibo de mo
  assert.equal(overview.tasks[0]!.modelConsumedProven,false);
  assert.deepEqual(panel,before);
 });
+
+test("T11: un origen fallido no dibuja cero tareas o agentes como si se hubieran observado",()=>{
+ const data=snapshot({activityUnavailable:true,todos:[],agents:[],jobs:[]});
+ for(const width of [12,24,40,50,140]){
+  const rows=renderAsenPanel(data,width);
+  if(width>=40){
+   assert.ok(rows.some(row=>row.includes("TODOS · unavailable")));
+   assert.ok(rows.some(row=>row.includes("JOBS · unavailable")));
+   assert.ok(rows.some(row=>row.includes("AGENTS · unavailable")));
+   assert.ok(rows.some(row=>row.includes("Actividad no disponible")));
+  }else{
+   assert.ok(rows.some(row=>row.includes("TODOS")));
+   assert.ok(rows.some(row=>row.includes("JOBS")));
+   assert.ok(rows.some(row=>row.includes("AGENTS")));
+  }
+  assert.doesNotMatch(rows.join("\n"),/No tasks in this session|No owned jobs|No agents|TODOS · 0\/0|JOBS · 0 running/);
+  assert.ok(rows.every(row=>visibleWidth(row)<=width));
+ }
+ assert.deepEqual(data,snapshot({activityUnavailable:true,todos:[],agents:[],jobs:[]}));
+});
