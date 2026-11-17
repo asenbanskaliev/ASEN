@@ -13,6 +13,7 @@ Plan rector: [flujo-de-agentes.md](./flujo-de-agentes.md)
 - **A — Bloqueo antes de escritura**: N1 + P1/P2/P5 + T06. Prioridad CRÍTICA DE OPERACIÓN. Pendiente; evitar repetir prueba pagada hasta pruebas negativas locales.
 - **B — Ciclo de vida Pi/cancelación**: N7/N8 y hallazgos 2/3/8 + P4/P6/P7 + T01/T02/T08. Pendiente, después de A.
 - **C — T06 + T07 conectados**: N2/N3 + P3/P8; unión real de sesiones/estado, actualización de paneles y TUI. Pendiente; tests de simulación insuficientes.
+- **C.1 — Paridad de interfaz T11**: nuevo trabajo prioritario tras C y antes del cierre visual de T07. Fuente fijada Gentle Shell 4.8.0, lateral real y distribución por ancho, barra, panel, presets, pruebas Pi 1.2.0. Documento: [T11](./flujo-de-agentes-t11-layout-gentle-shell-4.8.0.md). **Estado PENDIENTE**: análisis documentado; no hay implementación ni prueba visual certificada.
 - **D — ODD, revisión y Fix**: N4/N5 y hallazgos 5/6/7 + P9 + T03/T04/T05/T08. Pendiente; las condiciones de aceptación humanas se mantienen.
 - **E — Seguridad, regresión y auditoría**: N6 y hallazgos pendientes + P10 + T09/T10. Pendiente.
 - **F — A/B y equivalencia**: mediciones auténticas y cierre T09/T10. Pendiente.
@@ -75,3 +76,9 @@ Pruebas nuevas: \`running\` → \`completed\` con cambios Git pendientes, Worker
 ## 17/11/2026 — Reparación de CI de la tanda C
 
 SHA diagnosticado: `fd379be1a08bd43bd6da3b6b79d19d1c0d6280e4`. CI 44033273062 falló en Linux, macOS y Windows por la misma prueba de navegación del panel: esperaba dos llamadas al cierre del host tras cerrar ya el componente. La nueva gestión de temporizador dispone el componente al cerrar y correctamente ignora entradas posteriores. Se conserva el cierre único y se añade comprobación de que tampoco refresca después de cerrar. RED observado en los tres sistemas; GREEN pendiente de CI del commit de reparación. Phase 0, Pi 1.2 y Release Gate del SHA diagnosticado correctos. No se avanza a D hasta verificar el nuevo SHA; no se ejecuta manualmente ningún proveedor ni se aprueba entorno.
+
+## 17/11/2026 — Alta T11: experiencia y distribución visual Gentle Shell 4.8.0
+
+Se fija la referencia oficial `v4.8.0`, commit `3dc9029755912358d0a172b4972e5842c239570c`, **no la rama main ni una descripción genérica de otras versiones**. La referencia usa lateral real a partir de 140 columnas, un resumen y hoja completa en pantalla estrecha, barras de estado adaptables y tres perfiles visuales. ASEN tiene ahora seis secciones en panel nativo y `renderM1Surface`, pero con ancho >=140 coloca una lista encima del editor, no un lateral Pi real. El host status conserva coste y cuota como `unavailable` hasta observación válida. El diseño y la matriz de aceptación se documentan en [T11](./flujo-de-agentes-t11-layout-gentle-shell-4.8.0.md).
+
+Estado **T11: ANALIZADO_Y_PLANIFICADO_PENDIENTE_DE_IMPLEMENTACIÓN**. Próxima acción automática: T11-A (pruebas RED de layout y host, arquitectura Pi 1.2 sin modificar internals no validados) antes de T11-B/C/D; repetir sólo las pruebas de modelo necesarias, no la prueba Writer protegida por cambios puramente visuales. `globalFull:false`.
