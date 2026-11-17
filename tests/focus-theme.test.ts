@@ -31,6 +31,23 @@ for (const appearance of ['dark', 'light'] as const) {
       border: p.border, borderAccent: p.accent, customMessageBg: p.surface,
       selectedBg: p.focus, warning: p.warning, error: p.error, syntaxFunction: p.info,
     };
+    if (appearance === 'dark') Object.assign(overrides, {
+      dim: '#76616B', borderMuted: '#2A1720', success: '#D2CBD0',
+      borderAccent: '#FF4F9A', searchMatchBg: '#BF0F50',
+      searchMatchText: '#F6EFF3', userMessageText: '#F6EFF3',
+      customMessageText: '#F6EFF3', customMessageLabel: '#E0C27A',
+      toolTitle: '#E0C27A', toolOutput: '#F6EFF3',
+      mdHeading: '#E0C27A', mdLink: '#FF4F9A', mdLinkUrl: '#A78E9B',
+      mdCode: '#E0C27A', mdQuoteBorder: '#BF0F50', mdListBullet: '#FF4F9A',
+      toolDiffAdded: '#A9C7EE', toolDiffRemoved: '#FF718F',
+      syntaxKeyword: '#BF0F50', syntaxFunction: '#C49BFF',
+      syntaxString: '#E0C27A', syntaxNumber: '#D7A0B8',
+      syntaxType: '#A9C7EE', syntaxOperator: '#FF4F9A',
+      thinkingMedium: '#A9C7EE', thinkingHigh: '#C49BFF',
+      thinkingXhigh: '#FF4F9A', thinkingMax: '#F43888',
+      userMessageBg: '#2E0F1F', toolPendingBg: '#100A0F',
+      toolSuccessBg: '#151316', toolErrorBg: '#261019',
+    });
     assert.notEqual(result, base);
     assert.equal(result.name, 'asen-focus');
     assert.equal(result.appearance, appearance);
@@ -63,4 +80,18 @@ test('factory contains no settings, session, model or theme-application side eff
   const source = readFileSync(new URL('../src/runtime/ui/focus-theme.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /\b(setTheme|setThemeInstance|SettingsManager|createAgentSession|process|writeFile|readFile)\b/);
   assert.doesNotMatch(source, /pi-coding-agent\//);
+});
+
+test('T11: el tema distribuido tiene colores y roles compatibles con la paleta oscura', () => {
+  const skin=JSON.parse(readFileSync(new URL('../themes/ASEN-Sexy.json', import.meta.url),'utf8'));
+  assert.equal(skin.name,'ASEN-Sexy');
+  for(const [role,value] of Object.entries({
+    accent:'#F43888',border:'#563040',borderAccent:'#FF4F9A',
+    customMessageBg:'#100A0F',warning:'#F2B86D',error:'#FF718F'
+  })){
+    const paletteRole=skin.colors[role];
+    assert.equal(skin.vars[paletteRole],value,role);
+  }
+  const packaged=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'));
+  assert.ok(packaged.files.includes('themes/'),'El tema debe distribuirse con ASEN');
 });
