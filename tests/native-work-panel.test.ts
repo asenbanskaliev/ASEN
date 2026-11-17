@@ -545,6 +545,10 @@ test("T11/T07 modal: pérdida del registro hijo no reutiliza una ejecución prev
   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
   childSession:{id:"old-child",agents:[{id:"old-agent",role:"worker",state:"running"}]}
+ },{
+  sourceTodoId:"old-task-pending",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+  changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+   headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}
  }]}]);
  const bad:AsenPanelSnapshot={...snapshot,agentFlowUnavailable:true,agentFlow:{
   state:"observed",totalRecordedBatches:1,limited:false,overview:previous

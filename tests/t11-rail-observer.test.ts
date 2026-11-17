@@ -53,7 +53,8 @@ test("T11: errores en el control de sesión no se convierten en permisos de lect
 test("T11: un fallo del sondeo no vuelve a publicar cero tareas ni revisiones antiguas",async()=>{
  const previous:AsenPanelSnapshot={
   todos:[{title:"Tarea de otro instante",current:{state:"blocked",reason:"Esperando permiso"}} as AsenPanelSnapshot["todos"][number]],
-  agents:[{state:"running"} as AsenPanelSnapshot["agents"][number]],
+  agents:[{id:"agente-anterior",role:"worker",state:"running",
+   updatedAt:"2026-11-17T00:00:00.000Z"} as AsenPanelSnapshot["agents"][number]],
   jobs:[],todosObserved:true,review:{pending:2},
  };
  const recovered:AsenPanelSnapshot={todos:[],agents:[],jobs:[],todosObserved:true,review:{pending:0}};

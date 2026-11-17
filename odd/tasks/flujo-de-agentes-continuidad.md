@@ -308,3 +308,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - La revisión de las pruebas nuevas del commit `eeaffead4cc91b286e990babdf31f5753bdc03f3` detectó dos errores de expectativa: a 24/40 columnas el mensaje completo no cabe, y el modal necesita cinco avances `Tab` desde TODOS para llegar a INTEGRATIONS, no seis.
 - Se conserva el acceso literal `/asen-panel` al comprimir el aviso; si no cabe el texto largo se muestra `! hijos ?`, nunca un falso «sin hijos». La prueba verifica el comando y el ancho en todos los tamaños y selecciona realmente INTEGRATIONS.
 - **No se declara GREEN por inspección.** Se exige CI, Pi y Release Gate del SHA final. Ni T07 live ni T11-E visual se dan por cerrados. `globalFull:false`.
+
+## 17/11/2026 — Reparación RED de pruebas T11/T07 en CI multiplataforma
+
+- **SHA con fallos reproducidos:** `00404ffe8977389a1215f5e272eb7a33c14b124c`; ejecución de CI [#44170956417](https://github.com/asenbanskaliev/ASEN/actions/runs/44170956417). Arquitectura, Pi 1.2 y Release Gate: `success`, pero la prueba general falla.
+- **RED real (logs):** `tests/ide-panel.test.ts` y `tests/native-work-panel.test.ts` rechazados por `Invalid persisted agent-flow batch` en Linux/macOS/Windows: los nuevos datos de prueba tenían solo una tarea y el contrato del proyector exige 2–4. `tests/t11-rail-observer.test.ts` falló porque el agente ficticio carecía de `role` y `updatedAt`, necesarios para representar la lista.
+- **Corrección:** añadir una segunda tarea inocua y válida a ambos lotes de prueba y completar los campos públicos observables del agente. Se conserva la proyección real y su validación estricta: no se permite un lote de una sola tarea ni se falsea autorización o aceptación. Las pruebas siguen comprobando que una lectura fallida no reutiliza agentes anteriores.
+- **Alcance:** exclusivamente pruebas y registro, sin cambios en las barreras de seguridad o la ejecución Pi. No hay ensayo NVIDIA ni aprobaciones Writer.
+- **Estado:** `RED_CONFIRMADO_CI / GREEN_PENDIENTE_CI_SHA_NUEVO`. Se verificará CI multiplataforma exact-SHA, Pi runtime y Release Gate antes de avanzar a otra tanda. T11-E visual y T06/T07 unidos aún pendientes, `globalFull:false`.

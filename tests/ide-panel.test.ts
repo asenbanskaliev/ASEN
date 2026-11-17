@@ -376,6 +376,11 @@ test("T11/T07: la fuente hija desconocida no puede reutilizar observaciones anti
   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
   childSession:{id:"sesion-anterior",agents:[{id:"agent-antiguo",role:"worker",state:"running"}]}
+ },{
+  // Los lotes genuinos contienen de 2 a 4 tareas; un registro unitario es inválido.
+  sourceTodoId:"worker-pendiente",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+  changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+   headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}
  }]}]);
  const input=snapshot({todos:[],agents:[],jobs:[],agentFlowUnavailable:true,
   agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview:previous}});
