@@ -3,7 +3,7 @@
  * La API interna es experimental: si no está disponible, no se modifica Pi.
  * Jamás ejecuta tareas, concede permisos ni inventa datos de modelos.
  */
-import {ScrollView,type Component,type TUI,type TuiMouseEvent,type TuiMouseEventResult} from "@earendil-works/pi-tui";
+import {ScrollView,getKeybindings,type KeybindingsManager,type Component,type TUI,type TuiMouseEvent,type TuiMouseEventResult} from "@earendil-works/pi-tui";
 import type {Theme} from "@earendil-works/pi-coding-agent";
 import {ASEN_PANEL_SECTIONS,renderAsenPanelWithLayout,type AsenPanelSection,type AsenPanelSnapshot} from "./ide-panel.js";
 import {truncateForTerminal} from "../responsive-layout.js";
@@ -35,7 +35,8 @@ function supported(root:Root|undefined):root is Root{
 export function installAsenNativeRail(
  tui:TUI,theme:Pick<Theme,"fg"|"bold">,read:()=>AsenPanelSnapshot|undefined,
  readPreset:()=>AsenAppearancePreset=()=>"neutral",
- readPosition:()=>T11Position=()=>"auto",readDensity:()=>T11Density=()=>"comfortable"
+ readPosition:()=>T11Position=()=>"auto",readDensity:()=>T11Density=()=>"comfortable",
+ keybindings:Pick<KeybindingsManager,"matches">=getKeybindings()
 ):AsenRailHandle{
  const host=tui as Host;
  let closed=false,originalRoot:Root|undefined,originalNode:(()=>LayoutNode)|undefined;
@@ -50,9 +51,11 @@ export function installAsenNativeRail(
  const releaseFocus=()=>{
   if(!ownsFocus)return;
   ownsFocus=false;
+  // Si el árbol de Pi cambió de propietario, no reactivar el editor antiguo.
+  const canRestore=host.layoutRoot===originalRoot;
   try{
    if(typeof focusHost.getFocusedComponent==="function"&&focusHost.getFocusedComponent()===content)
-    tui.setFocus(focusWas);
+    tui.setFocus(canRestore?focusWas:null);
   }catch{/* Un foco anterior caducado no puede bloquear la salida. */}
   focusWas=null;
  };
@@ -74,7 +77,7 @@ export function installAsenNativeRail(
     for(let i=group.start+1;i<end;i++)rows.push({value:layout.lines[i]??""});
    }
    return rows.map(({value,section})=>{
-    const highlighted=ownsFocus&&section===sections[selected];
+    const highlighted=ownsFocus&&focusHost.getFocusedComponent?.()===content&&section===sections[selected];
     const fitted=truncateForTerminal(highlighted?"> "+value:value,cols);
     const heading=section!==undefined,dim=/unknown|unverified|unavailable|No (?:agents|tasks|owned jobs)/iu.test(fitted);
     const painted=heading?theme.fg("accent",theme.bold(fitted)):dim?theme.fg("muted",fitted):theme.fg("text",fitted);
@@ -100,17 +103,30 @@ export function installAsenNativeRail(
   },
   handleInput(data:string):void{
    if(!ownsFocus)return;
-   if(data==="\u001b"||data==="q"){
+   if(typeof focusHost.getFocusedComponent==="function"&&focusHost.getFocusedComponent()!==content){
+    // Pi entregó el foco a otro componente; no interceptar sus teclas.
+    ownsFocus=false;focusWas=null;return;
+   }
+   const matches=(action:Parameters<KeybindingsManager["matches"]>[1])=>keybindings.matches(data,action);
+   if(data==="q"||matches("tui.select.cancel")){
     releaseFocus();try{tui.requestRender();}catch{}return;
    }
-   if(data==="\t"||data==="\u001b[B"||data==="j")
+   if(matches("tui.input.tab")||matches("tui.select.down")||data==="j")
     selected=(selected+1)%sections.length;
-   else if(data==="\u001b[A"||data==="k")
+   else if(matches("tui.select.up")||data==="k")
     selected=(selected+sections.length-1)%sections.length;
-   else if(data===" "||data==="\r"||data==="\n"){
+   else if(data===" "||matches("tui.select.confirm")){
     const section=sections[selected]!;
     if(folded.has(section))folded.delete(section);else folded.add(section);
    }else return; // No se interpreta una orden para ejecutar agentes.
+   // Si la sección seleccionada queda fuera del panel visible, hacerla visible
+   // usando el desplazamiento propio de ScrollView, nunca el de la conversación.
+   const row=[...renderedHeadings].find(([,section])=>section===sections[selected])?.[0];
+   if(row!==undefined&&scroll.viewportHeight>0){
+    const top=scroll.scrollTop,bottom=top+scroll.viewportHeight;
+    if(row<top)scroll.scrollTo(row,{disableFollow:true});
+    else if(row>=bottom)scroll.scrollTo(row-scroll.viewportHeight+1,{disableFollow:true});
+   }
    scroll.invalidate();
    try{tui.requestRender();}catch{}
   },
@@ -139,8 +155,8 @@ export function installAsenNativeRail(
  const sync=()=>{
   if(closed)return;
   const root=host.layoutRoot;
-  if(root===originalRoot&&ownNode&&root?.[NODE]===ownNode)return;
-  detach();
+  if(root===originalRoot&&ownNode&&root?.[NODE]===ownNode){if(!eligible())releaseFocus();return;}
+  releaseFocus();detach();
   if(!supported(root))return;
   const before=root[NODE] as ()=>LayoutNode;
   const descriptor=Object.getOwnPropertyDescriptor(root,NODE);
@@ -162,7 +178,7 @@ export function installAsenNativeRail(
   try{tui.requestRender();}catch{/* La composición visual es opcional. */}
  };
  const hostSupported=()=>!!(originalRoot&&ownNode&&originalRoot[NODE]===ownNode);
- const active=()=>hostSupported()&&eligible();
+ const active=()=>{const enabled=hostSupported()&&eligible();if(!enabled)releaseFocus();return enabled;};
  const refresh=()=>{if(closed)return;if(!eligible())releaseFocus();scroll.invalidate();try{tui.requestRender();}catch{/* Es una vista auxiliar. */}};
  const dispose=()=>{if(closed)return;releaseFocus();closed=true;
   if(rebindTimer!==undefined)clearInterval(rebindTimer);rebindTimer=undefined;

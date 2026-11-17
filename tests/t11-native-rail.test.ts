@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type {TUI} from "@earendil-works/pi-tui";
+import {KeybindingsManager,TUI_KEYBINDINGS,type TUI} from "@earendil-works/pi-tui";
 import {ASEN_RAIL_BREAKPOINT,ASEN_RAIL_GAP,ASEN_RAIL_WIDTH,installAsenNativeRail} from "../src/runtime/ui/t11-native-rail.js";
 import type {AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
 
@@ -194,4 +194,75 @@ test("T11: al ocultar el lateral, cambiar de modo o cerrar se devuelve el foco",
   h.dispose();
   assert.equal(f.root[NODE],f.original);
  }
+});
+
+test("T11 respeta las teclas de navegación redefinidas por el usuario",()=>{
+ const f=host();let focus:unknown={};const editor=focus;
+ (f.ui as any).getFocusedComponent=()=>focus;
+ (f.ui as any).setFocus=(node:unknown)=>{focus=node;};
+ const bindings=new KeybindingsManager(TUI_KEYBINDINGS,{
+  "tui.select.down":"ctrl+n","tui.select.up":"ctrl+p",
+  "tui.input.tab":"ctrl+t","tui.select.cancel":"ctrl+x","tui.select.confirm":"ctrl+f",
+ });
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot,undefined,undefined,undefined,bindings);
+ const content=(f.root[NODE] as ()=>any)().entries[1].component[NODE]().component;
+ const title=content.render(48).findIndex((line:string)=>line.includes("TODOS"));
+ const event=content.handleMouse({type:"press",button:"left",y:title} as any);
+ if(event?.focus)(f.ui as any).setFocus(content);
+ content.handleInput("\t");assert.equal(h.selectedSection(),"TODOS","Tab asignado a otra acción no mueve selección");
+ content.handleInput("\u0014");assert.equal(h.selectedSection(),"JOBS","Ctrl+T del usuario avanza");
+ content.handleInput("\u000e");assert.equal(h.selectedSection(),"AGENTS","Ctrl+N del usuario baja");
+ content.handleInput("\u0010");assert.equal(h.selectedSection(),"JOBS","Ctrl+P del usuario sube");
+ content.handleInput("\r");assert.deepEqual(h.collapsedSections(),["TODOS"],"Enter sustituido no pliega");
+ content.handleInput("\u0006");assert.deepEqual(h.collapsedSections(),["TODOS","JOBS"],"Ctrl+F pliega");
+ content.handleInput("\u001b");assert.equal(focus,content,"Escape reemplazado no abandona el lateral");
+ content.handleInput("\u0018");assert.equal(focus,editor,"Ctrl+X devuelve el foco");
+ h.dispose();
+});
+test("T11 scroll mantiene visible la sección seleccionada sin desplazar la conversación",()=>{
+ const f=host();let focus:unknown={};(f.ui as any).getFocusedComponent=()=>focus;
+ (f.ui as any).setFocus=(component:unknown)=>{focus=component;};
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot);
+ const outer=(f.root[NODE] as ()=>any)().entries[1].component;
+ const content=outer[NODE]().component;
+ const rows=content.render(48);
+ const title=rows.findIndex((line:string)=>line.includes("TODOS"));
+ const ev=content.handleMouse({type:"press",button:"left",y:title} as any);
+ if(ev?.focus)(f.ui as any).setFocus(content);
+ // La altura real la proporciona el árbol de Pi. El scroll secundario es independiente.
+ outer.updateLayout(content.render(48).length,2,()=>{});
+ const previous=outer.scrollTop;
+ content.handleInput("\t");
+ assert.equal(h.selectedSection(),"JOBS");
+ assert.ok(outer.scrollTop>previous,"se muestra la cabecera seleccionada fuera de las 2 filas");
+ h.dispose();
+});
+test("T11 no devuelve foco a un editor de un host que cambió",()=>{
+ const f=host();let focus:unknown={};const editor=focus;
+ (f.ui as any).getFocusedComponent=()=>focus;
+ (f.ui as any).setFocus=(component:unknown)=>{focus=component;};
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot);
+ const content=(f.root[NODE] as ()=>any)().entries[1].component[NODE]().component;
+ const y=content.render(48).findIndex((line:string)=>line.includes("TODOS"));
+ const event=content.handleMouse({type:"press",button:"left",y} as any);
+ if(event?.focus)(f.ui as any).setFocus(content);
+ const replacement:Record<symbol,unknown>={[NODE]:()=>({type:"vstack",entries:[]})};
+ (f.ui as any).layoutRoot=replacement;
+ h.sync();
+ assert.equal(focus,null,"al cambiar de propietario no reactivar el editor antiguo");
+ assert.notEqual(focus,editor);
+ h.dispose();
+});
+test("T11 no acepta teclas tras perder foco por otro componente",()=>{
+ const f=host();let focus:unknown={};(f.ui as any).getFocusedComponent=()=>focus;
+ (f.ui as any).setFocus=(next:unknown)=>{focus=next;};
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot);
+ const content=(f.root[NODE] as ()=>any)().entries[1].component[NODE]().component;
+ const y=content.render(48).findIndex((line:string)=>line.includes("TODOS"));
+ const event=content.handleMouse({type:"press",button:"left",y} as any);
+ if(event?.focus)(f.ui as any).setFocus(content);
+ focus={}; // El editor recupera el foco directamente desde Pi.
+ content.handleInput("j");assert.equal(h.selectedSection(),"TODOS");
+ assert.equal(h.collapsedSections().length,1);
+ h.dispose();
 });
