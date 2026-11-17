@@ -20,7 +20,14 @@ export function renderM1Surface(snapshot:AsenPanelSnapshot,width:number):M1Surfa
  * No presenta una lista aboveEditor como un falso lateral; no infiere trabajo. */
 export function renderT11CompactFallback(snapshot:AsenPanelSnapshot,width:number):string{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw Error("Invalid T11 fallback width");
- return renderAsenWorkRow(snapshot,width)??truncateForTerminal("▸ Panel ASEN · /asen-panel",width);
+ const command="/asen-panel",separator=" · ";
+ const summary=renderAsenWorkRow(snapshot,width);
+ if(summary?.endsWith(command))return summary;
+ // El comando de acceso es funcional: jamás acortarlo para preservar contadores.
+ if(width<visibleWidth(command)+visibleWidth(separator)+3)return command;
+ const base=(summary??"▸ Panel ASEN").replace(/\s*·\s*\/asen-panel.*$/u,"");
+ const head=truncateForTerminal(base,width-visibleWidth(command)-visibleWidth(separator)).trimEnd();
+ return head+separator+command;
 }
 export function createM1SurfaceCache(){
  let last="";

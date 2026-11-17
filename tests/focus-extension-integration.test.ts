@@ -97,10 +97,15 @@ test("T11: Pi sin lateral nativo no dibuja falsa columna encima del editor",asyn
  assert.ok(active&&active.length===1,"El host sin árbol conserva solo una fila");
  assert.match(active[0]??"",/\/asen-panel/u);
  assert.doesNotMatch(active.join("\n"),/TODOS[\s\S]*AGENTS/u);
- for(const width of [24,40,80,139,140,180]){
+ for(const width of [12,24,40,80,139,140,180]){
   const compact=renderT11CompactFallback({todos:[],agents:[],jobs:[]},width);
   assert.ok(visibleWidth(compact)<=width);
   assert.match(compact,/\/asen-panel$/u);
   assert.doesNotMatch(compact,/No tasks in this session|50 columnas|hijos activos/u);
+  for(const agents of [[],[{id:"act",role:"worker",state:"running",updatedAt:"2026-11-17T00:00:00Z"}]]){
+   const line=renderT11CompactFallback({todos:[],agents:agents as any,jobs:[]},width);
+   assert.ok(visibleWidth(line)<=width);
+   assert.match(line,/\/asen-panel$/u,"El comando no se recorta con actividad observada");
+  }
  }
 });

@@ -324,3 +324,9 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - **Cambio:** la reserva 50+3 solo la hace `installAsenNativeRail` sobre el árbol Pi compatible. Si no existe, se retira la lista M1 artificial y se publica una única fila compacta con `/asen-panel`, incluso a 140+ columnas. Se respetan `hidden`, `auto+light` y el lateral realmente activo.
 - **Pruebas:** integración de `createAsenExtension -> session_start -> refreshWorkRow -> setWidget` con host sin `layoutRoot`; sin columna artificial, una fila compacta, sin contadores inventados ni comandos de agentes; contrato de anchuras 24/40/80/139/140/180. No hay modelo ni Writer. RED por inspección estática; GREEN y CI exact-SHA pendientes.
 - **Límite:** esto es degradación segura, no paridad visual con Gentle Shell 4.8.0. T11-E sigue pendiente de captura comparada, estilos y controles; T06/T07 extremo a extremo continúa abierto, `globalFull:false`. No se fusiona.
+
+### T11-E — evitar que el resumen compacto recorte la orden de apertura
+
+- Al revisar el código antes del cierre de CI del SHA `e024e15ddc6be8c9317d23a8559e728adf1be05f` se detectó que la cadena `▸ Panel ASEN · /asen-panel` supera 24 columnas y un resumen con actividad también puede truncar el propio comando.
+- Se reserva primero el espacio de `/asen-panel`; solo se acorta la descripción. En 12 columnas se enseña únicamente la orden. Se añaden pruebas con/sin agente activo en 12/24/40/80/139/140/180 columnas.
+- RED por inspección estática (sin ejecutar todavía), GREEN y CI del nuevo SHA pendientes. No se alteran permisos, sesiones, Writer, NVIDIA ni el lateral nativo real. `globalFull:false`.
