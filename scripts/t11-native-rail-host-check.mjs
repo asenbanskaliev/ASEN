@@ -83,9 +83,9 @@ async function run(label,withAsen,resize){
   await until(()=>samples(read(records),139).length>0||exited,label+": no hubo dibujo a 139");
   assert.equal(exited,false,label+": Pi salió al redimensionar");
   const small=samples(read(records),139);
-  const before=samples(read(records),180).length;
+  const before=read(records).filter(row=>row.kind==="render"&&row.columns===180).length;
   terminal.resize(180,40);
-  await until(()=>samples(read(records),180).length>before||exited,label+": no redibujó al volver a 180");
+  await until(()=>read(records).filter(row=>row.kind==="render"&&row.columns===180).length>before||exited,label+": no redibujó al volver a 180");
   assert.equal(exited,false,label+": Pi salió al ampliar");
   return {wide,small,restored:samples(read(records),180)};
  }catch(error){throw Error(label+": "+String(error)+", salida host "+output.slice(-1600));}
