@@ -39,7 +39,7 @@ writeFileSync(join(project,"README.md"),"medir reparto del espacio\n");
 git(project,"add","README.md");git(project,"commit","-qm","base prueba T11");
 const report={schema:"asen.t11.native-rail/v1",sha:expected,piVersion:pi.version,
  modelCalls:0,nvidiaCalls:0,baselineWidth:null,withRailWidth:null,realReservation:null,
- wideTree:null,narrowTree:null,restored:false,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
+ wideTree:null,narrowTree:null,restored:false,bottomTree:null,bottomAt139:null,bottomRestored:false,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async(fn,msg,timeout=25000)=>{const start=Date.now();while(Date.now()-start<timeout){if(fn())return;await sleep(150);}throw Error(msg);};
 const read=file=>{try{return readFileSync(file,"utf8").split("\n").filter(Boolean).map(JSON.parse);}catch{return [];}};
@@ -129,7 +129,24 @@ try{
  assert.ok(base.width-wide.width>=51&&base.width-wide.width<=55,"Debe reservar cerca de 53 columnas reales");
  assert.notEqual(narrow.rail,50,"El panel fijo debe desaparecer bajo 140 columnas");
  assert.equal(report.restored,true,"El lateral debe reaparecer al ampliar");
- assert.deepEqual(report.closedSessions,["baseline","asen"],"Ambos procesos Pi deben terminar realmente");
+ // Preferencia real guardada en el HOME aislado; prueba Pi 1.2 nativo, no maqueta.
+ const prefDir=join(home,".asen");mkdirSync(prefDir,{recursive:true,mode:0o700});
+ writeFileSync(join(prefDir,"t11-layout.json"),JSON.stringify({schema:1,position:"bottom",density:"compact"})+"\n",{mode:0o600});
+ const bottom=await run("asen-bottom",true,true);
+ const bottomWide=bottom.wide.at(-1),bottomSmall=bottom.small.at(-1),bottomBack=bottom.restored.at(-1);
+ assert.ok(bottomWide&&bottomSmall&&bottomBack,"Pi bottom debe emitir geometría nativa");
+ Object.assign(report,{
+  bottomTree:{mode:bottomWide.mode,type:bottomWide.type,gap:bottomWide.gap,count:bottomWide.count,rail:bottomWide.rail,width:bottomWide.width},
+  bottomAt139:{type:bottomSmall.type,rail:bottomSmall.rail,width:bottomSmall.width},
+  bottomRestored:bottomBack.type==="vstack"&&bottomBack.rail===8,
+ });
+ assert.equal(bottomWide.type,"vstack","El host nativo debe reservar filas para bottom");
+ assert.equal(bottomWide.gap,1);assert.equal(bottomWide.count,2);assert.equal(bottomWide.rail,8);
+ assert.equal(bottomWide.width,base.width,"El panel inferior no debe quitar columnas al editor");
+ assert.equal(bottomSmall.type,"vstack","El panel inferior debe seguir disponible bajo 140 columnas");
+ assert.equal(bottomSmall.rail,8);
+ assert.equal(report.bottomRestored,true,"El panel inferior debe restaurarse tras redimensionar");
+ assert.deepEqual(report.closedSessions,["baseline","asen","asen-bottom"],"Todas las sesiones Pi deben terminar realmente");
  report.result="PASS_REAL_PI_RAIL";
 }finally{
  const file=process.env.ASEN_T11_NATIVE_RAIL_REPORT;

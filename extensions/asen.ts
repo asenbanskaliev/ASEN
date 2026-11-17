@@ -434,7 +434,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11Snapshot=snapshot;t11Rail?.refresh();
    if(ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
    const width=terminalColumns();
-   if(width>=140)return; // La barra auxiliar no se dibuja en el diseño ancho.
+   if(width>=140||t11Rail?.active()||t11Position==="hidden"){
+    ctx.ui.setWidget("asen-live-work",undefined,{placement:"aboveEditor"});return;
+   } // No duplicar la barra si existe una sección fija.
    const row=renderAsenWorkRow(snapshot,width);
    ctx.ui.setWidget("asen-live-work",row?[row]:undefined,{placement:"aboveEditor"});
   };

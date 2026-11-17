@@ -116,3 +116,8 @@ Solicitud del usuario: ejecutar ya la tarea horaria. En la PR #61, SHA `d05f98da
 - `comfortable`: listado habitual; `compact`: cada sección con cabecera y hasta dos líneas reales; `minimal`: solo cabeceras y contadores del estado observado.
 - Pruebas añadidas de persistencia, enlaces simbólicos, campos que intentan colar permisos, posición en 140/80 columnas, 12 filas, limpieza del árbol y misma acción de plegado mediante ratón y teclado. No ejecutan agentes ni modelos.
 - **Estado al publicar: IMPLEMENTADO_PENDIENTE_CI**. El modo `bottom` requiere todavía una comprobación de geometría con Pi real en macOS, Windows y Linux. No se declara equivalencia total con Gentle Shell ni `globalFull:true`; no se fusiona la PR.
+
+## 17/11/2026 — T11: comprobación Pi real del panel inferior
+- Se amplía el ensayo nativo de `scripts/t11-native-rail-host-check.mjs`: tres sesiones reales y aisladas de Pi 1.2.0, sin modelos ni claves. Además del lateral derecho, se guarda explícitamente `position=bottom`, se comprueba composición vertical (dos elementos, ocho filas, una separación), el ancho original disponible al editor y el cambio 180 → 139 → 180. En todos los casos debe observarse cierre del proceso Pi; un informe parcial no es PASS.
+- Ajustada `publishInspectedWorkRow` para que el modo `bottom` no duplique la línea de trabajo y `hidden` no muestre una barra residual. El panel manual permanece disponible.
+- **Estado: PENDIENTE_CI** del nuevo SHA. La prueba exige el Pi real en Windows, macOS y Linux y no confunde un árbol simulado con geometría del host. No ampliar tiempos, desactivar pruebas ni fusionar.
