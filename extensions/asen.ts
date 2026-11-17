@@ -86,6 +86,7 @@ import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 import {createNativeCommandPalette} from "../src/runtime/ui/native-command-palette.js";
 import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
 import {renderAsenFocusHeader,t11ChromeParts} from "../src/runtime/ui/focus-chrome.js";
+import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
 import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11HeaderPlacement,type T11Surface} from "../src/runtime/ui/t11-chrome-settings.js";
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
@@ -388,7 +389,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const changes=observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
     const permission=permissionSession.mode(ctx);
-    const line=renderAsenStatusLine({todos:[],agents:[],jobs:[],hostStatus,...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})},terminalColumns());
+    const width=terminalColumns(),info:AsenPanelSnapshot={todos:[],agents:[],jobs:[],hostStatus,
+     ...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})};
+    // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
+    // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
+    const line=width<140?renderAsenT11CompactStatus(info,Math.max(1,width),
+     {headerAtTop:t11Header!=="below-input",panelCommand:true}):
+     renderAsenStatusLine(info,width);
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
    }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
   };
