@@ -1,6 +1,6 @@
 # T11 — Paridad de layout y experiencia Gentle Shell 4.8.0 en ASEN
 
-**Estado:** AUDITORÍA DE FUENTE + PLAN ODD COMPLETADOS; IMPLEMENTACIÓN PENDIENTE.  
+**Estado:** T11 EN DESARROLLO; layout derecho/inferior y navegación con Pi real verificados parcialmente. Cabecera y superficie implementadas, pendientes de CI/contraste visual. No se declara equivalencia completa.  
 **Prioridad:** P1, inmediatamente después de la integración de datos T06/T07 y **antes de cerrar la interfaz T07**.  
 **Rama:** `feat/flujo-de-agentes-20261115` (PR #61 en borrador; no fusionar).  
 **Referencia congelada:** tag oficial [Gentle Shell v4.8.0](https://github.com/Gentleman-Programming/gentle-shell/releases/tag/v4.8.0), commit [`3dc9029755912358d0a172b4972e5842c239570c`](https://github.com/Gentleman-Programming/gentle-shell/tree/3dc9029755912358d0a172b4972e5842c239570c), publicado el 14/11/2026. **Gentle 4.8 trae Pi 1.5.2; ASEN usa Pi 1.2.0.** La compatibilidad no puede suponerse.
@@ -79,11 +79,11 @@ Barra inferior compacta de una línea y agentes encima del editor. **No** forzar
 |---|---|---|
 | Datos TODOS/AGENTS/CHANGES/INTEGRATIONS | `src/runtime/ui/ide-panel.ts`, `agent-flow-panel-source.ts`, `agent-flow-overview.ts` y diarios T06 | Reutilizar datos; añadir organización visual, foco, jerarquía y acciones equivalentes |
 | Secciones y ventana | `ASEN_PANEL_SECTIONS` tiene las 6 secciones; `native-work-panel.ts` ofrece plegado, scroll, ratón parcial y lectura fresca | Faltan mismas prioridades visuales, hoja plena adaptativa y sección STATS verificada |
-| Lateral `>=140` | `m1-readonly-rail.ts` devuelve una lista de encabezados; `extensions/asen.ts` la muestra con `setWidget(...aboveEditor)` | **No existe lateral derecho real de 50 + 3**. Es la diferencia principal y no se debe etiquetar como equivalencia |
+| Lateral `>=140` | `m1-readonly-rail.ts` devuelve una lista de encabezados; `extensions/asen.ts` la muestra con `setWidget(...aboveEditor)` | Lateral nativo de 50 + 3 implementado; geometría real verificada en tres sistemas en SHA `9c91403`. Siguen pendientes la igualdad visual y todos los eventos reales |
 | Ancho menor que 140 | `renderAsenWorkRow` ya resume trabajo vivo | Conectar botón [ Panel ], reglas de prioridad, cierre y reflow; incluir no solo trabajo sino bloqueo/revisión |
 | Cabecera, barra, editor | `focus-chrome.ts` dibuja título de ASEN; `renderAsenStatusLine` y `host-status-projection.ts` preservan observaciones | Falta identidad proyecto/sesión bien colocada, modelo/perfil/consumo con prioridades de espacio, cabecera y editor equivalentes |
 | Coste, uso y modelo | `host-status-projection.ts` indica `cost/subscription/quota: unavailable` en host real | Añadir observadores verificados antes de pintar uso/coste; mantener desconocido cuando no exista fuente |
-| Presets | `/asen-presentation compact/complete` y `/asen-customize` para permisos/atajos | No hay equivalencia comprobada de Light/Neutral/Power, posición, densidad y superficie visual |
+| Presets | `/asen-presentation compact/complete` y `/asen-customize` para permisos/atajos | Light/Neutral/Power, posición y densidad implementados; cabecera y superficie añadidas en esta tanda. Falta contrastar el resultado completo con Gentle Shell 4.8 |
 | Gestión de espacio real Pi | El host de ASEN es Pi 1.2.0; la referencia usa adaptación de árbol de Pi 1.5.2 | **Puerta técnica:** verificar API y compatibilidad del host antes de tocar layout nativo; fallback seguro a panel si no admite dos columnas |
 
 ### Invariantes
@@ -124,4 +124,12 @@ Cada subtrabajo: RED (fallo reproducible anterior), GREEN, negativos (permisos, 
 
 **Fuera de alcance:** el Design Canvas y Gentle Desktop RPC que llegaron en el lanzamiento v4.8.0 no forman parte del layout terminal solicitado; esta tarea tampoco cambia modelos ni desbloquea Workers.
 
-**Estado inicial:** `ANALYZED_PLANNED_NOT_IMPLEMENTED`, `globalFull:false`.
+**Estado inicial histórico:** `ANALYZED_PLANNED_NOT_IMPLEMENTED`. **Estado actual:** `IMPLEMENTED_PARTIAL_PENDING_FINAL_CI_VISUAL_PARITY`, `globalFull:false`; los ensayos nativos y las opciones visuales no son por sí solos paridad completa.
+
+## Seguimiento de la tanda 17/11/2026
+
+La referencia permanece Gentle Shell v4.8.0 en tag congelado. Las implementaciones reales y su evidencia están documentadas cronológicamente en [flujo-de-agentes-continuidad.md](flujo-de-agentes-continuidad.md). La geometría del panel derecho e inferior tiene pruebas Pi nativas multiplataforma. El clic real recibió confirmación en Linux y Windows en el SHA `45f545b`; la validación completa del siguiente SHA y las opciones de cabecera/superficie siguen bajo CI. No se considera cerrada T11-E hasta verificar interacción, cambios de sesión, capturas de contraste y revisión independiente. No ejecutar modelos de pago ni fusionar.
+
+### Validación confirmada de interacción del lateral
+
+El SHA `d6a18ed75db09fc35dac526a4668accb53d1335f` ha superado los tres trabajos nativos Pi, el CI completo, la puerta de publicación, arquitectura y Pi 1.2. La incorporación de la cabecera y superficie en la siguiente tanda requiere verificaciones propias; mantener `globalFull:false` hasta que exista revisión visual comparada.

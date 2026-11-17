@@ -85,7 +85,8 @@ import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWor
 import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 import {createNativeCommandPalette} from "../src/runtime/ui/native-command-palette.js";
 import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
-import {renderAsenFocusHeader} from "../src/runtime/ui/focus-chrome.js";
+import {renderAsenFocusHeader,t11ChromeParts} from "../src/runtime/ui/focus-chrome.js";
+import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11HeaderPlacement,type T11Surface} from "../src/runtime/ui/t11-chrome-settings.js";
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
 import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
@@ -360,6 +361,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let panelEpoch=0,hostStatusClosed=false;
   let t11Rail:AsenRailHandle|undefined,t11Snapshot:AsenPanelSnapshot|undefined;
   let t11Preset:AsenAppearancePreset="neutral",t11Position:T11Position="auto",t11Density:T11Density="comfortable";
+  let t11Header:T11HeaderPlacement="top",t11Surface:T11Surface="transparent";
+  let t11ChromeInfo:{asenVersion:string;piVersion:string}|undefined,t11ChromeTheme:Theme|undefined;
   let t11Observer:T11RailObserver|undefined;
   const panelScope=(ctx:CommandContext)=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd,epoch=panelEpoch;
@@ -506,12 +509,22 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     return dispatched?{started:true,authorized:result.role==="worker",role:result.role,...(title?{title}:{})}:{started:false,authorized:false,...(result.status==="blocked"?{reason:result.reason}:{})};
    }finally{advancingPlans.delete(key);}
   };
+  /** Una sola cabecera: arriba, debajo del editor o repartida, nunca duplicada. */
+  const publishT11Chrome=(ctx:CommandContext):void=>{
+   if(ctx.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setWidget!=="function")return;
+   const part=t11ChromeParts(t11Header).bottom;
+   const lines=part!=="none"&&t11ChromeInfo&&t11ChromeTheme?
+    renderAsenFocusHeader(t11ChromeInfo,terminalColumns(),t11ChromeTheme,{part,surface:t11Surface}):undefined;
+   ctx.ui.setWidget("asen:t11-chrome",lines?.length?lines:undefined,{placement:"belowEditor"});
+  };
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
+   t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
    const layout=readT11Layout(home());t11Position=layout.position;t11Density=layout.density;
+   const chrome=readT11Chrome(home());t11Header=chrome.header;t11Surface=chrome.surface;
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
     typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
@@ -532,12 +545,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      // Una fachada sin Theme sí admite diseño y nunca concede herramientas.
      if(allowed&&parentGeneration===parentBindingGeneration){
       ctx.ui.setHeader((tui,theme)=>{
+       t11ChromeInfo={asenVersion,piVersion:VERSION};t11ChromeTheme=theme;
        t11Rail?.dispose();
        t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot,()=>t11Preset,()=>t11Position,()=>t11Density);
        return {
         render(width:number){
          t11Rail?.sync();
-         return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,theme);
+         return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,theme,{part:t11ChromeParts(t11Header).top,surface:t11Surface});
         },invalidate(){},
        };
       });
@@ -571,6 +585,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
    if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   publishT11Chrome(ctx);
    if(ctx.sessionManager?.getSessionId?.()){
     agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
     try{
@@ -836,6 +851,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
+   t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
    const endingSession=ctx?.sessionManager?.getSessionId?.();
@@ -846,7 +862,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(endingSession){sessionDirectory.remove(endingSession);clearSessionProfiles(await profilePartition(),endingSession);}
    for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);
    if(agentDeliveryIdentity&&agentDeliveryIdentity.sessionId===endingSession)notificationProjection.deactivate(agentDeliveryIdentity);
-   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;workRowGeneration++;ctx?.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();ctx?.ui?.setStatus?.("asen:workspace",undefined);resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
+   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;workRowGeneration++;ctx?.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:t11-chrome",undefined,{placement:"belowEditor"});m1Cache.reset();ctx?.ui?.setStatus?.("asen:workspace",undefined);resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
    if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("todo-recovery-start");await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");traceVerifierShutdown("todo-recovery-done");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue after best-effort recovery. */}}
    if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("agent-cancel-start");const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());traceVerifierShutdown("agent-cancel-done");}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}
    traceVerifierShutdown("delivery-drain-start");while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);traceVerifierShutdown("delivery-drain-done");
@@ -1014,6 +1030,29 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
 
   registerData("asen-customize",{description:"Show ASEN visual preferences and primary permission modes",handler:async(raw:string|undefined,ctx:CommandContext)=>{
    const visualParts=String(raw??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
+   if(visualParts[0]==="header"||visualParts[0]==="surface"){
+    const setting=visualParts[0],stored=readT11Chrome(home());
+    const choices=setting==="header"?["top","below-input","split"]:["transparent","tinted"];
+    if(visualParts.length>2)return {error:"Use /asen-customize "+setting+" "+choices.join("|")};
+    let selected=visualParts[1];
+    if(!selected&&ctx?.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui?.select==="function"){
+     const guard=panelScope(ctx),identity=await sessionIdentity(ctx);guard();
+     const picked=await ctx.ui.select("ASEN "+setting,[...choices,"Cancelar"],ctx.signal?{signal:ctx.signal}:undefined);
+     guard();const now=await sessionIdentity(ctx);guard();
+     if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw Error("La sesión cambió durante la personalización T11");
+     if(ctx.signal?.aborted||!picked||picked==="Cancelar")return {cancelled:true,...stored};
+     if(!choices.includes(picked))throw Error("Opción visual inesperada");
+     selected=picked;
+    }
+    if(!selected||selected==="status")return {...stored,note:"Use /asen-customize "+setting+" "+choices.join("|")};
+    if(setting==="header"&&!validT11Header(selected)||setting==="surface"&&!validT11Surface(selected))
+     return {error:"Opción visual no válida; use "+choices.join("|")};
+    const next={header:setting==="header"?selected as T11HeaderPlacement:stored.header,
+     surface:setting==="surface"?selected as T11Surface:stored.surface};
+    writeT11Chrome(home(),next);t11Header=next.header;t11Surface=next.surface;
+    publishT11Chrome(ctx);t11Rail?.refresh();
+    return {...next,source:"saved",scope:"user",note:"Solo presentación; permisos, agentes y modelos sin cambios."};
+   }
    if(visualParts[0]==="position"||visualParts[0]==="density"){
     const setting=visualParts[0];
     if(visualParts.length>2)return {error:"Use /asen-customize position auto|right|bottom|hidden or density comfortable|compact|minimal"};
@@ -1070,7 +1109,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     {name:"asen-keymaps",role:"keyboard shortcut bindings"},
     {name:"asen-customize appearance",role:"Light/Neutral/Power visual presets"},
     {name:"asen-customize position",role:"auto/right/bottom/hidden layout position"},
-    {name:"asen-customize density",role:"comfortable/compact/minimal panel density"}],
+    {name:"asen-customize density",role:"comfortable/compact/minimal panel density"},
+    {name:"asen-customize header",role:"top/below-input/split ASEN header"},
+    {name:"asen-customize surface",role:"transparent/tinted interface surface"}],
     implemented:true,note:"Use /asen-customize permissions for the live primary selection menu. Use /asen-customize keymaps to edit shortcuts."};
    if(String(raw??"").trim()==="keymaps"){
     if(ctx?.mode!=="tui"||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return "Keymap editing requires interactive TUI.";
