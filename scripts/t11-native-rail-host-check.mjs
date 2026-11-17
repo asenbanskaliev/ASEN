@@ -39,12 +39,12 @@ writeFileSync(join(project,"README.md"),"medir reparto del espacio\n");
 git(project,"add","README.md");git(project,"commit","-qm","base prueba T11");
 const report={schema:"asen.t11.native-rail/v1",sha:expected,piVersion:pi.version,
  modelCalls:0,nvidiaCalls:0,baselineWidth:null,withRailWidth:null,realReservation:null,
- wideTree:null,narrowTree:null,restored:false,bottomTree:null,bottomAt139:null,bottomRestored:false,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
+ wideTree:null,narrowTree:null,restored:false,bottomTree:null,bottomAt139:null,bottomRestored:false,interaction:null,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async(fn,msg,timeout=25000)=>{const start=Date.now();while(Date.now()-start<timeout){if(fn())return;await sleep(150);}throw Error(msg);};
 const read=file=>{try{return readFileSync(file,"utf8").split("\n").filter(Boolean).map(JSON.parse);}catch{return [];}};
 const samples=(rows,cols)=>rows.filter(row=>row.kind==="render"&&row.columns===cols).slice(-12);
-async function run(label,withAsen,resize){
+async function run(label,withAsen,resize,interaction=false){
  const path=join(temp,label);mkdirSync(path);
  const ready=join(path,"ready"),stop=join(path,"stop"),records=join(path,"measure.jsonl"),probe=join(path,"probe.ts");
  const lines=[
@@ -63,8 +63,17 @@ async function run(label,withAsen,resize){
   '    if(count++<500){',
   '     const root=tui.layoutRoot;const fn=root?.[NODE];let node;',
   '     try{node=typeof fn==="function"?fn.call(root):undefined;}catch{}',
+  '     let railContent,railBox;',
+  '     try{railContent=node?.type==="hstack"?node.entries?.[1]?.component?.[NODE]?.().component:undefined;}catch{}',
+  '     const railRows=railContent?.render?.(48)??[];',
+  '     const heading=railRows.findIndex(line=>line.includes("TODOS"));',
+  '     function seek(box){if(!box)return;if(box.component===railContent)railBox=box;for(const child of box.children??[])seek(child);}',
+  '     seek(tui.currentLayout?.root);',
   '     appendFileSync(out,JSON.stringify({kind:"render",width,columns:tui.terminal?.columns??null,mode:tui.mode??null,',
   '      type:node?.type??null,gap:node?.gap??null,count:node?.entries?.length??null,rail:node?.entries?.[1]?.basis??null,',
+  '      mouseX:railBox&&heading>=0?railBox.rect.x+3:null,mouseY:railBox&&heading>=0?railBox.rect.y+heading+1:null,',
+  '      todosOpen:railRows.some(row=>row.includes("▾ TODOS")),todosClosed:railRows.some(row=>row.includes("▸ TODOS")),',
+  '      railFocus:typeof tui.getFocusedComponent==="function"&&tui.getFocusedComponent()===railContent,',
   '      hasRootHook:typeof fn==="function",rootHookName:typeof fn==="function"?fn.name:null,',
   '      themeName:String(ctx.ui.theme?.name??"unknown"),themeConstructor:String(ctx.ui.theme?.constructor?.name??"unknown")})+String.fromCharCode(10));',
   '    }',
@@ -94,6 +103,27 @@ async function run(label,withAsen,resize){
   assert.equal(exited,false,label+": Pi salió durante el dibujo");
   await sleep(600);
   const wide=samples(read(records),180);
+  if(interaction){
+   await until(()=>samples(read(records),180).some(row=>
+    Number.isSafeInteger(row.mouseX)&&Number.isSafeInteger(row.mouseY)&&row.mouseY>0&&row.todosOpen),
+    label+": no fue posible localizar la cabecera real de TODOS");
+   const before=samples(read(records),180).findLast(row=>row.mouseX!==null&&row.todosOpen);
+   assert.ok(before&&before.mouseX>0&&before.mouseY>0,"La prueba necesita coordenadas observadas en Pi");
+   const starting=read(records).length;
+   // Pi recibe entrada SGR real por el pseudo-terminal, no se llama al handler a mano.
+   const sgr=(suffix)=>"\x1b[<0;"+before.mouseX+";"+before.mouseY+suffix;
+   terminal.write(sgr("M"));terminal.write(sgr("m"));
+   await until(()=>read(records).slice(starting).some(row=>row.todosClosed&&row.railFocus),
+    label+": el clic nativo no plegó TODOS y enfocó el lateral");
+   const clicked=read(records).length;
+   terminal.write("\x1b");
+   await until(()=>read(records).slice(clicked).some(row=>row.todosClosed&&!row.railFocus),
+    label+": Escape no devolvió el foco del lateral al editor");
+   return {wide,small:[],restored:[],interaction:{
+    source:"native-pty-sgr",x:before.mouseX,y:before.mouseY,
+    folded:true,focused:true,focusRestored:true
+   }};
+  }
   if(!resize)return {wide,small:[],restored:[]};
   terminal.resize(139,40);
   await until(()=>samples(read(records),139).length>0||exited,label+": no hubo dibujo a 139");
@@ -129,6 +159,11 @@ try{
  assert.ok(base.width-wide.width>=51&&base.width-wide.width<=55,"Debe reservar cerca de 53 columnas reales");
  assert.notEqual(narrow.rail,50,"El panel fijo debe desaparecer bajo 140 columnas");
  assert.equal(report.restored,true,"El lateral debe reaparecer al ampliar");
+ const interaction=await run("asen-interaction",true,false,true);
+ assert.equal(interaction.interaction?.source,"native-pty-sgr");
+ assert.equal(interaction.interaction?.focused,true);
+ assert.equal(interaction.interaction?.focusRestored,true);
+ report.interaction=interaction.interaction;
  // Preferencia real guardada en el HOME aislado; prueba Pi 1.2 nativo, no maqueta.
  const prefDir=join(home,".asen");mkdirSync(prefDir,{recursive:true,mode:0o700});
  writeFileSync(join(prefDir,"t11-layout.json"),JSON.stringify({schema:1,position:"bottom",density:"compact"})+"\n",{mode:0o600});
@@ -146,7 +181,7 @@ try{
  assert.equal(bottomSmall.type,"vstack","El panel inferior debe seguir disponible bajo 140 columnas");
  assert.equal(bottomSmall.rail,8);
  assert.equal(report.bottomRestored,true,"El panel inferior debe restaurarse tras redimensionar");
- assert.deepEqual(report.closedSessions,["baseline","asen","asen-bottom"],"Todas las sesiones Pi deben terminar realmente");
+ assert.deepEqual(report.closedSessions,["baseline","asen","asen-interaction","asen-bottom"],"Todas las sesiones Pi deben terminar realmente");
  report.result="PASS_REAL_PI_RAIL";
 }finally{
  const file=process.env.ASEN_T11_NATIVE_RAIL_REPORT;

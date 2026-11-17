@@ -25,7 +25,11 @@ test("T11: el Pi real reserva 53 columnas sin tapar el editor y se adapta a 139"
   stdout:execution.stdout?.slice(-1200),stderr:execution.stderr?.slice(-1500),report}));
  assert.equal(report.schema,"asen.t11.native-rail/v1");
  assert.equal(report.sha,sha);assert.equal(report.result,"PASS_REAL_PI_RAIL");
- assert.deepEqual(report.closedSessions,["baseline","asen","asen-bottom"]);
+ assert.deepEqual(report.closedSessions,["baseline","asen","asen-interaction","asen-bottom"]);
+ assert.equal(report.interaction?.source,"native-pty-sgr");
+ assert.equal(report.interaction?.folded,true);
+ assert.equal(report.interaction?.focused,true);
+ assert.equal(report.interaction?.focusRestored,true);
  assert.equal(report.bottomTree?.type,"vstack");
  assert.equal(report.bottomTree?.rail,8);
  assert.equal(report.bottomAt139?.type,"vstack");
