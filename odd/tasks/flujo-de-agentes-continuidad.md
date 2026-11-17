@@ -71,3 +71,7 @@ Cambio: el panel nativo observa de nuevo los registros persistidos cada cinco se
 
 Pruebas nuevas: \`running\` → \`completed\` con cambios Git pendientes, Worker fallido, lectura corrupta sin estado antiguo, cambio de sesión durante la lectura y cierre sin relectura. Son pruebas del código del panel, **no** una certificación Pi TUI real con dos modelos. Estado: IMPLEMENTADO_PENDIENTE_CI; \`globalFull:false\`.
 
+
+## 17/11/2026 — Reparación de CI de la tanda C
+
+SHA diagnosticado: `fd379be1a08bd43bd6da3b6b79d19d1c0d6280e4`. CI 44033273062 falló en Linux, macOS y Windows por la misma prueba de navegación del panel: esperaba dos llamadas al cierre del host tras cerrar ya el componente. La nueva gestión de temporizador dispone el componente al cerrar y correctamente ignora entradas posteriores. Se conserva el cierre único y se añade comprobación de que tampoco refresca después de cerrar. RED observado en los tres sistemas; GREEN pendiente de CI del commit de reparación. Phase 0, Pi 1.2 y Release Gate del SHA diagnosticado correctos. No se avanza a D hasta verificar el nuevo SHA; no se ejecuta manualmente ningún proveedor ni se aprueba entorno.
