@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createRequire} from "node:module";
-import {appendFileSync,existsSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {appendFileSync,chmodSync,existsSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,statSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -12,6 +12,20 @@ const expected=process.env.ASEN_EXPECTED_SHA;
 assert.match(expected??"",/^[a-f0-9]{40}$/u);
 const git=(dir,...args)=>execFileSync("git",["-C",dir,...args],{encoding:"utf8",timeout:15000}).trim();
 assert.equal(git(repo,"rev-parse","HEAD"),expected);
+// node-pty 1.1.0 puede distribuir spawn-helper con modo 0644 en macOS.
+ // Solo se repara el ejecutable exacto de la dependencia de prueba; nunca el proyecto de origen.
+if(process.platform==="darwin"){
+ const helpers=[
+  join(repo,"node_modules","node-pty","build","Release","spawn-helper"),
+  join(repo,"node_modules","node-pty","prebuilds",`darwin-${process.arch}`,"spawn-helper")
+ ].filter(existsSync);
+ assert.ok(helpers.length>0,"Falta el auxiliar nativo spawn-helper de node-pty");
+ for(const helper of helpers){
+  const mode=statSync(helper).mode;
+  if((mode&0o111)===0)chmodSync(helper,mode|0o111);
+  assert.ok((statSync(helper).mode&0o111)!==0,"spawn-helper sigue sin permiso de ejecución");
+ }
+}
 const {spawn}=createRequire(import.meta.url)("node-pty");
 const pi=JSON.parse(readFileSync(join(repo,"node_modules","@earendil-works","pi-coding-agent","package.json"),"utf8"));
 assert.equal(pi.version,"1.2.0");
@@ -25,7 +39,7 @@ writeFileSync(join(project,"README.md"),"medir reparto del espacio\n");
 git(project,"add","README.md");git(project,"commit","-qm","base prueba T11");
 const report={schema:"asen.t11.native-rail/v1",sha:expected,piVersion:pi.version,
  modelCalls:0,nvidiaCalls:0,baselineWidth:null,withRailWidth:null,realReservation:null,
- wideTree:null,narrowTree:null,restored:false,globalFull:false,result:"NOT_VERIFIED"};
+ wideTree:null,narrowTree:null,restored:false,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async(fn,msg,timeout=25000)=>{const start=Date.now();while(Date.now()-start<timeout){if(fn())return;await sleep(150);}throw Error(msg);};
 const read=file=>{try{return readFileSync(file,"utf8").split("\n").filter(Boolean).map(JSON.parse);}catch{return [];}};
@@ -94,7 +108,11 @@ async function run(label,withAsen,resize){
  finally{
   writeFileSync(stop,"ok");
   for(let i=0;i<40&&!exited;i++)await sleep(100);
-  if(!exited)try{terminal.kill();}catch{}
+  if(!exited){
+   terminal.kill();
+   await until(()=>exited,label+": cierre del proceso Pi no confirmado",5000);
+  }
+  report.closedSessions.push(label);
  }
 }
 try{
@@ -111,6 +129,7 @@ try{
  assert.ok(base.width-wide.width>=51&&base.width-wide.width<=55,"Debe reservar cerca de 53 columnas reales");
  assert.notEqual(narrow.rail,50,"El panel fijo debe desaparecer bajo 140 columnas");
  assert.equal(report.restored,true,"El lateral debe reaparecer al ampliar");
+ assert.deepEqual(report.closedSessions,["baseline","asen"],"Ambos procesos Pi deben terminar realmente");
  report.result="PASS_REAL_PI_RAIL";
 }finally{
  const file=process.env.ASEN_T11_NATIVE_RAIL_REPORT;
@@ -119,3 +138,5 @@ try{
 }
 assert.equal(report.result,"PASS_REAL_PI_RAIL");
 console.log(JSON.stringify(report));
+// Tras comprobar onExit de ambas sesiones, liberar manejadores nativos de node-pty.
+process.exit(0);
