@@ -391,7 +391,7 @@ test("read-only Pi conserva read pero rechaza bash y herramientas añadidas por 
  }));
  const result=await runner(p).run({id:"overlay-denegado",role:"explorer",prompt:"Solo lectura",repository:d});
  assert.equal(result.ok,true,result.output);
- const args=JSON.parse(result.output.trim().split(/\\r?\\n/).at(-1)!).args as string[];
+ const args=JSON.parse(result.output.trim().split(/\r?\n/).at(-1)!).args as string[];
  assert.equal(args[args.indexOf("--tools")+1],"read");
  assert.equal(args.includes("bash"),false);
  assert.equal(args.includes("grep"),false);
