@@ -86,6 +86,7 @@ import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 import {createNativeCommandPalette} from "../src/runtime/ui/native-command-palette.js";
 import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
 import {renderAsenFocusHeader} from "../src/runtime/ui/focus-chrome.js";
+import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {createM1SurfaceCache} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
@@ -354,6 +355,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }catch{return undefined;}
   };
   let panelEpoch=0,hostStatusClosed=false;
+  let t11Rail:AsenRailHandle|undefined,t11Snapshot:AsenPanelSnapshot|undefined;
   const panelScope=(ctx:CommandContext)=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd,epoch=panelEpoch;
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
@@ -424,6 +426,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   // La observación de hijos se hace SOLO cuando se abre el panel.
   // No consultar Git ni diarios externos en cada refresco del editor.
   const publishInspectedWorkRow=(ctx:CommandContext,snapshot:AsenPanelSnapshot):void=>{
+   t11Snapshot=snapshot;t11Rail?.refresh();
    if(ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
    const width=terminalColumns();
    if(width>=140)return; // La barra auxiliar no se dibuja en el diseño ancho.
@@ -445,8 +448,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const now=await sessionIdentity(ctx);
     if(generation!==workRowGeneration||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
+    t11Snapshot=snapshot;t11Rail?.sync();t11Rail?.refresh();
     const surface=m1Cache.next(snapshot,width,identity.sessionId+"|"+identity.projectId);
-    if(surface)ctx.ui.setWidget("asen:m1-rail",surface.mode==="rail"?[...surface.lines]:undefined,{placement:"aboveEditor"});
+    if(t11Rail?.active()){ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();}
+    else if(surface)ctx.ui.setWidget("asen:m1-rail",surface.mode==="rail"?[...surface.lines]:undefined,{placement:"aboveEditor"});
     const line=width>=140?undefined:renderAsenWorkRow(snapshot,width);
     ctx.ui.setWidget("asen-live-work",line?[line]:undefined,{placement:"aboveEditor"});
    }catch{/* Presentation must not block the host or confer permission. */}
@@ -494,6 +499,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }finally{advancingPlans.delete(key);}
   };
   const startSession=async(ctx:CommandContext)=>{
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
@@ -505,10 +511,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(parentGeneration===parentBindingGeneration&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.theme instanceof Theme){
       // A Theme instance is runtime-only: never persist a named theme or steal the transcript root.
       const applied=ctx.ui.setTheme(createAsenFocusTheme(ctx.ui.theme));
-      if(applied.success&&typeof ctx.ui.setHeader==="function")ctx.ui.setHeader((_tui,theme)=>({
-       render(width:number){return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,ctx.ui.theme instanceof Theme?ctx.ui.theme:theme);},
-       invalidate(){},
-      }));
+      if(applied.success&&typeof ctx.ui.setHeader==="function")ctx.ui.setHeader((tui,theme)=>{
+       t11Rail?.dispose();
+       t11Rail=installAsenNativeRail(tui,ctx.ui.theme instanceof Theme?ctx.ui.theme:theme,()=>t11Snapshot);
+       return {
+        render(width:number){
+         // El host puede publicar su árbol después de crear la cabecera.
+         t11Rail?.sync();
+         return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,ctx.ui.theme instanceof Theme?ctx.ui.theme:theme);
+        },invalidate(){},
+       };
+      });
      }
     }catch{/* Optional presentation must not interrupt startup or confer authority. */}
    }
@@ -790,6 +803,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   for(const event of ["model_select","thinking_level_select","session_compact","session_compact_failed","session_tree","turn_end","agent_settled"])
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
    const endingSession=ctx?.sessionManager?.getSessionId?.();
