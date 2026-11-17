@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/earendil-works/pi-mono/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
-  "name": "ASEN-Sexy",
+  "name": "ASEN",
   "vars": {
     "bg": "#060407",
     "bgPanel": "#100A0F",

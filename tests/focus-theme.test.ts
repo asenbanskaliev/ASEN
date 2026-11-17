@@ -83,8 +83,8 @@ test('factory contains no settings, session, model or theme-application side eff
 });
 
 test('T11: el tema distribuido tiene colores y roles compatibles con la paleta oscura', () => {
-  const skin=JSON.parse(readFileSync(new URL('../themes/ASEN-Sexy.json', import.meta.url),'utf8'));
-  assert.equal(skin.name,'ASEN-Sexy');
+  const skin=JSON.parse(readFileSync(new URL('../themes/ASEN.json', import.meta.url),'utf8'));
+  assert.equal(skin.name,'ASEN');
   for(const [role,value] of Object.entries({
     accent:'#F43888',border:'#563040',borderAccent:'#FF4F9A',
     customMessageBg:'#100A0F',warning:'#F2B86D',error:'#FF718F'
