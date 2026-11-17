@@ -528,7 +528,8 @@ test("T06/T07 el panel relee los diarios y el Git real del hijo durante una vent
  assert.match(after,/Worktree Workers: 0 active observed/u);
  assert.match(after,/2 awaiting human review/u);
  assert.match(after,/Linked worktrees: 1\/2/u);
- assert.doesNotMatch(after,/actual model: (?!unknown)|automatically accepted|auto-merge/iu);
+ assert.match(after,/no auto-merge/iu,"La revisión debe prohibir la fusión automática");
+ assert.doesNotMatch(after,/actual model: (?!unknown)|automatically accepted|auto-merge enabled/iu);
  assert.equal(renders,1);
  const observed=await load();
  assert.equal(observed.agentFlow.overview.stages["manual-review-required"],2);
