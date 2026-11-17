@@ -81,7 +81,7 @@ import {SharedSessionDirectory} from "../src/runtime/lifecycle/shared-session-di
 import {discoverWorkspaceWorktrees,snapshotWorkspaceRoots,captureWorkspaceRootIdentity,assertWorkspaceRootIdentity,type WorkspaceRootIdentity} from "../src/runtime/workspace-snapshot.js";
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
-import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ui/ide-panel.js";
+import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,derivePanelReview,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ui/ide-panel.js";
 import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 import {createNativeCommandPalette} from "../src/runtime/ui/native-command-palette.js";
 import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
@@ -392,7 +392,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const changes=observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
     const permission=permissionSession.mode(ctx);
     const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
+    const review=live&&todoStorePromise?derivePanelReview({
+     todos:live.todos,agents:live.agents,jobs:live.jobs,todosObserved:true
+    }):undefined;
     const width=terminalColumns(),info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus,
+     ...(review?.known&&review.pending?{review:{pending:review.pending}}:{}),
      ...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})};
     // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
     // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
@@ -459,14 +463,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(ctx?.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
    const generation=++workRowGeneration;
    try{
-    const identity=await sessionIdentity(ctx);
+    const guard=panelScope(ctx),identity=await sessionIdentity(ctx);guard();
     const [todos,agents]=await Promise.all([
      todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
      agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve((dependencies.agents?.()??[]).filter(record=>record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(record.projectId,identity.projectId))),
     ]);
     const jobs=backgroundJobs.list(identity.sessionId,identity.projectId);
-    const now=await sessionIdentity(ctx);
-    if(generation!==workRowGeneration||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    const now=await sessionIdentity(ctx);guard();
+    if(generation!==workRowGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
     t11ActivityCache.put(identity.sessionId,identity.projectId,snapshot);
     if(!t11Rail?.active()||!t11Snapshot)t11Snapshot=snapshot;
@@ -531,7 +535,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
@@ -862,7 +866,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");

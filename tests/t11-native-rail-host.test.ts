@@ -9,7 +9,7 @@ import {fileURLToPath} from "node:url";
 const hostOS:Record<string,string>={linux:"ubuntu-24.04",darwin:"macos-latest",win32:"windows-latest"};
 const enabled=process.env.CI==="true"&&hostOS[process.platform]===process.env.ASEN_TEST_SHARD_OS;
 const root=dirname(dirname(fileURLToPath(import.meta.url)));
-test("T11: el Pi real reserva 53 columnas sin tapar el editor y se adapta a 139",{
+test("T11: Pi real verifica 140 y seis tamaños, sin invadir el editor",{
  skip:enabled?false:"Prueba de geometría Pi reservada a Linux, macOS y Windows en CI",timeout:145000
 },t=>{
  const temp=mkdtempSync(join(tmpdir(),"asen-t11-reporte-"));
@@ -35,14 +35,19 @@ test("T11: el Pi real reserva 53 columnas sin tapar el editor y se adapta a 139"
  assert.equal(report.bottomAt139?.type,"vstack");
  assert.equal(report.bottomRestored,true);
  assert.deepEqual(report.narrowMatrix.map((row:{columns:number;rows:number})=>[row.columns,row.rows]),
-  [[120,40],[80,40],[50,40],[40,40],[24,12]]);
+  [[140,40],[120,40],[80,40],[50,40],[40,40],[24,12]]);
  for(const row of report.narrowMatrix){
   assert.ok(row.width>0&&row.width<=row.columns,row.columns+" columnas: el editor sigue dentro");
-  assert.notEqual(row.rail,50,"ningún lateral fijo debajo de 140 columnas");
+  assert.equal(row.source,"fresh-pi-render","la geometría procede de un dibujo Pi posterior al cambio");
+  if(row.columns===140)assert.equal(row.rail,50,"exactamente 140 mantiene lateral");
+  else assert.notEqual(row.rail,50,"ningún lateral fijo debajo de 140 columnas");
+  if(Number.isSafeInteger(row.observedRows))assert.equal(row.observedRows,row.rows);
+
  }
  assert.deepEqual(report.chromeRender,{
   source:"native-pty-output",brandObserved:true,piVersionObserved:true,
   placementConfigured:"below-input",surfaceConfigured:"tinted"
  });
+ assert.equal(report.lastFailure,null);
  assert.equal(report.nvidiaCalls,0);assert.equal(report.globalFull,false);
 });

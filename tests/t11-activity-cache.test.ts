@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createT11ActivityCache} from "../src/runtime/ui/t11-activity-cache.js";
+import {derivePanelReview} from "../src/runtime/ui/ide-panel.js";
+import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
+import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
 import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
 import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import type {AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
@@ -45,4 +48,21 @@ test("T11: bloqueo observado se muestra en la barra sin mezclar proyectos",()=>{
  assert.doesNotMatch(renderAsenT11CompactStatus(project("uno","otro"),80),/bloqueos/);
  cache.clear();
  assert.doesNotMatch(renderAsenT11CompactStatus(project("uno","proyecto"),80),/bloqueos/);
+});
+
+test("T11: revisiones pendientes solo desde tareas observadas, sin inventar resultados",()=>{
+ const cache=createT11ActivityCache();
+ const waiting={current:{state:"succeeded"}} as AsenPanelSnapshot["todos"][number];
+ const blocked={current:{state:"blocked",reason:"Linked review result requires explicit user acceptance"}} as AsenPanelSnapshot["todos"][number];
+ cache.put("sesion-activa","proyecto",{todos:[waiting,blocked],agents:[],jobs:[]});
+ const current=cache.get("sesion-activa","proyecto")!;
+ const state=derivePanelReview({...current,todosObserved:true});
+ assert.deepEqual(state,{known:true,pending:2});
+ const row=renderAsenT11CompactStatus({...current,hostStatus:projectHostStatus(),review:{pending:state.pending}},100);
+ assert.match(row,/! 2 revisiones/);
+ assert.doesNotMatch(row,/aceptad[oa]|PASS|\$0/iu);
+ const other=cache.get("otra","proyecto");
+ assert.equal(other,undefined,"ni tareas ni revisiones pueden cruzar sesiones");
+ assert.deepEqual(derivePanelReview({todos:[],agents:[],jobs:[]}),{known:false,pending:0});
+ cache.clear();assert.equal(cache.get("sesion-activa","proyecto"),undefined);
 });

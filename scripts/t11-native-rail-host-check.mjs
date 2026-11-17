@@ -40,7 +40,7 @@ git(project,"add","README.md");git(project,"commit","-qm","base prueba T11");
 const report={schema:"asen.t11.native-rail/v1",sha:expected,piVersion:pi.version,
  modelCalls:0,nvidiaCalls:0,baselineWidth:null,withRailWidth:null,realReservation:null,
  wideTree:null,narrowTree:null,restored:false,bottomTree:null,bottomAt139:null,bottomRestored:false,interaction:null,
- chromeRender:null,narrowMatrix:[],closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
+ chromeRender:null,narrowMatrix:[],lastFailure:null,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async(fn,msg,timeout=25000)=>{const start=Date.now();while(Date.now()-start<timeout){if(fn())return;await sleep(150);}throw Error(msg);};
 const read=file=>{try{return readFileSync(file,"utf8").split("\n").filter(Boolean).map(JSON.parse);}catch{return [];}};
@@ -61,7 +61,7 @@ async function run(label,withAsen,resize,interaction=false){
   ' pi.on("session_start",(_event,ctx)=>{',
   '  ctx.ui.setWidget("t11:width",(tui)=>({',
   '   render(width){',
-  '    if(count++<500){',
+  '    if(count++<2500){',
   '     const root=tui.layoutRoot;const fn=root?.[NODE];let node;',
   '     try{node=typeof fn==="function"?fn.call(root):undefined;}catch{}',
   '     let railContent,railBox;',
@@ -94,7 +94,7 @@ async function run(label,withAsen,resize,interaction=false){
  const opts=["--no-extensions",...(withAsen?["--extension",join(repo,"extensions","asen.ts")]:[]),
   "--extension",probe,"--no-skills","--no-builtin-tools","--tui-mode","fullscreen","--provider","openai","--model","gpt-4o"];
  const terminal=spawn(process.execPath,[binary,...opts],{cwd:project,env,cols:180,rows:40,name:"xterm-256color"});
- let exited=false,output="";
+ let exited=false,output="",stage="inicio";
  terminal.onExit(()=>{exited=true;});
  terminal.onData(data=>{output=(output+data).slice(-18000);});
  try{
@@ -137,31 +137,47 @@ async function run(label,withAsen,resize,interaction=false){
    }};
   }
   if(!resize)return {wide,small:[],restored:[]};
-  terminal.resize(139,40);
+  stage="139x40";terminal.resize(139,40);
   await until(()=>samples(read(records),139).length>0||exited,label+": no hubo dibujo a 139");
   assert.equal(exited,false,label+": Pi salió al redimensionar");
   const small=samples(read(records),139);
   const narrowMatrix=[];
   if(label==="asen"){
-   for(const [columns,rows] of [[120,40],[80,40],[50,40],[40,40],[24,12]]){
+   for(const [columns,rows] of [[140,40],[120,40],[80,40],[50,40],[40,40],[24,12]]){
+    stage=columns+"x"+rows;
+    const fromIndex=read(records).length;
     terminal.resize(columns,rows);
-    await until(()=>samples(read(records),columns).some(row=>row.rows===rows)||exited,
-     label+": no se redibujó Pi a "+columns+"x"+rows);
-    assert.equal(exited,false,label+": Pi terminó al cambiar a "+columns+"x"+rows);
-    const actual=samples(read(records),columns).filter(row=>row.rows===rows).at(-1);
-    assert.ok(actual,label+": medición ausente a "+columns+"x"+rows);
-    assert.notEqual(actual.rail,50,"Lateral derecho no permitido bajo 140 columnas");
+    // Windows puede informar el ancho antes de actualizar terminal.rows.
+    // Exigir una medición NUEVA tras resize; las filas son evidencia adicional.
+    await until(()=>read(records).slice(fromIndex).some(row=>
+     row.kind==="render"&&row.columns===columns)||exited,
+     label+": Pi no produjo nueva geometría en "+stage,12000);
+    assert.equal(exited,false,label+": Pi terminó al cambiar a "+stage);
+    const actual=read(records).slice(fromIndex).filter(row=>row.kind==="render"&&row.columns===columns).at(-1);
+    assert.ok(actual,label+": medición ausente en "+stage);
+    if(columns===140)assert.equal(actual.rail,50,"El lateral debe existir a exactamente 140 columnas");
+    else assert.notEqual(actual.rail,50,"Lateral derecho no permitido bajo 140 columnas");
     assert.ok(Number.isSafeInteger(actual.width)&&actual.width>0&&actual.width<=columns,
-     "Anchura nativa de conversación inválida a "+columns+"x"+rows);
-    narrowMatrix.push({columns,rows,width:actual.width,type:actual.type,rail:actual.rail});
+     "Anchura nativa de conversación inválida a "+stage);
+    // Si el host declara filas fiables también deben coincidir; null no se inventa.
+    if(Number.isSafeInteger(actual.rows))
+     assert.equal(actual.rows,rows,"Las filas Pi no reflejan el nuevo tamaño "+stage);
+    narrowMatrix.push({columns,rows,observedRows:actual.rows??null,
+     width:actual.width,type:actual.type,rail:actual.rail,source:"fresh-pi-render"});
+    report.narrowMatrix=[...narrowMatrix];
    }
   }
   const before=read(records).filter(row=>row.kind==="render"&&row.columns===180).length;
-  terminal.resize(180,40);
+  stage="180x40 restauración";terminal.resize(180,40);
   await until(()=>read(records).filter(row=>row.kind==="render"&&row.columns===180).length>before||exited,label+": no redibujó al volver a 180");
   assert.equal(exited,false,label+": Pi salió al ampliar");
   return {wide,small,restored:samples(read(records),180),chromeRender,narrowMatrix};
- }catch(error){throw Error(label+": "+String(error)+", salida host "+output.slice(-1600));}
+ }catch(error){
+  const recent=read(records).filter(row=>row.kind==="render").slice(-8)
+   .map(row=>({columns:row.columns,rows:row.rows,width:row.width,type:row.type,rail:row.rail}));
+  report.lastFailure={session:label,stage,message:String(error),recent,exited};
+  throw Error(label+": fase "+stage+": "+String(error)+"; mediciones "+JSON.stringify(recent));
+ }
  finally{
   writeFileSync(stop,"ok");
   for(let i=0;i<40&&!exited;i++)await sleep(100);

@@ -158,3 +158,8 @@ La integración del pie es un contrato público: los ensayos de sesión, permiso
 | Apariencia completa / diseño exacto | Prioridad de alertas y relleno tintado de lateral | **No equivalente todavía**: faltan controles, márgenes, resaltados y prueba visual comparada |
 
 **Criterio de cierre:** T11-E requiere matriz nativa exacta, revisión de las diferencias de tabla y contraste visual con medidas idénticas. El CI por sí solo **no demuestra paridad**. Mantener `globalFull:false`, PR #61 en borrador y sin fusión.
+
+### Criterio reforzado de T11-E (17/11/2026)
+La matriz nativa debe distinguir el umbral de 140 columnas del fallback estricto por debajo de 140. En las dimensiones 140/120/80/50/40/24 se exige una **lectura nueva** de Pi posterior a cada resize, con ancho del editor comprobado; en 24×12 se exige continuidad real del proceso, no una maqueta. Los errores conservan fase y última geometría para permitir reproducción en Windows. Si falta una lectura, el trabajo CI **falla** y T11-E permanece abierta.
+  
+La línea de estado usa revisiones observadas en la sesión y proyecto vigentes y deja de publicar tras cierre/cambio de sesión. No se crea autoridad Writer, no se revisan permisos ni se realizan llamadas NVIDIA. El contraste visual con Gentle Shell 4.8.0 sigue **pendiente**: la geometría comprobada no acredita colores, tipografía ni acciones equivalentes.
