@@ -547,7 +547,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       ctx.ui.setHeader((tui,theme)=>{
        t11ChromeInfo={asenVersion,piVersion:VERSION};t11ChromeTheme=theme;
        t11Rail?.dispose();
-       t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot,()=>t11Preset,()=>t11Position,()=>t11Density);
+       t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot,()=>t11Preset,()=>t11Position,()=>t11Density,undefined,()=>t11Surface);
        return {
         render(width:number){
          t11Rail?.sync();

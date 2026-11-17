@@ -150,3 +150,8 @@ Solicitud del usuario: ejecutar ya la tarea horaria. En la PR #61, SHA `d05f98da
 
 ### Validación confirmada de la tanda anterior
 - SHA `d6a18ed75db09fc35dac526a4668accb53d1335f`: **CI #44099798686 = SUCCESS**, Release Gate #44099798845, Arquitectura #44099798759 y prueba Pi 1.2 #44099798615 = SUCCESS. Se revisaron las tres pruebas nativas del lateral con resultado `ok` en Linux, Windows y macOS (con clic SGR y devolución del foco). Estos resultados pertenecen al SHA anterior, **no** certifican la nueva cabecera.
+
+## 17/11/2026 — T11-D: fondo uniforme del lateral real
+- Al contrastar el tag congelado Gentle Shell 4.8.0 se comprobó que `tinted` debe afectar también al **lateral fijo**, no solo a la cabecera. La siguiente mejora pinta cada fila del lateral con `customMessageBg` cuando el host ofrece `theme.bg`, hasta completar su ancho nativo. `transparent` conserva el dibujo original y los datos, sin colorear. El ajuste en caliente conserva los plegados y no modifica el estado de tareas.
+- Prueba nueva: transición transparente → tintado, mismo contenido y número de filas, exactamente 50 columnas pintadas, sin inventar datos ni tocar permisos/modelos. El tema del host que carezca de `bg` mantiene un resultado legible.
+- Diferencias conscientes respecto a la referencia: no se pinta todavía toda la barra inferior ni se dispone de fotografías equivalentes de ambas versiones. **Estado: IMPLEMENTADO_PENDIENTE_CI** de esta mejora. `globalFull:false`, PR #61 sin fusión.

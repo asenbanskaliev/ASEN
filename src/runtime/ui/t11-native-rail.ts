@@ -6,7 +6,8 @@
 import {ScrollView,getKeybindings,type KeybindingsManager,type Component,type TUI,type TuiMouseEvent,type TuiMouseEventResult} from "@earendil-works/pi-tui";
 import type {Theme} from "@earendil-works/pi-coding-agent";
 import {ASEN_PANEL_SECTIONS,renderAsenPanelWithLayout,type AsenPanelSection,type AsenPanelSnapshot} from "./ide-panel.js";
-import {truncateForTerminal} from "../responsive-layout.js";
+import {truncateForTerminal,visibleWidth} from "../responsive-layout.js";
+import type {T11Surface} from "./t11-chrome-settings.js";
 import type {AsenAppearancePreset} from "./t11-appearance.js";
 import type {T11Position,T11Density} from "./t11-layout-settings.js";
 
@@ -33,10 +34,11 @@ function supported(root:Root|undefined):root is Root{
  return !descriptor||descriptor.writable===true||descriptor.configurable===true;
 }
 export function installAsenNativeRail(
- tui:TUI,theme:Pick<Theme,"fg"|"bold">,read:()=>AsenPanelSnapshot|undefined,
+ tui:TUI,theme:Pick<Theme,"fg"|"bold">&Partial<Pick<Theme,"bg">>,read:()=>AsenPanelSnapshot|undefined,
  readPreset:()=>AsenAppearancePreset=()=>"neutral",
  readPosition:()=>T11Position=()=>"auto",readDensity:()=>T11Density=()=>"comfortable",
- keybindings:Pick<KeybindingsManager,"matches">=getKeybindings()
+ keybindings:Pick<KeybindingsManager,"matches">=getKeybindings(),
+ readSurface:()=>T11Surface=()=>"transparent"
 ):AsenRailHandle{
  const host=tui as Host;
  let closed=false,originalRoot:Root|undefined,originalNode:(()=>LayoutNode)|undefined;
@@ -81,7 +83,12 @@ export function installAsenNativeRail(
     const fitted=truncateForTerminal(highlighted?"> "+value:value,cols);
     const heading=section!==undefined,dim=/unknown|unverified|unavailable|No (?:agents|tasks|owned jobs)/iu.test(fitted);
     const painted=heading?theme.fg("accent",theme.bold(fitted)):dim?theme.fg("muted",fitted):theme.fg("text",fitted);
-    return " "+painted;
+    const row=" "+painted;
+    if(readSurface()==="tinted"&&typeof theme.bg==="function"){
+     const widthCells=Math.max(1,Math.min(1000,Math.floor(width)));
+     return theme.bg("customMessageBg",row+" ".repeat(Math.max(0,widthCells-visibleWidth(row))));
+    }
+    return row;
    });
   },
   handleMouse(event:TuiMouseEvent):TuiMouseEventResult|undefined{

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {KeybindingsManager,TUI_KEYBINDINGS,type TUI} from "@earendil-works/pi-tui";
+import {KeybindingsManager,TUI_KEYBINDINGS,visibleWidth,type TUI} from "@earendil-works/pi-tui";
 import {ASEN_RAIL_BREAKPOINT,ASEN_RAIL_GAP,ASEN_RAIL_WIDTH,installAsenNativeRail} from "../src/runtime/ui/t11-native-rail.js";
 import type {AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
 
@@ -264,5 +264,28 @@ test("T11 no acepta teclas tras perder foco por otro componente",()=>{
  focus={}; // El editor recupera el foco directamente desde Pi.
  content.handleInput("j");assert.equal(h.selectedSection(),"TODOS");
  assert.equal(h.collapsedSections().length,1);
+ h.dispose();
+});
+
+test("T11 superficie: tintado rellena el lateral real y transparente mantiene su salida",()=>{
+ const f=host(180);let surface:"transparent"|"tinted"="transparent";
+ const theme={
+  fg(_role:string,text:string){return text;},
+  bold(text:string){return text;},
+  bg(_role:string,text:string){return "\u001b[48;5;238m"+text+"\u001b[0m";}
+ } as never;
+ const h=installAsenNativeRail(f.ui,theme,()=>snapshot,undefined,undefined,undefined,undefined,()=>surface);
+ const scroll=(f.root[NODE] as ()=>any)().entries[1].component;
+ const content=scroll[NODE]().component;
+ const transparent=content.render(50);
+ assert.ok(transparent.some((row:string)=>row.includes("TODOS")));
+ assert.ok(transparent.every((row:string)=>!row.includes("\u001b[48;5;238m")));
+ surface="tinted";h.refresh();
+ const tinted=content.render(50);
+ assert.equal(tinted.length,transparent.length);
+ assert.ok(tinted.every((row:string)=>row.includes("\u001b[48;5;238m")));
+ assert.ok(tinted.every((row:string)=>visibleWidth(row)===50));
+ assert.deepEqual(tinted.map((row:string)=>row.replace(/\u001b\[[0-9;]*m/gu,"").trimEnd()),
+  transparent.map((row:string)=>row.trimEnd()));
  h.dispose();
 });
