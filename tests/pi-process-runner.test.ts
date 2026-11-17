@@ -370,7 +370,7 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/);
  assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
-test("workspace tool overlay is applied after role selection and before Pi launch",async t=>{
+test("workspace tool overlay cannot advertise tools denied by Pi authority",async t=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
  t.after(()=>rm(d,{recursive:true,force:true}));
  await mkdir(join(d,".pi","gentle-ai"),{recursive:true});
@@ -378,7 +378,23 @@ test("workspace tool overlay is applied after role selection and before Pi launc
  const r=await runner(p).run({id:"overlay",role:"explorer",prompt:"inspect",repository:d});
  assert.equal(r.ok,true,r.output);
  const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
- assert.equal(args[args.indexOf("--tools")+1],"grep");
+ assert.ok(args.includes("--no-tools"),"La retirada de read no permite anunciar grep");
+ assert.equal(args.includes("--tools"),false);
+ assert.equal(args.includes("grep"),false);
+});
+test("read-only Pi conserva read pero rechaza bash y herramientas añadidas por un complemento",async t=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ await mkdir(join(d,".pi","gentle-ai"),{recursive:true});
+ await writeFile(join(d,".pi","gentle-ai","tools.json"),JSON.stringify({
+  add:["bash","grep","read"],remove:[]
+ }));
+ const result=await runner(p).run({id:"overlay-denegado",role:"explorer",prompt:"Solo lectura",repository:d});
+ assert.equal(result.ok,true,result.output);
+ const args=JSON.parse(result.output.trim().split(/\\r?\\n/).at(-1)!).args as string[];
+ assert.equal(args[args.indexOf("--tools")+1],"read");
+ assert.equal(args.includes("bash"),false);
+ assert.equal(args.includes("grep"),false);
 });
 test("workspace overlay removing every role tool emits no-tools",async t=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
@@ -515,6 +531,10 @@ test("read-only Pi roles do not receive restricted writer guidance",async()=>{
 test("organic writer reaches Pi adapter through one exact Dispatcher receiver without SDD",async t=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
  t.after(()=>rm(d,{recursive:true,force:true}));
+ await mkdir(join(d,".pi","gentle-ai"),{recursive:true});
+ await writeFile(join(d,".pi","gentle-ai","tools.json"),JSON.stringify({
+  add:["bash","grep","read","edit","write"],remove:[]
+ }));
  await mkdir(join(d,"src"),{recursive:true});await writeFile(join(d,"src/a"),"fixture\n");await assertOwnedFixturePath(d);execFileSync("git",["-C",d,"init","--template=","-q"]);execFileSync("git",["-C",d,"config","--local","user.name","ASEN tests"]);execFileSync("git",["-C",d,"config","--local","user.email","asen-tests@example.invalid"]);execFileSync("git",["-C",d,"add","."]);execFileSync("git",["-C",d,"commit","-qm","fixture"]);
  const {issueOddDecision}=await import("./helpers/odd-routing.js"),{buildOrchestrationPlan}=await import("../src/orchestration/orchestrator.js"),{decideLifecycleApplicability}=await import("../src/lifecycle/applicability.js"),{issueOrganicWriterAdmission}=await import("../src/lifecycle/skill-lifecycle.js");
  const candidate={id:"organic",repository:d,revision:execFileSync("git",["-C",d,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});

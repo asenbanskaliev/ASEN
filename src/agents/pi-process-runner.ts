@@ -304,7 +304,10 @@ export class PiProcessRunner implements AgentRunner{
   const policy=join(policyDirectory,"extensions","authority.ts");
   const configHome=childEnvironment.PI_CODING_AGENT_DIR??join(childEnvironment.HOME??childEnvironment.USERPROFILE??request.repository,".pi","agent");
   const baseTools=writer?["read","edit","write"]:["read"];
-  const effectiveTools=applyToolOverlay(baseTools,loadToolOverlays(configHome,request.repository));
+  // Los complementos pueden retirar herramientas, pero no dar acceso a
+  // comandos que la autoridad Pi bloquearía después de anunciarlos al modelo.
+  const requestedTools=applyToolOverlay(baseTools,loadToolOverlays(configHome,request.repository));
+  const effectiveTools=requestedTools.filter(tool=>baseTools.includes(tool));
   const toolArgs=this.options.noTools||effectiveTools.length===0?["--no-tools"]:["--tools",effectiveTools.join(",")];
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,
    "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...toolArgs,...(request.skillPaths??[]).flatMap(path=>["--skill",path])];

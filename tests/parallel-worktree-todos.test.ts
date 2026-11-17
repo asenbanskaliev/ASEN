@@ -17,6 +17,7 @@ import type {TaskAgentLink} from "../src/runtime/agents/task-agent-link-store.js
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
 import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
 import {createAsenExtension} from "../extensions/asen.js";
+import {controlledInstructionPlanCommand} from "../src/runtime/lifecycle/route-command.js";
 import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 
@@ -596,6 +597,37 @@ async function prepareSupervisorChildren(f:ReturnType<typeof fixture>){
   } as SourceTodoRow)),[],[]);
  }
 }
+
+test("T04/T05/T06 la planificación real conserva la petición ODD entre origen e hijo",async t=>{
+ const f=fixture(t);
+ const prepared=await f.run("prepare-todos") as {status:string;worktrees:readonly {root:string}[]};
+ assert.equal(prepared.status,"prepared");
+ const root=prepared.worktrees[0]!.root;
+ const facts={
+  taskIdentity:"mismo-odd",instruction:"Cambiar el fichero backend.txt dentro de un proyecto acotado",
+  intent:"implementation",scope:{kind:"known",expectedPaths:["backend.txt","frontend.txt","otro.txt","cuarto.txt"]},
+  writes:[{path:"backend.txt",changeKind:"behavior"}],riskOperations:[],
+  session:{estimatedMinutes:20,continuation:false},testing:{kind:"required"},
+  review:{kind:"dual_explicit",estimatedMinutes:5},unresolvedDecisions:[]
+ };
+ const base={id:"original",repository:f.source,revision:f.head,createdAt:"2026-11-17T18:00:00.000Z"};
+ const source=JSON.parse(controlledInstructionPlanCommand(JSON.stringify(facts),f.source,base)) as {
+  executablePlan:{tasks:Array<{id:string;role:string;writerAuthorizationBasis?:string;writeSurfaces?:string[];candidate?:{repository:string;revision:string}}>}
+ };
+ const child=JSON.parse(controlledInstructionPlanCommand(JSON.stringify(facts),root,{
+  ...base,id:"hijo",repository:root
+ })) as typeof source;
+ const from=source.executablePlan.tasks.find(task=>task.role==="worker");
+ const to=child.executablePlan.tasks.find(task=>task.role==="worker");
+ assert.ok(from?.writerAuthorizationBasis&&to?.writerAuthorizationBasis,
+  "La petición ODD original debe poder recuperarse desde ambos planes");
+ assert.equal(to.writerAuthorizationBasis,from.writerAuthorizationBasis);
+ assert.equal(to.id,from.id);
+ assert.deepEqual(to.writeSurfaces,from.writeSurfaces);
+ assert.equal(to.candidate?.revision,f.head);
+ assert.equal(to.candidate?.repository,root);
+ assert.notEqual(to.candidate?.repository,from.candidate?.repository);
+});
 
 test("T04/T05/T06 bloquea un plan hijo reemplazado aunque conserve modelo, SHA y ámbitos",async t=>{
  const f=fixture(t);await prepareSupervisorChildren(f);

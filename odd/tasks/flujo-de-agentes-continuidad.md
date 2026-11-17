@@ -270,3 +270,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Se exige igualdad exacta de `requestId` y `writerAuthorizationBasis` entre origen e hijo durante la preparación y otra vez al verificar identidad antes, durante y después del consentimiento individual. No se concede autoridad por esa igualdad: el Dispatcher y el binder siguen emitiendo el permiso nuevo y comprobando el ámbito exacto.
 - Pruebas negativas: modificación de la instrucción ODD sin cambiar modelo/HEAD/scope; sustitución de la identidad de petición. Ambas deben bloquear antes del diálogo del lote y no consumir el intento irreversible.
 - Prueba positiva existente de dos Workers instrumentados pasa a usar la identidad de petición original, como produce `plan-todo` en el flujo real. **Estado: IMPLEMENTADO_PENDIENTE_CI** del SHA nuevo; faltan ensayos reales TUI/Writer y revisión independiente. `globalFull:false`, sin modelos de pago ni fusión.
+
+## 17/11/2026 — T02 + T04/T05/T06: no anunciar herramientas prohibidas y validar planificación real
+
+- La extensión de autoridad Pi solamente admite `read`, `edit` y `write` según rol, pero la superposición configurable podía añadir `bash` o `grep` al argumento `--tools`. En la ejecución el permiso se bloquearía después, pero el modelo vería una herramienta imposible de usar.
+- El adaptador Pi aplica ahora el complemento y, antes de iniciar Pi, conserva únicamente las herramientas que el rol tenía permitidas. Puede **retirar** herramientas, nunca ampliar permisos. No cambia el funcionamiento genérico del cargador de complementos ni otorga capacidades nuevas.
+- Pruebas negativas: Explorer sin `read` no puede sustituirlo por `grep`; Explorer con `read` no anuncia `bash`; Worker legítimo con complemento malicioso sigue disponiendo solo de `read,edit,write` bajo la autorización emitida por el Dispatcher.
+- Se añade una prueba positiva T04/T05/T06 con `controlledInstructionPlanCommand` en proyectos origen/hijo reales: mismo ID, datos ODD y archivos, candidato con raíz distinta y SHA igual. No se atribuyen permisos ni modelo consumido.
+- Estado: **IMPLEMENTADO_PENDIENTE_CI** de este nuevo SHA. Pi Free Smoke y NVIDIA siguen fuera del alcance del ensayo, no se proclama FULL. PR #61 en borrador y sin merge.
