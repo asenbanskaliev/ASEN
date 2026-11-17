@@ -69,6 +69,15 @@ export interface ParentSupervisorInput{
      writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean>;
 }
 const same=(a:string,b:string)=>sameWorkspaceIdentityPath(a,b);
+/** El consentimiento se liga a la tarea ODD completa, no solo al modelo y al ámbito.
+ * Incluye instrucción, revisiones y autorizaciones. No es una prueba de aceptación. */
+function childTodoSnapshot(todo:SourceTodoRow):string{
+ return JSON.stringify({
+  taskId:todo.taskId,requestId:todo.requestId,title:todo.title,
+  description:todo.description,dependsOn:todo.dependsOn,
+  current:todo.current,plan:todo.plan
+ });
+}
 function nonAuthorizing(status:ParentSupervisorResult["status"],batchId:string,
  started:ParentSupervisorResult["started"],blockers:ParentSupervisorResult["blockers"]):ParentSupervisorResult{
  return Object.freeze({status,batchId,started:Object.freeze([...started]),
@@ -213,6 +222,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   // After earlier Workers start the full batch is no longer 'ready'.
   // Recheck ONLY this candidate: do not retarget or replan another unit.
   const child:TodoContext={sessionId:unit.childSessionId,projectId:unit.childProjectId};
+  let expectedChildTodoSnapshot:string|undefined;
   try{
   const link=(await input.sessionJournal.listSource(input.source)).find(l=>
    l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId&&
@@ -237,6 +247,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    git.status!=="clean"||!git.sourceVerified||!git.headMatchesBase)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": Child identity, worker or Git candidate changed; inspect before any new launch"]);
+  expectedChildTodoSnapshot=childTodoSnapshot(todo);
   }catch{
    // Tras consumir el intento único, toda lectura fallida requiere revisión.
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
@@ -274,7 +285,9 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     claims.filter(claim=>claim.batchId===unit.batchId&&
      claim.sourceTodoId===unit.sourceTodoId&&
      claim.childSessionId===unit.childSessionId).length!==1||
-    !childTodo||childTodo.plan?.role!=="worker"||
+    !childTodo||childTodo.current.state!=="planned"||
+    childTodoSnapshot(childTodo)!==expectedChildTodoSnapshot||
+    childTodo.plan?.role!=="worker"||
     childTodo.plan.candidate?.revision!==unit.baseRevision||
     (childTodo.plan.model??"unknown")!==unit.model||
     !same(childTodo.plan.candidate.repository,unit.childProjectId)||

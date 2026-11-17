@@ -220,3 +220,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 
 ### Cierre de la tanda de observación y tamaño
 - Los ensayos nativos del SHA base `e402690087cf698beb8f2edb852c40c39f007dcc` demostraron los seis tamaños en Linux, macOS y Windows; Architecture, Pi 1.2 y Release Gate pasaron. La tanda de indisponibilidad que sigue tiene **nuevas pruebas y nuevo SHA**, por lo que exige CI propio: no se trasladan automáticamente los resultados anteriores.
+
+## 17/11/2026 — T06: congelar la tarea completa tras aprobar cada Worker
+
+- En el supervisor padre, la comprobación posterior a la aprobación verificaba modelo, revisión y superficies, pero no la descripción completa ni el estado ODD de la tarea hija. Una actualización de instrucción o de estado después del consentimiento podía pasar el control parcial.
+- Se añade una fotografía de la tarea hija antes de solicitar permiso: ID, petición, título, instrucción, dependencias, estado/revisión y plan completo. `validateExact` exige igualdad antes y después de aprobar, además de las verificaciones Git y de identidad existentes. No concede Writer ni amplía permisos.
+- Pruebas negativas para cambio de instrucción y cancelación de Todo tras el permiso: sin despacho, sin repetición silenciosa y con intento único persistente.
+- **Estado: IMPLEMENTADO_PENDIENTE_CI** del nuevo SHA. T06 sigue parcial: falta prueba productiva completa Pi y modelo real, revisión independiente y reconciliación de aceptación. `globalFull:false`, sin fusionar.

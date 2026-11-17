@@ -757,6 +757,41 @@ test("T06 rechaza un cambio del modelo hijo entre permiso y despacho",async t=>{
  assert.equal((await f.run("supervise") as {status:string}).status,"blocked");
 });
 
+test("T06 no despacha un Worker si cambia su instrucción tras el consentimiento",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ f.onWorkerApproved(unit=>{
+  if(unit.sourceTodoId!=="todo-backend")return;
+  const current=f.getChildObservations(unit.childSessionId);
+  f.setChildObservations(unit.childSessionId,current.todos.map(row=>
+   row.taskId===unit.childTodoId?
+    {...row,description:"Instrucción distinta después del permiso"} as SourceTodoRow:row
+  ),current.agents,current.links);
+ });
+ const result=await f.run("supervise") as {status:string;started:readonly unknown[];autoRetry:boolean};
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(result.started.length,0);assert.equal(result.autoRetry,false);
+ assert.equal(f.dispatchedChildren.length,0);
+ assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,1);
+ assert.equal((await f.run("supervise") as {status:string}).status,"blocked");
+});
+
+test("T06 no acepta que un Worker deje de estar planificado después del permiso",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ f.onWorkerApproved(unit=>{
+  if(unit.sourceTodoId!=="todo-backend")return;
+  const current=f.getChildObservations(unit.childSessionId);
+  f.setChildObservations(unit.childSessionId,current.todos.map(row=>
+   row.taskId===unit.childTodoId?
+    {...row,current:{...row.current,state:"cancelled"}} as SourceTodoRow:row
+  ),current.agents,current.links);
+ });
+ const result=await f.run("supervise") as {status:string;started:readonly unknown[];autoRetry:boolean};
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(result.started.length,0);assert.equal(result.autoRetry,false);
+ assert.equal(f.dispatchedChildren.length,0);
+ assert.equal((await f.run("supervise") as {status:string}).status,"blocked");
+});
+
 test("T06 error de lectura tras primera ejecución conserva el intento sin replay",async t=>{
  const f=fixture(t);await prepareSupervisorChildren(f);
  const batch=(await f.journal.list(f.identity))[0]!;
