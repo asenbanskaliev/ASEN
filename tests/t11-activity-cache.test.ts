@@ -4,8 +4,6 @@ import {createT11ActivityCache} from "../src/runtime/ui/t11-activity-cache.js";
 import {derivePanelReview} from "../src/runtime/ui/ide-panel.js";
 import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
-import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
-import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import type {AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
 
 test("T11: solo proyecta actividad de sesión y proyecto observados",()=>{
