@@ -103,3 +103,17 @@ test("T08 distingue mensajes sin bloques y estructuras malformadas sin registrar
   error instanceof Error&&!error.message.includes("clave-privada")&&
   /contenido Pi no permitido/u.test(error.message));
 });
+
+test("T08 un mensaje Pi intermedio con herramienta no puede validar la recuperación",()=>{
+ for(const kind of ["toolCall","tool_call"]){
+  const candidate=flow(
+   final([{type:kind,name:"bash",arguments:{}}]),
+   JSON.stringify({type:"agent_end",willRetry:true}),
+   final([text(sample)]),
+   JSON.stringify({type:"agent_end",willRetry:false}),
+   JSON.stringify({type:"agent_settled"})
+  );
+  assert.throws(()=>parseT08NativeReviewText(candidate,{requireFinalSettlement:true}),
+   /intermedio contiene una llamada a herramienta/u);
+ }
+});

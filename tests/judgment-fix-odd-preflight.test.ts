@@ -96,7 +96,10 @@ test("T08 un Fix limitado no confunde alcance Writer y árbol revisado completo"
  const full=captureWorkspaceReviewProjection({repositoryRoot:f.projectId,intendedUntracked:["otro.ts"]});
  const limited=draftOddFromStoredFix({proposal:{
   ...f.proposal,candidateTreeIdentity:full.candidateTree,
-  candidateRevision:full.candidateTree,paths:["code.ts"]
+  candidateRevision:full.candidateTree,paths:["code.ts"],
+  id:createHash("sha256").update([
+   f.proposal.requestId,f.identity.sessionId,f.projectId,full.candidateTree
+  ].join("\0")).digest("hex")
  },identity:f.identity});
  assert.equal(inspectLiveFixCandidate(limited).candidateTreeIdentity,full.candidateTree);
  assert.deepEqual(limited.writeSurfaces,["code.ts"]);

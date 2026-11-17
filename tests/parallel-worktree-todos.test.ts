@@ -55,6 +55,7 @@ function fixture(t:TestContext){
  let rows=[row("todo-backend","backend.txt"),row("todo-frontend","frontend.txt")],
   session=identity.sessionId,approve=true,editorAnswer=JSON.stringify({parentDir:parent,units:scopes});
  let afterWorkerApproval:((unit:ParentSupervisorReadyWorker)=>void)|undefined;
+ let afterWorkerDispatch:((unit:ParentSupervisorReadyWorker)=>void)|undefined;
  const commands=new Map<string,{handler:(args:string,ctx:unknown)=>Promise<unknown>}>();
  registerParallelWorktreeCommand((name,command)=>commands.set(name,command as never),{
   journalFile,sessionLinksFile,planClaimsFile,observationFile,supervisorClaimsFile,
@@ -88,6 +89,7 @@ function fixture(t:TestContext){
    childTaskLinks.set(unit.childSessionId,[{taskId:unit.childTodoId,
     agentId,sessionId:unit.childSessionId,projectId:unit.childProjectId,
     createdAt:now}]);
+   afterWorkerDispatch?.(unit);
    return {status:"dispatched" as const,role:"worker" as const,
     todoId:unit.childTodoId,agentId};
   },
@@ -129,7 +131,8 @@ function fixture(t:TestContext){
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
   setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},
-  onWorkerApproved:(callback?:((unit:ParentSupervisorReadyWorker)=>void))=>{afterWorkerApproval=callback;},row};
+  onWorkerApproved:(callback?:((unit:ParentSupervisorReadyWorker)=>void))=>{afterWorkerApproval=callback;},
+  onWorkerDispatched:(callback?:((unit:ParentSupervisorReadyWorker)=>void))=>{afterWorkerDispatch=callback;},row};
 }
 
 test("T06 linked worktree command reserves actual ODD Todo identities before creating Git worktrees",async t=>{
@@ -1163,4 +1166,17 @@ test("T06/T07 /asen-panel de producción relee diarios, dos sesiones hijas y cam
  assert.ok(renders>=1);
  assert.equal(closed,1);
  assert.doesNotMatch(after,/PASS_TWO_REAL_WRITERS|auto-merge enabled|actual model: nvidia/iu);
+});
+
+test("T06 registra el Worker realmente lanzado aunque cambie la sesión padre tras dispatch",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ f.onWorkerDispatched(()=>f.setSession("sesión-padre-cambiada"));
+ const result=await f.run("supervise") as {
+  status:string;started:readonly {sourceTodoId:string;childTodoId:string;agentId:string}[];
+ };
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(f.dispatchedChildren.length,1);
+ assert.equal(result.started.length,1,"No ocultar el Worker que ya se ejecuta");
+ assert.equal(result.started[0]!.childTodoId,f.dispatchedChildren[0]!.childTodoId);
+ assert.ok(result.started[0]!.agentId);
 });

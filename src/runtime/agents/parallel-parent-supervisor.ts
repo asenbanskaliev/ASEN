@@ -340,6 +340,12 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     await validateExact();
     return wasApproved;
    },validateExact);
+   // El lanzamiento ya pudo comenzar: registrar su identidad ANTES de cualquier
+   // comprobación asíncrona posterior del padre para no ocultar un Worker real.
+   if(outcome.status==="dispatched"&&outcome.role==="worker"&&
+    outcome.todoId===unit.childTodoId&&wasApproved)
+    started.push(Object.freeze({sourceTodoId:unit.sourceTodoId,
+     childTodoId:unit.childTodoId,agentId:outcome.agentId}));
    await input.validateParent();
   }catch{
    // The existing Todo/Agent stores own the truthful launch state. The
@@ -351,8 +357,6 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    outcome.todoId!==unit.childTodoId||!wasApproved)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": Worker dispatch blocked or declined; inspect persisted Todo/Agent records"]);
-  started.push(Object.freeze({sourceTodoId:unit.sourceTodoId,
-   childTodoId:unit.childTodoId,agentId:outcome.agentId}));
  }
  return nonAuthorizing("started",initial.batchId,started,[]);
 }

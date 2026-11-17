@@ -44,7 +44,7 @@ export async function runT06NativeIndependentReviews(
   let pid=0,observedModel="unknown";
   const runner=new PiProcessRunner({
    command:process.env.PI_EXECUTABLE??"pi",policyRoot,
-   providerCredential:"NVIDIA_API_KEY",noTools:true,
+   providerCredential:"NVIDIA_API_KEY",noTools:true,requireFinalSettlement:true,
    timeoutMs:180_000,maxOutputBytes:85_000,maxStreamBytes:512_000,
    onProcessStart:processId=>{pid=processId;}
   });

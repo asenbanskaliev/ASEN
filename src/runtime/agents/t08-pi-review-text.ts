@@ -58,6 +58,11 @@ export function parseT08NativeReviewText(
    const ending=endings[0] as Record<string,unknown>;
    if(i<assistantMessages.length-1&&ending.willRetry!==true)
     throw new Error("T08: mensaje anterior sin recuperación autorizada por Pi");
+   // Una llamada solicitada sin ejecución sigue siendo una llamada a herramienta.
+   const intermediate=(item.row as {message:{content?:unknown}}).message.content;
+   if(Array.isArray(intermediate)&&intermediate.some(block=>
+    object(block)&&(block.type==="toolCall"||block.type==="tool_call")))
+    throw new Error("T08: mensaje Pi intermedio contiene una llamada a herramienta");
    if(i===assistantMessages.length-1&&ending.willRetry===true)
     throw new Error("T08: Pi sigue en recuperación y no hay dictamen definitivo");
    previousEnd=records.findIndex((row,index)=>

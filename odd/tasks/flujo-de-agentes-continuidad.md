@@ -346,3 +346,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Árbol de revisión Fix completo y ámbito Writer limitado: se compara el hash total antes de autorizar sin conceder escritura sobre archivos ajenos. Prueba positiva de candidato revisado de dos archivos con permiso de uno y negativa por cambio posterior.
 - Diagnóstico Windows: acumulador `$crashRecords` independiente de la variable automática `$Matches`.
 - **IMPLEMENTADO_PENDIENTE_CI** del nuevo SHA; P0 de ejecución de código generado sin aislamiento de red auténtico sigue abierto, sin PASS ni equivalencia FULL. No hay fusión ni consumo NVIDIA.
+
+## 17/11/2026 — CodeRabbit: recuperación Pi y visibilidad de lanzamientos
+
+- T08: se rechazan `toolCall` y `tool_call` también en respuestas Pi intermedias, aunque no exista evento `tool_execution_start`. Prueba negativa del reintento y `agent_settled`.
+- T06: revisores Pi nativos esperan `agent_settled`, igual que los jueces estrictos T08; no permiten PASS por el primer `agent_end`.
+- T06: el supervisor incorpora a `started` un despacho confirmado **antes** de revalidar la sesión padre; si cambia después, informa `partial-needs-review` conservando el agente observado y sin reintentos. Prueba de cambio posterior al lanzamiento.
+- Se corrige la identidad criptográfica de la prueba de Fix de varios archivos: el informe de origen y su SHA deben coincidir.
+- Estado: cambios de código pendientes de CI y revisión. Mantener P0 de red/terminación del código generado abierto; `globalFull:false`.
