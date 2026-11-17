@@ -358,3 +358,76 @@ test("T07 native overlay exposes linked Worker flow without a parent Agent or To
  }
  assert.deepEqual(data,before);
 });
+
+test("T06/T07 ventana abierta actualiza Workers reales observados sin ejecutar ni aceptar cambios",async()=>{
+ const running=projectParallelAgentFlow([{batchId:"live-real",state:"prepared",supervisorClaimed:true,tasks:[
+  {sourceTodoId:"source-a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-a",agents:[{id:"agent-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"source-b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-b",agents:[{id:"agent-b",role:"worker",state:"queued"}]}}
+ ]}]);
+ const finished=projectParallelAgentFlow([{batchId:"live-real",state:"prepared",supervisorClaimed:true,tasks:[
+  {sourceTodoId:"source-a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"scoped-changes",changedPaths:["a.ts"],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-a",agents:[{id:"agent-a",role:"worker",state:"completed"}]}},
+  {sourceTodoId:"source-b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"out-of-scope",changedPaths:["fuera.ts"],outOfScopePaths:["fuera.ts"],
+    sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-b",agents:[{id:"agent-b",role:"worker",state:"failed"}]}}
+ ]}]);
+ const observed=(overview:typeof running)=>({...snapshot,agentFlow:{
+  state:"observed" as const,totalRecordedBatches:1,limited:false,overview
+ }});
+ let current=observed(running),calls=0,paints=0,closed=0;
+ const pane=createNativeWorkPanel(current,{requestRender(){paints++;},close(){closed++;},
+  terminalRows:()=>160,refresh:async()=>{calls++;return current;}});
+ assert.match(pane.render(120).join("\n"),/Worktree Workers: 1 active observed/u);
+ current=observed(finished);
+ await pane.refreshNow();
+ const after=pane.render(120).join("\n");
+ assert.match(after,/Worktree Workers: 0 active observed/u);
+ assert.match(after,/Linked worktrees: 2\/2/u);
+ assert.match(after,/blocked/u);
+ assert.equal(calls,1);assert.equal(paints,1);
+ assert.equal(finished.autoMerge,false);
+ assert.equal(finished.acceptance,"not-accepted");
+ pane.dispose();
+ await pane.refreshNow();
+ assert.equal(calls,1,"Cerrar la ventana detiene las lecturas");
+ assert.equal(closed,0);
+});
+
+test("T07 descarta lecturas tardías y marca como no disponible un registro de hijo ilegible",async()=>{
+ const active=projectParallelAgentFlow([{batchId:"batch",state:"prepared",tasks:[
+  {sourceTodoId:"a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-a",agents:[{id:"agent-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}}
+ ]}]);
+ const data={...snapshot,agentFlow:{state:"observed" as const,totalRecordedBatches:1,limited:false,overview:active}};
+ let releases!: (value:AsenPanelSnapshot)=>void,rendered=0,current=true,closed=0;
+ const pane=createNativeWorkPanel(data,{requestRender(){rendered++;},close(){closed++;},
+  stillCurrent:()=>current,terminalRows:()=>140,
+  refresh:()=>new Promise(resolve=>{releases=resolve;})});
+ const pending=pane.refreshNow();
+ current=false;releases({...snapshot});
+ await pending;
+ assert.equal(closed,1,"Un cambio de sesión cierra la ventana");
+ assert.equal(rendered,0,"No se presentan datos de otra sesión");
+ const failing=createNativeWorkPanel(data,{requestRender(){rendered++;},close(){},
+  terminalRows:()=>140,refresh:async()=>{throw Error("datos privados");}});
+ await failing.refreshNow();
+ const after=failing.render(140).join("\n");
+ assert.match(after,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(after,/Worktree Workers: 1 active observed/u);
+ assert.doesNotMatch(after,/datos privados/u);
+ failing.dispose();
+});

@@ -1111,18 +1111,34 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
      const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;assertCurrent();
      publishInspectedWorkRow(ctx,snapshot);
-     const action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
-      const close=()=>done(undefined);
-      return createNativeWorkPanel(snapshot,{
-       requestRender:()=>tui.requestRender(),close,
-       openChanges:()=>done("ASEN_OPEN_CHANGES_VIEW"),
-       ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
-       terminalRows:()=>Math.max(1,Number(tui.terminal?.rows??24)),
-       availableRows:()=>Math.max(1,Math.floor(Number(tui.terminal?.rows??24)*.9)),
-       ...(_theme instanceof Theme?{theme:_theme}:{}),
-       stillCurrent:()=>{try{assertCurrent();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
-      });
-     },{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+     let nativePanel:ReturnType<typeof createNativeWorkPanel>|undefined;
+     let action:unknown;
+     try{
+      action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
+       const close=()=>done(undefined);
+       nativePanel=createNativeWorkPanel(snapshot,{
+        requestRender:()=>tui.requestRender(),close,
+        openChanges:()=>done("ASEN_OPEN_CHANGES_VIEW"),
+        // Los hijos Pi pueden vivir en otro proceso. Sus registros se vuelven
+        // a leer del disco SOLO mientras la ventana está abierta.
+        refresh:async()=>{
+         assertCurrent();
+         const current=await sessionIdentity(ctx);assertCurrent();
+         if(ctx.cwd!==before||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+          throw new Error("La sesión de origen cambió durante la observación T06/T07");
+         return getPanelSnapshot(ctx);
+        },
+        autoRefreshMs:5000,
+        onRefreshed:fresh=>publishInspectedWorkRow(ctx,fresh),
+        ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
+        terminalRows:()=>Math.max(1,Number(tui.terminal?.rows??24)),
+        availableRows:()=>Math.max(1,Math.floor(Number(tui.terminal?.rows??24)*.9)),
+        ...(_theme instanceof Theme?{theme:_theme}:{}),
+        stillCurrent:()=>{try{assertCurrent();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
+       });
+       return nativePanel;
+      },{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+     }finally{nativePanel?.dispose();}
      if(action==="ASEN_OPEN_CHANGES_VIEW"){
       // The modal only returns a selection. Recheck scope before invoking the
       // existing guarded, read-only viewer, including its own root identity guard.

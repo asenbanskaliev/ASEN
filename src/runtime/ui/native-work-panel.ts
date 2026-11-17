@@ -6,6 +6,12 @@ import type {KeybindingsManager,TuiMouseEvent,TuiMouseEventResult} from "@earend
 export interface NativePanelControls{
  readonly requestRender:()=>void;
  readonly close:()=>void;
+ /** Lectura fresca del mismo diario/Todo/AgentRuntime. Nunca ejecuta agentes. */
+ readonly refresh?:()=>Promise<AsenPanelSnapshot>;
+ /** La ventana visible es la única propietaria de este temporizador. */
+ readonly autoRefreshMs?:number;
+ /** Solo tras aplicar una observación nueva del mismo contexto. */
+ readonly onRefreshed?:(snapshot:AsenPanelSnapshot)=>void;
  /** Only returns a selection to the host; never runs Git inside the modal. */
  readonly openChanges?:()=>void;
  readonly terminalRows:()=>number;
@@ -20,10 +26,44 @@ export interface NativePanelComponent{
  handleInput(data:string):void;
  handleMouse?(event:TuiMouseEvent):TuiMouseEventResult|undefined;
  invalidate():void;
+ refreshNow():Promise<void>;
+ dispose():void;
 }
 /** Keyboard-native read-only overlay on Pi's documented ui.custom component API. */
 export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:NativePanelControls):NativePanelComponent & {handleMouse:(event:TuiMouseEvent)=>TuiMouseEventResult|undefined}{
  let active=0,scrollTop=0,selectedOnly=false,closeOnly=false,activationRequested=false,revealActive=false;
+ let disposed=false,refreshing=false,refreshTimer:ReturnType<typeof setTimeout>|undefined;
+ const dispose=()=>{disposed=true;if(refreshTimer!==undefined)clearTimeout(refreshTimer);refreshTimer=undefined;};
+ const close=()=>{dispose();controls.close();};
+ const refreshNow=async():Promise<void>=>{
+  if(disposed||refreshing||!controls.refresh)return;
+  if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
+  refreshing=true;
+  try{
+   const next=await controls.refresh();
+   if(disposed)return;
+   if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
+   snapshot=next;
+   try{controls.onRefreshed?.(next);}catch{/* La presentación no modifica la observación. */}
+   controls.requestRender();
+  }catch{
+   if(disposed)return;
+   if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
+   // Ante lectura fallida no conservar estados hijos activos obsoletos.
+   snapshot={...snapshot,agentFlow:undefined,agentFlowUnavailable:true};
+   controls.requestRender();
+  }finally{refreshing=false;}
+ };
+ const period=controls.autoRefreshMs;
+ if(controls.refresh&&typeof period==="number"&&Number.isFinite(period)&&period>=1000){
+  const ms=Math.min(30000,Math.floor(period));
+  const schedule=()=>{
+   if(disposed)return;
+   refreshTimer=setTimeout(()=>{void refreshNow().finally(schedule);},ms);
+   refreshTimer.unref?.();
+  };
+  schedule();
+ }
  const collapsed=new Set<AsenPanelSection>();
  const sections=[...ASEN_PANEL_SECTIONS];
  const activeName=()=>sections[active]!;
@@ -105,33 +145,34 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   });
   const indicator=max>0?(scrollTop>0?"↑ ":"")+(scrollTop<max?"↓ "+(content.length-scrollTop-usable)+" more":"end")+" · ":"";
   const host=typeof controls.keybindings?.matches==="function";
-  const hints=host?"j/k scroll · Space fold · host keys: next/detail/back · q close":
-   selectedOnly?"Backspace all · j/k scroll · Tab section · q close":
-   cols<60?"j/k scroll · Tab next · Enter detail":"j/k scroll · Tab next · Space fold · Enter detail · Backspace all";
+  const hints=host?"j/k scroll · r refresh · host keys: next/detail/back · q close":
+   selectedOnly?"Backspace all · r refresh · Tab section · q close":
+   cols<60?"j/k scroll · r refresh · Tab next":"j/k scroll · r refresh · Tab next · Enter detail · Backspace all";
   return [paint(title,"accent",true),...visible,paint(indicator+hints,"muted")];
  };
  const handleInput=(data:string)=>{
-  if(activationRequested)return;
-  if(controls.stillCurrent&&!controls.stillCurrent()){controls.close();return;}
+  if(activationRequested||disposed)return;
+  if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
   // Use this interaction's manager, not a global registry or a second keymap.
   const matches=(action:Parameters<KeybindingsManager["matches"]>[1],...fallback:string[])=>
    typeof controls.keybindings?.matches==="function"
     ?controls.keybindings.matches(data,action):fallback.includes(data);
-  if(data==="q"||matches("tui.select.cancel","\u001b","\u0003")){controls.close();return;}
+  if(data==="q"||matches("tui.select.cancel","\u001b","\u0003")){close();return;}
   if(closeOnly)return;
+  if(data==="r"&&controls.refresh){void refreshNow();return;}
   if(data==="j"||matches("tui.select.down","\u001b[B")){scrollTop++;controls.requestRender();return;}
   if(data==="k"||matches("tui.select.up","\u001b[A")){scrollTop=Math.max(0,scrollTop-1);controls.requestRender();return;}
   if(matches("tui.input.tab","\t")){active=(active+1)%sections.length;scrollTop=0;revealActive=true;controls.requestRender();return;}
   if(data===" "){if(collapsed.has(activeName()))collapsed.delete(activeName());else collapsed.add(activeName());controls.requestRender();return;}
   if(matches("tui.select.confirm","\r","\n")){
-   if(activeName()==="CHANGES"&&controls.openChanges){activationRequested=true;controls.openChanges();return;}
+   if(activeName()==="CHANGES"&&controls.openChanges){activationRequested=true;dispose();controls.openChanges();return;}
    selectedOnly=true;scrollTop=0;controls.requestRender();return;
   }
   if(matches("tui.editor.deleteCharBackward","\u007f","\b")){selectedOnly=false;scrollTop=0;controls.requestRender();}
  };
  const handleMouse=(event:TuiMouseEvent):TuiMouseEventResult|undefined=>{
   if(event.type!=="press"||event.button!=="left"||closeOnly)return undefined;
-  if(controls.stillCurrent&&!controls.stillCurrent()){controls.close();return {handled:true};}
+  if(controls.stillCurrent&&!controls.stillCurrent()){close();return {handled:true};}
   // Title is rendered on row 0. Only the headings ACTUALLY displayed in
   // the current viewport can be clicked, independent of folding or scroll.
   const index=Number.isSafeInteger(event.y)?event.y-1:-1;
@@ -144,5 +185,5 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
   else collapsed.add(target.section);
   controls.requestRender();return {handled:true};
  };
- return {render,handleInput,handleMouse,invalidate(){scrollTop=0;}};
+ return {render,handleInput,handleMouse,invalidate(){scrollTop=0;},refreshNow,dispose};
 }
