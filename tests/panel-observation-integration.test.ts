@@ -31,7 +31,11 @@ async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"thr
   setModel(){effects++;return false;},setActiveTools(){effects++;},sendMessage(){effects++;}};
  const ctx:any={cwd:project,mode:"tui",hasUI:true,model:{provider:"p",id:"m"},thinkingLevel:"high",getContextUsage(){return {tokens:80,contextWindow:100,percent:80};},
   sessionManager:{getSessionId:()=>id},ui:{notify(message:string){notices.push(message);},setStatus(key:string,value:string|undefined){statuses.set(key,value);},setWidget(key:string,value:unknown){widgets.set(key,value);},setFooter(){effects++;},confirm(){effects++;return false;}}};
- const dependencies={homeDir:()=>home,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,...(listGate?{todoStoreFactory:async()=>({async list(){await listGate();return [];}} as unknown as SessionTodoStore)}:{})};
+ const dependencies={homeDir:()=>home,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,...(listGate?{todoStoreFactory:async()=>({
+  async recover(){/* El almacén de prueba no tiene operaciones pendientes que recuperar. */},
+  diagnostics(){return undefined;},
+  async list(){await listGate();return [];}
+ } as unknown as SessionTodoStore)}:{})};
  if(production)createPiExtension(dependencies)(pi as any);else createAsenExtension(dependencies)(pi);
  const emit=async(name:string)=>{for(const fn of events.get(name)??[])await fn({},ctx);};
  const panel=async(view:string):Promise<string[]>=>{
