@@ -409,6 +409,18 @@ test("Pi runner exposes bounded tool lifecycle observations without raw tool dat
   {type:"tool_execution_end",pid:0,toolName:"read",toolCallId:"call-1",isError:false},
  ]);
 });
+test("Pi deja de publicar eventos en cuanto un observador solicita cancelar",{timeout:20_000},async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());process.stdout.write([{type:"tool_execution_start",toolName:"read",toolCallId:"primero"},{type:"tool_execution_end",toolName:"read",toolCallId:"primero",isError:false},{type:"response",id:f.id,success:true},{type:"agent_end"}].map(JSON.stringify).join("\\n")+"\\n");});');
+ const controller=new AbortController(),events:string[]=[];
+ const result=await runner(p,{timeoutMs:5_000,onToolExecution:event=>{
+  events.push(event.type);
+  if(events.length===1)controller.abort();
+ }}).run({id:"sin-eventos-tardios",role:"explorer",prompt:"prueba",repository:d},controller.signal);
+ assert.equal(result.ok,false);
+ assert.match(result.output,/cancelled/u);
+ assert.deepEqual(events,["tool_execution_start"],"el segundo evento no debe publicarse tras la cancelación");
+});
+
 test("read-only Pi runner fails closed when a model attempts a tool",{timeout:process.platform==="win32"?45_000:5_000},async t=>{
  const marker=join(tmpdir(),`asen-denied-tool-${process.pid}-${Date.now()}`);t.after(()=>rm(marker,{force:true}));
  const {d,p}=await fixture(`import {writeFileSync} from "node:fs";const marker=${JSON.stringify(marker)};let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"write",toolCallId:"forbidden"}));setTimeout(()=>writeFileSync(marker,"tool side effect"),1500);});`);

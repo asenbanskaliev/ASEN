@@ -474,10 +474,14 @@ export class PiProcessRunner implements AgentRunner{
    };
    const onAbort=()=>{triedModels.clear();stop({id:request.id,ok:false,output:"pi process cancelled"});};
    child.stdout.on("data",data=>{
+    // Tras solicitar parada, no procesar ni publicar sucesos que queden
+    // en este mismo bloque de salida o lleguen mientras termina el hijo.
+    if(stopResult||settled||signal?.aborted)return;
     streamBytes+=Buffer.byteLength(data);
     if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}
     buffer+=String(data);
     let end;while((end=buffer.indexOf("\n"))>=0){
+     if(stopResult||settled||signal?.aborted)return;
      const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
      const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
@@ -608,7 +612,9 @@ export class PiProcessRunner implements AgentRunner{
     if(Buffer.byteLength(buffer)>maxRecord){overflow=true;stop({id:request.id,ok:false,output:`pi RPC record exceeded ${maxRecord} bytes`});}
    });
    child.stderr.on("data",data=>{streamBytes+=Buffer.byteLength(data);if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}stderr=(stderr+String(data)).slice(-16_384);});
-   child.on("error",error=>{if(!stopResult)finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`});});
+   // Un error posterior a spawn debe terminar también los descendientes,
+   // no resolver el resultado dejando un proceso hijo sin limpiar.
+   child.on("error",error=>{if(!stopResult)stop({id:request.id,ok:false,output:`pi process error: ${String(error)}`});});
    child.on("close",code=>{
     try{this.options.onProcessClose?.({code,signal:child.signalCode,stderr});}catch{/* Evidence observers cannot alter Pi execution. */}
     if(stopResult)return;
