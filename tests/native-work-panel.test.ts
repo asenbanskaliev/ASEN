@@ -512,6 +512,10 @@ test("T07: fallo aislado del origen hijo no declara que no exista trabajo",async
    changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
     sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
    childSession:{id:"sesion-hija",agents:[{id:"agente-hijo",role:"worker",state:"running"}]}
+  },{
+   sourceTodoId:"tarea-pendiente",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}
   }]
  }]);
  let redraws=0,reads=0;
@@ -528,7 +532,7 @@ test("T07: fallo aislado del origen hijo no declara que no exista trabajo",async
  await pane.refreshNow();
  const fresh=pane.render(140).join("\n");
  assert.match(fresh,/Worktree Workers: 1 active observed/u);
- assert.match(fresh,/Linked source Todos: 1/u);
+ assert.match(fresh,/Linked source Todos: 2/u);
  assert.doesNotMatch(fresh,/hijos no disponibles|estado de agentes hijos no disponible/u);
  assert.equal(reads,1);assert.equal(redraws,1);
  assert.deepEqual(unavailable,before,"La proyección no modifica datos de origen");
