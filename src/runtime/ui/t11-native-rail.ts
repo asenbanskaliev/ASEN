@@ -3,9 +3,9 @@
  * La API interna es experimental: si no está disponible, no se modifica Pi.
  * Jamás ejecuta tareas, concede permisos ni inventa datos de modelos.
  */
-import {ScrollView,type Component,type TUI} from "@earendil-works/pi-tui";
+import {ScrollView,type Component,type TUI,type TuiMouseEvent,type TuiMouseEventResult} from "@earendil-works/pi-tui";
 import type {Theme} from "@earendil-works/pi-coding-agent";
-import {renderAsenPanel,renderAsenPanelWithLayout,type AsenPanelSnapshot} from "./ide-panel.js";
+import {ASEN_PANEL_SECTIONS,renderAsenPanelWithLayout,type AsenPanelSection,type AsenPanelSnapshot} from "./ide-panel.js";
 import {truncateForTerminal} from "../responsive-layout.js";
 import type {AsenAppearancePreset} from "./t11-appearance.js";
 import type {T11Position,T11Density} from "./t11-layout-settings.js";
@@ -22,6 +22,9 @@ export interface AsenRailHandle{
  readonly active:()=>boolean;
  readonly sync:()=>void;
  readonly refresh:()=>void;
+ /** Lectura de estado visual, sin acceder al modelo ni a autorizaciones. */
+ readonly selectedSection:()=>AsenPanelSection;
+ readonly collapsedSections:()=>readonly AsenPanelSection[];
  readonly dispose:()=>void;
 }
 function supported(root:Root|undefined):root is Root{
@@ -38,22 +41,80 @@ export function installAsenNativeRail(
  let closed=false,originalRoot:Root|undefined,originalNode:(()=>LayoutNode)|undefined;
  let ownNode:(()=>LayoutNode)|undefined,ownDescriptor:PropertyDescriptor|undefined;
  let rebindTimer:ReturnType<typeof setInterval>|undefined;
+
+ // El lateral no crea un segundo gestor de datos. Conserva solo selección y plegado.
+ const folded=new Set<AsenPanelSection>();
+ const sections=[...ASEN_PANEL_SECTIONS];
+ let selected=0,focusWas:Component|null=null,ownsFocus=false,renderedHeadings=new Map<number,AsenPanelSection>();
+ const focusHost=tui as TUI&{getFocusedComponent?:()=>Component|null};
+ const releaseFocus=()=>{
+  if(!ownsFocus)return;
+  ownsFocus=false;
+  try{
+   if(typeof focusHost.getFocusedComponent==="function"&&focusHost.getFocusedComponent()===content)
+    tui.setFocus(focusWas);
+  }catch{/* Un foco anterior caducado no puede bloquear la salida. */}
+  focusWas=null;
+ };
  const content:Component={
   render(width:number):string[]{
    const cols=Math.max(12,Math.min(1000,Math.floor(width)-2));
    const snapshot=read()??{todos:[],agents:[],jobs:[]};
    const density=readDensity();
-   const lines=density==="comfortable"?renderAsenPanel(snapshot,cols,[],readPreset()==="power"):
-    (()=>{const layout=renderAsenPanelWithLayout(snapshot,cols);
-     return layout.groups.flatMap(group=>density==="minimal"?[layout.lines[group.start]!]:
-      layout.lines.slice(group.start,Math.min(group.end,group.start+3)));})();
-   return (readDensity()==="comfortable"?["",...lines]:lines).map((line)=>{
-    const value=truncateForTerminal(line,cols);
-    const heading=/^[▾▸] /u.test(value),dim=/unknown|unverified|unavailable|No (?:agents|tasks|owned jobs)/iu.test(value);
-    const painted=heading?theme.fg("accent",theme.bold(value)):dim?theme.fg("muted",value):theme.fg("text",value);
+   const detail=readPreset()==="power"&&density==="comfortable";
+   const layout=renderAsenPanelWithLayout(snapshot,cols,[...folded],detail);
+   renderedHeadings=new Map<number,AsenPanelSection>();
+   const rows:Array<{value:string;section?:AsenPanelSection}>=[];
+   if(density==="comfortable")rows.push({value:""});
+   for(const group of layout.groups){
+    renderedHeadings.set(rows.length,group.section);
+    rows.push({value:layout.lines[group.start]??group.section,section:group.section});
+    const end=density==="minimal"?group.start+1:
+     density==="compact"?Math.min(group.end,group.start+3):group.end;
+    for(let i=group.start+1;i<end;i++)rows.push({value:layout.lines[i]??""});
+   }
+   return rows.map(({value,section})=>{
+    const highlighted=ownsFocus&&section===sections[selected];
+    const fitted=truncateForTerminal(highlighted?"> "+value:value,cols);
+    const heading=section!==undefined,dim=/unknown|unverified|unavailable|No (?:agents|tasks|owned jobs)/iu.test(fitted);
+    const painted=heading?theme.fg("accent",theme.bold(fitted)):dim?theme.fg("muted",fitted):theme.fg("text",fitted);
     return " "+painted;
    });
-  },invalidate(){}
+  },
+  handleMouse(event:TuiMouseEvent):TuiMouseEventResult|undefined{
+   if(!eligible()||event.type!=="press"||event.button!=="left")return;
+   // En Pi 1.2 la coordenada es local al hijo dentro de ScrollView; ya
+   // incluye el desplazamiento del contenido. No se usa screenY absoluto.
+   const section=renderedHeadings.get(event.y);
+   if(section===undefined)return;
+   selected=sections.indexOf(section);
+   if(folded.has(section))folded.delete(section);else folded.add(section);
+   const focusAvailable=typeof focusHost.getFocusedComponent==="function";
+   if(focusAvailable&&!ownsFocus){
+    focusWas=focusHost.getFocusedComponent!();
+    ownsFocus=true;
+   }
+   scroll.invalidate();
+   try{tui.requestRender();}catch{}
+   return {handled:true,...(focusAvailable?{focus:true}:{})};
+  },
+  handleInput(data:string):void{
+   if(!ownsFocus)return;
+   if(data==="\u001b"||data==="q"){
+    releaseFocus();try{tui.requestRender();}catch{}return;
+   }
+   if(data==="\t"||data==="\u001b[B"||data==="j")
+    selected=(selected+1)%sections.length;
+   else if(data==="\u001b[A"||data==="k")
+    selected=(selected+sections.length-1)%sections.length;
+   else if(data===" "||data==="\r"||data==="\n"){
+    const section=sections[selected]!;
+    if(folded.has(section))folded.delete(section);else folded.add(section);
+   }else return; // No se interpreta una orden para ejecutar agentes.
+   scroll.invalidate();
+   try{tui.requestRender();}catch{}
+  },
+  invalidate(){renderedHeadings.clear();}
  };
  const scroll=new ScrollView(content,{follow:"none",primary:false,overscroll:"contain",scrollbar:"auto"});
  const leaf:Component&Record<symbol,unknown>={
@@ -86,7 +147,7 @@ export function installAsenNativeRail(
   const left=()=>before.call(root);
   leaf[NODE]=left;
   const composed=():LayoutNode=>{
-   if(!eligible())return before.call(root);
+   if(!eligible()){releaseFocus();return before.call(root);}
    if(position()==="bottom")return {type:"vstack",gap:1,align:"stretch",entries:[
     {component:leaf,basis:0,grow:1,shrink:1,minSize:1},
     {component:scroll,basis:8,grow:0,shrink:0,minSize:8},
@@ -102,8 +163,8 @@ export function installAsenNativeRail(
  };
  const hostSupported=()=>!!(originalRoot&&ownNode&&originalRoot[NODE]===ownNode);
  const active=()=>hostSupported()&&eligible();
- const refresh=()=>{if(closed)return;scroll.invalidate();try{tui.requestRender();}catch{/* Es una vista auxiliar. */}};
- const dispose=()=>{if(closed)return;closed=true;
+ const refresh=()=>{if(closed)return;if(!eligible())releaseFocus();scroll.invalidate();try{tui.requestRender();}catch{/* Es una vista auxiliar. */}};
+ const dispose=()=>{if(closed)return;releaseFocus();closed=true;
   if(rebindTimer!==undefined)clearInterval(rebindTimer);rebindTimer=undefined;
   detach();try{tui.requestRender();}catch{/* No bloquear el cierre. */}};
  sync();
@@ -112,5 +173,5 @@ export function installAsenNativeRail(
  // propietarios y cerrar el temporizador al terminar la sesión.
  rebindTimer=setInterval(sync,100);
  rebindTimer.unref?.();
- return {hostSupported,active,sync,refresh,dispose};
+ return {hostSupported,active,sync,refresh,selectedSection:()=>sections[selected]!,collapsedSections:()=>[...folded],dispose};
 }

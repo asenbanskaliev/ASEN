@@ -124,3 +124,74 @@ test("T11 la densidad minimal muestra únicamente títulos observados, sin cambi
  assert.deepEqual(snapshot,{todos:[],agents:[],jobs:[],changes:{branch:"feat/revision",files:1}});
  h.dispose();
 });
+
+test("T11: clic en cabecera pliega la sección real sin abrir una ventana ni ejecutar tareas",()=>{
+ const f=host();let calls=0;let focus:unknown={handleInput(){},render(){return[];},invalidate(){}};
+ const editor=focus;
+ (f.ui as any).getFocusedComponent=()=>focus;
+ (f.ui as any).setFocus=(component:unknown)=>{focus=component;};
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>{calls++;return snapshot;});
+ const outer=(f.root[NODE] as ()=>any)().entries[1].component;
+ const content=outer[NODE]().component;
+ const rows=content.render(48);
+ const index=rows.findIndex((s:string)=>s.includes("CHANGES"));
+ assert.ok(index>0);
+ assert.equal(content.handleMouse({type:"press",button:"right",y:index} as any),undefined);
+ assert.equal(content.handleMouse({type:"press",button:"left",y:-1} as any),undefined);
+ assert.equal(focus,editor,"eventos ajenos no roban el foco");
+ const click=content.handleMouse({type:"press",button:"left",y:index} as any);
+ assert.deepEqual(click,{handled:true,focus:true});
+ if(click.focus)(f.ui as any).setFocus(content);
+ assert.equal(h.selectedSection(),"CHANGES");
+ assert.deepEqual(h.collapsedSections(),["CHANGES"]);
+ assert.ok(content.render(48).some((row:string)=>row.includes("▸ CHANGES")));
+ assert.equal(focus,content);
+ assert.ok(calls>=1);
+ content.handleInput(" ");
+ assert.deepEqual(h.collapsedSections(),[]);
+ assert.ok(content.render(48).some((row:string)=>row.includes("▾ CHANGES")));
+ content.handleInput("\u001b");
+ assert.equal(focus,editor,"Escape devuelve el foco original");
+ assert.equal(h.selectedSection(),"CHANGES");
+ h.dispose();
+});
+test("T11: teclado Tab/j/k, Enter y q solo cambian selección o plegado",()=>{
+ const f=host();let focus:unknown={};const editor=focus;
+ (f.ui as any).getFocusedComponent=()=>focus;
+ (f.ui as any).setFocus=(node:unknown)=>{focus=node;};
+ const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot);
+ const view=(f.root[NODE] as ()=>any)().entries[1].component;
+ const content=view[NODE]().component;
+ const rows=content.render(50);
+ const heading=rows.findIndex((row:string)=>row.includes("TODOS"));
+ const result=content.handleMouse({type:"press",button:"left",y:heading} as any);
+ if(result?.focus)(f.ui as any).setFocus(content);
+ assert.equal(h.selectedSection(),"TODOS");
+ content.handleInput("\t");assert.equal(h.selectedSection(),"JOBS");
+ content.handleInput("j");assert.equal(h.selectedSection(),"AGENTS");
+ content.handleInput("k");assert.equal(h.selectedSection(),"JOBS");
+ content.handleInput("\r");assert.deepEqual(h.collapsedSections(),["TODOS","JOBS"]);
+ content.handleInput("x");assert.deepEqual(h.collapsedSections(),["TODOS","JOBS"],"tecla desconocida no ejecuta acciones");
+ content.handleInput("q");assert.equal(focus,editor);
+ h.dispose();
+});
+test("T11: al ocultar el lateral, cambiar de modo o cerrar se devuelve el foco",()=>{
+ for(const reason of ["hidden","regular","dispose"] as const){
+  const f=host();let focus:unknown={};const editor=focus;
+  let position:"auto"|"hidden"="auto";
+  (f.ui as any).getFocusedComponent=()=>focus;
+  (f.ui as any).setFocus=(node:unknown)=>{focus=node;};
+  const h=installAsenNativeRail(f.ui,fakeTheme,()=>snapshot,()=>"neutral",()=>position);
+  const content=(f.root[NODE] as ()=>any)().entries[1].component[NODE]().component;
+  const index=content.render(48).findIndex((row:string)=>row.includes("AGENTS"));
+  const event=content.handleMouse({type:"press",button:"left",y:index} as any);
+  if(event?.focus)(f.ui as any).setFocus(content);
+  assert.equal(focus,content);
+  if(reason==="hidden"){position="hidden";h.refresh();}
+  if(reason==="regular"){(f.ui as any).mode="regular";(f.root[NODE] as ()=>any)();}
+  if(reason==="dispose")h.dispose();
+  assert.equal(focus,editor,reason+" no debe dejar foco sobre el componente retirado");
+  h.dispose();
+  assert.equal(f.root[NODE],f.original);
+ }
+});

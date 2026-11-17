@@ -234,14 +234,14 @@ export interface PanelLayoutResult{
  groups:readonly PanelSectionGroup[];
  loose:readonly number[];
 }
-export function renderAsenPanelWithLayout(snapshot:AsenPanelSnapshot,width=72,collapsed:readonly AsenPanelSection[]=[]):PanelLayoutResult{
+export function renderAsenPanelWithLayout(snapshot:AsenPanelSnapshot,width=72,collapsed:readonly AsenPanelSection[]=[],detail=false):PanelLayoutResult{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const lines:string[]=[],groups:PanelSectionGroup[]=[],loose:number[]=[];
  for(const section of ASEN_PANEL_SECTIONS){
   const open=!collapsed.includes(section);
   const start=lines.length;
   lines.push(fit((open?"▾ ":"▸ ")+section+" · "+count(snapshot,section),width));
-  if(open)lines.push(...renderAsenPanelSection(snapshot,section,width));
+  if(open)lines.push(...renderAsenPanelSection(snapshot,section,width,detail));
   groups.push({section,start,end:lines.length});
  }
  return Object.freeze({lines:Object.freeze(lines),groups:Object.freeze(groups),loose:Object.freeze(loose)});
