@@ -6,10 +6,11 @@ import {tmpdir} from "node:os";
 import {dirname,join} from "node:path";
 import {fileURLToPath} from "node:url";
 
-const enabled=process.platform==="linux"&&process.env.CI==="true"&&process.env.ASEN_TEST_SHARD_OS==="ubuntu-24.04";
+const hostOS:Record<string,string>={linux:"ubuntu-24.04",darwin:"macos-latest",win32:"windows-latest"};
+const enabled=process.env.CI==="true"&&hostOS[process.platform]===process.env.ASEN_TEST_SHARD_OS;
 const root=dirname(dirname(fileURLToPath(import.meta.url)));
 test("T11: el Pi real reserva 53 columnas sin tapar el editor y se adapta a 139",{
- skip:enabled?false:"Prueba de geometría Pi reservada a Ubuntu en CI",timeout:145000
+ skip:enabled?false:"Prueba de geometría Pi reservada a Linux, macOS y Windows en CI",timeout:145000
 },t=>{
  const temp=mkdtempSync(join(tmpdir(),"asen-t11-reporte-"));
  t.after(()=>rmSync(temp,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
