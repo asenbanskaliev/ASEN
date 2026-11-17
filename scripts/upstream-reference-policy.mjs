@@ -133,7 +133,14 @@ const encodedCompatibilityLines = new Map([
    " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
    " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({nqq:[\"terc\",\"ernq\"],erzbir:[\"ernq\"]}));",
    " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
-   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({erzbir:[\"ernq\"]}));"
+   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({erzbir:[\"ernq\"]}));",
+   // Dos pruebas de permisos reutilizan el esquema de configuración heredado.
+   // Solo estos renglones exactos de fixtures son compatibles; no son un bypass
+   // para referencias nuevas en código de producción.
+   " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
+   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({",
+   " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
+   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({"
   ]
  ],
  [
