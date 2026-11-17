@@ -104,3 +104,6 @@ Solicitud del usuario: ejecutar ya la tarea horaria. En la PR #61, SHA `d05f98da
 - Light oculta lateral fijo y resumen redundante en pantalla ancha; Neutral conserva el lateral por defecto; Power muestra más detalle de las secciones sin inventar métricas. `/asen-customize appearance` presenta selector Pi cuando hay sesión TUI; también admite elección textual explícita.
 - El estado se relee al iniciar sesión y puede cambiarse sin reiniciar el host, sin alterar autorizaciones, rutas de modelo o agentes. Los datos corruptos devuelven Neutral con estado `invalid`.
 - **Estado: IMPLEMENTADO_PENDIENTE_CI.** Siguen pendientes densidad configurable, posición bottom/hidden, cabecera top/split, ratón/teclado y contraste visual con la referencia. `globalFull:false`. No fusionar.
+
+## 17/11/2026 — T11-D: prueba del comando real de preferencias
+- Tras el primer commit de presets se detectó por lectura de código que el separador de argumentos podía interpretar `appearance power` como una sola cadena. Se corrige para separar espacios reales y se añade una prueba de la ruta de comandos Pi que guarda Power/Light y rechaza `super-yolo`. No se toca la política de permisos. `globalFull:false`, estado pendiente de CI del nuevo SHA.

@@ -1009,7 +1009,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
 
   registerData("asen-customize",{description:"Show ASEN visual preferences and primary permission modes",handler:async(raw:string|undefined,ctx:CommandContext)=>{
-   const appearanceArgs=String(raw??"").trim().toLowerCase().split(/\\s+/u).filter(Boolean);
+   const appearanceArgs=String(raw??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
    if(appearanceArgs[0]==="appearance"){
     if(appearanceArgs.length>2)return {error:"Use /asen-customize appearance [light|neutral|power|status]"};
     const saved=readAsenAppearance(home());
