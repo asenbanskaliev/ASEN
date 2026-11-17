@@ -1,7 +1,7 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {existsSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {copyFileSync,existsSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
@@ -16,6 +16,8 @@ import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../src/runtime/agents/task-agent-link-store.js";
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
 import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
+import {createAsenExtension} from "../extensions/asen.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 
 function fixture(t:TestContext){
@@ -957,4 +959,72 @@ test("T02/T05/T06 el supervisor no solicita consentimientos para rutas de modelo
   assert.equal(f.dispatchedChildren.length,0);
   assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,0);
  }
+});
+
+test("T06/T07 /asen-panel de producción relee diarios, dos sesiones hijas y cambios Git",async t=>{
+ const f=fixture(t);await prepareAttributedChildren(f);
+ const home=resolve(mkdtempSync(join(tmpdir(),"asen-t07-panel-prod-")));
+ t.after(()=>rmSync(home,{recursive:true,force:true}));
+ const privateDir=join(home,".asen");mkdirSync(privateDir,{recursive:true});
+ for(const [from,to] of [
+  [f.journalFile,"parallel-todo-worktrees.json"],
+  [f.sessionLinksFile,"parallel-worktree-sessions.json"],
+  [f.planClaimsFile,"parallel-child-plan-claims.json"]
+ ] as const)copyFileSync(from,join(privateDir,to));
+ const binding=new TaskAgentLinkStore(join(privateDir,"task-agent-links.json"));
+ for(const id of ["child-pi-1","child-pi-2"])
+  for(const link of f.getChildObservations(id).links)await binding.bind(link);
+ const first=f.getChildObservations("child-pi-1");
+ f.setChildObservations("child-pi-1",
+  first.todos.map(item=>({...item,current:{...item.current,state:"running"}} as SourceTodoRow)),
+  first.agents.map(item=>({...item,state:"running"})),first.links);
+ const commands=new Map<string,{handler:(args:string|undefined,context:unknown)=>Promise<unknown>}>();
+ const pi={
+  registerCommand(name:string,command:{handler:(args:string|undefined,context:unknown)=>Promise<unknown>}){commands.set(name,command);},
+  on(){},registerTool(){},registerShortcut(){},getFlag(){return false;},
+  getCommands(){return [] as readonly {name:string}[];},getAllTools(){return [] as readonly {name:string}[];}
+ };
+ const todos={
+  list:async(identity:TodoContext)=>identity.sessionId===f.identity.sessionId?
+   f.rows:f.getChildObservations(identity.sessionId).todos
+ };
+ const agents={
+  list:async(identity:TodoContext)=>f.getChildObservations(identity.sessionId).agents
+ };
+ createAsenExtension({
+  homeDir:()=>home,registryLifecycle:{watch:()=>({close(){}})},
+  todoStoreFactory:async()=>todos as never,agentRuntimeFactory:async()=>agents as never,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false,
+  autoAdvancePlans:false,deferSessionStart:true
+ })(pi as never);
+ let before="",after="",renders=0,closed=0;
+ const ctx={
+  cwd:f.source,hasUI:true,mode:"tui",sessionManager:{getSessionId:()=>f.identity.sessionId},
+  ui:{
+   notify(){},setWidget(){},
+   custom:async(factory:(tui:unknown,theme:unknown,keys:unknown,done:(value:unknown)=>void)=>any)=>{
+    const pane=factory({terminal:{rows:90},requestRender(){renders++;}},null,null,()=>{closed++;});
+    before=pane.render(140).join("\n");
+    assert.match(before,/Worktree Workers: 1 active observed/u);
+    assert.match(before,/Cross-session ODD: linked/u);
+    const child=f.getChildObservations("child-pi-1");
+    writeFileSync(join((await f.sessions.listSource(f.identity)).find(x=>x.childSessionId==="child-pi-1")!.childProjectId,"backend.txt"),"salida por Worker hijo\n");
+    f.setChildObservations("child-pi-1",
+     child.todos.map(item=>({...item,current:{...item.current,state:"succeeded"}} as SourceTodoRow)),
+     child.agents.map(item=>({...item,state:"completed"})),child.links);
+    await pane.refreshNow();
+    after=pane.render(140).join("\n");
+    pane.handleInput("q");
+   }
+  }
+ };
+ const result=await commands.get("asen-panel")!.handler("",ctx);
+ assert.match(String(result),/closed/u);
+ assert.match(after,/Worktree Workers: 0 active observed/u);
+ assert.match(after,/awaiting human review/u);
+ assert.match(after,/Linked worktrees: 1\/2/u);
+ assert.match(after,/actual child model unknown|actual still unknown|actual model: unknown/u);
+ assert.ok(renders>=1);
+ assert.equal(closed,1);
+ assert.doesNotMatch(after,/PASS_TWO_REAL_WRITERS|auto-merge enabled|actual model: nvidia/iu);
 });
