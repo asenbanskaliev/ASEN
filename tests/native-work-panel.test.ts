@@ -171,7 +171,7 @@ test("CHANGES Enter requests the host viewer without running Git inside the pane
  for(let index=0;index<3;index++)q.handleInput("\t");
  q.handleInput("q");assert.equal(opened,1,"cancel does not activate viewer");
  current=false;q.handleInput("\r");
- assert.equal(opened,1,"stale panel cannot activate viewer");assert.equal(closed,2);
+ assert.equal(opened,1,"stale panel cannot activate viewer");assert.equal(closed,1,"el cierre no puede repetirse");
 });
 
 test("M2 native overlay renders six real sections, scrolls and changes section without effects",()=>{
@@ -201,7 +201,7 @@ test("M2 native overlay renders six real sections, scrolls and changes section w
  overlay.handleInput("j");
  assert.equal(closes,1,"stale native overlay must close without agent action");
  overlay.handleInput("q");
- assert.equal(closes,2);
+ assert.equal(closes,1,"el modal ya cerrado no debe volver a cerrarse");
  overlay.invalidate();
  rows=5;
  assert.ok(overlay.render(35).every(line=>visibleWidth(line)<=35));
@@ -259,7 +259,7 @@ test("Close-only fallback retains local close, host cancel and stale-scope rejec
   panel.handleInput("\u0018");assert.equal(closes,1,"configured cancel remains enabled");
   current=false;
   assert.ok(panel.render(width).every(line=>visibleWidth(line)<=width),"stale message fits actual width");
-  panel.handleInput("j");assert.equal(closes,2,"stale scope closes before hidden control rejection");
+  panel.handleInput("j");assert.equal(closes,1,"un cierre anterior invalida nuevas entradas");
  }
 });
 
@@ -295,14 +295,14 @@ test("panel honors injected host navigation bindings and disabled defaults",()=>
  assert.equal(redraws,rendersBefore+3,"panel-local fold and scroll aliases remain available");
  panel.handleInput("\u0018");assert.equal(closes,1);
  current=false;panel.handleInput("\u0014");
- assert.equal(closes,2,"scope rejection precedes configured navigation");
+ assert.equal(closes,1,"la sesión cerrada no acepta nuevas entradas");
  assert.deepEqual(snapshot,before,"navigation must not mutate projection data");
  const disabled=createNativeWorkPanel(snapshot,{
   keybindings:new KeybindingsManager(TUI_KEYBINDINGS,{"tui.select.cancel":[]}),
   requestRender(){},close:()=>closes++,terminalRows:()=>20,
  });
- disabled.handleInput("\u001b");assert.equal(closes,2);
- disabled.handleInput("q");assert.equal(closes,3,"q remains the panel-local close alias");
+ disabled.handleInput("\u001b");assert.equal(closes,1);
+ disabled.handleInput("q");assert.equal(closes,2,"q remains the panel-local close alias");
 });
 
 
@@ -357,6 +357,28 @@ test("T07 native overlay exposes linked Worker flow without a parent Agent or To
   assert.ok(output.every(row=>visibleWidth(row)<=width));
  }
  assert.deepEqual(data,before);
+});
+
+test("T07 actualización automática consulta solo mientras el modal continúa abierto",{timeout:10_000},async t=>{
+ let reads=0,paints=0,finish!:()=>void;
+ const observed=new Promise<void>(resolve=>{finish=resolve;});
+ const pane=createNativeWorkPanel(snapshot,{
+  requestRender(){paints++;},close(){},terminalRows:()=>30,
+  refresh:async()=>{reads++;return snapshot;},
+  onRefreshed:()=>finish(),autoRefreshMs:1000,
+ });
+ t.after(()=>pane.dispose());
+ let watchdog:ReturnType<typeof setTimeout>|undefined;
+ try{
+  await Promise.race([observed,new Promise<void>((_resolve,reject)=>{
+   watchdog=setTimeout(()=>reject(Error("La actualización automática no llegó")),5500);
+  })]);
+ }finally{if(watchdog)clearTimeout(watchdog);}
+ assert.ok(reads>=1);assert.ok(paints>=1);
+ pane.dispose();
+ const before=reads;
+ await new Promise(resolve=>setTimeout(resolve,1200));
+ assert.equal(reads,before,"Un modal cerrado no mantiene consultas de hijos");
 });
 
 test("T06/T07 ventana abierta actualiza Workers reales observados sin ejecutar ni aceptar cambios",async()=>{
