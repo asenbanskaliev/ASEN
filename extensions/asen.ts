@@ -508,26 +508,34 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
     typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
-   if(ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.theme instanceof Theme&&typeof ctx.ui.setTheme==="function"){
+   // El lateral no puede depender de `instanceof Theme`: Pi 1.2 puede
+   // entregar una fachada del tema que no comparte el prototipo exportado.
+   // Solo cambiar la paleta necesita la instancia concreta; la cabecera
+   // y el lateral usan la `theme` real suministrada por el host Pi.
+   if(ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.setHeader==="function"){
     try{
      let asenVersion="unavailable";
-     try{const metadata=JSON.parse(await readFile(path.join(productionPackageRoot,"package.json"),"utf8"));if(typeof metadata.version==="string"&&metadata.version.trim())asenVersion=metadata.version;}catch{/* Unknown metadata is not a fabricated version. */}
-     if(parentGeneration===parentBindingGeneration&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.theme instanceof Theme){
-      // A Theme instance is runtime-only: never persist a named theme or steal the transcript root.
+     try{const metadata=JSON.parse(await readFile(path.join(productionPackageRoot,"package.json"),"utf8"));if(typeof metadata.version==="string"&&metadata.version.trim())asenVersion=metadata.version;}catch{/* Metadatos no disponibles. */}
+     let allowed=true;
+     if(ctx.ui.theme instanceof Theme&&typeof ctx.ui.setTheme==="function"){
       const applied=ctx.ui.setTheme(createAsenFocusTheme(ctx.ui.theme));
-      if(applied.success&&typeof ctx.ui.setHeader==="function")ctx.ui.setHeader((tui,theme)=>{
+      allowed=applied.success===true;
+     }
+     // Si el cambio de tema fue rechazado, preservar la cabecera existente.
+     // Una fachada sin Theme sí admite diseño y nunca concede herramientas.
+     if(allowed&&parentGeneration===parentBindingGeneration){
+      ctx.ui.setHeader((tui,theme)=>{
        t11Rail?.dispose();
-       t11Rail=installAsenNativeRail(tui,ctx.ui.theme instanceof Theme?ctx.ui.theme:theme,()=>t11Snapshot);
+       t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot);
        return {
         render(width:number){
-         // El host puede publicar su árbol después de crear la cabecera.
          t11Rail?.sync();
-         return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,ctx.ui.theme instanceof Theme?ctx.ui.theme:theme);
+         return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,theme);
         },invalidate(){},
        };
       });
      }
-    }catch{/* Optional presentation must not interrupt startup or confer authority. */}
+    }catch{/* La interfaz opcional no debe impedir el inicio. */}
    }
    await refreshHostStatus(ctx);
    // Lecturas de los dos agentes Pi hijos cada cinco segundos, solo con lateral
