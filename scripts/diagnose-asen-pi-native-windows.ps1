@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 $code = "0xC0000409"
 $since = (Get-Date).AddHours(-$LookbackHours)
 $scanned = 0
-$matches = @()
+$crashRecords = @()
 $events = @()
 try {
     $events = @(Get-WinEvent -FilterHashtable @{
@@ -45,7 +45,7 @@ foreach ($event in $events) {
             $module = $baseName
         }
     }
-    $matches += [pscustomobject]@{
+    $crashRecords += [pscustomobject]@{
         timeUtc = $event.TimeCreated.ToUniversalTime().ToString("o")
         eventId = [int]$event.Id
         provider = if ($event.ProviderName -in @("Application Error", "Windows Error Reporting")) { [string]$event.ProviderName } else { "other" }
@@ -57,6 +57,6 @@ foreach ($event in $events) {
     schema = "asen.native-wer-triage/v1"
     status = "read-only"
     scanned = $scanned
-    matches = @($matches)
+    matches = @($crashRecords)
     interpretation = "Matching events are clues only. A module name is not sufficient to establish causality."
 } | ConvertTo-Json -Depth 6

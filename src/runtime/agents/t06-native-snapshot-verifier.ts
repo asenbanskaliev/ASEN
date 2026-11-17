@@ -5,6 +5,7 @@ import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {lstatSync,readFileSync,realpathSync} from "node:fs";
 import {join,relative} from "node:path";
+import {isolatedGitEnvironment} from "./git-isolated-environment.js";
 
 export interface T06NativeSnapshotVerification{
  readonly status:"blocked"|"local-files-consistent-claims-unverified";
@@ -35,7 +36,8 @@ const validProvenance=(kind:unknown,method:unknown):boolean=>
  kind==="NATIVE_PI_RPC_WRITER_WITH_TWO_GITHUB_APPROVALS"&&
  method===githubConsentMethod;
 const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{
- encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:12_000,maxBuffer:200_000
+ encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:12_000,maxBuffer:200_000,
+ env:isolatedGitEnvironment()
 }).trim();
 const hash=(data:Buffer)=>createHash("sha256").update(data).digest("hex");
 

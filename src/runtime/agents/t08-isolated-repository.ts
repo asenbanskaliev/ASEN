@@ -6,6 +6,7 @@ import {execFileSync} from "node:child_process";
 import {existsSync,lstatSync,mkdirSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {isAbsolute,join,relative} from "node:path";
+import {isolatedGitEnvironment} from "./git-isolated-environment.js";
 
 const fixtureName="t08-fix.mjs" as const;
 const branch="asen-t08-fixture";
@@ -14,7 +15,7 @@ const safeRun=/^[1-9][0-9]{0,14}$/u;
 const revision=/^[0-9a-f]{40}$/u;
 const git=(cwd:string,...args:string[])=>
  execFileSync("git",["-C",cwd,...args],{
-  encoding:"utf8",timeout:12_000,stdio:["ignore","pipe","pipe"]
+  encoding:"utf8",timeout:12_000,stdio:["ignore","pipe","pipe"],env:isolatedGitEnvironment()
  }).trim();
 export function t08TemporaryRoot(runId:string):string{
  if(!safeRun.test(runId))throw new Error("ID GitHub T08 no válido");
@@ -46,7 +47,7 @@ export function createT08IsolatedRepository(input:{
    realpathSync(root)!==root)throw new Error("T08 requiere ruta temporal auténtica");
   git(root,"init","--quiet","-b",branch);
   const gitEnv={
-   ...process.env,GIT_AUTHOR_NAME:"ASEN T08",
+   GIT_AUTHOR_NAME:"ASEN T08",
    GIT_AUTHOR_EMAIL:"asen-t08@example.invalid",
    GIT_COMMITTER_NAME:"ASEN T08",
    GIT_COMMITTER_EMAIL:"asen-t08@example.invalid",
@@ -55,7 +56,7 @@ export function createT08IsolatedRepository(input:{
   execFileSync("git",[
    "-C",root,"-c","core.hooksPath=.git/hooks-disabled","commit","--quiet",
    "--allow-empty","-m","Base mínima reproducible para la prueba T08"
-  ],{env:gitEnv,stdio:["ignore","pipe","pipe"],timeout:12_000});
+  ],{env:isolatedGitEnvironment(gitEnv),stdio:["ignore","pipe","pipe"],timeout:12_000});
   const fixtureHead=git(root,"rev-parse","HEAD");
   if(!revision.test(fixtureHead)||git(root,"ls-files")!=="")
    throw new Error("La base mínima no está limpia");

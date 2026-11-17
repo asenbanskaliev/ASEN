@@ -29,8 +29,7 @@ function head(root:string):string{
  if(!revision.test(value))throw new Error("Fix candidate has no stable Git HEAD");
  return value;
 }
-/** Rechaza incluso cambios fuera de las rutas autorizables, y todo archivo no
- * rastreado no incluido. Revalidar una vez más justo antes de guardar el ODD. */
+/** Compara el árbol completo ya revisado, independientemente del ámbito de escritura Fix. */
 export function inspectLiveFixCandidate(draft:JudgmentFixOddDraft):FixCandidatePreflight{
  if(!draft||draft.status!=="draft-only"||
   draft.requiresHumanTriage||draft.authorized!==false||
@@ -59,11 +58,10 @@ export function inspectStoredFixSourceTree(
  const before=head(root);
  const observed=git(root,"ls-files","--others","--exclude-standard","-z");
  const untracked=observed.toString("utf8").split("\0").filter(Boolean);
- if(untracked.some(file=>!writeSurfaces.includes(file)))
-  throw new Error("Fix candidate contains unreviewed files outside the original scope");
+ // Los archivos adicionales o modificados cambian el hash del árbol completo.
  const projection=captureWorkspaceReviewProjection({
   repositoryRoot:root,intendedUntracked:untracked
- },writeSurfaces);
+ });
  if(projection.candidateTree!==sourceTree)
   throw new Error("Fix candidate changed after the original Judgment Day review");
  if(before!==head(root))throw new Error("Fix candidate HEAD changed during inspection");

@@ -339,3 +339,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - **Estado: IMPLEMENTADO_PENDIENTE_CI** del SHA de esta tanda. Mantener abiertos los avisos hasta que pasen todas las comprobaciones del SHA exacto y se valore cada comentario.
 - **Bloqueo prioritario aparte:** CodeRabbit detectó en T08 un problema de ejecución de código generado sin límite de red efectivo y la posibilidad de salida 0 sin completar las afirmaciones. No se declara validación de seguridad de T08 ni ejecución fiable de ensayo real hasta aislar el proceso y acreditar el fin de las pruebas. No ampliar `--permission` ni confiar en una lista de identificadores como sustituto.
 - Después: resolver los avisos restantes agrupados por módulo, integrar con T06/T07/T11, completar revisión independiente y ensayos Pi/TUI; `globalFull:false`.
+
+## 17/11/2026 — CodeRabbit megatanda Git/Windows/Fix
+
+- Entorno Git temporal de variables explícitas: evita heredar GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE y configuración ajena en pruebas T06/T08 y verificador de instantáneas. Pruebas negativas de variables Git forzadas.
+- Árbol de revisión Fix completo y ámbito Writer limitado: se compara el hash total antes de autorizar sin conceder escritura sobre archivos ajenos. Prueba positiva de candidato revisado de dos archivos con permiso de uno y negativa por cambio posterior.
+- Diagnóstico Windows: acumulador `$crashRecords` independiente de la variable automática `$Matches`.
+- **IMPLEMENTADO_PENDIENTE_CI** del nuevo SHA; P0 de ejecución de código generado sin aislamiento de red auténtico sigue abierto, sin PASS ni equivalencia FULL. No hay fusión ni consumo NVIDIA.

@@ -4,12 +4,13 @@ import {execFileSync} from "node:child_process";
 import {existsSync,mkdirSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
+import {isolatedGitEnvironment} from "./git-isolated-environment.js";
 
 function git(root:string,...args:string[]):string{
  return execFileSync("git",["-c","core.fsmonitor=false","-C",root,...args],{
   encoding:"utf8",timeout:10_000,maxBuffer:100_000,
   windowsHide:true,stdio:["ignore","pipe","ignore"],
-  env:{...process.env,GIT_OPTIONAL_LOCKS:"0"}
+  env:isolatedGitEnvironment()
  }).trim();
 }
 export interface T06GitObservation{

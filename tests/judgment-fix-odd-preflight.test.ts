@@ -62,7 +62,7 @@ test("T08 bloquea un cambio del contenido revisado aunque Git HEAD no cambie",t=
 test("T08 bloquea archivos nuevos fuera del alcance aprobado por los jueces",t=>{
  const f=fixture(t);
  writeFileSync(join(f.projectId,"extra.ts"),"contenido ajeno\n");
- assert.throws(()=>inspectLiveFixCandidate(f.draft),/unreviewed files outside/u);
+ assert.throws(()=>inspectLiveFixCandidate(f.draft),/candidate changed after the original/u);
 });
 test("T08 verifica archivos nuevos si aparecen expresamente en el informe",t=>{
  const f=fixture(t,true);
@@ -88,4 +88,18 @@ test("T08 reconoce un nuevo HEAD con el mismo árbol completo y exige autorizaci
  assert.equal(observed.candidateTreeIdentity,f.proposal.candidateTreeIdentity);
  assert.equal(observed.writerAuthority,false);
  assert.equal(observed.autoLaunch,false);
+});
+
+test("T08 un Fix limitado no confunde alcance Writer y árbol revisado completo",t=>{
+ const f=fixture(t);
+ writeFileSync(join(f.projectId,"otro.ts"),"cambio también revisado\n");
+ const full=captureWorkspaceReviewProjection({repositoryRoot:f.projectId,intendedUntracked:["otro.ts"]});
+ const limited=draftOddFromStoredFix({proposal:{
+  ...f.proposal,candidateTreeIdentity:full.candidateTree,
+  candidateRevision:full.candidateTree,paths:["code.ts"]
+ },identity:f.identity});
+ assert.equal(inspectLiveFixCandidate(limited).candidateTreeIdentity,full.candidateTree);
+ assert.deepEqual(limited.writeSurfaces,["code.ts"]);
+ writeFileSync(join(f.projectId,"otro.ts"),"cambio posterior\n");
+ assert.throws(()=>inspectLiveFixCandidate(limited),/candidate changed after the original/u);
 });

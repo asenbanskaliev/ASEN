@@ -40,3 +40,21 @@ test("T06 detecta archivos nuevos y no pierde el seguimiento tras la limpieza",(
  assert.equal(existsSync(root),false);
  assert.equal(existsSync(child),false);
 });
+
+test("T06 no hereda GIT_DIR ni GIT_WORK_TREE del proceso padre",()=>{
+ const keys=["GIT_DIR","GIT_WORK_TREE","GIT_INDEX_FILE","GIT_CONFIG_COUNT"],
+  previous=keys.map(key=>process.env[key]);
+ let fixture:ReturnType<typeof createT06ReadOnlyGitFixture>|undefined;
+ try{
+  process.env.GIT_DIR=join(process.cwd(),"git-inexistente");
+  process.env.GIT_WORK_TREE=join(process.cwd(),"checkout-ajeno");
+  process.env.GIT_INDEX_FILE=join(process.cwd(),"indice-ajeno");
+  process.env.GIT_CONFIG_COUNT="1";
+  fixture=createT06ReadOnlyGitFixture();
+  assert.equal(fixture.observe().sourceClean,true);
+  assert.equal(fixture.observe().isolated,true);
+ }finally{
+  keys.forEach((key,i)=>{if(previous[i]===undefined)delete process.env[key];else process.env[key]=previous[i];});
+  fixture?.cleanup();
+ }
+});

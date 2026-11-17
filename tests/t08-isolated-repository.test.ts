@@ -87,3 +87,20 @@ test("T08 nunca reutiliza una muestra ni borra otra ruta por confusión",t=>{
  removeT08IsolatedRepository(root,id);
  assert.equal(existsSync(root),false);
 });
+
+test("T08 Git sintético ignora repositorio forzado del host",()=>{
+ const keys=["GIT_DIR","GIT_WORK_TREE","GIT_INDEX_FILE","GIT_CONFIG_COUNT"],
+  previous=keys.map(key=>process.env[key]),id=newRun();
+ let root:string|undefined;
+ try{
+  process.env.GIT_DIR=join(tmpdir(),"git-inexistente");
+  process.env.GIT_WORK_TREE=join(tmpdir(),"arbol-forzado");
+  process.env.GIT_INDEX_FILE=join(tmpdir(),"indice-ajeno");
+  process.env.GIT_CONFIG_COUNT="1";
+  root=create(id).root;
+  assert.equal(readFileSync(join(root,T08_TARGET),"utf8"),T08_BUGGY_SOURCE);
+ }finally{
+  keys.forEach((key,i)=>{if(previous[i]===undefined)delete process.env[key];else process.env[key]=previous[i];});
+  if(root)removeT08IsolatedRepository(root,id);
+ }
+});
