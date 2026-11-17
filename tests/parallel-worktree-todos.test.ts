@@ -16,6 +16,7 @@ import type {PublicAgentRecord} from "../src/runtime/agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../src/runtime/agents/task-agent-link-store.js";
 import type {TodoContext} from "../src/runtime/lifecycle/todo-store.js";
 import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
+import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 
 function fixture(t:TestContext){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-source-"))),
@@ -493,6 +494,50 @@ test("T06/T07 real issued task-agent links are required before any child Worker 
  assert.equal(panel.overview.stages["running-observed"],0);
  assert.equal(panel.overview.stages["handoff-unverified"],2);
  assert.equal(panel.overview.tasks.every(task=>task.modelActual==="unknown"),true);
+});
+
+test("T06/T07 el panel relee los diarios y el Git real del hijo durante una ventana abierta",async t=>{
+ const f=fixture(t);
+ const prepared=await prepareAttributedChildren(f);
+ const child=f.getChildObservations("child-pi-1");
+ f.setChildObservations("child-pi-1",child.todos.map(row=>({
+  ...row,current:{...row.current,state:"running"}
+ } as SourceTodoRow)),child.agents.map(agent=>({...agent,state:"running"})),child.links);
+ const load=async()=>({
+  todos:[],agents:[],jobs:[],
+  agentFlow:await readAgentFlowPanelObservation({
+   identity:f.identity,journalFile:f.journalFile,sessionLinksFile:f.sessionLinksFile,
+   planClaimsFile:f.planClaimsFile,
+   loadTodos:async id=>id.sessionId===f.identity.sessionId?f.rows:f.getChildObservations(id.sessionId).todos,
+   loadChildAgentRecords:async id=>f.getChildObservations(id.sessionId).agents,
+   loadChildTaskAgentLinks:async id=>f.getChildObservations(id.sessionId).links
+  })
+ });
+ let renders=0,closes=0;
+ const pane=createNativeWorkPanel(await load(),{
+  refresh:load,requestRender(){renders++;},close(){closes++;},terminalRows:()=>150
+ });
+ assert.match(pane.render(140).join("\n"),/Worktree Workers: 1 active observed/u);
+ writeFileSync(join(prepared.worktrees[0]!.root,"backend.txt"),"cambio legítimo\n");
+ const running=f.getChildObservations("child-pi-1");
+ f.setChildObservations("child-pi-1",running.todos.map(row=>({
+  ...row,current:{...row.current,state:"succeeded"}
+ } as SourceTodoRow)),running.agents.map(agent=>({...agent,state:"completed"})),running.links);
+ await pane.refreshNow();
+ const after=pane.render(140).join("\n");
+ assert.match(after,/Worktree Workers: 0 active observed/u);
+ assert.match(after,/2 awaiting human review/u);
+ assert.match(after,/Linked worktrees: 1\/2/u);
+ assert.doesNotMatch(after,/actual model: (?!unknown)|automatically accepted|auto-merge/iu);
+ assert.equal(renders,1);
+ const observed=await load();
+ assert.equal(observed.agentFlow.overview.stages["manual-review-required"],2);
+ assert.equal(observed.agentFlow.overview.tasks[0]?.changeEvidence,"scoped-changes");
+ assert.equal(observed.agentFlow.overview.acceptance,"not-accepted");
+ pane.dispose();
+ await pane.refreshNow();
+ assert.equal(renders,1);
+ assert.equal(closes,0);
 });
 
 test("T06/T07 source views show only genuinely linked and ODD-claimed child Workers as terminal",async t=>{
