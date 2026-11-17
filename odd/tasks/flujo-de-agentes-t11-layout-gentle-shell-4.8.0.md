@@ -167,3 +167,7 @@ La línea de estado usa revisiones observadas en la sesión y proyecto vigentes 
 ### T11-E + T07 — Regresión del modo estrecho y falta de datos de hijos (17/11/2026)
 
 Cuando falla el diario remoto de las sesiones hijas pero los datos locales aún se leen, el panel debe conservar únicamente hechos locales y mostrar un aviso `hijos no disponibles`. En particular, el resumen para 24/40/50/80/120/139 columnas no debe desaparecer ni reutilizar un Worker anterior si existe `agentFlowUnavailable`. El modal y la vista fija siguen el mismo principio; tras fallo local, el widget M1 previo debe retirarse, no quedar colgado junto al editor. Se añaden pruebas de presentación y regresión. **Esto no cierra T11-E:** siguen pendientes capturas comparables y acreditación Pi TUI integrada de dos hijos. `globalFull:false`.
+
+### Corrección de fallback visual — T11-E (17/11/2026)
+
+La lista M1 `aboveEditor` a partir de 140 columnas no es un lateral real: no debe dibujarse cuando `layoutRoot` no se puede adaptar. El flujo de la extensión usa ahora una sola fila compacta y mantiene `/asen-panel` en hosts sin soporte, sin suponer que el editor cedió 53 columnas. La medición real 50+3 sigue siendo exclusiva del adaptador Pi y sus pruebas exact-SHA. **T11-E no se cierra** hasta comparación visual y funcional con la referencia congelada.

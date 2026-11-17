@@ -94,7 +94,7 @@ import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAp
 import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
 import {createT11RailObserver,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
-import {createM1SurfaceCache} from "../src/runtime/ui/m1-readonly-rail.js";
+import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
 import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps,prepareKeymapChange,writeKeymaps,keymapSavedNotice,resetKeymap,KEYMAP_RELOAD_NOTICE} from "../src/runtime/ui/keymaps.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/ui/integration-profile-inspection.js";
@@ -452,13 +452,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11Snapshot=snapshot;t11Rail?.refresh();
    if(ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
    const width=terminalColumns();
-   if(width>=140||t11Rail?.active()||t11Position==="hidden"){
+   if(t11Rail?.active()||t11Position==="hidden"||
+     (t11Position==="auto"&&t11Preset==="light")){
     ctx.ui.setWidget("asen-live-work",undefined,{placement:"aboveEditor"});return;
-   } // No duplicar la barra si existe una sección fija.
-   const row=renderAsenWorkRow(snapshot,width);
-   ctx.ui.setWidget("asen-live-work",row?[row]:undefined,{placement:"aboveEditor"});
+   } // Nunca fingir un lateral a la derecha en el modo no compatible.
+   ctx.ui.setWidget("asen-live-work",[renderT11CompactFallback(snapshot,width)],{placement:"aboveEditor"});
   };
-  const m1Cache=createM1SurfaceCache();
   let workRowGeneration=0;
   const refreshWorkRow=async(ctx:CommandContext):Promise<void>=>{
    if(ctx?.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
@@ -477,11 +476,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     t11ActivityUnavailable=false;
     if(!t11Rail?.active()||!t11Snapshot)t11Snapshot=snapshot;
     t11Rail?.sync();t11Rail?.refresh();
-    const surface=m1Cache.next(snapshot,width,identity.sessionId+"|"+identity.projectId);
-    if(t11Position==="hidden"||(t11Position==="auto"&&t11Preset==="light")||t11Rail?.active()){ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();}
-    else if(surface)ctx.ui.setWidget("asen:m1-rail",surface.mode==="rail"?[...surface.lines]:undefined,{placement:"aboveEditor"});
-    const line=width>=140||t11Rail?.active()||t11Position==="hidden"?undefined:renderAsenWorkRow(snapshot,width);
-    ctx.ui.setWidget("asen-live-work",line?[line]:undefined,{placement:"aboveEditor"});
+    // En terminal estrecha o host sin layoutRoot la única alternativa es
+    // una fila compacta. Una lista aboveEditor no ocupa el lateral real.
+    const compactAllowed=t11Position!=="hidden"&&
+      !(t11Position==="auto"&&t11Preset==="light")&&t11Rail?.active()!==true;
+    ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});
+    ctx.ui.setWidget("asen-live-work",
+      compactAllowed?[renderT11CompactFallback(snapshot,width)]:undefined,{placement:"aboveEditor"});
     await refreshHostStatus(ctx);
    }catch{
     if(generation!==workRowGeneration||hostStatusClosed)return;
@@ -490,7 +491,6 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     t11ActivityCache.clear();t11ActivityUnavailable=true;
     t11Snapshot=undefined;t11Rail?.refresh();
     // Retirar también el widget M1: el resumen local obsoleto no puede sobrevivir al fallo.
-    m1Cache.reset();
     try{ctx.ui.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});}catch{}
     try{ctx.ui.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});}catch{}
     await refreshHostStatus(ctx);
@@ -613,7 +613,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    } catch {/* Best effort only; never interrupt Pi startup. */}
    validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
-   if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
    publishT11Chrome(ctx);
    if(ctx.sessionManager?.getSessionId?.()){
     agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
@@ -891,7 +891,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(endingSession){sessionDirectory.remove(endingSession);clearSessionProfiles(await profilePartition(),endingSession);}
    for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);
    if(agentDeliveryIdentity&&agentDeliveryIdentity.sessionId===endingSession)notificationProjection.deactivate(agentDeliveryIdentity);
-   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;workRowGeneration++;ctx?.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:t11-chrome",undefined,{placement:"belowEditor"});m1Cache.reset();ctx?.ui?.setStatus?.("asen:workspace",undefined);resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
+   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;workRowGeneration++;ctx?.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:t11-chrome",undefined,{placement:"belowEditor"});ctx?.ui?.setStatus?.("asen:workspace",undefined);resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
    if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("todo-recovery-start");await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");traceVerifierShutdown("todo-recovery-done");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue after best-effort recovery. */}}
    if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("agent-cancel-start");const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());traceVerifierShutdown("agent-cancel-done");}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}
    traceVerifierShutdown("delivery-drain-start");while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);traceVerifierShutdown("delivery-drain-done");

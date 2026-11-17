@@ -16,6 +16,12 @@ export function renderM1Surface(snapshot:AsenPanelSnapshot,width:number):M1Surfa
  if(lines.some(line=>visibleWidth(line)>width))throw Error("M1 width overflow");
  return {mode:"rail",lines};
 }
+/** T11: degradación compacta cuando Pi no admite el árbol lateral auténtico.
+ * No presenta una lista aboveEditor como un falso lateral; no infiere trabajo. */
+export function renderT11CompactFallback(snapshot:AsenPanelSnapshot,width:number):string{
+ if(!Number.isSafeInteger(width)||width<12||width>1000)throw Error("Invalid T11 fallback width");
+ return renderAsenWorkRow(snapshot,width)??truncateForTerminal("▸ Panel ASEN · /asen-panel",width);
+}
 export function createM1SurfaceCache(){
  let last="";
  return {

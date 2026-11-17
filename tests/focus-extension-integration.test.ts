@@ -6,6 +6,7 @@ import {Theme,VERSION,type ThemeToken,type ThemeBg} from "@earendil-works/pi-cod
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 const stripTerminalSequences=(text:string)=>text.replace(/\x1b\[[0-9;]*m/gu,"");
 import {createAsenExtension} from "../extensions/asen.js";
+import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 
 function baseTheme(){
  const fgNames="accent border borderAccent borderMuted success error warning muted dim text thinkingText scrollbarTrack scrollbarThumb searchMatchText userMessageText customMessageText customMessageLabel toolTitle toolOutput mdHeading mdLink mdLinkUrl mdCode mdCodeBlock mdCodeBlockBorder mdQuote mdQuoteBorder mdHr mdListBullet toolDiffAdded toolDiffRemoved toolDiffContext syntaxComment syntaxKeyword syntaxFunction syntaxVariable syntaxString syntaxNumber syntaxType syntaxOperator syntaxPunctuation thinkingOff thinkingMinimal thinkingLow thinkingMedium thinkingHigh thinkingXhigh thinkingMax bashMode".split(" ");
@@ -21,10 +22,10 @@ async function fixture(t:TestContext){
  const isolated={HOME:home,USERPROFILE:home,XDG_CONFIG_HOME:path.join(root,"config"),XDG_CACHE_HOME:path.join(root,"cache"),XDG_DATA_HOME:path.join(root,"data"),TMPDIR:path.join(root,"tmp"),TMP:path.join(root,"tmp"),TEMP:path.join(root,"tmp"),ASEN_NO_SKILL_REGISTRY:"1"};
  const prior=new Map(Object.keys(isolated).map(k=>[k,process.env[k]]));
  for(const [key,value] of Object.entries(isolated)){if(key!=="ASEN_NO_SKILL_REGISTRY")await mkdir(value,{recursive:true});process.env[key]=value;}
- const commands=new Map<string,any>(),events=new Map<string,Function[]>(),statuses=new Map<string,string|undefined>(),themeWrites:unknown[]=[],headers:any[]=[];
+ const commands=new Map<string,any>(),events=new Map<string,Function[]>(),statuses=new Map<string,string|undefined>(),widgets=new Map<string,string[]|undefined>(),themeWrites:unknown[]=[],headers:any[]=[];
  let current=baseTheme(),effects=0,rejectTheme=false;
  const pi={registerCommand(name:string,command:any){commands.set(name,command);},registerTool(){},on(name:string,fn:Function){events.set(name,[...(events.get(name)??[]),fn]);},getFlag(){return false;},getCommands(){return [];},getAllTools(){return [];},setModel(){effects++;return false;},sendMessage(){effects++;}};
- const ui:any={get theme(){return current;},notify(){},setStatus(k:string,v:string|undefined){statuses.set(k,v);},setWidget(){},
+ const ui:any={get theme(){return current;},notify(){},setStatus(k:string,v:string|undefined){statuses.set(k,v);},setWidget(k:string,v:string[]|undefined){widgets.set(k,v);},
   setTheme(value:unknown){themeWrites.push(value);assert.ok(value instanceof Theme,"only runtime instances, never persisted names");if(rejectTheme)return {success:false,error:"unavailable"};current=value;return {success:true};},
   setHeader(factory:any){headers.push(factory);},setFooter(){effects++;},confirm(){effects++;return false;},
  };
@@ -32,7 +33,7 @@ async function fixture(t:TestContext){
  createAsenExtension({homeDir:()=>home,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi);
  const emit=async(name:string)=>{for(const fn of events.get(name)??[])await fn({},ctx);};
  t.after(async()=>{try{await emit("session_shutdown");assert.equal(effects,0,"no model, consent, message or footer/root replacement");}finally{for(const [key,value] of prior){if(value===undefined)delete process.env[key];else process.env[key]=value;}}});
- return {ctx,commands,emit,themeWrites,headers,statuses,theme:()=>current,rejectTheme(){rejectTheme=true;}};
+ return {ctx,commands,emit,themeWrites,headers,statuses,widgets,theme:()=>current,rejectTheme(){rejectTheme=true;}};
 }
 test("public TUI startup applies an in-memory focus theme and truthful compact header without changing host facts",async t=>{
  const f=await fixture(t),original=f.theme(),before=JSON.stringify(original.colors);
@@ -85,4 +86,21 @@ test("public panel command receives the actual theme and live floored overlay he
  const result=await f.commands.get("asen-panel").handler("",f.ctx);
  assert.match(String(result),/closed/u);assert.equal(closes,1);
  assert.deepEqual(options,[{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}}]);
+});
+
+test("T11: Pi sin lateral nativo no dibuja falsa columna encima del editor",async t=>{
+ const fixtureHost=await fixture(t);
+ await fixtureHost.emit("session_start");
+ assert.equal(fixtureHost.widgets.get("asen:m1-rail"),undefined,
+  "El widget anterior no debe simular la reserva de 53 columnas");
+ const active=fixtureHost.widgets.get("asen-live-work");
+ assert.ok(active&&active.length===1,"El host sin árbol conserva solo una fila");
+ assert.match(active[0]??"",/\/asen-panel/u);
+ assert.doesNotMatch(active.join("\n"),/TODOS[\s\S]*AGENTS/u);
+ for(const width of [24,40,80,139,140,180]){
+  const compact=renderT11CompactFallback({todos:[],agents:[],jobs:[]},width);
+  assert.ok(visibleWidth(compact)<=width);
+  assert.match(compact,/\/asen-panel$/u);
+  assert.doesNotMatch(compact,/No tasks in this session|50 columnas|hijos activos/u);
+ }
 });
