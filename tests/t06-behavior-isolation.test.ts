@@ -6,15 +6,15 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {checkT06Behavior} from "../src/runtime/agents/t06-behavior-isolation.js";
 
-test("T06 valida código funcional mediante Node con permisos limitados",()=>{
+test("T06 bloquea código generado incluso si su sintaxis es correcta, sin aislamiento de red",()=>{
  const root=mkdtempSync(join(tmpdir(),"asen-t06-isolated-"));
  try{
   writeFileSync(join(root,"t06-writer-a.mjs"),
    "export function sumEvenNumbers(x){if(!Array.isArray(x)||x.some(n=>!Number.isSafeInteger(n)))throw new TypeError();return x.filter(n=>n%2===0).reduce((a,b)=>a+b,0);}\n");
   writeFileSync(join(root,"t06-writer-b.mjs"),
    "export function normalizeNames(x){if(!Array.isArray(x)||x.some(n=>typeof n!=='string'))throw new TypeError();return [...new Set(x.map(n=>n.trim().toLowerCase()).filter(Boolean))].sort();}\n");
-  assert.equal(checkT06Behavior(root,"t06-writer-a.mjs","sumEvenNumbers"),true);
-  assert.equal(checkT06Behavior(root,"t06-writer-b.mjs","normalizeNames"),true);
+  assert.equal(checkT06Behavior(root,"t06-writer-a.mjs","sumEvenNumbers"),false);
+  assert.equal(checkT06Behavior(root,"t06-writer-b.mjs","normalizeNames"),false);
   assert.equal(checkT06Behavior(root,"../secreto","sumEvenNumbers"),false);
   assert.equal(checkT06Behavior(root,"t06-writer-a.mjs","normalizeNames"),false);
   writeFileSync(join(root,"t06-writer-a.mjs"),"export function sumEvenNumbers(){return 17}\n");

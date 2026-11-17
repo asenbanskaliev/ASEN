@@ -1,7 +1,6 @@
-/** Escenario acotado T08: defecto reproducible y comprobación en proceso sin credenciales.
- * No permite ejecutar código del modelo con acceso a red, comandos o escritura. */
+/** Escenario T08: análisis estático, pero NO ejecutar código generado hasta
+ * tener aislamiento de red del sistema operativo y cierre verificable. */
 import ts from "typescript";
-import {execFileSync} from "node:child_process";
 import {lstatSync,readFileSync,realpathSync} from "node:fs";
 import {join,relative} from "node:path";
 
@@ -13,7 +12,7 @@ export const T08_BUGGY_SOURCE=`export function sumEvenNumbers(numbers) {
 `;
 const forbidden=new Set(["process","globalThis","require","eval","Function","fetch",
  "Deno","Bun","module","Buffer","WebAssembly","constructor","__proto__"]);
-/** Solo acepta una función exportada, sin imports, acceso global ni herramientas. */
+/** Filtro sintáctico orientativo, NO una barrera de seguridad para ejecutar código. */
 export function verifyT08Source(code:unknown):boolean{
  if(typeof code!=="string"||!code||code.length>10_000)return false;
  const ast=ts.createSourceFile(T08_TARGET,code,ts.ScriptTarget.ES2022,true,ts.ScriptKind.JS);
@@ -40,25 +39,9 @@ export function checkT08Behavior(root:string):boolean{
   if(!stat.isFile()||stat.isSymbolicLink()||
    relative(base,realpathSync(target))!==T08_TARGET)return false;
   if(!verifyT08Source(readFileSync(target,"utf8")))return false;
-  // El import de la muestra se forma al ejecutar: no es dependencia de ASEN.
-  const sampleImport="import {sumEvenNumbers as f} fr"+"om "+ "'"+"./"+T08_TARGET+"';";
-  const script=[
-   "import assert from 'node:assert/strict';",
-   sampleImport,
-   "const source=[2,4,7,-8];assert.equal(f(source),-2);",
-   "assert.deepEqual(source,[2,4,7,-8]);assert.equal(f([]),0);",
-   "assert.equal(f([1,3]),0);",
-   "for(const input of [null,'dos',{},[1,2.5],[2,Infinity],[3,'4'],[2,NaN],[-2,null]]) {",
-   " assert.throws(()=>f(input),TypeError);",
-   "}"
-  ].join("\n");
-  const env:NodeJS.ProcessEnv={};
-  for(const key of ["SYSTEMROOT","WINDIR","COMSPEC","PATHEXT","TEMP","TMP","TMPDIR"]){
-   if(process.env[key])env[key]=process.env[key];
-  }
-  execFileSync(process.execPath,[
-   "--permission","--allow-fs-read="+target,"--input-type=module","--eval",script
-  ],{cwd:base,env,stdio:["ignore","pipe","pipe"],timeout:4500,maxBuffer:65536});
-  return true;
+  // P0 CodeRabbit: no existe un control de red del SO verificado para esta
+  // función. El resultado queda NO COMPROBADO sin ejecutar código del modelo.
+  // Ni una salida 0 ni una lista de identificadores prohibidos acredita PASS.
+  return false;
  }catch{return false;}
 }

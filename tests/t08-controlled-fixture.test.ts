@@ -21,7 +21,7 @@ test("T08 el error de validación es real y la reparación propuesta cumple caso
  assert.equal(checkT08Behavior(root),false);
  writeFileSync(join(root,T08_TARGET),corrected);
  assert.equal(verifyT08Source(corrected),true);
- assert.equal(checkT08Behavior(root),true);
+ assert.equal(checkT08Behavior(root),false,"El modelo de permisos Node no bloquea red: sin sandbox no hay PASS");
 });
 test("T08 nunca ejecuta código con imports, herramientas o llamadas peligrosas",()=>{
  for(const code of [
@@ -40,4 +40,16 @@ test("T08 no permite enlaces simbólicos como archivo de reparación",t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-t08-symlink-"));
  t.after(()=>rmSync(root,{recursive:true,force:true}));
  assert.equal(checkT08Behavior(root),false);
+});
+
+test("T08 un desvío por constructor o salida 0 no puede ejecutar ni aprobar pruebas",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-t08-bloqueo-p0-"));
+ t.after(()=>rmSync(root,{recursive:true,force:true}));
+ for(const code of [
+  'export function sumEvenNumbers(){ return (()=>{})["constructor"]("return fetch")()("http://127.0.0.1:8080/"); }',
+  'export function sumEvenNumbers(){ return (()=>{})["constructor"]("process.exit(0)")(); }'
+ ]){
+  writeFileSync(join(root,T08_TARGET),code);
+  assert.equal(checkT08Behavior(root),false,"El código generado nunca entra en Node sin aislamiento");
+ }
 });

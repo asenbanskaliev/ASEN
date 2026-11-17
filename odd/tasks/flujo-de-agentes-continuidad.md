@@ -354,3 +354,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - T06: el supervisor incorpora a `started` un despacho confirmado **antes** de revalidar la sesión padre; si cambia después, informa `partial-needs-review` conservando el agente observado y sin reintentos. Prueba de cambio posterior al lanzamiento.
 - Se corrige la identidad criptográfica de la prueba de Fix de varios archivos: el informe de origen y su SHA deben coincidir.
 - Estado: cambios de código pendientes de CI y revisión. Mantener P0 de red/terminación del código generado abierto; `globalFull:false`.
+
+## 17/11/2026 — P0 CodeRabbit: cierre preventivo de ejecución insegura T06/T08
+
+- Código generado por los Workers T06 y el corrector T08 **ya no se ejecuta** mediante Node `--permission`, porque esa opción no bloquea conexiones de red y la salida 0 puede simular afirmaciones realizadas.
+- `checkT06Behavior` y `checkT08Behavior` devuelven `false` (NO VERIFICADO) hasta existir contenedor o aislamiento del sistema operativo que corte la red, con prueba de terminación comprobada desde el proceso padre. El filtro sintáctico T08 no se considera un límite de seguridad.
+- Tests de regresión: funciones correctas no reciben PASS falso, expresiones por `constructor` y `process.exit(0)` tampoco. Esto **bloquea intencionadamente el ensayo T06/T08**; no se suplanta con éxito simulado ni permisos nuevos.
+- **Pendiente P0 para recuperar la funcionalidad:** implementar ejecutor aislado con red negada por el sistema operativo, archivo montado en solo lectura, límites de recursos y comprobación de finalización de cada aserción que el candidato no pueda falsificar. Después ejecutar pruebas negativas con escape, red local y salida temprana.
+- Se conserva `globalFull:false`, PR borrador sin merge, sin coste NVIDIA y sin autorizaciones Writer heredadas. Verificar CI exact-SHA antes de declarar este bloqueo operativo.
