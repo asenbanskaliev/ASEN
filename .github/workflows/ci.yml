@@ -668,6 +668,50 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  # T07: el Pi TUI auténtico muestra diarios ODD de dos hijos instrumentados.
+  # Sin modelos, sin permisos Writer y sin confundir esto con prueba NVIDIA real.
+  t07-native-pi-flow:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 61 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/flujo-de-agentes-20261115'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      ASEN_T07_NATIVE_TUI_REPORT: ${{ runner.temp }}/asen-t07-native/report.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Instalar host y dependencias nativas en candidato exacto
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --no-audit --no-fund
+      - name: Observar T07 en Pi TUI auténtico sin ejecutar modelos
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 240s node --import tsx scripts/t07-native-pi-flow-smoke.mjs
+      - name: Guardar recibo delimitado del Pi TUI
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: t07-native-pi-flow-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/asen-t07-native/report.json
+          if-no-files-found: warn
+          retention-days: 7
+
   # T06: dos sesiones Pi RPC auténticas después del sondeo API NVIDIA gratuito.
   # Explorer y Verifier reales, sin herramientas ni escritura; no acredita Writer.
   t06-nvidia-pi-native:
