@@ -50,7 +50,8 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    if(disposed)return;
    if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
    // Ante lectura fallida no conservar estados hijos activos obsoletos.
-   snapshot={...snapshot,agentFlow:undefined,agentFlowUnavailable:true};
+   const {agentFlow:_anterior,...safe}=snapshot;
+   snapshot={...safe,agentFlowUnavailable:true};
    controls.requestRender();
   }finally{refreshing=false;}
  };
