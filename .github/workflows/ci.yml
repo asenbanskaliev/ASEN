@@ -1,6 +1,7 @@
 name: CI
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
 permissions:
@@ -614,6 +615,9 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  # Ensayos autenticados solo cuando asenbanskaliev AÑADE el label de un uso
+  # asen-t06-nvidia-una-vez. Un synchronize/push visual no consume proveedor.
+  # El label persistente NO concede consentimiento Writer ni ejecuta en pushes.
   # Prueba de API NVIDIA para la PR #61. No ejecuta herramientas Pi ni escribe
   # código del proyecto. Dos solicitudes de prueba con 128 tokens de salida máximo.
   # No se amplía la autorización del escenario T04/T05 ni se acepta un modelo de pago.
@@ -623,7 +627,10 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.pull_request.number == 61 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'feat/flujo-de-agentes-20261115'
+      github.head_ref == 'feat/flujo-de-agentes-20261115' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-t06-nvidia-una-vez' &&
+      github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -677,7 +684,10 @@ jobs:
       github.event_name == 'pull_request' &&
       github.event.pull_request.number == 61 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'feat/flujo-de-agentes-20261115'
+      github.head_ref == 'feat/flujo-de-agentes-20261115' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-t06-nvidia-una-vez' &&
+      github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 9
     permissions:

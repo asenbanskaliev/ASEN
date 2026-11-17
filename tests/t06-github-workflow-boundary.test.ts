@@ -83,3 +83,23 @@ test("T09 solo lee el informe guardado y no sustituye el resultado del Writer",(
  assert.match(script,/providerUsageVerified:false,billingVerified:false/u);
  assert.match(script,/globalFull:false/u);
 });
+
+test("T11: cambios visuales de PR no ejecutan NVIDIA sin evento humano etiquetado",()=>{
+ const ci=load(".github/workflows/ci.yml");
+ assert.match(ci,/^  pull_request:\s*\n    types: \[opened, synchronize, reopened, labeled\]/mu);
+ const first=ci.slice(ci.indexOf("\n  t06-nvidia-free-api:"),ci.indexOf("\n  t06-nvidia-pi-native:"));
+ const second=ci.slice(ci.indexOf("\n  t06-nvidia-pi-native:"));
+ for(const job of [first,second]){
+  const boundary=job.split("\n    steps:")[0]??"";
+  assert.match(boundary,/github\.event\.action == 'labeled'/u);
+  assert.match(boundary,/github\.event\.label\.name == 'asen-t06-nvidia-una-vez'/u);
+  assert.match(boundary,/github\.actor == 'asenbanskaliev'/u);
+  assert.match(boundary,/github\.event\.pull_request\.number == 61/u);
+  assert.match(boundary,/github\.head_ref == 'feat\/flujo-de-agentes-20261115'/u);
+ }
+ assert.match(second,/needs: \[t06-nvidia-free-api\]/u);
+ assert.match(ci,/\n  push:\s*\n    branches: \[main\]/u);
+ // Esta puerta NO sustituye dos aprobaciones protegidas ni las altera.
+ assert.match(protectedWriter,/name: asen-t06-writer-a/u);
+ assert.match(protectedWriter,/name: asen-t06-writer-b/u);
+});

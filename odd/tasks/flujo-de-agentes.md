@@ -768,3 +768,7 @@ No se ha consumido NVIDIA ni fusionado ninguna rama.
 A partir del SHA `7d7f7dcaae0d1047ef4a6a78c2eb92ad6407e751`, se conserva el control previo de una escritura T06 y se añade un fichero de reserva exclusivo y persistente en la carpeta privada del diario de atribución. La reserva se registra antes de la llamada nativa y no se libera por error o reinicio: estado `claimed-not-verified` hasta inspección, sin reintento automático. El supervisor ya tenía un registro persistente por lote y se mantiene; este control adicional cubre también la ruta de prueba Pi independiente. Los Writers generales no reciben esta opción.
 
 Se añaden pruebas de reanudación con la misma identidad, competencia por la misma reserva y ausencia de `tool_result`. Para B se ejecutan dos procesos Pi RPC instrumentados en paralelo, se cancela uno y se exige la terminación correcta del otro. Estas pruebas no autorizan proveedores, escrituras reales ni equivalencia FULL. Estado pendiente de CI del SHA nuevo.
+
+## Gasto y disparo de ensayos autenticados en CI (2026-11-17)
+
+Los trabajos NVIDIA de lectura T06 del CI se limitan a la acción `labeled` de la PR #61 realizada por `asenbanskaliev` con `asen-t06-nvidia-una-vez`; una sincronización de cambios visuales T11 ya no los vuelve a ejecutar. La etiqueta no equivale a aprobaciones de Writer: esas permanecen separadas en los dos entornos GitHub protegidos. Una omisión NVIDIA por falta de evento no es PASS ni prueba de proveedor. CI general, Pi 1.2 y Release Gate siguen siendo obligatorios en el SHA final.
