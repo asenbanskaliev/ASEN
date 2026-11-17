@@ -27,7 +27,8 @@ test("T11 barra no inventa respuesta, modelos, costes ni actividad de agentes",(
  }),80,{headerAtTop:true});
  assert.match(unknown,/modelo \?/);
  assert.match(unknown,/ctx \?/);
- assert.doesNotMatch(unknown,/obsoleto|95%|\$|respuesta|bloqueos|coste\/uso 0/);
+ assert.doesNotMatch(unknown,/obsoleto|95%|\$|bloqueos|coste\/uso 0/);
+ assert.match(unknown,/respuesta \?/,"el modelo respondedor ausente debe quedar desconocido");
  assert.match(unknown,/coste\/uso \?/);
 });
 test("T11 barra prioriza bloqueos observados sin conceder permisos ni acciones",()=>{

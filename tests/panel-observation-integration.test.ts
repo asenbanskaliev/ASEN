@@ -61,9 +61,17 @@ test("public lifecycle status is additive, fresh, threshold-aware and clears on 
  const prior=process.env.ASEN_NO_SKILL_REGISTRY;process.env.ASEN_NO_SKILL_REGISTRY="1";
  t.after(()=>{if(prior===undefined)delete process.env.ASEN_NO_SKILL_REGISTRY;else process.env.ASEN_NO_SKILL_REGISTRY=prior;});
  await f.emit("session_start");
- const expected=(context:string)=>{const percent=Number.parseInt(context,10),filled=Number.isFinite(percent)?Math.max(0,Math.min(8,Math.round(percent*8/100))):null;
+ const legacyExpected=(context:string)=>{const percent=Number.parseInt(context,10),filled=Number.isFinite(percent)?Math.max(0,Math.min(8,Math.round(percent*8/100))):null;
   const gauge=filled===null?"":" "+"▰".repeat(filled)+"▱".repeat(8-filled);
   return `ASEN │ selected p/m · high │ responding ? │ ctx ${context}${gauge} │ cost/sub ?`;
+ };
+ // El pie estrecho omite únicamente valores secundarios cuando no caben.
+ // El comando /asen-panel status mantiene el desglose anterior para lectura.
+ const expected=(context:string)=>{
+  const percent=Number.parseInt(context,10),alert=/warning|error/u.test(context);
+  const display=Number.isFinite(percent)?Math.round(percent)+"%":"?";
+  return (alert?"! ctx "+display+" · ":"")+"modelo p/m · high"+
+   (alert?"":" · ctx "+display)+" · respuesta ? · coste/uso ? · /asen-panel";
  };
  assert.equal(f.statuses.get("asen:host"),expected("80% warning"));
  for(const [percent,label] of [[79.999,"80%"],[80,"80% warning"],[94.999,"95% warning"],[95,"95% error"],[null,"?"]] as const){
@@ -73,7 +81,7 @@ test("public lifecycle status is additive, fresh, threshold-aware and clears on 
   // The host status has its own width budget; the panel adds the truthful
   // integrations segment, so the gauge is present only when the complete row fits.
   const prior=`ASEN │ selected p/m · high │ responding ? │ ctx ${label} │ cost/sub ? │ integrations reported`;
-  const candidate=expected(label)+" │ integrations reported";
+  const candidate=legacyExpected(label)+" │ integrations reported";
   const columns=Number.isSafeInteger(process.stdout.columns)&&Number(process.stdout.columns)>0?Number(process.stdout.columns):100;
   const budget=hostContentColumns(columns);
   const full=visibleWidth(candidate)<=budget?candidate:prior;
@@ -90,7 +98,7 @@ test("missing and throwing observations stay unknown; headless and optional stat
  delete f.ctx.model;delete f.ctx.thinkingLevel;
  f.ctx.getContextUsage=()=>{throw Error("private host error");};
  assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ? │ integrations reported"]);
- await f.emit("thinking_level_select");assert.equal(f.statuses.get("asen:host"),"ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ?");
+ await f.emit("thinking_level_select");assert.equal(f.statuses.get("asen:host"),"modelo ? · ctx ? · respuesta ? · coste/uso ? · /asen-panel");
  f.ctx.hasUI=false;f.ctx.mode="print";await f.emit("model_select");assert.equal(f.statuses.get("asen:host"),undefined);
  assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ? │ integrations reported"]);
  delete f.ctx.ui.setStatus;await f.emit("model_select");
@@ -101,7 +109,7 @@ test("public theme applies the unrounded context tone without changing plain com
  const f=await fixture(t);const tones:string[]=[];
  f.ctx.ui.theme={fg(tone:string,text:string){tones.push(tone);return `<${tone}>${text}</${tone}>`;}};
  await f.emit("model_select");assert.deepEqual(tones,["warning"]);
- assert.equal(f.statuses.get("asen:host"),"<warning>ASEN │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?</warning>");
+ assert.equal(f.statuses.get("asen:host"),"<warning>! ctx 80% · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel</warning>");
  assert.deepEqual(await f.panel("status"),["ASEN │ selected p/m · high │ responding ? │ ctx 80% warning │ cost/sub ? │ integrations reported"]);
 });
 
@@ -116,7 +124,7 @@ test("the composed host row carries the observed detached workspace changes segm
  await writeFile(path.join(f.project,"pending.txt"),"pending\n");
  git("checkout","--detach","-q");
  await f.emit("model_select");
- assert.equal(f.statuses.get("asen:host"),`ASEN │ detached ±1 │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?`);
+ assert.equal(f.statuses.get("asen:host"),`! ctx 80% · modelo p/m · high · respuesta ? · rama detached ±1 · coste/uso ? · /asen-panel`);
  assert.doesNotMatch(f.statuses.get("asen:host")!,/Permission:|private|connected|healthy|servers: \d/i);
  await f.emit("session_shutdown");
 });
@@ -179,22 +187,22 @@ test("session replacement clears the previous UI contribution and observes only 
  f.setId("session-b");f.ctx.model={provider:"new",id:"selected"};f.ctx.getContextUsage=()=>undefined;
  await f.emit("model_select");
  assert.equal(f.statuses.get("asen:host"),undefined);
- assert.equal(current,"ASEN │ selected new/selected · high │ responding ? │ ctx ? │ cost/sub ?");
+ assert.equal(current,"modelo new/selected · high · ctx ? · respuesta ? · coste/uso ? · /asen-panel");
 });
 
 test("the host row composes workspace and elevated permission once without secondary status keys",async t=>{
  const f=await fixture(t);
  await f.emit("session_start");
- assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?");
+ assert.equal(f.statuses.get("asen:host"),"! ctx 80% · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
  assert.equal(f.statuses.get("asen:permissions"),undefined,"The permission mode must not occupy a second status key");
  assert.equal(f.statuses.get("asen:workspace"),undefined,"ASEN contributes no separate workspace status key");
  await f.commands.get("asen-mode").handler("yolo",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"ASEN │ YOLO │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?");
+ assert.equal(f.statuses.get("asen:host"),"! ctx 80% · modo YOLO · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
  const rows=await f.panel("integrations");
  assert.ok(rows.some(row=>row.startsWith("  permissions standing permission for ordinary primary work")),rows.join("\n"));
  assert.doesNotMatch(rows.join("\n"),/Permission:|connected|healthy|servers: \d/i);
  await f.commands.get("asen-mode").handler("normal",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"ASEN │ selected p/m · high │ responding ? │ ctx 80% warning ▰▰▰▰▰▰▱▱ │ cost/sub ?");
+ assert.equal(f.statuses.get("asen:host"),"! ctx 80% · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
  assert.doesNotMatch((await f.panel("integrations")).join("\n"),/permissions /,"Normal mode states no meaning row");
 });
 

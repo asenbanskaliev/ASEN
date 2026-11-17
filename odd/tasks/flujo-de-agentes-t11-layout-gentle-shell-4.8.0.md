@@ -142,3 +142,6 @@ Este control **no** demuestra por sí solo que la cabecera esté debajo del edit
 
 ### T11-C — Barra compacta con prioridad verificable (17/11/2026)
 La referencia selecciona una sola barra informativa en anchuras estrechas y elimina elementos secundarios antes que los avisos. ASEN no sustituye el pie nativo de Pi 1.2: utiliza la clave `asen:host` existente. El nuevo `t11-compact-status.ts` prioriza alertas conocidas y mantiene `/asen-panel` cuando cabe (sin fingir que sea un botón pulsable); no duplica el pie. El texto resultante se prueba a 12, 24, 40, 80, 139 columnas. **Diferencia aceptada por ahora:** ASEN no ofrece el mismo comportamiento visual exacto de la barra inferior Gentle Shell ni un enlace clicable. Falta el contraste nativo y captura. `globalFull:false`.
+
+### T11-C — Corrección de regresión en barra estrecha (17/11/2026)
+La integración del pie es un contrato público: los ensayos de sesión, permisos y tema no deben fallar por textos obsoletos. La corrección conserva esas verificaciones sobre el nuevo formato compacto y restaura un hecho observable que se había perdido, `effectiveThinking`. `respondingModel` se sigue mostrando como desconocido cuando no hay observación de una respuesta. No se cambia el permiso actual ni el modelo real. Pendiente de CI del SHA de corrección y contraste visual.

@@ -27,11 +27,13 @@ export function renderAsenT11CompactStatus(
   items.push({text:"modo "+clean(permission,18),priority:1});
  if(host){
   const model=host.selectedModel;
-  items.push({text:"modelo "+(model?clean(model.provider+"/"+model.model,38):"?"),priority:2});
+  items.push({text:"modelo "+(model?clean(model.provider+"/"+model.model,38):"?")+
+   (host.effectiveThinking?" · "+clean(host.effectiveThinking,12):""),priority:2});
   if(ctx?.state!=="warning"&&ctx?.state!=="error")
    items.push({text:"ctx "+(ctx?.percent===null||ctx===undefined?"?":Math.round(ctx.percent)+"%"),priority:3});
-  if(host.respondingModel)items.push({
-   text:"respuesta "+clean(host.respondingModel.provider+"/"+host.respondingModel.model,32),priority:4
+  items.push({
+   text:"respuesta "+(host.respondingModel?clean(host.respondingModel.provider+"/"+host.respondingModel.model,32):"?"),
+   priority:4
   });
  }else if(snapshot.model)items.push({text:"modelo "+clean(snapshot.model,38),priority:2});
  if(snapshot.changes)items.push({
