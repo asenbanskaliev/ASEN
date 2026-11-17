@@ -538,3 +538,25 @@ test("T07: fallo aislado del origen hijo no declara que no exista trabajo",async
  assert.deepEqual(unavailable,before,"La proyección no modifica datos de origen");
  pane.dispose();
 });
+
+test("T11/T07 modal: pérdida del registro hijo no reutiliza una ejecución previa",()=>{
+ const previous=projectParallelAgentFlow([{batchId:"old-branch",state:"prepared",tasks:[{
+  sourceTodoId:"old-task",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+  changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+   headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+  childSession:{id:"old-child",agents:[{id:"old-agent",role:"worker",state:"running"}]}
+ }]}]);
+ const bad:AsenPanelSnapshot={...snapshot,agentFlowUnavailable:true,agentFlow:{
+  state:"observed",totalRecordedBatches:1,limited:false,overview:previous
+ }};
+ const panel=createNativeWorkPanel(bad,{requestRender(){},close(){},terminalRows:()=>70});
+ const rows=panel.render(120).join("\n");
+ assert.match(rows,/hijos no disponibles|Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(rows,/Worktree Workers: 1 active observed|No work in this session|old-task|old-child|old-agent/u);
+ for(let i=0;i<6;i++)panel.handleInput("\t");
+ panel.handleInput("\r");
+ const detail=panel.render(120).join("\n");
+ assert.match(detail,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(detail,/Worktree Workers: 1 active observed|old-task|old-child/u);
+ panel.dispose();
+});

@@ -489,6 +489,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // El proveedor falló: borrar avisos anteriores, no publicarlos como actuales.
     t11ActivityCache.clear();t11ActivityUnavailable=true;
     t11Snapshot=undefined;t11Rail?.refresh();
+    // Retirar también el widget M1: el resumen local obsoleto no puede sobrevivir al fallo.
+    m1Cache.reset();
+    try{ctx.ui.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});}catch{}
     try{ctx.ui.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});}catch{}
     await refreshHostStatus(ctx);
    }

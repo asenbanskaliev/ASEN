@@ -8,6 +8,7 @@ import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
 import {projectParallelAgentFlow} from "../src/runtime/ui/agent-flow-overview.js";
+import {renderM1Surface} from "../src/runtime/ui/m1-readonly-rail.js";
 
 type Todo=AsenPanelSnapshot["todos"][number];
 type Agent=AsenPanelSnapshot["agents"][number];
@@ -366,4 +367,33 @@ test("T11: revisión y actividad no reutilizan resultados previos ante fallo de 
  const recovered={...old,activityUnavailable:false};
  assert.match(renderAsenPanelSection(recovered,"REVIEW",100).join("\n"),/Results awaiting review · 2/u);
  assert.match(renderAsenWorkRow(recovered,100)??"",/1 agents/u);
+});
+
+
+test("T11/T07: la fuente hija desconocida no puede reutilizar observaciones antiguas en ningún ancho",()=>{
+ const previous=projectParallelAgentFlow([{batchId:"hijos-antiguos",state:"prepared",tasks:[{
+  sourceTodoId:"worker-antiguo",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+  changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+   headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+  childSession:{id:"sesion-anterior",agents:[{id:"agent-antiguo",role:"worker",state:"running"}]}
+ }]}]);
+ const input=snapshot({todos:[],agents:[],jobs:[],agentFlowUnavailable:true,
+  agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview:previous}});
+ const before=structuredClone(input);
+ for(const width of [24,40,50,80,120,139,140,180]){
+  const rows=renderAsenPanel(input,width).join("\n");
+  assert.doesNotMatch(rows,/Worktree Workers: 1 active observed|Linked source Todos: 1|sesion-anterior|worker-antiguo|agent-antiguo/u);
+  assert.match(rows,/hijos no disponibles/u);
+  const compact=renderAsenWorkRow(input,width)??"";
+  assert.match(compact,/hijos no disponibles/u);
+  assert.ok(visibleWidth(compact)<=width);
+  assert.doesNotMatch(compact,/child Workers observed|1 linked|PASS|accepted/iu);
+  const fallback=renderM1Surface(input,width);
+  if(width<140){
+   assert.match(fallback.lines.join("\n"),/hijos no disponibles/u);
+   assert.ok(fallback.lines.every(line=>visibleWidth(line)<=width));
+  }
+ }
+ assert.deepEqual(input,before,"La presentación no debe modificar la evidencia");
+ assert.equal(renderAsenWorkRow(snapshot(),80),undefined,"Sin fallo ni actividad no se añade un aviso ficticio");
 });

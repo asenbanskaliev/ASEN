@@ -79,9 +79,10 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
  };
  const rowsFor=(width:number):Row[]=>{
   const layout=renderAsenPanelWithLayout(snapshot,width,[...collapsed]);
+  const trustedFlow=snapshot.agentFlowUnavailable?undefined:snapshot.agentFlow;
   const rows:Row[]=[];
   const noWork=!snapshot.activityUnavailable&&!snapshot.agentFlowUnavailable&&!snapshot.todos.length&&!snapshot.jobs.length&&!snapshot.agents.length&&
-   !(snapshot.agentFlow?.overview.totalTasks);
+   !(trustedFlow?.overview.totalTasks);
   for(const group of layout.groups){
    const section=group.section;
    if(selectedOnly&&section!==activeName())continue;
@@ -89,14 +90,14 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    const header=layout.lines[group.start]??section;
    const summary=header.split(" · ").slice(1).join(" · ");
    rows.push({text:fitLine((section===activeName()?"> ":"  ")+(open?"▾ ":"▸ ")+section,summary,width),section,heading:true});
-   if(!selectedOnly&&section==="AGENTS"&&noWork)rows.push({text:"  No work in this session"});
+   if(!selectedOnly&&section==="AGENTS"&&noWork&&!snapshot.agentFlowUnavailable)rows.push({text:"  No work in this session"});
    if(!open)continue;
    let source:readonly string[]=[];
    if(snapshot.activityUnavailable)source=layout.lines.slice(group.start+1,group.end);
    else if(selectedOnly)source=renderAsenPanelSection(snapshot,section,width,true);
    else if(section==="INTEGRATIONS"){
     const inspection=snapshot.integrationInspection;
-    const flowLine=snapshot.agentFlow?.overview.totalTasks?
+    const flowLine=trustedFlow?.overview.totalTasks?
      ["  Cross-session ODD: linked worktree flow observed · actual model unknown"]:
      snapshot.agentFlowUnavailable?["  Cross-session ODD: unavailable"]:[];
     source=inspection?[
@@ -105,10 +106,10 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
      "  Tools: "+inspection.tools.state+(inspection.tools.limited?" · limited":"")+" · connection: unknown",
      "  Enter details · /asen-integrations",
     ]:layout.lines.slice(group.start+1,group.end).slice(0,3);
-   }else if(section==="TODOS"?snapshot.todos.length||!!snapshot.agentFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
+   }else if(section==="TODOS"?snapshot.todos.length||!!trustedFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
     section==="JOBS"?snapshot.jobs.length:
-    section==="AGENTS"?snapshot.agents.length||!!snapshot.agentFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
-    section==="CHANGES"?(snapshot.changes&&snapshot.changes.files>0)||!!snapshot.agentFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
+    section==="AGENTS"?snapshot.agents.length||!!trustedFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
+    section==="CHANGES"?(snapshot.changes&&snapshot.changes.files>0)||!!trustedFlow?.overview.totalTasks||!!snapshot.agentFlowUnavailable:
     section==="REVIEW"?!/no pending results|unverified/u.test(summary):false){
     source=layout.lines.slice(group.start+1,group.end);
    }

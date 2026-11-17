@@ -60,8 +60,9 @@ export function derivePanelReview(snapshot:AsenPanelSnapshot):{pending:number;kn
 }
 function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
  if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"))return "unavailable";
- const linked=snapshot.agentFlow?.overview.totalTasks??0;
- const childRunning=snapshot.agentFlow?.overview.stages["running-observed"]??0;
+ const trustedFlow=snapshot.agentFlowUnavailable?undefined:snapshot.agentFlow;
+ const linked=trustedFlow?.overview.totalTasks??0;
+ const childRunning=trustedFlow?.overview.stages["running-observed"]??0;
  // Desconocer el estado de los hijos no equivale a observar cero hijos.
  const childUnknown=snapshot.agentFlowUnavailable===true;
  switch(section){
@@ -84,6 +85,8 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
 export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPanelSection,width=72,detail=false):readonly string[]{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const out:string[]=[];
+ // No combinar un error fresco de origen con observaciones anteriores de hijos.
+ const trustedFlow=snapshot.agentFlowUnavailable?undefined:snapshot.agentFlow;
  if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"||section==="REVIEW"))
   return Object.freeze([fit("  Actividad no disponible · datos pendientes de nueva lectura",width)]);
  const itemLimit=detail?100:12,secondaryLimit=detail?100:8;
@@ -91,7 +94,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
   case "TODOS":{
    const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
    if(!snapshot.todos.length)out.push(snapshot.agentFlowUnavailable?
-    "No hay tareas locales · estado de tareas hijas no disponible":snapshot.agentFlow?.overview.totalTasks?
+    "No hay tareas locales · estado de tareas hijas no disponible":trustedFlow?.overview.totalTasks?
     "No local Todos · linked worktree tasks observed":"No tasks in this session");
    for(const item of open.slice(0,itemLimit)){
     const state=item.current.state==="succeeded"?"awaiting independent review":item.current.state;
@@ -106,7 +109,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    if(done)out.push("✓ "+done+" done");
    if(cancelled)out.push("✕ "+cancelled+" cancelled");
    if(open.length>itemLimit)out.push("… "+(open.length-itemLimit)+" more · /asen-todos");
-   const flow=snapshot.agentFlow;
+   const flow=trustedFlow;
    if(flow?.overview.totalTasks){
     out.push("Linked source Todos: "+flow.overview.totalTasks+
      (flow.limited?" (latest worktree batches only)":""));
@@ -131,13 +134,13 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    const priority:Record<string,number>={interrupted:0,running:1,queued:2,failed:3,cancelled:4,completed:5};
    const agents=[...snapshot.agents].sort((a,b)=>(priority[a.state]??9)-(priority[b.state]??9)||b.updatedAt.localeCompare(a.updatedAt));
    if(!agents.length)out.push(snapshot.agentFlowUnavailable?
-    "Sin agentes locales · estado de agentes hijos no disponible":snapshot.agentFlow?.overview.totalTasks?
+    "Sin agentes locales · estado de agentes hijos no disponible":trustedFlow?.overview.totalTasks?
     "Sin agentes locales · tareas hijas vinculadas (ejecución sin acreditar)":"No agents · /asen-agents");
    for(const agent of agents.slice(0,secondaryLimit))out.push(glyph(agent.state)+" "+clean(agent.role,30)+" · "+agent.state+(agent.state==="interrupted"?" · inspect first":""));
    if(agents.length>secondaryLimit)out.push("… "+(agents.length-secondaryLimit)+" more · /asen-agents");
    // No real tokens/prices/model on the durable public agent record: never fabricate.
-   if(snapshot.agentFlow?.overview.totalTasks){
-    const flow=snapshot.agentFlow.overview;
+   if(trustedFlow?.overview.totalTasks){
+    const flow=trustedFlow!.overview;
     out.push("Worktree Workers: "+flow.stages["running-observed"]+" active observed · "+
      flow.stages["manual-review-required"]+" awaiting human review · "+
      flow.stages.blocked+" blocked");
@@ -165,8 +168,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    out.push(status?("Git "+clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")):"Git state unavailable");
    out.push(status&&status.files>0?"Panel: CHANGES + Enter to pick a file and preview its diff · /asen-changes-view":"Inspect read-only diffs with /asen-changes-view");
    if(snapshot.agentFlowUnavailable)out.push("Cambios de worktrees hijos: no disponibles · refrescar antes de revisar");
-   if(snapshot.agentFlow?.overview.totalTasks){
-    const flow=snapshot.agentFlow.overview;
+   if(trustedFlow?.overview.totalTasks){
+    const flow=trustedFlow!.overview;
     const changed=flow.tasks.filter(task=>task.changeEvidence!=="clean").length;
     out.push("Linked worktrees: "+changed+"/"+flow.totalTasks+" with unverified changes or provenance");
     out.push("Inspect and reconcile manually · /asen-worktrees review · no auto-merge");
@@ -194,7 +197,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    break;
   }
   case "INTEGRATIONS":{
-   if(snapshot.agentFlow?.overview.totalTasks)
+   if(trustedFlow?.overview.totalTasks)
     out.push("Cross-session ODD: linked flow observed · actual child model unknown");
    else if(snapshot.agentFlowUnavailable)
     out.push("Cross-session ODD: unavailable (no verified journal projection)");
@@ -261,18 +264,21 @@ export function renderAsenPanelWithLayout(snapshot:AsenPanelSnapshot,width=72,co
 export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|undefined{
  // No reutilizar cuentas antiguas tras una lectura fallida de la sesión.
  if(snapshot.activityUnavailable)return fit("! actividad no disponible · /asen-panel",width);
+ const trustedFlow=snapshot.agentFlowUnavailable?undefined:snapshot.agentFlow;
+ const childUnknown=snapshot.agentFlowUnavailable===true;
  const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
  const running=snapshot.agents.filter(a=>a.state==="running").length;
  const attention=snapshot.agents.filter(a=>a.state==="interrupted"||a.state==="failed").length;
  const jobs=snapshot.jobs.filter(isObservedActiveJob).length;
- const childActive=snapshot.agentFlow?.overview.stages["running-observed"]??0;
- const childQueued=snapshot.agentFlow?.overview.stages["queued-observed"]??0;
- const childLaunchUnverified=snapshot.agentFlow?.overview.stages["launch-unverified"]??0;
- const childReview=snapshot.agentFlow?.overview.stages["manual-review-required"]??0;
- const childBlocked=snapshot.agentFlow?.overview.stages.blocked??0;
+ const childActive=trustedFlow?.overview.stages["running-observed"]??0;
+ const childQueued=trustedFlow?.overview.stages["queued-observed"]??0;
+ const childLaunchUnverified=trustedFlow?.overview.stages["launch-unverified"]??0;
+ const childReview=trustedFlow?.overview.stages["manual-review-required"]??0;
+ const childBlocked=trustedFlow?.overview.stages.blocked??0;
  if(!open.length&&!running&&!attention&&!jobs&&!childActive&&!childQueued&&
-  !childLaunchUnverified&&!childReview&&!childBlocked)return undefined;
+  !childLaunchUnverified&&!childReview&&!childBlocked&&!childUnknown)return undefined;
  const parts:string[]=[];
+ if(childUnknown)parts.push("! hijos no disponibles");
  if(running)parts.push("◐ "+running+" agents");
  if(attention)parts.push("! "+attention+" inspect");
  if(jobs)parts.push("⧗ "+jobs+" jobs");
