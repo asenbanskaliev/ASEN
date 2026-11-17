@@ -285,3 +285,12 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Se conservan los recuentos locales verificados y se marca explícitamente como **no disponible** el estado de tareas, agentes y cambios de los worktrees hijos. Un fallo de fuente no se convierte en un cero observado ni en aceptación.
 - Prueba negativa del panel completo y del modal nativo, seguida de refresco con un Worker hijo observado como activo. El modal no concede permisos, no ejecuta herramientas ni inicia modelos.
 - **IMPLEMENTADO_PENDIENTE_CI** del nuevo SHA. T07 no es FULL: faltan comparativa visual real e integración autenticada Pi completa. `globalFull:false`; PR #61 en borrador, sin merge.
+
+## 17/11/2026 — T11-E: observador nativo no inventa ceros tras fallo
+
+- **Base exacta:** `9884c41f3f8ecab1ddb8e7c2a33e5c3c42f54e50` con CI, Release Gate, Pi 1.2 y Phase 0 en `success` (Pi Free Smoke `skipped`). PR #61 permanece en borrador.
+- **Ruta real:** `startSession` de `extensions/asen.ts` conecta `createT11RailObserver` al lateral. Al fallar `getPanelSnapshot`, la llamada `onUnavailable` dejaba `todos/agents/jobs` vacíos y `agentFlowUnavailable`, pero omitía `activityUnavailable`. La vista podía mostrar `0/0` y revisión sin pendientes como observaciones actuales.
+- **Corrección:** `unavailableT11RailSnapshot` centraliza el estado bloqueado y se usa en la devolución nativa al fallar la lectura. Ninguna autorización, trabajo ni proveedor se toca.
+- **Pruebas negativas añadidas:** lectura observada → caída del origen → indicación `unavailable` en TODOS/JOBS/AGENTS, revisión `unverified`, sin Todo ni permisos antiguos → nueva lectura legítima → se muestran únicamente los datos frescos. También se comprueba el contenido del lateral real renderizado por el adaptador en una prueba instrumentada.
+- **Evidencia RED:** comparación estática con el HEAD base; no se afirma una ejecución RED. **GREEN y CI exact-SHA pendientes de comprobar tras publicar**.
+- **Estado:** `IMPLEMENTADO_PENDIENTE_CI`; T11-E permanece abierta hasta contraste visual con Gentle Shell 4.8.0 y prueba de sesiones Pi vivas integradas con T06/T07. `globalFull:false`, sin NVIDIA, Writers ni merge.

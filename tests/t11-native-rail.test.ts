@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {KeybindingsManager,TUI_KEYBINDINGS,visibleWidth,type TUI} from "@earendil-works/pi-tui";
 import {ASEN_RAIL_BREAKPOINT,ASEN_RAIL_GAP,ASEN_RAIL_WIDTH,installAsenNativeRail} from "../src/runtime/ui/t11-native-rail.js";
 import type {AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
+import {unavailableT11RailSnapshot} from "../src/runtime/ui/t11-rail-observer.js";
 
 const NODE=Symbol.for("@earendil-works/pi-tui/layout-node");
 const fakeTheme={
@@ -302,4 +303,27 @@ test("T11: sin observación viva, el lateral indica indisponibilidad en vez de c
  assert.match(rows,/Actividad no disponible/);
  assert.doesNotMatch(rows,/No tasks in this session|No owned jobs|No agents|0 running/);
  h.dispose();
+});
+
+test("T11: el lateral derecho muestra actividad no disponible tras error y se recupera",()=>{
+ const f=host(180);
+ let current:AsenPanelSnapshot={
+  todos:[{title:"Tarea anterior",current:{state:"blocked",reason:"Pendiente"}} as AsenPanelSnapshot["todos"][number]],
+  agents:[],jobs:[],todosObserved:true,review:{pending:1}
+ };
+ const rail=installAsenNativeRail(f.ui,fakeTheme,()=>current);
+ const content=(f.root[NODE] as ()=>any)().entries[1].component[NODE]().component;
+ assert.match(content.render(50).join("\n"),/1 needs review/u);
+ current=unavailableT11RailSnapshot();rail.refresh();
+ const unknown=content.render(50).join("\n");
+ assert.match(unknown,/TODOS · unavailable/u);
+ assert.match(unknown,/REVIEW · unverified/u);
+ assert.match(unknown,/Actividad no disponible/u);
+ assert.doesNotMatch(unknown,/Tarea anterior|1 needs review|0\/0/u);
+ current={todos:[],agents:[],jobs:[],todosObserved:true,review:{pending:0}};
+ rail.refresh();
+ const fresh=content.render(50).join("\n");
+ assert.match(fresh,/TODOS · 0\/0/u);
+ assert.doesNotMatch(fresh,/Actividad no disponible|Tarea anterior/u);
+ rail.dispose();
 });

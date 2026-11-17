@@ -92,7 +92,7 @@ import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11Head
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
 import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
-import {createT11RailObserver,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
+import {createT11RailObserver,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {createM1SurfaceCache} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
@@ -594,7 +594,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      current:()=>{try{guard();return true;}catch{return false;}},
      read:()=>getPanelSnapshot(ctx),
      onSnapshot:snapshot=>{t11Snapshot=snapshot;t11Rail?.refresh();},
-     onUnavailable:()=>{t11Snapshot={todos:[],agents:[],jobs:[],agentFlowUnavailable:true};t11Rail?.refresh();},
+     onUnavailable:()=>{t11Snapshot=unavailableT11RailSnapshot();t11Rail?.refresh();},
     });
    }
    invalidateChildSelection();

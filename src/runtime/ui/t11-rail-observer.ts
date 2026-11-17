@@ -1,5 +1,11 @@
 import type {AsenPanelSnapshot} from "./ide-panel.js";
 
+/** Pérdida de observación: cero elementos no significa cero tareas verificadas.
+ * Este valor se usa tanto en la ruta Pi como en las pruebas de la vista. */
+export function unavailableT11RailSnapshot():AsenPanelSnapshot{
+ return {todos:[],agents:[],jobs:[],activityUnavailable:true,agentFlowUnavailable:true};
+}
+
 export interface T11RailObserver{
  readonly refreshNow:()=>Promise<void>;
  readonly stop:()=>void;
