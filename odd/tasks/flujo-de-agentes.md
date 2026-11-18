@@ -791,3 +791,12 @@ No se permite finalizar `/asen-accept-review` sin recibo HMAC de pruebas vincula
 ### T04 + T05 + T08 — conexión directa de revisión ODD especializada (18/11/2026)
 
 El comando `/asen-review todo <id>` conserva la inspección sin gasto. Con un Todo Worker ODD propio y candidato vigente, `adaptive`, `4r` y `judgment-day` pasan por el mismo ámbito y revalidación de sesión/HEAD; las rutas por lente y juez siguen saliendo del perfil. Ninguno llama al modelo antes de la confirmación específica de la revisión. Judgment Day también puede registrar una propuesta Fix privada, nunca ejecutarla. REVIEW muestra los nuevos modos en la vista detallada. **Pruebas añadidas de cancelación** sin llamadas reales; **pendiente** ejecución Pi real y CI SHA exacto. Estado T04/T05/T08: PARCIAL, `globalFull:false`.
+
+
+## 2026-11-18 — Megatanda GitHub + NVIDIA de solo lectura
+
+- **Alcance de esta entrega:** T02–T10 y regresiones T11, sin ampliar permisos. Las pruebas locales automatizadas se agrupan en `.github/workflows/ci.yml` bajo la megatanda de agentes y verifican perfiles, revisión ODD, reconciliación de sesiones, interfaz, propuestas Fix, comparación A/B y controles de aceptación.
+- **NVIDIA manual y opcional:** `.github/workflows/asen-flujo-agentes-nvidia.yml`, llamada exclusivamente desde la opción `modo=flujo` en `memory-openrouter-e2e.yml`. El candidato exige SHA exacto, un único intento y consentimiento expreso del coste desconocido. Solo ejecuta los roles Explorer y Verifier con Pi 1.2, sin herramientas y sin permiso de escritura. El resultado conserva información limitada, sin diálogos ni secretos.
+- **Pruebas negativas:** `tests/flujo-agentes-nvidia-workflow.test.ts` exige ausencia de activación automática por PR/push, identidad autorizada, credenciales solo después de preparación, solo lectura, ausencia de permisos Git de escritura y respeto al bloqueo de T08. Se incluye en el CI ordinario.
+- **Límites:** el ensayo con NVIDIA **no se ha ejecutado** en esta entrega: debe iniciarse manualmente y confirmar el eventual coste desconocido. La existencia del flujo no acredita consumo de modelo ni recepción de respuesta. T03/T04/T05/T07/T08/T09/T10 permanecen **PARCIALES** hasta las pruebas reales específicas, evidencia comparable y revisión independiente. El ejercicio controlado T08 de código generado permanece bloqueado de forma segura, y Docker no es obligatorio para el uso normal de Pi.
+- **CI:** validar los trabajos sobre el SHA final publicado; `skipped` no equivale a PASS. No se modifica ni fusiona `main`; `globalFull:false`.
