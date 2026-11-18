@@ -140,3 +140,16 @@ test("T11/T07: un fallo de lectura total prevalece sobre el aviso parcial de hij
  assert.match(recovered,/! 2 bloqueos/u);
  assert.doesNotMatch(recovered,/actividad no disponible|hijos no disponibles/u);
 });
+
+test("T11/T07: el ancho limitado conserva avisos, contexto y modo antes que el coste",()=>{
+ const input=sample({hostStatus:projectHostStatus({
+  model:{provider:"p",id:"m"},thinkingLevel:"high",
+  getContextUsage:()=>({tokens:80,contextWindow:100,percent:80})
+ }),permission:"YOLO",agentFlowUnavailable:true});
+ const row=renderAsenT11CompactStatus(input,100);
+ assert.match(row,/^! hijos no disponibles · ! ctx 80% · modo YOLO/u);
+ assert.match(row,/\/asen-panel$/u);
+ assert.doesNotMatch(row,/coste\/uso|aceptado|PASS/iu);
+ assert.ok(visibleWidth(row)<=100);
+ assert.match(renderAsenT11CompactStatus(input,160),/coste\/uso \?/u);
+});

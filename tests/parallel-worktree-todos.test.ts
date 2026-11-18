@@ -54,13 +54,18 @@ function fixture(t:TestContext){
   dispatchedChildren:{sourceTodoId:string;childTodoId:string;model:string}[]=[];
  let rows=[row("todo-backend","backend.txt"),row("todo-frontend","frontend.txt")],
   session=identity.sessionId,approve=true,editorAnswer=JSON.stringify({parentDir:parent,units:scopes});
+ let todoReadCount=0;
+ let duringTodoRead:((owner:TodoContext,count:number)=>Promise<void>)|undefined;
  let afterWorkerApproval:((unit:ParentSupervisorReadyWorker)=>void)|undefined;
  let afterWorkerDispatch:((unit:ParentSupervisorReadyWorker)=>void)|undefined;
  const commands=new Map<string,{handler:(args:string,ctx:unknown)=>Promise<unknown>}>();
  registerParallelWorktreeCommand((name,command)=>commands.set(name,command as never),{
   journalFile,sessionLinksFile,planClaimsFile,observationFile,supervisorClaimsFile,
   planChildTodo:async input=>{handoffs.push(input);return {status:"model-free-ODD-planner-stub"};},
-  loadTodos:async identity=>identity.sessionId==="pi-t06"?rows:childRows.get(identity.sessionId)??[],
+  loadTodos:async identity=>{
+   todoReadCount++;await duringTodoRead?.(identity,todoReadCount);
+   return identity.sessionId==="pi-t06"?rows:childRows.get(identity.sessionId)??[];
+  },
   loadChildAgentRecords:async identity=>childAgentRecords.get(identity.sessionId)??[],
   loadChildTaskAgentLinks:async identity=>childTaskLinks.get(identity.sessionId)??[],
   // Instrumented ONLY: proves the supervisor delegates exact Pi user consent.
@@ -130,6 +135,7 @@ function fixture(t:TestContext){
   dispatchedChildren,
   notices:notifications,confirmMessages,
   setRows:(next:SourceTodoRow[])=>{rows=next;},setSession:(next:string)=>{session=next;},
+  onTodoRead:(fn?:((owner:TodoContext,count:number)=>Promise<void>))=>{duringTodoRead=fn;},
   setConsent:(next:boolean)=>{approve=next;},setEditor:(value:string)=>{editorAnswer=value;},
   onWorkerApproved:(callback?:((unit:ParentSupervisorReadyWorker)=>void))=>{afterWorkerApproval=callback;},
   onWorkerDispatched:(callback?:((unit:ParentSupervisorReadyWorker)=>void))=>{afterWorkerDispatch=callback;},row};
@@ -169,6 +175,30 @@ test("T06 linked mode declines and refuses stale Todo revisions without reservin
  assert.equal((await f.journal.list(f.identity)).length,0);
 });
 
+test("T06: cambio de sesión durante segunda lectura ODD no crea worktrees",async t=>{
+ const f=fixture(t);
+ f.onTodoRead(async(_owner,count)=>{if(count===2)f.setSession("session-foreign");});
+ await assert.rejects(()=>f.run("prepare-todos"),/session or project changed/u);
+ assert.equal((await f.journal.list(f.identity)).length,0);
+ const info=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8"});
+ assert.equal(info.split(/\r?\n/u).filter(line=>line.startsWith("worktree ")).length,1);
+ assert.equal(f.confirmMessages.length,1);
+});
+test("T06: aborto durante primera lectura no solicita autorización ni reserva",async t=>{
+ const f=fixture(t),cancel=new AbortController();f.ctx.signal=cancel.signal;
+ f.onTodoRead(async(_owner,count)=>{if(count===1)cancel.abort();});
+ await assert.rejects(()=>f.run("prepare-todos"),/session or project changed/u);
+ assert.equal(f.confirmMessages.length,0);
+ assert.equal((await f.journal.list(f.identity)).length,0);
+});
+test("T06: aborto durante segunda lectura no crea worktrees ni reserva",async t=>{
+ const f=fixture(t),cancel=new AbortController();f.ctx.signal=cancel.signal;
+ f.onTodoRead(async(_owner,count)=>{if(count===2)cancel.abort();});
+ await assert.rejects(()=>f.run("prepare-todos"),/session or project changed/u);
+ assert.equal((await f.journal.list(f.identity)).length,0);
+ const info=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8"});
+ assert.equal(info.split(/\r?\n/u).filter(line=>line.startsWith("worktree ")).length,1);
+});
 test("T06 linked mode rejects changed scopes, foreign Todo and missing planned Workers before confirmation",async t=>{
  const f=fixture(t);
  f.setEditor(JSON.stringify({parentDir:f.parent,units:[

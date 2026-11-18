@@ -25,6 +25,9 @@ export function verifyT08Source(code:unknown):boolean{
  const walk=(node:ts.Node)=>{
   if(ts.isImportDeclaration(node)||ts.isExportDeclaration(node)||
    ts.isImportEqualsDeclaration(node)||ts.isAwaitExpression(node)||
+   // Los accesos calculados pueden ocultar "constructor"; el filtro
+   // sigue siendo orientativo y NO autoriza ejecutar código.
+   ts.isElementAccessExpression(node)||
    ts.isIdentifier(node)&&forbidden.has(node.text)||
    ts.isCallExpression(node)&&node.expression.kind===ts.SyntaxKind.ImportKeyword)
    safe=false;

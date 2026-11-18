@@ -201,7 +201,10 @@ test("the host row composes workspace and elevated permission once without secon
  assert.equal(f.statuses.get("asen:permissions"),undefined,"The permission mode must not occupy a second status key");
  assert.equal(f.statuses.get("asen:workspace"),undefined,"ASEN contributes no separate workspace status key");
  await f.commands.get("asen-mode").handler("yolo",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"! hijos no disponibles · ! ctx 80% · modo YOLO · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
+ const barra=f.statuses.get("asen:host")??"";
+ assert.equal(barra,"! hijos no disponibles · ! ctx 80% · modo YOLO · modelo p/m · high · respuesta ? · /asen-panel");
+ assert.doesNotMatch(barra,/coste\/uso|PASS|aceptado/iu);
+ assert.ok(visibleWidth(barra)<=100);
  const rows=await f.panel("integrations");
  assert.ok(rows.some(row=>row.startsWith("  permissions standing permission for ordinary primary work")),rows.join("\n"));
  assert.doesNotMatch(rows.join("\n"),/Permission:|connected|healthy|servers: \d/i);

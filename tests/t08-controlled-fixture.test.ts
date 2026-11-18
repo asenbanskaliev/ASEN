@@ -53,3 +53,13 @@ test("T08 un desvío por constructor o salida 0 no puede ejecutar ni aprobar pru
   assert.equal(checkT08Behavior(root),false,"El código generado nunca entra en Node sin aislamiento");
  }
 });
+
+test("T08: el filtro rechaza desvíos por claves calculadas sin ejecutar modelos",()=>{
+ for(const source of [
+  'export function sumEvenNumbers(){ return (()=>{})["constructor"]("process.exit(0)")(); }',
+  'export function sumEvenNumbers(){ return (()=>{})["con"+"structor"]("process.exit(0)")(); }',
+  'export function sumEvenNumbers(numbers){ return numbers["constructor"]; }',
+  'export function sumEvenNumbers(numbers){ return numbers[0]; }'
+ ])assert.equal(verifyT08Source(source),false,source);
+ assert.equal(verifyT08Source(corrected),true);
+});

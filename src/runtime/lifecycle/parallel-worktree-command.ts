@@ -415,20 +415,22 @@ export function registerParallelWorktreeCommand(
     ctx.ui.notify(unavailable.reason,"warning");return unavailable;
    }
    const owner:TodoContext={sessionId:id,projectId:root};
-   const journal=linked?new ParallelTodoWorktreeJournal(options!.journalFile!):undefined;
-   const currentTodos=linked?await options!.loadTodos!(owner):[];
-   const planned=currentTodos.filter(row=>row.current.state==="planned"&&row.plan?.role==="worker"&&
-    row.plan.candidate?.revision===head&&row.plan.writeSurfaces?.length);
-   if(linked&&planned.length<2){
-    const blocked={status:"blocked" as const,reason:"Prepare at least two candidate-bound planned ODD Worker Todos before linking worktrees"};
-    ctx.ui.notify(blocked.reason,"warning");return blocked;
-   }
    const checkIdentity=()=>{
     if(ctx.signal?.aborted||ctx.sessionManager!==manager||
       manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
      throw new Error("Worktree preparation session or project changed; inspect any already-created worktrees");
    };
+   const journal=linked?new ParallelTodoWorktreeJournal(options!.journalFile!):undefined;
+   const currentTodos=linked?await options!.loadTodos!(owner):[];
+   checkIdentity();
+   const planned=currentTodos.filter(row=>row.current.state==="planned"&&row.plan?.role==="worker"&&
+    row.plan.candidate?.revision===head&&row.plan.writeSurfaces?.length);
+   if(linked&&planned.length<2){
+    const blocked={status:"blocked" as const,reason:"Prepare at least two candidate-bound planned ODD Worker Todos before linking worktrees"};
+    ctx.ui.notify(blocked.reason,"warning");return blocked;
+   }
+
    const sample={
     parentDir:path.join(path.dirname(root),path.basename(root)+"-worktrees"),
     units:linked?planned.slice(0,2).map(todo=>({taskId:todo.taskId,writeSurfaces:todo.plan!.writeSurfaces!})):
@@ -463,12 +465,15 @@ export function registerParallelWorktreeCommand(
      if(!approved)return false;
      if(linked){
       checkIdentity();
+      const freshRows=await options!.loadTodos!(owner);
+      checkIdentity(); // Evitar un cambio de sesión durante la lectura.
       const fresh=bindParallelSourceTodos({
-       identity:owner,expectedHead:head,rows:await options!.loadTodos!(owner),units:selection.units
+       identity:owner,expectedHead:head,rows:freshRows,units:selection.units
       });
       if(!bound||!sameSourceTodoBindings(bound,fresh))
        throw new Error("Source ODD Todo state changed while awaiting confirmation; no worktrees were created");
       await journal!.reserve({identity:owner,id:batchId!,head,parentDir:selection.parentDir,bindings:bound});
+      checkIdentity(); // No repetir una reserva ambigua tras perder la sesión.
      }
      return true;
     }
