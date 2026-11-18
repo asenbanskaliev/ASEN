@@ -3,6 +3,7 @@
  * NO simula revisiones, NO reutiliza aprobaciones, NO fusiona y NO declara FULL.
  * Nunca modifica el worktree del repositorio original.
  */
+import {blockUnisolatedGeneratedCodeTrial} from "../src/runtime/agents/generated-code-trial-admission.js";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createHash,randomUUID} from "node:crypto";
@@ -426,6 +427,8 @@ async function finalFix(
   modelRoutes:models,globalFull:false}));
 }
 async function main():Promise<void>{
+ // Evitar consumir modelos de revisión si la reparación será no verificable.
+ blockUnisolatedGeneratedCodeTrial("T08");
  const stage=process.argv[2];
  if(stage!=="review"&&stage!=="fix")throw Error("T08 requiere fase review o fix");
  const phase: T08ApprovalStage=stage;

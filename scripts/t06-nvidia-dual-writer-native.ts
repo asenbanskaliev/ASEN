@@ -6,6 +6,7 @@
  * Nunca acepta un parámetro, archivo o respuesta simulada como consentimiento.
  * No sustituye la confirmación dentro de Pi TUI ni permite merge.
  */
+import {blockUnisolatedGeneratedCodeTrial} from "../src/runtime/agents/generated-code-trial-admission.js";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createHash,randomBytes,randomUUID} from "node:crypto";
@@ -166,6 +167,8 @@ async function nativeWriter(
  });
 }
 async function main():Promise<void>{
+ // Sin aislamiento seguro, una prueba con coste jamás podría acreditar PASS.
+ blockUnisolatedGeneratedCodeTrial("T06");
  const policyRoot=realpathSync(process.env.GITHUB_WORKSPACE??process.cwd());
  const expected=process.env.ASEN_T06_EXPECTED_SHA;
  if(!expected||!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(expected)||

@@ -403,3 +403,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - T11: la alerta más urgente se recorta al ancho disponible en vez de desaparecer detrás de un dato corto; se conserva `/asen-panel`.
 - Pruebas negativas de cambio de sesión y gestor, rutas con mayúsculas distintas y vista T11 estrecha. Sin consumos de modelos, sin fusión. `globalFull:false`.
 - Estado **IMPLEMENTADO_PENDIENTE_CI**. El P0 de aislamiento de red y finalización comprobable del código generado T06/T08 permanece **BLOQUEADO**.
+
+## 18/11/2026 — P0 CodeRabbit: bloquear ensayos sin aislamiento, antes del proveedor
+
+- Controladores manuales T06 Writer y T08 Fix: barrera no eludible en código **al entrar**. No invocan Pi, revisores ni NVIDIA para un ensayo cuyo comportamiento no podría verificarse de forma segura.
+- El cierre preventivo de `checkT06Behavior` y `checkT08Behavior` permanece: no se ejecuta JavaScript generado por modelo hasta disponer de aislador de red real y prueba externa del fin de todas las aserciones.
+- La documentación T08 ya no anuncia falsamente «sin red» usando permisos Node ni un máximo consentido de cinco llamadas mientras Pi admite reintentos internos no contados.
+- **El Major de CodeRabbit sobre el fin de las pruebas sigue ABIERTO**, y la recuperación funcional de T06/T08 sigue **BLOQUEADA**. Esto elimina el riesgo de gasto inútil o de usar aprobaciones antiguas, no acredita FULL.
+- Tests negativos con código sin llamadas al proveedor; revisión CI exact-SHA pendiente. Sin permisos ni merge, `globalFull:false`.

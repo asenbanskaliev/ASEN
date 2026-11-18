@@ -8,8 +8,10 @@ Pi Writer -> prueba de comportamiento -> dos jueces Pi posteriores**.
 
 La prueba opera exclusivamente en un **repositorio Git mínimo y temporal**, sin modificar
 el árbol original de la PR, sin fusionar ramas ni usar credenciales Git de escritura.
-El código generado se verifica estáticamente y, si supera el filtro, se ejecuta
-en un **proceso Node con restricciones de lectura, sin red ni permiso de escritura**.
+La revisión estática **no autoriza ejecutar el código generado**.
+Actualmente no existe aislamiento del sistema operativo que impida conexiones
+de red y compruebe el fin de las aserciones: la ejecución manual está
+**BLOQUEADA antes de solicitar modelos**, sin una opción de omisión.
 Ninguna revisión de la IA constituye por sí sola una autorización de entrega.
 
 ## Activación manual
@@ -37,9 +39,11 @@ Ninguna revisión de la IA constituye por sí sola una autorización de entrega.
    y en el entorno de pruebas oficial. Como prevención, la ejecución se
    bloquea **antes de pedir aprobaciones o consumir cuota**.
    Referencia: https://forums.developer.nvidia.com/t/nemotron-3-ultra-550b-a55b-corrupted-reasoning-and-empty-responses-on-nvidia-api-and-playground/388780
-5. Marcar `coste_desconocido_autorizado` solamente si se acepta el posible
-   coste desconocido de **hasta cinco llamadas** (dos iniciales, una escritura,
-   dos finales) y las posibles operaciones del proveedor.
+5. **No iniciar ahora esta prueba:** las cinco etapas nominales no limitan
+   el número de solicitudes al proveedor cuando Pi reintenta con
+   `willRetry:true`. Hasta tener un límite de solicitudes verificable,
+   aislamiento real y presupuesto aceptado, el controlador detiene la
+   ejecución **antes de llamar a los modelos**.
 6. Pulsar **Run workflow**. Se comprueban dependencias, SHA exacto y pruebas
    negativas **antes de solicitar aprobación**.
 7. Aprobar el primer entorno de revisores. La API de GitHub debe confirmar una
