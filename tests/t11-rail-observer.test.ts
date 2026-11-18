@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {createT11RailObserver,unavailableT11RailSnapshot} from "../src/runtime/ui/t11-rail-observer.js";
+import {createT11RailObserver,isCurrentT11TodoWidgetRead,unavailableT11RailSnapshot} from "../src/runtime/ui/t11-rail-observer.js";
 import {renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow} from "../src/runtime/ui/ide-panel.js";
 import type {AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
 const data:AsenPanelSnapshot={todos:[],agents:[],jobs:[]};
@@ -106,4 +106,26 @@ test("T11: intervalos inválidos no permiten sondeos sin límite",()=>{
    onSnapshot:()=>{},onUnavailable:()=>{}
   }),/intervalo de observación no válido/u);
  }
+});
+
+test("T11: el widget no admite éxito ni fallo de lectura previos a una publicación manual",async()=>{
+ let release!:(value:string)=>void;
+ const delayed=new Promise<string>(done=>{release=done;});
+ const pending={generation:5,publication:2};
+ let visible="Todo anterior";
+ const stillCurrent=()=>isCurrentT11TodoWidgetRead(
+  pending.generation,5,pending.publication,3);
+ // El panel manual publica una tarea bloqueada mientras la lectura espera.
+ visible="Todo bloqueado";
+ release("Todo en ejecución, antiguo");
+ const old=await delayed;
+ if(stillCurrent())visible=old;
+ assert.equal(visible,"Todo bloqueado","No recuperar el estado antiguo");
+ assert.equal(stillCurrent(),false,"Tampoco invalidar tras un fallo tardío");
+ assert.equal(isCurrentT11TodoWidgetRead(6,6,3,3),true,
+  "Una lectura iniciada después de la publicación sí puede actualizar");
+ assert.equal(isCurrentT11TodoWidgetRead(6,7,3,3),false,
+  "Una generación anterior de widget no puede publicar");
+ for(const invalid of [NaN,Infinity,-1])
+  assert.equal(isCurrentT11TodoWidgetRead(6,6,invalid,invalid),false);
 });

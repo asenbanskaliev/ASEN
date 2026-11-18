@@ -686,3 +686,9 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - **Mejora independiente:** la huella del índice se calcula sobre un único descriptor; evita seguir enlaces simbólicos en Linux/macOS, contrasta la identidad del fichero en Windows y limita la lectura al tamaño autorizado. Si cambia o no se puede comprobar, se devuelve `unavailable`, no `clean`.
 - **Prueba negativa:** índice enlazado durante la inspección; se mantiene rechazo sin aprobación, sin borrar el trabajo original ni ejecutar modelos.
 - **Estado:** pendiente de CI exact-SHA y revisión incremental. T06 Writer real y T09/T10 siguen con sus puertas de consentimiento y evidencia. Sin merge ni permisos nuevos, `globalFull:false`.
+
+## 18/11/2026 — Regresión adicional: widget Todo y publicación manual
+
+- **Hallazgo:** `refreshTodoWidget` comprobaba la generación de la consulta, pero no la versión de publicación local. Una consulta Todo anterior a una revisión manual podía repintar el indicador de progreso al terminar tarde.
+- **Corrección:** se rechaza un resultado, incluso un error, cuando cambió la publicación local desde el inicio de lectura. El control es compartido con una prueba negativa de lectura diferida y conserva las consultas iniciadas después de la revisión manual.
+- **Aceptación:** falta comprobación de CI y Pi TUI del SHA exacto. Sin llamadas de modelos, nuevos permisos, fusión o marca de paridad total; `globalFull:false`.

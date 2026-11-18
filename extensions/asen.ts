@@ -93,7 +93,7 @@ import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11Head
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
 import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
-import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,observeT11ChildAvailability,shouldObserveT11Surface,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
+import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,isCurrentT11TodoWidgetRead,observeT11ChildAvailability,shouldObserveT11Surface,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
@@ -593,22 +593,22 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
    if(!ctx?.ui?.setWidget)return;
-   const generation=++todoWidgetGeneration,guard=panelScope(ctx);
+   const generation=++todoWidgetGeneration,startedLocal=t11LocalPublicationVersion,guard=panelScope(ctx);
    try{
     if(!todoStorePromise){
-     guard();if(generation!==todoWidgetGeneration)return;
+     guard();if(!isCurrentT11TodoWidgetRead(generation,todoWidgetGeneration,startedLocal,t11LocalPublicationVersion))return;
      ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});
      await refreshWorkRow(ctx);return;
     }
     const identity=await sessionIdentity(ctx),rows=await (await todoStorePromise).list(identity),current=await sessionIdentity(ctx);
-    guard();if(generation!==todoWidgetGeneration)return;
+    guard();if(!isCurrentT11TodoWidgetRead(generation,todoWidgetGeneration,startedLocal,t11LocalPublicationVersion))return;
     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId){
      ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;
     }
     ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows,3,activeValidationTask(identity.sessionId,identity.projectId),terminalColumns()),{placement:"belowEditor"});
     await refreshWorkRow(ctx);
    }catch{
-    if(generation!==todoWidgetGeneration||hostStatusClosed)return;
+    if(!isCurrentT11TodoWidgetRead(generation,todoWidgetGeneration,startedLocal,t11LocalPublicationVersion)||hostStatusClosed)return;
     try{guard();}catch{return;}
     // Error de lectura tras actualizar Todo: ningún contador previo sigue vigente.
     await invalidateT11LocalActivity(ctx);

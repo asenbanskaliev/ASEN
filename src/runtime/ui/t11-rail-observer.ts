@@ -6,6 +6,17 @@ export function unavailableT11RailSnapshot():AsenPanelSnapshot{
  return {todos:[],agents:[],jobs:[],activityUnavailable:true,agentFlowUnavailable:true};
 }
 
+/** Una lectura iniciada antes de publicar un Todo más nuevo no puede repintar
+ * el indicador ni borrar datos correctos cuando termina o falla. */
+export function isCurrentT11TodoWidgetRead(
+ startedGeneration:number,currentGeneration:number,
+ startedPublication:number,currentPublication:number
+):boolean{
+ return [startedGeneration,currentGeneration,startedPublication,currentPublication]
+  .every(value=>Number.isSafeInteger(value)&&value>=0)&&
+  startedGeneration===currentGeneration&&startedPublication===currentPublication;
+}
+
 /** T11/T07: también observar cuando el usuario ve la fila compacta.
  * Nunca activar sondeos de red/diarios con la presentación oculta. */
 export function shouldObserveT11Surface(input:Readonly<{
