@@ -32,6 +32,8 @@ jobs:
         run: |
           npm run typecheck
           npx --no-install tsc -p tsconfig.t08.json
+      - name: Probar lectura de catálogo NVIDIA sin generación ni red
+        run: node --test tests/catalogo-nvidia.test.mjs
       - name: Probar diagnóstico NVIDIA con respuestas simuladas y sin gasto
         run: node --test tests/comprobar-nvidia.test.mjs
       - name: Aislamiento, modelos, recibos y permisos por Worker
