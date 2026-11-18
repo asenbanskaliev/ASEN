@@ -279,14 +279,16 @@ export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|un
   !childLaunchUnverified&&!childReview&&!childBlocked&&!childUnknown)return undefined;
  const parts:string[]=[];
  if(childUnknown)parts.push("! hijos no disponibles");
- if(running)parts.push("◐ "+running+" agents");
+ // T11/T07: el estado más crítico debe quedar visible en ancho estrecho.
+ // Un Worker bloqueado no puede quedar detrás de uno activo o en cola.
+ if(childBlocked)parts.push("! "+childBlocked+" child tasks blocked");
+ if(childLaunchUnverified)parts.push("! "+childLaunchUnverified+" lanzamientos sin verificar");
  if(attention)parts.push("! "+attention+" inspect");
+ if(childReview)parts.push("◇ "+childReview+" child review pending");
+ if(running)parts.push("◐ "+running+" agents");
  if(jobs)parts.push("⧗ "+jobs+" jobs");
  if(childActive)parts.push("◐ "+childActive+" child Workers observed");
  if(childQueued)parts.push("○ "+childQueued+" hijos en cola");
- if(childLaunchUnverified)parts.push("! "+childLaunchUnverified+" lanzamientos sin verificar");
- if(childReview)parts.push("◇ "+childReview+" child review pending");
- if(childBlocked)parts.push("! "+childBlocked+" child tasks blocked");
  if(snapshot.todos.length)parts.push(snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length+" todos");
  if(childUnknown){
   // Ante pérdida de hijos, conservar el aviso y el acceso al detalle aunque
