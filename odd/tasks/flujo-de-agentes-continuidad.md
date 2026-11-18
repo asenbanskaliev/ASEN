@@ -586,3 +586,13 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - **T11/T07:** al fallar `list` del Todo se invalidan juntos el indicador de tareas, la barra, la caché y las lecturas anteriores. Una nueva lectura correcta de la misma sesión recupera el progreso sin esperar otra orden. No se muestra cero como si fuese una comprobación.
 - **Git:** solo la lectura manual guarda la última observación dentro de la sesión/proyecto. El sondeo sin Git no la borra y la vista indica «última consulta (puede haber cambiado)». Se limpia al cambiar de sesión/proyecto o al fallar una consulta manual.
 - **Pruebas:** recuperación del widget y aislamiento de observaciones Git en la suite. RED/GREEN y gates del SHA nuevo pendientes de cotejar. Ningún modelo, Writer o pago ejecutado; PR borrador, sin merge; `globalFull:false`.
+
+## 18/11/2026 — Megatanda de robustez CodeRabbit y diagnóstico Pi macOS
+
+- **HEAD de partida:** `3d2ce3dc0c2e3ba9603b9530818ffbb505345866`. CI general de ese SHA detectó un único fallo en `test (macos-latest shard 1)`: `tests/ask-user-rpc.test.ts`, espera Pi RPC agotada a los 15 s. Misma prueba correcta en el SHA anterior: raíz de lentitud **NO DEMOSTRADA**.
+- **Prueba macOS:** se mantiene ejecución real sin modelos ni credenciales; plazo finito de 30 s solo para macOS y diagnóstico de etapa `get_commands/commands/select/answer` para distinguir carga lenta de un bloqueo de RPC. Otros sistemas conservan 15 s.
+- **Docker sin red:** los errores de lanzamiento se distinguen de un proceso candidato que llegó a ejecutarse y rechazó un export. Nuevas pruebas de ambos resultados. Un contenedor fallido nunca acredita una comprobación negativa.
+- **T06:** nueva comprobación de cancelación inmediatamente después del callback previo a `git worktree add`; una señal abortada no crea un worktree. Se conserva el comportamiento prudente del diario tras marcar un intento ambiguo.
+- **Pruebas Git:** todos los `git -C` del fixture enlazado T06 usan un entorno sin las variables locales de repositorio comunicadas por `git rev-parse --local-env-vars`; previene afectar al repositorio invocador desde hooks o `GIT_DIR`. Caso negativo con `GIT_DIR` ajeno.
+- **T07/T11:** la fila compacta usa `! hijos ?` cuando así puede conservar una alerta de contexto o el número de revisiones. Da preferencia al aviso completo cuando cabe igual información. Pruebas de 35 y 55 columnas.
+- **Bloqueos:** ejecución auténtica de Writer/Fix con autorización humana, paridad T11 interactiva, A/B T09 y auditoría independiente T10. Otras observaciones de CodeRabbit requieren comprobación. Sin pago ni NVIDIA, sin fusión, `globalFull:false`. Las pruebas del SHA que se publique siguen PENDIENTES.

@@ -116,3 +116,11 @@ test("Docker solo se habilita en GitHub Actions de la PR y rama autorizadas",()=
    "Una variable ausente debe impedir Docker: "+key);
  }
 });
+
+test("el fallo del arranque Docker no equivale a un export rechazado",()=>{
+ const unavailable:ContainerObservation={status:null,signal:null,stdout:"",error:"proceso-no-disponible"};
+ assert.deepEqual(verifyExternalBehaviorCases(cases,[unavailable,...good.slice(1)]),
+  {verified:false,completed:0,reason:"lanzamiento-docker-fallido"});
+ assert.deepEqual(verifyExternalBehaviorCases(cases,[{status:1,signal:null,stdout:""},...good.slice(1)]),
+  {verified:false,completed:0,reason:"proceso-incompleto"});
+});

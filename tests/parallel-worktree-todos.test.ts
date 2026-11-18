@@ -21,11 +21,17 @@ import {controlledInstructionPlanCommand} from "../src/runtime/lifecycle/route-c
 import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 
+// Git heredado desde hooks puede apuntar a un repositorio ajeno a -C.
+const localGitNames=new Set(execFileSync("git",["rev-parse","--local-env-vars"],{
+ encoding:"utf8",stdio:["ignore","pipe","ignore"]
+}).trim().split(/\r?\n/u).filter(Boolean));
+const gitFixtureEnv=Object.fromEntries(Object.entries(process.env).filter(([name])=>!localGitNames.has(name)));
+
 function fixture(t:TestContext){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-source-"))),
   parent=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-worktrees-"))),
   privateRoot=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-private-")));
- const git=(...args:string[])=>execFileSync("git",["-C",source,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+ const git=(...args:string[])=>execFileSync("git",["-C",source,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:gitFixtureEnv}).trim();
  git("init","-q");git("config","user.name","ASEN T06 linked");
  git("config","user.email","asen-t06@example.invalid");
  writeFileSync(join(source,"backend.txt"),"backend\n");
@@ -180,7 +186,7 @@ test("T06: cambio de sesión durante segunda lectura ODD no crea worktrees",asyn
  f.onTodoRead(async(_owner,count)=>{if(count===2)f.setSession("session-foreign");});
  await assert.rejects(()=>f.run("prepare-todos"),/session or project changed/u);
  assert.equal((await f.journal.list(f.identity)).length,0);
- const info=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8"});
+ const info=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8",env:gitFixtureEnv});
  assert.equal(info.split(/\r?\n/u).filter(line=>line.startsWith("worktree ")).length,1);
  assert.equal(f.confirmMessages.length,1);
 });
@@ -196,7 +202,7 @@ test("T06: aborto durante segunda lectura no crea worktrees ni reserva",async t=
  f.onTodoRead(async(_owner,count)=>{if(count===2)cancel.abort();});
  await assert.rejects(()=>f.run("prepare-todos"),/session or project changed/u);
  assert.equal((await f.journal.list(f.identity)).length,0);
- const info=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8"});
+ const info=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8",env:gitFixtureEnv});
  assert.equal(info.split(/\r?\n/u).filter(line=>line.startsWith("worktree ")).length,1);
 });
 test("T06 linked mode rejects changed scopes, foreign Todo and missing planned Workers before confirmation",async t=>{
@@ -285,11 +291,11 @@ test("T06 child session attachment refuses consent, wrong worktree and reused se
 test("T06 child attachment fails closed if worktree HEAD diverges from prepared source",async t=>{
  const f=fixture(t),prepared=await f.run("prepare-todos") as {worktrees:{root:string}[]};
  const root=prepared.worktrees[0]!.root;
- execFileSync("git",["-C",root,"config","user.name","T06 child"],{stdio:"ignore"});
- execFileSync("git",["-C",root,"config","user.email","child@example.invalid"],{stdio:"ignore"});
+ execFileSync("git",["-C",root,"config","user.name","T06 child"],{stdio:"ignore",env:gitFixtureEnv});
+ execFileSync("git",["-C",root,"config","user.email","child@example.invalid"],{stdio:"ignore",env:gitFixtureEnv});
  writeFileSync(join(root,"backend.txt"),"different\n");
- execFileSync("git",["-C",root,"add","backend.txt"],{stdio:"ignore"});
- execFileSync("git",["-C",root,"commit","-qm","child changed HEAD"],{stdio:"ignore"});
+ execFileSync("git",["-C",root,"add","backend.txt"],{stdio:"ignore",env:gitFixtureEnv});
+ execFileSync("git",["-C",root,"commit","-qm","child changed HEAD"],{stdio:"ignore",env:gitFixtureEnv});
  await assert.rejects(()=>f.runChild("attach",root),/exact linked Git candidate/u);
  assert.equal((await f.sessions.listSource(f.identity)).length,0);
 });
@@ -1317,6 +1323,19 @@ test("T06: Git sucio tras reservar pero antes del primer add permite liberar",as
   ParallelTodoWorktreeJournal.prototype.reserve=reserve;
  }
  assert.deepEqual(await f.journal.list(f.identity),[]);
- const listed=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8"});
+ const listed=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8",env:gitFixtureEnv});
  assert.equal(listed.split(/\r?\n/u).filter(row=>row.startsWith("worktree ")).length,1);
+});
+
+test("T06: las llamadas Git del fixture no heredan otro GIT_DIR",t=>{
+ const original=process.env.GIT_DIR;
+ process.env.GIT_DIR=join(tmpdir(),"asen-repo-ajeno-inexistente");
+ try{
+  const f=fixture(t);
+  assert.equal(f.git("rev-parse","--is-inside-work-tree"),"true");
+  assert.equal(f.git("status","--porcelain"),"");
+ }finally{
+  if(original===undefined)delete process.env.GIT_DIR;
+  else process.env.GIT_DIR=original;
+ }
 });

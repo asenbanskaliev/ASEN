@@ -330,3 +330,16 @@ test("T06 la cancelación de un agente Pi en un worktree no interrumpe el otro (
  assert.equal(b[0]!.state,"completed");
  assert.equal(f.git(f.source,"status","--porcelain"),"");
 });
+
+test("T06: una cancelación dentro del callback previo no ejecuta Git add",async t=>{
+ const f=fixture(t),controller=new AbortController();
+ let callbacks=0;
+ await assert.rejects(()=>f.prepare({
+  signal:controller.signal,
+  onBeforeWorktreeAdd:()=>{callbacks++;controller.abort();}
+ }),/cancelled before Git add/u);
+ assert.equal(callbacks,1);
+ const list=f.git(f.source,"worktree","list","--porcelain");
+ assert.equal(list.split(/\r?\n/u).filter(row=>row.startsWith("worktree ")).length,1);
+ assert.equal(f.git(f.source,"status","--porcelain"),"");
+});

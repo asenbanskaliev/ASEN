@@ -76,7 +76,11 @@ export function verifyExternalBehaviorCases(
   return {verified:false,completed:0,reason:"faltan-observaciones"};
  let completed=0;
  for(const observation of observations){
-  if(observation.status!==0||observation.signal!==null||observation.error)
+  // Un fallo al arrancar Docker no es un fallo del código candidato.
+  // No permitir que una prueba negativa de export se dé por superada sin Docker.
+  if(observation.error)
+   return {verified:false,completed,reason:"lanzamiento-docker-fallido"};
+  if(observation.status!==0||observation.signal!==null)
    return {verified:false,completed,reason:"proceso-incompleto"};
   if(observation.stdout.length===0||observation.stdout.length>2048||
      observation.stdout.trim().split(/\r?\n/u).length!==1)

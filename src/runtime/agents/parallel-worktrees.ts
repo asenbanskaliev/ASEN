@@ -140,6 +140,9 @@ export async function prepareParallelWorkerWorktrees(input:ParallelWorktreePropo
   const noHooks=resolve(parent,".asen-no-hooks-"+randomUUID());
   if(existsSync(noHooks))throw new Error("Temporary hook-isolation path unexpectedly exists");
   input.onBeforeWorktreeAdd?.();
+  // Cancelar incluso si la señal se activó justo en el callback previo.
+  // El marcador conservador de intento impide liberar una reserva ambigua.
+  if(input.signal?.aborted)throw new Error("Parallel Worker preparation cancelled before Git add");
   execFileSync("git",["-c","core.hooksPath="+noHooks,"-C",source,"worktree","add","--detach","--",target,input.expectedHead],
    {encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:15000,windowsHide:true,maxBuffer:2_000_000});
   const allocation=Object.freeze({taskId:unit.taskId,root:target,sourceRoot:source,

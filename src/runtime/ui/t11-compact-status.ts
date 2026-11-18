@@ -58,26 +58,26 @@ export function renderAsenT11CompactStatus(
  const access=options.panelCommand===false||width<21?"":"/asen-panel";
  const accessWidth=visibleWidth(access),reserved=access?accessWidth+visibleWidth(separator):0;
  const budget=Math.max(0,width-reserved);
- const parts:string[]=[];
- if(ordered.length&&budget>0&&visibleWidth(ordered[0]!.text)>budget){
-  // El aviso prioritario no desaparece por culpa de un dato más corto.
-  parts.push(truncateForTerminal(ordered[0]!.text,budget));
- }else{
-  for(const item of ordered){
-   let label=item.text;
-   let next=parts.length?parts.join(separator)+separator+label:label;
-   // Un bloqueo local no puede ocultar un fallo de la fuente de hijos.
-   if(visibleWidth(next)>budget&&label==="! hijos no disponibles"){
-    label="! hijos ?";
-    next=parts.length?parts.join(separator)+separator+label:label;
-   }
-   if(visibleWidth(next)<=budget)parts.push(label);
+ // Elegir la forma corta del aviso solo cuando permite mostrar más
+ // información prioritaria; nunca sustituir un aviso real por modelo o coste.
+ const pack=(shortChild:boolean)=>{
+  const rows:string[]=[];let included=0;
+  const label=(value:string)=>shortChild&&value==="! hijos no disponibles"?"! hijos ?":value;
+  if(ordered.length&&budget>0&&visibleWidth(label(ordered[0]!.text))>budget){
+   rows.push(truncateForTerminal(label(ordered[0]!.text),budget));
+   return {rows,included};
   }
- }
- if(!parts.length&&ordered.length){
-  const strongest=ordered[0]!.text;
-  if(budget>0)parts.push(truncateForTerminal(strongest,budget));
- }
+  for(const item of ordered){
+   const value=label(item.text);
+   const next=rows.length?rows.join(separator)+separator+value:value;
+   if(visibleWidth(next)<=budget){rows.push(value);included++;}
+  }
+  if(!rows.length&&ordered.length&&budget>0)
+   rows.push(truncateForTerminal(label(ordered[0]!.text),budget));
+  return {rows,included};
+ };
+ const normal=pack(false),compact=pack(true);
+ const parts=compact.included>normal.included?compact.rows:normal.rows;
  if(!parts.length&&options.headerAtTop!==true&&(!access||visibleWidth("ASEN"+separator+access)<=width))
   parts.push("ASEN");
  let result=parts.join(separator);
