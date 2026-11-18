@@ -4,7 +4,7 @@ import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {
- dockerBehaviorArguments,runDockerBehaviorCases,verifyExternalBehaviorCases,
+ dockerBehaviorArguments,isGithubHostedSandboxRun,runDockerBehaviorCases,verifyExternalBehaviorCases,
  type ContainerObservation,type TrustedBehaviorCase
 } from "../src/runtime/agents/generated-code-docker-sandbox.js";
 
@@ -83,5 +83,24 @@ test("no ejecuta contenido sin imagen fijada, casos completos o archivo real",t=
   {root,target:"inexistente.mjs",fn:"sumEvenNumbers",image:digest,cases}
  ]){
   assert.equal(runDockerBehaviorCases(input).verified,false);
+ }
+});
+
+test("Docker solo se habilita en GitHub Actions de la PR y rama autorizadas",()=>{
+ const valid:Record<string,string>={
+  ASEN_DOCKER_TESTS_CI:"1",GITHUB_ACTIONS:"true",
+  RUNNER_ENVIRONMENT:"github-hosted",RUNNER_OS:"Linux",
+  GITHUB_REPOSITORY:"asenbanskaliev/ASEN",
+  GITHUB_EVENT_NAME:"pull_request",
+  GITHUB_HEAD_REF:"feat/flujo-de-agentes-20261115"
+ };
+ assert.equal(isGithubHostedSandboxRun({}),false);
+ assert.equal(isGithubHostedSandboxRun(valid),true);
+ for(const key of Object.keys(valid)){
+  assert.equal(isGithubHostedSandboxRun({...valid,[key]:"no"}),
+   false,"Una variable alterada debe impedir Docker: "+key);
+  const without={...valid};delete without[key];
+  assert.equal(isGithubHostedSandboxRun(without),false,
+   "Una variable ausente debe impedir Docker: "+key);
  }
 });
