@@ -1,10 +1,10 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
-import {execFileSync} from "node:child_process";
-import {chmodSync,existsSync,mkdirSync,mkdtempSync,renameSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
+import {execFileSync,spawnSync} from "node:child_process";
+import {constants,chmodSync,existsSync,mkdirSync,mkdtempSync,renameSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {delimiter,isAbsolute,join,resolve} from "node:path";
-import {inspectParallelWorktreeChanges,inspectParallelWorktreeChangesAsync} from "../src/runtime/agents/parallel-worktree-change-inspection.js";
+import {gitIndexReadFlags,inspectParallelWorktreeChanges,inspectParallelWorktreeChangesAsync} from "../src/runtime/agents/parallel-worktree-change-inspection.js";
 
 function fixture(t:TestContext){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-review-origin-"))),
@@ -175,4 +175,30 @@ test("T06: el índice Git sustituido por un enlace no se lee ni declara limpio",
  }finally{
   rmSync(index,{force:true});renameSync(original,index);
  }
+});
+
+
+test("T06: un índice sustituido por FIFO no bloquea la inspección",t=>{
+ assert.equal(gitIndexReadFlags("win32"),constants.O_RDONLY,
+  "Windows conserva la apertura original y la validación posterior");
+ if(process.platform==="win32"){
+  t.skip("La prueba de tubería sin escritor requiere POSIX");return;
+ }
+ const dir=mkdtempSync(join(tmpdir(),"asen-git-fifo-"));
+ t.after(()=>rmSync(dir,{recursive:true,force:true}));
+ const fifo=join(dir,"index");
+ try{execFileSync("mkfifo",[fifo],{timeout:2500,stdio:"ignore"});}
+ catch{t.skip("mkfifo no disponible en el entorno");return;}
+ const flags=gitIndexReadFlags(process.platform);
+ assert.equal(flags&constants.O_NONBLOCK,constants.O_NONBLOCK);
+ assert.equal(flags&constants.O_NOFOLLOW,constants.O_NOFOLLOW);
+ // Subproceso acotado: sin O_NONBLOCK quedaría esperando un escritor.
+ const script="const fs=require('node:fs');"+
+  "const fd=fs.openSync(process.argv[1],Number(process.argv[2]));"+
+  "const regular=fs.fstatSync(fd).isFile();fs.closeSync(fd);"+
+  "process.exit(regular?2:0);";
+ const result=spawnSync(process.execPath,["-e",script,fifo,String(flags)],
+  {timeout:2500,encoding:"utf8",windowsHide:true});
+ assert.equal(result.error,undefined,"La lectura de FIFO no debe agotar el plazo");
+ assert.equal(result.status,0,result.stderr||"Se debe rechazar un índice no regular");
 });
