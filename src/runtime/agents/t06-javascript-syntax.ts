@@ -8,8 +8,7 @@ export function isT06JavaScriptSyntaxValid(source:string):boolean{
   return false;
  try{
   const file="t06-candidato.mjs";
-  const parsed=ts.createSourceFile(file,source,ts.ScriptTarget.ES2022,true,ts.ScriptKind.JS);
-  if(parsed.parseDiagnostics.length>0)return false;
+  // transpileModule aporta los errores JS y las anotaciones TS (p. ej. 8010).
   const check=ts.transpileModule(source,{
    fileName:file,reportDiagnostics:true,
    compilerOptions:{
