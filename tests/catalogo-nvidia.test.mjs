@@ -111,6 +111,28 @@ test("No se guardan identificadores maliciosos ni respuestas desmesuradas",async
  assert.equal(huge.generacionSolicitudes,0);
 });
 
+test("El catálogo cierra conexiones HTTP fallidas y cuerpos anunciados demasiado grandes",async()=>{
+ let canceladas=0;
+ const errorResponse={
+  ok:false,status:429,
+  body:{cancel:async()=>{canceladas++;}},
+  headers:new Headers()
+ };
+ const error=await consultarCatalogoNvidia({clave:CLAVE,fetchImpl:async()=>errorResponse});
+ assert.equal(error.estado,"fallo-http");
+ assert.equal(error.motivo,"limite-de-solicitudes");
+ assert.equal(canceladas,1);
+ const enorme={
+  ok:true,status:200,
+  headers:new Headers({"content-length":"2000001"}),
+  body:{cancel:async()=>{canceladas++;}}
+ };
+ const size=await consultarCatalogoNvidia({clave:CLAVE,fetchImpl:async()=>enorme});
+ assert.equal(size.motivo,"respuesta-demasiado-grande");
+ assert.equal(canceladas,2);
+ assert.equal(size.generacionSolicitudes,0);
+});
+
 test("La autorización no hereda sesiones ni admite un reintento",()=>{
  const sha="a".repeat(40);
  const ok={
