@@ -18,7 +18,7 @@ export interface AsenPanelSnapshot{
  readonly activityUnavailable?:boolean;
  readonly agents:readonly PublicAgentRecord[];
  readonly jobs:readonly BackgroundJobSnapshot[];
- readonly changes?:{readonly branch:string;readonly files:number};
+ readonly changes?:{readonly branch:string;readonly files:number;readonly lastInspected?:true};
  readonly profile?:string;
  readonly permission?:string;
  readonly model?:string;
@@ -71,7 +71,7 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
   case "JOBS":return snapshot.jobs.filter(isObservedActiveJob).length+" running";
   case "AGENTS":return snapshot.agents.filter(a=>a.state==="running").length+
    (childUnknown?" local activos · hijos no disponibles":linked?" local running · "+childRunning+" child observed":" running");
-  case "CHANGES":return (snapshot.changes?snapshot.changes.files+" files":"unavailable")+
+  case "CHANGES":return (snapshot.changes?snapshot.changes.files+" files"+(snapshot.changes.lastInspected?" · última consulta":""):"unavailable")+
    (childUnknown?" · cambios hijos no disponibles":linked?" · "+linked+" linked worktree tasks":"");
   case "REVIEW":{
    const review=derivePanelReview(snapshot),children=trustedFlow?.overview.stages["manual-review-required"]??0;
@@ -172,7 +172,8 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
   }
   case "CHANGES":{
    const status=snapshot.changes;
-   out.push(status?("Git "+clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")):"Git state unavailable");
+   out.push(status?("Git "+clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")+
+    (status.lastInspected?" · última consulta (puede haber cambiado)":"")):"Git state unavailable");
    out.push(status&&status.files>0?"Panel: CHANGES + Enter to pick a file and preview its diff · /asen-changes-view":"Inspect read-only diffs with /asen-changes-view");
    if(snapshot.agentFlowUnavailable)out.push("Cambios de worktrees hijos: no disponibles · refrescar antes de revisar");
    if(trustedFlow?.overview.totalTasks){

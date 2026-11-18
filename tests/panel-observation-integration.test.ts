@@ -257,3 +257,24 @@ test("T11: una lectura fallida retira avisos anteriores y se recupera al volver 
  await f.emit("session_shutdown");
  assert.equal(f.statuses.get("asen:host"),undefined);
 });
+
+test("T11: recuperar observación vuelve a mostrar progreso de la misma sesión",async t=>{
+ let failing=false;
+ const event={taskId:"solo-actual",sessionId:"session-a",revision:1,
+  state:"running",at:"2026-11-18T12:00:00.000Z"};
+ const row={taskId:"solo-actual",title:"Prueba T11 pendiente",events:[event],current:event};
+ const f=await fixture(t,"reported",async()=>{
+  if(failing)throw Error("Todo sin conexión");
+  return [row];
+ });
+ await f.emit("session_start");
+ await f.emit("turn_end");
+ assert.match(JSON.stringify(f.widgets.get("asen-todo-progress")),/Prueba T11 pendiente/u);
+ failing=true;await f.emit("turn_end");
+ assert.equal(f.widgets.get("asen-todo-progress"),undefined);
+ assert.match(f.statuses.get("asen:host")??"",/! actividad no disponible/u);
+ failing=false;await f.emit("turn_end");
+ assert.match(JSON.stringify(f.widgets.get("asen-todo-progress")),/Prueba T11 pendiente/u);
+ assert.doesNotMatch(f.statuses.get("asen:host")??"",/actividad no disponible/u);
+ await f.emit("session_shutdown");
+});

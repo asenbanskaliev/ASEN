@@ -579,3 +579,10 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - **SHA comprobado:** `65c1b2d3850d3026dd15c3adb29ba019578dac6c`. Trabajo de agentes T02–T08 `134826088797`: **208 PASS, 1 FAIL**. Falló solo la nueva prueba de T06 («Missing expected rejection») porque instrumentaba `f.journal.reserve`, pero la ruta productiva del comando crea una segunda instancia del diario. Por tanto nunca se provocó la carrera esperada.
 - **Reparación:** la prueba instrumenta de manera temporal `ParallelTodoWorktreeJournal.prototype.reserve` para alcanzar la instancia usada por el comando. Lo restaura en `finally`, incluso ante error. Se mantiene el escenario de árbol Git sucio después de reservar y anterior a `git worktree add`. No se cambia la política de seguridad ni el código productivo con esta reparación.
 - **Pruebas exact-SHA:** pendientes de relanzamiento y cotejo de CI, arquitectura, Pi 1.2, Release Gate y Docker. No convertir 208/209 a PASS total. `globalFull:false`.
+
+## 18/11/2026 — T07/T11: recuperación local y última consulta Git
+
+- **HEAD de partida:** `0dc52ea9b7b1eaff6af8c171f85d4b4d0c80e030`. Release Gate, Pi 1.2, arquitectura, pruebas T02–T08 y contenedor Docker sin red correctos en la última comprobación. El CI completo continuaba ejecutándose.
+- **T11/T07:** al fallar `list` del Todo se invalidan juntos el indicador de tareas, la barra, la caché y las lecturas anteriores. Una nueva lectura correcta de la misma sesión recupera el progreso sin esperar otra orden. No se muestra cero como si fuese una comprobación.
+- **Git:** solo la lectura manual guarda la última observación dentro de la sesión/proyecto. El sondeo sin Git no la borra y la vista indica «última consulta (puede haber cambiado)». Se limpia al cambiar de sesión/proyecto o al fallar una consulta manual.
+- **Pruebas:** recuperación del widget y aislamiento de observaciones Git en la suite. RED/GREEN y gates del SHA nuevo pendientes de cotejar. Ningún modelo, Writer o pago ejecutado; PR borrador, sin merge; `globalFull:false`.

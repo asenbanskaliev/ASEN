@@ -88,6 +88,7 @@ import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
 import {renderAsenFocusHeader,t11ChromeParts} from "../src/runtime/ui/focus-chrome.js";
 import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
 import {createT11ActivityCache} from "../src/runtime/ui/t11-activity-cache.js";
+import {createT11GitObservationCache} from "../src/runtime/ui/t11-git-observation.js";
 import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11HeaderPlacement,type T11Surface} from "../src/runtime/ui/t11-chrome-settings.js";
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
@@ -372,6 +373,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
   };
   const t11ActivityCache=createT11ActivityCache();
+  const t11GitObservation=createT11GitObservationCache();
+  const restoreT11Git=(ctx:CommandContext,snapshot:AsenPanelSnapshot):AsenPanelSnapshot=>{
+   try{return t11GitObservation.restore(ctx.sessionManager?.getSessionId?.()??"",
+    realpathSync(path.resolve(ctx.cwd)),snapshot);}
+   catch{t11GitObservation.clear();return snapshot;}
+  };
   let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostRefreshGeneration=0;
@@ -443,6 +450,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const actual=await sessionIdentity(ctx);assertCurrent();
    if(actual.sessionId!==identity.sessionId||actual.projectId!==identity.projectId)
     throw new Error("ASEN panel scope changed while reading worktree flow");
+   // Solo el panel manual guarda la última observación Git comprobada.
+   // Un Git fallido o ausente la retira; la lectura periódica no la modifica.
+   if(mode==="manual")t11GitObservation.remember(identity.sessionId,identity.projectId,changes);
    return {todos,todosObserved:!!todoStorePromise,agents,jobs,...(changes?{changes}:{}),
     hostStatus,integrationInspection,permission:permissionSession.mode(ctx),
     ...(agentFlow?{agentFlow}:{}),...(agentFlowUnavailable?{agentFlowUnavailable:true}:{})};
@@ -450,14 +460,27 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   // La observación de hijos se hace SOLO cuando se abre el panel.
   // No consultar Git ni diarios externos en cada refresco del editor.
   let workRowGeneration=0,todoWidgetGeneration=0;
+  const invalidateT11LocalActivity=async(ctx:CommandContext):Promise<void>=>{
+   ++workRowGeneration;++todoWidgetGeneration;
+   t11ActivityCache.clear();t11GitObservation.clear();
+   t11ActivityUnavailable=true;t11ChildFlowUnavailable=true;
+   t11ChildObservedAt=0;t11ChildExpiry?.clear();
+   t11Snapshot=unavailableT11RailSnapshot();t11Rail?.refresh();
+   for(const [widget,placement] of [
+    ["asen-todo-progress","belowEditor"],
+    ["asen:m1-rail","aboveEditor"],
+    ["asen-live-work","aboveEditor"]
+   ] as const)try{ctx.ui?.setWidget?.(widget,undefined,{placement});}catch{}
+   await refreshHostStatus(ctx);
+  };
   const publishInspectedWorkRow=(ctx:CommandContext,snapshot:AsenPanelSnapshot):void=>{
-   const observed=observeT11ChildAvailability(snapshot);
+   const observed=restoreT11Git(ctx,observeT11ChildAvailability(snapshot));
    const localMissing=observed.activityUnavailable===true;
    const childrenMissing=observed.agentFlowUnavailable===true;
    const recovered=t11ActivityUnavailable&&!localMissing;
    const changed=t11ActivityUnavailable!==localMissing||t11ChildFlowUnavailable!==childrenMissing;
    if(localMissing){
-    ++workRowGeneration;++todoWidgetGeneration;t11ActivityCache.clear();
+    ++workRowGeneration;++todoWidgetGeneration;t11ActivityCache.clear();t11GitObservation.clear();
     try{ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});}catch{}
    }
    t11ActivityUnavailable=localMissing;t11ChildFlowUnavailable=childrenMissing;
@@ -493,11 +516,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const now=await sessionIdentity(ctx);guard();
     if(generation!==workRowGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
+    // Una lectura válida recupera el progreso sin requerir otro turno de Pi.
+    ++todoWidgetGeneration;
+    ctx.ui.setWidget("asen-todo-progress",todoStorePromise?
+     todoProgressWidget(todos,3,activeValidationTask(identity.sessionId,identity.projectId),width):undefined,
+     {placement:"belowEditor"});
     t11ActivityCache.put(identity.sessionId,identity.projectId,snapshot);
     t11ActivityUnavailable=false;
     // Un refresco local nunca debe convertir hijos observados en un falso cero.
     const childFresh=t11ChildObservedAt>0&&Date.now()-t11ChildObservedAt<=12000;
-    const displayed=combineT11LocalWithChild(snapshot,t11Snapshot,childFresh);
+    const displayed=restoreT11Git(ctx,combineT11LocalWithChild(snapshot,t11Snapshot,childFresh));
     t11Snapshot=displayed;t11ChildFlowUnavailable=displayed.agentFlowUnavailable===true;
     t11Rail?.sync();t11Rail?.refresh();
     // En terminal estrecha o host sin layoutRoot la única alternativa es
@@ -511,14 +539,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }catch{
     if(generation!==workRowGeneration||hostStatusClosed)return;
     try{guard();}catch{return;}
-    // El proveedor falló: borrar avisos anteriores, no publicarlos como actuales.
-    ++todoWidgetGeneration;t11ActivityCache.clear();t11ActivityUnavailable=true;
-    try{ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});}catch{}
-    t11Snapshot=unavailableT11RailSnapshot();t11ChildFlowUnavailable=true;t11ChildObservedAt=0;t11ChildExpiry?.clear();t11Rail?.refresh();
-    // Retirar también el widget M1: el resumen local obsoleto no puede sobrevivir al fallo.
-    try{ctx.ui.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});}catch{}
-    try{ctx.ui.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});}catch{}
-    await refreshHostStatus(ctx);
+    // El proveedor falló: invalidar todas las vistas y lecturas anteriores.
+    await invalidateT11LocalActivity(ctx);
    }
   };
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
@@ -538,8 +560,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows,3,activeValidationTask(identity.sessionId,identity.projectId),terminalColumns()),{placement:"belowEditor"});
     await refreshWorkRow(ctx);
    }catch{
-    if(generation!==todoWidgetGeneration)return;
-    try{guard();ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});}catch{}
+    if(generation!==todoWidgetGeneration||hostStatusClosed)return;
+    try{guard();}catch{return;}
+    // Error de lectura tras actualizar Todo: ningún contador previo sigue vigente.
+    await invalidateT11LocalActivity(ctx);
    }
   };
   if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise,taskAgentLinks&&agentRuntimePromise?async(taskId,identity)=>{
@@ -585,7 +609,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
@@ -933,7 +957,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
