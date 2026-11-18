@@ -34,7 +34,7 @@ const driver="const p=JSON.parse(process.argv[1]);"+
  "process.stdout.write(JSON.stringify(result)+'\\n');";
 
 function validCases(cases:readonly TrustedBehaviorCase[]):boolean{
- if(cases.length<2||cases.length>32)return false;
+ if(cases.length<1||cases.length>32)return false;
  const ids=new Set<string>();
  for(const item of cases){
   if(!/^[a-z0-9-]{1,50}$/u.test(item.id)||ids.has(item.id))return false;
@@ -79,7 +79,7 @@ export function verifyExternalBehaviorCases(
 export function dockerBehaviorArguments(
  image:string,source:string,fn:string,input:unknown
 ):readonly string[]{
- if(!imagePattern.test(image)||!targetPattern.test(fn+".mjs")||
+ if(!imagePattern.test(image)||
     !/^[A-Za-z][A-Za-z0-9]*$/u.test(fn))
   throw new Error("identidad-de-ejecucion-invalida");
  return [
@@ -99,7 +99,7 @@ export function runDockerBehaviorCases(input:Readonly<{
  root:string;target:string;fn:string;image:string;
  cases:readonly TrustedBehaviorCase[];
 }>):SandboxVerdict{
- if(!validCases(input.cases)||!imagePattern.test(input.image)||
+ if(input.cases.length<2||!validCases(input.cases)||!imagePattern.test(input.image)||
     !targetPattern.test(input.target)||!/^[A-Za-z][A-Za-z0-9]*$/u.test(input.fn))
   return {verified:false,completed:0,reason:"configuracion-invalida"};
  let staging:string|undefined;
