@@ -148,5 +148,11 @@ test("Flujo manual protegido sin POST, reintentos, coste autorizado ni permisos 
  assert.doesNotMatch(code,/\/chat\/completions|method:\s*"POST"|max_tokens/u);
  assert.match(parent,/nvidia_catalogo/u);
  assert.match(parent,/uses: \.\/\.github\/workflows\/catalogo-nvidia\.yml/u);
- assert.doesNotMatch(parent,/inputs\.coste_desconocido_autorizado[^]*?secrets\.NVIDIA_API_KEY/u);
+ const section=parent.slice(
+  parent.indexOf("  catalogo-nvidia-sin-generacion:"),
+  parent.indexOf("  comprobar-nvidia:")
+ );
+ assert.ok(section.startsWith("  catalogo-nvidia-sin-generacion:"));
+ assert.doesNotMatch(section,/coste_desconocido_autorizado/u);
+ assert.match(section,/candidate_sha: \\$\\{\\{ inputs\\.candidate_sha \\$\\}\\}/u);
 });
