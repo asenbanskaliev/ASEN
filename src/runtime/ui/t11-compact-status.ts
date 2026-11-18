@@ -4,7 +4,7 @@
 import type {AsenPanelSnapshot} from "./ide-panel.js";
 import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "../responsive-layout.js";
 
-export interface T11StatusOptions{readonly headerAtTop?:boolean;readonly panelCommand?:boolean;readonly activityUnavailable?:boolean}
+export interface T11StatusOptions{readonly headerAtTop?:boolean;readonly panelCommand?:boolean;readonly activityUnavailable?:boolean;readonly agentFlowUnavailable?:boolean}
 type Segment={text:string;priority:number};
 function clean(text:string,limit=60):string{
  return truncateForTerminal(sanitizeTerminalText(text).replace(/\s+/gu," ").trim(),limit);
@@ -19,6 +19,8 @@ export function renderAsenT11CompactStatus(
  const ctx=host?.context;
  if(activityUnavailable)
   items.push({text:"! actividad no disponible",priority:0});
+ else if(options.agentFlowUnavailable===true||snapshot.agentFlowUnavailable===true)
+  items.push({text:"! hijos no disponibles",priority:0});
  if(ctx?.state==="warning"||ctx?.state==="error")
   items.push({text:"! ctx "+(ctx.percent===null?"?":Math.round(ctx.percent)+"%"),priority:0});
  const blocked=activityUnavailable?0:snapshot.todos.filter(x=>x.current.state==="blocked").length;
