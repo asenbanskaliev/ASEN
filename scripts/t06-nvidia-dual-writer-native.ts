@@ -30,6 +30,7 @@ import {checkT06Behavior} from "../src/runtime/agents/t06-behavior-isolation.js"
 import {requireLiveT06GithubApprovals} from "../src/runtime/agents/t06-github-approvals.js";
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {assessT06WriterEvidence,verifyT06WorkspaceAttribution} from "../src/runtime/agents/t06-writer-evidence.js";
+import {assessT06StaticWriteOnly} from "../src/runtime/agents/t06-static-write-evidence.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const definitions=[
@@ -65,7 +66,8 @@ function verifySource(file:string,fn:string):void{
 }
 /** Las pruebas semánticas se ejecutan en otro proceso SIN claves de proveedor. */
 async function nativeWriter(
- root:string,intent:T06LiveWriterIntent,fn:string,instruction:string,policyRoot:string
+ root:string,intent:T06LiveWriterIntent,fn:string,instruction:string,policyRoot:string,
+ staticOnly:boolean
 ){
  const target=intent.writeSurface,sha=git(root,"rev-parse","HEAD");
  const candidate={id:intent.taskId,repository:root,revision:sha,createdAt:new Date().toISOString()};
@@ -123,7 +125,8 @@ async function nativeWriter(
   "Escribe en esa ruta el contenido íntegro del archivo. No basta una respuesta de texto o un bloque de código.",
   "Función exportada obligatoria: "+fn+"; JavaScript ES2022, un único export function.",
   instruction,
-  "Esta prueba tiene comprobaciones de comportamiento ya definidas por el supervisor, que se ejecutarán fuera de Pi.",
+  staticOnly?"El supervisor SOLO comprobará escritura y sintaxis SIN EJECUTAR el código. Comportamiento: NO COMPROBADO.":
+   "Esta prueba tiene comprobaciones de comportamiento ya definidas por el supervisor, que se ejecutarán fuera de Pi.",
   "No crees archivos de pruebas ni otros archivos; sin imports, dependencias, red, comandos o fusiones.",
   "Después de la llamada write confirma brevemente qué archivo solicitaste escribir. No afirmes haber ejecutado pruebas."
  ].join("\n");
@@ -152,6 +155,11 @@ async function nativeWriter(
   processObserved:pid!==null,nativeResultOk:result.ok,
   attributionVerified,exactScope,syntaxOk,behaviorOk
  });
+ const staticAssessment=staticOnly?assessT06StaticWriteOnly({
+  events,requestedModel:model,observedModel,
+  processObserved:pid!==null,nativeResultOk:result.ok,
+  attributionVerified,exactScope,syntaxOk
+ }):null;
  return Object.freeze({
   worker:intent.taskId,session:intent.sessionId,scope:target,
   requestedModel:model,observedModel:observedModel??"unknown",
@@ -163,12 +171,18 @@ async function nativeWriter(
   durationMs:startedAt!==null&&endedAt!==null?Math.round(endedAt-startedAt):null,
   startedAt,endedAt,
   fileSha256:present?digest(readFileSync(file)):null,
+  writeOnlyVerified:staticAssessment?.writeOnlyVerified??false,
+  behaviorVerified:false as const,
   passed:assessment.passed
  });
 }
 async function main():Promise<void>{
- // Sin aislamiento seguro, una prueba con coste jamás podría acreditar PASS.
- blockUnisolatedGeneratedCodeTrial("T06");
+ const staticOnly=process.env.ASEN_T06_STATIC_WRITE_ONLY==="1";
+ // El modo completo sigue bloqueado: solo se permite escribir sin ejecutar el código.
+ if(!staticOnly)blockUnisolatedGeneratedCodeTrial("T06");
+ if(staticOnly&&(process.env.ASEN_T06_GITHUB_MODE!=="1"||
+   process.env.GITHUB_ACTIONS!=="true"||process.env.GITHUB_RUN_ATTEMPT!=="1"))
+  throw Error("T06 estático bloqueado: solo la primera ejecución manual aprobada en GitHub");
  const policyRoot=realpathSync(process.env.GITHUB_WORKSPACE??process.cwd());
  const expected=process.env.ASEN_T06_EXPECTED_SHA;
  if(!expected||!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(expected)||
@@ -228,13 +242,14 @@ async function main():Promise<void>{
   }
   launched=true;
   const results=await Promise.allSettled(definitions.map((item,i)=>
-   nativeWriter(roots[i]!,intents[i]!,item.fn,item.instruction,policyRoot)
+   nativeWriter(roots[i]!,intents[i]!,item.fn,item.instruction,policyRoot,staticOnly)
   ));
   const workers=results.map((outcome,i)=>outcome.status==="fulfilled"?outcome.value:{
    worker:intents[i]!.taskId,scope:intents[i]!.writeSurface,
-   passed:false,blockers:["worker-exception-needs-manual-inspection"],error:"Worker failed ambiguously; inspect its worktree and Pi process; do not retry"
+   passed:false,writeOnlyVerified:false,blockers:["worker-exception-needs-manual-inspection"],error:"Worker failed ambiguously; inspect its worktree and Pi process; do not retry"
   });
-  const passed=results.every(r=>r.status==="fulfilled"&&r.value.passed);
+  const passed=results.every(r=>r.status==="fulfilled"&&
+   (staticOnly?r.value.writeOnlyVerified:r.value.passed));
   const intervals=results.flatMap(r=>r.status==="fulfilled"?[r.value]:[]);
   const concurrent=intervals.length===2&&intervals.every(r=>r.startedAt!==null&&r.endedAt!==null)&&
    Math.max(...intervals.map(r=>r.startedAt!))<Math.min(...intervals.map(r=>r.endedAt!));
@@ -249,7 +264,7 @@ async function main():Promise<void>{
   let review:{status:string;reviews:readonly unknown[]}={
    status:"NOT_RUN_WRITERS_UNVERIFIED",reviews:[]
   };
-  if(passed&&concurrent){
+  if(passed&&concurrent&&!staticOnly){
    try{review=await runT06NativeIndependentReviews(roots,policyRoot,model);}
    catch{
     // La escritura ya ocurrió: guardar siempre un informe de la ejecución,
@@ -266,6 +281,7 @@ async function main():Promise<void>{
     "two-distinct-github-environment-human-approvals-not-native-pi-TUI":
     "two-distinct-interactive-parent-terminal-prompts-not-native-pi-TUI",
    requestedModel:model,modelCostVerified:false,billingVerified:false,
+   staticOnly,generatedCodeExecuted:false,behaviorVerified:false,
    distinctWorktrees:true,distinctSessions:true,concurrent,
    observedWindowMs,observedOverlapMs,
    workers:workers.map(r=>{
@@ -274,7 +290,10 @@ async function main():Promise<void>{
    }),
    independentReview:review,autoRetry:false,autoMerge:false,
    accepted:false,globalFull:false,
-   result:passed&&concurrent?
+   result:staticOnly?
+    (passed&&concurrent?"PASS_TWO_WRITERS_STATIC_ONLY_BEHAVIOR_NOT_TESTED":
+     "BLOCKED_OR_PARTIAL_NEEDS_REVIEW"):
+    passed&&concurrent?
     (review.status==="PASS_TWO_PI_REVIEWS_NOT_T10"?
      "PASS_TWO_REAL_WRITERS_AND_PI_REVIEWS_NEEDS_T10":
      "PASS_TWO_REAL_WRITERS_NEEDS_INDEPENDENT_REVIEW"):
