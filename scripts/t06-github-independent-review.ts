@@ -10,15 +10,18 @@ import {validT06ReviewerModels,requireLiveT06GithubReviewerApprovals}
 import {verifyT06IndependentReviewInputs,t06ReviewHashes}
  from "../src/runtime/agents/t06-independent-review-admission.js";
 import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js";
+import {requireLiveT06ReviewReplay,T06_REPLAY_SOURCE_SHA,T06_REPLAY_SOURCE_RUN} from "../src/runtime/agents/t06-review-replay.js";
 
 const expectedSha=process.env.ASEN_T06_EXPECTED_SHA??"";
+const replay=process.env.ASEN_T06_REVIEW_REPLAY_MODE==="1";
+const sourceSha=replay?process.env.ASEN_T06_SOURCE_SHA??"":expectedSha;
 const codeDir=process.env.ASEN_T06_REVIEW_CODE_DIR??"";
 const behaviorDir=process.env.ASEN_T06_REVIEW_BEHAVIOR_DIR??"";
 const outputDir=process.env.ASEN_T06_REVIEW_REPORT_DIR??"";
 const paths=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
 const report={
  schema:"asen.t06.github-independent-review/v1",
- sha:expectedSha,status:"blocked",
+ sha:sourceSha,sourceRunId:replay?T06_REPLAY_SOURCE_RUN:null,status:"blocked",
  modelsVerified:false,providerPriceVerified:false,billingVerified:false,
  humanApprovalsVerified:false,behaviorVerified:false,
  reviewedFileHashes:{} as Readonly<Record<string,string>>,
@@ -41,6 +44,11 @@ try{
  assert.equal(process.env.GITHUB_REF,"refs/heads/feat/flujo-de-agentes-20261115");
  assert.equal(process.env.GITHUB_SHA,expectedSha);
  assert.match(expectedSha,/^[a-f0-9]{40}$/u);
+ assert.match(sourceSha,/^[a-f0-9]{40}$/u);
+ if(replay){
+  assert.equal(sourceSha,T06_REPLAY_SOURCE_SHA);
+  assert.equal(process.env.ASEN_T06_SOURCE_RUN_ID,String(T06_REPLAY_SOURCE_RUN));
+ }
  assert.equal(process.env.ASEN_T06_COST_ACK,"true");
  assert.equal(validT06ReviewerModels(
   process.env.ASEN_T06_REVIEW_MODEL_A,process.env.ASEN_T06_REVIEW_MODEL_B),true);
@@ -65,13 +73,14 @@ try{
   files[name]=readFileSync(file);
  }
  const admission=verifyT06IndependentReviewInputs({
-  expectedSha,report:receipt,manifest,files,behavior
+  expectedSha:sourceSha,report:receipt,manifest,files,behavior
  });
  if(!admission.allowed)throw Error("T06: traspaso o aislamiento no acreditados");
  report.behaviorVerified=true;
  report.reviewedFileHashes=t06ReviewHashes(files);
  // Primer control antes de permitir cualquier acceso al proveedor.
- await requireLiveT06GithubReviewerApprovals();
+ if(replay)await requireLiveT06ReviewReplay();
+ else await requireLiveT06GithubReviewerApprovals();
  report.humanApprovalsVerified=true;
  // El runner repite la consulta GitHub y exige --no-tools en cada Pi.
  const result=await runT06NativeIndependentReviews(
