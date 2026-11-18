@@ -610,3 +610,10 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - **Corrección:** conservar los segmentos incluidos por identidad y elegir abreviación solo si permite mostrar un nuevo segmento de prioridad crítica (bloqueos, hijos, contexto, revisión o modo). Cuando no mejora los avisos críticos se conserva la forma completa; coste/modelo no desplazan avisos de salud.
 - **Verificación:** nueva prueba a 100 columnas junto a cobertura de 35, 40, 44 y 55 columnas existente. CI exacto del siguiente SHA pendiente, no se da por superado.
 - **Restricciones:** sin fusión a la rama base, sin modelos ni pagos, sin cambio de permisos, `globalFull:false`.
+
+## 18/11/2026 — T08: rechazo de export y tiempos agotados
+
+- Se exige prueba explícita del controlador aislado para los rechazos: código 73 y salida exacta ASEN_EXPORT_RECHAZADO; Docker 125 u otras interrupciones no son rechazos acreditados.
+- Los tiempos de espera ETIMEDOUT se distinguen de los fallos de arranque y nunca aprueban casos.
+- Las pruebas negativas comprueban fallo de arranque, interrupción, clase exportada y casos válidos; permanecen los límites sin red y sin privilegios.
+- No se autoriza Writer, modelos, pagos ni FULL: checkT08Behavior conserva su bloqueo y globalFull:false. Validación exact-SHA pendiente.

@@ -110,8 +110,8 @@ try{
    {id:"segunda",input:[2],expected:{kind:"throws",name:"TypeError"}}
   ];
   assert.deepEqual(runDockerBehaviorCases({root,target,fn:"sumEvenNumbers",image,cases:required}),
-   {verified:false,completed:0,reason:"proceso-incompleto"},
-   "Un export faltante o no invocable nunca satisface errores esperados");
+   {verified:false,completed:0,reason:"exportacion-rechazada"},
+   "El controlador debe acreditar que rechazó el export");
  }
  assert.deepEqual(runDockerBehaviorCases({root,target:"candidato-ausente.mjs",fn:"sumEvenNumbers",image,cases}),
   {verified:false,completed:0,reason:"aislamiento-no-disponible"},

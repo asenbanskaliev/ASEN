@@ -19,6 +19,8 @@ export interface ContainerObservation {
  readonly signal:string|null;
  readonly stdout:string;
  readonly error?:string;
+ /** Código de error: ETIMEDOUT significa tiempo agotado, no fallo de arranque. */
+ readonly errorCode?:string;
 }
 export interface SandboxVerdict {
  readonly verified:boolean;
@@ -43,11 +45,14 @@ const driver=[
  // Si el export no existe, la infraestructura falla fuera del catch de la
  // función candidata: no debe aprobar un caso que espera TypeError.
  // Una clase exportada parece invocable pero falla antes del cuerpo al llamarla sin new.
- "if(typeof f!=='function'||Object.getOwnPropertyDescriptor(f,'prototype')?.writable===false)throw new Error('funcion-ausente');",
+ "if(typeof f!=='function'||Object.getOwnPropertyDescriptor(f,'prototype')?.writable===false){",
+ "process.stdout.write('ASEN_EXPORT_RECHAZADO\\n');process.exitCode=73;",
+ "}else{",
  "let result;",
  "try{result={kind:'value',value:await f(safeInput)}}",
  "catch(error){result={kind:'throws',name:error?.name??'Error'}}",
- "process.stdout.write(JSON.stringify(result)+'\\n');"
+ "process.stdout.write(JSON.stringify(result)+'\\n');",
+ "}"
 ].join("");
 
 function validCases(cases:readonly TrustedBehaviorCase[]):boolean{
@@ -78,8 +83,14 @@ export function verifyExternalBehaviorCases(
  for(const observation of observations){
   // Un fallo al arrancar Docker no es un fallo del código candidato.
   // No permitir que una prueba negativa de export se dé por superada sin Docker.
+  if(observation.errorCode==="ETIMEDOUT")
+   return {verified:false,completed,reason:"tiempo-agotado"};
   if(observation.error)
    return {verified:false,completed,reason:"lanzamiento-docker-fallido"};
+  // Un código de Docker 125 no demuestra que el controlador rechazara el export.
+  if(observation.status===73&&observation.signal===null&&
+     observation.stdout==="ASEN_EXPORT_RECHAZADO\n")
+   return {verified:false,completed,reason:"exportacion-rechazada"};
   if(observation.status!==0||observation.signal!==null)
    return {verified:false,completed,reason:"proceso-incompleto"};
   if(observation.stdout.length===0||observation.stdout.length>2048||
@@ -171,7 +182,8 @@ export function runDockerBehaviorCases(input:Readonly<{
    });
    observations.push({
     status:result.status,signal:result.signal,stdout:result.stdout??"",
-    ...(result.error?{error:"proceso-no-disponible"}:{})
+    ...(result.error?{error:"proceso-no-disponible",
+      errorCode:(result.error as NodeJS.ErrnoException).code??"desconocido"}:{})
    });
    const verdict=verifyExternalBehaviorCases(input.cases.slice(0,observations.length),
     observations);

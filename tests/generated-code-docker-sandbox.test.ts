@@ -117,6 +117,26 @@ test("Docker solo se habilita en GitHub Actions de la PR y rama autorizadas",()=
  }
 });
 
+test("T08: un export rechazado debe venir del controlador y no de Docker",()=>{
+ const rejected={status:73,signal:null,stdout:"ASEN_EXPORT_RECHAZADO\n"} satisfies ContainerObservation;
+ assert.deepEqual(verifyExternalBehaviorCases(cases,[rejected,...good.slice(1)]),
+  {verified:false,completed:0,reason:"exportacion-rechazada"});
+ for(const incomplete of [
+  {status:125,signal:null,stdout:"ASEN_EXPORT_RECHAZADO\n"},
+  {status:73,signal:null,stdout:""},
+  {status:73,signal:"SIGTERM",stdout:"ASEN_EXPORT_RECHAZADO\n"},
+  {status:null,signal:null,stdout:"",error:"proceso-no-disponible",errorCode:"ENOENT"}
+ ] satisfies ContainerObservation[]){
+  const verdict=verifyExternalBehaviorCases(cases,[incomplete,...good.slice(1)]);
+  assert.equal(verdict.verified,false);
+  assert.notEqual(verdict.reason,"exportacion-rechazada");
+ }
+ const timeout={status:null,signal:"SIGTERM",stdout:"",
+  error:"proceso-no-disponible",errorCode:"ETIMEDOUT"} satisfies ContainerObservation;
+ assert.deepEqual(verifyExternalBehaviorCases(cases,[timeout,...good.slice(1)]),
+  {verified:false,completed:0,reason:"tiempo-agotado"});
+});
+
 test("el fallo del arranque Docker no equivale a un export rechazado",()=>{
  const unavailable:ContainerObservation={status:null,signal:null,stdout:"",error:"proceso-no-disponible"};
  assert.deepEqual(verifyExternalBehaviorCases(cases,[unavailable,...good.slice(1)]),
