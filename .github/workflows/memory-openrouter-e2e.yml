@@ -16,6 +16,14 @@ on:
         description: 'SHA exacto de 40 caracteres en feat/flujo-de-agentes-20261115'
         required: false
         type: string
+      t06_revisor_a:
+        description: 'T06: modelo NVIDIA revisor A, diferente de Nemotron Writer'
+        required: false
+        type: string
+      t06_revisor_b:
+        description: 'T06: modelo NVIDIA revisor B, distinto de A y del Writer'
+        required: false
+        type: string
       t08_revisor_a:
         description: 'T08: modelo NVIDIA A (proveedor/modelo)'
         required: false
@@ -67,6 +75,8 @@ jobs:
     with:
       candidate_sha: ${{ inputs.candidate_sha }}
       cost_acknowledged: ${{ inputs.coste_desconocido_autorizado }}
+      reviewer_a: ${{ inputs.t06_revisor_a }}
+      reviewer_b: ${{ inputs.t06_revisor_b }}
     secrets:
       NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
