@@ -14,7 +14,7 @@ de red y compruebe el fin de las aserciones: la ejecución manual está
 **BLOQUEADA antes de solicitar modelos**, sin una opción de omisión.
 Ninguna revisión de la IA constituye por sí sola una autorización de entrega.
 
-## Decisión: funcionamiento nativo como Gentle Shell (18/11/2026)
+## Decisión: funcionamiento nativo de agentes Pi (18/11/2026)
 
 - **Uso normal de ASEN:** los agentes Pi planifican, revisan y trabajan en sus
   carpetas Git con las autorizaciones existentes. No necesitan Docker.
