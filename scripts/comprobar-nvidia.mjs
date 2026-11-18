@@ -34,7 +34,7 @@ const motivoFallo=(error,signal)=>{
 async function leerJsonLimitado(response){
  const declared=Number(response.headers.get("content-length"));
  if(Number.isFinite(declared)&&declared>LIMITE_RESPUESTA){
-  await response.body?.cancel().catch(()=>{});
+  void response.body?.cancel().catch(()=>{});
   throw Error("respuesta-demasiado-grande");
  }
  if(!response.body)throw Error("respuesta-vacia");
@@ -93,7 +93,8 @@ export async function comprobarNvidia({clave,fetchImpl=fetch}){
   });
   resultado.catalogo.http=response.status;
   if(!response.ok){
-   await response.body?.cancel().catch(()=>{});
+   ctrl.abort();
+   void response.body?.cancel().catch(()=>{});
    resultado.catalogo.estado="error-http";
    resultado.catalogo.motivo=clasificarEstadoNvidia(response.status);
    return resultado;
@@ -135,7 +136,8 @@ export async function comprobarNvidia({clave,fetchImpl=fetch}){
    });
    modelo.http=response.status;
    if(!response.ok){
-    await response.body?.cancel().catch(()=>{});
+    abort.abort();
+    void response.body?.cancel().catch(()=>{});
     modelo.estado="error-http";
     modelo.motivo=clasificarEstadoNvidia(response.status);
     continue;
