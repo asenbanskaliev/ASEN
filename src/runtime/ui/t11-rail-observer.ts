@@ -32,6 +32,36 @@ export function combineT11LocalWithChild(
  return {...base,agentFlowUnavailable:true};
 }
 
+/** Caducidad observable incluso si Pi permanece sin turnos y no hay nuevos
+ * refrescos locales. El temporizador no inicia Workers ni consulta proveedores.
+ * Un callback antiguo jamás puede invalidar una lectura posterior. */
+export function createT11ChildExpiryController(
+ onExpire:()=>void,delayMs=12000
+):Readonly<{renew:()=>void;clear:()=>void;stop:()=>void}>{
+ if(!Number.isSafeInteger(delayMs)||delayMs<1||delayMs>30000)
+  throw new Error("T11: plazo de caducidad no válido");
+ let timer:ReturnType<typeof setTimeout>|undefined,version=0,stopped=false;
+ const clear=()=>{
+  version++;
+  if(timer!==undefined)clearTimeout(timer);
+  timer=undefined;
+ };
+ const renew=()=>{
+  if(stopped)return;
+  clear();
+  const observedVersion=version;
+  timer=setTimeout(()=>{
+   timer=undefined;
+   if(stopped||version!==observedVersion)return;
+   version++;
+   try{onExpire();}catch{/* Una vista auxiliar no debe interrumpir Pi. */}
+  },delayMs);
+  timer.unref?.();
+ };
+ const stop=()=>{stopped=true;clear();};
+ return {renew,clear,stop};
+}
+
 export interface T11RailObserver{
  readonly refreshNow:()=>Promise<void>;
  readonly stop:()=>void;
