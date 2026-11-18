@@ -159,7 +159,15 @@ export function runDockerBehaviorCases(input:Readonly<{
   const source=join(base,input.target);
   // Abrir sin seguir enlaces y leer del MISMO descriptor: evita sustituir
   // el archivo entre la validación y la copia de código potencialmente hostil.
-  const fd=openSync(source,constants.O_RDONLY|constants.O_NOFOLLOW);
+  // Distinguir ausencia de fuente de un fallo de arranque Docker.
+  // Esta comprobación solo se realiza tras verificar el entorno autorizado.
+  let fd:number;
+  try{fd=openSync(source,constants.O_RDONLY|constants.O_NOFOLLOW);}
+  catch(error){
+   if((error as NodeJS.ErrnoException).code==="ENOENT")
+    return {verified:false,completed:0,reason:"origen-ausente"};
+   throw error;
+  }
   let bytes:Buffer;
   try{
    const stat=fstatSync(fd);

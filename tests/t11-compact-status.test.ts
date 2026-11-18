@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
+import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import type {AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
 const sample=(more:Partial<AsenPanelSnapshot>={}):AsenPanelSnapshot=>({todos:[],agents:[],jobs:[],...more});
 const active=projectHostStatus({model:{provider:"provider",id:"verified"},thinkingLevel:"high",getContextUsage:()=>({tokens:950,contextWindow:1000,percent:95})});
@@ -208,4 +209,13 @@ test("T11: el aviso de hijos prevalece si el diseño compacto y el largo muestra
  assert.doesNotMatch(row,/! ctx 95%/u);
  assert.match(row,/\/asen-panel$/u);
  assert.ok(visibleWidth(row)<=40);
+});
+
+test("T11: terminal muy estrecha conserva el ancho real sin lanzar errores",()=>{
+ for(const width of [1,2,3,5,8,10,11,12,15]){
+  const result=renderT11CompactFallback(sample({agentFlowUnavailable:true}),width);
+  assert.ok(visibleWidth(result)<=width,"ancho "+width+": "+result);
+  assert.doesNotMatch(result,/\x1b|\n/u);
+  if(width===11||width===12)assert.equal(result,"/asen-panel");
+ }
 });

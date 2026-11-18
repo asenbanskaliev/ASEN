@@ -114,8 +114,8 @@ try{
    "El controlador debe acreditar que rechazó el export");
  }
  assert.deepEqual(runDockerBehaviorCases({root,target:"candidato-ausente.mjs",fn:"sumEvenNumbers",image,cases}),
-  {verified:false,completed:0,reason:"aislamiento-no-disponible"},
-  "La falta del archivo debe bloquear antes del lanzamiento de Docker");
+  {verified:false,completed:0,reason:"origen-ausente"},
+  "El origen ausente se detecta antes de iniciar Docker");
  console.log("PRUEBA_GITHUB_DOCKER_OK: red aislada y cinco casos externos verificados");
  console.log("BLOQUEO_T06_T08: permanece vigente; sin proveedores, Writer ni permisos");
 }finally{

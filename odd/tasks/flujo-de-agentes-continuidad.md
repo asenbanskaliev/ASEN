@@ -640,3 +640,9 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 ## 18/11/2026 — T07: igualdad exacta del número de hijos en cola
 - Reparadas dos expresiones de prueba que escapaban de más el límite de dígitos. Se añade caso negativo donde «10» no puede satisfacer «1».
 - Validación CI exact-SHA pendiente; sin permisos, modelos ni cambios del flujo productivo.
+
+## 18/11/2026 — Validación de fuente Docker y terminales estrechas
+
+- T08: la ausencia de un archivo real en el trabajo autorizado se distingue de un fallo de Docker con la razón `origen-ausente`, antes de ejecutar Docker. La prueba local solo verifica el bloqueo `solo-github-actions`.
+- T11: la función de reserva compacta ya admite anchos de 1 a 11 columnas; nueva prueba de ancho 1–15 sin desbordamiento y sin elevar artificialmente el ancho del terminal.
+- No se amplían permisos, no se ejecuta código generado fuera del contenedor, no hay merge, `globalFull:false`. Validación del SHA nuevo pendiente.
