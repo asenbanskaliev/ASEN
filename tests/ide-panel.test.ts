@@ -240,7 +240,9 @@ test("T06/T07 distingue cola y lanzamiento no acreditado en TODOS y AGENTS",()=>
  assert.match(todos,/launch-unverified/u);
  assert.match(todos,/queued-observed/u);
  assert.match(agents,/Lanzamientos sin verificar: 1/u);
- assert.match(agents,/Agentes hijos observados en cola: 1(?!\\d)/u);
+ assert.match(agents,/Agentes hijos observados en cola: 1(?!\d)/u);
+  assert.doesNotMatch("Agentes hijos observados en cola: 10",/Agentes hijos observados en cola: 1(?!\d)/u,
+   "Diez hijos no pueden satisfacer la observación exacta de uno");
  assert.match(agents,/Worktree Workers: 0 active observed/u);
  const status=renderAsenWorkRow(scope,160);
  assert.ok(status);
@@ -419,7 +421,7 @@ test("T07 observa Workers activos y en cola aunque Git esté bloqueado",()=>{
  const rows=renderAsenPanel(input,150).join("\n");
  assert.match(rows,/AGENTS · 0 local running · 1 child observed/u);
  assert.match(rows,/Worktree Workers: 1 active observed/u);
- assert.match(rows,/Agentes hijos observados en cola: 1(?!\\d)/u);
+ assert.match(rows,/Agentes hijos observados en cola: 1(?!\d)/u);
  const row=renderAsenWorkRow(input,160)??"";
  assert.match(row,/2 child tasks blocked/u);assert.match(row,/1 child Workers observed/u);
  assert.match(row,/1 hijos en cola/u);

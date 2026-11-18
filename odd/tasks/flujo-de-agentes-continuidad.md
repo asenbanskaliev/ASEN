@@ -636,3 +636,7 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - T06: se crea el primer worktree, el segundo destino queda ocupado tras la reserva; se exige conservar el primer worktree y el diario en reservado, impidiendo una segunda reserva de los mismos scopes. No se borra ni reintenta automáticamente.
 - T11: en empate de dos avisos a 40 columnas, el bloqueo observado y el aviso de hijos desconocidos prevalecen sobre la advertencia secundaria de contexto.
 - Probar en CI exact-SHA, sin permisos ni modelo; globalFull:false.
+
+## 18/11/2026 — T07: igualdad exacta del número de hijos en cola
+- Reparadas dos expresiones de prueba que escapaban de más el límite de dígitos. Se añade caso negativo donde «10» no puede satisfacer «1».
+- Validación CI exact-SHA pendiente; sin permisos, modelos ni cambios del flujo productivo.
