@@ -619,7 +619,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(!t11Snapshot?.agentFlow||!t11ChildObservedAt)return;
      // El plazo vence incluso si el usuario no escribe ni Pi emite eventos.
      // Solo invalida presentación: sin consultas, modelos ni acciones Writer.
-     publishInspectedWorkRow(ctx,{...t11Snapshot,agentFlow:undefined,agentFlowUnavailable:true});
+     // exactOptionalPropertyTypes: quitar la propiedad, no asignar undefined.
+     // Solo se modifica esta copia del snapshot de presentación.
+     const unknown={...t11Snapshot,agentFlowUnavailable:true};
+     Reflect.deleteProperty(unknown,"agentFlow");
+     publishInspectedWorkRow(ctx,unknown);
     });
     t11Observer=createT11RailObserver({
      // El modo compacto visible también observa hijos, no solo el lateral ancho.
