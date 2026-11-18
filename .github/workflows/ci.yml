@@ -730,12 +730,16 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-  # Pruebas de código generado exclusivamente en GitHub; no se ejecuta Docker
-  # en Windows/macOS ni en ASEN local. Sin modelos, permisos Writer ni secretos.
+  # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
+  # Ensayo adicional exclusivamente por etiqueta manual de un solo evento,
+  # sin modelos, permisos Writer ni secretos; nunca en el equipo local.
   generated-code-docker-sandbox:
-    name: T06/T08 contenedor sin red (solo GitHub, sin modelos)
+    name: T06/T08 contenedor opcional sin red (solo GitHub, sin modelos)
     if: >-
       github.event_name == 'pull_request' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-codigo-aislado-una-vez' &&
+      github.actor == 'asenbanskaliev' &&
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event.pull_request.number == 61 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
