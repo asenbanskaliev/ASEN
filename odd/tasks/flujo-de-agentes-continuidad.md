@@ -653,3 +653,11 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - T08: `ENOBUFS` se notifica como `salida-excesiva` y mantiene `verified:false` y los casos anteriores contados.
 - T06: las variables Git del entorno se limpian sin distinguir mayúsculas/minúsculas para evitar `Git_Dir` heredado en Windows; se añaden pruebas negativas.
 - CI exacto del siguiente SHA pendiente. `globalFull:false`, sin fusión ni ampliación de permisos.
+
+## 18/11/2026 — Lecturas T11 obsoletas y estado de panel
+
+- Las consultas manuales incorporan versiones de Git, invalidación y publicación local. Si quedan superadas, sus resultados no se publican en caché, lateral ni ventana modal.
+- El panel nativo comprueba la versión antes de pintar y no convierte un resultado descartado en una falsa pérdida de actividad. Se añaden dos pruebas de ventana modal.
+- Los sondeos mantienen los hijos observados y descartan el Todo local anterior cuando hay una publicación local más reciente. Un fallo antiguo no elimina datos locales válidos.
+- El aviso sobre Git síncrono en los sondeos es independiente y sigue pendiente de resolver.
+- Sin fusión, sin permisos extra, `globalFull:false`. CI exact-SHA pendiente.

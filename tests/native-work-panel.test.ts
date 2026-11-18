@@ -626,3 +626,33 @@ test("T11/T07: cambio de sesión y cierre no publican errores ni datos antiguos 
  assert.equal(unavailable,0);
  assert.equal(updates,0);
 });
+
+test("T11: el modal rechaza una lectura antigua antes de dibujar",async()=>{
+ let resolveRead!:(value:AsenPanelSnapshot)=>void;
+ let accept=false,refreshed=0,renders=0;
+ const previous:AsenPanelSnapshot={...snapshot,changes:{branch:"actual",files:1}};
+ const old:AsenPanelSnapshot={...snapshot,changes:{branch:"obsoleta",files:7}};
+ const panel=createNativeWorkPanel(previous,{
+  terminalRows:()=>80,requestRender(){renders++;},close(){},
+  refresh:()=>new Promise(resolve=>{resolveRead=resolve;}),
+  acceptSnapshot:()=>accept,onRefreshed:()=>{refreshed++;}
+ });
+ const pending=panel.refreshNow();resolveRead(old);await pending;
+ assert.equal(refreshed,0);assert.equal(renders,0);
+ assert.doesNotMatch(panel.render(100).join("\n"),/obsoleta/u);
+ accept=true;
+ const current=panel.refreshNow();resolveRead(old);await current;
+ assert.equal(refreshed,1);assert.equal(renders,1);
+ panel.dispose();
+});
+test("T11: ignorar una lectura superada no invalida una observación correcta",async()=>{
+ let unavailable=0,renders=0;
+ const panel=createNativeWorkPanel(snapshot,{
+  terminalRows:()=>80,requestRender(){renders++;},close(){},
+  refresh:async()=>{throw Error("lectura superada");},
+  ignoreReadFailure:error=>error instanceof Error&&error.message==="lectura superada",
+  onUnavailable:()=>{unavailable++;}
+ });
+ await panel.refreshNow();assert.equal(unavailable,0);assert.equal(renders,0);
+ panel.dispose();
+});

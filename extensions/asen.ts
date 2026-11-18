@@ -376,8 +376,19 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const t11GitObservation=createT11GitObservationCache();
   // Las lecturas antiguas no pueden resucitar datos tras una invalidación.
   let gitObservationGeneration=0,t11ActivityInvalidationVersion=0;
-  const t11ObserverVersions=new WeakMap<AsenPanelSnapshot,number>();
-  let t11ObserverReadVersion=0;
+  let t11LocalPublicationVersion=0;
+  type T11Version={invalid:number;local:number};
+  const t11ObserverVersions=new WeakMap<AsenPanelSnapshot,T11Version>();
+  let t11ObserverReadVersion:T11Version={invalid:0,local:0};
+  type T11ManualVersion=T11Version & {git:number};
+  const t11ManualVersions=new WeakMap<AsenPanelSnapshot,T11ManualVersion>();
+  class T11SnapshotSuperado extends Error{}
+  const t11ManualActual=(snapshot:AsenPanelSnapshot):boolean=>{
+   const token=t11ManualVersions.get(snapshot);
+   return !token||token.git===gitObservationGeneration&&
+    token.invalid===t11ActivityInvalidationVersion&&
+    token.local===t11LocalPublicationVersion;
+  };
   const restoreT11Git=(ctx:CommandContext,snapshot:AsenPanelSnapshot):AsenPanelSnapshot=>{
    try{return t11GitObservation.restore(ctx.sessionManager?.getSessionId?.()??"",
     realpathSync(path.resolve(ctx.cwd)),snapshot);}
@@ -422,6 +433,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   // Immutable, session-scoped display data. Never performs an agent action.
   const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual"):Promise<AsenPanelSnapshot>=>{
    const gitGeneration=mode==="manual"?++gitObservationGeneration:0;
+   const startInvalid=t11ActivityInvalidationVersion,startLocal=t11LocalPublicationVersion;
    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx);assertCurrent();
    const [todos,agents]=await Promise.all([
     todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
@@ -457,11 +469,25 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     throw new Error("ASEN panel scope changed while reading worktree flow");
    // Solo el panel manual guarda la última observación Git comprobada.
    // Un Git fallido o ausente la retira; la lectura periódica no la modifica.
-   if(mode==="manual"&&gitGeneration===gitObservationGeneration)
-    t11GitObservation.remember(identity.sessionId,identity.projectId,changes);
-   return {todos,todosObserved:!!todoStorePromise,agents,jobs,...(changes?{changes}:{}),
-    hostStatus,integrationInspection,permission:permissionSession.mode(ctx),
+   if(mode==="manual"&&(gitGeneration!==gitObservationGeneration||
+      startInvalid!==t11ActivityInvalidationVersion||
+      startLocal!==t11LocalPublicationVersion))
+    throw new T11SnapshotSuperado("ASEN: observación del panel superada");
+   const snapshot:AsenPanelSnapshot={todos,todosObserved:!!todoStorePromise,agents,jobs,
+    ...(changes?{changes}:{}),hostStatus,integrationInspection,
+    permission:permissionSession.mode(ctx),
     ...(agentFlow?{agentFlow}:{}),...(agentFlowUnavailable?{agentFlowUnavailable:true}:{})};
+   if(mode==="manual"){
+    t11GitObservation.remember(identity.sessionId,identity.projectId,changes);
+    t11ManualVersions.set(snapshot,{git:gitGeneration,invalid:startInvalid,local:startLocal});
+   }
+   return snapshot;
+  };
+  const readCurrentManualPanel=async(ctx:CommandContext):Promise<AsenPanelSnapshot|undefined>=>{
+   try{
+    const snapshot=await getPanelSnapshot(ctx);
+    return t11ManualActual(snapshot)?snapshot:undefined;
+   }catch(error){if(error instanceof T11SnapshotSuperado)return undefined;throw error;}
   };
   // La observación de hijos se hace SOLO cuando se abre el panel.
   // No consultar Git ni diarios externos en cada refresco del editor.
@@ -481,6 +507,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await refreshHostStatus(ctx);
   };
   const publishInspectedWorkRow=(ctx:CommandContext,snapshot:AsenPanelSnapshot):void=>{
+   if(!t11ManualActual(snapshot))return;
    const observed=restoreT11Git(ctx,observeT11ChildAvailability(snapshot));
    const localMissing=observed.activityUnavailable===true;
    const childrenMissing=observed.agentFlowUnavailable===true;
@@ -499,6 +526,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     t11ChildObservedAt=Date.now();t11ChildExpiry?.renew();
    }
    t11Snapshot=observed;t11Rail?.refresh();
+   if(!localMissing&&t11ManualVersions.has(snapshot)){
+    ++t11LocalPublicationVersion;
+    try{
+     const sessionId=ctx.sessionManager?.getSessionId?.()??"";
+     const projectId=realpathSync(path.resolve(ctx.cwd));
+     t11ActivityCache.put(sessionId,projectId,observed);
+    }catch{/* La interfaz no puede publicar datos de otro proyecto. */}
+   }
    // La pérdida de datos invalida la barra; al recuperar, solo otra lectura
    // local fresca puede volver a publicar sus contadores.
    if(recovered)void refreshWorkRow(ctx);
@@ -526,6 +561,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
     // Solo la lectura más reciente al iniciarse puede publicar progreso en Pi.
+    ++t11LocalPublicationVersion;
     ctx.ui.setWidget("asen-todo-progress",todoStorePromise?
      todoProgressWidget(todos,3,activeValidationTask(identity.sessionId,identity.projectId),width):undefined,
      {placement:"belowEditor"});
@@ -681,18 +717,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      }),
      current:()=>{try{guard();return true;}catch{return false;}},
      read:async()=>{
-      const started=t11ActivityInvalidationVersion;
+      const started:T11Version={invalid:t11ActivityInvalidationVersion,
+       local:t11LocalPublicationVersion};
       t11ObserverReadVersion=started;
       const snapshot=await getPanelSnapshot(ctx,"observer");
       t11ObserverVersions.set(snapshot,started);
       return snapshot;
      },
      onSnapshot:snapshot=>{
-      if(t11ObserverVersions.get(snapshot)!==t11ActivityInvalidationVersion)return;
-      publishInspectedWorkRow(ctx,snapshot);
+      const started=t11ObserverVersions.get(snapshot);
+      if(!started||started.invalid!==t11ActivityInvalidationVersion)return;
+      let observed=snapshot;
+      if(started.local!==t11LocalPublicationVersion){
+       // Conservar la observación hija, pero nunca recuperar el Todo local viejo.
+       if(t11ActivityUnavailable||!t11Snapshot||t11Snapshot.activityUnavailable)return;
+       observed={...snapshot,todos:t11Snapshot.todos,
+        agents:t11Snapshot.agents,jobs:t11Snapshot.jobs};
+      }
+      publishInspectedWorkRow(ctx,observed);
      },
      onUnavailable:()=>{
-      if(t11ObserverReadVersion!==t11ActivityInvalidationVersion)return;
+      if(t11ObserverReadVersion.invalid!==t11ActivityInvalidationVersion||
+         t11ObserverReadVersion.local!==t11LocalPublicationVersion)return;
       publishInspectedWorkRow(ctx,unavailableT11RailSnapshot());
      },
     });
@@ -1373,9 +1419,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // A real Pi TUI overlay is preferred to message-only selection.
     // It is modal and read-only; it does not replace the persistent fullscreen rail.
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
-     const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;assertCurrent();
+     const snapshot=await readCurrentManualPanel(ctx);
+     if(!snapshot)return ["ASEN: una lectura más reciente sustituyó la observación del panel."];
+     const before=ctx.cwd;assertCurrent();
+     if(!t11ManualActual(snapshot))
+      return ["ASEN: otra observación del panel es más reciente."];
      publishInspectedWorkRow(ctx,snapshot);
      let nativePanel:ReturnType<typeof createNativeWorkPanel>|undefined;
+     let modalGitGeneration=0,modalInvalid=0,modalLocal=0;
      let action:unknown;
      try{
       action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
@@ -1386,6 +1437,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         // Los hijos Pi pueden vivir en otro proceso. Sus registros se vuelven
         // a leer del disco SOLO mientras la ventana está abierta.
         refresh:async()=>{
+         modalGitGeneration=gitObservationGeneration+1;
+         modalInvalid=t11ActivityInvalidationVersion;
+         modalLocal=t11LocalPublicationVersion;
          assertCurrent();
          const current=await sessionIdentity(ctx);assertCurrent();
          if(ctx.cwd!==before||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
@@ -1393,6 +1447,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
          return getPanelSnapshot(ctx);
         },
         autoRefreshMs:5000,
+        acceptSnapshot:t11ManualActual,
+        ignoreReadFailure:error=>error instanceof T11SnapshotSuperado||
+         modalGitGeneration!==gitObservationGeneration||
+         modalInvalid!==t11ActivityInvalidationVersion||
+         modalLocal!==t11LocalPublicationVersion,
         onRefreshed:fresh=>publishInspectedWorkRow(ctx,fresh),
         // El modal y el lateral comparten la misma observación de sesión.
         // Si falla la lectura no conservar hijos activos antiguos.
@@ -1432,7 +1491,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const current=await sessionIdentity(ctx);
     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
      return ["ASEN panel scope changed. No action performed."];
-    const snapshot=await getPanelSnapshot(ctx),width=Math.max(12,terminalColumns());assertCurrent();
+    const snapshot=await readCurrentManualPanel(ctx);
+    if(!snapshot)return ["ASEN: una nueva lectura sustituyó esta consulta."];
+    const width=Math.max(12,terminalColumns());assertCurrent();
+    if(!t11ManualActual(snapshot))
+     return ["ASEN: la consulta ya tiene una lectura más reciente."];
     publishInspectedWorkRow(ctx,snapshot);
     if(section)return [...renderAsenPanelSection(snapshot,section,width)];
     if(view==="STATUS")return [renderAsenStatusLine(snapshot,width)];

@@ -12,6 +12,10 @@ export interface NativePanelControls{
  readonly autoRefreshMs?:number;
  /** Solo tras aplicar una observación nueva del mismo contexto. */
  readonly onRefreshed?:(snapshot:AsenPanelSnapshot)=>void;
+ /** Una lectura antigua no sustituye los datos que ya están dibujados. */
+ readonly acceptSnapshot?:(snapshot:AsenPanelSnapshot)=>boolean;
+ /** Una lectura superada no debe provocar un falso estado indisponible. */
+ readonly ignoreReadFailure?:(error:unknown)=>boolean;
  /** Si falla la lectura, retirar también los datos compartidos del lateral.
   * No equivale a cero agentes ni cambia permisos. */
  readonly onUnavailable?:(snapshot:AsenPanelSnapshot)=>void;
@@ -46,11 +50,12 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    const next=await controls.refresh();
    if(disposed)return;
    if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
+   if(controls.acceptSnapshot&&!controls.acceptSnapshot(next))return;
    snapshot=next;
    try{controls.onRefreshed?.(next);}catch{/* La presentación no modifica la observación. */}
    controls.requestRender();
-  }catch{
-   if(disposed)return;
+  }catch(error){
+   if(disposed||controls.ignoreReadFailure?.(error))return;
    if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
    // Ante lectura fallida no conservar estados hijos activos obsoletos.
    // La lectura falló: no reutilizar listas, revisión, Git o integraciones
