@@ -9,7 +9,7 @@ import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-revi
 import {requireLiveT06GithubReviewerApprovals} from "../src/runtime/agents/t06-github-reviewer-approvals.js";
 
 const files=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
-const modelPattern=/^nvidia\/[A-Za-z0-9._-]{3,100}$/u;
+const modelPattern=/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u;
 const sha=(value:string)=>createHash("sha256").update(value).digest("hex");
 export async function runT06NativeIndependentReviews(
  roots:readonly string[],policyRoot:string,writerModel:string
