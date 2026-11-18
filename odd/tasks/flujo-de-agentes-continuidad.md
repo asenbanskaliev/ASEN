@@ -661,3 +661,9 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - Los sondeos mantienen los hijos observados y descartan el Todo local anterior cuando hay una publicación local más reciente. Un fallo antiguo no elimina datos locales válidos.
 - El aviso sobre Git síncrono en los sondeos es independiente y sigue pendiente de resolver.
 - Sin fusión, sin permisos extra, `globalFull:false`. CI exact-SHA pendiente.
+
+## 18/11/2026 — Git asíncrono en el sondeo T11/T07
+- Se añade inspección de cambios Git con procesos asíncronos sin shell. Conserva límites, comprobaciones de identidad, alcances y rechazo del inspector manual.
+- El sondeo periódico utiliza esta modalidad para no bloquear el hilo de Pi; la consulta manual mantiene su comportamiento actual.
+- Prueba de paridad frente a estados limpio, cambios previstos, cambios fuera del alcance, divergencia y ruta ausente.
+- Sin permisos, sin merge, sin modelos; `globalFull:false`. CI exact-SHA pendiente.

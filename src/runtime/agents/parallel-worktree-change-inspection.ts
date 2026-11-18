@@ -1,7 +1,7 @@
 /** Safe, read-only inspection of one prepared Git worktree for a frozen
  * source candidate. This is not code review, test evidence, merge approval,
  * or an agent execution receipt. Never invokes shell or repository hooks. */
-import {execFileSync} from "node:child_process";
+import {execFile,execFileSync} from "node:child_process";
 import {realpathSync,lstatSync} from "node:fs";
 import {isAbsolute,resolve} from "node:path";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
@@ -64,6 +64,53 @@ export function inspectParallelWorktreeChanges(input:{
   const tracked=git(root,"diff","--name-only","--no-ext-diff","--no-textconv","--no-renames","-z",input.baseRevision);
   // Includes ignored worktree files: absence of an ignore rule is not a write grant.
   const untracked=git(root,"ls-files","--others","-z");
+  const raw=[...tracked.split("\0"),...untracked.split("\0")].filter(Boolean);
+  if(raw.length>changedLimit||raw.some(x=>!plainRelative(x)))return unavailable();
+  const changedPaths=Object.freeze([...new Set(raw)].sort());
+  const outOfScopePaths=Object.freeze(changedPaths.filter(x=>!includesPath(input.writeSurfaces,x)));
+  const status=outOfScopePaths.length?"out-of-scope":!headMatchesBase?"head-diverged":
+   changedPaths.length?"scoped-changes":"clean";
+  return Object.freeze({status,changedPaths,outOfScopePaths,headMatchesBase,sourceVerified:true,
+   acceptance:"not-accepted",autoMerge:false});
+ }catch{return unavailable();}
+}
+
+/** Inspección de solo lectura sin bloquear el bucle de eventos de Pi.
+ * Misma política de rechazo, mismo alcance y mismos límites del inspector manual.
+ */
+function gitAsync(root:string,...args:string[]):Promise<string>{
+ return new Promise((resolve,reject)=>{
+  execFile("git",["-c","core.fsmonitor=false","-c","core.untrackedCache=false",
+   "-C",root,...args],{
+   encoding:"utf8",maxBuffer:1_000_000,timeout:7500,windowsHide:true,
+   env:{...process.env,GIT_OPTIONAL_LOCKS:"0"}
+  },(error,stdout)=>{if(error)reject(error);else resolve(stdout);});
+ });
+}
+async function commonDirAsync(root:string):Promise<string>{
+ return realpathSync(resolve(root,(await gitAsync(root,"rev-parse","--git-common-dir")).trim()));
+}
+export async function inspectParallelWorktreeChangesAsync(
+ input:Parameters<typeof inspectParallelWorktreeChanges>[0]
+):Promise<ParallelWorktreeChangeInspection>{
+ try{
+  if(!isAbsolute(input.sourceRoot)||!isAbsolute(input.worktreeRoot)||!sha.test(input.baseRevision)||
+    !Array.isArray(input.writeSurfaces)||input.writeSurfaces.length<1||
+    input.writeSurfaces.length>256||input.writeSurfaces.some(x=>typeof x!=="string"||!plainRelative(x)))
+   return unavailable();
+  if(!lstatSync(input.worktreeRoot).isDirectory()||lstatSync(input.worktreeRoot).isSymbolicLink())
+   return unavailable();
+  const source=realpathSync(input.sourceRoot),root=realpathSync(input.worktreeRoot);
+  if(sameWorkspaceIdentityPath(source,root)||
+    !sameWorkspaceIdentityPath(source,resolve((await gitAsync(source,"rev-parse","--show-toplevel")).trim()))||
+    !sameWorkspaceIdentityPath(root,resolve((await gitAsync(root,"rev-parse","--show-toplevel")).trim()))||
+    !sameWorkspaceIdentityPath(await commonDirAsync(root),await commonDirAsync(source))||
+    (await gitAsync(source,"rev-parse","HEAD")).trim()!==input.baseRevision)
+   return unavailable();
+  const headMatchesBase=(await gitAsync(root,"rev-parse","HEAD")).trim()===input.baseRevision;
+  const tracked=await gitAsync(root,"diff","--name-only","--no-ext-diff","--no-textconv",
+   "--no-renames","-z",input.baseRevision);
+  const untracked=await gitAsync(root,"ls-files","--others","-z");
   const raw=[...tracked.split("\0"),...untracked.split("\0")].filter(Boolean);
   if(raw.length>changedLimit||raw.some(x=>!plainRelative(x)))return unavailable();
   const changedPaths=Object.freeze([...new Set(raw)].sort());

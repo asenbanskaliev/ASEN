@@ -13,7 +13,7 @@ import type {SourceTodoRow} from "../agents/parallel-todo-bindings.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
 import {attributeParallelChildWorker} from "../agents/parallel-worker-attribution.js";
-import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change-inspection.js";
+import {inspectParallelWorktreeChanges,inspectParallelWorktreeChangesAsync} from "../agents/parallel-worktree-change-inspection.js";
 import {projectParallelAgentFlow,type AgentFlowSourceBatch,type AgentFlowProjection} from "./agent-flow-overview.js";
 
 const MAX_VISIBLE_BATCHES=3;
@@ -31,6 +31,8 @@ export async function readAgentFlowPanelObservation(input:{
  /** Only exact ODD Todo -> TaskAgentLink -> AgentRuntime evidence is attributed. */
  readonly loadChildAgentRecords?:(identity:TodoContext)=>Promise<readonly PublicAgentRecord[]>;
  readonly loadChildTaskAgentLinks?:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>;
+ /** El sondeo puede inspeccionar Git sin bloquear el hilo principal. */
+ readonly nonBlockingWorktreeInspection?:boolean;
 }):Promise<AgentFlowPanelObservation>{
  const {identity}=input;
  if(!identity?.sessionId||!identity.projectId||
@@ -108,12 +110,15 @@ export async function readAgentFlowPanelObservation(input:{
   childStates.set(link.sourceTodoId,{id:link.childSessionId,agents,
    ...(modelRequested?{modelRequested}:{})});
  }
- const batches:AgentFlowSourceBatch[]=selected.map(record=>({
+ const inspectChanges=async(args:Parameters<typeof inspectParallelWorktreeChanges>[0])=>
+  input.nonBlockingWorktreeInspection===true?
+   inspectParallelWorktreeChangesAsync(args):inspectParallelWorktreeChanges(args);
+ const batches:AgentFlowSourceBatch[]=await Promise.all(selected.map(async record=>({
   batchId:record.id,state:record.state,
   ...(attempts?{supervisorClaimed:attempts.some(row=>row.batchId===record.id)}:{}),
-  tasks:record.tasks.map(task=>{
+  tasks:await Promise.all(record.tasks.map(async task=>{
    const todo=byTodo.get(task.taskId),childSession=childStates.get(task.taskId);
-   const changes=record.state==="prepared"?inspectParallelWorktreeChanges({
+   const changes=record.state==="prepared"?await inspectChanges({
     sourceRoot:record.projectId,worktreeRoot:task.worktreeRoot,
     baseRevision:record.sourceHead,writeSurfaces:task.writeSurfaces
    }):{
@@ -130,8 +135,8 @@ export async function readAgentFlowPanelObservation(input:{
     ...(receipts?{receiptRecorded:receipts.some(row=>row.batchId===record.id&&row.sourceTodoId===task.taskId)}:{}),
     changes,...(childSession?{childSession}:{})
    };
-  })
- }));
+  }))
+ })));
  return Object.freeze({
   state:"observed" as const,totalRecordedBatches:records.length,
   limited:records.length>selected.length,overview:projectParallelAgentFlow(batches)

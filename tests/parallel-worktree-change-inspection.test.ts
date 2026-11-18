@@ -4,7 +4,7 @@ import {execFileSync} from "node:child_process";
 import {existsSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
-import {inspectParallelWorktreeChanges} from "../src/runtime/agents/parallel-worktree-change-inspection.js";
+import {inspectParallelWorktreeChanges,inspectParallelWorktreeChangesAsync} from "../src/runtime/agents/parallel-worktree-change-inspection.js";
 
 function fixture(t:TestContext){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-review-origin-"))),
@@ -21,14 +21,16 @@ function fixture(t:TestContext){
  git(source,"add","a.ts","b.ts",".gitignore");git(source,"commit","-qm","baseline");
  const head=git(source,"rev-parse","HEAD");
  git(source,"worktree","add","--detach",root,head);
- const inspect=(opts:Record<string,unknown>={})=>inspectParallelWorktreeChanges({
+ const input=(opts:Record<string,unknown>={})=>({
   sourceRoot:source,worktreeRoot:root,baseRevision:head,writeSurfaces:["a.ts"],...opts
  } as Parameters<typeof inspectParallelWorktreeChanges>[0]);
+ const inspect=(opts:Record<string,unknown>={})=>inspectParallelWorktreeChanges(input(opts));
+ const inspectAsync=(opts:Record<string,unknown>={})=>inspectParallelWorktreeChangesAsync(input(opts));
  t.after(()=>{
   if(existsSync(root))try{git(source,"worktree","remove","--force",root);}catch{}
   rmSync(source,{recursive:true,force:true});rmSync(parent,{recursive:true,force:true});
  });
- return {source,root,head,git,inspect};
+ return {source,root,head,git,inspect,inspectAsync};
 }
 
 test("T06 exact frozen worktree produces advisory clean, never delivery acceptance",t=>{
@@ -102,4 +104,17 @@ test("T06 enumera archivos nuevos anidados y conserva su ámbito exacto",t=>{
  const forbidden=f.inspect({writeSurfaces:["a.ts"]});
  assert.equal(forbidden.status,"out-of-scope");
  assert.deepEqual(forbidden.outOfScopePaths,["nuevo/dentro.ts"]);
+});
+
+test("T07: el sondeo Git asíncrono conserva las decisiones del inspector manual",async t=>{
+ const f=fixture(t);
+ assert.deepEqual(await f.inspectAsync(),f.inspect());
+ writeFileSync(join(f.root,"a.ts"),"export const a = 11;\n");
+ assert.deepEqual(await f.inspectAsync(),f.inspect());
+ writeFileSync(join(f.root,"b.ts"),"fuera del alcance\n");
+ assert.deepEqual(await f.inspectAsync(),f.inspect());
+ f.git(f.root,"add","a.ts");f.git(f.root,"commit","-qm","cambio no aceptado");
+ assert.deepEqual(await f.inspectAsync(),f.inspect());
+ assert.deepEqual(await f.inspectAsync({worktreeRoot:join(f.root,"inexistente")}),
+  f.inspect({worktreeRoot:join(f.root,"inexistente")}));
 });

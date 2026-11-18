@@ -452,6 +452,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(todoStorePromise&&agentRuntimePromise)try{
     agentFlow=await readAgentFlowPanelObservation({
      identity,journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
+     ...(mode==="observer"?{nonBlockingWorktreeInspection:true}:{}),
      sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
      planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
      supervisorClaimsFile:path.join(home(),".asen","parallel-parent-supervisor-claims.json"),
