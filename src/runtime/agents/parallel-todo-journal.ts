@@ -2,7 +2,7 @@
  * record can mint an agent grant. A crash between reserve and commit leaves
  * an explicit requires-reconciliation record with deterministic expected paths. */
 import {randomUUID} from "node:crypto";
-import {realpathSync} from "node:fs";
+import {lstatSync,realpathSync} from "node:fs";
 import {readFile} from "node:fs/promises";
 import {isAbsolute,join,resolve} from "node:path";
 import {atomicWriteText} from "../../io/atomic-write.js";
@@ -103,6 +103,32 @@ export class ParallelTodoWorktreeJournal{
    await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\n");
   });
   return structuredClone(record);
+ }
+
+ /** Solo puede retirar la reserva exacta del diálogo de confirmación.
+  * Se ejecuta ANTES de entregar el permiso de creación al preparador Git.
+  * Ningún directorio existente se borra, fuerza ni declara seguro. */
+ async releaseUnstarted(input:{identity:TodoContext;id:string;head:string;parentDir:string}):Promise<void>{
+  if(!valid(input.identity?.sessionId)||!valid(input.identity?.projectId)||
+   !uuid.test(input.id)||!sha.test(input.head)||!isAbsolute(input.parentDir))
+   throw new Error("Invalid identity for unstarted worktree reservation release");
+  await preparePrivateFile(this.file,true);
+  await withExclusiveFileLock(this.file,async()=>{
+   const journal=await load(this.file);
+   const index=journal.records.findIndex(row=>row.id===input.id&&
+    row.sessionId===input.identity.sessionId&&
+    sameWorkspaceIdentityPath(row.projectId,input.identity.projectId)&&
+    row.sourceHead===input.head&&row.parentDir===input.parentDir);
+   const record=index>=0?journal.records[index]:undefined;
+   if(!record||record.state!=="reserved")
+    throw new Error("No exact unstarted reservation to release; inspect journal manually");
+   // Incluso una ruta ocupada por enlace, archivo o worktree parcial bloquea.
+   // throwIfNoEntry:false no oculta errores de permisos o de acceso.
+   if(record.tasks.some(task=>lstatSync(task.worktreeRoot,{throwIfNoEntry:false})!==undefined))
+    throw new Error("Worktree path exists; preserve reservation for manual inspection");
+   journal.records.splice(index,1);journal.revision++;
+   await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\\n");
+  });
  }
  async markPrepared(input:{identity:TodoContext;id:string;allocations:readonly ParallelWorktreeAllocation[]}):Promise<ParallelTodoWorktreeRecord>{
   await preparePrivateFile(this.file,true);

@@ -472,8 +472,20 @@ export function registerParallelWorktreeCommand(
       });
       if(!bound||!sameSourceTodoBindings(bound,fresh))
        throw new Error("Source ODD Todo state changed while awaiting confirmation; no worktrees were created");
-      await journal!.reserve({identity:owner,id:batchId!,head,parentDir:selection.parentDir,bindings:bound});
-      checkIdentity(); // No repetir una reserva ambigua tras perder la sesión.
+      const reserved=await journal!.reserve({identity:owner,id:batchId!,head,parentDir:selection.parentDir,bindings:bound});
+      try{
+       checkIdentity(); // Tras esta línea Git todavía no ha comenzado.
+      }catch(error){
+       // La devolución del callback precede a cualquier git worktree add.
+       // Liberar solo esta reserva, si siguen ausentes TODOS sus destinos.
+       try{
+        await journal!.releaseUnstarted({identity:owner,id:reserved.id,
+         head:reserved.sourceHead,parentDir:reserved.parentDir});
+       }catch{
+        throw new Error("Session changed after reservation; journal could not be released. Inspect manually before retrying",{cause:error});
+       }
+       throw error;
+      }
      }
      return true;
     }

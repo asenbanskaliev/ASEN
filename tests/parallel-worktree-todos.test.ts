@@ -1227,3 +1227,57 @@ test("T06 deniega reemplazar el gestor Pi aunque se repita el mismo ID",async t=
  await assert.rejects(()=>f.run("prepare"),/session or project changed/u);
  assert.deepEqual(await f.journal.list(f.identity),[]);
 });
+
+
+test("T06: solo se libera la reserva exacta antes de crear cualquier worktree",async t=>{
+ const f=fixture(t),bindings=bindParallelSourceTodos({
+  identity:f.identity,expectedHead:f.head,rows:f.rows,units:f.scopes
+ });
+ const id=newParallelTodoWorktreeBatchId();
+ const saved=await f.journal.reserve({identity:f.identity,id,head:f.head,parentDir:f.parent,bindings});
+ assert.equal(saved.state,"reserved");
+ const attempt=(identity:TodoContext,batchId=id,head=f.head,parentDir=saved.parentDir)=>
+  f.journal.releaseUnstarted({identity,id:batchId,head,parentDir});
+ await assert.rejects(()=>attempt({...f.identity,sessionId:"otra-sesion"}),/No exact unstarted/u);
+ await assert.rejects(()=>attempt(f.identity,newParallelTodoWorktreeBatchId()),/No exact unstarted/u);
+ await assert.rejects(()=>attempt(f.identity,id,"f".repeat(40)),/No exact unstarted/u);
+ assert.equal((await f.journal.list(f.identity)).length,1,
+  "Rechazos ajenos no retiran la reserva de la sesión de origen");
+ await attempt(f.identity);
+ assert.deepEqual(await f.journal.list(f.identity),[]);
+ await assert.rejects(()=>attempt(f.identity),/No exact unstarted/u,
+  "El cierre es único y no puede borrar registros posteriores");
+ // Los dos scopes se vuelven a poder reservar tras el cierre comprobado.
+ const resaved=await f.journal.reserve({
+  identity:f.identity,id:newParallelTodoWorktreeBatchId(),
+  head:f.head,parentDir:f.parent,bindings
+ });
+ assert.equal(resaved.state,"reserved");
+});
+test("T06: nunca se libera una reserva con un destino existente o ya preparado",async t=>{
+ const f=fixture(t),bindings=bindParallelSourceTodos({
+  identity:f.identity,expectedHead:f.head,rows:f.rows,units:f.scopes
+ });
+ const record=await f.journal.reserve({
+  identity:f.identity,id:newParallelTodoWorktreeBatchId(),head:f.head,parentDir:f.parent,bindings
+ });
+ const release=()=>f.journal.releaseUnstarted({
+  identity:f.identity,id:record.id,head:record.sourceHead,parentDir:record.parentDir
+ });
+ // Un enlace o un fichero en el destino tampoco se considera ausencia.
+ const first=record.tasks[0]!.worktreeRoot;
+ writeFileSync(first,"ocupado");
+ await assert.rejects(release,/path exists/u);
+ assert.equal((await f.journal.list(f.identity))[0]?.state,"reserved");
+ rmSync(first);
+ // Una reserva ya PREPARED con trabajo verificable nunca entra en esta ruta.
+ await release();
+ const done=await f.run("prepare-todos") as {status:string;batchId:string};
+ assert.equal(done.status,"prepared");
+ const stored=(await f.journal.list(f.identity)).find(x=>x.id===done.batchId);
+ assert.equal(stored?.state,"prepared");
+ await assert.rejects(()=>f.journal.releaseUnstarted({
+  identity:f.identity,id:done.batchId,head:f.head,parentDir:stored!.parentDir
+ }),/No exact unstarted/u);
+ assert.equal((await f.journal.list(f.identity)).length,1);
+});
