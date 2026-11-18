@@ -53,6 +53,8 @@ jobs:
             tests/t06-writer-evidence.test.ts \
             tests/t06-static-write-evidence.test.ts \
             tests/t06-behavior-handoff.test.ts \
+            tests/t06-github-reviewer-approvals.test.ts \
+            tests/t06-independent-review-admission.test.ts \
             tests/t06-javascript-syntax.test.ts \
             tests/pi-authority.test.ts \
             tests/t09-native-trial-readiness.test.ts \
