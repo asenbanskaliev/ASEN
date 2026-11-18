@@ -106,7 +106,8 @@ test("T06 solo revisión nunca consume dos Writers ni omite la validación origi
  const script=readFileSync(new URL("../scripts/t06-github-independent-review.ts",import.meta.url),"utf8");
  const runner=readFileSync(new URL("../scripts/t06-native-independent-review.ts",import.meta.url),"utf8");
  assert.match(yaml,/^on:\s*\n  workflow_dispatch:/mu);
- assert.doesNotMatch(yaml,/^  (?:push|pull_request|schedule|workflow_call):/mu);
+ assert.doesNotMatch(yaml,/^  (?:push|pull_request|schedule):/mu);
+ assert.match(yaml,/^  workflow_call:/mu);
  assert.match(yaml,/run-id: 44389671458/u);
  assert.match(yaml,/github-token: \$\{\{ github\.token \}\}/u);
  assert.match(yaml,/name: asen-t06-reviewer-a/u);
