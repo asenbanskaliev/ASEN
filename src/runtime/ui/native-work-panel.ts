@@ -12,6 +12,9 @@ export interface NativePanelControls{
  readonly autoRefreshMs?:number;
  /** Solo tras aplicar una observación nueva del mismo contexto. */
  readonly onRefreshed?:(snapshot:AsenPanelSnapshot)=>void;
+ /** Si falla la lectura, retirar también los datos compartidos del lateral.
+  * No equivale a cero agentes ni cambia permisos. */
+ readonly onUnavailable?:(snapshot:AsenPanelSnapshot)=>void;
  /** Only returns a selection to the host; never runs Git inside the modal. */
  readonly openChanges?:()=>void;
  readonly terminalRows:()=>number;
@@ -53,6 +56,9 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    // La lectura falló: no reutilizar listas, revisión, Git o integraciones
    // anteriores como si fueran observaciones vivas del mismo momento.
    snapshot={todos:[],agents:[],jobs:[],activityUnavailable:true,agentFlowUnavailable:true};
+   // Evitar que la barra o el lateral reutilicen datos mientras el modal
+   // ya muestra la pérdida de observación. No se divulga el error original.
+   try{controls.onUnavailable?.(snapshot);}catch{/* Solo presentación. */}
    controls.requestRender();
   }finally{refreshing=false;}
  };
