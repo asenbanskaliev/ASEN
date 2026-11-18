@@ -376,10 +376,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const t11GitObservation=createT11GitObservationCache();
   // Las lecturas antiguas no pueden resucitar datos tras una invalidación.
   let gitObservationGeneration=0,t11ActivityInvalidationVersion=0;
-  let t11LocalPublicationVersion=0;
-  type T11Version={invalid:number;local:number};
+  let t11LocalPublicationVersion=0,t11ChildPublicationVersion=0;
+  type T11Version={invalid:number;local:number;child:number};
   const t11ObserverVersions=new WeakMap<AsenPanelSnapshot,T11Version>();
-  let t11ObserverReadVersion:T11Version={invalid:0,local:0};
+  let t11ObserverReadVersion:T11Version={invalid:0,local:0,child:0};
   type T11ManualVersion=T11Version & {git:number};
   const t11ManualVersions=new WeakMap<AsenPanelSnapshot,T11ManualVersion>();
   class T11SnapshotSuperado extends Error{}
@@ -387,7 +387,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const token=t11ManualVersions.get(snapshot);
    return !token||token.git===gitObservationGeneration&&
     token.invalid===t11ActivityInvalidationVersion&&
-    token.local===t11LocalPublicationVersion;
+    token.local===t11LocalPublicationVersion&&
+    token.child===t11ChildPublicationVersion;
   };
   const restoreT11Git=(ctx:CommandContext,snapshot:AsenPanelSnapshot):AsenPanelSnapshot=>{
    try{return t11GitObservation.restore(ctx.sessionManager?.getSessionId?.()??"",
@@ -431,10 +432,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
   };
   // Immutable, session-scoped display data. Never performs an agent action.
-  const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual"):Promise<AsenPanelSnapshot>=>{
+  const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual",onReadStarted?:()=>void):Promise<AsenPanelSnapshot>=>{
    const gitGeneration=mode==="manual"?++gitObservationGeneration:0;
-   const startInvalid=t11ActivityInvalidationVersion,startLocal=t11LocalPublicationVersion;
+   const startInvalid=t11ActivityInvalidationVersion,startLocal=t11LocalPublicationVersion,startChild=t11ChildPublicationVersion;
    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx);assertCurrent();
+   onReadStarted?.(); // Capturar el inicio efectivo de lectura.
    const [todos,agents]=await Promise.all([
     todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
     agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve((dependencies.agents?.()??[]).filter(record=>record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(record.projectId,identity.projectId))),
@@ -472,7 +474,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    // Un Git fallido o ausente la retira; la lectura periódica no la modifica.
    if(mode==="manual"&&(gitGeneration!==gitObservationGeneration||
       startInvalid!==t11ActivityInvalidationVersion||
-      startLocal!==t11LocalPublicationVersion))
+      startLocal!==t11LocalPublicationVersion||startChild!==t11ChildPublicationVersion))
     throw new T11SnapshotSuperado("ASEN: observación del panel superada");
    const snapshot:AsenPanelSnapshot={todos,todosObserved:!!todoStorePromise,agents,jobs,
     ...(changes?{changes}:{}),hostStatus,integrationInspection,
@@ -480,7 +482,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ...(agentFlow?{agentFlow}:{}),...(agentFlowUnavailable?{agentFlowUnavailable:true}:{})};
    if(mode==="manual"){
     t11GitObservation.remember(identity.sessionId,identity.projectId,changes);
-    t11ManualVersions.set(snapshot,{git:gitGeneration,invalid:startInvalid,local:startLocal});
+    t11ManualVersions.set(snapshot,{git:gitGeneration,invalid:startInvalid,local:startLocal,child:startChild});
    }
    return snapshot;
   };
@@ -526,7 +528,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }else if(observed.agentFlow){
     t11ChildObservedAt=Date.now();t11ChildExpiry?.renew();
    }
-   t11Snapshot=observed;t11Rail?.refresh();
+   t11Snapshot=observed;++t11ChildPublicationVersion;t11Rail?.refresh();
    if(!localMissing&&t11ManualVersions.has(snapshot)){
     ++t11LocalPublicationVersion;
     try{
@@ -549,7 +551,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const refreshWorkRow=async(ctx:CommandContext):Promise<void>=>{
    if(ctx?.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
-   const generation=++workRowGeneration,todoReadGeneration=++todoWidgetGeneration,guard=panelScope(ctx);
+   const generation=++workRowGeneration,todoReadGeneration=++todoWidgetGeneration,
+    startedLocal=t11LocalPublicationVersion,guard=panelScope(ctx);
    try{
     const identity=await sessionIdentity(ctx);guard();
     const [todos,agents]=await Promise.all([
@@ -559,7 +562,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const jobs=backgroundJobs.list(identity.sessionId,identity.projectId);
     const now=await sessionIdentity(ctx);guard();
     if(generation!==workRowGeneration||todoReadGeneration!==todoWidgetGeneration||
-       hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+       startedLocal!==t11LocalPublicationVersion||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
     // Solo la lectura más reciente al iniciarse puede publicar progreso en Pi.
     ++t11LocalPublicationVersion;
@@ -582,7 +585,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       compactAllowed?[renderT11CompactFallback(displayed,width)]:undefined,{placement:"aboveEditor"});
     await refreshHostStatus(ctx);
    }catch{
-    if(generation!==workRowGeneration||hostStatusClosed)return;
+    if(generation!==workRowGeneration||startedLocal!==t11LocalPublicationVersion||hostStatusClosed)return;
     try{guard();}catch{return;}
     // El proveedor falló: invalidar todas las vistas y lecturas anteriores.
     await invalidateT11LocalActivity(ctx);
@@ -719,7 +722,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      current:()=>{try{guard();return true;}catch{return false;}},
      read:async()=>{
       const started:T11Version={invalid:t11ActivityInvalidationVersion,
-       local:t11LocalPublicationVersion};
+       local:t11LocalPublicationVersion,child:t11ChildPublicationVersion};
       t11ObserverReadVersion=started;
       const snapshot=await getPanelSnapshot(ctx,"observer");
       t11ObserverVersions.set(snapshot,started);
@@ -727,7 +730,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      },
      onSnapshot:snapshot=>{
       const started=t11ObserverVersions.get(snapshot);
-      if(!started||started.invalid!==t11ActivityInvalidationVersion)return;
+      if(!started||started.invalid!==t11ActivityInvalidationVersion||started.child!==t11ChildPublicationVersion)return;
       let observed=snapshot;
       if(started.local!==t11LocalPublicationVersion){
        // Conservar la observación hija, pero nunca recuperar el Todo local viejo.
@@ -739,7 +742,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      },
      onUnavailable:()=>{
       if(t11ObserverReadVersion.invalid!==t11ActivityInvalidationVersion||
-         t11ObserverReadVersion.local!==t11LocalPublicationVersion)return;
+         t11ObserverReadVersion.local!==t11LocalPublicationVersion||t11ObserverReadVersion.child!==t11ChildPublicationVersion)return;
       publishInspectedWorkRow(ctx,unavailableT11RailSnapshot());
      },
     });
@@ -1427,7 +1430,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       return ["ASEN: otra observación del panel es más reciente."];
      publishInspectedWorkRow(ctx,snapshot);
      let nativePanel:ReturnType<typeof createNativeWorkPanel>|undefined;
-     let modalGitGeneration=0,modalInvalid=0,modalLocal=0;
+     let modalGitGeneration=0,modalInvalid=0,modalLocal=0,modalChild=0;
      let action:unknown;
      try{
       action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
@@ -1446,14 +1449,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
          modalGitGeneration=gitObservationGeneration+1;
          modalInvalid=t11ActivityInvalidationVersion;
          modalLocal=t11LocalPublicationVersion;
-         return getPanelSnapshot(ctx);
+         modalChild=t11ChildPublicationVersion;
+         return getPanelSnapshot(ctx,"manual",()=>{
+          modalGitGeneration=gitObservationGeneration;
+          modalInvalid=t11ActivityInvalidationVersion;
+          modalLocal=t11LocalPublicationVersion;
+          modalChild=t11ChildPublicationVersion;
+         });
         },
         autoRefreshMs:5000,
         acceptSnapshot:t11ManualActual,
         ignoreReadFailure:error=>error instanceof T11SnapshotSuperado||
          modalGitGeneration!==gitObservationGeneration||
          modalInvalid!==t11ActivityInvalidationVersion||
-         modalLocal!==t11LocalPublicationVersion,
+         modalLocal!==t11LocalPublicationVersion||modalChild!==t11ChildPublicationVersion,
         onRefreshed:fresh=>publishInspectedWorkRow(ctx,fresh),
         // El modal y el lateral comparten la misma observación de sesión.
         // Si falla la lectura no conservar hijos activos antiguos.
