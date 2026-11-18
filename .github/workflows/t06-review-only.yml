@@ -1,0 +1,220 @@
+name: T06 revisión de los Writers existentes sin repetir NVIDIA
+# Modo manual: unicamente revisa los dos archivos del run histórico acreditado.
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: 'SHA actual exacto de la rama de flujo de agentes (40 caracteres)'
+        type: string
+        required: true
+      reviewer_a:
+        description: 'Modelo NVIDIA del revisor A, distinto del escritor'
+        type: string
+        required: true
+      reviewer_b:
+        description: 'Modelo NVIDIA del revisor B, distinto de A y del escritor'
+        type: string
+        required: true
+      coste_desconocido_autorizado:
+        description: 'Acepto expresamente posible coste desconocido de SOLO dos revisores'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: asen-t06-revision-historica-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  comprobar-origen:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'asenbanskaliev' &&
+      github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
+      github.run_attempt == 1 &&
+      inputs.coste_desconocido_autorizado == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      actions: read
+    env:
+      ASEN_T06_EXPECTED_SHA: ${{ inputs.candidate_sha }}
+      ASEN_T06_COST_ACK: ${{ inputs.coste_desconocido_autorizado }}
+      ASEN_T06_SOURCE_RUN_ID: '44389671458'
+      ASEN_T06_SOURCE_SHA: 'a33da9eebb92ac3131c958b14846945c31cd24a7'
+      ASEN_T06_REVIEW_MODEL_A: ${{ inputs.reviewer_a }}
+      ASEN_T06_REVIEW_MODEL_B: ${{ inputs.reviewer_b }}
+    steps:
+      - name: Recuperar SHA actual sin conservar credenciales Git
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Comprobar que ni SHA ni coste se heredan de otra ejecución
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$ASEN_T06_EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]]
+          test "$GITHUB_SHA" = "$ASEN_T06_EXPECTED_SHA"
+          test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$ASEN_T06_COST_ACK" = true
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test -z "${NVIDIA_API_KEY:-}"
+      - name: Instalar verificador sin ejecutar scripts ajenos
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node --import tsx --input-type=module -e "import {validT06ReviewerModels} from './src/runtime/agents/t06-github-reviewer-approvals.ts';if(!validT06ReviewerModels(process.env.ASEN_T06_REVIEW_MODEL_A,process.env.ASEN_T06_REVIEW_MODEL_B))process.exit(1)"
+      - name: Descargar exactamente los dos Writers acreditados del run original
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v4.3.0
+        with:
+          name: asen-t06-dos-writers-${{ env.ASEN_T06_SOURCE_SHA }}-${{ env.ASEN_T06_SOURCE_RUN_ID }}
+          repository: asenbanskaliev/ASEN
+          run-id: 44389671458
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/asen-t06-fuentes-originales
+      - name: Descargar los 17 casos del mismo run original sin NVIDIA
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v4.3.0
+        with:
+          name: asen-t06-pruebas-aisladas-${{ env.ASEN_T06_SOURCE_SHA }}-${{ env.ASEN_T06_SOURCE_RUN_ID }}
+          repository: asenbanskaliev/ASEN
+          run-id: 44389671458
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/asen-t06-pruebas-originales
+      - name: Validar bytes, huellas, informe y 17 pruebas antes de solicitar revisiones
+        shell: bash
+        env:
+          ASEN_T06_REVIEW_CODE_DIR: ${{ runner.temp }}/asen-t06-fuentes-originales
+          ASEN_T06_REVIEW_BEHAVIOR_DIR: ${{ runner.temp }}/asen-t06-pruebas-originales
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/t06-review-replay-precheck.ts
+  aprobar-revisor-a:
+    needs: [comprobar-origen]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    permissions:
+      contents: read
+    environment:
+      name: asen-t06-reviewer-a
+    steps:
+      - name: Primera aprobación humana específica para revisor A
+        run: echo 'Solo se acepta si GitHub registra aprobación individual.'
+  aprobar-revisor-b:
+    needs: [aprobar-revisor-a]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    permissions:
+      contents: read
+    environment:
+      name: asen-t06-reviewer-b
+    steps:
+      - name: Segunda aprobación humana específica para revisor B
+        run: echo 'La API debe registrar otra aprobación humana.'
+  revisar-codigo-original:
+    needs: [comprobar-origen, aprobar-revisor-b]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'asenbanskaliev' &&
+      github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
+      github.run_attempt == 1 &&
+      inputs.coste_desconocido_autorizado == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 11
+    permissions:
+      contents: read
+      actions: read
+    env:
+      ASEN_T06_EXPECTED_SHA: ${{ inputs.candidate_sha }}
+      ASEN_T06_COST_ACK: ${{ inputs.coste_desconocido_autorizado }}
+      ASEN_T06_REVIEW_MODEL_A: ${{ inputs.reviewer_a }}
+      ASEN_T06_REVIEW_MODEL_B: ${{ inputs.reviewer_b }}
+      ASEN_T06_GITHUB_REVIEW_MODE: '1'
+      ASEN_T06_REVIEW_REPLAY_MODE: '1'
+      ASEN_T06_SOURCE_RUN_ID: '44389671458'
+      ASEN_T06_SOURCE_SHA: 'a33da9eebb92ac3131c958b14846945c31cd24a7'
+    steps:
+      - name: Obtener el SHA actual sin credenciales Git persistentes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Instalar tipos y Pi sin proveedor ni scripts ajenos
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$GITHUB_SHA" = "$ASEN_T06_EXPECTED_SHA"
+          test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
+          test "$ASEN_T06_COST_ACK" = true
+          test -z "${NVIDIA_API_KEY:-}"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+      - name: Preparar Pi 1.2 separado
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
+          pi --version
+      - name: Recuperar los dos archivos del run original
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v4.3.0
+        with:
+          name: asen-t06-dos-writers-${{ env.ASEN_T06_SOURCE_SHA }}-${{ env.ASEN_T06_SOURCE_RUN_ID }}
+          repository: asenbanskaliev/ASEN
+          run-id: 44389671458
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/asen-t06-fuentes-originales
+      - name: Recuperar las 17 pruebas aisladas del mismo origen
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v4.3.0
+        with:
+          name: asen-t06-pruebas-aisladas-${{ env.ASEN_T06_SOURCE_SHA }}-${{ env.ASEN_T06_SOURCE_RUN_ID }}
+          repository: asenbanskaliev/ASEN
+          run-id: 44389671458
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/asen-t06-pruebas-originales
+      - name: Verificar procedencia, cuatro consentimientos en dos runs y modelos
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          node --import tsx --input-type=module -e "import {requireLiveT06ReviewReplay} from './src/runtime/agents/t06-review-replay.ts';await requireLiveT06ReviewReplay()"
+      - name: Revisar dos archivos acreditados sin herramientas y sin ejecutar código
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ASEN_T06_REVIEW_CODE_DIR: ${{ runner.temp }}/asen-t06-fuentes-originales
+          ASEN_T06_REVIEW_BEHAVIOR_DIR: ${{ runner.temp }}/asen-t06-pruebas-originales
+          ASEN_T06_REVIEW_REPORT_DIR: ${{ runner.temp }}/asen-t06-solo-revision
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-revision-pi
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test -n "$NVIDIA_API_KEY"
+          mkdir -p "$PI_CODING_AGENT_DIR" "$ASEN_T06_REVIEW_REPORT_DIR"
+          node --import tsx scripts/t06-review-replay-precheck.ts
+          timeout 480s node --import tsx scripts/t06-github-independent-review.ts
+      - name: Conservar las dos opiniones sin secretos ni aprobación total
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-t06-solo-revision-${{ inputs.candidate_sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t06-solo-revision/t06-revisiones.json
+          if-no-files-found: warn
+          retention-days: 7
