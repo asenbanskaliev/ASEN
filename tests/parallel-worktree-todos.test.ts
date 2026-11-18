@@ -1332,8 +1332,11 @@ test("T06: las llamadas Git del fixture no heredan otro GIT_DIR",t=>{
  process.env.GIT_DIR=join(tmpdir(),"asen-repo-ajeno-inexistente");
  try{
   const f=fixture(t);
-  assert.equal(f.git("rev-parse","--is-inside-work-tree"),"true");
-  assert.equal(f.git("status","--porcelain"),"");
+  const git=(...args:string[])=>execFileSync("git",["-C",f.source,...args],{
+   encoding:"utf8",env:gitFixtureEnv
+  }).trim();
+  assert.equal(git("rev-parse","--is-inside-work-tree"),"true");
+  assert.equal(git("status","--porcelain"),"");
  }finally{
   if(original===undefined)delete process.env.GIT_DIR;
   else process.env.GIT_DIR=original;

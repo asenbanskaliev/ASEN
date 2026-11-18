@@ -596,3 +596,9 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - **Pruebas Git:** todos los `git -C` del fixture enlazado T06 usan un entorno sin las variables locales de repositorio comunicadas por `git rev-parse --local-env-vars`; previene afectar al repositorio invocador desde hooks o `GIT_DIR`. Caso negativo con `GIT_DIR` ajeno.
 - **T07/T11:** la fila compacta usa `! hijos ?` cuando así puede conservar una alerta de contexto o el número de revisiones. Da preferencia al aviso completo cuando cabe igual información. Pruebas de 35 y 55 columnas.
 - **Bloqueos:** ejecución auténtica de Writer/Fix con autorización humana, paridad T11 interactiva, A/B T09 y auditoría independiente T10. Otras observaciones de CodeRabbit requieren comprobación. Sin pago ni NVIDIA, sin fusión, `globalFull:false`. Las pruebas del SHA que se publique siguen PENDIENTES.
+
+## 18/11/2026 — Corrección de compilación y geometría tras CI
+
+- **SHA inspeccionado:** `b3886a824447351825f5469765cb2987cc6e9a43`. `Pi 1.2 runtime evidence` falló antes del ensayo por dos errores TypeScript TS2339: un test T06 llamaba a `f.git`, no incluido en el objeto del fixture. Se sustituye por `execFileSync` en la raíz de prueba con `gitFixtureEnv`, sin tocar el código productivo.
+- **Barra T11:** el test de 40 columnas acepta la forma corta `! hijos ?` cuando permite mostrar una alerta adicional, mientras conserva el aviso completo a anchuras mayores. El tamaño y presencia de la advertencia siguen comprobados.
+- **Estado:** corrección publicada pendiente del CI y Release Gate de su SHA exacto. No declarar PASS antes de ver el resultado. `globalFull:false`, sin merge ni Writer.
