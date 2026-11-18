@@ -33,7 +33,10 @@ const motivoFallo=(error,signal)=>{
 };
 async function leerJsonLimitado(response){
  const declared=Number(response.headers.get("content-length"));
- if(Number.isFinite(declared)&&declared>LIMITE_RESPUESTA)throw Error("respuesta-demasiado-grande");
+ if(Number.isFinite(declared)&&declared>LIMITE_RESPUESTA){
+  await response.body?.cancel().catch(()=>{});
+  throw Error("respuesta-demasiado-grande");
+ }
  if(!response.body)throw Error("respuesta-vacia");
  const reader=response.body.getReader();
  let count=0;
@@ -90,6 +93,7 @@ export async function comprobarNvidia({clave,fetchImpl=fetch}){
   });
   resultado.catalogo.http=response.status;
   if(!response.ok){
+   await response.body?.cancel().catch(()=>{});
    resultado.catalogo.estado="error-http";
    resultado.catalogo.motivo=clasificarEstadoNvidia(response.status);
    return resultado;
@@ -131,6 +135,7 @@ export async function comprobarNvidia({clave,fetchImpl=fetch}){
    });
    modelo.http=response.status;
    if(!response.ok){
+    await response.body?.cancel().catch(()=>{});
     modelo.estado="error-http";
     modelo.motivo=clasificarEstadoNvidia(response.status);
     continue;
@@ -145,9 +150,10 @@ export async function comprobarNvidia({clave,fetchImpl=fetch}){
      modelo.motivo=null;
      modelo.respondio=true;
     }
-   }catch{
-    modelo.estado="error-formato";
-    modelo.motivo="respuesta-invalida";
+   }catch(error){
+    const agotado=abort.signal.aborted||error?.name==="AbortError"||error?.name==="TimeoutError";
+    modelo.estado=agotado?"error-conexion":"error-formato";
+    modelo.motivo=agotado?"tiempo-agotado":"respuesta-invalida";
    }
   }catch(error){
    modelo.estado="error-conexion";
