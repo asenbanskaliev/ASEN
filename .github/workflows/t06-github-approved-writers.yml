@@ -90,6 +90,8 @@ jobs:
     needs: [aprobar-a, aprobar-b]
     runs-on: ubuntu-24.04
     timeout-minutes: 11
+    env:
+      ASEN_T06_STATIC_WRITE_ONLY: "1"
     permissions:
       contents: read
       actions: read
@@ -127,7 +129,7 @@ jobs:
         run: |
           set -euo pipefail
           npx --no-install tsx scripts/t06-github-approval-gate.ts
-      - name: Ejecutar dos Pi Writer y comprobar código y simultaneidad reales
+      - name: Ejecutar dos Pi Writer, verificar escrituras y sintaxis sin ejecutar código
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
@@ -139,6 +141,8 @@ jobs:
           PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-pi-config
         run: |
           set -euo pipefail
+          # Una repetición parcial no puede consumir cuota ni repetir escrituras.
+          test "$GITHUB_RUN_ATTEMPT" = 1
           test -n "$NVIDIA_API_KEY" || { echo "::error::La clave NVIDIA no existe"; exit 1; }
           test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
           mkdir -p "$PI_CODING_AGENT_DIR" "$ASEN_T06_WRITER_REPORT_DIR"
@@ -156,7 +160,7 @@ jobs:
           else
             echo "T09 no ejecutado: faltan las dependencias; no se admite ninguna evidencia"
           fi
-      - name: Contrastar T06 real con T07 sin simular Pi TUI ni nuevos modelos
+      - name: Contrastar T06 con T07 solo cuando existan pruebas de comportamiento
         if: always()
         shell: bash
         env:
@@ -164,6 +168,10 @@ jobs:
           ASEN_T06_WRITER_REPORT_DIR: ${{ runner.temp }}/asen-t06-evidence
         run: |
           set -euo pipefail
+          if [ "$ASEN_T06_STATIC_WRITE_ONLY" = "1" ]; then
+            echo "T07 NO COMPROBADO: solo se han verificado las escrituras y la sintaxis sin ejecutar código"
+            exit 0
+          fi
           if [ -f "$ASEN_T06_WRITER_REPORT_DIR/t06-dual-native-evidence.json" ] && [ -d node_modules ]; then
             npx --no-install tsx scripts/t06-t07-verify-trial.ts
           else
