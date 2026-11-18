@@ -829,3 +829,25 @@ El comando `/asen-review todo <id>` conserva la inspección sin gasto. Con un To
 - **Implementaciones:** `t06-github-reviewer-approvals.ts` y `t06-independent-review-admission.ts`; `scripts/t06-github-independent-review.ts`; adaptación del revisor `t06-native-independent-review.ts` para usar aprobaciones humanas reales en GitHub sin simular una terminal; entrada manual y flujo reutilizable.
 - **Pruebas negativas:** `tests/t06-github-reviewer-approvals.test.ts`, `tests/t06-independent-review-admission.test.ts` y contratos del workflow. Se rechazan costes no aceptados, modelos idénticos, aprobaciones agrupadas o ausentes, run y SHA diferentes, contenedor con red, informes incompletos, huellas cambiadas y faltas de consentimiento.
 - **Estado:** **IMPLEMENTADO EN RAMA, PENDIENTE CI DEL SHA VIGENTE Y UN ÚNICO ENSAYO NVIDIA REAL COMPLETO**. Se necesitan configurar dos nuevos entornos protegidos y elegir identificadores reales de modelos accesibles. No se reutilizan las aprobaciones ni el consumo de NVIDIA del run `44373591222`. T06 sigue **PARCIAL**, pendiente evidencia del flujo completo; `globalFull:false`.
+
+
+## 18/11/2026 — T06: recuperar nombres reales del catálogo NVIDIA sin inferencia
+
+- **Diagnóstico real anterior:** la ejecución `44402931607` devolvió HTTP 200 de
+  `GET /v1/models`, pero **no listó** los dos identificadores Nano/Super
+  seleccionados. Correctamente no realizó peticiones de generación.
+- **Implementación nueva en GitHub:** `modo=nvidia_catalogo` dentro de
+  `Memory OpenRouter E2E` y flujo manual independiente
+  `.github/workflows/catalogo-nvidia.yml`; una única solicitud GET
+  de solo lectura a NVIDIA con la clave de GitHub.
+- **Evidencia:** el informe `catalogo-nvidia.json` registra todos los
+  identificadores exactos devueltos por el catálogo y una sublista Nemotron/Bolt.
+  No guarda contenido libre, claves ni datos de facturación. No envía ningún
+  mensaje de chat; `generacionSolicitudes:0`, `reintentos:0`.
+- **Control:** actor, SHA, rama y primer intento exactos; secreto solo en el
+  paso de consulta; validación de nombres y tamaño; pruebas negativas en CI.
+  El modo no pide consentimiento de **generación** porque no genera texto.
+- **Estado:** cambios en PR #61, **pendiente ejecutar una consulta real de
+  catálogo bajo el SHA nuevo** y confirmar el resultado. No constituye
+  disponibilidad real de inferencia ni cierra las revisiones T06.
+  Se mantienen `accepted:false` y `globalFull:false`.
