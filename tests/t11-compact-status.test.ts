@@ -153,3 +153,15 @@ test("T11/T07: el ancho limitado conserva avisos, contexto y modo antes que el c
  assert.ok(visibleWidth(row)<=100);
  assert.match(renderAsenT11CompactStatus(input,160),/coste\/uso \?/u);
 });
+
+test("T11: aviso de hijos desconocidos gana espacio ante revisión en 44 columnas",()=>{
+ const row=renderAsenT11CompactStatus(sample({
+  todos:[{current:{state:"blocked"}} as AsenPanelSnapshot["todos"][number]],
+  review:{pending:1},agentFlowUnavailable:true
+ }),44);
+ assert.match(row,/! 1 bloqueos/u);
+ assert.match(row,/! hijos \?/u);
+ assert.match(row,/\/asen-panel$/u);
+ assert.doesNotMatch(row,/! 1 revisiones/u);
+ assert.ok(visibleWidth(row)<=44);
+});

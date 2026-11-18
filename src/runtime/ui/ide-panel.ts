@@ -77,8 +77,8 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
    const review=derivePanelReview(snapshot),children=trustedFlow?.overview.stages["manual-review-required"]??0;
    const local=review.known?review.pending+" local":"unverified local";
    if(childUnknown)return local+" · hijos no disponibles";
-   if(children)return local+" · "+children+" child needs review"+(trustedFlow?.limited?" · parcial":"");
-   if(trustedFlow?.limited)return local+" · revisión hijos parcial";
+   if(children)return (trustedFlow?.limited?"parcial · ":"")+local+" · "+children+" child needs review";
+   if(trustedFlow?.limited)return "parcial · "+local+" · revisión hijos parcial";
    return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";
   }
   case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";

@@ -444,8 +444,13 @@ export function registerParallelWorktreeCommand(
     identity:owner,expectedHead:head,rows:currentTodos,units:selection.units
    }):undefined;
    const batchId=linked?newParallelTodoWorktreeBatchId():undefined;
-   const result=await prepareParallelWorkerWorktrees({
+   let pendingReservation:Readonly<{id:string;sourceHead:string;parentDir:string}>|undefined;
+   let gitAddAttempted=false;
+   let result:Awaited<ReturnType<typeof prepareParallelWorkerWorktrees>>;
+   try{
+   result=await prepareParallelWorkerWorktrees({
     sourceRoot:root,parentDir:selection.parentDir,expectedHead:head,units:selection.units,
+    onBeforeWorktreeAdd:()=>{gitAddAttempted=true;},
     ...(batchId?{batchId}:{}),
     ...(ctx.signal?{signal:ctx.signal}:{}),
     confirm:async summary=>{
@@ -472,24 +477,27 @@ export function registerParallelWorktreeCommand(
       });
       if(!bound||!sameSourceTodoBindings(bound,fresh))
        throw new Error("Source ODD Todo state changed while awaiting confirmation; no worktrees were created");
-      const reserved=await journal!.reserve({identity:owner,id:batchId!,head,parentDir:selection.parentDir,bindings:bound});
-      try{
-       checkIdentity(); // Tras esta línea Git todavía no ha comenzado.
-      }catch(error){
-       // La devolución del callback precede a cualquier git worktree add.
-       // Liberar solo esta reserva, si siguen ausentes TODOS sus destinos.
-       try{
-        await journal!.releaseUnstarted({identity:owner,id:reserved.id,
-         head:reserved.sourceHead,parentDir:reserved.parentDir});
-       }catch{
-        throw new Error("Session changed after reservation; journal could not be released. Inspect manually before retrying",{cause:error});
-       }
-       throw error;
-      }
+      pendingReservation=await journal!.reserve({
+       identity:owner,id:batchId!,head,parentDir:selection.parentDir,bindings:bound
+      });
+      checkIdentity(); // Git no se ha intentado todavía.
      }
      return true;
     }
    });
+   }catch(error){
+    // Antes del primer intento Git puede liberarse solo la reserva exacta.
+    // Después de cualquier intento, la incertidumbre impide liberarla.
+    if(pendingReservation&&!gitAddAttempted){
+     try{
+      await journal!.releaseUnstarted({identity:owner,id:pendingReservation.id,
+       head:pendingReservation.sourceHead,parentDir:pendingReservation.parentDir});
+     }catch{
+      throw new Error("No se pudo liberar la reserva T06 previa a Git. Inspección manual obligatoria.",{cause:error});
+     }
+    }
+    throw error;
+   }
    checkIdentity();
    if(result.status==="declined"){ctx.ui.notify("Preparación cancelada sin crear worktrees.","info");return result;}
    if(linked)await journal!.markPrepared({identity:owner,id:batchId!,allocations:result.allocations});

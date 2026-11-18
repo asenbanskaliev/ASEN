@@ -1300,3 +1300,16 @@ test("T06: dos liberaciones simultáneas no retiran dos veces la misma reserva",
  assert.match(String(rejected.reason),/No exact unstarted reservation/u);
  assert.deepEqual(await f.journal.list(f.identity),[]);
 });
+
+test("T06: Git sucio tras reservar pero antes del primer add permite liberar",async t=>{
+ const f=fixture(t),reserve=f.journal.reserve.bind(f.journal);
+ f.journal.reserve=async input=>{
+  const saved=await reserve(input);
+  writeFileSync(join(f.source,"archivo-ajeno.txt"),"edición concurrente");
+  return saved;
+ };
+ await assert.rejects(()=>f.run("prepare-todos"),/clean exact pinned source candidate/u);
+ assert.deepEqual(await f.journal.list(f.identity),[]);
+ const listed=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8"});
+ assert.equal(listed.split(/\r?\n/u).filter(row=>row.startsWith("worktree ")).length,1);
+});

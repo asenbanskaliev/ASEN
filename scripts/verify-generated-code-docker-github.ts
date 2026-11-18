@@ -101,7 +101,8 @@ try{
  // En versiones anteriores, dos casos que esperaban TypeError podían dar PASS.
  for(const invalid of [
   "export function otraFuncion(){throw new TypeError('candidato');}",
-  "export const sumEvenNumbers=123;"
+  "export const sumEvenNumbers=123;",
+  "export class sumEvenNumbers { constructor(){ throw new TypeError('constructor no invocado'); } }"
  ]){
   writeFileSync(join(root,target),invalid);
   const required:readonly TrustedBehaviorCase[]=[

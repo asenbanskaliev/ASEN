@@ -42,7 +42,8 @@ const driver=[
  "const f=m.namespace[p.fn];",
  // Si el export no existe, la infraestructura falla fuera del catch de la
  // función candidata: no debe aprobar un caso que espera TypeError.
- "if(typeof f!=='function')throw new Error('funcion-ausente');",
+ // Una clase exportada parece invocable pero falla antes del cuerpo al llamarla sin new.
+ "if(typeof f!=='function'||Object.getOwnPropertyDescriptor(f,'prototype')?.writable===false)throw new Error('funcion-ausente');",
  "let result;",
  "try{result={kind:'value',value:await f(safeInput)}}",
  "catch(error){result={kind:'throws',name:error?.name??'Error'}}",

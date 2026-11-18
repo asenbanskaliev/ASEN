@@ -59,6 +59,8 @@ export type ParallelWorktreeProposal={
  readonly confirm:(summary:Readonly<{sourceRoot:string;revision:string;taskIds:readonly string[];
   scopes:readonly Readonly<{taskId:string;writeSurfaces:readonly string[]}>[];creates:number;grantsAuthority:false}>)=>Promise<boolean>;
  readonly signal?:AbortSignal;
+ /** Frontera de efectos: cualquier fallo tras este aviso requiere inspección. */
+ readonly onBeforeWorktreeAdd?:()=>void;
 };
 const genuineAllocations=new WeakSet<object>();
 const dispatchedAllocations=new WeakSet<object>();
@@ -137,6 +139,7 @@ export async function prepareParallelWorkerWorktrees(input:ParallelWorktreePropo
   // Creating a worktree is not permission to execute repository checkout hooks.
   const noHooks=resolve(parent,".asen-no-hooks-"+randomUUID());
   if(existsSync(noHooks))throw new Error("Temporary hook-isolation path unexpectedly exists");
+  input.onBeforeWorktreeAdd?.();
   execFileSync("git",["-c","core.hooksPath="+noHooks,"-C",source,"worktree","add","--detach","--",target,input.expectedHead],
    {encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:15000,windowsHide:true,maxBuffer:2_000_000});
   const allocation=Object.freeze({taskId:unit.taskId,root:target,sourceRoot:source,

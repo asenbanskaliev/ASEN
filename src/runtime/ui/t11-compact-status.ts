@@ -20,7 +20,7 @@ export function renderAsenT11CompactStatus(
  if(activityUnavailable)
   items.push({text:"! actividad no disponible",priority:0});
  else if(options.agentFlowUnavailable===true||snapshot.agentFlowUnavailable===true)
-  items.push({text:"! hijos no disponibles",priority:0});
+  items.push({text:"! hijos no disponibles",priority:-1});
  if(ctx?.state==="warning"||ctx?.state==="error")
   items.push({text:"! ctx "+(ctx.percent===null?"?":Math.round(ctx.percent)+"%"),priority:0});
  const blocked=activityUnavailable?0:snapshot.todos.filter(x=>x.current.state==="blocked").length;
@@ -33,7 +33,7 @@ export function renderAsenT11CompactStatus(
  if(interrupted||blocked||childBlocked)
   items.push({text:"! "+(interrupted+blocked+childBlocked)+" bloqueos",priority:-2});
  if(!activityUnavailable&&snapshot.review?.pending&&Number.isSafeInteger(snapshot.review.pending)&&snapshot.review.pending>0)
-  items.push({text:"! "+snapshot.review.pending+" revisiones",priority:-1});
+  items.push({text:"! "+snapshot.review.pending+" revisiones",priority:0});
  const permission=snapshot.permission;
  if(permission&&permission.toLowerCase()!=="normal")
   items.push({text:"modo "+clean(permission,18),priority:1});
