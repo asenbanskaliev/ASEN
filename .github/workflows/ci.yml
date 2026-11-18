@@ -729,3 +729,60 @@ jobs:
           path: ${{ runner.temp }}/asen-t06-nvidia-pi/receipt.json
           if-no-files-found: warn
           retention-days: 7
+
+  # Pruebas de código generado exclusivamente en GitHub; no se ejecuta Docker
+  # en Windows/macOS ni en ASEN local. Sin modelos, permisos Writer ni secretos.
+  generated-code-docker-sandbox:
+    name: T06/T08 contenedor sin red (solo GitHub, sin modelos)
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event.pull_request.number == 61 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/flujo-de-agentes-20261115'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      ASEN_DOCKER_TESTS_CI: "1"
+      ASEN_DOCKER_NODE_IMAGE: "node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8"
+    steps:
+      - name: Obtener el candidato exacto sin conservar credenciales
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exigir SHA exacto y ejecutor GitHub alojado
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$GITHUB_HEAD_REF" = feat/flujo-de-agentes-20261115
+          test "$GITHUB_REPOSITORY" = asenbanskaliev/ASEN
+          test "$GITHUB_EVENT_NAME" = pull_request
+          test "$GITHUB_ACTIONS" = true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instalar dependencias sin ejecutar scripts externos
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verificar tipos y pruebas negativas sin contenedores
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          node --import tsx --test tests/generated-code-docker-sandbox.test.ts
+      - name: Descargar imagen Node oficial fijada por huella
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$ASEN_DOCKER_NODE_IMAGE"
+          docker image inspect "$ASEN_DOCKER_NODE_IMAGE" >/dev/null
+      - name: Comprobar sin red, resultados completos y falsificación
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/verify-generated-code-docker-github.ts
