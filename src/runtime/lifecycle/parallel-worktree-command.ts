@@ -407,7 +407,8 @@ export function registerParallelWorktreeCommand(
     const blocked={status:"unavailable" as const,reason:"Worktree creation requires live Pi TUI, editor, confirmation and an owned session"};
     ctx.ui.notify(blocked.reason,"warning");return blocked;
    }
-   const root=realpathSync(path.resolve(ctx.cwd)),head=currentHead(root);
+   const root=realpathSync(path.resolve(ctx.cwd)),head=currentHead(root),
+    manager=ctx.sessionManager;
    const linked=action==="prepare-todos";
    if(linked&&(!options?.loadTodos||!options.journalFile)){
     const unavailable={status:"unavailable" as const,reason:"Linked worktree preparation needs Todo runtime and a private journal"};
@@ -423,7 +424,8 @@ export function registerParallelWorktreeCommand(
     ctx.ui.notify(blocked.reason,"warning");return blocked;
    }
    const checkIdentity=()=>{
-    if(ctx.signal?.aborted||ctx.sessionManager?.getSessionId?.()!==id||
+    if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+      manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
      throw new Error("Worktree preparation session or project changed; inspect any already-created worktrees");
    };
@@ -456,6 +458,8 @@ export function registerParallelWorktreeCommand(
       "NO habrá fusión ni borrado automático. Inspecciona cada worktree al terminar."
      ].join("\n");
      const approved=await ctx.ui.confirm!("Crear los worktrees Git aislados?",message)===true;
+     // No crear ni reservar nada si el usuario cambió de sesión durante el diálogo.
+     checkIdentity();
      if(!approved)return false;
      if(linked){
       checkIdentity();

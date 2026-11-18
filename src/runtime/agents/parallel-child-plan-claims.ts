@@ -27,7 +27,7 @@ function parse(raw:string):Journal{
   !Number.isSafeInteger(parsed.revision)||Number(parsed.revision)<0||!Array.isArray(parsed.claims)||
   parsed.claims.length>512||Number(parsed.revision)!==parsed.claims.length)
   throw new Error("Invalid child ODD handoff claim journal");
- const seen=new Set<string>();
+ const seen:string[]=[];
  for(const item of parsed.claims){
   if(!exact(item,keys)||![item.sourceTodoId,item.sourceProjectId,item.childSessionId,
    item.childProjectId,item.batchId].every(safe)||
@@ -36,9 +36,10 @@ function parse(raw:string):Journal{
    new Date(item.claimedAt as string).toISOString()!==item.claimedAt||
    item.status!=="claimed-not-verified"||item.grantsAuthority!==false||item.autoRetry!==false)
    throw new Error("Invalid child ODD handoff claim");
-  const key=(item.childProjectId as string).toLowerCase();
-  if(seen.has(key))throw new Error("Duplicated child ODD handoff claim");
-  seen.add(key);
+  const root=item.childProjectId as string;
+  if(seen.some(previous=>sameWorkspaceIdentityPath(previous,root)))
+   throw new Error("Duplicated child ODD handoff claim");
+  seen.push(root);
  }
  return structuredClone(parsed) as unknown as Journal;
 }

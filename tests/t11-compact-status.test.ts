@@ -100,3 +100,12 @@ test("T11: el estado no muestra contadores antiguos cuando la lectura falla y se
  assert.match(fresh,/! 3 revisiones/u);
  assert.doesNotMatch(fresh,/actividad no disponible/u);
 });
+
+test("T11 nunca oculta la pérdida de datos para mostrar el modelo",()=>{
+ const snapshot=sample({hostStatus:projectHostStatus({model:{provider:"p",id:"m"}})});
+ const line=renderAsenT11CompactStatus(snapshot,35,{activityUnavailable:true,headerAtTop:true});
+ assert.match(line,/^! actividad/u);
+ assert.match(line,/\/asen-panel$/u);
+ assert.doesNotMatch(line,/modelo p\/m|PASS/u);
+ assert.ok(visibleWidth(line)<=35);
+});

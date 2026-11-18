@@ -32,7 +32,8 @@ function validate(raw:string):Journal{
   !Number.isSafeInteger(v.revision)||Number(v.revision)<0||
   !Array.isArray(v.claims)||v.claims.length>256||v.revision!==v.claims.length)
   throw new Error("Invalid one-shot supervisor claim journal");
- const seen=new Set<string>(),seenSessions=new Set<string>();
+ const seen:Array<{batchId:string;sessionId:string;projectId:string}>=[],
+  seenSessions=new Set<string>();
  for(const claim of v.claims){
   if(!exact(claim,keys)||!safe(claim.batchId)||!safe(claim.sourceSessionId)||
    typeof claim.sourceProjectId!=="string"||!isAbsolute(claim.sourceProjectId)||
@@ -42,21 +43,25 @@ function validate(raw:string):Journal{
    claim.status!=="claimed-not-verified"||claim.grantsAuthority!==false||
    claim.autoRetry!==false||claim.autoMerge!==false)
    throw new Error("Invalid one-shot supervisor claim");
-  const childIds=new Set<string>(),childTodoIds=new Set<string>(),roots=new Set<string>(),sessions=new Set<string>();
+  const childIds=new Set<string>(),childTodoIds=new Set<string>(),roots:string[]=[],sessions=new Set<string>();
   for(const child of claim.children){
    if(!exact(child,childKeys)||!safe(child.sourceTodoId)||!safe(child.childTodoId)||
     !safe(child.childSessionId)||typeof child.childProjectId!=="string"||
     !isAbsolute(child.childProjectId)||
     childIds.has(child.sourceTodoId)||childTodoIds.has(child.childTodoId)||
     sessions.has(child.childSessionId)||seenSessions.has(child.childSessionId)||
-    roots.has(child.childProjectId.toLocaleLowerCase("en-US")))
+    roots.some(root=>sameWorkspaceIdentityPath(root,child.childProjectId as string)))
     throw new Error("Invalid or duplicate supervisor child claim");
    childIds.add(child.sourceTodoId);childTodoIds.add(child.childTodoId);
    sessions.add(child.childSessionId);seenSessions.add(child.childSessionId);
-   roots.add(child.childProjectId.toLocaleLowerCase("en-US"));
+   roots.push(child.childProjectId as string);
   }
-  const key=claim.batchId+"|"+claim.sourceSessionId+"|"+claim.sourceProjectId.toLowerCase();
-  if(seen.has(key))throw new Error("Duplicate supervisor batch claim");seen.add(key);
+  if(seen.some(previous=>previous.batchId===claim.batchId&&
+   previous.sessionId===claim.sourceSessionId&&
+   sameWorkspaceIdentityPath(previous.projectId,claim.sourceProjectId as string)))
+   throw new Error("Duplicate supervisor batch claim");
+  seen.push({batchId:claim.batchId as string,sessionId:claim.sourceSessionId as string,
+   projectId:claim.sourceProjectId as string});
  }
  return structuredClone(v) as unknown as Journal;
 }

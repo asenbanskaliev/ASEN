@@ -395,3 +395,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - **Pruebas offline positivas/negativas:** cancelación de ambos hijos incluso después de fallo de una alta, bloqueo al fallar cancelación, runtime ausente y versión Pi real/forjada; ninguna prueba llama a proveedor ni ejecuta código generado.
 - **P0 CodeRabbit no resuelto:** ejecución segura del código T06/T08 requiere aislamiento de red real del sistema operativo y comprobación no falsificable de finalización. `checkT06Behavior` y `checkT08Behavior` siguen bloqueados, sin habilitar permisos nuevos.
 - **Estado:** IMPLEMENTADO_PENDIENTE_CI del nuevo SHA. Mantener revisión independiente y comparativa T09/T10 pendientes; `globalFull:false`. Sin fusiones ni NVIDIA.
+
+## 18/11/2026 — Megatanda CodeRabbit T06 + T11: integridad y pantalla estrecha
+
+- T06: reclamaciones de ODD hijo y supervisor ahora comparan raíces mediante `sameWorkspaceIdentityPath` en vez de convertirlas siempre a minúsculas. Se mantienen los bloqueos de rutas duplicadas en Windows; en Linux/macOS se aceptan rutas realmente distintas por capitalización.
+- T06: tras el consentimiento para preparar worktrees se vuelve a verificar sesión, gestor Pi y proyecto **antes de crear o reservar** nada, también en `prepare` sin ODD.
+- T11: la alerta más urgente se recorta al ancho disponible en vez de desaparecer detrás de un dato corto; se conserva `/asen-panel`.
+- Pruebas negativas de cambio de sesión y gestor, rutas con mayúsculas distintas y vista T11 estrecha. Sin consumos de modelos, sin fusión. `globalFull:false`.
+- Estado **IMPLEMENTADO_PENDIENTE_CI**. El P0 de aislamiento de red y finalización comprobable del código generado T06/T08 permanece **BLOQUEADO**.

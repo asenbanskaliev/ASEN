@@ -51,9 +51,14 @@ export function renderAsenT11CompactStatus(
  const accessWidth=visibleWidth(access),reserved=access?accessWidth+visibleWidth(separator):0;
  const budget=Math.max(0,width-reserved);
  const parts:string[]=[];
- for(const item of ordered){
-  const next=parts.length?parts.join(separator)+separator+item.text:item.text;
-  if(visibleWidth(next)<=budget)parts.push(item.text);
+ if(ordered.length&&budget>0&&visibleWidth(ordered[0]!.text)>budget){
+  // El aviso prioritario no desaparece por culpa de un dato más corto.
+  parts.push(truncateForTerminal(ordered[0]!.text,budget));
+ }else{
+  for(const item of ordered){
+   const next=parts.length?parts.join(separator)+separator+item.text:item.text;
+   if(visibleWidth(next)<=budget)parts.push(item.text);
+  }
  }
  if(!parts.length&&ordered.length){
   const strongest=ordered[0]!.text;

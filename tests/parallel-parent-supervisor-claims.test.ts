@@ -98,3 +98,17 @@ test("T06 la lectura de un diario alterado no admite sesiones duplicadas de otro
  writeFileSync(file,JSON.stringify(data));
  await assert.rejects(()=>journal.listSource(source),/Invalid or duplicate supervisor child claim/u);
 });
+
+test("T06 distingue worktrees cuyo nombre solo cambia mayúsculas según el SO",async t=>{
+ const {journal}=fixture(t);
+ const roots=[
+  {...children[0]!,childProjectId:resolve(tmpdir(),"asen-case-Child")},
+  {...children[1]!,childProjectId:resolve(tmpdir(),"asen-case-child")}
+ ];
+ if(process.platform==="win32")await assert.rejects(
+  ()=>journal.claim({...request,children:roots}),/duplicate/u);
+ else{
+  const value=await journal.claim({...request,children:roots});
+  assert.equal(value.children.length,2);
+ }
+});

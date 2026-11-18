@@ -1180,3 +1180,20 @@ test("T06 registra el Worker realmente lanzado aunque cambie la sesión padre tr
  assert.equal(result.started[0]!.childTodoId,f.dispatchedChildren[0]!.childTodoId);
  assert.ok(result.started[0]!.agentId);
 });
+
+test("T06 deniega crear worktrees si cambia la sesión durante el permiso",async t=>{
+ for(const action of ["prepare","prepare-todos"]){
+  const f=fixture(t);
+  f.ctx.ui.confirm=async()=>{f.setSession("pi-otra");return true;};
+  await assert.rejects(()=>f.run(action),/session or project changed/u);
+  assert.deepEqual(await f.journal.list(f.identity),[]);
+ }
+});
+test("T06 deniega reemplazar el gestor Pi aunque se repita el mismo ID",async t=>{
+ const f=fixture(t);
+ f.ctx.ui.confirm=async()=>{
+  f.ctx.sessionManager={getSessionId:()=>f.identity.sessionId};return true;
+ };
+ await assert.rejects(()=>f.run("prepare"),/session or project changed/u);
+ assert.deepEqual(await f.journal.list(f.identity),[]);
+});
