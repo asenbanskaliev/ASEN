@@ -12,7 +12,10 @@ export function shouldObserveT11Surface(input:Readonly<{
  railActive:boolean;compactWidget:boolean;position:"auto"|"right"|"bottom"|"hidden";
  preset:"light"|"neutral"|"power";
 }>):boolean{
- return input.railActive||input.compactWidget&&input.position!=="hidden"&&
+ // La preferencia explícita de ocultar prevalece sobre un layout nativo
+ // que todavía no haya terminado de retirarse durante un resize.
+ if(input.position==="hidden")return false;
+ return input.railActive||input.compactWidget&&
   !(input.position==="auto"&&input.preset==="light");
 }
 
