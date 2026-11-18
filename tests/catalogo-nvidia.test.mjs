@@ -64,7 +64,7 @@ test("Errores HTTP, catálogo vacío y JSON inválido nunca activan inferencia",
   let calls=0;
   const out=await consultarCatalogoNvidia({clave:CLAVE,fetchImpl:async()=>{
    calls++;
-   return bad.clone();
+   return bad;
   }});
   assert.equal(calls,1);
   assert.equal(out.completo,false);
@@ -131,6 +131,23 @@ test("El catálogo cierra conexiones HTTP fallidas y cuerpos anunciados demasiad
  assert.equal(size.motivo,"respuesta-demasiado-grande");
  assert.equal(canceladas,2);
  assert.equal(size.generacionSolicitudes,0);
+});
+
+test("Cancelar un cuerpo HTTP lento no bloquea la lectura del catálogo",async()=>{
+ let llamadas=0;
+ let cierres=0;
+ const lenta={
+  ok:false,status:503,headers:new Headers(),
+  body:{cancel:()=>{cierres++;return new Promise(()=>{});}}
+ };
+ const out=await consultarCatalogoNvidia({clave:CLAVE,fetchImpl:async()=>{
+  llamadas++;
+  return lenta;
+ }});
+ assert.equal(llamadas,1);
+ assert.equal(cierres,1);
+ assert.equal(out.motivo,"servicio-saturado");
+ assert.equal(out.generacionSolicitudes,0);
 });
 
 test("La autorización no hereda sesiones ni admite un reintento",()=>{
