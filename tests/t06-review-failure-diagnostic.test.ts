@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {classifyT06ReviewerFailure} from
+import {classifyT06ReviewerFailure,classifyT06ReviewReceiptError} from
  "../src/runtime/agents/t06-review-failure-diagnostic.js";
 
 test("T06 distingue agotamiento de tiempo, salida de Pi y cierre sin modelo",()=>{
@@ -31,4 +31,36 @@ test("T06 conserva si Pi arrancó y si reconoció un modelo, sin inventar observ
  assert.match(code,/failureCategory:attempts\[i\]!\.failureCategory/u);
  assert.match(code,/noTools:true,requireFinalSettlement:true/u);
  assert.doesNotMatch(code,/output:result\.output|stderr:process\.stderr/u);
+});
+
+test("T06 identifica causas terminales conocidas del modelo sin copiar el mensaje",()=>{
+ const categories=[
+  ["auth","pi-provider-auth"],["rate_limit","pi-provider-rate-limit"],
+  ["quota","pi-provider-quota"],["context_length","pi-provider-context-length"],
+  ["timeout","pi-provider-timeout"],["network","pi-provider-network"],
+  ["provider_unavailable","pi-provider-unavailable"],
+  ["invalid_request","pi-provider-invalid-request"],["unavailable","pi-provider-other"]
+ ] as const;
+ for(const [code,expected] of categories){
+  assert.equal(classifyT06ReviewerFailure("pi assistant failed: "+code),expected);
+  assert.equal(classifyT06ReviewerFailure("pi assistant failed: "+code+" (RPC failure hidden)"),expected);
+ }
+ assert.equal(classifyT06ReviewerFailure("pi assistant failed: secret Bearer sk-test"),"pi-unclassified");
+ assert.equal(classifyT06ReviewerFailure("pi assistant failed: rate_limit-secret Bearer sk-test"),"pi-unclassified");
+});
+test("T06 clasifica fallos de recibo por mensajes internos seguros, no por salida del proveedor",()=>{
+ const cases=[
+  ["T06 independent reviewer did not return strict JSON","pi-receipt-invalid-json"],
+  ["T06 independent Pi review stream is invalid","pi-receipt-invalid-json"],
+  ["T06 independent review requires exactly one final assistant verdict","pi-receipt-missing-assistant"],
+  ["T06 independent reviewer inspected wrong files or SHA","pi-receipt-wrong-files"],
+  ["T06 independent reviewer returned malformed verdict","pi-receipt-invalid-schema"],
+  ["T06 independent reviewer returned unsupported content","pi-receipt-unsupported-content"]
+ ] as const;
+ for(const [reason,expected] of cases)
+  assert.equal(classifyT06ReviewReceiptError(new Error(reason)),expected);
+ for(const bad of [
+  new Error("NVIDIA key sk-secret missing"),new Error("T06 independent reviewer did not return strict JSON: sensitive"),
+  "Bearer sk-secret",null,{},new Error("unknown")
+ ])assert.equal(classifyT06ReviewReceiptError(bad),"pi-receipt-unclassified");
 });
