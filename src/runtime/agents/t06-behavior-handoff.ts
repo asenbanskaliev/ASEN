@@ -29,6 +29,7 @@ export function validateT06Handoff(input:{
   report.schema!=="asen.t06.native-dual-writer/v1"||
   report.sha!==expectedSha||report.staticOnly!==true||
   report.result!=="PASS_TWO_WRITERS_STATIC_ONLY_BEHAVIOR_NOT_TESTED"||
+  report.concurrent!==true||
   report.generatedCodeExecuted!==false||report.behaviorVerified!==false||
   report.accepted!==false||report.globalFull!==false||
   manifest.schema!=="asen.t06.behavior-handoff/v1"||
