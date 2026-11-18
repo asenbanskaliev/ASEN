@@ -379,3 +379,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Corrección: crear un archivo temporal **vacío y privado** una sola vez por proceso en Windows; usarlo como `GIT_CONFIG_GLOBAL` y limpiarlo al salir. Se mantiene `GIT_CONFIG_NOSYSTEM=1`, la prohibición de protocolos, la eliminación de variables heredadas, la protección de SHA y el bloqueo sin huella válida. Nunca heredar el archivo Git global del usuario.
 - Prueba positiva de ruta real válida, negativa de inyección del entorno y comprobación específica de la ruta Windows. No se ejecuta código generado.
 - Estado **IMPLEMENTADO_PENDIENTE_CI**. Comprobar CI/Release Gate/Pi/Arquitectura del nuevo SHA; hasta entonces no declarar solucionado Windows. P0 de aislamiento de red de T06/T08 sigue **BLOQUEADO**, `globalFull:false`.
+
+## 18/11/2026 — T06: diferencias CRLF al crear la muestra de Git
+
+- CI `e65134a055b26765815aa04326a50c3f309ebda6`: el diagnóstico determinó que ambos Workers fallaban en **`estado Git`**; la corrección del archivo global `NUL` por sí sola no bastó.
+- Reproducción local sin IA: Git crea el checkout con `core.autocrlf=true` y, al comprobarlo con `core.autocrlf=false`, se observa un ` M README.md` ficticio además del Writer no rastreado. Es una diferencia de **normalización del archivo en la muestra**, no una autorización.
+- La muestra TDD se crea ahora con el mismo `isolatedGitEnvironment()` que usa el verificador; se fija `core.autocrlf=false` **solo en su repositorio temporal**, sin tocar Git de usuario ni cambiar la protección del código real. Un cambio rastreado auténtico sigue bloqueándose, con prueba negativa.
+- El diagnóstico de estado informa solo número de entradas y si el archivo esperado aparece, sin exponer rutas privadas ni contenido.
+- Estado **IMPLEMENTADO_PENDIENTE_CI** del siguiente SHA. Verificar CI multiplataforma y Release Gate antes de declarar resuelto; `globalFull:false`, no ejecutar código generado y mantener P0 T06/T08 **BLOQUEADO**.

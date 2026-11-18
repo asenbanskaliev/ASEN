@@ -108,8 +108,11 @@ export function verifyT06NativeSnapshot(input:{
    // -z evita escapes, comillas y saltos de línea dependientes del sistema.
    const changes=gitRaw(root,"status","--porcelain=v1","--untracked-files=all","-z")
     .split("\0").filter(Boolean);
-   if(changes.length!==1||changes[0]!==("?? "+expectedScope))
+   if(changes.length!==1||changes[0]!==("?? "+expectedScope)){
+    stage="estado Git (entradas="+changes.length+
+     ", esperado="+(changes.includes("?? "+expectedScope)?"presente":"ausente")+")";
     throw new Error("Unexpected Git changes");
+   }
    stage="árbol Git";
    if(git(root,"ls-tree","--name-only","HEAD","--",expectedScope)!=="")
     throw new Error("File existed in the base commit");

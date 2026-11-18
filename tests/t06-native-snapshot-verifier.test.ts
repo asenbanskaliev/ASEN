@@ -10,7 +10,8 @@ import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environ
 
 const sha256=(value:Buffer)=>createHash("sha256").update(value).digest("hex");
 const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{
- encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:12000
+ encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:12000,
+ env:isolatedGitEnvironment()
 }).trim();
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 function fixture(t:TestContext){
@@ -18,6 +19,8 @@ function fixture(t:TestContext){
  t.after(()=>rmSync(dir,{recursive:true,force:true}));
  const source=join(dir,"source");mkdirSync(source);
  git(source,"init","-q");
+ // El checkout y el verificador deben compartir la misma normalización Git.
+ git(source,"config","--local","core.autocrlf","false");
  writeFileSync(join(source,"README.md"),"source\n");
  git(source,"add","README.md");
  git(source,"-c","user.name=ASEN","-c","user.email=asen@example.invalid",
@@ -157,4 +160,14 @@ test("T06 Git Windows usa configuración global privada en lugar de NUL",()=>{
  }else{
   assert.equal(env.GIT_CONFIG_GLOBAL,"/dev/null");
  }
+});
+
+test("T06 rechaza un cambio rastreado, aun con la configuración de líneas fijada",t=>{
+ const f=fixture(t);
+ assert.equal(git(f.source,"config","--local","--get","core.autocrlf"),"false");
+ writeFileSync(join(f.roots[0],"README.md"),"modificación fuera del ámbito\n");
+ const result=verifyT06NativeSnapshot({report:f.report,worktreeRoots:f.roots});
+ assert.equal(result.status,"blocked");
+ assert.equal(result.locallyMatchedFiles,1);
+ assert.ok(result.blockers.some(b=>b.includes("estado Git")));
 });
