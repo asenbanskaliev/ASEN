@@ -14,6 +14,26 @@ de red y compruebe el fin de las aserciones: la ejecución manual está
 **BLOQUEADA antes de solicitar modelos**, sin una opción de omisión.
 Ninguna revisión de la IA constituye por sí sola una autorización de entrega.
 
+## Decisión: funcionamiento nativo como Gentle Shell (18/11/2026)
+
+- **Uso normal de ASEN:** los agentes Pi planifican, revisan y trabajan en sus
+  carpetas Git con las autorizaciones existentes. No necesitan Docker.
+- **CI habitual de PR:** la verificación de tipos y las pruebas normales se
+  ejecutan sin contenedor. El ensayo de Docker no se dispara con cada cambio.
+- **Docker opcional:** únicamente en GitHub, con una acción humana que añada
+  la etiqueta `asen-codigo-aislado-una-vez` a la PR #61; no concede Writer
+  ni permite un gasto de proveedor. No instalar ni iniciar Docker en el equipo.
+- **Límite que se mantiene:** no ejecutar automáticamente código JavaScript
+  recién generado por un modelo dentro del proceso con red o credenciales.
+  El ensayo T08 completo continúa bloqueado antes de llamar a modelos hasta
+  demostrar las garantías necesarias; no convertir un análisis estático en PASS.
+- **T08 normal:** revisión de cambios, preparación de Fix, plan ODD y
+  autorización de escritura siguen el runtime Pi existente, sin Docker por
+  defecto. El ensayo especial no sustituye la autorización humana de Writer.
+
+Esta decisión cambia la ejecución **por defecto**, no la política de seguridad
+ni declara `globalFull:true`.
+
 ## Activación manual
 
 1. Configurar en **Settings > Environments** los entornos:
