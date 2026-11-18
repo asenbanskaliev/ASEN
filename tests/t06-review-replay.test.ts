@@ -129,3 +129,20 @@ test("T06 solo revisión nunca consume dos Writers ni omite la validación origi
  assert.match(runner,/await requireLiveT06ReviewReplay\(\)/u);
  assert.match(script,/globalFull:false/u);
 });
+
+test("T06 usa el SHA real de GitHub y no un hash manual equivocado",()=>{
+ const yaml=readFileSync(new URL("../.github/workflows/memory-openrouter-e2e.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
+ const start=yaml.indexOf("  t06-revision-de-evidencias-existentes:");
+ const end=yaml.indexOf("\n  catalogo-nvidia-sin-generacion:",start);
+ assert.ok(start>=0&&end>start);
+ const t06=yaml.slice(start,end);
+ assert.ok(t06.includes('candidate_sha: ${{ github.sha }}'));
+ assert.ok(!t06.includes('candidate_sha: ${{ inputs.candidate_sha }}'));
+ assert.ok(t06.includes('coste_desconocido_autorizado: ${{ inputs.coste_desconocido_autorizado }}'));
+ assert.ok(t06.includes("uses: ./.github/workflows/t06-review-only.yml"));
+ const reused=readFileSync(new URL("../.github/workflows/t06-review-only.yml",import.meta.url),"utf8");
+ assert.match(reused,/test "\$GITHUB_SHA" = "\$ASEN_T06_EXPECTED_SHA"/u);
+ assert.match(reused,/test "\$GITHUB_RUN_ATTEMPT" = 1/u);
+ assert.match(reused,/name: asen-t06-reviewer-a/u);
+ assert.match(reused,/name: asen-t06-reviewer-b/u);
+});
