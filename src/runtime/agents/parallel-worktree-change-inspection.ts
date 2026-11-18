@@ -3,8 +3,8 @@
  * or an agent execution receipt. Never invokes shell or repository hooks. */
 import {execFile,execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
-import {realpathSync,lstatSync} from "node:fs";
-import {readFile,lstat} from "node:fs/promises";
+import {constants,realpathSync,lstatSync} from "node:fs";
+import {lstat,open} from "node:fs/promises";
 import {isAbsolute,resolve} from "node:path";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 
@@ -101,14 +101,39 @@ function gitAsync(root:string,...args:string[]):Promise<string>{
 async function commonDirAsync(root:string):Promise<string>{
  return realpathSync(resolve(root,(await gitAsync(root,"rev-parse","--git-common-dir")).trim()));
 }
-/** Huella del índice propio del worktree, acotada y solo de lectura. */
+/** Huella del índice propio del worktree, acotada y solo de lectura.
+ * Se lee del mismo descriptor, sin seguir enlaces en sistemas POSIX.
+ * No se permite crecer el índice durante la lectura. */
 async function indexFingerprint(root:string):Promise<string>{
  const index=(await gitAsync(root,"rev-parse","--git-path","index")).trim();
  const indexPath=isAbsolute(index)?index:resolve(root,index);
- const info=await lstat(indexPath);
- if(!info.isFile()||info.isSymbolicLink()||info.size>32_000_000)
+ const first=await lstat(indexPath);
+ if(!first.isFile()||first.isSymbolicLink()||first.size>32_000_000||first.size<12)
   throw new Error("Índice Git no verificable");
- return createHash("sha256").update(await readFile(indexPath)).digest("hex");
+ // Windows no garantiza O_NOFOLLOW: contrastar en ambos sistemas el archivo abierto.
+ const flags=process.platform==="win32"?constants.O_RDONLY:constants.O_RDONLY|constants.O_NOFOLLOW;
+ const file=await open(indexPath,flags);
+ try{
+  const info=await file.stat();
+  if(!info.isFile()||info.size>32_000_000||info.size<12||
+     info.dev!==first.dev||info.ino!==first.ino)
+   throw new Error("Índice Git cambiado antes de su lectura");
+  // No usar readFile: un proceso concurrente podría ampliar el índice tras stat.
+  const bytes=Buffer.alloc(info.size);
+  let offset=0;
+  while(offset<bytes.length){
+   const chunk=await file.read(bytes,offset,bytes.length-offset,offset);
+   if(chunk.bytesRead===0)throw new Error("Índice Git truncado");
+   offset+=chunk.bytesRead;
+  }
+  if((await file.read(Buffer.alloc(1),0,1,bytes.length)).bytesRead!==0)
+   throw new Error("Índice Git creció durante su lectura");
+  const final=await file.stat(),pathNow=await lstat(indexPath);
+  if(final.size!==info.size||pathNow.isSymbolicLink()||
+     pathNow.dev!==info.dev||pathNow.ino!==info.ino)
+   throw new Error("Índice Git sustituido durante su lectura");
+  return createHash("sha256").update(bytes).digest("hex");
+ }finally{await file.close();}
 }
 export async function inspectParallelWorktreeChangesAsync(
  input:Parameters<typeof inspectParallelWorktreeChanges>[0]

@@ -680,3 +680,9 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - **SHA fallido:** `ae08fac26b553df76b3e27b25be6881f9bcc944c`. Trabajo `44342889885`, caso 65 de 80: `tests/work-unit-review-candidate.test.ts` comparaba el mensaje de uso anterior contra el contrato ahora ampliado con `todo <id> 4r` y `todo <id> judgment-day`.
 - **Corrección admisible:** actualizar la expectativa exacta sin cambiar producción ni rebajar el control. Pi 1.2: 79 PASS, 1 FAIL en el SHA anterior, por tanto no acreditado como verde. Verificar los gates del nuevo SHA.
 - **Restricciones:** PR borrador, sin merge, sin nuevos modelos, sin aprobación humana suplantada. `globalFull:false`.
+
+## 18/11/2026 — Refuerzo de lectura del índice Git T06
+- **Partida:** `356217cd169a1adbe1eb4f95981fa8a0a9ab1547` con CI, Release Gate, Pi 1.2 y arquitectura correctos. La protección de carrera entre dos consultas Git ya estaba implementada; no se duplica.
+- **Mejora independiente:** la huella del índice se calcula sobre un único descriptor; evita seguir enlaces simbólicos en Linux/macOS, contrasta la identidad del fichero en Windows y limita la lectura al tamaño autorizado. Si cambia o no se puede comprobar, se devuelve `unavailable`, no `clean`.
+- **Prueba negativa:** índice enlazado durante la inspección; se mantiene rechazo sin aprobación, sin borrar el trabajo original ni ejecutar modelos.
+- **Estado:** pendiente de CI exact-SHA y revisión incremental. T06 Writer real y T09/T10 siguen con sus puertas de consentimiento y evidencia. Sin merge ni permisos nuevos, `globalFull:false`.

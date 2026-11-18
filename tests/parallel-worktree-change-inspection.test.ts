@@ -1,9 +1,9 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {chmodSync,existsSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {chmodSync,existsSync,mkdirSync,mkdtempSync,renameSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {delimiter,join,resolve} from "node:path";
+import {delimiter,isAbsolute,join,resolve} from "node:path";
 import {inspectParallelWorktreeChanges,inspectParallelWorktreeChangesAsync} from "../src/runtime/agents/parallel-worktree-change-inspection.js";
 
 function fixture(t:TestContext){
@@ -157,5 +157,22 @@ test("T07: preparar un archivo entre diff y ls-files no puede generar un estado 
   assert.equal(actual.autoMerge,false);
  }finally{
   if(before===undefined)delete process.env.PATH;else process.env.PATH=before;
+ }
+});
+
+
+test("T06: el índice Git sustituido por un enlace no se lee ni declara limpio",async t=>{
+ if(process.platform==="win32"){t.skip("La creación de enlaces requiere permisos externos en Windows");return;}
+ const f=fixture(t),gitIndex=f.git(f.root,"rev-parse","--git-path","index");
+ const index=isAbsolute(gitIndex)?gitIndex:resolve(f.root,gitIndex);
+ const original=index+".asen-resguardo";
+ renameSync(index,original);
+ try{
+  symlinkSync(original,index);
+  const result=await f.inspectAsync();
+  assert.equal(result.status,"unavailable","Un índice enlazado no acredita estado limpio");
+  assert.equal(result.sourceVerified,false);assert.equal(result.autoMerge,false);
+ }finally{
+  rmSync(index,{force:true});renameSync(original,index);
  }
 });
