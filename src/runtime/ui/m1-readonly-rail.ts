@@ -19,8 +19,9 @@ export function renderM1Surface(snapshot:AsenPanelSnapshot,width:number):M1Surfa
 /** T11: degradación compacta cuando Pi no admite el árbol lateral auténtico.
  * No presenta una lista aboveEditor como un falso lateral; no infiere trabajo. */
 export function renderT11CompactFallback(snapshot:AsenPanelSnapshot,width:number):string{
- if(!Number.isSafeInteger(width)||width<12||width>1000)throw Error("Invalid T11 fallback width");
+ if(!Number.isSafeInteger(width)||width<1||width>1000)throw Error("Invalid T11 fallback width");
  const command="/asen-panel",separator=" · ";
+ if(width<12)return truncateForTerminal(command,width);
  const summary=renderAsenWorkRow(snapshot,width);
  if(summary?.endsWith(command))return summary;
  // El comando de acceso es funcional: jamás acortarlo para preservar contadores.

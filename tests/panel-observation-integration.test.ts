@@ -8,7 +8,7 @@ import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 import {hostContentColumns,truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 
 // All state, including incidental lifecycle usage, stays in this excluded project root.
-async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"throwing"="reported",listGate?:()=>Promise<void>,production=false){
+async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"throwing"="reported",listGate?:()=>Promise<void|readonly unknown[]>,production=false){
  await mkdir(path.resolve(".cache"),{recursive:true});
  const root=await mkdtemp(path.resolve(".cache/panel-observation-"));
  const home=path.join(root,"home"),project=path.join(root,"project");
@@ -34,7 +34,7 @@ async function fixture(t:TestContext,inventory:"reported"|"empty"|"missing"|"thr
  const dependencies={homeDir:()=>home,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},autoAdvancePlans:false,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false,...(listGate?{todoStoreFactory:async()=>({
   async recover(){/* El almacén de prueba no tiene operaciones pendientes que recuperar. */},
   diagnostics(){return undefined;},
-  async list(){await listGate();return [];}
+  async list(){return (await listGate())??[];}
  } as unknown as SessionTodoStore)}:{})};
  if(production)createPiExtension(dependencies)(pi as any);else createAsenExtension(dependencies)(pi);
  const emit=async(name:string)=>{for(const fn of events.get(name)??[])await fn({},ctx);};

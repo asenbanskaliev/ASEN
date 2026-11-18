@@ -100,6 +100,7 @@ async function run(label,withAsen,resize,interaction=false){
  try{
   await until(()=>existsSync(ready)||exited,label+": inicio no observado");
   assert.equal(exited,false,label+": Pi terminó al iniciar");
+  stage="primer-render-180";
   await until(()=>samples(read(records),180).length>=1||exited,label+": faltan dibujos a 180 columnas");
   assert.equal(exited,false,label+": Pi salió durante el dibujo");
   await sleep(600);

@@ -409,7 +409,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
   };
   // Immutable, session-scoped display data. Never performs an agent action.
-  const getPanelSnapshot=async(ctx:CommandContext):Promise<AsenPanelSnapshot>=>{
+  const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual"):Promise<AsenPanelSnapshot>=>{
    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx);assertCurrent();
    const [todos,agents]=await Promise.all([
     todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
@@ -417,7 +417,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    ]);
    const jobs=backgroundJobs.list(identity.sessionId,identity.projectId);
    // Git is consulted on explicit panel inspection, never on mouse movement.
-   const root=snapshotWorkspaceRoots([identity.projectId])[0];
+   const root=mode==="manual"?snapshotWorkspaceRoots([identity.projectId])[0]:undefined;
    const changes=root&&!root.error?{branch:root.branch,files:root.files.length}:undefined;
    const profiles=await panelProfiles(identity);assertCurrent();
    const now=await sessionIdentity(ctx);assertCurrent();
@@ -449,13 +449,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   // La observación de hijos se hace SOLO cuando se abre el panel.
   // No consultar Git ni diarios externos en cada refresco del editor.
+  let workRowGeneration=0,todoWidgetGeneration=0;
   const publishInspectedWorkRow=(ctx:CommandContext,snapshot:AsenPanelSnapshot):void=>{
    const observed=observeT11ChildAvailability(snapshot);
    const localMissing=observed.activityUnavailable===true;
    const childrenMissing=observed.agentFlowUnavailable===true;
    const recovered=t11ActivityUnavailable&&!localMissing;
    const changed=t11ActivityUnavailable!==localMissing||t11ChildFlowUnavailable!==childrenMissing;
-   if(localMissing)t11ActivityCache.clear();
+   if(localMissing){
+    ++workRowGeneration;++todoWidgetGeneration;t11ActivityCache.clear();
+    try{ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});}catch{}
+   }
    t11ActivityUnavailable=localMissing;t11ChildFlowUnavailable=childrenMissing;
    // No renovar la antigüedad de hijos con refrescos solo locales.
    if(localMissing||childrenMissing){
@@ -476,7 +480,6 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    } // Nunca fingir un lateral a la derecha en el modo no compatible.
    ctx.ui.setWidget("asen-live-work",[renderT11CompactFallback(observed,width)],{placement:"aboveEditor"});
   };
-  let workRowGeneration=0;
   const refreshWorkRow=async(ctx:CommandContext):Promise<void>=>{
    if(ctx?.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
    const generation=++workRowGeneration,guard=panelScope(ctx);
@@ -509,7 +512,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(generation!==workRowGeneration||hostStatusClosed)return;
     try{guard();}catch{return;}
     // El proveedor falló: borrar avisos anteriores, no publicarlos como actuales.
-    t11ActivityCache.clear();t11ActivityUnavailable=true;
+    ++todoWidgetGeneration;t11ActivityCache.clear();t11ActivityUnavailable=true;
+    try{ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});}catch{}
     t11Snapshot=unavailableT11RailSnapshot();t11ChildFlowUnavailable=true;t11ChildObservedAt=0;t11ChildExpiry?.clear();t11Rail?.refresh();
     // Retirar también el widget M1: el resumen local obsoleto no puede sobrevivir al fallo.
     try{ctx.ui.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});}catch{}
@@ -519,13 +523,24 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
    if(!ctx?.ui?.setWidget)return;
+   const generation=++todoWidgetGeneration,guard=panelScope(ctx);
    try{
-    if(!todoStorePromise){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});await refreshWorkRow(ctx);return;}
+    if(!todoStorePromise){
+     guard();if(generation!==todoWidgetGeneration)return;
+     ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});
+     await refreshWorkRow(ctx);return;
+    }
     const identity=await sessionIdentity(ctx),rows=await (await todoStorePromise).list(identity),current=await sessionIdentity(ctx);
-    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;}
+    guard();if(generation!==todoWidgetGeneration)return;
+    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId){
+     ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;
+    }
     ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows,3,activeValidationTask(identity.sessionId,identity.projectId),terminalColumns()),{placement:"belowEditor"});
     await refreshWorkRow(ctx);
-   }catch{/* The progress display is optional and never blocks task work. */}
+   }catch{
+    if(generation!==todoWidgetGeneration)return;
+    try{guard();ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});}catch{}
+   }
   };
   if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise,taskAgentLinks&&agentRuntimePromise?async(taskId,identity)=>{
    const [links,runtime]=await Promise.all([taskAgentLinks.list(identity),agentRuntimePromise]);
@@ -570,7 +585,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
@@ -633,7 +648,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       position:t11Position,preset:t11Preset
      }),
      current:()=>{try{guard();return true;}catch{return false;}},
-     read:()=>getPanelSnapshot(ctx),
+     read:()=>getPanelSnapshot(ctx,"observer"),
      onSnapshot:snapshot=>publishInspectedWorkRow(ctx,snapshot),
      onUnavailable:()=>publishInspectedWorkRow(ctx,unavailableT11RailSnapshot()),
     });
@@ -918,7 +933,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
@@ -930,7 +945,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(endingSession){sessionDirectory.remove(endingSession);clearSessionProfiles(await profilePartition(),endingSession);}
    for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);
    if(agentDeliveryIdentity&&agentDeliveryIdentity.sessionId===endingSession)notificationProjection.deactivate(agentDeliveryIdentity);
-   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;workRowGeneration++;ctx?.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:t11-chrome",undefined,{placement:"belowEditor"});ctx?.ui?.setStatus?.("asen:workspace",undefined);resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
+   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;workRowGeneration++;todoWidgetGeneration++;ctx?.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:t11-chrome",undefined,{placement:"belowEditor"});ctx?.ui?.setStatus?.("asen:workspace",undefined);resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
    if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("todo-recovery-start");await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");traceVerifierShutdown("todo-recovery-done");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue after best-effort recovery. */}}
    if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("agent-cancel-start");const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());traceVerifierShutdown("agent-cancel-done");}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}
    traceVerifierShutdown("delivery-drain-start");while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);traceVerifierShutdown("delivery-drain-done");

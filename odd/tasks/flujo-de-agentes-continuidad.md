@@ -538,3 +538,8 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Se detectó que un candidato sin la función exportada podía superar falsamente todos los casos que esperaban `TypeError`: el controlador generaba ese mismo error dentro del `catch` de la función. **Corrección:** comprobar el export fuera del `catch` del candidato. Un export ausente o no invocable debe provocar un resultado de infraestructura no exitoso.
 - Pruebas de GitHub en Docker sin red: export ausente, export no invocable, sintaxis válida en el caso adversarial de salida anticipada y motivo exacto de fallo. La ausencia del archivo se verifica tras la puerta CI en la prueba real, no se confunde con el bloqueo local.
 - Se mantiene el bloqueo de ensayos Writer T06/T08, sin modelos ni credenciales ni permiso añadido. Ninguna prueba offline sustituye el ensayo autorizado. `globalFull:false`.
+
+
+## 2026-11-18 — Tanda T07/T11 de estabilidad y rendimiento (CodeRabbit)
+
+El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git status` síncrono; la vista abierta manualmente conserva Git fresco. La pérdida de datos locales invalida lecturas y progreso Todo pendientes y borra la vista anterior. Solo una lectura válida de la misma sesión recupera el widget. El acceso al panel se recorta en terminales de menos de 12 columnas para evitar excepciones y desbordes. El ensayo nativo distingue espera del primer dibujo de espera del indicador de arranque. La prueba del observador contabiliza las notificaciones de indisponibilidad para no ocultarlas. Sin modelos, consentimientos ni integración; `globalFull:false`.

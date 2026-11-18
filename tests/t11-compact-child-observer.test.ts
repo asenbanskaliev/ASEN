@@ -21,16 +21,16 @@ test("T11/T07: el modo compacto observa hijos y el oculto no",async()=>{
  assert.equal(shouldObserveT11Surface({...view,preset:"light"}),false);
  assert.equal(shouldObserveT11Surface({...view,compactWidget:false}),false);
  assert.equal(shouldObserveT11Surface({...view,railActive:true}),true);
- let reads=0,updates=0,current=true;
+ let reads=0,updates=0,unavailable=0,current=true;
  const observer=createT11RailObserver({autoStart:false,
   active:()=>shouldObserveT11Surface(view),current:()=>current,
   read:async()=>{reads++;return local;},
-  onSnapshot:()=>{updates++;},onUnavailable:()=>{assert.fail("No debía fallar");}
+  onSnapshot:()=>{updates++;},onUnavailable:()=>{unavailable++;}
  });
  await observer.refreshNow();
- assert.equal(reads,1);assert.equal(updates,1);
+ assert.equal(reads,1);assert.equal(updates,1);assert.equal(unavailable,0);
  current=false;await observer.refreshNow();
- assert.equal(reads,1);assert.equal(updates,1);
+ assert.equal(reads,1);assert.equal(updates,1);assert.equal(unavailable,0);
  observer.stop();
 });
 
