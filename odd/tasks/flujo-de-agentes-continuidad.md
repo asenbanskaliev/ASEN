@@ -602,3 +602,11 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - **SHA inspeccionado:** `b3886a824447351825f5469765cb2987cc6e9a43`. `Pi 1.2 runtime evidence` falló antes del ensayo por dos errores TypeScript TS2339: un test T06 llamaba a `f.git`, no incluido en el objeto del fixture. Se sustituye por `execFileSync` en la raíz de prueba con `gitFixtureEnv`, sin tocar el código productivo.
 - **Barra T11:** el test de 40 columnas acepta la forma corta `! hijos ?` cuando permite mostrar una alerta adicional, mientras conserva el aviso completo a anchuras mayores. El tamaño y presencia de la advertencia siguen comprobados.
 - **Estado:** corrección publicada pendiente del CI y Release Gate de su SHA exacto. No declarar PASS antes de ver el resultado. `globalFull:false`, sin merge ni Writer.
+
+## 18/11/2026 — T11: corrección del CI de Linux y macOS
+
+- **SHA inicial:** `617ee4deddb416eeb34edce584be7fd5467fdf07`, PR #61 borrador.
+- **Hallazgo confirmado:** CI Linux falló en cuatro pruebas de panel T11 y macOS en una: el selector abreviaba `! hijos no disponibles` por maximizar el número total de segmentos, incluso para añadir solo `coste/uso ?` y eliminar un aviso prioritario a 44 columnas.
+- **Corrección:** conservar los segmentos incluidos por identidad y elegir abreviación solo si permite mostrar un nuevo segmento de prioridad crítica (bloqueos, hijos, contexto, revisión o modo). Cuando no mejora los avisos críticos se conserva la forma completa; coste/modelo no desplazan avisos de salud.
+- **Verificación:** nueva prueba a 100 columnas junto a cobertura de 35, 40, 44 y 55 columnas existente. CI exacto del siguiente SHA pendiente, no se da por superado.
+- **Restricciones:** sin fusión a la rama base, sin modelos ni pagos, sin cambio de permisos, `globalFull:false`.

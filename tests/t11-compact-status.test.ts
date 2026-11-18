@@ -176,6 +176,19 @@ test("T11: el aviso abreviado permite mostrar revisión y bloqueo a 55 columnas"
  assert.match(row,/\/asen-panel$/u);
  assert.ok(visibleWidth(row)<=55);
 });
+test("T11: solo abrevia hijos para una alerta importante, no para mostrar coste",()=>{
+ const host=projectHostStatus({model:{provider:"p",id:"m"},thinkingLevel:"high",
+  getContextUsage:()=>({tokens:80,contextWindow:100,percent:80})});
+ const row=renderAsenT11CompactStatus(sample({
+  hostStatus:host,agentFlowUnavailable:true,permission:"YOLO"
+ }),100);
+ assert.match(row,/^! hijos no disponibles · ! ctx 80% · modo YOLO/u);
+ assert.doesNotMatch(row,/coste\/uso/u);
+ assert.match(row,/\/asen-panel$/u);
+ const complete=renderAsenT11CompactStatus(sample({agentFlowUnavailable:true}),100);
+ assert.match(complete,/! hijos no disponibles/u);
+ assert.doesNotMatch(complete,/! hijos \?/u);
+});
 test("T11: en 35 columnas la alerta de hijos no oculta un contexto crítico",()=>{
  const host=projectHostStatus({getContextUsage:()=>({tokens:95,contextWindow:100,percent:95})});
  const row=renderAsenT11CompactStatus(sample({hostStatus:host,agentFlowUnavailable:true}),35);

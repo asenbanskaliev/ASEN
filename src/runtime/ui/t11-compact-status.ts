@@ -61,23 +61,30 @@ export function renderAsenT11CompactStatus(
  // Elegir la forma corta del aviso solo cuando permite mostrar más
  // información prioritaria; nunca sustituir un aviso real por modelo o coste.
  const pack=(shortChild:boolean)=>{
-  const rows:string[]=[];let included=0;
+  const rows:string[]=[],included=new Set<number>();
   const label=(value:string)=>shortChild&&value==="! hijos no disponibles"?"! hijos ?":value;
   if(ordered.length&&budget>0&&visibleWidth(label(ordered[0]!.text))>budget){
    rows.push(truncateForTerminal(label(ordered[0]!.text),budget));
    return {rows,included};
   }
-  for(const item of ordered){
+  for(const [index,item] of ordered.entries()){
    const value=label(item.text);
    const next=rows.length?rows.join(separator)+separator+value:value;
-   if(visibleWidth(next)<=budget){rows.push(value);included++;}
+   if(visibleWidth(next)<=budget){rows.push(value);included.add(index);}
   }
   if(!rows.length&&ordered.length&&budget>0)
    rows.push(truncateForTerminal(label(ordered[0]!.text),budget));
   return {rows,included};
  };
  const normal=pack(false),compact=pack(true);
- const parts=compact.included>normal.included?compact.rows:normal.rows;
+ // No abreviar un fallo de hijos para ganar únicamente modelo o coste.
+ // En igualdad de avisos críticos, mantener la forma completa.
+ // Comparar las prioridades, no el número bruto de segmentos: en 44 columnas
+ // el estado de hijos tiene preferencia frente a un contador de revisión.
+ const critical=(item:Segment)=>item.priority<=1;
+ const preferCompact=ordered.some((item,index)=>critical(item)&&
+  compact.included.has(index)&&!normal.included.has(index));
+ const parts=preferCompact?compact.rows:normal.rows;
  if(!parts.length&&options.headerAtTop!==true&&(!access||visibleWidth("ASEN"+separator+access)<=width))
   parts.push("ASEN");
  let result=parts.join(separator);
