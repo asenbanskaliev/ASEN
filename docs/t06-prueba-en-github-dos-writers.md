@@ -87,3 +87,23 @@ Estado: **reparación de código, pendiente de aceptación real**.
 - Los dos archivos y un manifiesto se conservan como evidencias junto al informe, con acceso según permisos del repositorio. Se genera por separado `t06-veredicto-aislado.json`. Una vez iniciado el verificador, un error de huella, un archivo cambiado o un fallo de prueba producen `blocked`. Si falla antes un paso como `docker pull` o `docker image inspect`, el trabajo falla sin generar ese informe. Ninguno de los dos casos concede aprobación.
 - **No es posible aplicar retroactivamente esta fase a la ejecución [44373591222](https://github.com/asenbanskaliev/ASEN/actions/runs/44373591222)**: allí se subieron los recibos, pero no las fuentes creadas por Pi, y la máquina temporal ya finalizó. No se vuelve a llamar a NVIDIA ni a pedir aprobaciones por esta modificación.
 - Incluso con `candidate-behavior-passed`, siguen pendientes las pruebas de integración, T07/T08/T09/T10, revisión independiente y equivalencia general. El resultado conserva `accepted:false` y `globalFull:false`.
+
+
+## 7. T06 completo en una sola ejecución manual: Writers → pruebas → revisores
+
+La opción **`modo=t06`** encadena ahora tres fases en **el mismo número de ejecución**:
+
+1. **Generación NVIDIA:** dos Pi 1.2 nativos generan dos archivos diferentes, con carpetas Git separadas. Se necesitan las dos aprobaciones históricas ya existentes: `asen-t06-writer-a` y `asen-t06-writer-b`.
+2. **Comprobación sin modelos:** un trabajo GitHub distinto recupera **los archivos del mismo run**, comprueba sus huellas y ejecuta **17 casos** en contenedores Linux sin red y sin claves del proveedor. Un fallo detiene el proceso antes de consultar a los revisores.
+3. **Revisión independiente NVIDIA:** únicamente cuando las 17 pruebas pasan, GitHub solicita **otras dos aprobaciones separadas** para los entornos nuevos `asen-t06-reviewer-a` y `asen-t06-reviewer-b`. Dos modelos distintos del Writer y entre sí revisan ambos archivos sin herramientas ni permisos de escritura.
+
+**Preparación obligatoria antes de ejecutar:**
+
+- En **Settings → Environments**, crear y proteger los cuatro entornos con **Required reviewers**, en particular los nuevos `asen-t06-reviewer-a` y `asen-t06-reviewer-b`. Si no están protegidos, el verificador de GitHub rechazará los consentimientos y no enviará solicitudes a los revisores. No desactivar estos controles.
+- En **Actions → Memory OpenRouter E2E → Run workflow**, elegir la rama `feat/flujo-de-agentes-20261115`, `modo=t06`, el **SHA actual de 40 caracteres**, y los dos identificadores reales `t06_revisor_a` y `t06_revisor_b` con forma `nvidia/... ` (sin el espacio final). El autor utiliza `nvidia/nemotron-3.5-lightning-30b-a3b`; ningún revisor puede utilizar ese mismo modelo ni repetirse entre ellos. Verificar que los modelos existen y se encuentran accesibles antes de autorizar consumo.
+- Marcar `coste_desconocido_autorizado` **solo si el operador acepta el posible gasto desconocido del proveedor**. No se activa por cambios, PR ni CI. Solo se permite el primer intento; no se ejecutan reintentos parciales que consuman NVIDIA.
+- Aprobar **uno a uno** los entornos Writer A y Writer B. Tras superar el aislamiento, aprobar **uno a uno** Revisor A y Revisor B. Son **cuatro consentimientos humanos distintos** en una sola ejecución, no cuatro ejecuciones.
+
+**Evidencias:** se guardan fuentes y huellas, `t06-veredicto-aislado.json` y `t06-revisiones.json`, siempre con `accepted:false` y `globalFull:false`. Una revisión `candidate-reviewed-by-two-models` representa dos opiniones verificadas, **no** aceptación de producción, gastos verificados, pruebas del ciclo completo ODD o equivalencia a Gentle Shell.
+
+**Estado de implantación:** código y pruebas de autorización conectados; **no se ha ejecutado todavía un T06 real de las tres fases bajo el SHA nuevo**. La ejecución histórica `44373591222` valida únicamente escritura estática y no permite recuperar retroactivamente las fuentes. Esta incorporación no llama por sí sola a NVIDIA.
