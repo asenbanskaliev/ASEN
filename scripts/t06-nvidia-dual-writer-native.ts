@@ -151,7 +151,7 @@ async function nativeWriter(
  const exactScope=observedPaths.length===1&&observedPaths[0]===target;
  let syntaxOk=false,behaviorOk=false;
  if(present&&exactScope){
-  try{verifySource(file,fn);syntaxOk=true;behaviorOk=checkT06Behavior(root,target,fn);}catch{}
+  try{verifySource(file,fn);syntaxOk=true;if(!staticOnly)behaviorOk=checkT06Behavior(root,target,fn);}catch{}
  }
  const assessment=assessT06WriterEvidence({
   events,requestedModel:model,observedModel,
