@@ -56,6 +56,7 @@ jobs:
             tests/t06-github-reviewer-approvals.test.ts \
             tests/t06-independent-review-admission.test.ts \
             tests/t06-review-replay.test.ts \
+            tests/t06-review-failure-diagnostic.test.ts \
             tests/t06-javascript-syntax.test.ts \
             tests/pi-authority.test.ts \
             tests/t09-native-trial-readiness.test.ts \
