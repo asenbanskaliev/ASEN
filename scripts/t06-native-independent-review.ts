@@ -7,6 +7,7 @@ import {createInterface} from "node:readline/promises";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-review-receipt.js";
 import {requireLiveT06GithubReviewerApprovals} from "../src/runtime/agents/t06-github-reviewer-approvals.js";
+import {requireLiveT06ReviewReplay} from "../src/runtime/agents/t06-review-replay.js";
 
 const files=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
 const modelPattern=/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u;
@@ -22,7 +23,10 @@ export async function runT06NativeIndependentReviews(
   requested[0]===requested[1]||requested.includes(writerModel))
   throw Error("T06 requiere dos modelos NVIDIA de revisión distintos del autor y entre sí");
  const githubReview=process.env.ASEN_T06_GITHUB_REVIEW_MODE==="1";
- if(githubReview)await requireLiveT06GithubReviewerApprovals();
+ if(githubReview){
+  if(process.env.ASEN_T06_REVIEW_REPLAY_MODE==="1")await requireLiveT06ReviewReplay();
+  else await requireLiveT06GithubReviewerApprovals();
+ }
  else if(!process.stdin.isTTY||!process.stdout.isTTY)
   throw Error("T06 revisión exige consentimiento humano interactivo o dos aprobaciones GitHub verificadas");
  const evidence=files.map((path,i)=>{
@@ -45,7 +49,8 @@ export async function runT06NativeIndependentReviews(
  }else{
   // No se introduce respuesta TTY ficticia: dos aprobaciones históricas
   // diferentes fueron leídas directamente desde GitHub para este run.
-  await requireLiveT06GithubReviewerApprovals();
+  if(process.env.ASEN_T06_REVIEW_REPLAY_MODE==="1")await requireLiveT06ReviewReplay();
+  else await requireLiveT06GithubReviewerApprovals();
  }
  const results=await Promise.allSettled(requested.map(async(requestedModel,index)=>{
   const sessionId="t06-independent-"+randomUUID();
