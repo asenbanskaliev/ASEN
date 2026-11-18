@@ -19,7 +19,7 @@ const digest=(data:Buffer)=>createHash("sha256").update(data).digest("hex");
 const sha="a".repeat(40);
 const report=(hashes:Record<string,Buffer>=bytes,sourceSha=sha)=>({
  schema:"asen.t06.native-dual-writer/v1",sha:sourceSha,
- staticOnly:true,result:"PASS_TWO_WRITERS_STATIC_ONLY_BEHAVIOR_NOT_TESTED",
+ staticOnly:true,concurrent:true,result:"PASS_TWO_WRITERS_STATIC_ONLY_BEHAVIOR_NOT_TESTED",
  generatedCodeExecuted:false,behaviorVerified:false,accepted:false,globalFull:false,
  workers:names.map((name,i)=>({
   worker:"t06-writer-"+(i===0?"a":"b"),scope:name,
@@ -41,6 +41,7 @@ test("T06 acepta solo bytes de ambos Writers con huellas Pi idénticas",()=>{
   {report:report(),manifest:manifest(),expectedSha:"b".repeat(40),files:bytes},
   {report:{...report(),result:"PASS_TWO_REAL_WRITERS_NEEDS_INDEPENDENT_REVIEW"},manifest:manifest(),expectedSha:sha,files:bytes},
   {report:{...report(),behaviorVerified:true},manifest:manifest(),expectedSha:sha,files:bytes},
+  {report:{...report(),concurrent:false},manifest:manifest(),expectedSha:sha,files:bytes},
   {report:{...report(),accepted:true},manifest:manifest(),expectedSha:sha,files:bytes},
   {report:report(),manifest:{...manifest(),globalFull:true},expectedSha:sha,files:bytes},
   {report:report(),manifest:{...manifest(),files:[...manifest().files].reverse()},expectedSha:sha,files:bytes},
