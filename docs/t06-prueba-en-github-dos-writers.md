@@ -107,3 +107,47 @@ La opción **`modo=t06`** encadena ahora tres fases en **el mismo número de eje
 **Evidencias:** se guardan fuentes y huellas, `t06-veredicto-aislado.json` y `t06-revisiones.json`, siempre con `accepted:false` y `globalFull:false`. Una revisión `candidate-reviewed-by-two-models` representa dos opiniones verificadas, **no** aceptación de producción, gastos verificados, pruebas del ciclo completo ODD o equivalencia con la referencia de paridad.
 
 **Estado de implantación:** código y pruebas de autorización conectados; **no se ha ejecutado todavía un T06 real de las tres fases bajo el SHA nuevo**. La ejecución histórica `44373591222` valida únicamente escritura estática y no permite recuperar retroactivamente las fuentes. Esta incorporación no llama por sí sola a NVIDIA.
+
+
+## 8. Reutilizar el ensayo 44389671458 sin pagar otra vez por los Writers
+
+La ejecución [44389671458](https://github.com/asenbanskaliev/ASEN/actions/runs/44389671458)
+**generó dos archivos Pi auténticos y superó las 17 pruebas aisladas**. El último trabajo
+no llegó a ejecutar revisores: los entornos de revisión habían terminado
+sin dejar las dos aprobaciones humanas en la API de GitHub. Las fuentes
+y los informes originales permanecen como dos artefactos de esa ejecución.
+
+La nueva opción `modo=t06_revision` del flujo manual
+`Memory OpenRouter E2E` **no vuelve a ejecutar escritores**, ni repite Docker
+ni consume cuota de generación. Recupera directamente los **dos artefactos
+del run 44389671458** con su SHA original
+`a33da9eebb92ac3131c958b14846945c31cd24a7`.
+
+Pasos:
+
+1. En Actions → **Memory OpenRouter E2E → Run workflow**, seleccionar la rama
+   `feat/flujo-de-agentes-20261115`, `modo=t06_revision` y el **último SHA de
+   la rama** en `candidate_sha` (es distinto del SHA de los archivos históricos).
+2. Elegir `t06_revisor_a` y `t06_revisor_b`: dos identificadores NVIDIA reales,
+   distintos entre sí y del escritor
+   `nvidia/nemotron-3.5-lightning-30b-a3b`.
+3. Marcar `coste_desconocido_autorizado` solo si se acepta explícitamente el
+   posible coste de **dos revisiones nuevas**. No existe consentimiento implícito
+   por el ensayo previo.
+4. Una vez que la preparación sin modelos compruebe las evidencias originales,
+   GitHub solicitará aprobación humana individual de
+   `asen-t06-reviewer-a` y, después, `asen-t06-reviewer-b`.
+   Deben estar protegidos con **Required reviewers**.
+5. Antes de llamar a NVIDIA se validan por API las dos aprobaciones Writer del
+   **run anterior** y las dos aprobaciones de revisores del **run nuevo**.
+   Cualquier falta de evidencia o rechazo bloquea la revisión.
+
+**Conserva los controles:** primer intento, cuenta propietaria, rama y SHA
+exactos, dos revisores Pi sin herramientas ni permiso de escritura,
+artefactos ligados al número de ejecución, sin fusión automática y
+`accepted:false`/`globalFull:false`.
+
+**No usar «Re-run failed jobs» del ensayo 44389671458**: la repetición tiene
+otro número de intento y debe ser bloqueada por seguridad. El nuevo modo
+manual es la vía prevista para aprovechar sus evidencias sin repetir los
+escritores.
