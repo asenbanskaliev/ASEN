@@ -11,9 +11,9 @@ concurrency:
   cancel-in-progress: true
 jobs:
   agentes-t02-t05-t06:
-    name: Agentes T02 T03 T04 T05 T06 T08 (pruebas negativas y ensayo protegido)
+    name: Megatanda T02–T10 y T11 (pruebas integradas sin modelos)
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 14
     permissions:
       contents: read
     env:
@@ -63,7 +63,21 @@ jobs:
             tests/t08-pi-review-diagnostics.test.ts \
             tests/t08-pi-settlement.test.ts \
             tests/pi-artifact-runner-cancellation.test.ts \
-            tests/pi-artifact-runner-recovery.test.ts
+            tests/pi-artifact-runner-recovery.test.ts \
+            tests/ordinary-review-assessment.test.ts \
+            tests/odd-agent-review-command.test.ts \
+            tests/agent-flow-overview.test.ts \
+            tests/agent-flow-ab-comparison.test.ts \
+            tests/agent-flow-ab-series.test.ts \
+            tests/parallel-worktree-change-inspection.test.ts \
+            tests/parallel-worktree-reconciliation.test.ts \
+            tests/panel-observation-integration.test.ts \
+            tests/t06-t07-trial-evidence.test.ts \
+            tests/review-acceptance.test.ts \
+            tests/review-acceptance-receipt.test.ts \
+            tests/t11-git-observation.test.ts \
+            tests/t11-rail-observer.test.ts \
+            tests/t11-native-rail.test.ts
   test:
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
