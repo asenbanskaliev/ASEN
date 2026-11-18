@@ -25,7 +25,13 @@ export function renderAsenT11CompactStatus(
   items.push({text:"! ctx "+(ctx.percent===null?"?":Math.round(ctx.percent)+"%"),priority:0});
  const blocked=activityUnavailable?0:snapshot.todos.filter(x=>x.current.state==="blocked").length;
  const interrupted=activityUnavailable?0:snapshot.agents.filter(x=>x.state==="failed"||x.state==="interrupted").length;
- if(interrupted||blocked)items.push({text:"! "+(interrupted+blocked)+" bloqueos",priority:-2});
+ // Solo contar bloqueos hijos si la observación es válida y actual.
+ // No reutilizar el último contador durante una pérdida de la fuente.
+ const childTrusted=!activityUnavailable&&options.agentFlowUnavailable!==true&&
+  snapshot.agentFlowUnavailable!==true;
+ const childBlocked=childTrusted?(snapshot.agentFlow?.overview.stages.blocked??0):0;
+ if(interrupted||blocked||childBlocked)
+  items.push({text:"! "+(interrupted+blocked+childBlocked)+" bloqueos",priority:-2});
  if(!activityUnavailable&&snapshot.review?.pending&&Number.isSafeInteger(snapshot.review.pending)&&snapshot.review.pending>0)
   items.push({text:"! "+snapshot.review.pending+" revisiones",priority:-1});
  const permission=snapshot.permission;
