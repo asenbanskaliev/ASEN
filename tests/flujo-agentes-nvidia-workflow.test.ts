@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
-const entry=readFileSync(new URL("../.github/workflows/memory-openrouter-e2e.yml",import.meta.url),"utf8");
-const flow=readFileSync(new URL("../.github/workflows/asen-flujo-agentes-nvidia.yml",import.meta.url),"utf8");
-const ci=readFileSync(new URL("../.github/workflows/ci.yml",import.meta.url),"utf8");
+const entry=readFileSync(new URL("../.github/workflows/memory-openrouter-e2e.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
+const flow=readFileSync(new URL("../.github/workflows/asen-flujo-agentes-nvidia.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
+const ci=readFileSync(new URL("../.github/workflows/ci.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
 
 test("T02/T06: NVIDIA real solo desde una selección humana explícita",()=>{
  assert.match(entry,/\n          - flujo\n/u);
