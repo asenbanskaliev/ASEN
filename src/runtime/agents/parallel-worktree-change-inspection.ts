@@ -2,7 +2,9 @@
  * source candidate. This is not code review, test evidence, merge approval,
  * or an agent execution receipt. Never invokes shell or repository hooks. */
 import {execFile,execFileSync} from "node:child_process";
+import {createHash} from "node:crypto";
 import {realpathSync,lstatSync} from "node:fs";
+import {readFile,lstat} from "node:fs/promises";
 import {isAbsolute,resolve} from "node:path";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 
@@ -99,6 +101,15 @@ function gitAsync(root:string,...args:string[]):Promise<string>{
 async function commonDirAsync(root:string):Promise<string>{
  return realpathSync(resolve(root,(await gitAsync(root,"rev-parse","--git-common-dir")).trim()));
 }
+/** Huella del índice propio del worktree, acotada y solo de lectura. */
+async function indexFingerprint(root:string):Promise<string>{
+ const index=(await gitAsync(root,"rev-parse","--git-path","index")).trim();
+ const indexPath=isAbsolute(index)?index:resolve(root,index);
+ const info=await lstat(indexPath);
+ if(!info.isFile()||info.isSymbolicLink()||info.size>32_000_000)
+  throw new Error("Índice Git no verificable");
+ return createHash("sha256").update(await readFile(indexPath)).digest("hex");
+}
 export async function inspectParallelWorktreeChangesAsync(
  input:Parameters<typeof inspectParallelWorktreeChanges>[0]
 ):Promise<ParallelWorktreeChangeInspection>{
@@ -116,10 +127,21 @@ export async function inspectParallelWorktreeChangesAsync(
     !sameWorkspaceIdentityPath(await commonDirAsync(root),await commonDirAsync(source))||
     (await gitAsync(source,"rev-parse","HEAD")).trim()!==input.baseRevision)
    return unavailable();
-  const headMatchesBase=(await gitAsync(root,"rev-parse","HEAD")).trim()===input.baseRevision;
-  const tracked=await gitAsync(root,"diff","--name-only","--no-ext-diff","--no-textconv",
-   "--no-renames","-z",input.baseRevision);
-  const untracked=await gitAsync(root,"ls-files","--others","-z");
+  const initialHead=(await gitAsync(root,"rev-parse","HEAD")).trim();
+  const headMatchesBase=initialHead===input.baseRevision;
+  let tracked="",untracked="",stable=false;
+  // Un archivo preparado entre diff y ls-files podría desaparecer de ambas listas.
+  // Reintentar una vez si cambia el índice; persistencia de la carrera = unavailable.
+  for(let attempt=0;attempt<2;attempt++){
+   const before=await indexFingerprint(root);
+   tracked=await gitAsync(root,"diff","--name-only","--no-ext-diff","--no-textconv",
+    "--no-renames","-z",input.baseRevision);
+   untracked=await gitAsync(root,"ls-files","--others","-z");
+   if(before===await indexFingerprint(root)){stable=true;break;}
+  }
+  if(!stable||(await gitAsync(root,"rev-parse","HEAD")).trim()!==initialHead||
+     (await gitAsync(source,"rev-parse","HEAD")).trim()!==input.baseRevision)
+   return unavailable();
   const raw=[...tracked.split("\0"),...untracked.split("\0")].filter(Boolean);
   if(raw.length>changedLimit||raw.some(x=>!plainRelative(x)))return unavailable();
   const changedPaths=Object.freeze([...new Set(raw)].sort());
