@@ -142,6 +142,26 @@ export function isGithubHostedSandboxRun(env:Readonly<Record<string,string|undef
   env.GITHUB_HEAD_REF==="feat/flujo-de-agentes-20261115";
 }
 
+/** Segundo contexto autorizado: trabajo de replay T06 de una ejecución
+ * GitHub manual previamente aprobada. No acepta PR, push ni intentos repetidos.
+ * El contenedor NO recibe credenciales ni ejecuta modelos. */
+export function isGithubHostedT06ManualSandboxRun(
+ env:Readonly<Record<string,string|undefined>>=process.env
+):boolean{
+ return env.ASEN_DOCKER_TESTS_CI==="1"&&
+  env.ASEN_T06_ISOLATED_REPLAY==="1"&&
+  env.GITHUB_ACTIONS==="true"&&
+  env.RUNNER_ENVIRONMENT==="github-hosted"&&
+  env.RUNNER_OS==="Linux"&&
+  env.GITHUB_REPOSITORY==="asenbanskaliev/ASEN"&&
+  env.GITHUB_EVENT_NAME==="workflow_dispatch"&&
+  env.GITHUB_ACTOR==="asenbanskaliev"&&
+  env.GITHUB_REF==="refs/heads/feat/flujo-de-agentes-20261115"&&
+  env.GITHUB_RUN_ATTEMPT==="1"&&
+  /^[0-9a-f]{40}$/u.test(env.ASEN_EXPECTED_SHA??"")&&
+  env.GITHUB_SHA===env.ASEN_EXPECTED_SHA;
+}
+
 /** No produce PASS si falta Docker, imagen local fijada o aislamiento.
  * No utiliza variables del proveedor, claves, red del host ni permisos Pi.
  */
@@ -152,7 +172,8 @@ export function runDockerBehaviorCases(input:Readonly<{
  if(input.cases.length<2||!validCases(input.cases)||!imagePattern.test(input.image)||
     !targetPattern.test(input.target)||!/^[A-Za-z][A-Za-z0-9]*$/u.test(input.fn))
   return {verified:false,completed:0,reason:"configuracion-invalida"};
- if(process.platform!=="linux"||!isGithubHostedSandboxRun())
+ if(process.platform!=="linux"||
+    !(isGithubHostedSandboxRun()||isGithubHostedT06ManualSandboxRun()))
   return {verified:false,completed:0,reason:"solo-github-actions"};
  let staging:string|undefined;
  try{
