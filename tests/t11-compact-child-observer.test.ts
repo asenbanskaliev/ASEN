@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {combineT11LocalWithChild,createT11RailObserver,shouldObserveT11Surface} from "../src/runtime/ui/t11-rail-observer.js";
 import {projectParallelAgentFlow} from "../src/runtime/ui/agent-flow-overview.js";
+import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
+import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import type {AsenPanelSnapshot} from "../src/runtime/ui/ide-panel.js";
 
 const local:AsenPanelSnapshot={todos:[],agents:[],jobs:[]};
@@ -62,4 +64,35 @@ test("T11/T07: actividad nueva recupera el panel sin atribuir éxitos a hijos de
  assert.equal(result.agentFlowUnavailable,true);
  assert.equal(result.review,undefined);
  assert.equal(result.agentFlow,undefined);
+});
+
+test("T11/T07: el resumen compacto muestra Workers observados y nunca convierte caducidad en cero",()=>{
+ const changes={status:"clean" as const,changedPaths:[],outOfScopePaths:[],
+  sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted" as const,autoMerge:false as const};
+ const flow=projectParallelAgentFlow([{
+  batchId:"lote-pi",state:"prepared",supervisorClaimed:true,tasks:[
+   {sourceTodoId:"a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+    changes,childSession:{id:"sesion-a",agents:[{id:"pi-worker-a",role:"worker",state:"running"}]}},
+   {sourceTodoId:"b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+    changes,childSession:{id:"sesion-b",agents:[{id:"pi-worker-b",role:"worker",state:"queued"}]}}
+  ]
+ }]);
+ const prior:AsenPanelSnapshot={...local,agentFlow:{
+  state:"observed",totalRecordedBatches:1,limited:false,overview:flow
+ }};
+ const fresh=combineT11LocalWithChild(local,prior,true);
+ const live=renderT11CompactFallback(fresh,139);
+ assert.match(live,/1 child Workers observed/u);
+ assert.match(live,/1 hijos en cola/u);
+ const expired=combineT11LocalWithChild(local,prior,false);
+ for(const width of [24,40,80,120,139]){
+  const row=renderT11CompactFallback(expired,width);
+  assert.ok(visibleWidth(row)<=width);
+  assert.match(row,/\/asen-panel/u);
+  if(width>=40)assert.match(row,/hijos no disponibles/u);
+  assert.doesNotMatch(row,/child Workers observed|hijos en cola|0 child Workers/u);
+ }
+ const recovered=renderT11CompactFallback(fresh,139);
+ assert.match(recovered,/1 child Workers observed/u);
+ assert.doesNotMatch(recovered,/hijos no disponibles/u);
 });
