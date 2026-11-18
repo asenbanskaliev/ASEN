@@ -27,11 +27,20 @@ export interface SandboxVerdict {
 }
 const imagePattern=/^node@sha256:[0-9a-f]{64}$/u;
 const targetPattern=/^[a-z0-9][a-z0-9-]*\.mjs$/u;
-const driver="const p=JSON.parse(process.argv[1]);"+
- "const m=await import('file:///opt/candidate.mjs');"+
- "let result;try{result={kind:'value',value:await m[p.fn](p.input)};}"+
- "catch(error){result={kind:'throws',name:error?.name??'Error'};}"+
- "process.stdout.write(JSON.stringify(result)+'\\n');";
+const driver=[
+ "const {readFileSync}=await import('node:fs');",
+ "const {SourceTextModule,createContext}=await import('node:vm');",
+ "const p=JSON.parse(process.argv[1]);",
+ "const ctx=createContext(Object.create(null),{codeGeneration:{strings:false,wasm:false}});",
+ "const m=new SourceTextModule(readFileSync('/opt/candidate.mjs','utf8'),{context:ctx});",
+ "await m.link(()=>{throw new Error('imports-prohibidos')});",
+ "await m.evaluate({timeout:1500});",
+ "let result;",
+ "try{const f=m.namespace[p.fn];if(typeof f!=='function')throw new TypeError('funcion-ausente');",
+ "result={kind:'value',value:await f(p.input)}}",
+ "catch(error){result={kind:'throws',name:error?.name??'Error'}}",
+ "process.stdout.write(JSON.stringify(result)+'\\n');"
+].join("");
 
 function validCases(cases:readonly TrustedBehaviorCase[]):boolean{
  if(cases.length<1||cases.length>32)return false;
@@ -88,10 +97,23 @@ export function dockerBehaviorArguments(
   "--pids-limit=32","--memory=128m","--cpus=1","--user=65534:65534",
   "--mount","type=bind,src="+source+",dst=/opt/candidate.mjs,readonly",
   "--workdir=/tmp","--entrypoint=/usr/local/bin/node",
-  image,"--input-type=module","--eval",driver,
+  image,"--experimental-vm-modules","--input-type=module","--eval",driver,
   JSON.stringify({fn,input})
  ];
 }
+/** Solo habilita la prueba con contenedores en el trabajo autorizado de
+ * GitHub Actions. Esto evita ejecuciones accidentales en equipos personales.
+ * Las variables no son una credencial ni sustituyen el aislamiento del SO. */
+export function isGithubHostedSandboxRun(env:Readonly<Record<string,string|undefined>>=process.env):boolean{
+ return env.ASEN_DOCKER_TESTS_CI==="1"&&
+  env.GITHUB_ACTIONS==="true"&&
+  env.RUNNER_ENVIRONMENT==="github-hosted"&&
+  env.RUNNER_OS==="Linux"&&
+  env.GITHUB_REPOSITORY==="asenbanskaliev/ASEN"&&
+  env.GITHUB_EVENT_NAME==="pull_request"&&
+  env.GITHUB_HEAD_REF==="feat/flujo-de-agentes-20261115";
+}
+
 /** No produce PASS si falta Docker, imagen local fijada o aislamiento.
  * No utiliza variables del proveedor, claves, red del host ni permisos Pi.
  */
@@ -102,8 +124,8 @@ export function runDockerBehaviorCases(input:Readonly<{
  if(input.cases.length<2||!validCases(input.cases)||!imagePattern.test(input.image)||
     !targetPattern.test(input.target)||!/^[A-Za-z][A-Za-z0-9]*$/u.test(input.fn))
   return {verified:false,completed:0,reason:"configuracion-invalida"};
- if(process.platform!=="linux")
-  return {verified:false,completed:0,reason:"host-no-verificado"};
+ if(process.platform!=="linux"||!isGithubHostedSandboxRun())
+  return {verified:false,completed:0,reason:"solo-github-actions"};
  let staging:string|undefined;
  try{
   // La ruta de Docker no depende del PATH del proyecto ni de los Workers.
