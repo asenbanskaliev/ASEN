@@ -32,6 +32,7 @@ import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {assessT06WriterEvidence,verifyT06WorkspaceAttribution} from "../src/runtime/agents/t06-writer-evidence.js";
 import {assessT06StaticWriteOnly} from "../src/runtime/agents/t06-static-write-evidence.js";
 import {stageT06BehaviorSources} from "../src/runtime/agents/t06-behavior-handoff.js";
+import {isT06JavaScriptSyntaxValid} from "../src/runtime/agents/t06-javascript-syntax.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const definitions=[
@@ -47,6 +48,7 @@ const git=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args],{
 function verifySource(file:string,fn:string):void{
  const code=readFileSync(file,"utf8");
  if(!code||code.length>10_000)throw Error("Writer output is missing or oversized");
+ if(!isT06JavaScriptSyntaxValid(code))throw Error("Writer output is not valid plain JavaScript");
  const parsed=ts.createSourceFile(file,code,ts.ScriptTarget.ES2022,true,ts.ScriptKind.JS);
  if(parsed.parseDiagnostics.length||parsed.statements.length!==1)throw Error("Writer output is not one syntactically valid exported function");
  const declaration=parsed.statements[0];
