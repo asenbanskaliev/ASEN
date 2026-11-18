@@ -418,3 +418,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Pi: la prueba de cancelación espera a observar el arranque del proceso y exige cierre **antes de los 4000 ms de timeout**. El resultado `cancelado` por timeout tardío ya no equivale a propagación correcta de AbortSignal.
 - Documentación T06 registra la ejecución histórica autenticada `43915611666` y separa resultados antiguos de aprobación del SHA actual. T11 pasa a «implementación parcial», sin alegar paridad.
 - **Estado:** IMPLEMENTADO_PENDIENTE_CI. Sin nuevos modelos, gastos, permisos ni fusión, `globalFull:false`. El bloqueo P0 T06/T08 continúa.
+
+## 18/11/2026 — Major nuevo CodeRabbit: archivo no revisado entre dos inspecciones
+
+- La proyección del árbol Fix separa `candidateTree` de `unexpectedUntracked`. Antes se cotejaba el hash sin rechazar necesariamente un archivo añadido después de `ls-files`.
+- Ahora `inspectStoredFixSourceTree` rechaza expresamente cualquier `unexpectedUntracked` antes de confirmar el árbol completo. No muestra rutas sensibles ni modifica permisos, Writer o Git.
+- Prueba de regresión con proyección Git real: el árbol seleccionado mantiene el hash, pero la aparición posterior de un archivo debe bloquear la aceptación de consistencia.
+- Estado: **IMPLEMENTADO_PENDIENTE_CI** y revisión CodeRabbit del SHA. `globalFull:false`, no modelos ni fusiones.

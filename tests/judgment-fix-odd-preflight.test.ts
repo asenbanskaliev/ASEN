@@ -7,7 +7,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {captureWorkspaceReviewProjection} from "../src/review/workspace-review-projection.js";
 import {draftOddFromStoredFix} from "../src/review/judgment-fix-odd-draft.js";
-import {inspectLiveFixCandidate} from "../src/review/judgment-fix-odd-preflight.js";
+import {inspectLiveFixCandidate,assertFixProjectionComplete} from "../src/review/judgment-fix-odd-preflight.js";
 import type {StoredJudgmentFixProposal} from "../src/review/judgment-fix-proposal-journal.js";
 
 function fixture(t:TestContext,addUntracked=false){
@@ -105,4 +105,21 @@ test("T08 un Fix limitado no confunde alcance Writer y árbol revisado completo"
  assert.deepEqual(limited.writeSurfaces,["code.ts"]);
  writeFileSync(join(f.projectId,"otro.ts"),"cambio posterior\n");
  assert.throws(()=>inspectLiveFixCandidate(limited),/candidate changed after the original/u);
+});
+
+test("T08 rechaza archivos aparecidos después de enumerar los no rastreados",t=>{
+ const f=fixture(t,true);
+ const original=captureWorkspaceReviewProjection({
+  repositoryRoot:f.projectId,intendedUntracked:["nuevo.ts"]
+ });
+ assert.deepEqual(original.unexpectedUntracked,[]);
+ assert.doesNotThrow(()=>assertFixProjectionComplete(original));
+ writeFileSync(join(f.projectId,"posterior.ts"),"archivo sin revisar\n");
+ const later=captureWorkspaceReviewProjection({
+  repositoryRoot:f.projectId,intendedUntracked:["nuevo.ts"]
+ });
+ assert.deepEqual(later.unexpectedUntracked,["posterior.ts"]);
+ assert.throws(()=>assertFixProjectionComplete(later),/unreviewed untracked/u);
+ assert.equal(later.candidateTree,original.candidateTree,
+  "El mismo árbol seleccionado no implica que el directorio completo siga limpio");
 });

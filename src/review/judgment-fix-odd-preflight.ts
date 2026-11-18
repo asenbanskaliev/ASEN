@@ -3,7 +3,7 @@
  * de Writer, consentimientos, trabajos Pi ni historia Git. */
 import {execFileSync} from "node:child_process";
 import {realpathSync} from "node:fs";
-import {captureWorkspaceReviewProjection} from "./workspace-review-projection.js";
+import {captureWorkspaceReviewProjection,type WorkspaceReviewProjection} from "./workspace-review-projection.js";
 import type {JudgmentFixOddDraft} from "./judgment-fix-odd-draft.js";
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
 import {hasSensitiveName} from "../security/primary-tool-policy.js";
@@ -18,6 +18,15 @@ export interface FixCandidatePreflight{
  readonly acceptance:"not-accepted";
 }
 const revision=/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u;
+/** Una proyección con archivos nuevos no inspeccionados nunca confirma un Fix,
+ * aunque el hash del árbol seleccionado coincida. No expone rutas privadas. */
+export function assertFixProjectionComplete(
+ projection:Pick<WorkspaceReviewProjection,"unexpectedUntracked">
+):void{
+ if(!Array.isArray(projection.unexpectedUntracked)||
+  projection.unexpectedUntracked.length!==0)
+  throw new Error("Fix candidate includes unreviewed untracked files");
+}
 function git(root:string,...args:string[]):Buffer{
  return execFileSync("git",["-C",root,...args],{
   timeout:8000,maxBuffer:2_000_000,stdio:["ignore","pipe","pipe"],
@@ -62,6 +71,7 @@ export function inspectStoredFixSourceTree(
  const projection=captureWorkspaceReviewProjection({
   repositoryRoot:root,intendedUntracked:untracked
  });
+ assertFixProjectionComplete(projection);
  if(projection.candidateTree!==sourceTree)
   throw new Error("Fix candidate changed after the original Judgment Day review");
  if(before!==head(root))throw new Error("Fix candidate HEAD changed during inspection");
