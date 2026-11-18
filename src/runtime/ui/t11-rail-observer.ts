@@ -6,6 +6,30 @@ export function unavailableT11RailSnapshot():AsenPanelSnapshot{
  return {todos:[],agents:[],jobs:[],activityUnavailable:true,agentFlowUnavailable:true};
 }
 
+/** T11/T07: también observar cuando el usuario ve la fila compacta.
+ * Nunca activar sondeos de red/diarios con la presentación oculta. */
+export function shouldObserveT11Surface(input:Readonly<{
+ railActive:boolean;compactWidget:boolean;position:"auto"|"right"|"bottom"|"hidden";
+ preset:"light"|"neutral"|"power";
+}>):boolean{
+ return input.railActive||input.compactWidget&&input.position!=="hidden"&&
+  !(input.position==="auto"&&input.preset==="light");
+}
+
+/** Un refresco local solo puede preservar la observación de hijos reciente.
+ * Si envejeció, "desconocido" es distinto de "no hay agentes".
+ * No se arrastran Git, permisos, revisiones ni estado local del panel previo. */
+export function combineT11LocalWithChild(
+ local:Pick<AsenPanelSnapshot,"todos"|"agents"|"jobs">,
+ previous:AsenPanelSnapshot|undefined,childFresh:boolean
+):AsenPanelSnapshot{
+ const base={todos:local.todos,agents:local.agents,jobs:local.jobs};
+ if(previous?.agentFlowUnavailable===true)return {...base,agentFlowUnavailable:true};
+ if(previous?.agentFlow)return childFresh?
+  {...base,agentFlow:previous.agentFlow}:{...base,agentFlowUnavailable:true};
+ return base;
+}
+
 export interface T11RailObserver{
  readonly refreshNow:()=>Promise<void>;
  readonly stop:()=>void;
