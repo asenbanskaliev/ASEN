@@ -371,7 +371,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
   };
   const t11ActivityCache=createT11ActivityCache();
-  let t11ActivityUnavailable=false;
+  let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostRefreshGeneration=0;
   const clearHostStatus=()=>{
@@ -402,7 +402,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
     // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
     const line=width<140?renderAsenT11CompactStatus(info,Math.max(1,width),
-     {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable}):
+     {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable,agentFlowUnavailable:t11ChildFlowUnavailable}):
      renderAsenStatusLine(info,width);
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
    }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
@@ -449,7 +449,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   // La observación de hijos se hace SOLO cuando se abre el panel.
   // No consultar Git ni diarios externos en cada refresco del editor.
   const publishInspectedWorkRow=(ctx:CommandContext,snapshot:AsenPanelSnapshot):void=>{
+   const localMissing=snapshot.activityUnavailable===true;
+   const childrenMissing=snapshot.agentFlowUnavailable===true;
+   const recovered=t11ActivityUnavailable&&!localMissing;
+   const changed=t11ActivityUnavailable!==localMissing||t11ChildFlowUnavailable!==childrenMissing;
+   if(localMissing)t11ActivityCache.clear();
+   t11ActivityUnavailable=localMissing;t11ChildFlowUnavailable=childrenMissing;
    t11Snapshot=snapshot;t11Rail?.refresh();
+   // La pérdida de datos invalida la barra; al recuperar, solo otra lectura
+   // local fresca puede volver a publicar sus contadores.
+   if(recovered)void refreshWorkRow(ctx);
+   else if(changed)void refreshHostStatus(ctx);
    if(ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
    const width=terminalColumns();
    if(t11Rail?.active()||t11Position==="hidden"||
@@ -548,7 +558,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
@@ -596,8 +606,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      active:()=>t11Rail?.active()===true,
      current:()=>{try{guard();return true;}catch{return false;}},
      read:()=>getPanelSnapshot(ctx),
-     onSnapshot:snapshot=>{t11Snapshot=snapshot;t11Rail?.refresh();},
-     onUnavailable:()=>{t11Snapshot=unavailableT11RailSnapshot();t11Rail?.refresh();},
+     onSnapshot:snapshot=>publishInspectedWorkRow(ctx,snapshot),
+     onUnavailable:()=>publishInspectedWorkRow(ctx,unavailableT11RailSnapshot()),
     });
    }
    invalidateChildSelection();
@@ -879,7 +889,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
