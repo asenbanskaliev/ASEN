@@ -514,3 +514,13 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - **T06 (CodeRabbit):** verificado en HEAD un cambio de sesión posible durante las lecturas ODD. Comprobación de identidad tras la primera y la segunda lectura `loadTodos`, y tras `journal.reserve`; la reserva ambigua queda retenida para inspección, sin reintentos ni autoridad Writer. Pruebas negativas de cambio de sesión y aborto en ambas lecturas; deben demostrar que no se crean worktrees ni reservas.
 - **T08 (CodeRabbit):** `checkT08Behavior` YA devolvía `false`, sin ejecutar candidatos: el informe antiguo de aprobación por `process.exit(0)` no es estado HEAD. Se endurece el filtro estático frente a accesos calculados por corchetes, pero no se considera aislamiento ni se desbloquea código generado. Pruebas positivas/negativas sin modelo.
 - **Evidencia:** T11 RED ejecutado confirmado en registros GitHub; T06 y T08 RED por inspección (RED ejecutado no acreditado). GREEN exact-SHA pendiente de nuevos CI, Pi 1.2, arquitectura y Release Gate. SKIP no equivale a PASS. Mantener T11-E visual, T07 dos Writers Pi TUI reales, T09/T10 y revisión independiente pendientes. PR #61 borrador, sin merge, sin NVIDIA y `globalFull:false`.
+
+
+## 2026-11-18 — Ejecución de megatanda: T06, T08, T07/T11 y T09/T10
+
+**Inicio:** `e09bca9e770d0e6ccd22dd02133c2e31b2b882ed`, verificaciones CI/Release Gate/arquitectura/Pi 1.2 correctas de ese SHA.
+**T06:** endurecer `settleT06ReadOnlyTrial` para no limpiar si faltan identidades de hijos, se duplican o no hay runtime; intentar cancelar lo conocido sin declarar limpieza segura. TDD positivo y negativo.
+**T08:** la prueba Docker ya aislaba la red y comparaba resultados externamente, pero filtraba un array del contexto externo a `vm.SourceTextModule`. Reconstruir el argumento dentro del contexto y probar el desvío por `constructor.constructor` exclusivamente en Docker sin red de GitHub. No ejecutar código generado en el host.
+**CodeRabbit:** Minor de sesión ODD contrastado con el código del SHA de inicio: ya revalida después de ambas lecturas y de reserva. Major original de finalización de pruebas **sin cerrar** hasta ensayo seguro y evidencia independiente; el guardado del ensayo T08 sigue bloqueado.
+**T07/T11:** conservar observación/resize y pruebas nativas existentes. La comparativa visual independiente sigue BLOQUEADA. **T09/T10:** benchmark A/B auténtico y revisión externa permanecen BLOQUEADOS.
+**Reglas:** no usar NVIDIA, no autorizar Writers, no actualizar permisos, no fusionar, PR draft, `globalFull:false`. GREEN y CI del nuevo SHA: pendientes hasta consultar GitHub.

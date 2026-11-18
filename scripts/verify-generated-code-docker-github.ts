@@ -61,6 +61,22 @@ try{
   verified:true,completed:cases.length,reason:"casos-externos-superados"
  },"Los casos correctos deben completarse dentro del contenedor");
 
+ // Prueba de regresión: la entrada NO debe conservar constructores del
+ // proceso privilegiado. Con el antiguo f(p.input), retornaría 999.
+ const escapeCandidate=`export function sumEvenNumbers(numbers){
+  try {
+   const leaked=numbers.constructor.constructor('return typeof process')();
+   return leaked==='object'?999:0;
+  } catch(error) { return error?.name==='EvalError'?0:999; }
+ }`;
+ writeFileSync(join(root,target),escapeCandidate);
+ const isolated=runDockerBehaviorCases({root,target,fn:"sumEvenNumbers",image,cases:[
+  {id:"prototipo-a",input:[1],expected:{kind:"value",value:0}},
+  {id:"prototipo-b",input:[2],expected:{kind:"value",value:0}}
+ ]});
+ assert.deepEqual(isolated,{verified:true,completed:2,reason:"casos-externos-superados"},
+  "La prueba Docker debe impedir recuperar el proceso desde el prototipo de la entrada");
+
  const bypasses=[
   `export function sumEvenNumbers(){
     process.stdout.write('{"kind":"value","value":0}\n');

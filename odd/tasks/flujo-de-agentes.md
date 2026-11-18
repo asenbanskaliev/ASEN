@@ -776,3 +776,14 @@ Los trabajos NVIDIA de lectura T06 del CI se limitan a la acción `labeled` de l
 ## Tanda D — aceptación de revisiones (17/11/2026)
 
 No se permite finalizar `/asen-accept-review` sin recibo HMAC de pruebas vinculado a HEAD/árbol Git. La evidencia estructural queda provisional y el Todo sigue bloqueado. Un recibo `PASSED` con cero pruebas también se rechaza. Se incorporan pruebas negativas P9 y positivos con firma real. La revisión independiente, Judgment Day/Fix completo y T11-E continúan pendientes; `globalFull:false`.
+
+
+## 2026-11-18 — Megatanda offline: entradas aisladas T08 y limpieza segura T06
+
+- **SHA de partida:** `e09bca9e770d0e6ccd22dd02133c2e31b2b882ed` (CI, Release Gate, Pi 1.2 y arquitectura correctos; Pi Free Smoke omitido).
+- **T08 P0:** detectado paso de `p.input` creado fuera de `vm` a una función generada dentro del contenedor. Se reconstruye la entrada dentro del contexto sin generación dinámica. La prueba adversarial de GitHub verifica que el candidato no pueda acceder al constructor del proceso privilegiado a través del objeto de entrada. El contenedor conserva `--network=none`, imagen por huella y las comprobaciones externas caso a caso.
+- **T06:** una lista incompleta o duplicada de sesiones podía devolver éxito de cancelación y permitir limpieza. Ahora se exige correspondencia exacta entre arranques e identidades, sin repeticiones; incluso con inventario inválido se intenta cancelar cada hijo conocido y **se prohíbe borrar**.
+- **CodeRabbit:** el Minor de relectura ODD ya está corregido en el código de este SHA de partida, con comprobaciones después de `loadTodos` y `journal.reserve`; no duplicar ni cerrar solo por el comentario. El Major de aserciones T08 **permanece abierto**: los ensayos Writer/Fix siguen bloqueados antes del proveedor por `blockUnisolatedGeneratedCodeTrial`; el trabajo Docker es independiente y no concede permisos.
+- **T07/T11 y T09/T10:** controles anteriores conservados; falta observación Pi/TUI con Workers reales, comparativa A/B y revisión independiente.
+- **Pruebas:** nuevas positivas y negativas T06, prueba adversarial en Docker aislado y contrato offline. RED detectado por lectura de código, no ejecutado; GREEN y gates del SHA final **pendientes de comprobar**.
+- **Autoridad:** PR en borrador, sin NVIDIA ni modelos, sin cambios de permisos ni fusión; `globalFull:false`.

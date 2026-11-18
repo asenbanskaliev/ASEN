@@ -29,15 +29,19 @@ const imagePattern=/^node@sha256:[0-9a-f]{64}$/u;
 const targetPattern=/^[a-z0-9][a-z0-9-]*\.mjs$/u;
 const driver=[
  "const {readFileSync}=await import('node:fs');",
- "const {SourceTextModule,createContext}=await import('node:vm');",
+ "const {SourceTextModule,createContext,runInContext}=await import('node:vm');",
  "const p=JSON.parse(process.argv[1]);",
  "const ctx=createContext(Object.create(null),{codeGeneration:{strings:false,wasm:false}});",
+ // Reconstruir la entrada EN EL CONTEXTO AISLADO. Pasar p.input tal cual
+ // filtraría prototipos del proceso padre por input.constructor.constructor.
+ "const payload=JSON.stringify(p.input);",
+ "const safeInput=runInContext('JSON.parse('+JSON.stringify(payload)+')',ctx,{timeout:1500});",
  "const m=new SourceTextModule(readFileSync('/opt/candidate.mjs','utf8'),{context:ctx});",
  "await m.link(()=>{throw new Error('imports-prohibidos')});",
  "await m.evaluate({timeout:1500});",
  "let result;",
  "try{const f=m.namespace[p.fn];if(typeof f!=='function')throw new TypeError('funcion-ausente');",
- "result={kind:'value',value:await f(p.input)}}",
+ "result={kind:'value',value:await f(safeInput)}}",
  "catch(error){result={kind:'throws',name:error?.name??'Error'}}",
  "process.stdout.write(JSON.stringify(result)+'\\n');"
 ].join("");

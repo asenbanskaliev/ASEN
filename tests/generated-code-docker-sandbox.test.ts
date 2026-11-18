@@ -70,6 +70,14 @@ test("la orden al contenedor exige red desactivada, imagen local y privilegios m
  }
 });
 
+test("el código generado no recibe objetos del proceso que controla la prueba",()=>{
+ const args=dockerBehaviorArguments(digest,"/tmp/solo-candidato.mjs","sumEvenNumbers",[2]);
+ const script=args[args.indexOf("--eval")+1]??"";
+ assert.match(script,/runInContext/u);
+ assert.match(script,/f\(safeInput\)/u);
+ assert.equal(script.includes("f(p.input)"),false);
+});
+
 test("no ejecuta contenido sin imagen fijada, casos completos o archivo real",t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-prueba-sin-modelos-"));
  t.after(()=>rmSync(root,{recursive:true,force:true}));
