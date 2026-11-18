@@ -1,6 +1,8 @@
 # T06 — Dos agentes Pi programadores reales desde GitHub
 
-Estado: **ensayo histórico realizado**, sin aceptación automática; `globalFull:false`. La [ejecución 43915611666](https://github.com/asenbanskaliev/ASEN/actions/runs/43915611666) registró dos Writers en el SHA `4ec48beec8a191cc276c7532fd579eeeb2004f10`. **No valida el SHA actual**. Nuevos ensayos quedan BLOQUEADOS hasta verificar aislamiento seguro y consentimiento/presupuesto nuevo.
+Estado del 18/11/2026: **variante T06 de escritura y comprobación estática preparada, pendiente de aprobación humana y ensayo NVIDIA real sobre el SHA nuevo**. La ejecución histórica [43915611666](https://github.com/asenbanskaliev/ASEN/actions/runs/43915611666) no valida esta variante.
+
+**Importante:** el nuevo modo T06 permite que dos Pi Writer creen archivos con su herramienta nativa, dentro de worktrees Git independientes y bajo dos autorizaciones humanas individuales. El controlador solo inspecciona sintaxis, herramientas, modelos, ámbito y autoría: **NO ejecuta el JavaScript generado ni acredita que funcione**. No precisa Docker. La modalidad anterior de prueba completa de comportamiento sigue bloqueada hasta disponer de garantías suficientes. El resultado favorable será `PASS_TWO_WRITERS_STATIC_ONLY_BEHAVIOR_NOT_TESTED`, que **no es T06 FULL ni aceptación T10**.
 
 ## 1. Crear dos entornos protegidos
 
@@ -30,7 +32,7 @@ El modo T06 está incluido en el flujo **Memory OpenRouter E2E**, que ya existe 
 
 - Dos Pi 1.2.0 genuinos trabajando sobre dos carpetas Git separadas con el mismo commit.
 - Dos sesiones distintas, herramientas de escritura nativas observadas y ámbitos de archivo diferentes.
-- Solapamiento real de los procesos, sintaxis, pruebas de comportamiento y ausencia de archivos fuera de ámbito.
+- Solapamiento real de los procesos, sintaxis y ausencia de archivos fuera de ámbito. **No se ejecuta el código generado ni sus pruebas de comportamiento.**
 - Informe de resultados con huellas y estados, sin contraseñas, códigos producidos ni respuestas completas.
 - Sin commits, fusión, reintentos automáticos ni aprobación final del trabajo.
 
