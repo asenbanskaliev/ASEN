@@ -92,7 +92,7 @@ import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11Head
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
 import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
-import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,shouldObserveT11Surface,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
+import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,observeT11ChildAvailability,shouldObserveT11Surface,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
@@ -450,8 +450,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   // La observación de hijos se hace SOLO cuando se abre el panel.
   // No consultar Git ni diarios externos en cada refresco del editor.
   const publishInspectedWorkRow=(ctx:CommandContext,snapshot:AsenPanelSnapshot):void=>{
-   const localMissing=snapshot.activityUnavailable===true;
-   const childrenMissing=snapshot.agentFlowUnavailable===true;
+   const observed=observeT11ChildAvailability(snapshot);
+   const localMissing=observed.activityUnavailable===true;
+   const childrenMissing=observed.agentFlowUnavailable===true;
    const recovered=t11ActivityUnavailable&&!localMissing;
    const changed=t11ActivityUnavailable!==localMissing||t11ChildFlowUnavailable!==childrenMissing;
    if(localMissing)t11ActivityCache.clear();
@@ -459,10 +460,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    // No renovar la antigüedad de hijos con refrescos solo locales.
    if(localMissing||childrenMissing){
     t11ChildObservedAt=0;t11ChildExpiry?.clear();
-   }else if(snapshot.agentFlow){
+   }else if(observed.agentFlow){
     t11ChildObservedAt=Date.now();t11ChildExpiry?.renew();
    }
-   t11Snapshot=snapshot;t11Rail?.refresh();
+   t11Snapshot=observed;t11Rail?.refresh();
    // La pérdida de datos invalida la barra; al recuperar, solo otra lectura
    // local fresca puede volver a publicar sus contadores.
    if(recovered)void refreshWorkRow(ctx);
@@ -473,7 +474,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      (t11Position==="auto"&&t11Preset==="light")){
     ctx.ui.setWidget("asen-live-work",undefined,{placement:"aboveEditor"});return;
    } // Nunca fingir un lateral a la derecha en el modo no compatible.
-   ctx.ui.setWidget("asen-live-work",[renderT11CompactFallback(snapshot,width)],{placement:"aboveEditor"});
+   ctx.ui.setWidget("asen-live-work",[renderT11CompactFallback(observed,width)],{placement:"aboveEditor"});
   };
   let workRowGeneration=0;
   const refreshWorkRow=async(ctx:CommandContext):Promise<void>=>{
