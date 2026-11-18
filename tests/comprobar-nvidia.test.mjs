@@ -79,6 +79,18 @@ test("NVIDIA: no consulta un modelo ausente del catálogo ni repite otro",async(
  assert.equal(result.modelos[1].motivo,"modelo-no-listado");
 });
 
+test("NVIDIA: un 200 sin texto de asistente no demuestra que el modelo funcione",async()=>{
+ let calls=0;
+ const result=await comprobarNvidia({clave:"nvapi-CLAVE_DE_PRUEBAS_123",fetchImpl:async(url,options)=>{
+  calls++;
+  if(options.method==="GET")return catalogo();
+  return new Response(JSON.stringify({choices:[{message:{role:"assistant",content:" "}}]}),{status:200});
+ }});
+ assert.equal(calls,3);
+ assert.equal(result.completo,false);
+ assert.ok(result.modelos.every(x=>x.estado==="error-formato"&&x.respondio===false));
+});
+
 test("NVIDIA: fallos HTTP clasificados sin publicar respuestas ni reintentar",async()=>{
  for(const [status,motivo] of [
   [401,"clave-no-autorizada"],[403,"acceso-denegado"],
