@@ -27,7 +27,9 @@ export function combineT11LocalWithChild(
  if(previous?.agentFlowUnavailable===true)return {...base,agentFlowUnavailable:true};
  if(previous?.agentFlow)return childFresh?
   {...base,agentFlow:previous.agentFlow}:{...base,agentFlowUnavailable:true};
- return base;
+ // Ningún diario leído NO equivale a un diario leído y vacío.
+ // Esto afecta al primer render del modo compacto y al cambio de sesión.
+ return {...base,agentFlowUnavailable:true};
 }
 
 export interface T11RailObserver{
