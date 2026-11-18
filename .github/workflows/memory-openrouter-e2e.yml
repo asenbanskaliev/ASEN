@@ -87,7 +87,9 @@ jobs:
     if: inputs.modo == 't06_revision' && github.repository == 'asenbanskaliev/ASEN' && github.ref == 'refs/heads/feat/flujo-de-agentes-20261115'
     uses: ./.github/workflows/t06-review-only.yml
     with:
-      candidate_sha: ${{ inputs.candidate_sha }}
+      # Evita SHA introducidos erróneamente: GitHub fija el mismo commit del disparo.
+      # La comprobación de SHA exacto sigue activa en el workflow reutilizable.
+      candidate_sha: ${{ github.sha }}
       reviewer_a: ${{ inputs.t06_revisor_a }}
       reviewer_b: ${{ inputs.t06_revisor_b }}
       coste_desconocido_autorizado: ${{ inputs.coste_desconocido_autorizado }}
