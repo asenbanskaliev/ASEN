@@ -8,6 +8,7 @@ import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-review-receipt.js";
 import {requireLiveT06GithubReviewerApprovals} from "../src/runtime/agents/t06-github-reviewer-approvals.js";
 import {requireLiveT06ReviewReplay} from "../src/runtime/agents/t06-review-replay.js";
+import {classifyT06ReviewerFailure,type T06ReviewerFailureCategory} from "../src/runtime/agents/t06-review-failure-diagnostic.js";
 
 const files=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
 const modelPattern=/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u;
@@ -52,6 +53,10 @@ export async function runT06NativeIndependentReviews(
   if(process.env.ASEN_T06_REVIEW_REPLAY_MODE==="1")await requireLiveT06ReviewReplay();
   else await requireLiveT06GithubReviewerApprovals();
  }
+ // El informe anterior perdía cualquier error y marcaba pid=false incluso
+ // si Pi llegó a arrancar. Conservar SOLO categorías y hechos observados.
+ const attempts:{processObserved:boolean;observedModel:string;failureCategory:T06ReviewerFailureCategory}[]=
+  requested.map(()=>({processObserved:false,observedModel:"unknown",failureCategory:"not-classified"}));
  const results=await Promise.allSettled(requested.map(async(requestedModel,index)=>{
   const sessionId="t06-independent-"+randomUUID();
   const taskId="t06-reviewer-"+randomUUID();
@@ -60,13 +65,14 @@ export async function runT06NativeIndependentReviews(
    command:process.env.PI_EXECUTABLE??"pi",policyRoot,
    providerCredential:"NVIDIA_API_KEY",noTools:true,requireFinalSettlement:true,
    timeoutMs:180_000,maxOutputBytes:85_000,maxStreamBytes:512_000,
-   onProcessStart:processId=>{pid=processId;}
+   onProcessStart:processId=>{pid=processId;attempts[index]!.processObserved=true;}
   });
   runner.subscribeChildSelection(event=>{
    if(event.taskId!==taskId||event.sessionId!==sessionId||
     event.projectId!==roots[index]||!event.model)return;
    observedModel=event.model.id.startsWith(event.model.provider+"/")?
     event.model.id:event.model.provider+"/"+event.model.id;
+   attempts[index]!.observedModel=observedModel;
   });
   const prompt=[
    "Revisión técnica independiente de dos archivos generados por otros Workers Pi.",
@@ -81,16 +87,37 @@ export async function runT06NativeIndependentReviews(
   ].join("\n");
   const result=await runner.run({id:taskId,role:"reviewer",repository:roots[index]!,
    isolationKey:sessionId,prompt,model:requestedModel!,thinking:"minimal"});
-  if(!result.ok||pid<=0||observedModel!==requestedModel)
-   throw Error("T06 no pudo acreditar modelo y resultado Pi del revisor");
-  const receipt=parseT06NativeReviewReceipt(result.output,expected);
+  if(!result.ok){
+   attempts[index]!.failureCategory=classifyT06ReviewerFailure(result.output);
+   throw Error("T06: Pi no devolvió un resultado verificable");
+  }
+  if(pid<=0){
+   attempts[index]!.failureCategory="pi-process-not-observed";
+   throw Error("T06: no se observó proceso Pi");
+  }
+  if(observedModel==="unknown"){
+   attempts[index]!.failureCategory="pi-model-not-observed";
+   throw Error("T06: modelo Pi no observado");
+  }
+  if(observedModel!==requestedModel){
+   attempts[index]!.failureCategory="pi-model-mismatch";
+   throw Error("T06: modelo Pi diferente al solicitado");
+  }
+  let receipt:ReturnType<typeof parseT06NativeReviewReceipt>;
+  try{receipt=parseT06NativeReviewReceipt(result.output,expected);}
+  catch{
+   attempts[index]!.failureCategory="pi-receipt-invalid";
+   throw Error("T06: recibo independiente inválido");
+  }
   return {requestedModel,observedModel,piProcessObserved:true,
    verdict:receipt.verdict,findingCount:receipt.findingCount,
    reviewedSha256:receipt.reviewedSha256,
    writerAuthority:false as const,acceptance:"not-accepted" as const};
  }));
  const reviews=results.map((result,i)=>result.status==="fulfilled"?result.value:{
-  requestedModel:requested[i]!,observedModel:"unknown",piProcessObserved:false,
+  requestedModel:requested[i]!,observedModel:attempts[i]!.observedModel,
+  piProcessObserved:attempts[i]!.processObserved,
+  failureCategory:attempts[i]!.failureCategory,
   verdict:"unknown",findingCount:null,
   writerAuthority:false as const,acceptance:"not-accepted" as const
  });
