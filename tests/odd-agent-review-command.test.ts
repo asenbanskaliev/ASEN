@@ -202,3 +202,68 @@ test("T04/T05/T08: 4R y Judgment Day de un Todo no llaman a modelos sin consenti
   assert.equal(requests,0,mode+" no consume modelos al cancelar");
  }
 });
+
+test("T08: Judgment Day de Todo no lanza segundo juez si cambia la tarea",async t=>{
+ const f=fixture(t);
+ let current=f.task;
+ f.register(async()=>[current]);
+ writeFileSync(join(f.root,"archivo.txt"),"cambio que requiere dos jueces\n");
+ const author={provider:"autor",id:"modelo-original"};
+ const first={provider:"libre",id:"juez-a"};
+ const second={provider:"libre",id:"juez-b"};
+ const calls:string[]=[];
+ const ctx={
+  ...f.context,model:author,
+  modelRegistry:{
+   getAvailable:()=>[author,first,second],
+   hasConfiguredAuth:(model:{provider:string})=>model.provider==="libre",
+   streamSimple:(model:{id:string})=>{
+    calls.push(model.id);
+    return (async function*(){
+     if(model.id==="juez-a")
+      current={...current,current:{...current.current,state:"blocked" as const}};
+     yield {type:"done" as const,reason:"stop" as const,
+      message:{content:[{type:"text",text:JSON.stringify({
+       verdict:"pass",summary:"Resultado sintético sin aprobación",findings:[]
+      })}]}};
+    })();
+   }
+  },
+  ui:{
+   notify:()=>{},
+   select:async(_title:string,options:string[])=>options[0],
+   editor:async(title:string)=>title.includes("untracked")?"[]":"Revisar únicamente el cambio del Todo",
+   confirm:async()=>true
+  }
+ };
+ await assert.rejects(async()=>await f.run("todo "+f.taskId+" judgment-day",ctx),
+  /ODD Todo or Git HEAD changed/u);
+ assert.deepEqual(calls,["juez-a"],"No gastar una segunda llamada tras invalidar el origen");
+ assert.equal(f.git("status","--porcelain").includes("archivo.txt"),true);
+});
+
+test("T05/T08: sin dos jueces autenticados Judgment Day no consume modelos",async t=>{
+ const f=fixture(t);
+ f.register(async()=>[f.task]);
+ writeFileSync(join(f.root,"archivo.txt"),"cambio pendiente\n");
+ const author={provider:"autor",id:"modelo-original"};
+ const only={provider:"libre",id:"solo-uno"};
+ let calls=0;
+ const ctx={
+  ...f.context,model:author,
+  modelRegistry:{
+   getAvailable:()=>[author,only],
+   hasConfiguredAuth:(model:{provider:string})=>model.provider==="libre",
+   streamSimple:()=>{calls++;return (async function*(){yield {type:"done"};})();}
+  },
+  ui:{
+   notify:()=>{},
+   select:async(_title:string,options:string[])=>options[0],
+   editor:async(title:string)=>title.includes("untracked")?"[]":"Revisar el cambio",
+   confirm:async()=>true
+  }
+ };
+ await assert.rejects(async()=>await f.run("todo "+f.taskId+" judgment-day",ctx),
+  /second judge|second.*model|different.*authenticated|two.*judges/iu);
+ assert.equal(calls,0,"Un solo juez no equivale a revisión dual");
+});
