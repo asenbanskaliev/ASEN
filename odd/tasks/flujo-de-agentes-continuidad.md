@@ -675,3 +675,8 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - **T11/T07:** el modal comprueba la sesión antes de ignorar un fallo y fija versiones al comienzo real de la lectura, después de validar la identidad. Prueba negativa de cambio de sesión.
 - **T06/Windows:** el inspector Git manual y asíncrono eliminan variables heredadas `GIT_*` sin distinguir mayúsculas. Prueba positiva/negativa con `GIT_DIR` de un repositorio ajeno.
 - **Pendiente de comprobar:** CI y trabajos exact-SHA del nuevo commit, restantes avisos de concurrencia/índice Git, T09/T10 y E2E Writer con consentimiento individual. PR borrador, sin merge, sin pagos ni modelos. `globalFull:false`.
+
+## 18/11/2026 — Corrección de prueba Pi 1.2 tras revisión ODD
+- **SHA fallido:** `ae08fac26b553df76b3e27b25be6881f9bcc944c`. Trabajo `44342889885`, caso 65 de 80: `tests/work-unit-review-candidate.test.ts` comparaba el mensaje de uso anterior contra el contrato ahora ampliado con `todo <id> 4r` y `todo <id> judgment-day`.
+- **Corrección admisible:** actualizar la expectativa exacta sin cambiar producción ni rebajar el control. Pi 1.2: 79 PASS, 1 FAIL en el SHA anterior, por tanto no acreditado como verde. Verificar los gates del nuevo SHA.
+- **Restricciones:** PR borrador, sin merge, sin nuevos modelos, sin aprobación humana suplantada. `globalFull:false`.
