@@ -104,6 +104,11 @@ async function commonDirAsync(root:string):Promise<string>{
 /** Huella del índice propio del worktree, acotada y solo de lectura.
  * Se lee del mismo descriptor, sin seguir enlaces en sistemas POSIX.
  * No se permite crecer el índice durante la lectura. */
+/** El descriptor no puede bloquearse si el índice pasa a ser una FIFO tras lstat. */
+export function gitIndexReadFlags(platform:string):number{
+ return platform==="win32"?constants.O_RDONLY:
+  constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK;
+}
 async function indexFingerprint(root:string):Promise<string>{
  const index=(await gitAsync(root,"rev-parse","--git-path","index")).trim();
  const indexPath=isAbsolute(index)?index:resolve(root,index);
@@ -111,8 +116,7 @@ async function indexFingerprint(root:string):Promise<string>{
  if(!first.isFile()||first.isSymbolicLink()||first.size>32_000_000||first.size<12)
   throw new Error("Índice Git no verificable");
  // Windows no garantiza O_NOFOLLOW: contrastar en ambos sistemas el archivo abierto.
- const flags=process.platform==="win32"?constants.O_RDONLY:constants.O_RDONLY|constants.O_NOFOLLOW;
- const file=await open(indexPath,flags);
+ const file=await open(indexPath,gitIndexReadFlags(process.platform));
  try{
   const info=await file.stat();
   if(!info.isFile()||info.size>32_000_000||info.size<12||
