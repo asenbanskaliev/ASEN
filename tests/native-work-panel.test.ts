@@ -564,3 +564,65 @@ test("T11/T07 modal: pérdida del registro hijo no reutiliza una ejecución prev
  assert.doesNotMatch(detail,/Worktree Workers: 1 active observed|old-task|old-child/u);
  panel.dispose();
 });
+
+test("T11/T07: un fallo en la ventana avisa a la barra compartida y la recuperación restablece datos frescos",async()=>{
+ const previous:AsenPanelSnapshot={...snapshot,todosObserved:true,
+  review:{pending:4},changes:{branch:"antigua",files:2}};
+ const fresh:AsenPanelSnapshot={...snapshot,todosObserved:true,
+  review:{pending:1},changes:{branch:"actual",files:0}};
+ let shared:AsenPanelSnapshot=previous,fail=true;
+ let unavailableCount=0,successCount=0,renderCount=0;
+ const panel=createNativeWorkPanel(previous,{
+  requestRender(){renderCount++;},close(){},terminalRows:()=>120,
+  refresh:async()=>{if(fail)throw Error("información privada");return fresh;},
+  onUnavailable:unknown=>{unavailableCount++;shared=unknown;},
+  onRefreshed:observed=>{successCount++;shared=observed;}
+ });
+ assert.match(renderAsenPanel(shared,120).join("\n"),/4 needs review/u);
+ await panel.refreshNow();
+ assert.equal(unavailableCount,1);
+ assert.equal(successCount,0);
+ assert.equal(shared.activityUnavailable,true);
+ assert.equal(shared.agentFlowUnavailable,true);
+ assert.equal(shared.todos.length,0);
+ assert.equal(shared.agents.length,0);
+ assert.doesNotMatch(renderAsenPanel(shared,120).join("\n"),
+  /4 needs review|antigua|2 files/u);
+ assert.match(renderAsenPanel(shared,120).join("\n"),/REVIEW · unverified/u);
+ fail=false;
+ await panel.refreshNow();
+ assert.equal(unavailableCount,1);
+ assert.equal(successCount,1);
+ assert.equal(shared,fresh,"La lectura válida reemplaza el estado desconocido");
+ assert.match(renderAsenPanel(shared,120).join("\n"),/1 needs review/u);
+ assert.equal(renderCount,2);
+ panel.dispose();
+});
+
+test("T11/T07: cambio de sesión y cierre no publican errores ni datos antiguos en el lateral",async()=>{
+ let current=true,finish!:(value:AsenPanelSnapshot)=>void;
+ let updates=0,unavailable=0,closed=0;
+ const panel=createNativeWorkPanel(snapshot,{
+  requestRender(){updates++;},close(){closed++;},terminalRows:()=>90,
+  stillCurrent:()=>current,
+  refresh:()=>new Promise(resolve=>{finish=resolve;}),
+  onUnavailable:()=>{unavailable++;},
+  onRefreshed:()=>{updates++;}
+ });
+ const pending=panel.refreshNow();
+ current=false;
+ finish({...snapshot,review:{pending:5}});
+ await pending;
+ assert.equal(closed,1);
+ assert.equal(updates,0);
+ assert.equal(unavailable,0);
+ const another=createNativeWorkPanel(snapshot,{
+  requestRender(){updates++;},close(){},terminalRows:()=>90,
+  refresh:async()=>{throw Error("debe mantenerse privado");},
+  onUnavailable:()=>{unavailable++;}
+ });
+ another.dispose();
+ await another.refreshNow();
+ assert.equal(unavailable,0);
+ assert.equal(updates,0);
+});
