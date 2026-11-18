@@ -1,17 +1,19 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {existsSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {chmodSync,existsSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join,resolve} from "node:path";
+import {delimiter,join,resolve} from "node:path";
 import {inspectParallelWorktreeChanges,inspectParallelWorktreeChangesAsync} from "../src/runtime/agents/parallel-worktree-change-inspection.js";
 
 function fixture(t:TestContext){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-review-origin-"))),
   parent=resolve(mkdtempSync(join(tmpdir(),"asen-t06-review-siblings-"))),
   root=join(parent,"asen-worker-scope-001");
+ const gitEnv={...process.env};
+ for(const key of Object.keys(gitEnv))if(/^GIT_/iu.test(key))delete gitEnv[key];
  const git=(worktree:string,...args:string[])=>execFileSync("git",["-C",worktree,...args],
-  {encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+  {encoding:"utf8",stdio:["ignore","pipe","pipe"],env:gitEnv}).trim();
  git(source,"init","-q");git(source,"config","user.name","ASEN evidence test");
  git(source,"config","user.email","asen-inspect@example.invalid");
  git(source,"config","core.autocrlf","false");
@@ -133,5 +135,27 @@ test("T06: dos inspecciones ignoran GIT_DIR ajeno heredado de Windows o Pi",asyn
  }finally{
   if(prior===undefined)delete process.env.GIT_DIR;
   else process.env.GIT_DIR=prior;
+ }
+});
+
+test("T07: preparar un archivo entre diff y ls-files no puede generar un estado limpio",async t=>{
+ if(process.platform==="win32"){t.skip("Carrera reproducible con intérprete POSIX");return;}
+ const f=fixture(t);
+ const realGit=execFileSync("which",["git"],{encoding:"utf8"}).trim();
+ const wrapper=join(f.source,"bin");
+ mkdirSync(wrapper,{recursive:true});
+ writeFileSync(join(f.root,"fuera.txt"),"cambio ajeno\n");
+ const gitShim=join(wrapper,"git");
+ writeFileSync(gitShim,'#!/bin/sh\ncase " $* " in\n *" diff "*)\n  '+JSON.stringify(realGit)+' "$@"\n  '+JSON.stringify(realGit)+' -C '+JSON.stringify(f.root)+' add -- fuera.txt\n  ;;\n *) exec '+JSON.stringify(realGit)+' "$@" ;;\nesac\n');
+ chmodSync(gitShim,0o755);
+ const before=process.env.PATH;
+ try{
+  process.env.PATH=wrapper+delimiter+(before??"");
+  const actual=await f.inspectAsync();
+  assert.equal(actual.status,"out-of-scope","No permitir clean por cambio de índice");
+  assert.deepEqual(actual.outOfScopePaths,["fuera.txt"]);
+  assert.equal(actual.autoMerge,false);
+ }finally{
+  if(before===undefined)delete process.env.PATH;else process.env.PATH=before;
  }
 });
