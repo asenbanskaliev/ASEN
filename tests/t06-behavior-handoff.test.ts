@@ -62,7 +62,7 @@ test("T06 etapa GitHub no hereda secretos, Docker es opcional y separado",()=>{
  const yaml=readFileSync(new URL("../.github/workflows/t06-github-approved-writers.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
  const script=readFileSync(new URL("../scripts/t06-verificar-codigo-aislado-github.ts",import.meta.url),"utf8");
  const start=yaml.indexOf("\n  comprobar-comportamiento-aislado:");
- const job=yaml.slice(start);
+ const job=yaml.slice(start,yaml.indexOf("\n  aprobar-revisor-a:",start));
  assert.ok(start>=0);
  assert.match(job,/needs: \[ejecutar\]/u);
  assert.match(job,/github\.run_attempt == 1/u);
