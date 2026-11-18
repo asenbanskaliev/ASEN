@@ -121,6 +121,49 @@ test("NVIDIA: fallo de red no repite peticiones ni contiene mensajes privados",a
  assert.doesNotMatch(JSON.stringify(r),/nvapi|Bearer|interna/u);
 });
 
+test("NVIDIA cierra cuerpos no consumidos ante errores de proveedor",async()=>{
+ let cancels=0;
+ const output=await comprobarNvidia({clave:"nvapi-CLAVE_DE_PRUEBAS_123",fetchImpl:async(url,options)=>{
+  if(options.method==="GET")return catalogo();
+  return {
+   ok:false,status:429,headers:new Headers(),
+   body:{cancel:async()=>{cancels++;}}
+  };
+ }});
+ assert.equal(cancels,2);
+ assert.equal(output.completo,false);
+ assert.ok(output.modelos.every(x=>x.motivo==="limite-de-peticiones"));
+});
+
+test("NVIDIA cierra respuesta con tamaño anunciado superior al límite",async()=>{
+ let cancels=0;
+ const output=await comprobarNvidia({clave:"nvapi-CLAVE_DE_PRUEBAS_123",fetchImpl:async()=>({
+  ok:true,status:200,
+  headers:new Headers({"content-length":"3000001"}),
+  body:{cancel:async()=>{cancels++;}}
+ })});
+ assert.equal(cancels,1);
+ assert.equal(output.catalogo.motivo,"respuesta-demasiado-grande");
+ assert.equal(output.completo,false);
+});
+
+test("NVIDIA diferencia timeout de cuerpo HTTP 200 y respuesta inválida",async()=>{
+ const output=await comprobarNvidia({clave:"nvapi-CLAVE_DE_PRUEBAS_123",fetchImpl:async(url,options)=>{
+  if(options.method==="GET")return catalogo();
+  return {
+   ok:true,status:200,headers:new Headers(),
+   body:{getReader:()=>({
+    read:async()=>{const e=new Error("interrumpido");e.name="AbortError";throw e;},
+    cancel:async()=>{}
+   })}
+  };
+ }});
+ assert.equal(output.completo,false);
+ assert.ok(output.modelos.every(x=>
+  x.estado==="error-conexion"&&x.motivo==="tiempo-agotado"
+ ));
+});
+
 test("NVIDIA: denegar en cualquier cambio de coste, rama, SHA, usuario o intento",()=>{
  const sha="a".repeat(40);
  const good={
