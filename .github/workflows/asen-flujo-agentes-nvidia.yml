@@ -96,6 +96,8 @@ jobs:
           ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-flujo-evidencias/resultado-pi.json
         run: |
           set -euo pipefail
+          # Una repetición parcial omite preparar; no se permite gastar cuota de nuevo.
+          test "$GITHUB_RUN_ATTEMPT" = 1
           test -n "$NVIDIA_API_KEY"
           mkdir -p "$PI_CODING_AGENT_DIR" "$(dirname "$ASEN_NVIDIA_PI_REPORT")"
           timeout 250s node --import tsx scripts/t06-nvidia-pi-concurrent.ts
