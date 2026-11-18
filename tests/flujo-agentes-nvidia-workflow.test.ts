@@ -39,6 +39,21 @@ test("T02/T06: ninguna credencial llega a preparación ni se permite escritura G
  assert.doesNotMatch(script,/startControlledWorker\(/u);
 });
 
+test("CodeRabbit: repetir únicamente el trabajo NVIDIA bloquea cualquier consumo",()=>{
+ const start=flow.indexOf("\n  probar-explorer-verifier:");
+ assert.ok(start>=0);
+ const section=flow.slice(start);
+ const call=section.indexOf("timeout 250s node --import tsx scripts/t06-nvidia-pi-concurrent.ts");
+ const guard=section.lastIndexOf('test "$GITHUB_RUN_ATTEMPT" = 1',call);
+ const secret=section.lastIndexOf('test -n "$NVIDIA_API_KEY"',call);
+ assert.ok(call>=0&&guard>=0&&secret>guard&&call>secret,
+  "El propio trabajo debe detener cualquier repetición antes de consumir NVIDIA");
+ const execution=section.slice(section.indexOf("- name: Comprobar Explorer y Verifier Pi reales"));
+ assert.ok(execution.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
+ assert.equal(section.slice(0,call).match(/test "\$GITHUB_RUN_ATTEMPT" = 1/gu)?.length,1,
+  "La comprobación debe estar en este trabajo, no depender de preparación");
+});
+
 test("T03/T04/T05/T07/T08/T09/T10: la megatanda sin modelos cubre los contratos integrados",()=>{
  const start=ci.indexOf("\n  agentes-t02-t05-t06:"),end=ci.indexOf("\n  test:",start);
  assert.ok(start>=0&&end>start);
