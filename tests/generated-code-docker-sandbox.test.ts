@@ -76,6 +76,8 @@ test("el código generado no recibe objetos del proceso que controla la prueba",
  assert.match(script,/runInContext/u);
  assert.match(script,/f\(safeInput\)/u);
  assert.equal(script.includes("f(p.input)"),false);
+ assert.match(script,/Function\.prototype\.toString/u);
+ assert.doesNotMatch(script,/prototype'\)\?\.writable/u);
 });
 
 test("no ejecuta contenido sin imagen fijada, casos completos o archivo real",t=>{
@@ -144,4 +146,11 @@ test("el fallo del arranque Docker no equivale a un export rechazado",()=>{
   {verified:false,completed:0,reason:"lanzamiento-docker-fallido"});
  assert.deepEqual(verifyExternalBehaviorCases(cases,[{status:1,signal:null,stdout:""},...good.slice(1)]),
   {verified:false,completed:0,reason:"proceso-incompleto"});
+});
+
+test("T08: el exceso de salida no es un fallo de arranque Docker",()=>{
+ const overflow:ContainerObservation={status:null,signal:"SIGTERM",stdout:"",
+  error:"proceso-no-disponible",errorCode:"ENOBUFS"};
+ assert.deepEqual(verifyExternalBehaviorCases(cases,[good[0]!,overflow,good[2]!]),
+  {verified:false,completed:1,reason:"salida-excesiva"});
 });

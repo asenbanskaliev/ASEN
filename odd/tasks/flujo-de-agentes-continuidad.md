@@ -646,3 +646,10 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - T08: la ausencia de un archivo real en el trabajo autorizado se distingue de un fallo de Docker con la razón `origen-ausente`, antes de ejecutar Docker. La prueba local solo verifica el bloqueo `solo-github-actions`.
 - T11: la función de reserva compacta ya admite anchos de 1 a 11 columnas; nueva prueba de ancho 1–15 sin desbordamiento y sin elevar artificialmente el ancho del terminal.
 - No se amplían permisos, no se ejecuta código generado fuera del contenedor, no hay merge, `globalFull:false`. Validación del SHA nuevo pendiente.
+
+## 18/11/2026 — Hallazgos adicionales de la revisión independiente
+
+- T08: la detección de clases usa su sintaxis de función, sin confundir una función normal con `Object.freeze` con una clase. Se añade una prueba Docker real para función congelada.
+- T08: `ENOBUFS` se notifica como `salida-excesiva` y mantiene `verified:false` y los casos anteriores contados.
+- T06: las variables Git del entorno se limpian sin distinguir mayúsculas/minúsculas para evitar `Git_Dir` heredado en Windows; se añaden pruebas negativas.
+- CI exacto del siguiente SHA pendiente. `globalFull:false`, sin fusión ni ampliación de permisos.

@@ -61,6 +61,13 @@ try{
   verified:true,completed:cases.length,reason:"casos-externos-superados"
  },"Los casos correctos deben completarse dentro del contenedor");
 
+ // Una función ordinaria congelada sigue siendo invocable y verificable.
+ const frozen=good+"\nObject.freeze(sumEvenNumbers);";
+ writeFileSync(join(root,target),frozen);
+ assert.deepEqual(runDockerBehaviorCases({root,target,fn:"sumEvenNumbers",image,cases}),
+  {verified:true,completed:cases.length,reason:"casos-externos-superados"},
+  "Una función normal congelada no es una clase y no debe rechazarse");
+
  // Prueba de regresión: la entrada NO debe conservar constructores del
  // proceso privilegiado. Con el antiguo f(p.input), retornaría 999.
  const escapeCandidate=`export function sumEvenNumbers(numbers){

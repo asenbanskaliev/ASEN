@@ -24,9 +24,9 @@ import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 // Git heredado desde hooks puede apuntar a un repositorio ajeno a -C.
 const localGitNames=new Set(execFileSync("git",["rev-parse","--local-env-vars"],{
  encoding:"utf8",stdio:["ignore","pipe","ignore"]
-}).trim().split(/\r?\n/u).filter(Boolean));
+}).trim().split(/\r?\n/u).filter(Boolean).map(name=>name.toUpperCase()));
 const gitFixtureEnvironment=(env:NodeJS.ProcessEnv)=>
- Object.fromEntries(Object.entries(env).filter(([name])=>!localGitNames.has(name)));
+ Object.fromEntries(Object.entries(env).filter(([name])=>!localGitNames.has(name.toUpperCase())));
 const gitFixtureEnv=gitFixtureEnvironment(process.env);
 
 function fixture(t:TestContext,fixtureGitEnv:NodeJS.ProcessEnv=gitFixtureEnv){
@@ -1333,6 +1333,10 @@ test("T06: Git no hereda el GIT_DIR contaminado antes de crear el fixture",t=>{
  const contaminated={...gitFixtureEnv,GIT_DIR:join(tmpdir(),"asen-repo-ajeno-inexistente")};
  const isolated=gitFixtureEnvironment(contaminated);
  assert.equal(isolated.GIT_DIR,undefined);
+ assert.equal(Object.keys(isolated).some(key=>key.toUpperCase()==="GIT_DIR"),false);
+ const mixed=gitFixtureEnvironment({...gitFixtureEnv,
+  Git_Dir:join(tmpdir(),"asen-repo-externo-por-mayusculas")});
+ assert.equal(Object.keys(mixed).some(key=>key.toUpperCase()==="GIT_DIR"),false);
  const f=fixture(t,isolated);
  const git=(...args:string[])=>execFileSync("git",["-C",f.source,...args],{
   encoding:"utf8",env:isolated

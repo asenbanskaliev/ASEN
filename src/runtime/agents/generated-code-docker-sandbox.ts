@@ -45,7 +45,10 @@ const driver=[
  // Si el export no existe, la infraestructura falla fuera del catch de la
  // función candidata: no debe aprobar un caso que espera TypeError.
  // Una clase exportada parece invocable pero falla antes del cuerpo al llamarla sin new.
- "if(typeof f!=='function'||Object.getOwnPropertyDescriptor(f,'prototype')?.writable===false){",
+ // Una función normal puede congelar su prototype sin dejar de ser invocable.
+ // La clase no invocable se distingue por la sintaxis del callable del módulo.
+ "const kind=typeof f==='function'?Function.prototype.toString.call(f).trimStart():'';",
+ "if(typeof f!=='function'||/^class\\b/u.test(kind)||kind.includes('[native code]')){",
  "process.stdout.write('ASEN_EXPORT_RECHAZADO\\n');process.exitCode=73;",
  "}else{",
  "let result;",
@@ -85,6 +88,8 @@ export function verifyExternalBehaviorCases(
   // No permitir que una prueba negativa de export se dé por superada sin Docker.
   if(observation.errorCode==="ETIMEDOUT")
    return {verified:false,completed,reason:"tiempo-agotado"};
+  if(observation.errorCode==="ENOBUFS")
+   return {verified:false,completed,reason:"salida-excesiva"};
   if(observation.error)
    return {verified:false,completed,reason:"lanzamiento-docker-fallido"};
   // Un código de Docker 125 no demuestra que el controlador rechazara el export.

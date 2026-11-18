@@ -19,9 +19,9 @@ import {issueControlledPlanPhaseGrant,issueOrganicWriterAdmission} from "../src/
 // Un hook Git puede exportar GIT_DIR y redirigir -C a otro repositorio.
 const localGitNames=new Set(execFileSync("git",["rev-parse","--local-env-vars"],{
  encoding:"utf8",stdio:["ignore","pipe","ignore"]
-}).trim().split(/\r?\n/u).filter(Boolean));
+}).trim().split(/\r?\n/u).filter(Boolean).map(name=>name.toUpperCase()));
 const gitFixtureEnvironment=(env:NodeJS.ProcessEnv)=>
- Object.fromEntries(Object.entries(env).filter(([key])=>!localGitNames.has(key)));
+ Object.fromEntries(Object.entries(env).filter(([key])=>!localGitNames.has(key.toUpperCase())));
 const gitFixtureEnv=gitFixtureEnvironment(process.env);
 
 function fixture(t:TestContext,fixtureGitEnv:NodeJS.ProcessEnv=gitFixtureEnv){
@@ -356,6 +356,10 @@ test("T06: el fixture descarta GIT_DIR externo antes de ejecutar Git",t=>{
  const isolated=gitFixtureEnvironment({...gitFixtureEnv,
   GIT_DIR:join(tmpdir(),"asen-repo-equivocado-inexistente")});
  assert.equal(isolated.GIT_DIR,undefined);
+ assert.equal(Object.keys(isolated).some(key=>key.toUpperCase()==="GIT_DIR"),false);
+ const mixed=gitFixtureEnvironment({...gitFixtureEnv,
+  Git_Dir:join(tmpdir(),"asen-repo-externo-por-mayusculas")});
+ assert.equal(Object.keys(mixed).some(key=>key.toUpperCase()==="GIT_DIR"),false);
  const f=fixture(t,isolated);
  assert.equal(f.git(f.source,"rev-parse","--is-inside-work-tree"),"true");
  assert.equal(f.git(f.source,"status","--porcelain"),"");
