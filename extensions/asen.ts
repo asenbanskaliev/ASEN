@@ -92,7 +92,7 @@ import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11Head
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
 import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
-import {combineT11LocalWithChild,createT11RailObserver,shouldObserveT11Surface,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
+import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,shouldObserveT11Surface,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
@@ -366,6 +366,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let t11Header:T11HeaderPlacement="top",t11Surface:T11Surface="transparent";
   let t11ChromeInfo:{asenVersion:string;piVersion:string}|undefined,t11ChromeTheme:Theme|undefined;
   let t11Observer:T11RailObserver|undefined;
+  let t11ChildExpiry:ReturnType<typeof createT11ChildExpiryController>|undefined;
   const panelScope=(ctx:CommandContext)=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd,epoch=panelEpoch;
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
@@ -456,8 +457,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(localMissing)t11ActivityCache.clear();
    t11ActivityUnavailable=localMissing;t11ChildFlowUnavailable=childrenMissing;
    // No renovar la antigüedad de hijos con refrescos solo locales.
-   if(localMissing||childrenMissing)t11ChildObservedAt=0;
-   else if(snapshot.agentFlow)t11ChildObservedAt=Date.now();
+   if(localMissing||childrenMissing){
+    t11ChildObservedAt=0;t11ChildExpiry?.clear();
+   }else if(snapshot.agentFlow){
+    t11ChildObservedAt=Date.now();t11ChildExpiry?.renew();
+   }
    t11Snapshot=snapshot;t11Rail?.refresh();
    // La pérdida de datos invalida la barra; al recuperar, solo otra lectura
    // local fresca puede volver a publicar sus contadores.
@@ -505,7 +509,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     try{guard();}catch{return;}
     // El proveedor falló: borrar avisos anteriores, no publicarlos como actuales.
     t11ActivityCache.clear();t11ActivityUnavailable=true;
-    t11Snapshot=unavailableT11RailSnapshot();t11ChildFlowUnavailable=true;t11ChildObservedAt=0;t11Rail?.refresh();
+    t11Snapshot=unavailableT11RailSnapshot();t11ChildFlowUnavailable=true;t11ChildObservedAt=0;t11ChildExpiry?.clear();t11Rail?.refresh();
     // Retirar también el widget M1: el resumen local obsoleto no puede sobrevivir al fallo.
     try{ctx.ui.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});}catch{}
     try{ctx.ui.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});}catch{}
@@ -564,6 +568,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
+   t11ChildExpiry?.stop();t11ChildExpiry=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
@@ -608,6 +613,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    // realmente visible. Cualquier error retira los estados antiguos.
    if(ctx.mode==="tui"&&ctx.hasUI===true){
     const guard=panelScope(ctx);
+    t11ChildExpiry=createT11ChildExpiryController(()=>{
+     try{guard();}catch{return;}
+     if(!t11Snapshot?.agentFlow||!t11ChildObservedAt)return;
+     // El plazo vence incluso si el usuario no escribe ni Pi emite eventos.
+     // Solo invalida presentación: sin consultas, modelos ni acciones Writer.
+     publishInspectedWorkRow(ctx,{...t11Snapshot,agentFlow:undefined,agentFlowUnavailable:true});
+    });
     t11Observer=createT11RailObserver({
      // El modo compacto visible también observa hijos, no solo el lateral ancho.
      active:()=>shouldObserveT11Surface({
@@ -900,6 +912,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
+   t11ChildExpiry?.stop();t11ChildExpiry=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
