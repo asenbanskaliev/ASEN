@@ -64,3 +64,13 @@ test("T06 clasifica fallos de recibo por mensajes internos seguros, no por salid
   "Bearer sk-secret",null,{},new Error("unknown")
  ])assert.equal(classifyT06ReviewReceiptError(bad),"pi-receipt-unclassified");
 });
+
+test("T06 solicita huellas SHA reales y no usa valores de ejemplo ambiguos",()=>{
+ const source=readFileSync(new URL("../scripts/t06-native-independent-review.ts",import.meta.url),"utf8");
+ assert.match(source,/JSON\.stringify\(evidence\.map\(\(\{path,sha256\}\)=>\(\{path,sha256\}\)\)\)/u);
+ assert.match(source,/exactamente pass o fail/u);
+ assert.match(source,/sin bloques Markdown ni texto exterior/u);
+ assert.doesNotMatch(source,/"sha256":"HASH"/u);
+ assert.doesNotMatch(source,/'\{"verdict":"pass\|fail"/u);
+ assert.match(source,/no significa aprobar su contenido/u);
+});
