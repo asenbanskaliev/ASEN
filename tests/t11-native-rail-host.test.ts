@@ -25,7 +25,12 @@ test("T11: Pi real verifica 140 y seis tamaños, sin invadir el editor",{
   stdout:execution.stdout?.slice(-1200),stderr:execution.stderr?.slice(-1500),report}));
  assert.equal(report.schema,"asen.t11.native-rail/v1");
  assert.equal(report.sha,sha);assert.equal(report.result,"PASS_REAL_PI_RAIL");
- assert.deepEqual(report.closedSessions,["baseline","asen","asen-interaction","asen-bottom"]);
+ assert.deepEqual(report.closedSessions,report.startupRecovery===null?
+  ["baseline","asen","asen-interaction","asen-bottom"]:
+  ["baseline","asen","asen-retry","asen-interaction","asen-bottom"]);
+ if(report.startupRecovery!==null)assert.deepEqual(report.startupRecovery,{
+  kind:"native-windows-no-ready",attempts:2,failedSessionClosed:true,modelCalls:0
+ });
  assert.equal(report.interaction?.source,"native-pty-sgr");
  assert.equal(report.interaction?.folded,true);
  assert.equal(report.interaction?.focused,true);

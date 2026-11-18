@@ -40,7 +40,7 @@ git(project,"add","README.md");git(project,"commit","-qm","base prueba T11");
 const report={schema:"asen.t11.native-rail/v1",sha:expected,piVersion:pi.version,
  modelCalls:0,nvidiaCalls:0,baselineWidth:null,withRailWidth:null,realReservation:null,
  wideTree:null,narrowTree:null,restored:false,bottomTree:null,bottomAt139:null,bottomRestored:false,interaction:null,
- chromeRender:null,narrowMatrix:[],lastFailure:null,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
+ chromeRender:null,narrowMatrix:[],lastFailure:null,startupRecovery:null,closedSessions:[],globalFull:false,result:"NOT_VERIFIED"};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const until=async(fn,msg,timeout=25000)=>{const start=Date.now();while(Date.now()-start<timeout){if(fn())return;await sleep(150);}throw Error(msg);};
 const read=file=>{try{return readFileSync(file,"utf8").split("\n").filter(Boolean).map(JSON.parse);}catch{return [];}};
@@ -142,7 +142,7 @@ async function run(label,withAsen,resize,interaction=false){
   assert.equal(exited,false,label+": Pi salió al redimensionar");
   const small=samples(read(records),139);
   const narrowMatrix=[];
-  if(label==="asen"){
+  if(label==="asen"||label==="asen-retry"){
    for(const [columns,rows] of [[140,40],[120,40],[80,40],[50,40],[40,40],[24,12]]){
     stage=columns+"x"+rows;
     const fromIndex=read(records).length;
@@ -193,7 +193,20 @@ async function run(label,withAsen,resize,interaction=false){
 }
 try{
  const baseline=await run("baseline",false,false);
- const actual=await run("asen",true,true);
+ let actual;
+ try{actual=await run("asen",true,true);}
+ catch(error){
+  // Único reintento permitido: arranque TUI de solo lectura en Windows,
+  // sin modelo, sin Writer, con la sesión anterior ya cerrada.
+  const failure=report.lastFailure;
+  if(process.platform!=="win32"||failure?.session!=="asen"||
+   failure.stage!=="inicio"||failure.exited!==false||
+   !report.closedSessions.includes("asen"))throw error;
+  report.startupRecovery={kind:"native-windows-no-ready",attempts:2,
+   failedSessionClosed:true,modelCalls:0};
+  report.lastFailure=null;
+  actual=await run("asen-retry",true,true);
+ }
  const base=baseline.wide.at(-1),wide=actual.wide.at(-1),narrow=actual.small.at(-1),restored=actual.restored.at(-1);
  assert.ok(base&&wide&&narrow&&restored,"Pi debe emitir lecturas de geometría");
  Object.assign(report,{baselineWidth:base.width,withRailWidth:wide.width,realReservation:base.width-wide.width,

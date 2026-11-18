@@ -431,3 +431,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - El SHA `78bc94be8283d5b188f4bc1588819c1cfede8504` falló en el CI dirigido por el compilador TypeScript: la función de bloqueo P0 declaraba `never`, por lo que el resto de la función `main` T08 se trató como inalcanzable y se perdió la comprobación de fase `review|fix`.
 - Se declara `void` (retorna de tipo, pero **siempre lanza** en tiempo de ejecución). No se relaja el bloqueo de seguridad ni hay acceso a modelos: el ensayo T06/T08 sigue parado al inicio.
 - **PENDIENTE_CI** del siguiente SHA. No atribuir éxito sin Gate exacto. `globalFull:false`.
+
+## 18/11/2026 — CI T11 Windows: arranque nativo ConPTY no observado
+
+- CI del SHA `3d2d64766eacbd19b722872140f438daa025e1ec` falló solo en `test (windows-latest shard 0)`: en el segundo terminal Pi (con extensión ASEN) el test no observó `session_start` en el plazo fijado, aunque el proceso seguía vivo. Durante la limpieza apareció un error secundario de `node-pty` `AttachConsole failed`. **No hay evidencia suficiente para atribuir causa raíz a la extensión o a ConPTY.**
+- En Windows se permite **un solo reintento** de inicio del terminal T11 **sin modelos** únicamente si la primera sesión falló en fase `inicio` y el controlador confirmó su cierre. La segunda sesión debe emitir todos los eventos TUI, dimensiones y pruebas reales igual que la primera: ningún estado simulado, ninguna concesión Writer, ningún PASS por salir con 0. Otros fallos, sistemas y reintentos quedan bloqueados.
+- El informe deja `startupRecovery` con el intento adicional y la prueba exige la lista de sesiones realmente cerradas. Si también falla la segunda, el job debe seguir fallando y `globalFull:false`.
+- **PENDIENTE_CI** del SHA nuevo, sin llamadas NVIDIA, sin fusiones. P0 T06/T08 y la auditoría independiente permanecen bloqueados.
