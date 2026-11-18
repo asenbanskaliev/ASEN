@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,shouldObserveT11Surface} from "../src/runtime/ui/t11-rail-observer.js";
+import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,observeT11ChildAvailability,shouldObserveT11Surface} from "../src/runtime/ui/t11-rail-observer.js";
 import {projectParallelAgentFlow} from "../src/runtime/ui/agent-flow-overview.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
@@ -152,4 +152,29 @@ test("T11/T07: la caducidad no acepta plazos inválidos ni inventa estados",()=>
  const child=combineT11LocalWithChild(local,undefined,false);
  assert.equal(child.agentFlowUnavailable,true);
  assert.equal(child.agentFlow,undefined);
+});
+
+test("T11/T07: el panel distingue diario no observado de diario observado vacío",()=>{
+ const original:AsenPanelSnapshot={...local,review:{pending:3}};
+ const unknown=observeT11ChildAvailability(original);
+ assert.equal(unknown.agentFlowUnavailable,true);
+ assert.equal(unknown.agentFlow,undefined);
+ assert.equal(original.agentFlowUnavailable,undefined,
+  "La vista no puede modificar las evidencias originales");
+ const notice=renderT11CompactFallback(unknown,80);
+ assert.match(notice,/hijos no disponibles/u);
+ const empty:AsenPanelSnapshot={...local,agentFlow:{
+  state:"absent",totalRecordedBatches:0,limited:false,
+  overview:projectParallelAgentFlow([])
+ }};
+ const observed=observeT11ChildAvailability(empty);
+ assert.equal(observed,empty);
+ assert.equal(observed.agentFlowUnavailable,undefined);
+ const failed=observeT11ChildAvailability({...empty,agentFlowUnavailable:true});
+ assert.equal(failed.agentFlowUnavailable,true,
+  "Un fallo reciente prevalece sobre la lectura antigua");
+ const unavailable=observeT11ChildAvailability({...local,activityUnavailable:true});
+ assert.equal(unavailable.activityUnavailable,true);
+ assert.equal(unavailable.agentFlowUnavailable,undefined,
+  "El aviso total sigue teniendo prioridad");
 });
