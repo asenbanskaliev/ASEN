@@ -31,6 +31,7 @@ import {requireLiveT06GithubApprovals} from "../src/runtime/agents/t06-github-ap
 import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {assessT06WriterEvidence,verifyT06WorkspaceAttribution} from "../src/runtime/agents/t06-writer-evidence.js";
 import {assessT06StaticWriteOnly} from "../src/runtime/agents/t06-static-write-evidence.js";
+import {stageT06BehaviorSources} from "../src/runtime/agents/t06-behavior-handoff.js";
 
 const model="nvidia/nemotron-3.5-lightning-30b-a3b";
 const definitions=[
@@ -299,6 +300,17 @@ async function main():Promise<void>{
      "PASS_TWO_REAL_WRITERS_NEEDS_INDEPENDENT_REVIEW"):
     "BLOCKED_OR_PARTIAL_NEEDS_REVIEW"
   };
+  if(staticOnly&&passed&&concurrent){
+   // Conservar solo fuentes ya acreditadas. La prueba se realizará en otro
+   // trabajo GitHub sin NVIDIA_API_KEY, nunca en este proceso privilegiado.
+   try{
+    stageT06BehaviorSources({report:evidence,expectedSha:expected,
+     worktrees:roots,outputDir:dir});
+   }catch{
+    evidence.result="BLOCKED_OR_PARTIAL_NEEDS_REVIEW";
+    process.exitCode=1;
+   }
+  }
   const file=join(dir,"t06-dual-native-evidence.json");
   writeFileSync(file,JSON.stringify(evidence,null,2)+"\n",{mode:0o600,flag:"wx"});
   process.stdout.write(JSON.stringify({result:evidence.result,sha:expected,report:file,
