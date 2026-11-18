@@ -186,3 +186,77 @@ jobs:
           path: ${{ runner.temp }}/asen-t06-evidence/
           if-no-files-found: warn
           retention-days: 7
+
+  # Trabajo aparte: NO hereda NVIDIA_API_KEY ni corre en la máquina del usuario.
+  # Solo nace tras dos aprobaciones humanas y dos archivos Pi acreditados.
+  comprobar-comportamiento-aislado:
+    needs: [ejecutar]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'asenbanskaliev' &&
+      github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ inputs.candidate_sha }}
+      ASEN_DOCKER_TESTS_CI: "1"
+      ASEN_T06_ISOLATED_REPLAY: "1"
+      ASEN_DOCKER_NODE_IMAGE: "node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8"
+      ASEN_T06_ISOLATED_DIR: ${{ runner.temp }}/asen-t06-descarga
+      ASEN_T06_SANDBOX_REPORT_DIR: ${{ runner.temp }}/asen-t06-pruebas-aisladas
+    steps:
+      - name: Obtener el mismo SHA sin credenciales Git persistentes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Rechazar rama, SHA o repetición de ejecución
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$GITHUB_SHA" = "$ASEN_EXPECTED_SHA"
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$GITHUB_ACTOR" = asenbanskaliev
+          test -z "${NVIDIA_API_KEY:-}"
+          test -z "${OPENROUTER_API_KEY:-}"
+      - name: Recuperar solo los archivos producidos en este mismo run
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v4.3.0
+        with:
+          name: asen-t06-dos-writers-${{ inputs.candidate_sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t06-descarga
+      - name: Instalar únicamente el verificador de ASEN
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node --import tsx --test tests/t06-behavior-handoff.test.ts
+      - name: Preparar contenedor Linux con huella exacta
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$ASEN_DOCKER_NODE_IMAGE"
+          docker image inspect "$ASEN_DOCKER_NODE_IMAGE" >/dev/null
+      - name: Ejecutar casos reales sin red sobre ambos archivos Pi
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          node --import tsx scripts/t06-verificar-codigo-aislado-github.ts
+      - name: Guardar resultado aislado sin claves ni aprobación FULL
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-t06-pruebas-aisladas-${{ inputs.candidate_sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t06-pruebas-aisladas/t06-veredicto-aislado.json
+          if-no-files-found: warn
+          retention-days: 7
