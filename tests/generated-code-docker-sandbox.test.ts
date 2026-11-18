@@ -93,8 +93,9 @@ test("no ejecuta contenido sin imagen fijada, casos completos o archivo real",t=
    {verified:false,completed:0,reason:"configuracion-invalida"});
  }
  // El aislamiento de GitHub se comprueba ANTES de inspeccionar archivos.
+ const missingReason=process.platform==="linux"&&isGithubHostedSandboxRun()?"aislamiento-no-disponible":"solo-github-actions";
  assert.deepEqual(runDockerBehaviorCases({root,target:"inexistente.mjs",fn:"sumEvenNumbers",image:digest,cases}),
-  {verified:false,completed:0,reason:"solo-github-actions"});
+  {verified:false,completed:0,reason:missingReason});
 });
 
 test("Docker solo se habilita en GitHub Actions de la PR y rama autorizadas",()=>{

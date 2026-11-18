@@ -543,3 +543,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 ## 2026-11-18 — Tanda T07/T11 de estabilidad y rendimiento (CodeRabbit)
 
 El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git status` síncrono; la vista abierta manualmente conserva Git fresco. La pérdida de datos locales invalida lecturas y progreso Todo pendientes y borra la vista anterior. Solo una lectura válida de la misma sesión recupera el widget. El acceso al panel se recorta en terminales de menos de 12 columnas para evitar excepciones y desbordes. El ensayo nativo distingue espera del primer dibujo de espera del indicador de arranque. La prueba del observador contabiliza las notificaciones de indisponibilidad para no ocultarlas. Sin modelos, consentimientos ni integración; `globalFull:false`.
+
+
+## 18/11/2026 — CI real y reintento T11 Windows
+
+- RED confirmado en CI `44305533676`: el test offline esperaba `solo-github-actions`, pero la puerta ya estaba abierta durante el trabajo protegido de GitHub, y la ruta inexistente dio `aislamiento-no-disponible`. Corregido el resultado esperado según el entorno sin rebajar la puerta ni admitir el fichero ausente.
+- El ensayo nativo T11 exige cuatro sesiones Pi cerradas sin reintento Windows, o cinco con el único reintento previsto. No confundir un reintento cerrado con un fallo.
+- Las nuevas pruebas son de seguridad y geometría, no evidencias de uso de modelos, Writer ni equivalencia global. `globalFull:false`.

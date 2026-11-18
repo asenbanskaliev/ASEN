@@ -247,7 +247,10 @@ try{
  assert.equal(bottomSmall.type,"vstack","El panel inferior debe seguir disponible bajo 140 columnas");
  assert.equal(bottomSmall.rail,8);
  assert.equal(report.bottomRestored,true,"El panel inferior debe restaurarse tras redimensionar");
- assert.deepEqual(report.closedSessions,["baseline","asen","asen-interaction","asen-bottom"],"Todas las sesiones Pi deben terminar realmente");
+ assert.deepEqual(report.closedSessions,report.startupRecovery===null?
+  ["baseline","asen","asen-interaction","asen-bottom"]:
+  ["baseline","asen","asen-retry","asen-interaction","asen-bottom"],
+  "Todas las sesiones Pi, incluido el reintento Windows, deben cerrarse realmente");
  report.result="PASS_REAL_PI_RAIL";
 }finally{
  const file=process.env.ASEN_T11_NATIVE_RAIL_REPORT;
