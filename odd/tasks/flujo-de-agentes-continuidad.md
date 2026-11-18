@@ -550,3 +550,10 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - RED confirmado en CI `44305533676`: el test offline esperaba `solo-github-actions`, pero la puerta ya estaba abierta durante el trabajo protegido de GitHub, y la ruta inexistente dio `aislamiento-no-disponible`. Corregido el resultado esperado según el entorno sin rebajar la puerta ni admitir el fichero ausente.
 - El ensayo nativo T11 exige cuatro sesiones Pi cerradas sin reintento Windows, o cinco con el único reintento previsto. No confundir un reintento cerrado con un fallo.
 - Las nuevas pruebas son de seguridad y geometría, no evidencias de uso de modelos, Writer ni equivalencia global. `globalFull:false`.
+
+
+## 18/11/2026 — T07/T11 revisión parcial y alertas críticas
+
+- REVIEW declara parcial la revisión cuando el origen carga solo los lotes recientes; si el diario de hijos falla, el cero se limita explícitamente a resultados locales. El panel remite a `/asen-worktrees review` para ampliar la inspección. La cola dice `observados en cola`, sin afirmar que nunca se ejecutaron.
+- T11 compacta el aviso de hijos a `! hijos ?` cuando un bloqueo local y el comando de inspección deben caber en 40 columnas. Pruebas negativas de mensaje global falso y ancho.
+- Los cambios son únicamente de lectura y presentación, sin permisos ni modelo. `globalFull:false`.

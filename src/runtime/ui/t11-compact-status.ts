@@ -64,8 +64,14 @@ export function renderAsenT11CompactStatus(
   parts.push(truncateForTerminal(ordered[0]!.text,budget));
  }else{
   for(const item of ordered){
-   const next=parts.length?parts.join(separator)+separator+item.text:item.text;
-   if(visibleWidth(next)<=budget)parts.push(item.text);
+   let label=item.text;
+   let next=parts.length?parts.join(separator)+separator+label:label;
+   // Un bloqueo local no puede ocultar un fallo de la fuente de hijos.
+   if(visibleWidth(next)>budget&&label==="! hijos no disponibles"){
+    label="! hijos ?";
+    next=parts.length?parts.join(separator)+separator+label:label;
+   }
+   if(visibleWidth(next)<=budget)parts.push(label);
   }
  }
  if(!parts.length&&ordered.length){

@@ -240,7 +240,7 @@ test("T06/T07 distingue cola y lanzamiento no acreditado en TODOS y AGENTS",()=>
  assert.match(todos,/launch-unverified/u);
  assert.match(todos,/queued-observed/u);
  assert.match(agents,/Lanzamientos sin verificar: 1/u);
- assert.match(agents,/Agentes hijos en cola \(sin ejecutar\): 1/u);
+ assert.match(agents,/Agentes hijos observados en cola: 1/u);
  assert.match(agents,/Worktree Workers: 0 active observed/u);
  const status=renderAsenWorkRow(scope,160);
  assert.ok(status);
@@ -419,7 +419,7 @@ test("T07 observa Workers activos y en cola aunque Git esté bloqueado",()=>{
  const rows=renderAsenPanel(input,150).join("\n");
  assert.match(rows,/AGENTS · 0 local running · 1 child observed/u);
  assert.match(rows,/Worktree Workers: 1 active observed/u);
- assert.match(rows,/Agentes hijos en cola \(sin ejecutar\): 1/u);
+ assert.match(rows,/Agentes hijos observados en cola: 1/u);
  const row=renderAsenWorkRow(input,160)??"";
  assert.match(row,/2 child tasks blocked/u);assert.match(row,/1 child Workers observed/u);
  assert.match(row,/1 hijos en cola/u);
@@ -435,7 +435,11 @@ test("T07 REVIEW presenta revisión de hijos y no la confunde con cero resultado
  const panel=renderAsenPanel(input,145).join("\n"),review=renderAsenPanelSection(input,"REVIEW",145).join("\n");
  assert.match(panel,/REVIEW · 0 local · 1 child needs review/u);
  assert.match(review,/Linked child results awaiting human review: 1/u);
- assert.doesNotMatch(review,/^No pending review results observed/mu);
+ assert.doesNotMatch(review,/^[ \t]*No pending review results observed/mu);
  const unavailable=renderAsenPanel(snapshot({...input,agentFlowUnavailable:true}),145).join("\n");
  assert.match(unavailable,/REVIEW · 0 local · hijos no disponibles/u);
+ const body=renderAsenPanelSection(snapshot({...input,agentFlowUnavailable:true}),"REVIEW",145).join("\n");
+ assert.match(body,/No pending local review results observed/u);
+ assert.match(body,/Linked child reviews: unavailable/u);
+ assert.doesNotMatch(body,/^[ \t]*No pending review results observed/mu);
 });

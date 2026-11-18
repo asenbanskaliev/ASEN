@@ -73,7 +73,14 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
    (childUnknown?" local activos · hijos no disponibles":linked?" local running · "+childRunning+" child observed":" running");
   case "CHANGES":return (snapshot.changes?snapshot.changes.files+" files":"unavailable")+
    (childUnknown?" · cambios hijos no disponibles":linked?" · "+linked+" linked worktree tasks":"");
-  case "REVIEW":{const review=derivePanelReview(snapshot),children=trustedFlow?.overview.stages["manual-review-required"]??0;if(childUnknown)return (review.known?review.pending+" local":"unverified local")+" · hijos no disponibles";if(children)return (review.known?review.pending+" local":"unverified local")+" · "+children+" child needs review";return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";}
+  case "REVIEW":{
+   const review=derivePanelReview(snapshot),children=trustedFlow?.overview.stages["manual-review-required"]??0;
+   const local=review.known?review.pending+" local":"unverified local";
+   if(childUnknown)return local+" · hijos no disponibles";
+   if(children)return local+" · "+children+" child needs review"+(trustedFlow?.limited?" · parcial":"");
+   if(trustedFlow?.limited)return local+" · revisión hijos parcial";
+   return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";
+  }
   case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
  }
 }
@@ -145,7 +152,7 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
      flow.stages["manual-review-required"]+" awaiting human review · "+
      flow.stages.blocked+" blocked");
     const queued=flow.tasks.filter(task=>task.workerObserved==="queued").length;
-    if(queued)out.push("Agentes hijos en cola (sin ejecutar): "+queued);
+    if(queued)out.push("Agentes hijos observados en cola: "+queued);
     if(flow.stages["launch-unverified"])
      out.push("Lanzamientos sin verificar: "+flow.stages["launch-unverified"]+
       " · revisar registros e hijos · sin reintentos");
@@ -183,8 +190,11 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    // human-read state is inferred here.
    const {pending,known}=derivePanelReview(snapshot);
    const childReviews=trustedFlow?.overview.stages["manual-review-required"]??0;
-   out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:childReviews?"No pending local review results observed":"No pending review results observed");
+   const partial=trustedFlow?.limited===true;
+   out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:
+    childReviews||partial||snapshot.agentFlowUnavailable?"No pending local review results observed":"No pending review results observed");
    if(childReviews)out.push("Linked child results awaiting human review: "+childReviews+" · /asen-worktrees review · no auto-merge");
+   if(partial)out.push("Linked child reviews: partial, latest batches only · /asen-worktrees review");
    else if(snapshot.agentFlowUnavailable)out.push("Linked child reviews: unavailable · refresh before deciding");
    out.push("Fix proposals: /asen-review fixes · read-only, no Writer authority");
    if(snapshot.review?.label)out.push(clean(snapshot.review.label,140));
