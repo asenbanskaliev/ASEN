@@ -32,6 +32,15 @@ export function combineT11LocalWithChild(
  return {...base,agentFlowUnavailable:true};
 }
 
+/** Un snapshot de la fuente que carece de agentFlow no ha observado
+ * ninguna sesión hija. Solo un resultado explícito "absent"/"observed"
+ * permite concluir que no hay Workers vinculados. */
+export function observeT11ChildAvailability(snapshot:AsenPanelSnapshot):AsenPanelSnapshot{
+ if(snapshot.activityUnavailable||snapshot.agentFlowUnavailable===true||snapshot.agentFlow)
+  return snapshot;
+ return {...snapshot,agentFlowUnavailable:true};
+}
+
 /** Caducidad observable incluso si Pi permanece sin turnos y no hay nuevos
  * refrescos locales. El temporizador no inicia Workers ni consulta proveedores.
  * Un callback antiguo jamás puede invalidar una lectura posterior. */
