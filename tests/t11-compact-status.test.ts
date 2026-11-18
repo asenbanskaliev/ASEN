@@ -114,7 +114,7 @@ test("T11/T07: un fallo del diario hijo aparece como desconocido, no como cero W
  const observed=sample({hostStatus:active,agentFlowUnavailable:true});
  for(const width of [40,50,80,120,139]){
   const line=renderAsenT11CompactStatus(observed,width,{panelCommand:true});
-  assert.match(line,width===40?/! hijos \\?/u:/! hijos no disponibles/u);
+  assert.match(line,width===40?/! hijos \?/u:/! hijos no disponibles/u);
   assert.match(line,/\/asen-panel$/u);
   assert.doesNotMatch(line,/0 (?:hijos|Workers)|agentes confirmados|PASS/u);
   assert.ok(visibleWidth(line)<=width);
