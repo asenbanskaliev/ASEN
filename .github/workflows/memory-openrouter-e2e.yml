@@ -11,6 +11,7 @@ on:
           - memoria
           - t06
           - t06_revision
+          - nvidia_catalogo
           - nvidia_diagnostico
           - t08
           - flujo
@@ -90,6 +91,14 @@ jobs:
       reviewer_a: ${{ inputs.t06_revisor_a }}
       reviewer_b: ${{ inputs.t06_revisor_b }}
       coste_desconocido_autorizado: ${{ inputs.coste_desconocido_autorizado }}
+    secrets:
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+
+  catalogo-nvidia-sin-generacion:
+    if: inputs.modo == 'nvidia_catalogo' && github.repository == 'asenbanskaliev/ASEN' && github.ref == 'refs/heads/feat/flujo-de-agentes-20261115'
+    uses: ./.github/workflows/catalogo-nvidia.yml
+    with:
+      candidate_sha: ${{ inputs.candidate_sha }}
     secrets:
       NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
