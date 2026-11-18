@@ -5,7 +5,7 @@
  */
 import {spawnSync} from "node:child_process";
 import {isDeepStrictEqual} from "node:util";
-import {lstatSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {closeSync,constants,fstatSync,lstatSync,mkdtempSync,openSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,relative} from "node:path";
 
@@ -102,22 +102,34 @@ export function runDockerBehaviorCases(input:Readonly<{
  if(input.cases.length<2||!validCases(input.cases)||!imagePattern.test(input.image)||
     !targetPattern.test(input.target)||!/^[A-Za-z][A-Za-z0-9]*$/u.test(input.fn))
   return {verified:false,completed:0,reason:"configuracion-invalida"};
+ if(process.platform!=="linux")
+  return {verified:false,completed:0,reason:"host-no-verificado"};
  let staging:string|undefined;
  try{
+  // La ruta de Docker no depende del PATH del proyecto ni de los Workers.
+  const dockerStat=lstatSync("/usr/bin/docker");
+  if(!dockerStat.isFile()||dockerStat.isSymbolicLink()||dockerStat.uid!==0)
+   return {verified:false,completed:0,reason:"docker-no-fiable"};
   const base=realpathSync(input.root);
   const source=join(base,input.target);
-  const stat=lstatSync(source);
-  if(!stat.isFile()||stat.isSymbolicLink()||stat.size>20_000||
-     relative(base,realpathSync(source))!==input.target)
-   return {verified:false,completed:0,reason:"origen-no-fiable"};
-  const bytes=readFileSync(source);
+  // Abrir sin seguir enlaces y leer del MISMO descriptor: evita sustituir
+  // el archivo entre la validación y la copia de código potencialmente hostil.
+  const fd=openSync(source,constants.O_RDONLY|constants.O_NOFOLLOW);
+  let bytes:Buffer;
+  try{
+   const stat=fstatSync(fd);
+   if(!stat.isFile()||stat.size>20_000||
+      relative(base,realpathSync(source))!==input.target)
+    return {verified:false,completed:0,reason:"origen-no-fiable"};
+   bytes=readFileSync(fd);
+  }finally{closeSync(fd);}
   staging=mkdtempSync(join(tmpdir(),"asen-codigo-contenido-"));
   const copy=join(staging,"candidate.mjs");
   writeFileSync(copy,bytes,{mode:0o444,flag:"wx"});
   const observations:ContainerObservation[]=[];
   for(const item of input.cases){
    const args=dockerBehaviorArguments(input.image,copy,input.fn,item.input);
-   const result=spawnSync("docker",[...args],{
+   const result=spawnSync("/usr/bin/docker",[...args],{
     encoding:"utf8",timeout:15_000,maxBuffer:8192,
     windowsHide:true,stdio:["ignore","pipe","pipe"],
     env:Object.fromEntries(["PATH","SYSTEMROOT","WINDIR","COMSPEC","PATHEXT"]
