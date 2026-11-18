@@ -524,3 +524,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 **CodeRabbit:** Minor de sesión ODD contrastado con el código del SHA de inicio: ya revalida después de ambas lecturas y de reserva. Major original de finalización de pruebas **sin cerrar** hasta ensayo seguro y evidencia independiente; el guardado del ensayo T08 sigue bloqueado.
 **T07/T11:** conservar observación/resize y pruebas nativas existentes. La comparativa visual independiente sigue BLOQUEADA. **T09/T10:** benchmark A/B auténtico y revisión externa permanecen BLOQUEADOS.
 **Reglas:** no usar NVIDIA, no autorizar Writers, no actualizar permisos, no fusionar, PR draft, `globalFull:false`. GREEN y CI del nuevo SHA: pendientes hasta consultar GitHub.
+
+
+## 18/11/2026 — T07: revisión y actividad de hijos bloqueados
+
+- Contraste de dos Minor CodeRabbit originales: los contadores por etapa ocultaban Workers reales activos y en cola si su etapa era bloqueada; REVIEW mostraba cero resultados aunque un hijo necesitase revisión humana.
+- Corrección: contar actividad desde workerObserved y bloqueos por etapa, y enseñar por separado revisiones locales y de hijos. La ausencia de lectura de hijos no equivale a cero.
+- Pruebas positivas y negativas con datos sintéticos; no equivalen a dos Pi reales/TUI ni aceptación. Sin proveedores ni permisos. CI exact-SHA y revisión externa pendientes. globalFull:false.

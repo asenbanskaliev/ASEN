@@ -62,7 +62,7 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
  if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"))return "unavailable";
  const trustedFlow=snapshot.agentFlowUnavailable?undefined:snapshot.agentFlow;
  const linked=trustedFlow?.overview.totalTasks??0;
- const childRunning=trustedFlow?.overview.stages["running-observed"]??0;
+ const childRunning=trustedFlow?.overview.tasks.filter(t=>t.workerObserved==="active").length??0;
  // Desconocer el estado de los hijos no equivale a observar cero hijos.
  const childUnknown=snapshot.agentFlowUnavailable===true;
  switch(section){
@@ -73,7 +73,7 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
    (childUnknown?" local activos · hijos no disponibles":linked?" local running · "+childRunning+" child observed":" running");
   case "CHANGES":return (snapshot.changes?snapshot.changes.files+" files":"unavailable")+
    (childUnknown?" · cambios hijos no disponibles":linked?" · "+linked+" linked worktree tasks":"");
-  case "REVIEW":{const review=derivePanelReview(snapshot);return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";}
+  case "REVIEW":{const review=derivePanelReview(snapshot),children=trustedFlow?.overview.stages["manual-review-required"]??0;if(childUnknown)return (review.known?review.pending+" local":"unverified local")+" · hijos no disponibles";if(children)return (review.known?review.pending+" local":"unverified local")+" · "+children+" child needs review";return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";}
   case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
  }
 }
@@ -141,11 +141,11 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    // No real tokens/prices/model on the durable public agent record: never fabricate.
    if(trustedFlow?.overview.totalTasks){
     const flow=trustedFlow!.overview;
-    out.push("Worktree Workers: "+flow.stages["running-observed"]+" active observed · "+
+    out.push("Worktree Workers: "+flow.tasks.filter(task=>task.workerObserved==="active").length+" active observed · "+
      flow.stages["manual-review-required"]+" awaiting human review · "+
      flow.stages.blocked+" blocked");
-    if(flow.stages["queued-observed"])
-     out.push("Agentes hijos en cola (sin ejecutar): "+flow.stages["queued-observed"]);
+    const queued=flow.tasks.filter(task=>task.workerObserved==="queued").length;
+    if(queued)out.push("Agentes hijos en cola (sin ejecutar): "+queued);
     if(flow.stages["launch-unverified"])
      out.push("Lanzamientos sin verificar: "+flow.stages["launch-unverified"]+
       " · revisar registros e hijos · sin reintentos");
@@ -182,7 +182,10 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    // result still needs review; no request, candidate, acknowledgement or
    // human-read state is inferred here.
    const {pending,known}=derivePanelReview(snapshot);
-   out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:"No pending review results observed");
+   const childReviews=trustedFlow?.overview.stages["manual-review-required"]??0;
+   out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:childReviews?"No pending local review results observed":"No pending review results observed");
+   if(childReviews)out.push("Linked child results awaiting human review: "+childReviews+" · /asen-worktrees review · no auto-merge");
+   else if(snapshot.agentFlowUnavailable)out.push("Linked child reviews: unavailable · refresh before deciding");
    out.push("Fix proposals: /asen-review fixes · read-only, no Writer authority");
    if(snapshot.review?.label)out.push(clean(snapshot.review.label,140));
    else if(pending)out.push(`${pending} stored Todo result${pending===1?"":"s"} awaiting review`);
@@ -270,8 +273,8 @@ export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|un
  const running=snapshot.agents.filter(a=>a.state==="running").length;
  const attention=snapshot.agents.filter(a=>a.state==="interrupted"||a.state==="failed").length;
  const jobs=snapshot.jobs.filter(isObservedActiveJob).length;
- const childActive=trustedFlow?.overview.stages["running-observed"]??0;
- const childQueued=trustedFlow?.overview.stages["queued-observed"]??0;
+ const childActive=trustedFlow?.overview.tasks.filter(t=>t.workerObserved==="active").length??0;
+ const childQueued=trustedFlow?.overview.tasks.filter(t=>t.workerObserved==="queued").length??0;
  const childLaunchUnverified=trustedFlow?.overview.stages["launch-unverified"]??0;
  const childReview=trustedFlow?.overview.stages["manual-review-required"]??0;
  const childBlocked=trustedFlow?.overview.stages.blocked??0;

@@ -407,3 +407,35 @@ test("T11/T07: la fuente hija desconocida no puede reutilizar observaciones anti
  assert.deepEqual(input,before,"La presentación no debe modificar la evidencia");
  assert.equal(renderAsenWorkRow(snapshot(),80),undefined,"Sin fallo ni actividad no se añade un aviso ficticio");
 });
+
+test("T07 observa Workers activos y en cola aunque Git esté bloqueado",()=>{
+ const changes={status:"out-of-scope" as const,changedPaths:["prohibido.ts"],outOfScopePaths:["prohibido.ts"],headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted" as const,autoMerge:false as const};
+ const overview=projectParallelAgentFlow([{batchId:"bloqueado",state:"prepared",tasks:[
+  {sourceTodoId:"activo",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,changes,childSession:{id:"pi-a",agents:[{id:"ag-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"cola",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,changes,childSession:{id:"pi-b",agents:[{id:"ag-b",role:"worker",state:"queued"}]}}
+ ]}]);
+ assert.equal(overview.stages.blocked,2);assert.equal(overview.stages["running-observed"],0);
+ const input=snapshot({todos:[],agents:[],jobs:[],agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const rows=renderAsenPanel(input,150).join("\n");
+ assert.match(rows,/AGENTS · 0 local running · 1 child observed/u);
+ assert.match(rows,/Worktree Workers: 1 active observed/u);
+ assert.match(rows,/Agentes hijos en cola \(sin ejecutar\): 1/u);
+ const row=renderAsenWorkRow(input,160)??"";
+ assert.match(row,/2 child tasks blocked/u);assert.match(row,/1 child Workers observed/u);
+ assert.match(row,/1 hijos en cola/u);
+});
+test("T07 REVIEW presenta revisión de hijos y no la confunde con cero resultados",()=>{
+ const changes={status:"clean" as const,changedPaths:[],outOfScopePaths:[],headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted" as const,autoMerge:false as const};
+ const overview=projectParallelAgentFlow([{batchId:"revision",state:"prepared",tasks:[
+  {sourceTodoId:"finalizado",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,changes,childSession:{id:"pi-fin",agents:[{id:"ag-fin",role:"worker",state:"completed"}]}},
+  {sourceTodoId:"sin-lanzar",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,changes}
+ ]}]);
+ assert.equal(overview.stages["manual-review-required"],1);
+ const input=snapshot({todos:[],todosObserved:true,agents:[],jobs:[],agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const panel=renderAsenPanel(input,145).join("\n"),review=renderAsenPanelSection(input,"REVIEW",145).join("\n");
+ assert.match(panel,/REVIEW · 0 local · 1 child needs review/u);
+ assert.match(review,/Linked child results awaiting human review: 1/u);
+ assert.doesNotMatch(review,/^No pending review results observed/mu);
+ const unavailable=renderAsenPanel(snapshot({...input,agentFlowUnavailable:true}),145).join("\n");
+ assert.match(unavailable,/REVIEW · 0 local · hijos no disponibles/u);
+});
