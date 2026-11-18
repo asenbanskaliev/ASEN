@@ -656,3 +656,20 @@ test("T11: ignorar una lectura superada no invalida una observación correcta",a
  await panel.refreshNow();assert.equal(unavailable,0);assert.equal(renders,0);
  panel.dispose();
 });
+
+
+test("T11: cerrar el modal fuera de sesión aunque se ignore un fallo antiguo",async()=>{
+ let current=true,closed=0,ignored=0,unavailable=0,renders=0;
+ const panel=createNativeWorkPanel(snapshot,{
+  terminalRows:()=>80,requestRender(){renders++;},close(){closed++;},
+  stillCurrent:()=>current,
+  refresh:async()=>{current=false;throw new Error("lectura superada");},
+  ignoreReadFailure:()=>{ignored++;return true;},
+  onUnavailable:()=>{unavailable++;}
+ });
+ await panel.refreshNow();
+ assert.equal(closed,1,"cambio de sesión debe cerrar la ventana");
+ assert.equal(ignored,0,"no saltar el control de sesión");
+ assert.equal(unavailable,0);assert.equal(renders,0);
+ await panel.refreshNow();assert.equal(closed,1,"no se cierra dos veces");
+});

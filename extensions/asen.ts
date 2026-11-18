@@ -1438,13 +1438,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         // Los hijos Pi pueden vivir en otro proceso. Sus registros se vuelven
         // a leer del disco SOLO mientras la ventana está abierta.
         refresh:async()=>{
-         modalGitGeneration=gitObservationGeneration+1;
-         modalInvalid=t11ActivityInvalidationVersion;
-         modalLocal=t11LocalPublicationVersion;
          assertCurrent();
          const current=await sessionIdentity(ctx);assertCurrent();
          if(ctx.cwd!==before||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
           throw new Error("La sesión de origen cambió durante la observación T06/T07");
+         // Versiones al empezar la lectura efectiva, no antes de resolver identidad.
+         modalGitGeneration=gitObservationGeneration+1;
+         modalInvalid=t11ActivityInvalidationVersion;
+         modalLocal=t11LocalPublicationVersion;
          return getPanelSnapshot(ctx);
         },
         autoRefreshMs:5000,

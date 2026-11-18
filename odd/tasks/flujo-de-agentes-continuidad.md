@@ -667,3 +667,11 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - El sondeo periódico utiliza esta modalidad para no bloquear el hilo de Pi; la consulta manual mantiene su comportamiento actual.
 - Prueba de paridad frente a estados limpio, cambios previstos, cambios fuera del alcance, divergencia y ruta ausente.
 - Sin permisos, sin merge, sin modelos; `globalFull:false`. CI exact-SHA pendiente.
+
+## 18/11/2026 — Tanda de robustez T06/T08/T11
+
+- **SHA de partida:** `877b7a2f79143b96715446cf6df71d96a45a6e1b`. CI general, Release Gate, Pi 1.2 y arquitectura correctos para ese SHA; Pi Free Smoke omitido.
+- **T08:** el rechazo de funciones nativas se limita a la forma completa; un comentario con `[native code]` no provoca un falso rechazo. Prueba positiva añadida al trabajo Docker sin red, nunca al anfitrión.
+- **T11/T07:** el modal comprueba la sesión antes de ignorar un fallo y fija versiones al comienzo real de la lectura, después de validar la identidad. Prueba negativa de cambio de sesión.
+- **T06/Windows:** el inspector Git manual y asíncrono eliminan variables heredadas `GIT_*` sin distinguir mayúsculas. Prueba positiva/negativa con `GIT_DIR` de un repositorio ajeno.
+- **Pendiente de comprobar:** CI y trabajos exact-SHA del nuevo commit, restantes avisos de concurrencia/índice Git, T09/T10 y E2E Writer con consentimiento individual. PR borrador, sin merge, sin pagos ni modelos. `globalFull:false`.

@@ -68,6 +68,14 @@ try{
   {verified:true,completed:cases.length,reason:"casos-externos-superados"},
   "Una función normal congelada no es una clase y no debe rechazarse");
 
+ // El marcador textual no convierte una función ordinaria en nativa.
+ const withMarker=good.replace("  return numbers.filter",
+  "  // [native code] es solo un comentario del candidato.\n  return numbers.filter");
+ writeFileSync(join(root,target),withMarker);
+ assert.deepEqual(runDockerBehaviorCases({root,target,fn:"sumEvenNumbers",image,cases}),
+  {verified:true,completed:cases.length,reason:"casos-externos-superados"},
+  "Un comentario [native code] no debe impedir casos positivos");
+
  // Prueba de regresión: la entrada NO debe conservar constructores del
  // proceso privilegiado. Con el antiguo f(p.input), retornaría 999.
  const escapeCandidate=`export function sumEvenNumbers(numbers){

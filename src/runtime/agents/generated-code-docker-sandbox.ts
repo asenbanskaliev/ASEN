@@ -48,7 +48,7 @@ const driver=[
  // Una función normal puede congelar su prototype sin dejar de ser invocable.
  // La clase no invocable se distingue por la sintaxis del callable del módulo.
  "const kind=typeof f==='function'?Function.prototype.toString.call(f).trimStart():'';",
- "if(typeof f!=='function'||/^class\\b/u.test(kind)||kind.includes('[native code]')){",
+ "if(typeof f!=='function'||/^class\\b/u.test(kind)||/^function\\b[^{}]*\\{\\s*\\[native code\\]\\s*\\}$/u.test(kind)){",
  "process.stdout.write('ASEN_EXPORT_RECHAZADO\\n');process.exitCode=73;",
  "}else{",
  "let result;",

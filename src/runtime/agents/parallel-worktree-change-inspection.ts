@@ -15,13 +15,22 @@ export interface ParallelWorktreeChangeInspection{
 }
 const sha=/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u;
 const changedLimit=512;
+/** Git -C no hereda GIT_DIR ni GIT_WORK_TREE de Pi/Windows. */
+function inspectionGitEnv():NodeJS.ProcessEnv{
+ const env:NodeJS.ProcessEnv={};
+ for(const [key,value] of Object.entries(process.env)){
+  if(!key.toUpperCase().startsWith("GIT_"))env[key]=value;
+ }
+ env.GIT_OPTIONAL_LOCKS="0";
+ return env;
+}
 function git(root:string,...args:string[]):string{
  return execFileSync("git",[
   "-c","core.fsmonitor=false","-c","core.untrackedCache=false",
   "-C",root,...args
  ],{
   encoding:"utf8",maxBuffer:1_000_000,timeout:7500,windowsHide:true,
-  stdio:["ignore","pipe","ignore"],env:{...process.env,GIT_OPTIONAL_LOCKS:"0"}
+  stdio:["ignore","pipe","ignore"],env:inspectionGitEnv()
  });
 }
 function plainRelative(path:string):boolean{
@@ -83,7 +92,7 @@ function gitAsync(root:string,...args:string[]):Promise<string>{
   execFile("git",["-c","core.fsmonitor=false","-c","core.untrackedCache=false",
    "-C",root,...args],{
    encoding:"utf8",maxBuffer:1_000_000,timeout:7500,windowsHide:true,
-   env:{...process.env,GIT_OPTIONAL_LOCKS:"0"}
+   env:inspectionGitEnv()
   },(error,stdout)=>{if(error)reject(error);else resolve(stdout);});
  });
 }

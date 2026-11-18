@@ -55,8 +55,10 @@ export function createNativeWorkPanel(snapshot:AsenPanelSnapshot,controls:Native
    try{controls.onRefreshed?.(next);}catch{/* La presentación no modifica la observación. */}
    controls.requestRender();
   }catch(error){
-   if(disposed||controls.ignoreReadFailure?.(error))return;
+   if(disposed)return;
+   // El cambio de sesión cierra la ventana incluso cuando el fallo queda superado.
    if(controls.stillCurrent&&!controls.stillCurrent()){close();return;}
+   if(controls.ignoreReadFailure?.(error))return;
    // Ante lectura fallida no conservar estados hijos activos obsoletos.
    // La lectura falló: no reutilizar listas, revisión, Git o integraciones
    // anteriores como si fueran observaciones vivas del mismo momento.

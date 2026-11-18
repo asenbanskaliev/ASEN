@@ -118,3 +118,20 @@ test("T07: el sondeo Git asíncrono conserva las decisiones del inspector manual
  assert.deepEqual(await f.inspectAsync({worktreeRoot:join(f.root,"inexistente")}),
   f.inspect({worktreeRoot:join(f.root,"inexistente")}));
 });
+
+
+test("T06: dos inspecciones ignoran GIT_DIR ajeno heredado de Windows o Pi",async t=>{
+ const f=fixture(t),prior=process.env.GIT_DIR;
+ process.env.GIT_DIR=join(f.source,".git");
+ try{
+  const direct=f.inspect(),poll=await f.inspectAsync();
+  assert.equal(direct.status,"clean");
+  assert.deepEqual(poll,direct,"Git -C inspecciona el worktree, no el GIT_DIR heredado");
+  writeFileSync(join(f.root,"b.ts"),"cambio no autorizado\n");
+  assert.equal(f.inspect().status,"out-of-scope");
+  assert.equal((await f.inspectAsync()).status,"out-of-scope");
+ }finally{
+  if(prior===undefined)delete process.env.GIT_DIR;
+  else process.env.GIT_DIR=prior;
+ }
+});
