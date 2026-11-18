@@ -39,7 +39,7 @@ function clasificarHTTP(status){
 async function leerRespuestaLimitada(response){
  const declared=response.headers.get("content-length");
  if(declared!==null&&Number(declared)>LIMITE_BYTES){
-  await response.body?.cancel().catch(()=>{});
+  void response.body?.cancel().catch(()=>{});
   throw Error("respuesta-demasiado-grande");
  }
  if(!response.body)throw Error("respuesta-vacia");
@@ -100,7 +100,8 @@ export async function consultarCatalogoNvidia({clave,fetchImpl=fetch}){
   });
   report.consultaHttp=response.status;
   if(!response.ok){
-   await response.body?.cancel().catch(()=>{});
+   abort.abort();
+   void response.body?.cancel().catch(()=>{});
    report.estado="fallo-http";
    report.motivo=clasificarHTTP(response.status);
    return report;
