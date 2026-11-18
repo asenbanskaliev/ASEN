@@ -48,7 +48,13 @@ test("public TUI startup applies an in-memory focus theme and truthful compact h
   assert.ok(lines.every((s:string)=>visibleWidth(s)<=width));
   if(width===160){assert.match(lines.join("\n"),/π ASEN/u);assert.ok(lines.join("\n").includes("v"+version));assert.ok(lines.join("\n").includes("Pi "+VERSION));assert.doesNotMatch(lines.join("\n"),/p\/m|responding|cost/u);}
  }
- assert.equal(stripTerminalSequences(f.statuses.get("asen:host")??""),"modelo p/m · high · ctx 20% · respuesta ? · coste/uso ? · /asen-panel");
+ const status=stripTerminalSequences(f.statuses.get("asen:host")??"");
+ assert.equal(status,"! hijos no disponibles · modelo p/m · high · ctx 20% · respuesta ? · coste/uso ? · /asen-panel",
+  "Antes de leer los diarios hijos no se debe inventar que hay cero Workers");
+ assert.doesNotMatch(status,/0 (?:Workers|hijos)|aceptado|PASS/iu);
+ assert.equal(f.ctx.model.provider,"p");
+ assert.equal(f.ctx.model.id,"m");
+ assert.equal(f.ctx.thinkingLevel,"high");
  header.invalidate();
 });
 test("non-TUI and missing optional UI support retain previous startup/status behaviour",async t=>{
