@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {combineT11LocalWithChild,createT11RailObserver,shouldObserveT11Surface} from "../src/runtime/ui/t11-rail-observer.js";
+import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,shouldObserveT11Surface} from "../src/runtime/ui/t11-rail-observer.js";
 import {projectParallelAgentFlow} from "../src/runtime/ui/agent-flow-overview.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
@@ -125,4 +125,31 @@ test("T11/T07: un diario comprobado y vacío sí puede mostrar ausencia de hijos
  const expired=combineT11LocalWithChild(local,none,false);
  assert.equal(expired.agentFlowUnavailable,true);
  assert.equal(expired.agentFlow,undefined);
+});
+
+test("T11/T07: el estado de hijos caduca sin esperar un nuevo turno de Pi",{
+ timeout:10000
+},async()=>{
+ const sleep=(ms:number)=>new Promise<void>(done=>setTimeout(done,ms));
+ let expiries=0;
+ const timer=createT11ChildExpiryController(()=>{expiries++;},30);
+ // Dos observaciones rápidas no permiten dos expiraciones del mismo estado.
+ timer.renew();timer.renew();
+ await sleep(150);
+ assert.equal(expiries,1);
+ // Una cancelación y un cierre no deben publicar cambios de otro propietario.
+ timer.renew();timer.clear();
+ await sleep(90);
+ assert.equal(expiries,1);
+ timer.renew();timer.stop();timer.renew();
+ await sleep(90);
+ assert.equal(expiries,1);
+});
+
+test("T11/T07: la caducidad no acepta plazos inválidos ni inventa estados",()=>{
+ for(const bad of [0,-1,NaN,1.5,30001,Infinity])
+  assert.throws(()=>createT11ChildExpiryController(()=>{},bad));
+ const child=combineT11LocalWithChild(local,undefined,false);
+ assert.equal(child.agentFlowUnavailable,true);
+ assert.equal(child.agentFlow,undefined);
 });
