@@ -74,7 +74,7 @@ test("public lifecycle status is additive, fresh, threshold-aware and clears on 
  const expected=(context:string)=>{
   const percent=Number.parseInt(context,10),alert=/warning|error/u.test(context);
   const display=Number.isFinite(percent)?Math.round(percent)+"%":"?";
-  return (alert?"! ctx "+display+" · ":"")+"modelo p/m · high"+
+  return "! hijos no disponibles · "+(alert?"! ctx "+display+" · ":"")+"modelo p/m · high"+
    (alert?"":" · ctx "+display)+" · respuesta ? · coste/uso ? · /asen-panel";
  };
  assert.equal(f.statuses.get("asen:host"),expected("80% warning"));
@@ -102,7 +102,7 @@ test("missing and throwing observations stay unknown; headless and optional stat
  delete f.ctx.model;delete f.ctx.thinkingLevel;
  f.ctx.getContextUsage=()=>{throw Error("private host error");};
  assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ? │ integrations reported"]);
- await f.emit("thinking_level_select");assert.equal(f.statuses.get("asen:host"),"modelo ? · ctx ? · respuesta ? · coste/uso ? · /asen-panel");
+ await f.emit("thinking_level_select");assert.equal(f.statuses.get("asen:host"),"! hijos no disponibles · modelo ? · ctx ? · respuesta ? · coste/uso ? · /asen-panel");
  f.ctx.hasUI=false;f.ctx.mode="print";await f.emit("model_select");assert.equal(f.statuses.get("asen:host"),undefined);
  assert.deepEqual(await f.panel("status"),["ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ? │ integrations reported"]);
  delete f.ctx.ui.setStatus;await f.emit("model_select");
@@ -197,16 +197,16 @@ test("session replacement clears the previous UI contribution and observes only 
 test("the host row composes workspace and elevated permission once without secondary status keys",async t=>{
  const f=await fixture(t);
  await f.emit("session_start");
- assert.equal(f.statuses.get("asen:host"),"! ctx 80% · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
+ assert.equal(f.statuses.get("asen:host"),"! hijos no disponibles · ! ctx 80% · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
  assert.equal(f.statuses.get("asen:permissions"),undefined,"The permission mode must not occupy a second status key");
  assert.equal(f.statuses.get("asen:workspace"),undefined,"ASEN contributes no separate workspace status key");
  await f.commands.get("asen-mode").handler("yolo",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"! ctx 80% · modo YOLO · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
+ assert.equal(f.statuses.get("asen:host"),"! hijos no disponibles · ! ctx 80% · modo YOLO · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
  const rows=await f.panel("integrations");
  assert.ok(rows.some(row=>row.startsWith("  permissions standing permission for ordinary primary work")),rows.join("\n"));
  assert.doesNotMatch(rows.join("\n"),/Permission:|connected|healthy|servers: \d/i);
  await f.commands.get("asen-mode").handler("normal",f.ctx);
- assert.equal(f.statuses.get("asen:host"),"! ctx 80% · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
+ assert.equal(f.statuses.get("asen:host"),"! hijos no disponibles · ! ctx 80% · modelo p/m · high · respuesta ? · coste/uso ? · /asen-panel");
  assert.doesNotMatch((await f.panel("integrations")).join("\n"),/permissions /,"Normal mode states no meaning row");
 });
 
