@@ -20,6 +20,23 @@ on:
         type: boolean
         required: true
         default: false
+  workflow_call:
+    inputs:
+      candidate_sha:
+        type: string
+        required: true
+      reviewer_a:
+        type: string
+        required: true
+      reviewer_b:
+        type: string
+        required: true
+      coste_desconocido_autorizado:
+        type: boolean
+        required: true
+    secrets:
+      NVIDIA_API_KEY:
+        required: true
 permissions:
   contents: read
   actions: read
