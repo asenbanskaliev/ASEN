@@ -89,14 +89,20 @@ export function createT11RailObserver(options:{
  readonly intervalMs?:number;
  readonly autoStart?:boolean;
 }):T11RailObserver{
- const ms=Math.max(1000,Math.min(30000,Math.floor(options.intervalMs??5000)));
+ const requested=options.intervalMs??5000;
+ // Un intervalo NaN o infinito provocaría un sondeo casi continuo.
+ if(!Number.isFinite(requested)||requested<0)
+  throw new Error("T11: intervalo de observación no válido");
+ const ms=Math.max(1000,Math.min(30000,Math.floor(requested)));
  let stopped=false,busy=false,timer:ReturnType<typeof setTimeout>|undefined;
  const stop=()=>{stopped=true;if(timer!==undefined)clearTimeout(timer);timer=undefined;};
  const current=()=>{try{return options.current();}catch{return false;}};
  const active=()=>{try{return options.active();}catch{return false;}};
  const refreshNow=async()=>{
-  if(stopped||busy||!active())return;
+  if(stopped||busy)return;
+  // Una sesión caducada debe apagar su observador incluso con el panel oculto.
   if(!current()){stop();return;}
+  if(!active())return;
   busy=true;
   try{
    const snapshot=await options.read();

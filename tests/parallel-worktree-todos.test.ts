@@ -1281,3 +1281,22 @@ test("T06: nunca se libera una reserva con un destino existente o ya preparado",
  }),/No exact unstarted/u);
  assert.equal((await f.journal.list(f.identity)).length,1);
 });
+
+test("T06: dos liberaciones simultáneas no retiran dos veces la misma reserva",async t=>{
+ const f=fixture(t),bindings=bindParallelSourceTodos({
+  identity:f.identity,expectedHead:f.head,rows:f.rows,units:f.scopes
+ });
+ const record=await f.journal.reserve({
+  identity:f.identity,id:newParallelTodoWorktreeBatchId(),
+  head:f.head,parentDir:f.parent,bindings
+ });
+ const release=()=>f.journal.releaseUnstarted({
+  identity:f.identity,id:record.id,head:record.sourceHead,parentDir:record.parentDir
+ });
+ const results=await Promise.allSettled([release(),release()]);
+ assert.equal(results.filter(x=>x.status==="fulfilled").length,1);
+ const rejected=results.find(x=>x.status==="rejected");
+ assert.ok(rejected&&rejected.status==="rejected");
+ assert.match(String(rejected.reason),/No exact unstarted reservation/u);
+ assert.deepEqual(await f.journal.list(f.identity),[]);
+});

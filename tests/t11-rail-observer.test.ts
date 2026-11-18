@@ -84,3 +84,26 @@ test("T11: un fallo del sondeo no vuelve a publicar cero tareas ni revisiones an
  assert.doesNotMatch(renderAsenPanel(visible!,100).join("\n"),/Actividad no disponible|2 needs review/u);
  observer.stop();
 });
+
+test("T11: sesión caducada con lateral oculto detiene el observador sin reactivarlo",async()=>{
+ let active=false,current=false,reads=0,applies=0;
+ const observer=createT11RailObserver({autoStart:false,
+  active:()=>active,current:()=>current,
+  read:async()=>{reads++;return data;},
+  onSnapshot:()=>{applies++;},onUnavailable:()=>{applies++;}
+ });
+ await observer.refreshNow();
+ current=true;active=true;
+ await observer.refreshNow();
+ assert.equal(reads,0,"Una sesión caducada no debe poder reactivar el sondeo");
+ assert.equal(applies,0);
+ observer.stop();
+});
+test("T11: intervalos inválidos no permiten sondeos sin límite",()=>{
+ for(const intervalMs of [Number.NaN,Infinity,-Infinity,-1]){
+  assert.throws(()=>createT11RailObserver({intervalMs,autoStart:false,
+   active:()=>true,current:()=>true,read:async()=>data,
+   onSnapshot:()=>{},onUnavailable:()=>{}
+  }),/intervalo de observación no válido/u);
+ }
+});
