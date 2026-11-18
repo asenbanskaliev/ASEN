@@ -47,7 +47,8 @@ export function assessT09NativeTrialReadiness(input:{
  const report=input?.report,sha=input?.expectedSha;
  if(!object(report)||typeof sha!=="string"||!hex40.test(sha)||
   report.schema!=="asen.t06.native-dual-writer/v1"||
-  report.sha!==sha||report.piVersion!=="1.2.0"||
+  report.sha!==sha||typeof report.piVersion!=="string"||
+  !/^(?:pi\s+)?1\.2\.0$/iu.test(report.piVersion)||
   !model.test(String(report.requestedModel??""))||
   !((report.executionKind==="NATIVE_PI_RPC_WRITER_WITH_TWO_GITHUB_APPROVALS"&&
     report.consentMethod==="two-distinct-github-environment-human-approvals-not-native-pi-TUI")||

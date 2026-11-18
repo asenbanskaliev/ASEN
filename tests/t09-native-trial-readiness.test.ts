@@ -116,3 +116,16 @@ test("T09 no reconoce como auténtico un informe sin estructura",()=>{
  for(const value of [undefined,null,[],42,"PASS",{},report().workers])
   assert.equal(evaluate(value).status,"blocked");
 });
+
+test("T09 acepta la versión Pi en el formato real del productor, sin aflojar el SHA",()=>{
+ for(const version of ["1.2.0","pi 1.2.0","Pi 1.2.0"]){
+  const result=evaluate({...report(),piVersion:version});
+  assert.equal(result.status,"candidate-evidence-only",version);
+  assert.equal(result.globalFull,false);
+ }
+ for(const version of ["pi 1.2.0 extra","pi 1.2.0-rc","pi 1.2.1",
+  "otra pi 1.2.0","1.2.0 1.2.0","pi\\n1.2.0",null,42]){
+  assert.equal(evaluate({...report(),piVersion:version}).status,"blocked",String(version));
+ }
+ assert.equal(evaluate({...report(),piVersion:"pi 1.2.0",sha:"f".repeat(40)}).status,"blocked");
+});

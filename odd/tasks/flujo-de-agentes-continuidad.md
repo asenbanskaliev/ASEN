@@ -387,3 +387,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - La muestra TDD se crea ahora con el mismo `isolatedGitEnvironment()` que usa el verificador; se fija `core.autocrlf=false` **solo en su repositorio temporal**, sin tocar Git de usuario ni cambiar la protección del código real. Un cambio rastreado auténtico sigue bloqueándose, con prueba negativa.
 - El diagnóstico de estado informa solo número de entradas y si el archivo esperado aparece, sin exponer rutas privadas ni contenido.
 - Estado **IMPLEMENTADO_PENDIENTE_CI** del siguiente SHA. Verificar CI multiplataforma y Release Gate antes de declarar resuelto; `globalFull:false`, no ejecutar código generado y mantener P0 T06/T08 **BLOQUEADO**.
+
+## 18/11/2026 — Megatanda CodeRabbit T06 + T09 sin modelos
+
+- **T06, Minor de estabilidad:** `scripts/t06-nvidia-pi-concurrent.ts` ahora conserva el `AgentRuntime` en el bloque de cierre, espera el resultado de **todas** las altas de hijos y cancela/espera **ambas** sesiones mediante `cancelSession` antes de observar o borrar worktrees. En caso de fallo de cancelación, marca `BLOCKED` y **no borra** los árboles, para evitar que un proceso Pi vivo siga actuando sin su carpeta.
+- **T09, Minor de formato:** `assessT09NativeTrialReadiness` acepta tanto `1.2.0` como `pi 1.2.0` con comprobación exacta. No acepta versiones distintas, sufijos o SHA incorrecto. Los informes siguen siendo `candidate-evidence-only` y no prueban facturación ni FULL.
+- **Pruebas offline positivas/negativas:** cancelación de ambos hijos incluso después de fallo de una alta, bloqueo al fallar cancelación, runtime ausente y versión Pi real/forjada; ninguna prueba llama a proveedor ni ejecuta código generado.
+- **P0 CodeRabbit no resuelto:** ejecución segura del código T06/T08 requiere aislamiento de red real del sistema operativo y comprobación no falsificable de finalización. `checkT06Behavior` y `checkT08Behavior` siguen bloqueados, sin habilitar permisos nuevos.
+- **Estado:** IMPLEMENTADO_PENDIENTE_CI del nuevo SHA. Mantener revisión independiente y comparativa T09/T10 pendientes; `globalFull:false`. Sin fusiones ni NVIDIA.

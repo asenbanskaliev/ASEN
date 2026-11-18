@@ -7,6 +7,7 @@ import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
+import {settleT06ReadOnlyTrial} from "../src/runtime/agents/t06-read-only-trial-cleanup.js";
 import {createT06ReadOnlyGitFixture} from "../src/runtime/agents/t06-read-only-git-fixture.js";
 import {validateT06PiReply} from "../src/runtime/agents/t06-pi-receipt-validator.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
@@ -56,12 +57,15 @@ const status={schema:"asen.t06.nvidia.pi-dual/v2",source:"native-PiProcessRunner
  executionKind:"READ_ONLY_EXPLORER_VERIFIER_IN_GIT_WORKTREES_NOT_WRITER",
  gitWorktreesVerified:false,gitSourceClean:false,gitChildrenClean:false,
  result:"BLOCKED",at:new Date().toISOString()};
+let runtime:AgentRuntime|undefined;
+let startAttempts:Promise<string>[]=[];
 try{
- const runtime=await AgentRuntime.open({storeFile:join(base,"agents.json"),runner:wrapper,maxConcurrency:2});
- const ids=await Promise.all(instances.map((x,i)=>runtime.startReadOnly({
+ runtime=await AgentRuntime.open({storeFile:join(base,"agents.json"),runner:wrapper,maxConcurrency:2});
+ startAttempts=instances.map((x,i)=>runtime!.startReadOnly({
   role:roles[i]!,prompt:"Analiza sin editar archivos. Responde únicamente con "+marker[i]+". No uses herramientas ni texto adicional.",
   session:x.identity,model
- })));
+ }));
+ const ids=await Promise.all(startAttempts);
  const deadline=Date.now()+105_000;
  while(Date.now()<deadline){
   const all=await Promise.all(instances.map((x,i)=>runtime.list(x.identity).then(rows=>
@@ -99,7 +103,16 @@ try{
  status.modelActual=status.providerAuthenticated?model:"unknown";
  status.result=status.providerAuthenticated&&status.concurrentlyRunning?"PASS_READ_ONLY_PI_CONCURRENT":"BLOCKED";
 }finally{
+ // Nunca borrar los worktrees si un Pi todavía puede trabajar en ellos.
+ const stopped=await settleT06ReadOnlyTrial({
+  runtime,startAttempts,sessions:instances.map(x=>x.identity)
+ });
+ if(!stopped){
+  status.result="BLOCKED";
+  status.gitWorktreesVerified=false;
+ }
  try{
+  if(!stopped)throw Error("T06: hay sesiones cuya cancelación no está acreditada");
   const git=gitFixture.observe();
   status.gitSourceClean=git.sourceClean;
   status.gitChildrenClean=git.children.length===2&&git.children.every(x=>x.clean);
@@ -112,8 +125,11 @@ try{
   mkdirSync(resolve(output,".."),{recursive:true,mode:0o700});
   writeFileSync(output,JSON.stringify(status,null,2)+"\n",{encoding:"utf8",mode:0o600,flag:"wx"});
  }finally{
-  try{gitFixture.cleanup();}
-  finally{rmSync(base,{recursive:true,force:true});}
+  // Si un hijo no pudo cancelarse, conservar evidencia y árbol para revisión manual.
+  if(stopped){
+   try{gitFixture.cleanup();}
+   finally{rmSync(base,{recursive:true,force:true});}
+  }
  }
  process.stdout.write(JSON.stringify({
   result:status.result,model:status.modelActual,
