@@ -77,7 +77,8 @@ jobs:
             tests/review-acceptance-receipt.test.ts \
             tests/t11-git-observation.test.ts \
             tests/t11-rail-observer.test.ts \
-            tests/t11-native-rail.test.ts
+            tests/t11-native-rail.test.ts \
+            tests/flujo-agentes-nvidia-workflow.test.ts
   test:
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
