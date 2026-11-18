@@ -16,7 +16,7 @@ on:
           - t08
           - flujo
       candidate_sha:
-        description: 'SHA exacto de 40 caracteres en feat/flujo-de-agentes-20261115'
+        description: 'SHA de 40 caracteres (en t06_revision se usa automáticamente el SHA real del disparo)'
         required: false
         type: string
       t06_revisor_a:
