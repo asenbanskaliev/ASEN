@@ -127,7 +127,7 @@ export class ParallelTodoWorktreeJournal{
    if(record.tasks.some(task=>lstatSync(task.worktreeRoot,{throwIfNoEntry:false})!==undefined))
     throw new Error("Worktree path exists; preserve reservation for manual inspection");
    journal.records.splice(index,1);journal.revision++;
-   await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\\n");
+   await atomicWriteText(this.file,JSON.stringify(parse(JSON.stringify(journal)))+"\n");
   });
  }
  async markPrepared(input:{identity:TodoContext;id:string;allocations:readonly ParallelWorktreeAllocation[]}):Promise<ParallelTodoWorktreeRecord>{
