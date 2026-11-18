@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: 'Elegir memoria, T06 (dos Writers) o T08 (reparación con jueces)'
+        description: 'Elegir memoria, T06 Writer, T08 reparación o flujo de agentes NVIDIA de lectura'
         required: true
         type: choice
         default: memoria
@@ -11,6 +11,7 @@ on:
           - memoria
           - t06
           - t08
+          - flujo
       candidate_sha:
         description: 'SHA exacto de 40 caracteres en feat/flujo-de-agentes-20261115'
         required: false
@@ -78,5 +79,14 @@ jobs:
       reviewer_a: ${{ inputs.t08_revisor_a }}
       reviewer_b: ${{ inputs.t08_revisor_b }}
       writer_model: ${{ inputs.t08_modelo_reparador }}
+    secrets:
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+
+  flujo-agentes-nvidia:
+    if: inputs.modo == 'flujo' && github.repository == 'asenbanskaliev/ASEN' && github.ref == 'refs/heads/feat/flujo-de-agentes-20261115'
+    uses: ./.github/workflows/asen-flujo-agentes-nvidia.yml
+    with:
+      candidate_sha: ${{ inputs.candidate_sha }}
+      cost_acknowledged: ${{ inputs.coste_desconocido_autorizado }}
     secrets:
       NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
