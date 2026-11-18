@@ -531,3 +531,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Contraste de dos Minor CodeRabbit originales: los contadores por etapa ocultaban Workers reales activos y en cola si su etapa era bloqueada; REVIEW mostraba cero resultados aunque un hijo necesitase revisión humana.
 - Corrección: contar actividad desde workerObserved y bloqueos por etapa, y enseñar por separado revisiones locales y de hijos. La ausencia de lectura de hijos no equivale a cero.
 - Pruebas positivas y negativas con datos sintéticos; no equivalen a dos Pi reales/TUI ni aceptación. Sin proveedores ni permisos. CI exact-SHA y revisión externa pendientes. globalFull:false.
+
+
+## 2026-11-18 — Seguridad de pruebas de comportamiento, Major nuevo de CodeRabbit
+
+- Se detectó que un candidato sin la función exportada podía superar falsamente todos los casos que esperaban `TypeError`: el controlador generaba ese mismo error dentro del `catch` de la función. **Corrección:** comprobar el export fuera del `catch` del candidato. Un export ausente o no invocable debe provocar un resultado de infraestructura no exitoso.
+- Pruebas de GitHub en Docker sin red: export ausente, export no invocable, sintaxis válida en el caso adversarial de salida anticipada y motivo exacto de fallo. La ausencia del archivo se verifica tras la puerta CI en la prueba real, no se confunde con el bloqueo local.
+- Se mantiene el bloqueo de ensayos Writer T06/T08, sin modelos ni credenciales ni permiso añadido. Ninguna prueba offline sustituye el ensayo autorizado. `globalFull:false`.

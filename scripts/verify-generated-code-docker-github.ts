@@ -79,7 +79,7 @@ try{
 
  const bypasses=[
   `export function sumEvenNumbers(){
-    process.stdout.write('{"kind":"value","value":0}\n');
+    process.stdout.write('{"kind":"value","value":0}\\n');
     process.exit(0);
   }`,
   `export function sumEvenNumbers(){
@@ -89,12 +89,32 @@ try{
     return 0;
   }`
  ];
- for(const source of bypasses){
+ for(const [index,source] of bypasses.entries()){
   writeFileSync(join(root,target),source);
   const rejected=runDockerBehaviorCases({root,target,fn:"sumEvenNumbers",image,cases});
   assert.equal(rejected.verified,false,
    "Ninguna salida 0 falsa, constructor o implementación incorrecta puede aprobar");
+  assert.equal(rejected.reason,"asercion-no-superada",
+   "La prueba adversarial "+index+" debe ejecutar el candidato y fallar por resultado, no por sintaxis o Docker");
  }
+ // El error de infraestructura por export ausente NO es un TypeError del candidato.
+ // En versiones anteriores, dos casos que esperaban TypeError podían dar PASS.
+ for(const invalid of [
+  "export function otraFuncion(){throw new TypeError('candidato');}",
+  "export const sumEvenNumbers=123;"
+ ]){
+  writeFileSync(join(root,target),invalid);
+  const required:readonly TrustedBehaviorCase[]=[
+   {id:"primera",input:[1],expected:{kind:"throws",name:"TypeError"}},
+   {id:"segunda",input:[2],expected:{kind:"throws",name:"TypeError"}}
+  ];
+  assert.deepEqual(runDockerBehaviorCases({root,target,fn:"sumEvenNumbers",image,cases:required}),
+   {verified:false,completed:0,reason:"proceso-incompleto"},
+   "Un export faltante o no invocable nunca satisface errores esperados");
+ }
+ assert.deepEqual(runDockerBehaviorCases({root,target:"candidato-ausente.mjs",fn:"sumEvenNumbers",image,cases}),
+  {verified:false,completed:0,reason:"aislamiento-no-disponible"},
+  "La falta del archivo debe bloquear antes del lanzamiento de Docker");
  console.log("PRUEBA_GITHUB_DOCKER_OK: red aislada y cinco casos externos verificados");
  console.log("BLOQUEO_T06_T08: permanece vigente; sin proveedores, Writer ni permisos");
 }finally{

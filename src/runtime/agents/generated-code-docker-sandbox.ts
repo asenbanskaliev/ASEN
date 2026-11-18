@@ -39,9 +39,12 @@ const driver=[
  "const m=new SourceTextModule(readFileSync('/opt/candidate.mjs','utf8'),{context:ctx});",
  "await m.link(()=>{throw new Error('imports-prohibidos')});",
  "await m.evaluate({timeout:1500});",
+ "const f=m.namespace[p.fn];",
+ // Si el export no existe, la infraestructura falla fuera del catch de la
+ // función candidata: no debe aprobar un caso que espera TypeError.
+ "if(typeof f!=='function')throw new Error('funcion-ausente');",
  "let result;",
- "try{const f=m.namespace[p.fn];if(typeof f!=='function')throw new TypeError('funcion-ausente');",
- "result={kind:'value',value:await f(safeInput)}}",
+ "try{result={kind:'value',value:await f(safeInput)}}",
  "catch(error){result={kind:'throws',name:error?.name??'Error'}}",
  "process.stdout.write(JSON.stringify(result)+'\\n');"
 ].join("");

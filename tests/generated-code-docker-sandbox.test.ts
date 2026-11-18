@@ -87,11 +87,14 @@ test("no ejecuta contenido sin imagen fijada, casos completos o archivo real",t=
  for(const input of [
   {root,target,fn:"sumEvenNumbers",image:"node:latest",cases},
   {root,target,fn:"sumEvenNumbers",image:digest,cases:[]},
-  {root,target:"../prohibido.mjs",fn:"sumEvenNumbers",image:digest,cases},
-  {root,target:"inexistente.mjs",fn:"sumEvenNumbers",image:digest,cases}
+  {root,target:"../prohibido.mjs",fn:"sumEvenNumbers",image:digest,cases}
  ]){
-  assert.equal(runDockerBehaviorCases(input).verified,false);
+  assert.deepEqual(runDockerBehaviorCases(input),
+   {verified:false,completed:0,reason:"configuracion-invalida"});
  }
+ // El aislamiento de GitHub se comprueba ANTES de inspeccionar archivos.
+ assert.deepEqual(runDockerBehaviorCases({root,target:"inexistente.mjs",fn:"sumEvenNumbers",image:digest,cases}),
+  {verified:false,completed:0,reason:"solo-github-actions"});
 });
 
 test("Docker solo se habilita en GitHub Actions de la PR y rama autorizadas",()=>{
