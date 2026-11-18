@@ -362,3 +362,12 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Tests de regresión: funciones correctas no reciben PASS falso, expresiones por `constructor` y `process.exit(0)` tampoco. Esto **bloquea intencionadamente el ensayo T06/T08**; no se suplanta con éxito simulado ni permisos nuevos.
 - **Pendiente P0 para recuperar la funcionalidad:** implementar ejecutor aislado con red negada por el sistema operativo, archivo montado en solo lectura, límites de recursos y comprobación de finalización de cada aserción que el candidato no pueda falsificar. Después ejecutar pruebas negativas con escape, red local y salida temprana.
 - Se conserva `globalFull:false`, PR borrador sin merge, sin coste NVIDIA y sin autorizaciones Writer heredadas. Verificar CI exact-SHA antes de declarar este bloqueo operativo.
+
+## 18/11/2026 — Diagnóstico y corrección multiplataforma T06 (pendiente de CI)
+
+- En el SHA de partida `ea04cca9c260f910c1d173325a3e92a8170c320a`, CI falla en Windows (4 pruebas del verificador de instantáneas), mientras las matrices macOS/Linux y las pruebas de agentes específicas pasan. La cobertura global falla como consecuencia; no se declara resuelto.
+- El lector de instantáneas utiliza ahora `git status --porcelain -z` para no depender del formato de rutas y saltos de línea del sistema. Compara la raíz Git mediante ruta relativa, conservando la comprobación de directorio exacto.
+- Los bloqueos indican únicamente la etapa local fallida, **sin publicar rutas ni contenido Git**, para distinguir de forma reproducible un problema de directorio, SHA, estado, árbol o archivo en Windows.
+- Prueba negativa de variables `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` y configuración global heredadas, con el lector aislado. Las huellas, permisos y rechazo de archivos ajenos no se relajan.
+- Estado: **IMPLEMENTADO_PENDIENTE_CI**. Si persisten los fallos, utilizar la etapa registrada en CI para diagnosticar la causa real, sin cambiar los resultados esperados de seguridad.
+- Sin proveedores, sin pruebas TUI y sin fusión; `globalFull:false`. El P0 de ejecución de código generado sin aislamiento del sistema operativo continúa **BLOQUEADO**.

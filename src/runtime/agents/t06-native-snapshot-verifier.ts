@@ -35,10 +35,11 @@ const validProvenance=(kind:unknown,method:unknown):boolean=>
  method===manualConsentMethod||
  kind==="NATIVE_PI_RPC_WRITER_WITH_TWO_GITHUB_APPROVALS"&&
  method===githubConsentMethod;
-const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{
+const gitRaw=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{
  encoding:"utf8",stdio:["ignore","pipe","pipe"],timeout:12_000,maxBuffer:200_000,
  env:isolatedGitEnvironment()
-}).trim();
+});
+const git=(root:string,...args:string[])=>gitRaw(root,...args).trim();
 const hash=(data:Buffer)=>createHash("sha256").update(data).digest("hex");
 
 /** Comprueba únicamente un informe ya existente y el contenido Git local.
@@ -89,30 +90,42 @@ export function verifyT06NativeSnapshot(input:{
   sessions.add(row.session);
   const supplied=input.worktreeRoots?.[i];
   if(typeof supplied!=="string"||supplied.length===0)continue;
+  let stage="directorio";
   try{
    const root=realpathSync(supplied);
    if(!lstatSync(supplied).isDirectory()||roots.has(root))
     throw new Error("Root repeated or not a directory");
    roots.add(root);
+   stage="raíz Git";
    const top=realpathSync(git(root,"rev-parse","--show-toplevel"));
-   if(top!==root||git(root,"rev-parse","HEAD")!==report.sha)
-    throw new Error("Root and SHA do not match");
-   const changes=git(root,"status","--porcelain=v1","--untracked-files=all")
-    .split(/\r?\n/u).filter(Boolean);
+   // En Windows, la capitalización del volumen puede variar entre Git y Node.
+   if(relative(top,root)!=="")
+    throw new Error("Root does not match");
+   stage="SHA";
+   if(git(root,"rev-parse","HEAD")!==report.sha)
+    throw new Error("SHA does not match");
+   stage="estado Git";
+   // -z evita escapes, comillas y saltos de línea dependientes del sistema.
+   const changes=gitRaw(root,"status","--porcelain=v1","--untracked-files=all","-z")
+    .split("\0").filter(Boolean);
    if(changes.length!==1||changes[0]!==("?? "+expectedScope))
     throw new Error("Unexpected Git changes");
+   stage="árbol Git";
    if(git(root,"ls-tree","--name-only","HEAD","--",expectedScope)!=="")
     throw new Error("File existed in the base commit");
+   stage="archivo";
    const filepath=join(root,expectedScope);
    const info=lstatSync(filepath);
    if(!info.isFile()||info.isSymbolicLink()||
     relative(root,realpathSync(filepath))!==expectedScope)
     throw new Error("Unsafe file path");
+   stage="huella";
    if(hash(readFileSync(filepath))!==row.fileSha256)
     throw new Error("File hash does not match");
    matched++;
   }catch{
-   stop("Worker "+(i+1)+": Git, archivo o huella distinta del informe");
+   // No incluir rutas, mensajes de Git o contenidos privados en el diagnóstico.
+   stop("Worker "+(i+1)+": verificación local bloqueada en "+stage);
   }
  }
  if(roots.size!==2)stop("No se han verificado dos worktrees diferentes");

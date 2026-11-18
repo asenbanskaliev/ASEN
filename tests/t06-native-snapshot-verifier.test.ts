@@ -122,3 +122,23 @@ test("T06 coteja una procedencia GitHub real como declaración, nunca como permi
   assert.equal(verifyT06NativeSnapshot({report:forged,worktreeRoots:f.roots}).status,"blocked");
  }
 });
+
+test("T06 mantiene Git aislado de variables de repositorio heredadas",t=>{
+ const f=fixture(t);
+ const keys=["GIT_DIR","GIT_WORK_TREE","GIT_INDEX_FILE","GIT_CONFIG_GLOBAL"];
+ const previous=keys.map(key=>process.env[key]);
+ try{
+  process.env.GIT_DIR=f.source;
+  process.env.GIT_WORK_TREE=f.source;
+  process.env.GIT_INDEX_FILE=join(f.source,"indice-ajeno");
+  process.env.GIT_CONFIG_GLOBAL=join(f.source,"config-ajena");
+  const result=verifyT06NativeSnapshot({report:f.report,worktreeRoots:f.roots});
+  assert.equal(result.status,"local-files-consistent-claims-unverified");
+  assert.equal(result.locallyMatchedFiles,2);
+ }finally{
+  for(let i=0;i<keys.length;i++){
+   if(previous[i]===undefined)delete process.env[keys[i]!];
+   else process.env[keys[i]!]=previous[i]!;
+  }
+ }
+});
