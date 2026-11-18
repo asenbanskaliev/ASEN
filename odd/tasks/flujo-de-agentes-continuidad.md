@@ -617,3 +617,9 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - Los tiempos de espera ETIMEDOUT se distinguen de los fallos de arranque y nunca aprueban casos.
 - Las pruebas negativas comprueban fallo de arranque, interrupción, clase exportada y casos válidos; permanecen los límites sin red y sin privilegios.
 - No se autoriza Writer, modelos, pagos ni FULL: checkT08Behavior conserva su bloqueo y globalFull:false. Validación exact-SHA pendiente.
+
+## 18/11/2026 — T11: versiones de observación y progreso
+- La lectura más reciente al iniciarse gobierna el widget Todo; una lectura antigua de recuperación no puede anular una actualización posterior.
+- Cada inspección manual Git lleva una generación: las inspecciones anteriores no pueden modificar el último resultado comprobado.
+- Los sondeos del lateral capturan la versión de invalidación; los iniciados antes del fallo se descartan sin mostrar contadores obsoletos, también al fallar.
+- No se alteran proveedores, permisos, tareas ni registros; la UI sigue siendo de solo lectura. Pruebas CI exact-SHA pendientes.

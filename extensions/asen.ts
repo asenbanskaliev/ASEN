@@ -374,6 +374,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const t11ActivityCache=createT11ActivityCache();
   const t11GitObservation=createT11GitObservationCache();
+  // Las lecturas antiguas no pueden resucitar datos tras una invalidación.
+  let gitObservationGeneration=0,t11ActivityInvalidationVersion=0;
+  const t11ObserverVersions=new WeakMap<AsenPanelSnapshot,number>();
+  let t11ObserverReadVersion=0;
   const restoreT11Git=(ctx:CommandContext,snapshot:AsenPanelSnapshot):AsenPanelSnapshot=>{
    try{return t11GitObservation.restore(ctx.sessionManager?.getSessionId?.()??"",
     realpathSync(path.resolve(ctx.cwd)),snapshot);}
@@ -417,6 +421,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   // Immutable, session-scoped display data. Never performs an agent action.
   const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual"):Promise<AsenPanelSnapshot>=>{
+   const gitGeneration=mode==="manual"?++gitObservationGeneration:0;
    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx);assertCurrent();
    const [todos,agents]=await Promise.all([
     todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
@@ -452,7 +457,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     throw new Error("ASEN panel scope changed while reading worktree flow");
    // Solo el panel manual guarda la última observación Git comprobada.
    // Un Git fallido o ausente la retira; la lectura periódica no la modifica.
-   if(mode==="manual")t11GitObservation.remember(identity.sessionId,identity.projectId,changes);
+   if(mode==="manual"&&gitGeneration===gitObservationGeneration)
+    t11GitObservation.remember(identity.sessionId,identity.projectId,changes);
    return {todos,todosObserved:!!todoStorePromise,agents,jobs,...(changes?{changes}:{}),
     hostStatus,integrationInspection,permission:permissionSession.mode(ctx),
     ...(agentFlow?{agentFlow}:{}),...(agentFlowUnavailable?{agentFlowUnavailable:true}:{})};
@@ -462,6 +468,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let workRowGeneration=0,todoWidgetGeneration=0;
   const invalidateT11LocalActivity=async(ctx:CommandContext):Promise<void>=>{
    ++workRowGeneration;++todoWidgetGeneration;
+   ++t11ActivityInvalidationVersion;++gitObservationGeneration;
    t11ActivityCache.clear();t11GitObservation.clear();
    t11ActivityUnavailable=true;t11ChildFlowUnavailable=true;
    t11ChildObservedAt=0;t11ChildExpiry?.clear();
@@ -480,7 +487,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const recovered=t11ActivityUnavailable&&!localMissing;
    const changed=t11ActivityUnavailable!==localMissing||t11ChildFlowUnavailable!==childrenMissing;
    if(localMissing){
-    ++workRowGeneration;++todoWidgetGeneration;t11ActivityCache.clear();t11GitObservation.clear();
+    ++workRowGeneration;++todoWidgetGeneration;++t11ActivityInvalidationVersion;
+     ++gitObservationGeneration;t11ActivityCache.clear();t11GitObservation.clear();
     try{ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});}catch{}
    }
    t11ActivityUnavailable=localMissing;t11ChildFlowUnavailable=childrenMissing;
@@ -505,7 +513,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const refreshWorkRow=async(ctx:CommandContext):Promise<void>=>{
    if(ctx?.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
-   const generation=++workRowGeneration,guard=panelScope(ctx);
+   const generation=++workRowGeneration,todoReadGeneration=++todoWidgetGeneration,guard=panelScope(ctx);
    try{
     const identity=await sessionIdentity(ctx);guard();
     const [todos,agents]=await Promise.all([
@@ -514,10 +522,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ]);
     const jobs=backgroundJobs.list(identity.sessionId,identity.projectId);
     const now=await sessionIdentity(ctx);guard();
-    if(generation!==workRowGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    if(generation!==workRowGeneration||todoReadGeneration!==todoWidgetGeneration||
+       hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
-    // Una lectura válida recupera el progreso sin requerir otro turno de Pi.
-    ++todoWidgetGeneration;
+    // Solo la lectura más reciente al iniciarse puede publicar progreso en Pi.
     ctx.ui.setWidget("asen-todo-progress",todoStorePromise?
      todoProgressWidget(todos,3,activeValidationTask(identity.sessionId,identity.projectId),width):undefined,
      {placement:"belowEditor"});
@@ -672,9 +680,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       position:t11Position,preset:t11Preset
      }),
      current:()=>{try{guard();return true;}catch{return false;}},
-     read:()=>getPanelSnapshot(ctx,"observer"),
-     onSnapshot:snapshot=>publishInspectedWorkRow(ctx,snapshot),
-     onUnavailable:()=>publishInspectedWorkRow(ctx,unavailableT11RailSnapshot()),
+     read:async()=>{
+      const started=t11ActivityInvalidationVersion;
+      t11ObserverReadVersion=started;
+      const snapshot=await getPanelSnapshot(ctx,"observer");
+      t11ObserverVersions.set(snapshot,started);
+      return snapshot;
+     },
+     onSnapshot:snapshot=>{
+      if(t11ObserverVersions.get(snapshot)!==t11ActivityInvalidationVersion)return;
+      publishInspectedWorkRow(ctx,snapshot);
+     },
+     onUnavailable:()=>{
+      if(t11ObserverReadVersion!==t11ActivityInvalidationVersion)return;
+      publishInspectedWorkRow(ctx,unavailableT11RailSnapshot());
+     },
     });
    }
    invalidateChildSelection();
