@@ -259,6 +259,11 @@ test("T11: una lectura fallida retira avisos anteriores y se recupera al volver 
 });
 
 test("T11: recuperar observación vuelve a mostrar progreso de la misma sesión",async t=>{
+ // El resultado no puede depender de la anchura real de la terminal del CI.
+ const previous=Object.getOwnPropertyDescriptor(process.stdout,"columns");
+ Object.defineProperty(process.stdout,"columns",{configurable:true,writable:true,value:120});
+ t.after(()=>{if(previous)Object.defineProperty(process.stdout,"columns",previous);
+  else Reflect.deleteProperty(process.stdout,"columns");});
  let failing=false;
  const event={taskId:"solo-actual",sessionId:"session-a",revision:1,
   state:"running",at:"2026-11-18T12:00:00.000Z"};

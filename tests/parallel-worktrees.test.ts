@@ -16,10 +16,18 @@ import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {decideLifecycleApplicability} from "../src/lifecycle/applicability.js";
 import {issueControlledPlanPhaseGrant,issueOrganicWriterAdmission} from "../src/lifecycle/skill-lifecycle.js";
 
-function fixture(t:TestContext){
+// Un hook Git puede exportar GIT_DIR y redirigir -C a otro repositorio.
+const localGitNames=new Set(execFileSync("git",["rev-parse","--local-env-vars"],{
+ encoding:"utf8",stdio:["ignore","pipe","ignore"]
+}).trim().split(/\r?\n/u).filter(Boolean));
+const gitFixtureEnvironment=(env:NodeJS.ProcessEnv)=>
+ Object.fromEntries(Object.entries(env).filter(([key])=>!localGitNames.has(key)));
+const gitFixtureEnv=gitFixtureEnvironment(process.env);
+
+function fixture(t:TestContext,fixtureGitEnv:NodeJS.ProcessEnv=gitFixtureEnv){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-source-"))),
   parent=resolve(mkdtempSync(join(tmpdir(),"asen-t06-worktrees-")));
- const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+ const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:fixtureGitEnv}).trim();
  git(source,"init","-q");git(source,"config","user.name","ASEN T06");
  git(source,"config","user.email","asen-t06@example.invalid");
  git(source,"config","core.autocrlf","false"); // Git-for-Windows must preserve the expected fixture bytes.
@@ -341,5 +349,14 @@ test("T06: una cancelación dentro del callback previo no ejecuta Git add",async
  assert.equal(callbacks,1);
  const list=f.git(f.source,"worktree","list","--porcelain");
  assert.equal(list.split(/\r?\n/u).filter(row=>row.startsWith("worktree ")).length,1);
+ assert.equal(f.git(f.source,"status","--porcelain"),"");
+});
+
+test("T06: el fixture descarta GIT_DIR externo antes de ejecutar Git",t=>{
+ const isolated=gitFixtureEnvironment({...gitFixtureEnv,
+  GIT_DIR:join(tmpdir(),"asen-repo-equivocado-inexistente")});
+ assert.equal(isolated.GIT_DIR,undefined);
+ const f=fixture(t,isolated);
+ assert.equal(f.git(f.source,"rev-parse","--is-inside-work-tree"),"true");
  assert.equal(f.git(f.source,"status","--porcelain"),"");
 });

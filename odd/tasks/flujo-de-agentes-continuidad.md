@@ -623,3 +623,10 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - Cada inspección manual Git lleva una generación: las inspecciones anteriores no pueden modificar el último resultado comprobado.
 - Los sondeos del lateral capturan la versión de invalidación; los iniciados antes del fallo se descartan sin mostrar contadores obsoletos, también al fallar.
 - No se alteran proveedores, permisos, tareas ni registros; la UI sigue siendo de solo lectura. Pruebas CI exact-SHA pendientes.
+
+## 18/11/2026 — T11/T06: indicación Git antigua y entorno de pruebas
+
+- El aviso «última consulta» se muestra antes de la rama y de su contador, de modo que no desaparezca al truncar la línea.
+- La prueba T11 de recuperación usa un ancho controlado, independiente del terminal del CI.
+- Los dos conjuntos T06 preparan su entorno Git aislado antes de crear el repositorio de prueba; el test incorpora GIT_DIR malicioso ANTES de ejecutar Git, sin modificar las variables globales.
+- Cambios solo de presentación y pruebas, sin permisos, sin fusión; globalFull:false. CI exact-SHA pendiente.

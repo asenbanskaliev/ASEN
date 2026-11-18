@@ -25,13 +25,15 @@ import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 const localGitNames=new Set(execFileSync("git",["rev-parse","--local-env-vars"],{
  encoding:"utf8",stdio:["ignore","pipe","ignore"]
 }).trim().split(/\r?\n/u).filter(Boolean));
-const gitFixtureEnv=Object.fromEntries(Object.entries(process.env).filter(([name])=>!localGitNames.has(name)));
+const gitFixtureEnvironment=(env:NodeJS.ProcessEnv)=>
+ Object.fromEntries(Object.entries(env).filter(([name])=>!localGitNames.has(name)));
+const gitFixtureEnv=gitFixtureEnvironment(process.env);
 
-function fixture(t:TestContext){
+function fixture(t:TestContext,fixtureGitEnv:NodeJS.ProcessEnv=gitFixtureEnv){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-source-"))),
   parent=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-worktrees-"))),
   privateRoot=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-private-")));
- const git=(...args:string[])=>execFileSync("git",["-C",source,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:gitFixtureEnv}).trim();
+ const git=(...args:string[])=>execFileSync("git",["-C",source,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:fixtureGitEnv}).trim();
  git("init","-q");git("config","user.name","ASEN T06 linked");
  git("config","user.email","asen-t06@example.invalid");
  writeFileSync(join(source,"backend.txt"),"backend\n");
@@ -1327,18 +1329,14 @@ test("T06: Git sucio tras reservar pero antes del primer add permite liberar",as
  assert.equal(listed.split(/\r?\n/u).filter(row=>row.startsWith("worktree ")).length,1);
 });
 
-test("T06: las llamadas Git del fixture no heredan otro GIT_DIR",t=>{
- const original=process.env.GIT_DIR;
- process.env.GIT_DIR=join(tmpdir(),"asen-repo-ajeno-inexistente");
- try{
-  const f=fixture(t);
-  const git=(...args:string[])=>execFileSync("git",["-C",f.source,...args],{
-   encoding:"utf8",env:gitFixtureEnv
-  }).trim();
-  assert.equal(git("rev-parse","--is-inside-work-tree"),"true");
-  assert.equal(git("status","--porcelain"),"");
- }finally{
-  if(original===undefined)delete process.env.GIT_DIR;
-  else process.env.GIT_DIR=original;
- }
+test("T06: Git no hereda el GIT_DIR contaminado antes de crear el fixture",t=>{
+ const contaminated={...gitFixtureEnv,GIT_DIR:join(tmpdir(),"asen-repo-ajeno-inexistente")};
+ const isolated=gitFixtureEnvironment(contaminated);
+ assert.equal(isolated.GIT_DIR,undefined);
+ const f=fixture(t,isolated);
+ const git=(...args:string[])=>execFileSync("git",["-C",f.source,...args],{
+  encoding:"utf8",env:isolated
+ }).trim();
+ assert.equal(git("rev-parse","--is-inside-work-tree"),"true");
+ assert.equal(git("status","--porcelain"),"");
 });
