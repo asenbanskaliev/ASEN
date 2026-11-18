@@ -32,16 +32,27 @@ process.stdin.on("end",()=>process.exit(0));
 
 test("El adaptador de artefactos propaga la cancelación a Pi real",async t=>{
  const fixture=await createPiRpcFixture(t,scenario);
+ let started!:()=>void;
+ const processStarted=new Promise<void>(resolve=>{started=resolve;});
  const runner=new PiArtifactRunner(new PiProcessRunner({
   command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],
-  noTools:true,timeoutMs:4_000
+  noTools:true,timeoutMs:4_000,onProcessStart:()=>started()
  }));
  const controller=new AbortController();
  const pending=runner.run({id:"tarea-cancelada",role:"explorer",
   prompt:"No respondas",repository:fixture.repository},controller.signal);
- const cancel=setTimeout(()=>controller.abort(),250);
- t.after(()=>clearTimeout(cancel));
- const result=await pending;
+ let deadline:ReturnType<typeof setTimeout>|undefined;
+ const wait=<T>(promise:Promise<T>,ms:number):Promise<T>=>Promise.race([
+  promise,new Promise<never>((_resolve,reject)=>{
+   deadline=setTimeout(()=>reject(new Error("Pi no canceló antes del timeout")),ms);
+  })
+ ]);
+ t.after(()=>{if(deadline)clearTimeout(deadline);});
+ await wait(processStarted,2_500);
+ if(deadline)clearTimeout(deadline);
+ controller.abort();
+ const result=await wait(pending,3_000);
+ if(deadline)clearTimeout(deadline);
  assert.equal(result.ok,false);
  assert.equal(result.id,"tarea-cancelada");
  assert.match(result.output,/cancel/u);

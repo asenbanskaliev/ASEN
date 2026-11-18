@@ -1,6 +1,6 @@
 # T06 — Dos agentes Pi programadores reales desde GitHub
 
-Estado: preparado en PR #61; **no se han lanzado Writers**, no hay aceptación automática y globalFull:false.
+Estado: **ensayo histórico realizado**, sin aceptación automática; `globalFull:false`. La [ejecución 43915611666](https://github.com/asenbanskaliev/ASEN/actions/runs/43915611666) registró dos Writers en el SHA `4ec48beec8a191cc276c7532fd579eeeb2004f10`. **No valida el SHA actual**. Nuevos ensayos quedan BLOQUEADOS hasta verificar aislamiento seguro y consentimiento/presupuesto nuevo.
 
 ## 1. Crear dos entornos protegidos
 

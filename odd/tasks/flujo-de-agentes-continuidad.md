@@ -411,3 +411,10 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - La documentación T08 ya no anuncia falsamente «sin red» usando permisos Node ni un máximo consentido de cinco llamadas mientras Pi admite reintentos internos no contados.
 - **El Major de CodeRabbit sobre el fin de las pruebas sigue ABIERTO**, y la recuperación funcional de T06/T08 sigue **BLOQUEADA**. Esto elimina el riesgo de gasto inútil o de usar aprobaciones antiguas, no acredita FULL.
 - Tests negativos con código sin llamadas al proveedor; revisión CI exact-SHA pendiente. Sin permisos ni merge, `globalFull:false`.
+
+## 18/11/2026 — CodeRabbit: pruebas Pi, geometría T11 y documentación histórica
+
+- T11: la medición TUI de cada cambio de tamaño espera ancho y filas solicitadas cuando el host informa filas enteras; elige la muestra con la misma condición y tolera filas no disponibles. Evita seleccionar estados de redimensionado intermedios.
+- Pi: la prueba de cancelación espera a observar el arranque del proceso y exige cierre **antes de los 4000 ms de timeout**. El resultado `cancelado` por timeout tardío ya no equivale a propagación correcta de AbortSignal.
+- Documentación T06 registra la ejecución histórica autenticada `43915611666` y separa resultados antiguos de aprobación del SHA actual. T11 pasa a «implementación parcial», sin alegar paridad.
+- **Estado:** IMPLEMENTADO_PENDIENTE_CI. Sin nuevos modelos, gastos, permisos ni fusión, `globalFull:false`. El bloqueo P0 T06/T08 continúa.

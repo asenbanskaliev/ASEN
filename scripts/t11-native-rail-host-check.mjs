@@ -150,10 +150,13 @@ async function run(label,withAsen,resize,interaction=false){
     // Windows puede informar el ancho antes de actualizar terminal.rows.
     // Exigir una medición NUEVA tras resize; las filas son evidencia adicional.
     await until(()=>read(records).slice(fromIndex).some(row=>
-     row.kind==="render"&&row.columns===columns)||exited,
+     row.kind==="render"&&row.columns===columns&&
+     (!Number.isSafeInteger(row.rows)||row.rows===rows))||exited,
      label+": Pi no produjo nueva geometría en "+stage,12000);
     assert.equal(exited,false,label+": Pi terminó al cambiar a "+stage);
-    const actual=read(records).slice(fromIndex).filter(row=>row.kind==="render"&&row.columns===columns).at(-1);
+    const actual=read(records).slice(fromIndex).filter(row=>
+     row.kind==="render"&&row.columns===columns&&
+     (!Number.isSafeInteger(row.rows)||row.rows===rows)).at(-1);
     assert.ok(actual,label+": medición ausente en "+stage);
     if(columns===140)assert.equal(actual.rail,50,"El lateral debe existir a exactamente 140 columnas");
     else assert.notEqual(actual.rail,50,"Lateral derecho no permitido bajo 140 columnas");
