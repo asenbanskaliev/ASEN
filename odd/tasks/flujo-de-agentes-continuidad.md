@@ -630,3 +630,9 @@ El sondeo del lateral llama a `getPanelSnapshot(ctx,"observer")` y omite el `git
 - La prueba T11 de recuperación usa un ancho controlado, independiente del terminal del CI.
 - Los dos conjuntos T06 preparan su entorno Git aislado antes de crear el repositorio de prueba; el test incorpora GIT_DIR malicioso ANTES de ejecutar Git, sin modificar las variables globales.
 - Cambios solo de presentación y pruebas, sin permisos, sin fusión; globalFull:false. CI exact-SHA pendiente.
+
+## 18/11/2026 — Pruebas regresivas adicionales de T06/T11
+
+- T06: se crea el primer worktree, el segundo destino queda ocupado tras la reserva; se exige conservar el primer worktree y el diario en reservado, impidiendo una segunda reserva de los mismos scopes. No se borra ni reintenta automáticamente.
+- T11: en empate de dos avisos a 40 columnas, el bloqueo observado y el aviso de hijos desconocidos prevalecen sobre la advertencia secundaria de contexto.
+- Probar en CI exact-SHA, sin permisos ni modelo; globalFull:false.

@@ -196,3 +196,16 @@ test("T11: en 35 columnas la alerta de hijos no oculta un contexto crítico",()=
  assert.match(row,/! ctx 95%/u);
  assert.ok(visibleWidth(row)<=35);
 });
+
+test("T11: el aviso de hijos prevalece si el diseño compacto y el largo muestran dos estados",()=>{
+ const todo={current:{state:"blocked"}} as AsenPanelSnapshot["todos"][number];
+ const host=projectHostStatus({getContextUsage:()=>({tokens:95,contextWindow:100,percent:95})});
+ const row=renderAsenT11CompactStatus(sample({
+  todos:[todo],agentFlowUnavailable:true,hostStatus:host
+ }),40);
+ assert.match(row,/! 1 bloqueos/u);
+ assert.match(row,/! hijos \?/u);
+ assert.doesNotMatch(row,/! ctx 95%/u);
+ assert.match(row,/\/asen-panel$/u);
+ assert.ok(visibleWidth(row)<=40);
+});

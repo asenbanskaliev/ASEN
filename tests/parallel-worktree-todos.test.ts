@@ -1340,3 +1340,36 @@ test("T06: Git no hereda el GIT_DIR contaminado antes de crear el fixture",t=>{
  assert.equal(git("rev-parse","--is-inside-work-tree"),"true");
  assert.equal(git("status","--porcelain"),"");
 });
+
+test("T06: tras crear el primer worktree no se libera una reserva si falla el segundo",async t=>{
+ const f=fixture(t);
+ // La reserva del comando es una instancia distinta: intervenir en el prototipo
+ // solo durante este caso y restaurarlo incluso si Git falla.
+ const reserve=ParallelTodoWorktreeJournal.prototype.reserve;
+ ParallelTodoWorktreeJournal.prototype.reserve=async function(input){
+  const saved=await reserve.call(this,input);
+  // Ocupamos el SEGUNDO destino después de reservar; el primero aún puede
+  // crearse. El comando debe conservar la reserva ante un fallo parcial.
+  writeFileSync(saved.tasks[1]!.worktreeRoot,"ocupación externa");
+  return saved;
+ };
+ try{
+  await assert.rejects(()=>f.run("prepare-todos"),/New worktree location unexpectedly exists/u);
+ }finally{
+  ParallelTodoWorktreeJournal.prototype.reserve=reserve;
+ }
+ const saved=(await f.journal.list(f.identity));
+ assert.equal(saved.length,1);
+ assert.equal(saved[0]!.state,"reserved");
+ assert.equal(existsSync(saved[0]!.tasks[0]!.worktreeRoot),true,
+  "Git ya creó el primer worktree y no se ha borrado automáticamente");
+ assert.equal(existsSync(saved[0]!.tasks[1]!.worktreeRoot),true);
+ const bindings=bindParallelSourceTodos({
+  identity:f.identity,expectedHead:f.head,rows:f.rows,units:f.scopes
+ });
+ await assert.rejects(()=>f.journal.reserve({
+  identity:f.identity,id:newParallelTodoWorktreeBatchId(),head:f.head,
+  parentDir:f.parent,bindings
+ }));
+ assert.equal((await f.journal.list(f.identity))[0]?.state,"reserved");
+});
