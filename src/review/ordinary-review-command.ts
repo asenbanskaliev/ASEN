@@ -643,7 +643,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     return result;
    })();
   }
-  const oddMatch=/^todo (todo-[a-f0-9-]{36})(?: (adaptive))?$/u.exec(command);
+  const oddMatch=/^todo (todo-[a-f0-9-]{36})(?: (adaptive|4r|judgment-day))?$/u.exec(command);
   if(oddMatch){
    if(!readOddTodos)return Promise.resolve({status:"unavailable",reason:"ODD Todo store is not enabled"});
    return (async()=>{
@@ -674,7 +674,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     if(!current||JSON.stringify(current)!==JSON.stringify(first)||head!==gitHead())
      throw new Error("ODD Todo or Git candidate changed while preparing review");
     const result=projectOddReviewHandoff({identity,todo:current,currentHead:head,profiles});
-    if(oddMatch[2]==="adaptive"&&result.status==="review-setup-required"){
+    if(oddMatch[2]&&result.status==="review-setup-required"){
      const snapshot=JSON.stringify(current);
      const revalidate=async()=>{
       validate();
@@ -684,11 +684,12 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
        throw new Error("ODD Todo or Git HEAD changed; review cancelled before model use");
      };
      await revalidate();
-     return runWorkspaceReview(context,nativeRdd,undefined,false,resolveLensRoute,true,false,{
+     return runWorkspaceReview(context,nativeRdd,undefined,oddMatch[2]==="4r",resolveLensRoute,
+      oddMatch[2]==="adaptive",oddMatch[2]==="judgment-day",{
       writeSurfaces:result.writeSurfaces,
       requirements:(current.description??current.title).slice(0,2048),
       revalidate
-     });
+     },oddMatch[2]==="judgment-day"?fixProposals?.record:undefined);
     }
     context.ui.notify(JSON.stringify(result,null,2),result.status==="blocked"?"error":"info");
     return result;
@@ -701,7 +702,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review fix-plan <id> status | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review todo <id> 4r | /asen-review todo <id> judgment-day | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review fix-plan <id> status | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");

@@ -203,8 +203,10 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    const oddWorkers=snapshot.todos.filter(todo=>todo.current.state==="succeeded"&&todo.plan?.role==="worker");
    if(oddWorkers.length){
     out.push("ODD Workers awaiting inspection: "+oddWorkers.length+" · actual model unknown");
-    for(const todo of oddWorkers.slice(0,detail?8:3))
+    for(const todo of oddWorkers.slice(0,detail?8:3)){
      out.push("  /asen-review todo "+clean(todo.taskId,100)+" adaptive · needs consent");
+     if(detail)out.push("  /asen-review todo "+clean(todo.taskId,100)+" 4r | judgment-day · new consent");
+    }
     out.push("4R/JD: /asen-review workspace adaptive | judgment-day");
     out.push("Fix findings require new /asen-plan and fresh Writer consent");
    }

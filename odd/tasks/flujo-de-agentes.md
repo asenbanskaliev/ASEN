@@ -787,3 +787,7 @@ No se permite finalizar `/asen-accept-review` sin recibo HMAC de pruebas vincula
 - **T07/T11 y T09/T10:** controles anteriores conservados; falta observación Pi/TUI con Workers reales, comparativa A/B y revisión independiente.
 - **Pruebas:** nuevas positivas y negativas T06, prueba adversarial en Docker aislado y contrato offline. RED detectado por lectura de código, no ejecutado; GREEN y gates del SHA final **pendientes de comprobar**.
 - **Autoridad:** PR en borrador, sin NVIDIA ni modelos, sin cambios de permisos ni fusión; `globalFull:false`.
+
+### T04 + T05 + T08 — conexión directa de revisión ODD especializada (18/11/2026)
+
+El comando `/asen-review todo <id>` conserva la inspección sin gasto. Con un Todo Worker ODD propio y candidato vigente, `adaptive`, `4r` y `judgment-day` pasan por el mismo ámbito y revalidación de sesión/HEAD; las rutas por lente y juez siguen saliendo del perfil. Ninguno llama al modelo antes de la confirmación específica de la revisión. Judgment Day también puede registrar una propuesta Fix privada, nunca ejecutarla. REVIEW muestra los nuevos modos en la vista detallada. **Pruebas añadidas de cancelación** sin llamadas reales; **pendiente** ejecución Pi real y CI SHA exacto. Estado T04/T05/T08: PARCIAL, `globalFull:false`.

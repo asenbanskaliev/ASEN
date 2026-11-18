@@ -172,3 +172,33 @@ test("4R no publica dictamen si el Todo cambia durante la respuesta del último 
  }).trimEnd();
  assert.equal(rawStatus," M archivo.txt");
 });
+
+test("T04/T05/T08: 4R y Judgment Day de un Todo no llaman a modelos sin consentimiento",async t=>{
+ const f=fixture(t);
+ f.register(async()=>[f.task]);
+ writeFileSync(join(f.root,"archivo.txt"),"modificado por Worker\n");
+ const author={provider:"author",id:"original"};
+ const judgeA={provider:"free",id:"revisor-a"};
+ const judgeB={provider:"free",id:"revisor-b"};
+ for(const mode of ["4r","judgment-day"]){
+  let requests=0,confirmations=0;
+  const context={
+   ...f.context,model:author,
+   modelRegistry:{
+    getAvailable:()=>[author,judgeA,judgeB],
+    hasConfiguredAuth:(model:{provider:string})=>model.provider==="free",
+    streamSimple:()=>{requests++;return (async function*(){yield {type:"done"};})();}
+   },
+   ui:{
+    notify:()=>{},
+    select:async(_title:string,options:string[])=>options[0],
+    editor:async(title:string)=>title.includes("untracked")?"[]":"Revisar candidato ODD exacto",
+    confirm:async()=>{confirmations++;return false;}
+   }
+  };
+  const result=await f.run("todo "+f.taskId+" "+mode,context) as {status:string};
+  assert.equal(result.status,"cancelled",mode);
+  assert.equal(confirmations,1,mode+" requiere nueva confirmación");
+  assert.equal(requests,0,mode+" no consume modelos al cancelar");
+ }
+});
