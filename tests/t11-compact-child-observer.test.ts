@@ -47,7 +47,7 @@ test("T11/T07: una lectura local no borra hijos recientes ni copia datos obsolet
  const broken=combineT11LocalWithChild(local,{...prior,agentFlowUnavailable:true},true);
  assert.equal(broken.agentFlow,undefined);
  assert.equal(broken.agentFlowUnavailable,true);
- assert.deepEqual(combineT11LocalWithChild(local,undefined,false),local);
+ assert.deepEqual(combineT11LocalWithChild(local,undefined,false),{...local,agentFlowUnavailable:true});
  assert.deepEqual(prior,original);
 });
 
@@ -95,4 +95,34 @@ test("T11/T07: el resumen compacto muestra Workers observados y nunca convierte 
  const recovered=renderT11CompactFallback(fresh,139);
  assert.match(recovered,/1 child Workers observed/u);
  assert.doesNotMatch(recovered,/hijos no disponibles/u);
+});
+
+test("T11/T07: antes del primer sondeo el panel debe mostrar hijos desconocidos",()=>{
+ for(const fresh of [false,true]){
+  const pending=combineT11LocalWithChild(local,undefined,fresh);
+  assert.equal(pending.agentFlowUnavailable,true);
+  assert.equal(pending.agentFlow,undefined);
+  for(const width of [24,40,50,80,120,139]){
+   const row=renderT11CompactFallback(pending,width);
+   assert.ok(visibleWidth(row)<=width,width+": "+row);
+   assert.match(row,/\/asen-panel/u);
+   assert.doesNotMatch(row,/No work|0 child Workers|0 hijos|PASS/u);
+   if(width>=40)assert.match(row,/hijos no disponibles/u);
+  }
+ }
+});
+
+test("T11/T07: un diario comprobado y vacío sí puede mostrar ausencia de hijos",()=>{
+ const none:AsenPanelSnapshot={...local,agentFlow:{
+  state:"absent",totalRecordedBatches:0,limited:false,
+  overview:projectParallelAgentFlow([])
+ }};
+ const observed=combineT11LocalWithChild(local,none,true);
+ assert.equal(observed.agentFlow,none.agentFlow);
+ assert.equal(observed.agentFlowUnavailable,undefined);
+ const line=renderT11CompactFallback(observed,120);
+ assert.doesNotMatch(line,/hijos no disponibles/u);
+ const expired=combineT11LocalWithChild(local,none,false);
+ assert.equal(expired.agentFlowUnavailable,true);
+ assert.equal(expired.agentFlow,undefined);
 });
