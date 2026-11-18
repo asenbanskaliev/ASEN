@@ -92,7 +92,7 @@ import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11Head
 import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
 import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
 import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
-import {createT11RailObserver,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
+import {combineT11LocalWithChild,createT11RailObserver,shouldObserveT11Surface,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
@@ -371,7 +371,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
   };
   const t11ActivityCache=createT11ActivityCache();
-  let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false;
+  let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostRefreshGeneration=0;
   const clearHostStatus=()=>{
@@ -455,6 +455,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const changed=t11ActivityUnavailable!==localMissing||t11ChildFlowUnavailable!==childrenMissing;
    if(localMissing)t11ActivityCache.clear();
    t11ActivityUnavailable=localMissing;t11ChildFlowUnavailable=childrenMissing;
+   // No renovar la antigüedad de hijos con refrescos solo locales.
+   if(localMissing||childrenMissing)t11ChildObservedAt=0;
+   else if(snapshot.agentFlow)t11ChildObservedAt=Date.now();
    t11Snapshot=snapshot;t11Rail?.refresh();
    // La pérdida de datos invalida la barra; al recuperar, solo otra lectura
    // local fresca puede volver a publicar sus contadores.
@@ -484,7 +487,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const width=terminalColumns(),snapshot={todos,agents,jobs};
     t11ActivityCache.put(identity.sessionId,identity.projectId,snapshot);
     t11ActivityUnavailable=false;
-    if(!t11Rail?.active()||!t11Snapshot)t11Snapshot=snapshot;
+    // Un refresco local nunca debe convertir hijos observados en un falso cero.
+    const childFresh=t11ChildObservedAt>0&&Date.now()-t11ChildObservedAt<=12000;
+    const displayed=combineT11LocalWithChild(snapshot,t11Snapshot,childFresh);
+    t11Snapshot=displayed;t11ChildFlowUnavailable=displayed.agentFlowUnavailable===true;
     t11Rail?.sync();t11Rail?.refresh();
     // En terminal estrecha o host sin layoutRoot la única alternativa es
     // una fila compacta. Una lista aboveEditor no ocupa el lateral real.
@@ -492,14 +498,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       !(t11Position==="auto"&&t11Preset==="light")&&t11Rail?.active()!==true;
     ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});
     ctx.ui.setWidget("asen-live-work",
-      compactAllowed?[renderT11CompactFallback(snapshot,width)]:undefined,{placement:"aboveEditor"});
+      compactAllowed?[renderT11CompactFallback(displayed,width)]:undefined,{placement:"aboveEditor"});
     await refreshHostStatus(ctx);
    }catch{
     if(generation!==workRowGeneration||hostStatusClosed)return;
     try{guard();}catch{return;}
     // El proveedor falló: borrar avisos anteriores, no publicarlos como actuales.
     t11ActivityCache.clear();t11ActivityUnavailable=true;
-    t11Snapshot=undefined;t11Rail?.refresh();
+    t11Snapshot=unavailableT11RailSnapshot();t11ChildFlowUnavailable=true;t11ChildObservedAt=0;t11Rail?.refresh();
     // Retirar también el widget M1: el resumen local obsoleto no puede sobrevivir al fallo.
     try{ctx.ui.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});}catch{}
     try{ctx.ui.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});}catch{}
@@ -558,7 +564,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const startSession=async(ctx:CommandContext)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    t11Preset=readAsenAppearance(home()).preset;
@@ -603,7 +609,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(ctx.mode==="tui"&&ctx.hasUI===true){
     const guard=panelScope(ctx);
     t11Observer=createT11RailObserver({
-     active:()=>t11Rail?.active()===true,
+     // El modo compacto visible también observa hijos, no solo el lateral ancho.
+     active:()=>shouldObserveT11Surface({
+      railActive:t11Rail?.active()===true,
+      compactWidget:typeof ctx.ui?.setWidget==="function",
+      position:t11Position,preset:t11Preset
+     }),
      current:()=>{try{guard();return true;}catch{return false;}},
      read:()=>getPanelSnapshot(ctx),
      onSnapshot:snapshot=>publishInspectedWorkRow(ctx,snapshot),
@@ -889,7 +900,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
    t11Observer?.stop();t11Observer=undefined;
-   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();++workRowGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
