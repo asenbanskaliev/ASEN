@@ -8,7 +8,7 @@ import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-review-receipt.js";
 import {requireLiveT06GithubReviewerApprovals} from "../src/runtime/agents/t06-github-reviewer-approvals.js";
 import {requireLiveT06ReviewReplay} from "../src/runtime/agents/t06-review-replay.js";
-import {classifyT06ReviewerFailure,type T06ReviewerFailureCategory} from "../src/runtime/agents/t06-review-failure-diagnostic.js";
+import {classifyT06ReviewerFailure,classifyT06ReviewReceiptError,type T06ReviewerFailureCategory} from "../src/runtime/agents/t06-review-failure-diagnostic.js";
 
 const files=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
 const modelPattern=/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u;
@@ -105,8 +105,8 @@ export async function runT06NativeIndependentReviews(
   }
   let receipt:ReturnType<typeof parseT06NativeReviewReceipt>;
   try{receipt=parseT06NativeReviewReceipt(result.output,expected);}
-  catch{
-   attempts[index]!.failureCategory="pi-receipt-invalid";
+  catch(error){
+   attempts[index]!.failureCategory=classifyT06ReviewReceiptError(error);
    throw Error("T06: recibo independiente inválido");
   }
   return {requestedModel,observedModel,piProcessObserved:true,
