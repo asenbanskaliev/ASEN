@@ -56,8 +56,10 @@ function catalogoValido(x){
   x.data.length<=10_000&&x.data.every(m=>m&&typeof m.id==="string"&&m.id.length<=200);
 }
 function respuestaValida(x){
+ const message=x?.choices?.[0]?.message;
  return x&&typeof x==="object"&&Array.isArray(x.choices)&&x.choices.length>0&&
-  x.choices[0]&&typeof x.choices[0]==="object";
+  message&&typeof message==="object"&&message.role==="assistant"&&
+  typeof message.content==="string"&&message.content.trim().length>0;
 }
 function resumenError(motivo){
  return {estado:"no-comprobado",http:null,motivo,respondio:false};
