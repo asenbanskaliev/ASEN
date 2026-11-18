@@ -206,8 +206,6 @@ jobs:
       ASEN_DOCKER_TESTS_CI: "1"
       ASEN_T06_ISOLATED_REPLAY: "1"
       ASEN_DOCKER_NODE_IMAGE: "node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8"
-      ASEN_T06_ISOLATED_DIR: ${{ runner.temp }}/asen-t06-descarga
-      ASEN_T06_SANDBOX_REPORT_DIR: ${{ runner.temp }}/asen-t06-pruebas-aisladas
     steps:
       - name: Obtener el mismo SHA sin credenciales Git persistentes
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -248,6 +246,9 @@ jobs:
           docker image inspect "$ASEN_DOCKER_NODE_IMAGE" >/dev/null
       - name: Ejecutar casos reales sin red sobre ambos archivos Pi
         shell: bash
+        env:
+          ASEN_T06_ISOLATED_DIR: ${{ runner.temp }}/asen-t06-descarga
+          ASEN_T06_SANDBOX_REPORT_DIR: ${{ runner.temp }}/asen-t06-pruebas-aisladas
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
