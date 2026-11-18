@@ -6,6 +6,7 @@ import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,rmSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {verifyT06NativeSnapshot} from "../src/runtime/agents/t06-native-snapshot-verifier.js";
+import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
 
 const sha256=(value:Buffer)=>createHash("sha256").update(value).digest("hex");
 const git=(root:string,...args:string[])=>execFileSync("git",["-C",root,...args],{
@@ -50,7 +51,7 @@ function fixture(t:TestContext){
 }
 test("T06 el verificador coteja DOS huellas con Git sin afirmar ejecución o autorización",t=>{
  const f=fixture(t),result=verifyT06NativeSnapshot({report:f.report,worktreeRoots:f.roots});
- assert.equal(result.status,"local-files-consistent-claims-unverified");
+ assert.equal(result.status,"local-files-consistent-claims-unverified",result.blockers.join("; "));
  assert.equal(result.locallyMatchedFiles,2);
  assert.deepEqual(result.blockers,[]);
  assert.equal(result.humanConsentVerified,false);
@@ -140,5 +141,20 @@ test("T06 mantiene Git aislado de variables de repositorio heredadas",t=>{
    if(previous[i]===undefined)delete process.env[keys[i]!];
    else process.env[keys[i]!]=previous[i]!;
   }
+ }
+});
+
+test("T06 Git Windows usa configuración global privada en lugar de NUL",()=>{
+ const env=isolatedGitEnvironment();
+ assert.equal(env.GIT_CONFIG_NOSYSTEM,"1");
+ assert.equal(env.GIT_TERMINAL_PROMPT,"0");
+ assert.equal(env.GIT_ALLOW_PROTOCOL,"");
+ if(process.platform==="win32"){
+  assert.notEqual(env.GIT_CONFIG_GLOBAL?.toUpperCase(),"NUL");
+  assert.ok(env.GIT_CONFIG_GLOBAL?.endsWith("empty.gitconfig"));
+  assert.equal(readFileSync(env.GIT_CONFIG_GLOBAL!,"utf8"),"");
+  assert.equal(isolatedGitEnvironment().GIT_CONFIG_GLOBAL,env.GIT_CONFIG_GLOBAL);
+ }else{
+  assert.equal(env.GIT_CONFIG_GLOBAL,"/dev/null");
  }
 });

@@ -371,3 +371,11 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Prueba negativa de variables `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE` y configuración global heredadas, con el lector aislado. Las huellas, permisos y rechazo de archivos ajenos no se relajan.
 - Estado: **IMPLEMENTADO_PENDIENTE_CI**. Si persisten los fallos, utilizar la etapa registrada en CI para diagnosticar la causa real, sin cambiar los resultados esperados de seguridad.
 - Sin proveedores, sin pruebas TUI y sin fusión; `globalFull:false`. El P0 de ejecución de código generado sin aislamiento del sistema operativo continúa **BLOQUEADO**.
+
+## 18/11/2026 — Segunda corrección Windows: Git global NUL
+
+- En el SHA `41a8effbc00d0fa63edad179a27893d30974f5b4`, CI Windows sigue fallando (5 pruebas del verificador T06); las etapas detalladas se guardan en `blockers` y ahora se incluyen en la salida de las pruebas.
+- Causa **compatible con evidencia externa**, pendiente de validación en el runner: versiones de Git para Windows/MSYS rechazan `GIT_CONFIG_GLOBAL=NUL`. El entorno aislado de ASEN utilizaba ese valor.
+- Corrección: crear un archivo temporal **vacío y privado** una sola vez por proceso en Windows; usarlo como `GIT_CONFIG_GLOBAL` y limpiarlo al salir. Se mantiene `GIT_CONFIG_NOSYSTEM=1`, la prohibición de protocolos, la eliminación de variables heredadas, la protección de SHA y el bloqueo sin huella válida. Nunca heredar el archivo Git global del usuario.
+- Prueba positiva de ruta real válida, negativa de inyección del entorno y comprobación específica de la ruta Windows. No se ejecuta código generado.
+- Estado **IMPLEMENTADO_PENDIENTE_CI**. Comprobar CI/Release Gate/Pi/Arquitectura del nuevo SHA; hasta entonces no declarar solucionado Windows. P0 de aislamiento de red de T06/T08 sigue **BLOQUEADO**, `globalFull:false`.
