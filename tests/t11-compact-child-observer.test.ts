@@ -12,6 +12,12 @@ test("T11/T07: el modo compacto observa hijos y el oculto no",async()=>{
  const view={railActive:false,compactWidget:true,position:"auto" as const,preset:"neutral" as const};
  assert.equal(shouldObserveT11Surface(view),true);
  assert.equal(shouldObserveT11Surface({...view,position:"hidden"}),false);
+ assert.equal(shouldObserveT11Surface({...view,position:"hidden",railActive:true}),false,
+  "Ocultar el panel debe detener la lectura aunque quede un lateral anterior");
+ assert.equal(shouldObserveT11Surface({...view,position:"right",compactWidget:false,railActive:true}),true,
+  "La derecha visible conserva su lectura real");
+ assert.equal(shouldObserveT11Surface({...view,position:"right",compactWidget:false,railActive:false}),false,
+  "No simular un panel a la derecha si Pi no lo ha instalado");
  assert.equal(shouldObserveT11Surface({...view,preset:"light"}),false);
  assert.equal(shouldObserveT11Surface({...view,compactWidget:false}),false);
  assert.equal(shouldObserveT11Surface({...view,railActive:true}),true);
