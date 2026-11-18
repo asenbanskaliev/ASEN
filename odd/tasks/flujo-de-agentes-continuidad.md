@@ -425,3 +425,9 @@ El SHA `f256a5faf65e0197d909167a0254ffbf7d31a9db` concluyó **CI #44114997600 = 
 - Ahora `inspectStoredFixSourceTree` rechaza expresamente cualquier `unexpectedUntracked` antes de confirmar el árbol completo. No muestra rutas sensibles ni modifica permisos, Writer o Git.
 - Prueba de regresión con proyección Git real: el árbol seleccionado mantiene el hash, pero la aparición posterior de un archivo debe bloquear la aceptación de consistencia.
 - Estado: **IMPLEMENTADO_PENDIENTE_CI** y revisión CodeRabbit del SHA. `globalFull:false`, no modelos ni fusiones.
+
+## 18/11/2026 — Corrección CI: guardia preventiva con tipo void
+
+- El SHA `78bc94be8283d5b188f4bc1588819c1cfede8504` falló en el CI dirigido por el compilador TypeScript: la función de bloqueo P0 declaraba `never`, por lo que el resto de la función `main` T08 se trató como inalcanzable y se perdió la comprobación de fase `review|fix`.
+- Se declara `void` (retorna de tipo, pero **siempre lanza** en tiempo de ejecución). No se relaja el bloqueo de seguridad ni hay acceso a modelos: el ensayo T06/T08 sigue parado al inicio.
+- **PENDIENTE_CI** del siguiente SHA. No atribuir éxito sin Gate exacto. `globalFull:false`.
