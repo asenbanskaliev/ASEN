@@ -6,6 +6,7 @@ import {join} from "node:path";
 import {createInterface} from "node:readline/promises";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-review-receipt.js";
+import {requireLiveT06GithubReviewerApprovals} from "../src/runtime/agents/t06-github-reviewer-approvals.js";
 
 const files=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
 const modelPattern=/^nvidia\/[A-Za-z0-9._-]{3,100}$/u;
@@ -20,24 +21,32 @@ export async function runT06NativeIndependentReviews(
   requested.some(x=>!x||!modelPattern.test(x))||
   requested[0]===requested[1]||requested.includes(writerModel))
   throw Error("T06 requiere dos modelos NVIDIA de revisión distintos del autor y entre sí");
- if(!process.stdin.isTTY||!process.stdout.isTTY)
-  throw Error("T06 revisión exige consentimiento humano interactivo; no se simula en CI");
+ const githubReview=process.env.ASEN_T06_GITHUB_REVIEW_MODE==="1";
+ if(githubReview)await requireLiveT06GithubReviewerApprovals();
+ else if(!process.stdin.isTTY||!process.stdout.isTTY)
+  throw Error("T06 revisión exige consentimiento humano interactivo o dos aprobaciones GitHub verificadas");
  const evidence=files.map((path,i)=>{
   const code=readFileSync(join(roots[i]!,path),"utf8");
   if(!code||code.length>10_000)throw Error("T06 falta código acotado del Worker");
   return {path,sha256:sha(code),code};
  });
  const expected=Object.fromEntries(evidence.map(x=>[x.path,x.sha256]));
- const reader=createInterface({input:process.stdin,output:process.stdout});
- try{
-  for(let i=0;i<2;i++){
-   const challenge="AUTORIZO REVISION "+(i+1)+" "+randomBytes(8).toString("hex")+" "+requested[i]!;
-   process.stdout.write("\nRevisión independiente "+(i+1)+"/2; modelo "+requested[i]+
-    "; coste real desconocido; sin escritura ni herramientas.\n");
-   if(await reader.question("Escribe EXACTAMENTE «"+challenge+"» o Intro para denegar: ")!==challenge)
-    return {status:"REVIEW_DECLINED_NO_RETRY" as const,reviews:[]};
-  }
- }finally{reader.close();}
+ if(!githubReview){
+  const reader=createInterface({input:process.stdin,output:process.stdout});
+  try{
+   for(let i=0;i<2;i++){
+    const challenge="AUTORIZO REVISION "+(i+1)+" "+randomBytes(8).toString("hex")+" "+requested[i]!;
+    process.stdout.write("\nRevisión independiente "+(i+1)+"/2; modelo "+requested[i]+
+     "; coste real desconocido; sin escritura ni herramientas.\n");
+    if(await reader.question("Escribe EXACTAMENTE «"+challenge+"» o Intro para denegar: ")!==challenge)
+     return {status:"REVIEW_DECLINED_NO_RETRY" as const,reviews:[]};
+   }
+  }finally{reader.close();}
+ }else{
+  // No se introduce respuesta TTY ficticia: dos aprobaciones históricas
+  // diferentes fueron leídas directamente desde GitHub para este run.
+  await requireLiveT06GithubReviewerApprovals();
+ }
  const results=await Promise.allSettled(requested.map(async(requestedModel,index)=>{
   const sessionId="t06-independent-"+randomUUID();
   const taskId="t06-reviewer-"+randomUUID();
