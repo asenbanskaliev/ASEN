@@ -1302,13 +1302,20 @@ test("T06: dos liberaciones simultáneas no retiran dos veces la misma reserva",
 });
 
 test("T06: Git sucio tras reservar pero antes del primer add permite liberar",async t=>{
- const f=fixture(t),reserve=f.journal.reserve.bind(f.journal);
- f.journal.reserve=async input=>{
-  const saved=await reserve(input);
+ const f=fixture(t);
+ // El comando crea su propia instancia del journal; instrumentar la instancia
+ // del fixture no observa la ruta productiva. Restaurar siempre el prototipo.
+ const reserve=ParallelTodoWorktreeJournal.prototype.reserve;
+ ParallelTodoWorktreeJournal.prototype.reserve=async function(input){
+  const saved=await reserve.call(this,input);
   writeFileSync(join(f.source,"archivo-ajeno.txt"),"edición concurrente");
   return saved;
  };
- await assert.rejects(()=>f.run("prepare-todos"),/clean exact pinned source candidate/u);
+ try{
+  await assert.rejects(()=>f.run("prepare-todos"),/clean exact pinned source candidate/u);
+ }finally{
+  ParallelTodoWorktreeJournal.prototype.reserve=reserve;
+ }
  assert.deepEqual(await f.journal.list(f.identity),[]);
  const listed=execFileSync("git",["-C",f.source,"worktree","list","--porcelain"],{encoding:"utf8"});
  assert.equal(listed.split(/\r?\n/u).filter(row=>row.startsWith("worktree ")).length,1);
