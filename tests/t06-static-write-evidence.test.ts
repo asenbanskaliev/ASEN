@@ -54,6 +54,8 @@ test("T06 real conserva el bloqueo de ejecución completa y el modo limitado exi
  assert.match(script,/await requireLiveT06GithubApprovals\(\)/u);
  assert.match(script,/staticOnly\?r\.value\.writeOnlyVerified:r\.value\.passed/u);
  assert.match(script,/if\(passed&&concurrent&&!staticOnly\)/u);
+ assert.match(script,/if\(!staticOnly\)behaviorOk=checkT06Behavior\(root,target,fn\)/u);
+ assert.equal((script.match(/checkT06Behavior\(root,target,fn\)/gu)||[]).length,1);
  assert.match(script,/generatedCodeExecuted:false,behaviorVerified:false/u);
  assert.match(script,/PASS_TWO_WRITERS_STATIC_ONLY_BEHAVIOR_NOT_TESTED/u);
  assert.match(admission,/return false;/u);
