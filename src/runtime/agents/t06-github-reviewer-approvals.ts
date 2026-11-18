@@ -8,7 +8,7 @@ export const T06_REVIEW_ENVIRONMENTS=Object.freeze([
  "asen-t06-reviewer-a","asen-t06-reviewer-b"
 ] as const);
 const writerModel="nvidia/nemotron-3.5-lightning-30b-a3b";
-const modelPattern=/^nvidia\/[A-Za-z0-9._-]{3,100}$/u;
+const modelPattern=/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u;
 const object=(value:unknown):value is Record<string,unknown>=>
  value!==null&&typeof value==="object"&&!Array.isArray(value)&&
  Object.getPrototypeOf(value)===Object.prototype;
