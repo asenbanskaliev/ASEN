@@ -10,6 +10,7 @@ on:
         options:
           - memoria
           - t06
+          - t06_revision
           - t08
           - flujo
       candidate_sha:
@@ -77,6 +78,17 @@ jobs:
       cost_acknowledged: ${{ inputs.coste_desconocido_autorizado }}
       reviewer_a: ${{ inputs.t06_revisor_a }}
       reviewer_b: ${{ inputs.t06_revisor_b }}
+    secrets:
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+
+  t06-revision-de-evidencias-existentes:
+    if: inputs.modo == 't06_revision' && github.repository == 'asenbanskaliev/ASEN' && github.ref == 'refs/heads/feat/flujo-de-agentes-20261115'
+    uses: ./.github/workflows/t06-review-only.yml
+    with:
+      candidate_sha: ${{ inputs.candidate_sha }}
+      reviewer_a: ${{ inputs.t06_revisor_a }}
+      reviewer_b: ${{ inputs.t06_revisor_b }}
+      coste_desconocido_autorizado: ${{ inputs.coste_desconocido_autorizado }}
     secrets:
       NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
 
