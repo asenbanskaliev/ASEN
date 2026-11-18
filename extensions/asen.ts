@@ -1296,6 +1296,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         },
         autoRefreshMs:5000,
         onRefreshed:fresh=>publishInspectedWorkRow(ctx,fresh),
+        // El modal y el lateral comparten la misma observación de sesión.
+        // Si falla la lectura no conservar hijos activos antiguos.
+        onUnavailable:unknown=>publishInspectedWorkRow(ctx,unknown),
         ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
         terminalRows:()=>Math.max(1,Number(tui.terminal?.rows??24)),
         availableRows:()=>Math.max(1,Math.floor(Number(tui.terminal?.rows??24)*.9)),
