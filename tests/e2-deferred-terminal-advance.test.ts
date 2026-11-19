@@ -47,7 +47,9 @@ test("E2B: una lectura que termina mientras el padre está ocupado despierta la 
   const rows=await originalList(identity);
   // Bloqueamos una sola lectura del panel, cuando los dos primeros runners
   // ya arrancaron. Mientras tanto el primer agente terminará.
-  if(!held&&started.length===1){
+  // Solo retenemos la llamada del coordinador. El conciliador terminal debe
+  // poder leer el mismo almacén y asentar el resultado sin quedar bloqueado.
+  if(!held&&started.length===1&&(new Error().stack??"").includes("advancePlan")){
    held=true;entered.resolve();await release.promise;
   }
   return rows;
