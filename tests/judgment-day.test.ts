@@ -63,6 +63,38 @@ test("Judgment Day preserves the disagreement and asks for review, never Writer 
  assert.equal(result.fixAgent,"not-launched");
  closeWorkspaceReview(workspace);
 });
+test("G49-C2 un pass con hallazgos menores nunca se oculta como análisis sin pendientes",async t=>{
+ const {workspace,evidence}=fixture(t),base=registry();
+ const actual:PiReviewRegistry={
+  ...base.value,
+  streamSimple:(model,context)=>{
+   const findings=model.id==="judge-a"?
+    [{id:"observacion-1",severity:"medium",path:"code.ts",description:"Comprobar caso extremo"}]:[];
+   const text=JSON.stringify({verdict:"pass",summary:"Revisión completada con observación",findings});
+   return (async function*(){
+    yield {type:"done" as const,reason:"stop" as const,message:{
+     role:"assistant",provider:model.provider,content:[{type:"text",text}]
+    }};
+   })();
+  }
+ };
+ const report=await runJudgmentDay({registry:actual,author,judgeA:a,judgeB:b,
+  evidence,requirements:"Revisar el candidato exacto"});
+ assert.equal(report.status,"findings-require-review");
+ assert.equal(report.judges.length,2);
+ assert.equal(report.findings.length,1);
+ assert.equal(report.findings[0]!.finding.severity,"medium");
+ assert.equal(report.acceptance,"not-accepted");
+ assert.equal(report.fixAgent,"not-launched");
+ const next=proposeJudgmentFixHandoff({report,evidence});
+ assert.equal(next.status,"fix-planning-required");
+ assert.deepEqual(next.paths,["code.ts"]);
+ assert.equal(next.autoLaunch,false);
+ assert.equal(next.requiresFreshWriterConsent,true);
+ assert.equal(next.autoMerge,false);
+ closeWorkspaceReview(workspace);
+});
+
 test("Judgment Day rejects model reuse, author models and forged evidence before spending",async t=>{
  const {workspace,evidence}=fixture(t),models=registry(),base={registry:models.value,author,judgeA:a,judgeB:b,evidence,requirements:"Check"};
  await assert.rejects(()=>runJudgmentDay({...base,judgeB:a}),/distinct independent/u);
