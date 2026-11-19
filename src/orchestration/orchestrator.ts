@@ -128,7 +128,7 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
         input.writeSurfaces.some((file,index)=>file!==facts.writes[index]?.path))
         throw new Error("Full delegation requires an exact candidate and unchanged Writer scope");
       const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base,
-        skillContext:primary.context,skillPaths:primary.skills.map(id=>selectSkills(primary.context).find(skill=>skill.id===id)?.path??""),
+        skillContext:primary.context,skillPaths:primary.skillPaths,
         writeSurfaces:[...input.writeSurfaces],candidate:input.candidate};
       agents.push(applyRuntimeProfile(worker,input.runtimeProfiles));
       return planned({decision,agents,skills});
