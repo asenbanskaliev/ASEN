@@ -659,7 +659,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(!task.writeSurfaces)return true;
      if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")return false;
      return ctx.ui.confirm("Authorize scoped ASEN write?",`${task.title} (${task.role})\n\n${task.instruction}\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`);
-    }};
+    }} satisfies Parameters<typeof dispatchNextPlanTask>[0];
     const result=await dispatchNextPlanTask(dispatchOptions);
     const dispatched=result.status==="dispatched",title=dispatched?(await todos.list(identity)).find(task=>task.taskId===result.todoId)?.title:undefined;
     let lecturasIniciadas=dispatched&&result.role!=="worker"?1:0;
