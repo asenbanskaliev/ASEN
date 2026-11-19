@@ -114,7 +114,12 @@ function fixture(t:TestContext,fixtureGitEnv:NodeJS.ProcessEnv=gitFixtureEnv,chi
   sessionManager:{getSessionId:()=>session},ui:{
    notify:(message:string)=>notifications.push(message),
    editor:async()=>editorAnswer,
-   confirm:async(_title:string,message:string)=>{confirmMessages.push(message);return approve;}
+   confirm:async(_title:string,message:string)=>{confirmMessages.push(message);return approve;},
+   select:async(title:string,options:string[])=>{
+    // El fixture recoge los permisos anteriores mediante el selector de Pi.
+    const decision:unknown=await ctx.ui.confirm("Autorizar Worker Pi separado?",title);
+    return decision===true?options[0]:decision===false?options[1]:undefined;
+   }
   }};
  const run=(command:string)=>commands.get("asen-worktrees")!.handler(command,ctx);
  const runChild=(command:string,root:string,id="child-pi-1")=>
@@ -806,6 +811,31 @@ test("G49-B rechazo expreso del primer Worker no paraliza al segundo independien
  assert.equal((await f.run("supervise") as {status:string}).status,"blocked",
   "el lote completo se consumió una vez: el rechazo nunca puede reintentarse");
  assert.equal(f.dispatchedChildren.length,1);
+});
+
+test("MEGA-B15 Escape en el selector Pi no rechaza ni permite otro Worker",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ let selections=0;
+ f.ctx.ui.select=async(_title:string,options:string[])=>{
+  selections++;
+  assert.deepEqual(options,[
+   "Sí, autorizar únicamente este Worker",
+   "No, rechazar expresamente este Worker"
+  ]);
+  return undefined; // Escape/cierre del selector nativo.
+ };
+ const result=await f.run("supervise") as {
+  status:string;started:readonly unknown[];blockers:readonly string[];autoRetry:boolean
+ };
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(result.started.length,0);
+ assert.equal(selections,1,"Escape impide consultar al segundo Writer");
+ assert.equal(f.dispatchedChildren.length,0);
+ assert.ok(result.blockers.some(x=>/blocked or ambiguous/u.test(x)));
+ assert.equal(result.autoRetry,false);
+ assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,1);
+ assert.equal((await f.run("supervise") as {status:string}).status,"blocked");
+ assert.equal(selections,1,"No se vuelve a abrir el lote cancelado");
 });
 
 test("G49-B una confirmación Writer ambigua detiene la tanda sin autorizar al segundo",async t=>{
