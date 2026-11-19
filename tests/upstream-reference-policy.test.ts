@@ -14,6 +14,10 @@ test("only explicitly registered non-executable provenance paths are documents",
  assert.equal(isPinnedReferenceDocument(dossier),true,"Only the specific human-readable G49 dossier is registered");
  assert.equal(isPinnedReferenceDocument(dossier.replace(".md",".ts")),false,"No executable file inherits the document exemption");
  assert.equal(isPinnedReferenceDocument(dossier.replace("4.9.0","4.9.1")),false,"Other reference versions require an explicit decision");
+ const comparison="odd/tasks/flujo-de-agentes-comparativa-actual-4.9.0.md";
+ assert.equal(isPinnedReferenceDocument(comparison),true,"Solo el documento de comparación exacto tiene procedencia");
+ assert.equal(isPinnedReferenceDocument(comparison.replace(".md",".ts")),false);
+ assert.equal(isPinnedReferenceDocument(comparison.replace("4.9.0","4.9.1")),false);
  for(const path of ["docs/portable-checkpoint-copy.md","odd/tasks/ui-runtime-delivery-order.md","src/review/native-rdd-control.ts","scripts/upstream-reference-policy.mjs"]){
   assert.equal(isPinnedReferenceDocument(path),false,path);
  }
