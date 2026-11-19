@@ -9,6 +9,25 @@ Referencia a contrastar: Gentle Shell 4.8.0. No declarar paridad hasta observarl
 
 ## Actualización de la comparación funcional Gentle Shell 4.9.0 — 2026-11-19
 
+### Ejecución quirúrgica de la Megatanda A — 2026-11-19
+
+**Estado verificable al publicar:** implementación parcial de **A1/A2/A3**, pendiente de CI exacto y ensayo de modelo Pi auténtico. **A4 permanece sin activación automática** por falta de prueba de compatibilidad/modelo/coste. No declarar las cuatro completas ni `globalFull:true`.
+
+| Bloque | Cambio realmente conectado | Evidencia y límite |
+| --- | --- | --- |
+| **A1 — Directo frente a delegado** | `src/runtime/ui/request-guidance.ts` explica las tres condiciones de tarea pequeña, el seguimiento ODD sin delegación obligatoria, el coste de Workers y la ruta dual explícita ya admitida. | `src/flow/odd-routing.ts` y `src/orchestration/orchestrator.ts` ya conservan `direct` para varios archivos y sesiones largas; no se ha cambiado su admisión ni los tipos ODD. **Guía al modelo, no garantiza que siempre obedezca.** |
+| **A2 — Presupuesto Explorer** | El contador real ya existente `ExplorerBudgetTelemetry` (3 lecturas o 40 KiB) ahora alimenta una sección del **mensaje al orquestador Pi** desde `extensions/asen.ts` / `addAsenRequestGuidance`; se exige coincidencia de sesión/proyecto y se descarta si cambia su dueño durante una lectura. | La nueva sección solo se publica si se observó agotamiento. Nunca despacha, paga, autoriza escritura ni bloquea una tarea ya entendida. **No equivale todavía a un Explorer lanzado realmente**. |
+| **A3 — Delegación rechazada** | La guía ordena no repetir un lanzamiento idéntico, distinguir rechazo de motivo de rechazo de consentimiento/scope/SHA, y sugerir la ruta directa solo si sigue estando autorizada. | `plan-dispatcher.ts` sigue siendo la autoridad real; no se ha relajado ni convertido un rechazo en Writer nuevo. |
+| **A4 — Modelo inicial del padre** | **SIN CAMBIO DE MODELO.** Se preservan la captura congelada de perfil por sesión y el `parent-model-fallback` existente. | Pendiente: determinar con Pi 1.2.0 el evento exacto de nueva sesión elegible, verificar catálogo/credencial/coste, impedir cambios en sesión hija/reanudada y medir que el modelo efectivo cambió. Ninguna selección silenciosa ni proveedor pago. |
+
+**Archivos intervenidos:** `src/runtime/ui/request-guidance.ts`, `extensions/asen.ts`, `tests/megatanda-a-routing.test.ts`, `scripts/upstream-reference-policy.mjs`, `tests/upstream-reference-policy.test.ts` y esta bitácora.
+
+**Casos cubiertos por nuevas pruebas automáticas de código:** A1 directo con varios archivos y larga duración frente a doble revisión explícita; A3 guía ante rechazo; A2 límite antes/después, ausencia de concesión, aviso conectado al evento Pi y aislamiento de sesión; protección de referencia documental exacta ante CI. **No son pruebas de inferencia autenticada ni A/B con la referencia.**
+
+**Hallazgo de arquitectura durante CI:** el nuevo informe 4.9.0 no estaba registrado como documento humano de procedencia en `upstream-reference-policy.mjs`; el control `Phase 0` rechazó el árbol. Se añadió **una única ruta exacta .md** a los documentos permitidos y pruebas de que otra versión o un archivo `.ts` siguen prohibidos. No se exceptuó código productivo ni se modificó la regla general.
+
+**Faltantes para cerrar A:** decisión ejecutable más allá de las instrucciones (prueba Pi de rutas elegidas); entrega del Explorer genuino después de superar el presupuesto; diagnóstico de rechazo en host real y no solo guía; selección del modelo inicial segura y observable. Mantener explícitos `IMPLEMENTED`, `RUNTIME_WIRED`, `HOST_TESTED`, `LIVE_AUTHENTICATED` y `AB_PARITY` por separado.
+
 **Estado de esta actualización:** INVESTIGACIÓN_Y_PLANIFICACIÓN, NO IMPLEMENTACIÓN; ninguna comprobación A/B real nueva; `globalFull:false`.
 
 **Referencia exacta para flujo de agentes:** Gentle Shell `v4.9.0`, commit `ce64a9a708e50c0ca899c8023140e63f29f293e1`, comparada con ASEN PR #61, SHA `d38cc1dcce3fd79bfe15acbba23985973bb04852` antes de esta actualización documental. Se preservan las referencias y evidencias históricas 4.8.0; la actualización 4.9.0 **afecta solo a lógica de agentes**, no a Desktop, Tower ni al alcance de T11.
