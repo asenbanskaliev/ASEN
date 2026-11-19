@@ -79,7 +79,16 @@ function sameScope(row:AgentNoticeRow,scope:AgentNoticeScope):boolean{
  return row.sessionId===scope.sessionId&&sameWorkspaceIdentityPath(row.projectId,scope.projectId);
 }
 export class AgentNotificationJournal{
- constructor(readonly path:string){if(!isAbsolute(path))throw new Error("Agent notice journal path must be absolute");}
+ constructor(readonly path:string,private readonly clock:()=>string=()=>new Date().toISOString()){
+  if(!isAbsolute(path))throw new Error("Agent notice journal path must be absolute");
+ }
+ /** El reloj de Windows puede retroceder tras sincronizar la hora.
+  * No persistir jamás una transición anterior a la fecha guardada. */
+ #now(previous?:string):string{
+  const observed=this.clock();
+  if(!validDate(observed))throw new Error("Invalid agent notice clock");
+  return previous&&observed<previous?previous:observed;
+ }
  async #change<T>(transaction:(file:File)=>{result:T;changed:boolean}):Promise<T>{
   // Lock across multiple independent Pi processes; never rewrite a newer row.
   await preparePrivateFile(this.path,true);
@@ -102,7 +111,7 @@ export class AgentNotificationJournal{
    if(file.entries.some(x=>x.agentId===subject.id&&sameScope(x,subject)))
     throw new Error("Conflicting terminal outcome for owned agent; refusing duplicate notification");
    if(file.entries.length===MAX_ENTRIES)throw new Error("Agent notice journal capacity exceeded");
-   const now=new Date().toISOString(),row:AgentNoticeRow={
+   const now=this.#now(),row:AgentNoticeRow={
     eventId,agentId:subject.id,sessionId:subject.sessionId,projectId:subject.projectId,
     state:subject.state as AgentNoticeTerminalState,delivery:"pending",createdAt:now,updatedAt:now,
    };
@@ -117,7 +126,7 @@ export class AgentNotificationJournal{
    if(!row||!sameScope(row,scope))throw new Error("Agent notice is unavailable in this session and project");
    if(row.delivery!=="pending")return{result:false,changed:false};
    (row as {delivery:AgentNoticeDelivery}).delivery="attempted";
-   (row as {updatedAt:string}).updatedAt=new Date().toISOString();
+   (row as {updatedAt:string}).updatedAt=this.#now(row.updatedAt);
    return{result:true,changed:true};
   });
  }
@@ -130,7 +139,7 @@ export class AgentNotificationJournal{
    if(row.delivery==="enqueued"||row.delivery==="acknowledged")return{result:false,changed:false};
    if(row.delivery!=="attempted")throw new Error("Agent notice must be claimed before enqueue");
    (row as {delivery:AgentNoticeDelivery}).delivery="enqueued";
-   (row as {updatedAt:string}).updatedAt=new Date().toISOString();
+   (row as {updatedAt:string}).updatedAt=this.#now(row.updatedAt);
    return{result:true,changed:true};
   });
  }
@@ -146,7 +155,7 @@ export class AgentNotificationJournal{
    if(row.delivery==="acknowledged")return{result:false,changed:false};
    if(row.delivery!=="enqueued")throw new Error("Agent notice must be enqueued before coordinator acknowledgement");
    (row as {delivery:AgentNoticeDelivery}).delivery="acknowledged";
-   (row as {updatedAt:string}).updatedAt=new Date().toISOString();
+   (row as {updatedAt:string}).updatedAt=this.#now(row.updatedAt);
    return{result:true,changed:true};
   });
  }
