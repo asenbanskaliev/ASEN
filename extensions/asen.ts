@@ -1154,6 +1154,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      }catch{/* Una identidad cambiada nunca expone el presupuesto de otra sesión. */}
     }
     addAsenRequestGuidance(options,!!pi.registerTool,explorationOverBudget);
+    delete options.sections.asen_delegation_mode;
+    try{
+     const owner=await sessionIdentity(ctx as CommandContext),layers=await profileLayer(owner);
+     const current=await sessionIdentity(ctx as CommandContext);
+     if(current.sessionId!==owner.sessionId||current.projectId!==owner.projectId)
+      throw new Error("Profile owner changed");
+     if(resolveRuntimeDelegationMode(layers).mode==="full-delegation")
+      options.sections.asen_delegation_mode="Modo delegación completa: el padre solo investiga, prepara, coordina y verifica. Nunca edita archivos ni ejecuta comandos de terminal. Envía cambios mediante el planificador y agentes Writer con autorización comprobable; si no hay Writer autorizado, informa del bloqueo sin escribir.";
+    }catch{
+     options.sections.asen_delegation_mode="No se pudo verificar el modo del perfil; no supongas permiso adicional para escribir ni delegar.";
+    }
     if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}
     if(todoStorePromise)try{
      const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),rows=await (await todoStorePromise).list(identity);
