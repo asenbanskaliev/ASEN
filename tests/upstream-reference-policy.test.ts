@@ -23,6 +23,10 @@ test("only explicitly registered non-executable provenance paths are documents",
  assert.equal(isPinnedReferenceDocument(masterPlan.replace(".md",".ts")),false,"Ningún archivo ejecutable hereda la excepción");
  assert.equal(isPinnedReferenceDocument(masterPlan.replace("4.9.0","4.9.1")),false,"Una versión diferente requiere autorización expresa");
  assert.equal(isPinnedReferenceDocument(masterPlan.replace("odd/tasks/","src/")),false,"Una ruta de código nunca es documento");
+ const equivalence="odd/tasks/flujo-de-agentes-equivalencia-operativa-4.9.0.md";
+ assert.equal(isPinnedReferenceDocument(equivalence),true,"La matriz histórica exacta está autorizada como documento");
+ assert.equal(isPinnedReferenceDocument(equivalence.replace(".md",".ts")),false);
+ assert.equal(isPinnedReferenceDocument(equivalence.replace("4.9.0","4.9.1")),false);
  for(const path of ["docs/portable-checkpoint-copy.md","odd/tasks/ui-runtime-delivery-order.md","src/review/native-rdd-control.ts","scripts/upstream-reference-policy.mjs"]){
   assert.equal(isPinnedReferenceDocument(path),false,path);
  }

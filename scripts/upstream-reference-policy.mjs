@@ -29,6 +29,8 @@ const exactProvenanceDocs=new Set([
   "odd/tasks/flujo-de-agentes-comparativa-actual-4.9.0.md",
   // Plan rector exacto: trazabilidad documental, nunca una excepción de código ejecutable.
   "odd/tasks/flujo-de-agentes-plan-implantacion-4.9.0.md",
+  // Matriz de equivalencia previa, documento exacto de planificación, nunca código.
+  "odd/tasks/flujo-de-agentes-equivalencia-operativa-4.9.0.md",
   // T11: trazabilidad humana de layout, no código ejecutable ni un import.
   "odd/tasks/flujo-de-agentes-continuidad.md",
   "odd/tasks/flujo-de-agentes-t11-layout-"+providerTerm+"-shell-4.8.0.md",
