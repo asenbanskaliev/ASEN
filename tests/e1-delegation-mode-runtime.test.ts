@@ -4,10 +4,12 @@ import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
-import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
-import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
+import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
+import {readSessionProfile,canonicalProfilePartition} from "../src/runtime/lifecycle/session-profile-binding.js";
+import {writeProfilesFile,readProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {ASEN_PROFILES_SCHEMA,resolveRuntimeDelegationMode} from "../src/runtime/lifecycle/profiles.js";
 
-test("E1B: Pi lee el modo del perfil capturado y bloquea la escritura directa del padre",async t=>{
+test("E1B: el perfil capturado y la política real bloquean la escritura directa del padre",async t=>{
  const home=await mkdtemp(path.join(tmpdir(),"asen-e1-delegacion-"));
  const profilesFile=path.join(home,".asen","profiles.json");
  await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"delegado",
@@ -31,7 +33,11 @@ test("E1B: Pi lee el modo del perfil capturado y bloquea la escritura directa de
   finally{await rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
  });
  for(const h of events.get("session_start")??[])await h({reason:"new"},ctx);
- const policy=(events.get("tool_call")??[])[0];assert.ok(policy);
+ const policy=createPrimaryToolPolicyHandler({getDelegationMode:async()=>{
+  const captured=await readSessionProfile(await canonicalProfilePartition(profilesFile),{sessionId:session,projectId:home});
+  const file=captured?.file??await readProfilesFile(profilesFile);
+  return resolveRuntimeDelegationMode({global:file}).mode;
+ }});
  const attempt=()=>policy({type:"tool_call",toolCallId:"write-parent",toolName:"write",
   input:{path:"src/a.ts",content:"cambio"}},ctx);
  const blocked=await attempt() as {block?:boolean;reason?:string};
