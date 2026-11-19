@@ -2,7 +2,7 @@
 
 **Fecha:** 2026-11-19.
 **Rama:** `feat/flujo-de-agentes-20261115`; PR #61, sin fusión.
-**Referencia de comportamiento:** versión 4.9.0 ya documentada en `flujo-de-agentes-gentle-shell-4.9.0-investigacion.md`.
+**Referencia de comportamiento:** versión 4.9.0, cuya investigación completa ya está enlazada desde el plan principal.
 **Estado:** IMPLEMENTACIÓN_CONECTADA / PRUEBAS_AÑADIDAS; el CI exacto del último SHA y la equivalencia entre proveedores requieren evidencias separadas. `globalFull:false`.
 **Prohibido:** repetir escrituras inciertas, cambiar el objetivo, reutilizar permisos, pagar modelos no consentidos, fusionar automáticamente, reemplazar el motor Pi o anunciar como consumido un aviso meramente encolado.
 
