@@ -19,7 +19,7 @@ export interface PrimaryModeOptions{
  readonly getMode?:(context:ExtensionContext)=>AsenPermissionMode;
  /** Solo el perfil elegido puede activar la prohibición de escritura directa del padre. */
  readonly getDelegationMode?:(context:ExtensionContext)=>DelegationMode|Promise<DelegationMode>;
- readonly modeEpoch?:()=>number;
+ readonly modeEpoch?:()=>number|string;
  /** Human-owned private preference file; model tool calls can never edit it. */
  readonly protectedPreferenceFile?:string;
  /** Human-owned ASEN runtime state directories; model tool calls may read them, never mutate them. */
@@ -86,10 +86,12 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
  return async(event,context)=>{
   const mode=options.getMode?.(context)??"normal";
   const startEpoch=options.modeEpoch?.();
+  const sameTurn=()=>options.modeEpoch?.()===startEpoch;
   let delegation:DelegationMode;
   try{delegation=await options.getDelegationMode?.(context)??"organic";}
   catch{return denied("delegation profile could not be verified");}
   if(delegation!=="organic"&&delegation!=="full-delegation")return denied("invalid delegation profile");
+  if(!sameTurn())return denied("permission or delegation turn changed during policy admission");
   const autoRequested=mode==="auto";
   let confirmationRejected=false;
   const autoAllowed=async()=>{
@@ -119,9 +121,9 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
      return denied("full delegation: tool not verified as read-only or scoped agent dispatch");
    }
    if(!fileTools.has(toolName)&&!shellTools.has(toolName)){
-    if(consentTools.has(toolName))return undefined; // Native UI owns the decision.
-    return autoRequested&&!(await autoAllowed())?
-     denied("Auto independent review is unavailable or denied"):undefined;
+    if(consentTools.has(toolName))return sameTurn()?undefined:denied("tool call outlived its original turn"); // Native UI owns the decision.
+    if(autoRequested&&!(await autoAllowed()))return denied("Auto independent review is unavailable or denied");
+    return sameTurn()?undefined:denied("tool call outlived its original turn");
    }
    const input=event.input;
    if(shellTools.has(toolName)){
@@ -144,6 +146,7 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
      return denied(delivery.reason??"delivery preflight blocked");
     const markerResult=await checkConflictMarkers(command,context.cwd,context.signal);
     if(markerResult?.blocked)return denied(markerResult.reason??"delivery conflict markers detected");
+    if(!sameTurn())return denied("tool call outlived its original turn");
     if(decision.action==="pass")return undefined;
     if(mode==="super-yolo")return undefined; // No publish/merge bypass: checked above.
     if(mode==="yolo"&&decision.dataLossKind==="filesystem"&&
@@ -157,7 +160,7 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
     catch(error){confirmationRejected=true;throw error;}
     if(approved!==true)return denied("guarded shell command was not confirmed");
     if(event.toolCallId!==id||event.input!==inputAtReview||context.cwd!==cwd||
-     context.signal!==signal||signal?.aborted||(options.getMode?.(context)??"normal")!==mode||
+     context.signal!==signal||signal?.aborted||!sameTurn()||(options.getMode?.(context)??"normal")!==mode||
      options.modeEpoch?.()!==startEpoch||(event.input as {command?:unknown}).command!==command)
      return denied("guarded shell confirmation expired");
     // A shell confirmation alone never grants independent publication authority.
@@ -174,7 +177,7 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
    const optional=toolName==="grep"||toolName==="find"||toolName==="ls";
    if(rawPath!==undefined&&typeof rawPath!=="string"||rawPath===undefined&&!optional)return denied("malformed file path");
    const requested=rawPath===undefined?".":rawPath as string,{lexical,canonical}=await canonicalTarget(requested,cwd);
-   if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
+   if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted||!sameTurn())return denied("file call identity or path drift");
    if(hasSensitiveName(lexical)||hasSensitiveName(canonical)||sensitivePath(lexical)||sensitivePath(canonical))return denied("sensitive path access");
    if((toolName==="write"||toolName==="edit")&&options.protectedPreferenceFile){
     const parent=path.dirname(options.protectedPreferenceFile);
@@ -193,7 +196,7 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
    if(toolName==="grep"||toolName==="find"||toolName==="ls")try{await assertSafeTraversal(toolName,canonical);}catch{return denied("safe directory traversal cannot be established");}
    if(event.toolName!==toolName||event.toolCallId!==toolCallId||event.input!==input||(input as {path?:unknown}).path!==rawPath||context.cwd!==cwd||context.signal!==signal||signal?.aborted)return denied("file call identity or path drift");
    if(autoRequested&&!(await autoAllowed()))return denied("Auto independent review is unavailable or denied");
-   return undefined;
+   return sameTurn()?undefined:denied("tool call outlived its original turn");
   }catch(error){
    // A failed native consent dialog belongs to the host and must propagate unchanged.
    // Untrusted path/classifier errors still block with zero execution.
