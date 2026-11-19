@@ -1,7 +1,7 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {copyFileSync,existsSync,mkdirSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {copyFileSync,existsSync,mkdirSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
@@ -1462,4 +1462,31 @@ test("T06: la preparación automática rechazable nunca inicia ni reserva un Wor
  assert.deepEqual(await f.run("prepare-auto"),{status:"declined",grantsAuthority:false});
  assert.deepEqual(await f.journal.list(f.identity),[]);
  assert.equal(f.dispatchedChildren.length,0);
+});
+
+test("T06: preparar-auto crea la carpeta hermana con un único consentimiento sin permisos Writer",async t=>{
+ const f=fixture(t),source=realpathSync(f.source),sibling=resolve(source+"-worktrees");
+ t.after(()=>{if(existsSync(sibling))rmSync(sibling,{recursive:true,force:true});});
+ assert.equal(existsSync(sibling),false);
+ f.ctx.ui.editor=undefined;
+ const result=await f.run("prepare-auto") as {
+  status:string;sourceTodoBound:boolean;grantsAuthority:boolean;worktrees:readonly {root:string}[]
+ };
+ assert.equal(result.status,"prepared");
+ assert.equal(result.worktrees.length,2);
+ assert.equal(result.sourceTodoBound,true);
+ assert.equal(result.grantsAuthority,false);
+ assert.equal(f.confirmMessages.length,1);
+ assert.equal(existsSync(sibling),true);
+ assert.equal(f.dispatchedChildren.length,0);
+});
+
+test("T06: rechazo automático no crea la carpeta hermana ni reserva tareas",async t=>{
+ const f=fixture(t),source=realpathSync(f.source),sibling=resolve(source+"-worktrees");
+ t.after(()=>{if(existsSync(sibling))rmSync(sibling,{recursive:true,force:true});});
+ assert.equal(existsSync(sibling),false);
+ f.setConsent(false);f.ctx.ui.editor=undefined;
+ assert.deepEqual(await f.run("prepare-auto"),{status:"declined",grantsAuthority:false});
+ assert.equal(existsSync(sibling),false);
+ assert.deepEqual(await f.journal.list(f.identity),[]);
 });

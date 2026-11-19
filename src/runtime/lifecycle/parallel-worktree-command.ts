@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {existsSync,realpathSync} from "node:fs";
+import {existsSync,mkdirSync,realpathSync,rmdirSync} from "node:fs";
 import path from "node:path";
 import {prepareParallelWorkerWorktrees,type ParallelWorkerUnit} from "../agents/parallel-worktrees.js";
 import {bindParallelSourceTodos,sameSourceTodoBindings,type SourceTodoRow} from "../agents/parallel-todo-bindings.js";
@@ -443,16 +443,32 @@ export function registerParallelWorktreeCommand(
    checkIdentity();
    if(!automatic&&!edited?.trim())return {status:"cancelled",grantsAuthority:false};
    const selection=automatic?sample:readRequest(edited!);
-   if(automatic&&!existsSync(selection.parentDir))
-    return {status:"blocked" as const,reason:"Crear antes la carpeta hermana "+selection.parentDir+" para preparar automáticamente; no se reservó ningún permiso.",grantsAuthority:false as const};
+
    const bound=linked?bindParallelSourceTodos({
     identity:owner,expectedHead:head,rows:currentTodos,units:selection.units
    }):undefined;
    const batchId=linked?newParallelTodoWorktreeBatchId():undefined;
    let pendingReservation:Readonly<{id:string;sourceHead:string;parentDir:string}>|undefined;
-   let gitAddAttempted=false;
+   let gitAddAttempted=false,createdParent=false,consented=false;
    let result:Awaited<ReturnType<typeof prepareParallelWorkerWorktrees>>;
    try{
+   if(automatic){
+    // El único permiso de esta fase vincula exactamente el proyecto, SHA,
+    // tareas, ámbitos y directorio. No es autorización de escritura.
+    checkIdentity();
+    consented=await ctx.ui.confirm!("Preparar dos carpetas Git aisladas?",[
+     "Origen: "+root,"SHA: "+head,"Directorio: "+selection.parentDir,
+     ...selection.units.map(unit=>unit.taskId+": "+unit.writeSurfaces.join(", ")),
+     "La carpeta se creará si no existe. No se abrirán sesiones Pi ni se iniciarán Writers.",
+     "Sin permisos de escritura, sin reintentos y sin fusión automática."
+    ].join("\n"))===true;
+    checkIdentity();
+    if(!consented)return {status:"declined" as const,grantsAuthority:false as const};
+    if(!existsSync(selection.parentDir)){
+     mkdirSync(selection.parentDir);
+     createdParent=true;
+    }
+   }
    result=await prepareParallelWorkerWorktrees({
     sourceRoot:root,parentDir:selection.parentDir,expectedHead:head,units:selection.units,
     onBeforeWorktreeAdd:()=>{gitAddAttempted=true;},
@@ -469,7 +485,13 @@ export function registerParallelWorktreeCommand(
       "Los Workers requerirán una sesión, un plan ODD y un consentimiento nuevo por worktree.",
       "NO habrá fusión ni borrado automático. Inspecciona cada worktree al terminar."
      ].join("\n");
-     const approved=await ctx.ui.confirm!("Crear los worktrees Git aislados?",message)===true;
+     const approved=automatic?
+      consented&&summary.sourceRoot===root&&summary.revision===head&&
+       summary.creates===selection.units.length&&
+       summary.taskIds.every((id,i)=>id===selection.units[i]?.taskId)&&
+       summary.scopes.every((unit,i)=>unit.taskId===selection.units[i]?.taskId&&
+        JSON.stringify(unit.writeSurfaces)===JSON.stringify(selection.units[i]?.writeSurfaces)):
+      await ctx.ui.confirm!("Crear los worktrees Git aislados?",message)===true;
      // No crear ni reservar nada si el usuario cambió de sesión durante el diálogo.
      checkIdentity();
      if(!approved)return false;
@@ -501,10 +523,14 @@ export function registerParallelWorktreeCommand(
       throw new Error("No se pudo liberar la reserva T06 previa a Git. Inspección manual obligatoria.",{cause:error});
      }
     }
+    if(createdParent&&!gitAddAttempted)try{rmdirSync(selection.parentDir);}catch{/* No borrar carpetas que ya contengan datos. */}
     throw error;
    }
    checkIdentity();
-   if(result.status==="declined"){ctx.ui.notify("Preparación cancelada sin crear worktrees.","info");return result;}
+   if(result.status==="declined"){
+    if(createdParent&&!gitAddAttempted)try{rmdirSync(selection.parentDir);}catch{/* Sin borrado forzoso. */}
+    ctx.ui.notify("Preparación cancelada sin crear worktrees.","info");return result;
+   }
    if(linked)await journal!.markPrepared({identity:owner,id:batchId!,allocations:result.allocations});
    const display={status:"prepared" as const,
     ...(linked?{batchId,sourceTodoBound:true as const}:
