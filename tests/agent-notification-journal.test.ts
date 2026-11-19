@@ -4,6 +4,7 @@ import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {AgentNotificationJournal,agentNoticeEventId} from "../src/runtime/agents/agent-notification-journal.js";
+import {isFreshAgentInspection} from "../src/agents/pi-agent-tools.js";
 const subject={id:"agent-1",sessionId:"session-a",projectId:"/project-a",state:"completed"};
 async function fixture(t:import("node:test").TestContext){
  const dir=await mkdtemp(join(tmpdir(),"asen-agent-notice-"));
@@ -193,4 +194,37 @@ test("EF-601/604 restart recovery view preserves all delivery states without a m
  assert.deepEqual(await reopened.recoveryReview({...subject,sessionId:"foreign"}),[]);
  assert.equal(await readFile(file,"utf8"),before,"Read-only recovery must not claim or replay notices");
  assert.equal(await reopened.claim(notices[1]!.eventId,subject),false,"Uncertain transport cannot be automatically replayed");
+});
+
+
+test("MEGA-B7 una inspección caducada o con el reloj retrocedido no confirma avisos",()=>{
+ const origin=1_000_000;
+ assert.equal(isFreshAgentInspection(origin,origin),true);
+ assert.equal(isFreshAgentInspection(origin,origin+299_999),true);
+ assert.equal(isFreshAgentInspection(origin,origin+300_000),true);
+ assert.equal(isFreshAgentInspection(origin,origin+300_001),false,
+  "El aviso no debe conservar una inspección ya caducada");
+ assert.equal(isFreshAgentInspection(origin,origin-1),false,
+  "Una hora atrasada no puede hacer revivir permisos de reconocimiento");
+ for(const [at,now] of [
+  [Number.NaN,origin],[origin,Number.NaN],[Number.POSITIVE_INFINITY,origin],
+  [origin,Number.NEGATIVE_INFINITY],[-1,origin],[origin,Number.MAX_SAFE_INTEGER+1]
+ ])assert.equal(isFreshAgentInspection(at,now),false);
+ for(const invalidWindow of [0,-1,1.5,Number.NaN,Number.POSITIVE_INFINITY]){
+  assert.equal(isFreshAgentInspection(origin,origin,invalidWindow),false);
+ }
+});
+
+test("MEGA-B7 caducar una inspección jamás modifica ni reenvía el diario de avisos",async t=>{
+ const {file,journal}=await fixture(t);
+ const row=await journal.record(subject);
+ assert.equal(await journal.claim(row.eventId,subject),true);
+ assert.equal(await journal.markEnqueued(row.eventId,subject),true);
+ const before=await readFile(file,"utf8");
+ assert.equal(isFreshAgentInspection(100,400_101),false);
+ const reopened=new AgentNotificationJournal(file);
+ assert.deepEqual((await reopened.recoveryReview(subject)).map(x=>x.delivery),["enqueued"]);
+ assert.equal(await reopened.claim(row.eventId,subject),false);
+ assert.equal(await readFile(file,"utf8"),before,
+  "La comprobación del reloj no muta recibos ni concede reintentos");
 });
