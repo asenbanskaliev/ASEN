@@ -8,6 +8,8 @@ export class DelegationTurnLatch{
  #epoch=0;
  readonly #cached=new Map<string,DelegationMode>();
  readonly #pending=new Map<string,Promise<DelegationMode>>();
+ /** Versión solo de lectura: un nuevo turno invalida llamadas todavía pendientes. */
+ get epoch():number{return this.#epoch;}
 
  /** Una nueva entrada o sesión invalida los modos anteriores, nunca los permisos. */
  nextTurn():void{this.#epoch++;this.#cached.clear();this.#pending.clear();}
