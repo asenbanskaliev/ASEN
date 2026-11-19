@@ -76,6 +76,36 @@ test("cooldowns use injected time, never shorten, expire in memory, and distingu
  assert.deepEqual(cooldown.snapshot(),{});
 });
 
+test("MEGA-A9 el informe de modelos en pausa no pierde claves especiales ni cambia prototipos",()=>{
+ const paused=new ModelFallbackCooldown(()=>100);
+ for(const model of ["__proto__","constructor","toString","proveedor/modelo"])paused.mark(model,"quota");
+ const report=paused.snapshot();
+ assert.equal(Object.getPrototypeOf(report),Object.prototype);
+ for(const model of ["__proto__","constructor","toString","proveedor/modelo"]){
+  assert.equal(Object.hasOwn(report,model),true,"Debe conservar cada modelo como dato propio");
+  assert.equal(report[model]?.until,100+COOLDOWN_MS.exhausted);
+  assert.equal(report[model]?.reason,"quota");
+ }
+ assert.deepEqual(Object.keys(report).sort(),["__proto__","constructor","proveedor/modelo","toString"].sort());
+ const json=JSON.parse(JSON.stringify(report));
+ assert.equal(Object.hasOwn(json,"__proto__"),true);
+ assert.equal(({} as Record<string,unknown>)["until"],undefined,
+  "Nunca se contaminan los objetos ajenos");
+ assert.equal(paused.available("__proto__"),false);
+ assert.equal(paused.available("constructor"),false);
+});
+
+test("MEGA-A9 un reloj fuera de rango no altera los bloqueos ni provoca reintentos",()=>{
+ const paused=new ModelFallbackCooldown(()=>100);
+ paused.mark("proveedor/estable","quota");
+ const before=paused.snapshot();
+ assert.throws(()=>paused.mark("proveedor/invalido","quota",Number.MAX_SAFE_INTEGER),
+  /Invalid fallback clock/u);
+ assert.deepEqual(paused.snapshot(),before);
+ assert.equal(paused.available("proveedor/invalido"),true);
+ assert.equal(paused.available("proveedor/estable"),false);
+});
+
 test("process cooldown accessor returns one shared registry while isolated instances remain independent",()=>{
  assert.strictEqual(getProcessModelFallbackCooldown(),getProcessModelFallbackCooldown());
  const isolated=new ModelFallbackCooldown(()=>0);
