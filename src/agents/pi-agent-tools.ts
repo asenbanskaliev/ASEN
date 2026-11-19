@@ -21,6 +21,11 @@ const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
 const idSchema={type:"string",minLength:1,maxLength:1024};
 const MAX_VISIBLE_AGENT_INSTRUCTION=4096;
+/** A clock rollback, invalid timestamp or expiry never revives an old notice inspection. */
+export function isFreshAgentInspection(at:number,now:number,windowMs=300_000):boolean{
+ return Number.isSafeInteger(at)&&Number.isSafeInteger(now)&&Number.isSafeInteger(windowMs)&&
+  windowMs>0&&at>=0&&now>=at&&now-at<=windowMs;
+}
 /** A public Todo launch cannot bypass the candidate-bound planned dispatcher. */
 function assertCurrentReadOnlyCandidate(plan:TodoPlanMetadata,projectId:string):void{
  const expected=plan.candidateRevision;
@@ -167,7 +172,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(!inspection||inspection.sessionId!==session.sessionId||
      !sameWorkspaceIdentityPath(inspection.projectId,session.projectId)||
      inspection.agentId!==row.agentId||inspection.state!==row.state||
-     Date.now()-inspection.at>INSPECTION_WINDOW_MS)
+     !isFreshAgentInspection(inspection.at,Date.now(),INSPECTION_WINDOW_MS))
    throw new Error("Inspect this exact terminal agent with asen_agent_status before acknowledging it");
   const entry=await (await runtime()).query(row.agentId,session);
   if(!entry||entry.record.id!==row.agentId||entry.record.state!==row.state||
@@ -175,6 +180,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    throw new Error("Agent notice does not match an authenticated durable terminal agent");
   throwIfCancelled(signal);
   const current=await identity(context);
+  throwIfCancelled(signal); // Cancellation may arrive while Pi resolves its current workspace.
   if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId))
    throw new Error("Pi coordinator session or project changed before acknowledgement");
   const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state);
