@@ -2519,7 +2519,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
     return resolveRuntimeDelegationMode(layers).mode;
    },verify);
   },
-  modeEpoch:()=>permissionSession.epoch,
+  modeEpoch:()=>`${permissionSession.epoch}:${delegationTurn.epoch}`,
   reviewAuto:autoReview,
   protectedStateDirs:[path.join(dependencies.homeDir?.() ?? homedir(),".asen")],
  }));
