@@ -1,10 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
-import {join} from "node:path";
+import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
+import {dirname,join} from "node:path";
 import {tmpdir} from "node:os";
 import {AgentNotificationJournal,agentNoticeEventId} from "../src/runtime/agents/agent-notification-journal.js";
-import {isFreshAgentInspection} from "../src/agents/pi-agent-tools.js";
+import {isFreshAgentInspection,registerAgentTools} from "../src/agents/pi-agent-tools.js";
 const subject={id:"agent-1",sessionId:"session-a",projectId:"/project-a",state:"completed"};
 async function fixture(t:import("node:test").TestContext){
  const dir=await mkdtemp(join(tmpdir(),"asen-agent-notice-"));
@@ -267,4 +267,47 @@ test("MEGA-B8 un reloj no válido no corrompe el diario ni concede transiciones"
  assert.equal(await readFile(file,"utf8"),before);
  assert.equal((await new AgentNotificationJournal(file).list(subject))[0]?.delivery,"pending");
  assert.equal(await new AgentNotificationJournal(file).claim(row.eventId,subject),true);
+});
+
+
+test("MEGA-B7 la cancelación durante la comprobación final impide reconocer el aviso",async t=>{
+ const {file,journal}=await fixture(t);
+ const projectId=await realpath(dirname(file)),sessionId="session-pi-cancel";
+ const record={id:"agente-prueba",sessionId,projectId,role:"explorer",state:"completed",
+  summary:"Inspección real guardada"};
+ const row=await journal.record(record);
+ await journal.claim(row.eventId,record);
+ await journal.markEnqueued(row.eventId,record);
+ const tools=new Map<string,any>();
+ const fakeRuntime={query:async()=>({record}),list:async()=>[record]};
+ registerAgentTools({registerTool(tool:any){tools.set(tool.name,tool);}},
+  async()=>fakeRuntime as never,undefined,undefined,journal);
+ let calls=0;
+ const controller=new AbortController();
+ const context:any={cwd:projectId,mode:"tui",hasUI:true,
+  sessionManager:{getSessionId:()=>{calls++;return sessionId;}},
+  ui:{confirm:async()=>true}};
+ const inspect=tools.get("asen_agent_status");
+ const acknowledge=tools.get("asen_agent_ack");
+ assert.ok(inspect&&acknowledge);
+ await inspect.execute("status",{id:record.id},new AbortController().signal,()=>{},context);
+ calls=0;
+ context.sessionManager.getSessionId=()=>{
+  calls++;
+  if(calls===2)controller.abort();
+  return sessionId;
+ };
+ await assert.rejects(
+  ()=>acknowledge.execute("ack-cancel",{eventId:row.eventId},
+   controller.signal,()=>{},context),
+  /Agent task cancelled/u);
+ assert.ok(calls>=2,"La sesión se volvió a comprobar antes del reconocimiento");
+ assert.equal((await journal.list(record))[0]?.delivery,"enqueued",
+  "Una cancelación no puede escribir acknowledged");
+ context.sessionManager.getSessionId=()=>sessionId;
+ const accepted=await acknowledge.execute("ack-valid",{eventId:row.eventId},
+  new AbortController().signal,()=>{},context);
+ assert.equal(accepted.details.acknowledged,true,
+  "Una comprobación nueva y válida sí permite reconocer el mismo aviso");
+ assert.equal((await journal.list(record))[0]?.delivery,"acknowledged");
 });
