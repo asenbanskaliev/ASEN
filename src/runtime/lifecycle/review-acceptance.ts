@@ -144,7 +144,7 @@ export async function acceptIndependentReview(input:{
  try{details=await evidence();}catch(error){return blocked(error instanceof Error?error.message:"Review result could not be verified");}
  let approved=false;
  try{approved=await input.confirm(details);}catch{return blocked("Pi review confirmation was interrupted; no state changed.");}
- if(!approved)return blocked("User did not authorize accepting this independent review.");
+ if(approved!==true)return blocked("User did not authorize accepting this independent review.");
  if(input.signal?.aborted)return blocked("Review acceptance was cancelled; no state changed.");
  await input.validateIdentity();
  const fresh=(await input.todos.list(identity)).find(task=>task.taskId===item.taskId);
