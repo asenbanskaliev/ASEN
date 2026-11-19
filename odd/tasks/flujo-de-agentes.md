@@ -1,3 +1,13 @@
+## Auditoría actualizada de ASEN frente a Gentle Shell 4.9.0 (2026-11-19)
+
+**Referencia de código:** Gentle Shell `v4.9.0` (`ce64a9a7`) frente a ASEN de la PR #61. **Resultado:** 18 diferencias o puntos de equivalencia analizados, con pruebas A/B y prioridad de cierre. [Abrir el informe técnico completo](./flujo-de-agentes-comparativa-actual-4.9.0.md).
+
+**Hallazgos determinantes:** (1) ASEN carece del modo opcional `full-delegation` por perfil; (2) la delegación automática de dos unidades Writer desde un solo turno de Pi aún no equivale al supervisor real de Gentle; (3) la verificación proporcional de alto riesgo solo está parcialmente conectada a la ejecución; (4) la prueba D es de anfitrión simulado, no prueba de proveedores reales ni de paridad de coste; (5) ASEN conserva controles de SHA, ODD, permisos y gastos más conservadores que no deben retirarse; (6) el fallo de Windows en el historial de 40 escrituras motivó una cola local que **mantiene** el candado entre procesos.
+
+**Siguiente prioridad:** terminar CI completo y publicación del **mismo SHA**; después ensayar E-02/E-04 con autorizaciones reales, y F-01 para auditoría independiente. No fusionar PR #61 ni marcar `globalFull:true` por pruebas simuladas.
+
+---
+
 # Flujo de agentes — ASEN
 
 Estado: IMPLEMENTACION_PARCIAL_EN_PR_DRAFT — SIN DECLARACION_FULL (2026-11-15)
