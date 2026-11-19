@@ -221,6 +221,6 @@ test("E1B: el padre conserva lecturas y delegación controlada",async()=>{
  for(const [name,input] of [["read",{path:"package.json"}],["asen_agent_start",{prompt:"Investigar"}],["asen_plan_request",{instruction:"Preparar un plan"}],["asen_plan_dispatch_next",{todoId:"tarea"}],["asen_code_intelligence",{operation:"query"}]] as const){
   assert.equal(await handler(event(name,input),ctx),undefined,name);
  }
- const denied=await createPrimaryToolPolicyHandler({getDelegationMode:async()=>{throw new Error("Perfil no disponible");}})(event("write",{path:"src/a.ts"}),ctx);
+ const denied=await createPrimaryToolPolicyHandler({getDelegationMode:()=>Promise.reject(new Error("Perfil no disponible"))})(event("write",{path:"src/a.ts"}),ctx);
  assert.equal(denied?.block,true);
 });
