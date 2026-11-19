@@ -88,3 +88,15 @@ test("EF-202 only four observed read queries trigger one suggestion after reject
  assert.equal(tracker.snapshot().recommendationIssued,true);
 });
 
+
+test("G49-A2 un solo consumo tras el aviso y sin duplicar Explorer",()=>{
+ const tracker=new ExplorerBudgetTelemetry();
+ assert.equal(tracker.claimBudgetExplorer(),false,"no hay permiso antes del agotamiento");
+ for(let n=0;n<4;n++)tracker.observe(observation(`budget-${n}`));
+ assert.equal(tracker.snapshot().delegationClaimed,false);
+ assert.equal(tracker.claimBudgetExplorer(),true);
+ assert.equal(tracker.snapshot().delegationClaimed,true);
+ assert.equal(tracker.claimBudgetExplorer(),false);
+ assert.equal(tracker.observe(observation("budget-4")),false);
+ assert.equal(tracker.snapshot().recommendationIssued,true);
+});
