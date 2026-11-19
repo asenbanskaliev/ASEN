@@ -2370,6 +2370,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     loadChildTaskAgentLinks:async identity=>taskAgentLinks.list(identity)
    }:{}),
    planChildTodo:async(input,context)=>preparePlan(input,context as CommandContext,false,true),
+   childProfiles:async identity=>profileLayer(identity),
    ...(agentRuntimePromise&&todoStorePromise&&taskAgentLinks?{
     launchChildWorker:async(unit,confirm,validateParent)=>{
      await validateParent();
