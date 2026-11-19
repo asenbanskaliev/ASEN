@@ -258,7 +258,7 @@ test("T18 el cambio de turno durante una consulta automática invalida la autori
 });
 
 test("T18 una orden estable sigue siendo válida sin cambio de turno",async()=>{
- let epoch=1;const guarded=createPrimaryToolPolicyHandler({modeEpoch:()=>`estado:${epoch}`,getDelegationMode:async()=>"organic"});
+ let epoch=1;const guarded=createPrimaryToolPolicyHandler({modeEpoch:()=>`estado:${epoch}`,getDelegationMode:async()=>("organic" as const)});
  assert.equal(await guarded(event("read",{path:"archivo-normal.txt"}),context(process.cwd())),undefined);
  epoch++;
  assert.equal(await guarded(event("read",{path:"archivo-normal.txt"}),context(process.cwd())),undefined);
