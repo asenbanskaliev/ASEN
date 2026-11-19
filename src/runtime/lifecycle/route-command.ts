@@ -38,8 +38,31 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
  if(!exact(value,Object.hasOwn(value??{},"namedRisks")?[...PLAN_INPUT_KEYS,"namedRisks"]:PLAN_INPUT_KEYS))throw new Error(`ASEN plan input must contain exactly: ${PLAN_INPUT_KEYS.join(", ")} (optional namedRisks)`);
  if(typeof value.instruction!=="string"||!value.instruction.trim()||value.instruction!==value.instruction.trim()||value.instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(value.instruction))throw new Error("ASEN plan instruction is invalid");
  const {instruction,...factsInput}=value;
+ if(candidate&&(candidate.repository!==repositoryIdentity||!candidate.id||!candidate.revision||!candidate.createdAt))
+  throw new Error("ASEN plan candidate does not match the active project");
+ // Si el modelo propone escribir fuera del ámbito original, solo mostramos
+ // los archivos adicionales. Un plan nuevo necesita consentimiento explícito.
+ const raw=factsInput as Record<string,unknown>,scope=raw.scope as {kind?:unknown;expectedPaths?:unknown}|undefined;
+ if(scope?.kind==="known"&&Array.isArray(scope.expectedPaths)&&Array.isArray(raw.writes)){
+  const writes=raw.writes as Array<{path?:unknown}>;
+  const added=writes.map(write=>write?.path).filter(path=>typeof path==="string"&&
+   !scope.expectedPaths!.includes(path)) as string[];
+  if(added.length){
+   const nextPaths=[...scope.expectedPaths,...added];
+   // La validación completa rechaza rutas sensibles, duplicados, traversal
+   // y entradas mal formadas antes de construir cualquier propuesta.
+   deriveOddFacts({...factsInput,scope:{kind:"known",expectedPaths:nextPaths},repositoryIdentity} as unknown as OddRoutingRequest);
+   return JSON.stringify({
+    status:"needs-scope-approval",repository:repositoryIdentity,
+    candidateRevision:candidate?.revision??null,
+    originalPaths:scope.expectedPaths,additionalPaths:added,
+    execution:{started:false,authorized:false},
+    scopeAuthorization:"not-granted",
+    nextStep:"Solicitar autorización expresa de los archivos añadidos; después preparar un plan ODD nuevo sobre el candidato actual. Este resultado no concede permiso ni inicia tareas.",
+   },null,2);
+  }
+ }
  const facts=deriveOddFacts({...factsInput,repositoryIdentity} as unknown as OddRoutingRequest),decision=planOddRoute(facts);
- if(candidate&&(candidate.repository!==repositoryIdentity||!candidate.id||!candidate.revision||!candidate.createdAt))throw new Error("ASEN plan candidate does not match the active project");
  const writeSurfaces=facts.writes.map(write=>write.path);
  const plan=buildOrchestrationPlan({selectionProfile:"organic",taskId:decision.taskIdentity,repository:decision.repositoryIdentity,prompt:instruction,...(candidate?{candidate}:{}),...(candidate&&writeSurfaces.length?{writeSurfaces}:{}),...(runtimeProfiles?{runtimeProfiles}:{})},decision);
  const writerAuthorizationBasis=candidate&&writeSurfaces.length?JSON.stringify({instruction,...factsInput}):undefined;
