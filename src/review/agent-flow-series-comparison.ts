@@ -45,6 +45,7 @@ export function compareAgentFlowSeries(pairs:readonly AgentFlowSeriesPair[]):Age
  const blockers:string[]=[],out:AgentFlowScenarioMeasurements[]=[];
  const seenRuns=new Set<string>(),seenEvidence=new Set<string>();
  const stable=new Map<string,Readonly<{commit:string;platform:string;modelActual:string;thinkingActual:string;toolsDigest:string;permissionsDigest:string;workerCount:number}>>();
+ const systemCommits=new Map<string,string>();
  const inputs=new Map<string,string>();
  if(pairs.length!==9)blockers.push("Exactly nine scenario pairs (18 authenticated executions) are required");
  for(const scenario of scenarios){
@@ -62,6 +63,10 @@ export function compareAgentFlowSeries(pairs:readonly AgentFlowSeriesPair[]):Age
     seenRuns.add(unique);
     if(seenEvidence.has(sample.evidenceDigest))blockers.push("Repeated evidence digest in measured runs");
     seenEvidence.add(sample.evidenceDigest);
+    // Las tres tareas deben usar el mismo código de cada sistema.
+    const originalCommit=systemCommits.get(sample.system);
+    if(originalCommit&&originalCommit!==sample.commit)blockers.push("Commit changed across scenarios: "+sample.system);
+    systemCommits.set(sample.system,sample.commit);
     const baseline=stable.get(scenario+":"+sample.system);
     const current={commit:sample.commit,platform:sample.platform,modelActual:sample.modelActual,
      thinkingActual:sample.thinkingActual,toolsDigest:sample.toolsDigest,

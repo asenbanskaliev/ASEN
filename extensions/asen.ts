@@ -639,7 +639,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
    if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false,reason:"Automatic plan dispatch is disabled."};
    if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false,reason:"The local plan dispatcher is unavailable."};
+   const generation=parentBindingGeneration,manager=ctx.sessionManager;
+   if(hostStatusClosed||ctx.signal?.aborted)
+    return {started:false,authorized:false,reason:"La sesión Pi ha terminado; no se reanuda un trabajo antiguo."};
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;
+   if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
+    return {started:false,authorized:false,reason:"La sesión Pi cambió antes de tomar el trabajo."};
    if(!planAdvanceQueue.enter(key,independentBlockedTodoId))
     return {started:false,authorized:false,reason:"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
    try{
@@ -658,7 +663,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     };
     const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,
      ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
-     runtimeProfiles:activeProfiles,validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
+     runtimeProfiles:activeProfiles,validateIdentity:async()=>{
+      if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
+       throw new Error("La sesión Pi terminó durante el avance: no se lanzará ningún agente");
+      const current=await sessionIdentity(ctx);
+      if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||
+         current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+       throw new Error("Pi session or project changed during automatic plan advancement");
+     },confirm:async task=>{
      if(task.role==="clarifier")return false;
      if(!task.writeSurfaces)return true;
      if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")return false;
@@ -701,7 +713,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       for(const blockedId of queued){
        try{
         const now=await sessionIdentity(ctx);
-        if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.signal?.aborted)break;
+        if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||
+           now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.signal?.aborted)break;
         await advancePlan(ctx,blockedId);
        }catch{
         try{ctx.ui.notify("ASEN no pudo recuperar un aviso de avance. Las tareas siguen guardadas; no se repitieron escrituras.","error");}catch{}

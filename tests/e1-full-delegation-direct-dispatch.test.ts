@@ -63,7 +63,13 @@ test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura a
  assert.equal(approved.details.status,"dispatched",approved.details.reason);
  assert.equal(approved.details.role,"worker");
  assert.equal(permissions,1);
- assert.equal(launches.length<=1,true);
+ // La respuesta "dispatched" no basta: el runner debe recibir exactamente
+ // un Worker, con el modelo y los archivos autorizados.
+ for(let attempt=0;attempt<150&&launches.length===0;attempt++)
+  await new Promise(resolve=>setTimeout(resolve,10));
+ assert.equal(launches.length,1,"el escritor aprobado debe llegar realmente al ejecutor");
+ assert.equal(launches[0].model,"local/modelo-elegido");
+ assert.deepEqual(launches[0].writeSurfaces,["README.md"]);
  // El modelo del perfil se verifica en la tarea persistida, no se cambia
  // arbitrariamente ni se amplía el ámbito del Writer.
  const todos=(await import("../src/runtime/lifecycle/todo-store.js")).SessionTodoStore;

@@ -51,6 +51,7 @@ test("E4: falta de repeticiones, duplicados, cambio de modelo o de SHA bloquean 
   [...valid.slice(0,8),valid[0]!],
   valid.map((row,i)=>i===5?{...row,asen:{...row.asen,modelActual:"local/otro"}}:row),
   valid.map((row,i)=>i===6?{...row,reference:{...row.reference,commit:"c".repeat(40)}}:row),
+  valid.map((row,i)=>i>=3&&i<=5?{...row,asen:{...row.asen,commit:"c".repeat(40)}}:row),
   valid.map((row,i)=>i===4?{...row,asen:{...row.asen,evidenceDigest:valid[0]!.asen.evidenceDigest}}:row),
   valid.map((row,i)=>i===2?{...row,asen:{...row.asen,totalTokens:null}}:row),
   valid.map((row,i)=>i===3?{...row,reference:{...row.reference,providerReceiptObserved:false}}:row),
