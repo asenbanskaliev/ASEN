@@ -156,5 +156,5 @@ test("riesgos mal formados y duplicados no permiten plan ni autorizaciones",()=>
   [{item:3,reason:"X".repeat(501)}],
   [{item:2,reason:"Válido",other:true}],
   Array.from({length:7},(_,i)=>({item:i+1,reason:"Exceso"}))
- ])assert.throws(()=>deriveOddFacts(request({namedRisks:risks as OddRoutingRequest["namedRisks"]})));
+ ])assert.throws(()=>deriveOddFacts(request({namedRisks:risks as NonNullable<OddRoutingRequest["namedRisks"]>})));
 });
