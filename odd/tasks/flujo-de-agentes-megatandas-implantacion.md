@@ -13,7 +13,7 @@
 - Completar reglas observables para cuándo trabajar directamente y cuándo delegar; distinguir preguntas de decisiones de consentimiento.
 - Comprobar versiones y capacidades reales de Pi antes de asumir compatibilidad.
 
-**Cambios publicados en esta ejecución:** elección inicial de modelos configurados, investigador de lectura con modelo configurado, control de modo y editor del perfil, controles de herramientas para impedir escritura directa; pruebas iniciales. **Pendiente:** verificar todos los caminos en Pi auténtico y conectar el modo a la planificación automática de Writer, sin duplicar permisos.
+**Cambios publicados en esta ejecución:** elección inicial de modelos configurados, investigador de lectura con modelo configurado, control de modo y editor del perfil, controles de herramientas para impedir escritura directa; pruebas iniciales. **Pendiente:** verificar en Pi auténtico el recorrido completo de un Writer, su aceptación y los permisos exactos; el planificador ya prepara un Writer separado en modo de delegación completa.
 
 ## B · Trabajo paralelo, continuidad y revisión (8 de 18 puntos)
 **Puntos 05, 06, 07, 08, 11, 12, 13, 15.**
