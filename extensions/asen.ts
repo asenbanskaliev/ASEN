@@ -643,7 +643,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false,reason:"The local plan dispatcher is unavailable."};
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key)){
     const pending=deferredPlanAdvances.get(key)??new Set<string|undefined>();
-    if(pending.size<8)pending.add(independentBlockedTodoId);
+    pending.add(independentBlockedTodoId);
     deferredPlanAdvances.set(key,pending);
     return {started:false,authorized:false,reason:"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
    }
