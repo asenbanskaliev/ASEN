@@ -957,7 +957,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        // The Pi message is queued before visible completion so tests and UI see a consistent transition.
        await sendAgentNotice(record,latest,wake);
        const diagnostic=diagnoseAgentTerminal(record);
-       if(!quiet)latest.ui.notify(completed?`ASEN terminó ${labels[record.role]??"una tarea"}; comprobará el resultado antes de cerrar el plan.`:failed?`ASEN no pudo completar ${labels[record.role]??"una tarea"}. Código: ${diagnostic.code}. No se repetirá automáticamente; revisa el estado antes de continuar.`:`ASEN pausó ${labels[record.role]??"una tarea"}. Código: ${diagnostic.code}. Di «continúa» cuando quieras que revise cómo retomarla.`,completed?"info":"error");
+       if(!quiet)latest.ui.notify(completed?`ASEN terminó ${labels[record.role]??"una tarea"}; comprobará el resultado antes de cerrar el plan.`:failed?`ASEN no pudo completar ${labels[record.role]??"una tarea"}. Código: ${diagnostic.code}. No se repetirá automáticamente; si quieres revisar la causa y la posible continuación, di «continúa».`:`ASEN pausó ${labels[record.role]??"una tarea"}. Código: ${diagnostic.code}. Di «continúa» cuando quieras que revise cómo retomarla.`,completed?"info":"error");
        notificationProjection.publish({sessionId:record.sessionId,projectId:record.projectId},latest.ui,"agent",
         `asen:agent:${record.id}:${record.state}`,`Agent ${record.role}: ${record.state}`);
       };
