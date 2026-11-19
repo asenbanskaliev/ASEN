@@ -103,7 +103,7 @@ test("native edit lists selected scope and safe routable destinations without ex
  const f=await editFixture(t),local=path.join(f.project,".asen","profiles.json");
  await writeFile(local,JSON.stringify({schema:ASEN_PROFILES_SCHEMA,profiles:[{name:"Local",routes:{custom:{},worker:{}}}]}));
  f.queue.push("Edit saved profile","Project","Profile: Local","Back");await f.run("asen-profiles");
- assert.deepEqual(f.screens[2]!.choices,["Profile: Local","Back"]);assert.deepEqual(f.screens[3]!.choices,["Role: explorer","Role: worker","Role: reviewer","Role: verifier","Role: review-risk","Role: review-resilience","Role: review-reliability","Role: review-readability","Role: jd-judge-a","Role: jd-judge-b","Role: jd-fix-agent","Back"]);
+ assert.deepEqual(f.screens[2]!.choices,["Profile: Local","Back"]);assert.deepEqual(f.screens[3]!.choices,["Role: explorer","Role: worker","Role: reviewer","Role: verifier","Role: review-risk","Role: review-resilience","Role: review-reliability","Role: review-readability","Role: jd-judge-a","Role: jd-judge-b","Role: jd-fix-agent","Delegation mode","Back"]);
  await writeFile(local,JSON.stringify({schema:ASEN_PROFILES_SCHEMA,profiles:[]}));
  f.queue.push("Edit saved profile","Project","Back");await f.run("asen-profiles");assert.deepEqual(f.screens.at(-1)!.choices,["Back"]);
 });
