@@ -199,3 +199,28 @@ test("publication and merge preflight cannot be bypassed by pass, Auto, Super YO
  assert.equal(await routine(event("bash",{command:"git push origin feat/test"}),ctx),undefined,
   "explicitly scoped YOLO feature-branch exception remains intact");
 });
+
+
+test("E1B: el modo delegación completa bloquea toda edición directa del padre",async()=>{
+ const handler=createPrimaryToolPolicyHandler({getDelegationMode:()=>"full-delegation"});
+ const ctx=context(process.cwd());
+ for(const name of ["write","edit","bash","bash_background","monitor","powershell","asen_background_start"]){
+  const decision=await handler(event(name,name==="write"||name==="edit"?{path:"src/app.ts",content:"x"}:{command:"echo x > src/app.ts"}),ctx);
+  assert.equal(decision?.block,true,name);
+  assert.match(decision?.reason??"",/full delegation/u);
+ }
+ for(const [name,input] of [["asen_code_intelligence",{operation:"init"}],["unknown_writer",{path:"src/app.ts"}]] as const){
+  const decision=await handler(event(name,input),ctx);
+  assert.equal(decision?.block,true,name);
+ }
+});
+
+test("E1B: el padre conserva lecturas y delegación controlada",async()=>{
+ const handler=createPrimaryToolPolicyHandler({getDelegationMode:async()=>"full-delegation"});
+ const ctx=context(process.cwd());
+ for(const [name,input] of [["read",{path:"package.json"}],["asen_agent_start",{prompt:"Investigar"}],["asen_plan_request",{instruction:"Preparar un plan"}],["asen_plan_dispatch_next",{todoId:"tarea"}],["asen_code_intelligence",{operation:"query"}]] as const){
+  assert.equal(await handler(event(name,input),ctx),undefined,name);
+ }
+ const denied=await createPrimaryToolPolicyHandler({getDelegationMode:async()=>{throw new Error("Perfil no disponible");}})(event("write",{path:"src/a.ts"}),ctx);
+ assert.equal(denied?.block,true);
+});
