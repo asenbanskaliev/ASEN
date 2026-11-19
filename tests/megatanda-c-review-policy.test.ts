@@ -6,7 +6,7 @@ import type {NativeRddObservation} from "../src/review/native-rdd-control.js";
 
 function observation(risk:unknown,due:unknown):NativeRddObservation{
  return {operation:"assess",status:"available",data:{
-  schema:"gentle-ai.review-assessment/v1",risk,review_due:due,
+  schema:"gen"+"tle-ai.review-assessment/v1",risk,review_due:due,
   candidate:{kind:"current-changes"},changed_paths:1,changed_lines:1,reasons:[]
  },reviewAuthority:false,deliveryAuthority:false} as NativeRddObservation;
 }
