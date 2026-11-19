@@ -44,11 +44,11 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
  // los archivos adicionales. Un plan nuevo necesita consentimiento explícito.
  const raw=factsInput as Record<string,unknown>,scope=raw.scope as {kind?:unknown;expectedPaths?:unknown}|undefined;
  if(scope?.kind==="known"&&Array.isArray(scope.expectedPaths)&&Array.isArray(raw.writes)){
-  const writes=raw.writes as Array<{path?:unknown}>;
+  const writes=raw.writes as Array<{path?:unknown}>,originalPaths=scope.expectedPaths as unknown[];
   const added=writes.map(write=>write?.path).filter(path=>typeof path==="string"&&
-   !scope.expectedPaths!.includes(path)) as string[];
+   !originalPaths.includes(path)) as string[];
   if(added.length){
-   const nextPaths=[...scope.expectedPaths,...added];
+   const nextPaths=[...originalPaths,...added];
    // La validación completa rechaza rutas sensibles, duplicados, traversal
    // y entradas mal formadas antes de construir cualquier propuesta.
    deriveOddFacts({...factsInput,scope:{kind:"known",expectedPaths:nextPaths},repositoryIdentity} as unknown as OddRoutingRequest);
