@@ -8,6 +8,7 @@ const verify=async()=>{};
 
 test("E1B: un perfil cambia solo al siguiente turno y lecturas simultáneas comparten la misma decisión",async()=>{
  const latch=new DelegationTurnLatch();
+ assert.equal(latch.epoch,0,"La sesión comienza sin cambios de turno");
  let mode:DelegationMode="full-delegation",loads=0;
  const read=()=>latch.mode(owner,async()=>{loads++;return mode;},verify);
  const values=await Promise.all([read(),read(),read()]);
@@ -16,6 +17,7 @@ test("E1B: un perfil cambia solo al siguiente turno y lecturas simultáneas comp
  mode="organic";
  assert.equal(await read(),"full-delegation","no se relajan permisos a mitad del turno");
  latch.nextTurn();
+ assert.equal(latch.epoch,1,"El nuevo turno invalida también las herramientas pendientes");
  assert.equal(await read(),"organic");
  assert.equal(loads,2);
 });
