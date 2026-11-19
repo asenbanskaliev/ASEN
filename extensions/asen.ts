@@ -626,7 +626,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const profile=(route.source==="default"?layers.session??layers.project??layers.global:layers[route.source])?.active;
    const chain=resolveProfileFallbackChain(await readProfileFallbacksFile(profileFallbacksFile),profile,role);
    return {...route,...(profile&&chain.length?{modelFallback:{profile,chain}}:{})};
-  },agentNoticeJournal):undefined;
+  },agentNoticeJournal,identity=>{
+   const budget=explorerBudget;
+   return !!budget&&budget.sessionId===identity.sessionId&&
+    budget.projectId===identity.projectId&&budget.telemetry.claimBudgetExplorer();
+  }):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const advancingPlans=new Set<string>();
   const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
@@ -1118,7 +1122,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // Es orientativo: no lanza agentes ni concede permisos.
     let explorationOverBudget=false;
     const budget=explorerBudget;
-    if(budget?.telemetry.snapshot().overBudget&&
+    if(budget?.telemetry.snapshot().overBudget&&!budget.telemetry.snapshot().delegationClaimed&&
        (ctx as CommandContext|undefined)?.sessionManager?.getSessionId?.()===budget.sessionId){
      try{
       const current=await sessionIdentity(ctx as CommandContext);
