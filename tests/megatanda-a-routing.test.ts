@@ -68,7 +68,6 @@ test("G49-A2: el agotamiento se comunica solo como consejo, sin ejecutar ni conc
 
 test("G49-A2: los eventos Pi entregan el presupuesto solo a su sesión y proyecto",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-g49-a-"));
- t.after(()=>rm(root,{recursive:true,force:true}));
  const handlers=new Map<string,Array<(event:any,context:any)=>unknown>>(),tools:any[]=[];
  const pi={
   on(name:string,handler:(event:any,context:any)=>unknown){handlers.set(name,[...(handlers.get(name)??[]),handler]);},
@@ -83,8 +82,11 @@ test("G49-A2: los eventos Pi entregan el presupuesto solo a su sesión y proyect
   sessionManager:{getSessionId:()=>"g49-session-a"},
   ui:{notify(){},setWidget(){},setStatus(){}},
  };
+ t.after(async()=>{
+  try{for(const handler of handlers.get("session_shutdown")??[])await handler({},ctx);}
+  finally{await rm(root,{recursive:true,force:true});}
+ });
  await facade.startSession(ctx);
- t.after(async()=>{for(const handler of handlers.get("session_shutdown")??[])await handler({},ctx);});
  const prompt=async(context=ctx)=>{
   const options={sections:{} as Record<string,string>};
   for(const handler of handlers.get("before_agent_start")??[])await handler({systemPromptOptions:options},context);
