@@ -45,8 +45,10 @@ export async function runJudgmentDay(input:JudgmentDayInput):Promise<JudgmentDay
   ...first.findings.map(finding=>Object.freeze({judge:"jd-judge-a" as const,reviewerId:first.reviewerId,finding})),
   ...second.findings.map(finding=>Object.freeze({judge:"jd-judge-b" as const,reviewerId:second.reviewerId,finding}))
  ]);
+ // Un 'pass' puede contener hallazgos menores: no deben perderse en el
+ // traspaso ODD, ni tratarse como aceptación automática del candidato.
  const status=first.verdict!==second.verdict?"disagreement-requires-review" as const:
-  first.verdict==="fail"?"findings-require-review" as const:"analysis-complete" as const;
+  first.verdict==="fail"||findings.length>0?"findings-require-review" as const:"analysis-complete" as const;
  const result=Object.freeze({status,requestId:evidence.requestId,sessionId:evidence.sessionId,candidateTreeIdentity:evidence.candidate.treeIdentity,
   candidateRevision:evidence.candidate.revision,judges,findings,acceptance:"not-accepted" as const,
   deliveryAuthority:false as const,autoMerge:false as const,fixAgent:"not-launched" as const});
