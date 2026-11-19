@@ -156,7 +156,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  if(role==="worker"){
   const prepared=await workerAuthorization(task,input.identity,input);if("reason" in prepared)return {status:"blocked",reason:prepared.reason};
   const approved=await input.confirm({id:task.taskId,title:task.title,role,instruction:prepared.instruction,writeSurfaces:prepared.writeSurfaces,candidateRevision:prepared.candidate.revision});
-  if(!approved)return {status:"blocked",reason:"Pi user declined the exact scoped write authorization; the plan was not changed."};
+  if(approved!==true)return {status:"blocked",reason:"Pi user declined the exact scoped write authorization; the plan was not changed."};
   await input.validateIdentity();
   const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
   if(!fresh||!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};
@@ -208,7 +208,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  }
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed after planning; rebuild the exploration against the current candidate."};}
  const approved=input.autoApproveReadOnly===true||await input.confirm({id:task.taskId,title:task.title,role,instruction:task.description});
- if(!approved)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
+ if(approved!==true)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
  await validateReadOnlyLaunch();
  const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
  if(!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};
