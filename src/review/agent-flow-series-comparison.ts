@@ -48,8 +48,8 @@ export function compareAgentFlowSeries(pairs:readonly AgentFlowSeriesPair[]):Age
  const inputs=new Map<string,string>();
  if(pairs.length!==9)blockers.push("Exactly nine scenario pairs (18 authenticated executions) are required");
  for(const scenario of scenarios){
-  const records=pairs.filter(pair=>pair?.scenario===scenario);
-  const repetitions=new Set<number>(),success:typeof records=[];
+  const records:AgentFlowSeriesPair[]=pairs.filter(pair=>pair?.scenario===scenario);
+  const repetitions=new Set<number>(),success:AgentFlowSeriesPair[]=[];
   for(const pair of records){
    if(!rounds.includes(pair.repetition))throw new TypeError("Invalid scenario repetition");
    if(repetitions.has(pair.repetition)){blockers.push("Duplicate repetition for "+scenario);continue;}
