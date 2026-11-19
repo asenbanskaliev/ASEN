@@ -42,7 +42,7 @@ test("A4: reanudar, recargar, bifurcar o tener historial conserva el modelo",asy
  let called=0;
  assert.equal(await applyStartupOrchestratorModel(request({isChild:true,setModel:()=>{called++;return true;}})),"child");
  assert.equal(await applyStartupOrchestratorModel(request({entries:()=>["historial"],setModel:()=>{called++;return true;}})),"not-empty");
- assert.equal(await applyStartupOrchestratorModel(request({entries:undefined,setModel:()=>{called++;return true;}})),"not-empty");
+ assert.equal(await applyStartupOrchestratorModel(request({entries:()=>undefined,setModel:()=>{called++;return true;}})),"not-empty");
  assert.equal(called,0);
 });
 
