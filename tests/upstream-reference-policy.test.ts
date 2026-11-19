@@ -27,6 +27,10 @@ test("only explicitly registered non-executable provenance paths are documents",
  assert.equal(isPinnedReferenceDocument(audit),true);
  const estado="odd/tasks/flujo-de-agentes-estado-18-objetivos.md";
  assert.equal(isPinnedReferenceDocument(estado),true);
+ const cierre="odd/tasks/flujo-agentes-18-puntos-cierre-20261119.md";
+ assert.equal(isPinnedReferenceDocument(cierre),true);
+ assert.equal(isPinnedReferenceDocument(cierre.replace(".md",".ts")),false);
+ assert.equal(isPinnedReferenceDocument(cierre.replace("20261119","20261120")),false);
  assert.equal(isPinnedReferenceDocument(estado.replace(".md",".js")),false);
  assert.equal(isPinnedReferenceDocument(estado.replace("18-objetivos","19-objetivos")),false);
  assert.equal(isPinnedReferenceDocument(audit.replace(".md",".ts")),false);
