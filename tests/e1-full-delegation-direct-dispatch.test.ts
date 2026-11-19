@@ -14,11 +14,14 @@ test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura a
  const worktree=join(root,"proyecto");await mkdir(worktree);
  const project=await realpath(worktree),sessionId="delegacion-real";
  await writeFile(join(project,"README.md"),"Documento inicial\n");
+ // Los archivos locales de estado de ASEN no son cambios del candidato Git.
+ // Cualquier otro archivo inesperado sigue siendo visible al control de limpieza.
+ await writeFile(join(project,".gitignore"),".asen/\n");
  const git=(...args:string[])=>{
   const run=spawnSync("git",["-C",project,...args],{encoding:"utf8",windowsHide:true});
   assert.equal(run.status,0,run.stderr);
  };
- git("init","-q");git("add","README.md");
+ git("init","-q");git("add","README.md",".gitignore");
  git("-c","user.name=ASEN CI","-c","user.email=asen@example.invalid","commit","-qm","Base de prueba");
  const profileFile=join(root,"profiles.json"),storeFile=join(root,"todos.json"),agentsFile=join(root,"agents.json");
  await writeProfilesFile(profileFile,{schema:ASEN_PROFILES_SCHEMA,active:"agentes",
@@ -43,6 +46,9 @@ test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura a
  })(pi as any);
  t.after(async()=>{for(const h of events.get("session_shutdown")??[])await h({},context);});
  for(const h of events.get("session_start")??[])await h({reason:"new"},context);
+ const clean=spawnSync("git",["-C",project,"status","--porcelain"],{encoding:"utf8",windowsHide:true});
+ assert.equal(clean.status,0,clean.stderr);
+ assert.equal(clean.stdout,"","El candidato debe continuar limpio después de iniciar Pi");
  const planTool=tools.get("asen_plan_request"),dispatchTool=tools.get("asen_plan_dispatch_next");
  assert.ok(planTool);assert.ok(dispatchTool);
  const request={instruction:"Modificar solo el documento autorizado",intent:"implementation",
