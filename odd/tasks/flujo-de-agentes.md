@@ -7,6 +7,53 @@ Rama padre: `feat/t12-integrated-acceptance-merge`
 Baseline inmutable para este plan: `2d20ecf2dff6b3f0a7cb509f85f0e06ca86827b6`
 Referencia a contrastar: Gentle Shell 4.8.0. No declarar paridad hasta observarla.
 
+## Actualización de la comparación funcional Gentle Shell 4.9.0 — 2026-11-19
+
+**Estado de esta actualización:** INVESTIGACIÓN_Y_PLANIFICACIÓN, NO IMPLEMENTACIÓN; ninguna comprobación A/B real nueva; `globalFull:false`.
+
+**Referencia exacta para flujo de agentes:** Gentle Shell `v4.9.0`, commit `ce64a9a708e50c0ca899c8023140e63f29f293e1`, comparada con ASEN PR #61, SHA `d38cc1dcce3fd79bfe15acbba23985973bb04852` antes de esta actualización documental. Se preservan las referencias y evidencias históricas 4.8.0; la actualización 4.9.0 **afecta solo a lógica de agentes**, no a Desktop, Tower ni al alcance de T11.
+
+**Investigación técnica íntegra:** [Gentle Shell 4.9.0 — 13 diferencias, reglas A/B, fuentes y 38 casos verificables](./flujo-de-agentes-gentle-shell-4.9.0-investigacion.md). Este documento contiene por cada punto: cuándo ocurre A/B, qué hacen ambos sistemas, origen en código o contrato, decisión de adopción, riesgos y pruebas. **Las reglas textuales del orquestador de Gentle no son garantía del runtime por sí solas.**
+
+### Diferencias registradas individualmente en el plan
+
+| Brecha | Casuística exacta de Gentle 4.9.0 y situación observada de ASEN | Decisión óptima | Tareas existentes / pruebas |
+| --- | --- | --- | --- |
+| **G49-01 — Decidir trabajar o delegar** | Si la tarea es pequeña, clara y de riesgo contenido, el padre actúa directo. Si es grande pero indivisible y sin motivo para delegar, trabaja directo con seguimiento ODD; no lanza Worker por tamaño. ASEN tiene rutas `direct/plan/verify/incident/orchestrate`, sin equivalencia probada de los tres criterios de tamaño y los mecanismos. Existe modo Gentle de delegación total **opcional**. | **ADAPTAR** disparadores sobre el orquestador actual, no nuevo motor. Modo total: **POSPONER** hasta consentimiento y Pi real. | T02/T04/T06; F49-01, 02, 30 |
+| **G49-02 — Explorer por investigación acumulada** | Si la lectura directa exige superar el lote de 3 consultas o ~10k tokens, Gentle deriva un Explorer read-only; no lo lanza para preparar una edición conocida. ASEN hoy deriva automáticamente Explorer sobre todo ante `incident`. | **ADOPTAR** como señal observable, sin convertir cada lectura en llamada pagada. | T02/T04; F49-03, 04 |
+| **G49-03 — Paralelismo por independencia real** | Dos unidades grandes de comportamiento independientes, con código+tests+docs unidos, pueden salir simultáneamente; una dependencia obliga a secuenciar. ASEN tiene Dispatcher y supervisor, pero exige preparar worktrees/sesiones/planes y autorizar lote+Worker. | **ADAPTAR** y simplificar preparación solo con garantías equivalentes. Reusar Dispatcher/diarios; no crear otro runtime ni unir automáticamente. | T04/T06; F49-05, 06, 07, 08, 36 |
+| **G49-04 — Ampliación de archivos autorizados** | Si el hijo descubre un archivo adicional, no escribe: informa al padre, que decide si cabe en el mismo objetivo; si es material nuevo, vuelve a la persona. ASEN vincula ámbitos a concesiones y SHA. | **MANTENER ASEN** para autoridad; mejorar propuesta de rutas, nunca ampliar grant consumido. | T06/T08; F49-09, 10, 35 |
+| **G49-05 — Segundo plano y aviso final** | Política apagada -> primer plano. Encendida -> ID y cola; `agent_end` no es asentamiento, `agent_settled` sí. No sondeo de estado; aviso único, reducido si pasa 90 s. ASEN tiene entrega/journal de 90 s, pero la continuación del plan no está acreditada E2E. | **ADAPTAR** el enlace terminal a la siguiente decisión segura, sin relanzar ni generar un segundo turno por error. | T01/T06/T07; F49-11..15 |
+| **G49-06 — Caídas y recuperación** | Un spawn fallido afecta al hijo; cancelación detiene; apagado con tarea en curso no autoriza replay. Si se agota la recuperación, se diagnostica la causa y continúa otra unidad independiente autorizada. ASEN guarda incertidumbre y bloquea replay de escrituras. | **MANTENER ASEN** ante resultado incierto, **ADOPTAR** continuidad de unidades independientes. | T01/T06/T08; F49-15, 16, 33, 34 |
+| **G49-07 — Cambio de modelo por fallo** | Quota/429 o error transitorio activan alternativa autorizada con cooldown; cancelación no activa fallback. ASEN ya tiene política 30/2 minutos y cadena máxima de ocho, sin todas las pruebas reales de coste y modelo efectivo. | **MANTENER Y PROBAR**. Ninguna ruta automática a modelos pagos/desconocidos. | T02/T05; F49-17..20 |
+| **G49-08 — Modelo del orquestador en sesión nueva** | Gentle aplica el orquestador del perfil en sesiones propias nuevas elegibles sin cambiar ajuste global; si no funciona, conserva el modelo. ASEN captura perfiles de roles, pero no está acreditado el mismo cambio del padre. | **ADOPTAR SOLO SI Pi LO SOPORTA**, con verificación de sesión, credencial, modelo y coste. | T02/T05; F49-21, 22 |
+| **G49-09 — Verificación proporcional** | Bajo riesgo: lectura o auto-pruebas; alto riesgo nombrado: verificador independiente; tras paralelo: prueba conjunta. ASEN contiene política descriptiva no conectada en producción y comandos reales de revisión. | **ADAPTAR** conectando fuente real de riesgo; no cuatro revisores ni Verifier por defecto. | T03/T04/T08; F49-23..25, 36 |
+| **G49-10 — Correcciones agotadas y delegación rechazada** | Un Worker devuelve diagnóstico `partial` al agotar correcciones; el padre decide, no repite a ciegas; un rechazo de Writer pequeño permite trabajo directo si está autorizado, sin bucle. ASEN separa Fix y consentimiento, pero aún no une toda la decisión por causa. | **ADAPTAR** la clasificación y continuidad, **MANTENER** aprobación nueva para escrituras/cambio de objetivo. | T04/T06/T08; F49-25, 29, 30, 34 |
+| **G49-11 — Preguntas abiertas vs permisos cerrados** | Elección ordinaria admite respuesta escrita; consentimiento/token exacto no. Si no cabe mostrar todas las opciones, se conserva la pregunta íntegra y se para. ASEN tiene select/confirm, sin equivalencia probada de sobres completos arbitrarios. | **ADOPTAR contrato** sin copiar herramientas privadas ni aceptar texto libre como consentimiento. | T04/T06/T08; F49-04, 31, 32 |
+| **G49-12 — Judgment Day y Fix** | Dos jueces independientes; discrepancias y hallazgos congelados; máximo dos rondas. ASEN ya tiene dos jueces/limite dos y propuesta de nuevo ODD, pero no trayectoria E2E autenticada. | **MANTENER seguridad** y completar conexión y pruebas reales; ninguna autoaceptación o auto-Fix. | T03/T04/T08; F49-26..29, 37 |
+| **G49-13 — Incidentes Git y estado de aceptación** | Ante directorio equivocado, cambio no permitido, SHA distinto o fallo de herramienta, se detiene la ruta afectada y revisa Git. ASEN ya comprueba SHA, ámbitos, recibos y worktrees. | **MANTENER ASEN**, añadir diagnóstico claro y continuidad independiente sin permisos nuevos. | T01/T06/T08/T09/T10; F49-33..38 |
+
+### Decisiones de adecuación y eficiencia
+
+1. **No copiar el diseño literalmente.** Gentle combina instrucciones al modelo con barreras de runtime; ASEN debe aplicar seguridad en el Dispatcher/host y conservar una sola fuente de verdad ODD/TODOS.
+2. **No delegar por tamaño bruto.** En modo normal, una tarea sencilla o una sola unidad indivisible se resuelve directamente cuando el objetivo y los permisos lo permiten. Delegar cuesta tiempo y llamadas. El modo de delegación total es optativo y requiere una decisión de producto separada.
+3. **No empeorar la seguridad para ganar velocidad.** ASEN conserva concesiones por Worker, revalidación exacta de SHA, diario de intentos, permisos de coste, prevención de duplicados y no-merge. Automatización segura significa continuar análisis/planificación, no reaprovechar consentimientos.
+4. **Antes de crear código, comprobar conexión real.** `src/review/review-assessment-policy.ts` se declara no usado en producción; `src/runtime/lifecycle/session-orchestrator.ts` se marca sin entrada productiva. Determinar si el host ya dispone de otra ruta equivalente, reusar, no duplicar.
+5. **No confundir estado y resultado.** Una prueba estática, un mock, `completed`, `acknowledged`, `analysis-complete` y CI verde aislado no prueban cadena completa. Registrar siempre modelo solicitado/resuelto/consumido, rama, SHA, recibos y causas de fallo.
+6. **La compatibilidad manda.** No importar APIs ni binarios de Pi/Gentle AI 4.9.0 si el Pi fijado por ASEN no admite el contrato. Adaptar comportamiento con pruebas negativas primero.
+7. **Optimizar con A/B.** Los 38 escenarios F49 del anexo comprueban exactitud, tiempo, coste, consumo, duplicados y permisos; seleccionar 1, 2 o 4 agentes solo si mejora la medida sin aumentar defectos graves.
+
+### Orden de trabajo y criterios de cierre
+
+- **G49-A / P0 — Decisiones y perfiles:** G49-01/02/08/10. Reglas de ruta y Explorer, pregunta humana vs duda técnica, modelo del padre condicionado al host. Mantener comportamiento previo de `direct/plan/incident/verify`.
+- **G49-B / P0 — Paralelismo y continuidad:** G49-03/04/05/06/13. Unir Dispatcher, supervisor, eventos terminales, Todo y diarios. Dos Workers reales solo con autorización válida; no reintentos ni fusionar.
+- **G49-C / P0-P1 — Fallos, revisión y reparaciones:** G49-07/09/11/12. Revisiones proporcionales, diagnósticos de agotamiento, JD real de dos modelos y Fix autorizado aparte.
+- **G49-D / P1 — T09/T10 y 38 A/B:** pruebas RED/GREEN/PRESERVE para cambios, Pi/Windows/macOS/Linux según alcance, medidas reales, revisión independiente y CI/Release Gate del SHA final.
+
+**Criterio objetivo:** `globalFull:false` hasta demostrar que cada caso obligatorio pasa por el punto de entrada Pi real y que el flujo completo, sus autorizaciones y sus resultados son correctos. Los casos saltados o sin modelo autenticado siguen `SKIPPED/UNKNOWN`; no cerrar T09/T10 por esta investigación.
+
+---
+
 ## Objetivo final fijado y trazabilidad
 
 **Documento rector del resultado esperado:** [Flujo de agentes — objetivo funcional](./flujo-de-agentes-objetivo.md). Contiene el mapa Orquestador → Clarifier/Explorer → ODD/TODOS → Models/Profiles → Workers aislados → Dispatcher/Verifier → 4R/Judgment Day → Fix autorizado o integración controlada → UI. **Es un objetivo verificable, no un estado ya implementado.**
