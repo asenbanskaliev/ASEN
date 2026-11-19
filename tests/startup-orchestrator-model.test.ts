@@ -136,3 +136,39 @@ test("A4: integración real con el inicio Pi y perfiles guardados",async t=>{
  assert.deepEqual(calls,[]);
  assert.equal(ctx.model.id,"modelo-viejo");
 });
+
+test("E1A el aviso de modelo no comprobado no inventa una selección efectiva",async t=>{
+ const home=await mkdtemp(path.join(tmpdir(),"asen-modelo-no-comprobado-"));
+ const file=path.join(home,".asen","profiles.json"),notices:string[]=[];
+ const events=new Map<string,Array<(event:any,context:any)=>unknown>>();
+ await writeProfilesFile(file,{
+  schema:ASEN_PROFILES_SCHEMA,active:"modelo-principal",profiles:[{
+   name:"modelo-principal",routes:{orchestrator:{model:"local/modelo-gratuito"}},
+  }],
+ });
+ const original={provider:"local",id:"modelo-anterior",cost:FREE.cost};
+ const ctx:any={
+  cwd:home,mode:"rpc",hasUI:true,model:original,
+  sessionManager:{getSessionId:()=>"comprobacion-pi",getEntries:()=>[]},
+  modelRegistry:{find:(provider:string,id:string)=>provider==="local"&&id==="modelo-gratuito"?FREE:undefined},
+  ui:{notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}},
+ };
+ let attempts=0;
+ const pi={
+  on(name:string,handler:(event:any,context:any)=>unknown){events.set(name,[...(events.get(name)??[]),handler]);},
+  registerCommand(){},registerTool(){},
+  setModel:async()=>{attempts++;return true;},
+ };
+ createAsenExtension({homeDir:()=>home,profilesFile:file,enableAgentRuntime:false,
+  enableTodoRuntime:false,enableMemoryRuntime:false,enableWorkspaceRuntime:false})(pi as any);
+ t.after(async()=>{
+  try{for(const handler of events.get("session_shutdown")??[])await handler({},ctx);}
+  finally{await rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
+ });
+ for(const start of events.get("session_start")??[])await start({reason:"new"},ctx);
+ assert.equal(attempts,1);
+ const warnings=notices.filter(message=>message.includes("modelo principal"));
+ assert.equal(warnings.length,1);
+ assert.match(warnings[0]!,/no se pudo comprobar cuál quedó activo/u);
+ assert.doesNotMatch(warnings[0]!,/se conserva la selección anterior/u);
+});
