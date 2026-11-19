@@ -2424,12 +2424,17 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  pi.on("tool_call",createPrimaryToolPolicyHandler({
   getMode:ctx=>permissionSession.mode(ctx),
   getDelegationMode:async ctx=>{
-   const manager=ctx.sessionManager;
-   if(!manager?.getSessionId?.()||!ctx.cwd)return "organic";
-   const owned=await sessionIdentity(ctx as CommandContext);
-   const layers=await profileLayer(owned);
-   const fresh=await sessionIdentity(ctx as CommandContext);
-   if(fresh.sessionId!==owned.sessionId||fresh.projectId!==owned.projectId)
+   const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd;
+   if(!sessionId||!cwd)return "organic";
+   const projectId=await canonical(cwd);
+   const file=dependencies.profilesFile??path.join(dependencies.homeDir?.()??homedir(),".asen","profiles.json");
+   const partition=await canonicalProfilePartition(file);
+   const captured=await readSessionProfile(partition,{sessionId,projectId});
+   const global=captured?.file??await readProfilesFile(file);
+   const project=await readProfilesFile(path.join(projectId,".asen","profiles.json"));
+   const layers:ProfileLayer=captured?.source==="explicit-session"?{session:global,project}:{global,project};
+   const currentSession=ctx.sessionManager?.getSessionId?.(),currentProject=await canonical(ctx.cwd);
+   if(currentSession!==sessionId||currentProject!==projectId||ctx.signal?.aborted)
     throw new Error("Profile session changed");
    return resolveRuntimeDelegationMode(layers).mode;
   },
