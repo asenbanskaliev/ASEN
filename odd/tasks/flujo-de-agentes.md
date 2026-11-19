@@ -1,3 +1,14 @@
+## Plan rector de implantación auditado — 19/11/2026
+
+**Fuente vigente para implantar E0–E4 y auditar F:** [Plan rector completo v1.1 — decisiones, contratos, 19 tareas quirúrgicas, 13 hallazgos y puertas de admisión](./flujo-de-agentes-plan-implantacion-4.9.0.md).
+
+- **Prevalece** sobre decisiones antiguas de estos documentos en lo relativo a modelos configurados, uso automático de modelos de pago, modos por perfil, permisos acotados por lote y secuencia E0–E4 → F.
+- **No modifica los permisos actuales:** los controles de escritura, las comprobaciones de Git y la fusión manual siguen vigentes hasta que nuevas funciones se implementen y prueben.
+- **Estado:** plan auditado y publicado, no ejecución de las fases E1–E4 ni paridad real. `globalFull:false`.
+- **Primer trabajo ejecutable:** E0-02 y E0-03 (contratos de host Pi y estados), seguidos de E1A-01 a E1A-03 (selección de modelos configurados), con pruebas rojas y negativas antes del código.
+
+---
+
 ## Auditoría actualizada de ASEN frente a Gentle Shell 4.9.0 (2026-11-19)
 
 **Referencia de código:** Gentle Shell `v4.9.0` (`ce64a9a7`) frente a ASEN de la PR #61. **Resultado:** 18 diferencias o puntos de equivalencia analizados, con pruebas A/B y prioridad de cierre. [Abrir el informe técnico completo](./flujo-de-agentes-comparativa-actual-4.9.0.md).
