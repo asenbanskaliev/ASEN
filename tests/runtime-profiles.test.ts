@@ -77,3 +77,20 @@ test("E1B: un modo inventado no se guarda ni altera perfiles existentes",()=>{
  }
  assert.equal(serializeRuntimeProfiles(original),before);
 });
+
+
+test("E1B: modificar un perfil no cambia el modo de otro",()=>{
+ const file={schema:ASEN_PROFILES_SCHEMA,active:"B",profiles:[
+  {name:"A",routes:{worker:{model:"local/uno"}},mode:"organic" as const},
+  {name:"B",routes:{worker:{model:"local/dos"}},mode:"full-delegation" as const},
+ ]};
+ const updated=upsertProfile(file,{name:"A",mode:"organic",routes:{worker:{model:"local/nuevo"}}});
+ const parsed=parseRuntimeProfiles(serializeRuntimeProfiles(updated));
+ assert.ok(parsed);
+ assert.equal(parsed.profiles.find(p=>p.name==="B")?.mode,"full-delegation");
+ assert.deepEqual(resolveRuntimeDelegationMode({global:parsed}),{mode:"full-delegation",source:"global"});
+ assert.equal(updated.profiles.find(p=>p.name==="A")?.routes.worker?.model,"local/nuevo");
+ const reversed=upsertProfile(updated,{name:"B",mode:"organic",routes:{worker:{model:"local/dos"}}});
+ assert.equal(reversed.profiles.find(p=>p.name==="B")?.mode,"organic");
+ assert.equal(file.profiles[1]?.mode,"full-delegation","nunca muta el objeto de origen");
+});
