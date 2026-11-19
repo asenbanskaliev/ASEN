@@ -72,7 +72,15 @@ test("workspace review keeps the default risk triple when native assess is unava
 
 test("native assess passive risk lowers severity, lenses and the independent verifier",async t=>{
  const state=setup(t,assessmentData({risk:"passive",reasons:[{code:"docs_only"}],review_due:false,review_due_reason:"passive"}));
- const result=await state.handler("workspace",state.context) as {risk:{severity:string;lenses:string[];reason:string;independentVerifier:boolean}};
+ const result=await state.handler("workspace",state.context) as {
+  risk:{severity:string;lenses:string[];reason:string;independentVerifier:boolean};
+  verificationAdvice:{nativeRisk:string;verificationRisk:string;reviewDue?:boolean;lifecycleAuthority:boolean;independentVerifier:boolean};
+ };
+ assert.equal(result.verificationAdvice.nativeRisk,"passive");
+ assert.equal(result.verificationAdvice.verificationRisk,"passive");
+ assert.equal(result.verificationAdvice.reviewDue,false);
+ assert.equal(result.verificationAdvice.lifecycleAuthority,false);
+ assert.equal(result.verificationAdvice.independentVerifier,false);
  assert.equal(result.risk.severity,"low");
  assert.deepEqual([...result.risk.lenses],["risk"]);
  assert.equal(result.risk.independentVerifier,false);
