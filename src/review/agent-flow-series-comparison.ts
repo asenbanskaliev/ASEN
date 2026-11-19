@@ -62,13 +62,13 @@ export function compareAgentFlowSeries(pairs:readonly AgentFlowSeriesPair[]):Age
     seenRuns.add(unique);
     if(seenEvidence.has(sample.evidenceDigest))blockers.push("Repeated evidence digest in measured runs");
     seenEvidence.add(sample.evidenceDigest);
-    const baseline=stable.get(sample.system);
+    const baseline=stable.get(scenario+":"+sample.system);
     const current={commit:sample.commit,platform:sample.platform,modelActual:sample.modelActual,
      thinkingActual:sample.thinkingActual,toolsDigest:sample.toolsDigest,
      permissionsDigest:sample.permissionsDigest,workerCount:sample.workerCount};
     if(baseline&&JSON.stringify(baseline)!==JSON.stringify(current))
      blockers.push("The execution setup changed for "+sample.system);
-    stable.set(sample.system,current);
+    stable.set(scenario+":"+sample.system,current);
    }
    const previousInput=inputs.get(scenario);
    if(previousInput&&previousInput!==pair.asen.inputDigest)
