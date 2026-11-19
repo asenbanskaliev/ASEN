@@ -4,7 +4,7 @@
 **Objetivo:** igualar **decisiones, transiciones, concurrencia, revisión y recuperación** de la referencia 4.9.0, aprovechando el motor propio de ASEN, ODD, Pi y sus barreras de seguridad.
 **Punto de partida comprobado:** commit `dcb68a67a5801ee672523206235273ac72e7a7cc`: CI `44496356490`, control de arquitectura `44496356513`, pruebas Pi 1.2 `44496356769` y control de publicación `44496356488`, todos **success**. Prueba gratuita externa `skipped`.
 **Fuentes ya auditadas:** [comparación actual y 18 diferencias](./flujo-de-agentes-comparativa-actual-4.9.0.md), [investigación de escenarios](./flujo-de-agentes-gentle-shell-4.9.0-investigacion.md), [objetivo anterior](./flujo-de-agentes-objetivo.md).
-**Estado:** PLANIFICADO, NO IMPLEMENTADO EN ESTAS FASES. La corrección de D está cerrada por CI; `globalFull:false` porque faltan comportamientos y pruebas auténticas equivalentes.
+**Estado:** HISTÓRICO / ARCHIVADO (matriz de 26 casos absorbida por la comparativa actual y el plan rector 4.9.0).
 
 ## 1. Definición de «mismo flujo»
 

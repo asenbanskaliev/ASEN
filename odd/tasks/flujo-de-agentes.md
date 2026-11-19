@@ -4,7 +4,7 @@
 
 - **Prevalece** sobre decisiones antiguas de estos documentos en lo relativo a modelos configurados, uso automático de modelos de pago, modos por perfil, permisos acotados por lote y secuencia E0–E4 → F.
 - **No modifica los permisos actuales:** los controles de escritura, las comprobaciones de Git y la fusión manual siguen vigentes hasta que nuevas funciones se implementen y prueben.
-- **Estado:** plan auditado y publicado, no ejecución de las fases E1–E4 ni paridad real. `globalFull:false`.
+- **Estado:** ARCHIVADO / SUPERSEDIDO por [flujo-de-agentes-plan-implantacion-4.9.0.md](flujo-de-agentes-plan-implantacion-4.9.0.md).
 - **Primer trabajo ejecutable:** E0-02 y E0-03 (contratos de host Pi y estados), seguidos de E1A-01 a E1A-03 (selección de modelos configurados), con pruebas rojas y negativas antes del código.
 
 ---

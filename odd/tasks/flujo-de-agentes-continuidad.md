@@ -13,7 +13,7 @@ Plan rector: [flujo-de-agentes.md](./flujo-de-agentes.md)
 - **A — Bloqueo antes de escritura**: N1 + P1/P2/P5 + T06. Prioridad CRÍTICA DE OPERACIÓN. Pendiente; evitar repetir prueba pagada hasta pruebas negativas locales.
 - **B — Ciclo de vida Pi/cancelación**: N7/N8 y hallazgos 2/3/8 + P4/P6/P7 + T01/T02/T08. Pendiente, después de A.
 - **C — T06 + T07 conectados**: N2/N3 + P3/P8; unión real de sesiones/estado, actualización de paneles y TUI. Pendiente; tests de simulación insuficientes.
-- **C.1 — Paridad de interfaz T11**: nuevo trabajo prioritario tras C y antes del cierre visual de T07. Fuente fijada Gentle Shell 4.8.0, lateral real y distribución por ancho, barra, panel, presets, pruebas Pi 1.2.0. Documento: [T11](./flujo-de-agentes-t11-layout-gentle-shell-4.8.0.md). **Estado PENDIENTE**: análisis documentado; no hay implementación ni prueba visual certificada.
+- **C.1 — Paridad de interfaz T11**: nuevo trabajo prioritario tras C y antes del cierre visual de T07. Fuente fijada Gentle Shell 4.8.0, lateral real y distribución por ancho, barra, panel, presets, pruebas Pi 1.2.0. Documento: [T11](./flujo-de-agentes-t11-layout-gentle-shell-4.8.0.md). **Estado:** HISTÓRICO / ARCHIVADO (documento de traspaso previo a la ejecución de megatandas A-E en PR #61).
 - **D — ODD, revisión y Fix**: N4/N5 y hallazgos 5/6/7 + P9 + T03/T04/T05/T08. Pendiente; las condiciones de aceptación humanas se mantienen.
 - **E — Seguridad, regresión y auditoría**: N6 y hallazgos pendientes + P10 + T09/T10. Pendiente.
 - **F — A/B y equivalencia**: mediciones auténticas y cierre T09/T10. Pendiente.

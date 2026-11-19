@@ -47,6 +47,8 @@ Fronts used here: `runtime`, `ui`, `parity`, `ci`, `acceptance`.
 | Plan | State | Front | Last touch | Prog | Evidence / next action |
 | --- | --- | --- | --- | --- | --- |
 | `pr61-18-puntos-megatandas-a-e.md` | ACTIVE | acceptance | 2026-11-19 | 7/7 | Megatandas A-E implementadas y verificadas con pruebas locales; commit `fbff63ad`. `globalFull:false`. |
+| `flujo-de-agentes-plan-implantacion-4.9.0.md` | ACTIVE | acceptance | 2026-11-19 | prose | Plan rector v1.1 auditado contra código. |
+| `flujo-agentes-18-puntos-cierre-20261119.md` | ACTIVE | acceptance | 2026-11-19 | prose | Control de cierre de 18 puntos sincronizado con HEAD `fbff63ad`. |
 | `ui-runtime-delivery-order.md` | ACTIVE | ui | 2026-11-14 | prose | Status line: Task41/43/44 done, **Task45 feature-branch push is next**. Live front. |
 | `ui-functional-completion-and-acceptance.md` | ACTIVE | ui | 2026-11-14 | prose | Companion derived plan; trailing log: `globalFull:false` stands. |
 | `shell-experience-parity.md` | ACTIVE | ui | 2026-11-13 | prose | Trailing log carries the adopted P38 manual-palette outcome. |
@@ -76,6 +78,8 @@ Fronts used here: `runtime`, `ui`, `parity`, `ci`, `acceptance`.
 | `pr32-windows-agent-persistence.md` | DONE | runtime | 2026-10-11 | 4/4 | 4/4 closed. |
 | `pr30-pi-free-only-verification.md` | DONE | acceptance | 2026-09-29 | 3/3 | 3/3; PR #30 stayed open and unmerged. |
 | `asen-parity-resume.md` | SUPERSEDED | parity | 2026-11-13 | prose | → `github-portable-continuation.md` (both track the same handoff). |
+| `flujo-de-agentes-megatandas-implantacion.md` | SUPERSEDED | acceptance | 2026-11-19 | prose | → `pr61-18-puntos-megatandas-a-e.md`. |
+| `flujo-de-agentes.md` | SUPERSEDED | acceptance | 2026-11-19 | prose | → `flujo-de-agentes-plan-implantacion-4.9.0.md`. |
 | `asen-permission-modes-2026-11-03.md` | SUPERSEDED | acceptance | 2026-11-03 | prose | → `equivalencia-funcional-agentes-full.md` (its open UI items are tracked there). |
 | `asen-gentle-shell-parity-implementation.md` | SUPERSEDED | ui | 2026-11-14 | prose | → `shell-experience-parity.md` (successor carries the P38 outcome). |
 | `asen-gentle-shell-full-equivalence.md` | SUPERSEDED | parity | 2026-11-13 | prose | → `asen-gentle-shell-parity-implementation.md`. |
@@ -83,6 +87,11 @@ Fronts used here: `runtime`, `ui`, `parity`, `ci`, `acceptance`.
 | `gentle-shell-v4.6.0-paridad-ui-odd.md` | SUPERSEDED | ui | 2026-11-06 | 0/14 | → `shell-experience-parity.md`. |
 | `ci-multiplataforma-sharding-f8.md` | SUPERSEDED | ci | 2026-11-05 | prose | → `ci-portable-baseline-repair-20261113.md`. |
 | `hardening-exact-sha-r4.md` | HISTORICAL | acceptance | 2026-11-02 | 0/13 | R4 was substituted by deterministic self-audit for PR #45 per `AGENTS.md`; 21 sub-unit files preserved. |
+| `flujo-de-agentes-megatanda-b.md` | DONE | acceptance | 2026-11-19 | prose | Verificado en commit `f58ac3ab`. |
+| `flujo-de-agentes-megatanda-c.md` | DONE | acceptance | 2026-11-19 | prose | Verificado en commit `b4920ae9`. |
+| `flujo-de-agentes-megatanda-d.md` | DONE | acceptance | 2026-11-19 | prose | Verificado en commit `556b2399`. |
+| `flujo-de-agentes-continuidad.md` | HISTORICAL | acceptance | 2026-11-15 | prose | Traspaso histórico previo a PR #61. |
+| `flujo-de-agentes-equivalencia-operativa-4.9.0.md` | HISTORICAL | acceptance | 2026-11-15 | prose | Matriz previa de 26 casos absorbida por comparativa actual. |
 | `ecosystem-strict-parity.md` | HISTORICAL | parity | 2026-10-15 | 32/61 | PR #32 lineage; 29 open boxes were abandoned, not carried forward. |
 | `ecosystem-final-parity-map.md` | HISTORICAL | parity | 2026-11-01 | prose | PR #37 final map. Record only. |
 | `ecosystem-reconciliation.md` | HISTORICAL | parity | 2026-10-10 | prose | PR #32 reconciliation. Record only. |
