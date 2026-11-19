@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,rm} from "node:fs/promises";
+import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
@@ -17,7 +17,7 @@ async function waitUntil(predicate:()=>boolean,description:string){
 }
 
 test("E2B: dos lecturas independientes se ejecutan a la vez, la tercera espera y no se repite",async t=>{
- const root=await mkdtemp(join(tmpdir(),"asen-e2-lecturas-"));
+ const root=await realpath(await mkdtemp(join(tmpdir(),"asen-e2-lecturas-")));
  const identity={sessionId:"oleada-pi",projectId:root};
  const todos=await SessionTodoStore.open(join(root,"todos.json"));
  const pendientes=new Map<string,()=>void>(),lanzamientos:string[]=[];
@@ -73,7 +73,7 @@ test("E2B: dos lecturas independientes se ejecutan a la vez, la tercera espera y
 });
 
 test("E2B: la segunda plaza de lectura nunca despacha un Writer sin permiso",async t=>{
- const root=await mkdtemp(join(tmpdir(),"asen-e2-no-writer-"));
+ const root=await realpath(await mkdtemp(join(tmpdir(),"asen-e2-no-writer-")));
  const identity={sessionId:"proteccion-oleada",projectId:root};
  const todos=await SessionTodoStore.open(join(root,"todos.json"));
  const firstPromise:{release?:()=>void}={};let launches=0,confirmations=0;
