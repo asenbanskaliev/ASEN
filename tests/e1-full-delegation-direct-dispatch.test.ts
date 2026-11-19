@@ -123,8 +123,8 @@ test("E2B: dos sesiones hijas Pi ejecutan Writers simultáneos en proyectos aisl
   const home=join(root,"home-"+name),project=join(root,"proyecto-"+name);
   await mkdir(home);await mkdir(project);
   const canonical=await realpath(project);
-  await writeFile(join(project,fileName),"Antes\\n");
-  await writeFile(join(project,".gitignore"),".asen/\\n");
+  await writeFile(join(project,fileName),"Antes\n");
+  await writeFile(join(project,".gitignore"),".asen/\n");
   const run=(...args:string[])=>{
    const result=spawnSync("git",["-C",canonical,...args],{encoding:"utf8",windowsHide:true});
    assert.equal(result.status,0,result.stderr);
@@ -167,6 +167,10 @@ test("E2B: dos sesiones hijas Pi ejecutan Writers simultáneos en proyectos aisl
   children.push({handlers,ctx,file:fileName,project:canonical,
    dispatch:tools.get("asen_plan_dispatch_next"),agentStore,sessionId});
   for(const handler of handlers.get("session_start")??[])await handler({reason:"new"},ctx);
+  const preflight=spawnSync("git",["-C",canonical,"status","--porcelain"],
+   {encoding:"utf8",windowsHide:true});
+  assert.equal(preflight.status,0,preflight.stderr);
+  assert.equal(preflight.stdout,"","El proyecto hijo debe estar limpio después del inicio de Pi");
   const planTool=tools.get("asen_plan_request"),dispatchTool=tools.get("asen_plan_dispatch_next");
   assert.ok(planTool&&dispatchTool);
   const request={instruction:"Modificar solo "+fileName,intent:"implementation",
