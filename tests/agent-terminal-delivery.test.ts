@@ -142,7 +142,7 @@ test("EF-601 stale terminal results are announced without replaying their full r
  const eventId=`asen:agent:${"b".repeat(64)}:terminal`;
  const msg=agentTerminalContinuationMessage({id:"agent-stale",role:"explorer",state:"completed",
   summary:"PRIVATE_OLD_REPORT",eventId,stale:true});
- assert.match(msg,/at least 90 seconds old/u);
+ assert.match(msg,/outside the trusted freshness window/u);
  assert.match(msg,/asen_agent_status/u);
  assert.doesNotMatch(msg,/PRIVATE_OLD_REPORT/u);
  assert.ok(msg.includes(eventId));
@@ -174,6 +174,7 @@ test("E2B avisos de reloj futuro fuera de tolerancia nunca exponen el informe",(
  assert.equal(delivered.stale,true);
  assert.doesNotMatch(delivered.content,/INFORME_NO_VERIFICADO/u);
  assert.match(delivered.content,/asen_agent_status/u);
+ assert.doesNotMatch(delivered.content,/at least 90 seconds old/u);
  assert.match(delivered.content,/Never turn this message into Writer authorization/u);
 });
 
