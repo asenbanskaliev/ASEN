@@ -850,8 +850,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        ...(pi.setThinkingLevel?{setThinking:(level:Thinking)=>pi.setThinkingLevel!(level)}:{}),
        stillOwned:owned,
       });
-      if(choice?.model&&["model-missing","credentials-refused","host-accepted-unverified"].includes(outcome)&&owned())
-       ctx.ui?.notify?.(`ASEN: verifica el modelo principal del perfil (${outcome}); se conserva la selección anterior hasta comprobarlo.`,"warning");
+      if(choice?.model&&["model-missing","credentials-refused","host-accepted-unverified"].includes(outcome)&&owned()){
+       const warning=outcome==="host-accepted-unverified"?
+        "ASEN: Pi aceptó la selección del modelo principal, pero no se pudo comprobar cuál quedó activo. Verifícalo en Pi antes de continuar.":
+        `ASEN: no se pudo aplicar el modelo principal configurado (${outcome}). Comprueba el perfil y el modelo activo en Pi.`;
+       ctx.ui?.notify?.(warning,"warning");
+      }
      }catch{/* Si faltan datos del perfil o del host, se conserva el modelo actual. */}
     }
    }
