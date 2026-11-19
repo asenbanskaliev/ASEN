@@ -228,3 +228,43 @@ test("MEGA-B7 caducar una inspección jamás modifica ni reenvía el diario de a
  assert.equal(await readFile(file,"utf8"),before,
   "La comprobación del reloj no muta recibos ni concede reintentos");
 });
+
+
+test("MEGA-B8 el diario conserva fechas válidas si el reloj retrocede entre entrega y reconocimiento",async t=>{
+ const {file}=await fixture(t);
+ let now="2026-11-19T17:00:00.000Z";
+ const first=new AgentNotificationJournal(file,()=>now);
+ const row=await first.record(subject);
+ const baseline=await readFile(file,"utf8");
+ now="2026-11-19T16:00:00.000Z"; // El reloj del equipo retrocedió una hora.
+ assert.equal(await first.claim(row.eventId,subject),true);
+ assert.equal(await first.markEnqueued(row.eventId,subject),true);
+ assert.equal(await first.acknowledge(row.eventId,subject,subject.id,"completed"),true);
+ const recovered=new AgentNotificationJournal(file);
+ const saved=(await recovered.list(subject))[0];
+ assert.equal(saved?.delivery,"acknowledged");
+ assert.equal(saved?.createdAt,"2026-11-19T17:00:00.000Z");
+ assert.equal(saved?.updatedAt,saved?.createdAt,
+  "El diario nunca debe escribir una fecha de transición anterior");
+ assert.equal(await recovered.claim(row.eventId,subject),false);
+ const parsed=JSON.parse(await readFile(file,"utf8"));
+ assert.equal(parsed.revision,4,"El reloj no pierde ni repite ninguna transición");
+ assert.notEqual(await readFile(file,"utf8"),baseline);
+ now="2026-11-19T19:00:00.000Z";
+ const second=await first.record({...subject,id:"agent-tarde"});
+ assert.equal(second.createdAt,now);
+ assert.equal((await recovered.list(subject)).length,2);
+});
+
+test("MEGA-B8 un reloj no válido no corrompe el diario ni concede transiciones",async t=>{
+ const {file}=await fixture(t);
+ let now="2026-11-19T17:00:00.000Z";
+ const journal=new AgentNotificationJournal(file,()=>now);
+ const row=await journal.record(subject);
+ const before=await readFile(file,"utf8");
+ now="hora-no-valida";
+ await assert.rejects(()=>journal.claim(row.eventId,subject),/Invalid agent notice clock/u);
+ assert.equal(await readFile(file,"utf8"),before);
+ assert.equal((await new AgentNotificationJournal(file).list(subject))[0]?.delivery,"pending");
+ assert.equal(await new AgentNotificationJournal(file).claim(row.eventId,subject),true);
+});
