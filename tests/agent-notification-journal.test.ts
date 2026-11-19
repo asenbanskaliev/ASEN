@@ -270,6 +270,24 @@ test("MEGA-B8 un reloj no válido no corrompe el diario ni concede transiciones"
 });
 
 
+test("EF-606 cancelar tras entrar al bloqueo y durante la lectura conserva el aviso encolado",async t=>{
+ const {file,journal}=await fixture(t);
+ const row=await journal.record(subject);
+ await journal.claim(row.eventId,subject);
+ await journal.markEnqueued(row.eventId,subject);
+ const before=await readFile(file,"utf8");
+ // #change checks once before the lock and once just after entering it. The
+ // next observed check therefore models cancellation at the awaited read
+ // boundary, immediately before the transaction may mutate the parsed file.
+ let checks=0;
+ const signal={get aborted(){return ++checks>=3;}} as AbortSignal;
+ await assert.rejects(
+  ()=>journal.acknowledge(row.eventId,subject,subject.id,"completed",signal),
+  (error:any)=>error?.name==="AbortError");
+ assert.equal(await readFile(file,"utf8"),before,"La cancelación no puede cambiar un solo byte del diario");
+ assert.equal((await journal.list(subject))[0]?.delivery,"enqueued");
+});
+
 test("MEGA-B7 la cancelación durante la comprobación final impide reconocer el aviso",async t=>{
  const {file,journal}=await fixture(t);
  const projectId=await realpath(dirname(file)),sessionId="session-pi-cancel";

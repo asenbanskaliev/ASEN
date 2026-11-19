@@ -101,7 +101,10 @@ export class AgentNotificationJournal{
    // A cancellation that arrives while journal access is pending must never
    // persist a state transition the coordinator already abandoned.
    throwIfAborted(signal);
-   const file=await read(this.path),value=transaction(file);
+   const file=await read(this.path);
+   // Reading yields while holding the lock; cancellation may arrive at that boundary.
+   throwIfAborted(signal);
+   const value=transaction(file);
    if(value.changed){file.revision++;await write(this.path,file);}
    return value.result;
   });

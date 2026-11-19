@@ -102,3 +102,15 @@ La siguiente tanda funcional es cerrar las pruebas E2E de selección de perfiles
 **Evidencia autenticada acotada:** el informe temporal `asen-t06-openai-pi-concurrent-cc715b55-513c-4c3a-900d-eb99f9983e34.json` registró el 19/11/2026 dos procesos Pi con `openai-codex/gpt-5.6-sol`: Explorer y Verifier completaron, con solapamiento real y worktrees limpios. El coste informado por Pi fue USD 0.00206 por proceso, sin verificación de facturación. El ensayo no concedió Writer (`writerGranted:false`) ni autorización de entrega.
 
 **Bloqueos reales:** no se encontró una credencial de proveedor en el entorno para ejecutar Writers autenticados y las pruebas de consentimiento requieren una concesión humana comprobable. No se simularon esos permisos.
+
+## Continuación Megatanda A — estabilización del checkout `352c472d`
+
+Se recuperaron los hilos de CodeRabbit directamente desde la PR #61. Tres observaciones pendientes ya estaban corregidas y conservaban pruebas: cancelación antes de convertir la respuesta Writer, vida de inspección con reloj monotónico y revalidación de frescura antes del acuse. Una revisión independiente encontró un defecto residual real: la cancelación podía llegar durante la lectura del diario, después del control inicial y antes de mutar/persistir el acuse.
+
+- **RED:** `EF-606 cancelar tras entrar al bloqueo y durante la lectura conserva el aviso encolado` falló inicialmente por ausencia de rechazo.
+- **GREEN:** `AgentNotificationJournal.#change` revalida la cancelación inmediatamente después de `await read(...)` y antes de ejecutar la transacción.
+- **Efectos comprobados:** `AbortError`, bytes del diario idénticos y estado durable `enqueued`.
+- **Pruebas:** notificaciones focalizadas `25/25`; verificación independiente `PASS`; `npm run typecheck` y `npm run check:fast` con código 0 en Windows.
+- **Límite:** la revisión nativa RDD no pudo iniciarse porque los activos administrados del harness están desactualizados. No se ejecutó el `sync` ofrecido para no modificar Gentle Pi/Gentle Shell fuera del repositorio. Esta indisponibilidad no se presenta como aprobación.
+
+La Megatanda A queda implementada y verificada localmente, pero no convierte ningún punto en `TERMINADO`: siguen pendientes el commit exacto, CI/Release Gate del mismo SHA, pruebas autenticadas y paridad A/B.
