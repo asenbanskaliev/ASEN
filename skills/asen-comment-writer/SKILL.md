@@ -1,13 +1,13 @@
 ---
 name: asen-comment-writer
-description: "Write warm, direct collaboration comments. Trigger: PR feedback, issue replies, reviews, Slack messages, or GitHub comments."
+description: "Trigger: PR feedback, issue replies, reviews, Slack messages, or GitHub comments. Write warm, direct collaboration comments."
 license: Apache-2.0
 metadata:
   author: ASEN
   version: "1.0"
 ---
 
-## When to Use
+## Activation Contract
 
 Load this skill whenever you write a comment that another human will read.
 
@@ -18,7 +18,9 @@ Use it for:
 - Maintainer replies.
 - Slack, Discord, or async project updates.
 
-## Voice Rules
+Do not activate for unrelated UI copy, documentation, or source-code comments.
+
+## Hard Rules
 
 | Rule | Requirement |
 |------|-------------|
@@ -30,7 +32,36 @@ Use it for:
 | Match target context language | Write in the target context language by default: Spanish issue/thread -> Spanish comment, English issue/thread -> English comment, mixed context -> target message language. If the user explicitly requests a language or tone, follow that request. Do not use the active persona as the source of truth for public comments. For Spanish comments, use neutral/professional Spanish by default unless the user or target context clearly calls for regional tone. |
 | No em dashes | Use commas, periods, or parentheses instead. |
 
-## Comment Formula
+- Never invent review evidence, approval or permission to publish.
+
+## Decision Gates
+
+| Situation | Action |
+| --- | --- |
+| Explicit language or tone requested | Follow the request, not the active persona. |
+| Spanish, English or mixed target context | Use the target message language; keep public Spanish neutral unless asked otherwise. |
+| Request for change or split | State the highest-value issue, technical reason and one concrete action. |
+| Approval requested without verified evidence | Do not claim approval; ask one focused question instead. |
+
+## Execution Steps
+
+1. Identify the recipient, target context, requested language and message type.
+2. Lead with the actionable observation. Explain the reason only when useful.
+3. Inspect the PR facts when relevant using the command below; never assume an approval.
+4. Check brevity, tone, clear next action and absence of em dashes.
+
+### Commands
+
+```bash
+# Inspect a PR before writing review feedback
+gh pr view <PR_NUMBER> --json title,body,additions,deletions,changedFiles
+```
+
+## Output Contract
+
+Return one warm, direct comment, normally 1 to 3 short paragraphs or a tight bullet list.
+
+### Comment Formula
 
 ```text
 <Direct observation or request>
@@ -40,36 +71,6 @@ Use it for:
 <Concrete next action>
 ```
 
-## Examples
+## References
 
-### Request change
-
-```markdown
-Good approach overall. I'd split this into a separate commit because it mixes validation logic with UI wiring.
-
-That keeps the reviewer's focus narrower and makes rollback cleaner if the integration fails.
-```
-
-### Approve with a note
-
-```markdown
-Approved. The scope is clear and the change is well-contained.
-
-For the next PR, add links to the previous and following PRs so the chain stays navigable.
-```
-
-### Ask for split
-
-```markdown
-This PR is large for one review (about 600 changed lines). Could we split it, or follow the repo's size policy if it allows one PR?
-
-Suggested order: foundation + tests first, then integration, then docs. That gives each review a clear start and end.
-```
-
-## Commands
-
-```bash
-# Inspect a PR before writing review feedback
-gh pr view <PR_NUMBER> --json title,body,additions,deletions,changedFiles
-```
-
+- [Comment examples](references/examples.md) (local examples; no external authority).
