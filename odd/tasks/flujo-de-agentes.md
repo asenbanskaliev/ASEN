@@ -7,6 +7,20 @@ Rama padre: `feat/t12-integrated-acceptance-merge`
 Baseline inmutable para este plan: `2d20ecf2dff6b3f0a7cb509f85f0e06ca86827b6`
 Referencia a contrastar: Gentle Shell 4.8.0. No declarar paridad hasta observarla.
 
+## Megatanda D — reparación del CI global y prueba integrada (2026-11-19)
+
+**Estado:** código y nuevas pruebas publicados; pendiente de CI y Release Gate del SHA final, sin paridad autenticada. `globalFull:false`.
+
+**Auditoría completa:** [Megatanda D — cierre técnico, causas raíz y escenarios A/B](./flujo-de-agentes-megatanda-d.md).
+
+- **D-01:** localizado el fallo de CI anterior (44487559905): dos expectativas obsoletas del esquema de herramientas tras A2 y una notificación de C que dejó de incluir `di «continúa»`. `test-shard-coverage` bloqueó la matriz como correspondía.
+- **D-02:** corregidos los dos contratos públicos de prueba **sin** agregar permisos, y recuperado el aviso natural al usuario sin reintento automático de agentes fallidos.
+- **D-03:** nueva prueba integradora con host Pi simulado: Explorer dependiente → Verifier → Todo bloqueado → recibo SHA/árbol firmado → rechazo y aceptación humana → sin repetir ni fusionar tareas.
+- **D-04:** el CI ejecuta anticipadamente `pi-agent-runtime.test.ts` y `megatanda-d-e2e-pi.test.ts`. Esto no sustituye las pruebas completas por sistema.
+- **D-05:** conservo el límite de coste, los permisos por Worker, la revisión independiente y el registro de resultados inciertos. La demostración de dos Workers auténticos y la comparación real siguen pendientes.
+
+---
+
 ## Megatanda C — auditoría, correcciones y pruebas (2026-11-19)
 
 **Estado:** CAMBIOS DE C PUBLICADOS EN LA PR #61; pendientes de resultado CI/Release Gate exacto y ejecución con proveedores reales. `globalFull:false`.
