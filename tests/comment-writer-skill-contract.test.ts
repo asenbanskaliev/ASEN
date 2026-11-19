@@ -14,21 +14,21 @@ test("La skill de comentarios conserva las seis secciones, sus reglas y el presu
  assert.match(skill,/No em dashes/u);
  assert.match(skill,/Comment Formula/u);
  const body=skill.slice(skill.indexOf("## Activation Contract"));
- const words=(body.match(/[\\p{L}\\p{N}]+/gu)??[]).length;
- assert.ok(words>=180&&words<=450,`La skill tiene ${words} palabras; se recomiendan 180-450`);
- assert.doesNotMatch(skill,/\\.atl(?:\\/|\\\\|\\b)/u);
+ const words=(body.match(/[\p{L}\p{N}]+/gu)??[]).length;
+ assert.ok(words>=180&&words<=450,"La skill debe tener 180-450 palabras, observadas: "+words);
+ assert.doesNotMatch(skill,/\.atl(?:\/|\\|\b)/u);
  const examples=await read("skills/asen-comment-writer/references/examples.md");
  for(const original of ["### Request change","### Approve with a note","### Ask for split"])
-  assert.ok(examples.includes(original),`Ejemplo perdido: ${original}`);
- assert.match(skill,/references\\/examples\\.md/u);
+  assert.ok(examples.includes(original),"Ejemplo perdido: "+original);
+ assert.match(skill,/references\/examples\.md/u);
 });
 
 test("La skill de mejora usa el registro propio de ASEN sin rutas heredadas",async()=>{
  const skill=await read("skills/asen-skill-improver/SKILL.md");
  assert.deepEqual([...skill.matchAll(/^## (.+)$/gm)].map(match=>match[1]),canonical);
- assert.equal((skill.match(/\\.asen\\/skill-registry\\.md/gu)??[]).length,2);
- assert.doesNotMatch(skill,/\\.atl(?:\\/|\\\\|\\b)/u);
- assert.match(skill,/skills\\/asen-skill-registry\\/SKILL\\.md/u);
+ assert.equal((skill.match(/\.asen\/skill-registry\.md/gu)??[]).length,2);
+ assert.doesNotMatch(skill,/\.atl(?:\/|\\|\b)/u);
+ assert.match(skill,/skills\/asen-skill-registry\/SKILL\.md/u);
  const target=await read("skills/asen-skill-registry/SKILL.md");
- assert.match(target,/\\.asen\\/skill-registry\\.md/u);
+ assert.match(target,/\.asen\/skill-registry\.md/u);
 });
