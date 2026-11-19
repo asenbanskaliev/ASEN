@@ -70,6 +70,16 @@ test("workspace review keeps the default risk triple when native assess is unava
  assert.equal(result.acceptance,"not-accepted");assert.equal(result.deliveryAuthority,false);
 });
 
+test("G49-C: una confirmación ambigua no permite llamar a ningún modelo revisor",async t=>{
+ for(const invalid of ["sí",{accepted:true},1,undefined]){
+  const state=setup(t,assessmentData({risk:"medium"}),invalid as boolean);
+  const result=await state.handler("workspace",state.context) as {status:string};
+  assert.equal(result.status,"cancelled");
+  assert.equal(state.modelCalls.length,0);
+  assert.equal(state.consentPrompts.length,1);
+ }
+});
+
 test("native assess passive risk lowers severity, lenses and the independent verifier",async t=>{
  const state=setup(t,assessmentData({risk:"passive",reasons:[{code:"docs_only"}],review_due:false,review_due_reason:"passive"}));
  const result=await state.handler("workspace",state.context) as {
