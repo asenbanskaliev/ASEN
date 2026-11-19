@@ -29,7 +29,7 @@ const gitFixtureEnvironment=(env:NodeJS.ProcessEnv)=>
  Object.fromEntries(Object.entries(env).filter(([name])=>!localGitNames.has(name.toUpperCase())));
 const gitFixtureEnv=gitFixtureEnvironment(process.env);
 
-function fixture(t:TestContext,fixtureGitEnv:NodeJS.ProcessEnv=gitFixtureEnv){
+function fixture(t:TestContext,fixtureGitEnv:NodeJS.ProcessEnv=gitFixtureEnv,childMode?:"full-delegation"){
  const source=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-source-"))),
   parent=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-worktrees-"))),
   privateRoot=resolve(mkdtempSync(join(tmpdir(),"asen-t06-linked-private-")));
@@ -70,6 +70,7 @@ function fixture(t:TestContext,fixtureGitEnv:NodeJS.ProcessEnv=gitFixtureEnv){
  registerParallelWorktreeCommand((name,command)=>commands.set(name,command as never),{
   journalFile,sessionLinksFile,planClaimsFile,observationFile,supervisorClaimsFile,
   planChildTodo:async input=>{handoffs.push(input);return {status:"model-free-ODD-planner-stub"};},
+  ...(childMode?{childProfiles:async()=>({session:{schema:"asen.runtime-profiles/v1" as const,active:"hijo",profiles:[{name:"hijo",mode:childMode,routes:{}}]}})}:{}),
   loadTodos:async identity=>{
    todoReadCount++;await duringTodoRead?.(identity,todoReadCount);
    return identity.sessionId==="pi-t06"?rows:childRows.get(identity.sessionId)??[];
@@ -1489,4 +1490,49 @@ test("T06: rechazo automático no crea la carpeta hermana ni reserva tareas",asy
  assert.deepEqual(await f.run("prepare-auto"),{status:"declined",grantsAuthority:false});
  assert.equal(existsSync(sibling),false);
  assert.deepEqual(await f.journal.list(f.identity),[]);
+});
+
+test("E2A: la sesión hija admite Writer directo solo con su perfil de delegación completa",async t=>{
+ const f=fixture(t,gitFixtureEnv,"full-delegation");
+ const exactBasis=(taskId:string,file:string)=>JSON.stringify({
+  instruction:"Cambiar únicamente "+file,
+  taskIdentity:taskId,intent:"implementation",
+  scope:{kind:"known",expectedPaths:[file]},
+  writes:[{path:file,changeKind:"behavior"}],riskOperations:[],
+  session:{estimatedMinutes:12,continuation:false},testing:{kind:"required"},
+  review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]
+ });
+ f.setRows(f.rows.map((row,i)=>{
+  const taskId=i?"todo-frontend":"todo-backend",file=i?"frontend.txt":"backend.txt",basis=exactBasis(taskId,file);
+  return {...row,description:"Perform only the authorized, scoped work for: "+(JSON.parse(basis) as {instruction:string}).instruction,
+   plan:{...row.plan!,writerAuthorizationBasis:basis}} as SourceTodoRow;
+ }));
+ const prepared=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
+ const child=prepared.worktrees[0]!.root;
+ assert.equal((await f.runChild("attach",child) as {status:string}).status,"attached");
+ const result=await f.runChild("plan-todo",child) as {status:string;grantsAuthority:boolean};
+ assert.equal(result.status,"handed-to-own-odd-planner");
+ assert.equal(result.grantsAuthority,false,"reconstruir el plan no autoriza escrituras");
+ assert.equal(f.handoffs.length,1);
+ assert.deepEqual(JSON.parse(f.handoffs[0]!),JSON.parse(exactBasis("todo-backend","backend.txt")));
+});
+
+test("E2A: una sesión hija sin delegación completa no hereda permisos del padre",async t=>{
+ const f=fixture(t);
+ const exact=JSON.stringify({
+  instruction:"Cambiar únicamente backend.txt",
+  taskIdentity:"todo-backend",intent:"implementation",
+  scope:{kind:"known",expectedPaths:["backend.txt"]},
+  writes:[{path:"backend.txt",changeKind:"behavior"}],riskOperations:[],
+  session:{estimatedMinutes:12,continuation:false},testing:{kind:"required"},
+  review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[]
+ });
+ f.setRows(f.rows.map((row,i)=>i?row:{...row,
+  description:"Perform only the authorized, scoped work for: Cambiar únicamente backend.txt",
+  plan:{...row.plan!,writerAuthorizationBasis:exact}} as SourceTodoRow));
+ const prepared=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
+ const child=prepared.worktrees[0]!.root;
+ await f.runChild("attach",child);
+ await assert.rejects(()=>f.runChild("plan-todo",child),/does not produce a delegated Worker/u);
+ assert.equal(f.handoffs.length,0);
 });
