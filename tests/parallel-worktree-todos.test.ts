@@ -807,6 +807,47 @@ test("G49-B rechazo expreso del primer Worker no paraliza al segundo independien
  assert.equal(f.dispatchedChildren.length,1);
 });
 
+test("G49-B nunca continúa tras un rechazo si el hijo tiene un Worker de resultado incierto",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ const batch=(await f.journal.list(f.identity))[0]!;
+ let attempts=0;
+ const result=await launchParentApprovedWorkers({
+  source:f.identity,batchId:batch.id,sourceJournal:f.journal,sessionJournal:f.sessions,
+  claimJournal:new ParallelChildPlanClaimJournal(f.planClaimsFile),
+  attemptJournal:new ParentSupervisorClaimJournal(f.supervisorClaimsFile),
+  loadTodos:async identity=>identity.sessionId===f.identity.sessionId?
+   f.rows:f.getChildObservations(identity.sessionId).todos,
+  loadAgents:async identity=>f.getChildObservations(identity.sessionId).agents,
+  loadTaskAgentLinks:async identity=>f.getChildObservations(identity.sessionId).links,
+  validateParent:async()=>{},confirmBatch:async()=>true,confirmWorker:async()=>false,
+  launchChild:async(unit,confirm,validateExact)=>{
+   attempts++;
+   await validateExact();
+   const approved=await confirm({
+    id:unit.childTodoId,title:"Worker rechazado",role:"worker",
+    instruction:"Solo el ámbito original",
+    writeSurfaces:unit.writeSurfaces,candidateRevision:unit.baseRevision
+   });
+   assert.equal(approved,false);
+   // Un ejecutor defectuoso informa «bloqueado» aunque ha dejado un Worker.
+   const observed=f.getChildObservations(unit.childSessionId);
+   f.setChildObservations(unit.childSessionId,observed.todos,[...observed.agents,{
+    id:"worker-ambiguo",role:"worker",state:"running",
+    sessionId:unit.childSessionId,projectId:unit.childProjectId,
+    owner:{kind:"user",id:"pi:ambiguous"},
+    createdAt:"2026-11-19T08:00:00.000Z",updatedAt:"2026-11-19T08:00:00.000Z"
+   } as PublicAgentRecord],observed.links);
+   return {status:"blocked" as const,reason:"El usuario rechazó la autorización"};
+  }
+ });
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(result.started.length,0);
+ assert.equal(attempts,1,"un rechazo ambiguo no alcanza al segundo Worker");
+ assert.ok(result.blockers.some(blocker=>/incierto|uncertain/u.test(blocker)));
+ assert.equal(result.autoRetry,false);
+ assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,1);
+});
+
 test("T06 supervisor never starts a Worker when child ODD is unclaimed or its root is dirty",async t=>{
  const f=fixture(t);
  const created=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
