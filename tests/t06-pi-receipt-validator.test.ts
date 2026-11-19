@@ -20,6 +20,17 @@ test("T06 valida únicamente un mensaje exacto de Pi junto a selección real NVI
  assert.equal(result.reason,"verified");
  assert.equal(result.modelActual,expectedModel);
 });
+test("T06 valida un proveedor y modelo configurados sin rebajar el recibo exacto",()=>{
+ const model="openai-codex/gpt-5.6-sol",marker="ASEN_PI_OPENAI_A_OK";
+ const output=JSON.stringify({type:"message_end",message:{
+  role:"assistant",provider:"openai-codex",model:"gpt-5.6-sol",
+  content:[{type:"text",text:marker}]
+ }});
+ const result=validateT06PiReply({output,expectedMarker:marker,expectedModel:model,
+  modelObservedByRunner:model});
+ assert.equal(result.verified,true);
+ assert.equal(result.modelActual,model);
+});
 test("T06 un texto que menciona el marcador NO acredita ejecución",()=>{
  for(const value of [
   "No puedo responder "+expectedMarker,

@@ -23,7 +23,7 @@
 | 08 | Recuperación tras fallos y avance independiente | Barreras de reintento dudoso y lecturas independientes; faltan escenarios reales de recuperación |
 | 09 | Sustitución de modelos configurados | Política de alternativas y pausas existente; falta prueba de cuota/error y modelo efectivo |
 | 10 | Modelo inicial del orquestador | Selección de catálogo en sesión nueva, admite modelos configurados de pago; falta observación autenticada |
-| 11 | Verificación proporcional al riesgo | Política de riesgos y revisión disponibles; falta verificación vinculante tras dos Writers |
+| 11 | Verificación proporcional al riesgo | Riesgo nombrado 1–6 genera un plan con Worker y Verifier vinculados; falta evidencia autenticada tras dos Writers |
 | 12 | Revisión ordinaria coordinada | Flujo de revisión conectado; falta prueba integral con proveedor y datos reales |
 | 13 | Dos jueces y corrección controlada | Dos jueces y propuesta Fix; falta ensayo autenticado con permisos y rondas |
 | 14 | Preguntas y decisiones bloqueantes | Confirmaciones protegidas; falta validación de respuestas ordinarias y reanudación |
@@ -73,3 +73,32 @@
 
 ## Próxima prioridad
 La siguiente tanda funcional es cerrar las pruebas E2E de selección de perfiles y flujo de delegación (A) y sus controles negativos, aprovechando `DelegationTurnLatch`, `applyStartupOrchestratorModel` y los tests `e1-*` existentes. Después conectar prueba Writer→Verifier→revisión→recogida (B) y ensayos medidos (C). Este registro no declara ningún punto finalizado.
+
+## Matriz de evidencia local — SHA `5b2e548e51e29a5d0c5b794c9fbf4e5c0b6cbd53`
+
+**Ejecución local (Windows, 19/11/2026):** `npm test` completó 511/511, sin fallos ni skips; `npm run typecheck`, `npm run check:fast` y los ocho controles de arquitectura/auditoría pasaron. Esta evidencia corresponde al SHA indicado, todavía local y no publicado; por tanto `CI_EXACT_SHA` sigue pendiente y `globalFull:false` se mantiene.
+
+| Punto | IMPLEMENTED | RUNTIME_WIRED | HOST_SIMULATED | LIVE_AUTHENTICATED | CI_EXACT_SHA | Evidencia / límite verificable |
+| --- | --- | --- | --- | --- | --- | --- |
+| 01 | Sí | Sí | Sí | No | No | Rutas ODD y pruebas de planificación; falta comparación Pi real. |
+| 02 | Sí | Sí | Sí | No | No | Perfiles y `DelegationTurnLatch`; falta ensayo autenticado. |
+| 03 | Sí | Sí | Sí | No | No | Presupuesto Explorer con controles negativos; falta consumo observado. |
+| 04 | Sí | Sí | Sí | No | No | Writer controlado; falta decisión autónoma real entre unidades. |
+| 05 | Parcial | Parcial | Sí | No | No | Explorer y Verifier Pi reales se solaparon; faltan dos Writers autorizados. |
+| 06 | Sí | Sí | Sí | No | No | Candidato, ámbito y consentimiento no reutilizable; falta diálogo Pi real. |
+| 07 | Sí | Sí | Sí | No | No | Diario y avisos; falta entrega/asentamiento nativo autenticado. |
+| 08 | Sí | Sí | Sí | No | No | Reintento seguro y continuidad probados en host; falta recuperación real. |
+| 09 | Sí | Sí | Sí | No | No | Fallback configurado; falta cuota/error de proveedor real. |
+| 10 | Sí | Sí | Sí | No | No | Selección de catálogo y carreras; falta observación autenticada. |
+| 11 | Sí | Sí | Sí | No | No | `planOddRoute` eleva riesgos 1–6 y `orchestrator` añade Verifier; prueba E3 verde. |
+| 12 | Sí | Sí | Sí | No | No | Revisión ordinaria conectada; falta proveedor y datos reales. |
+| 13 | Sí | Sí | Sí | No | No | Dos jueces y corrección acotada; falta ensayo autenticado. |
+| 14 | Sí | Sí | Sí | No | No | Confirmaciones bloqueantes protegidas; falta validación real de reanudación. |
+| 15 | Sí | Sí | Sí | No | No | SHA, ámbitos y recuperación endurecidos; falta CI del SHA actual y adversarios completos. |
+| 16 | Parcial | Parcial | Sí | No | No | Instrumentación presente; falta A/B auténtico comparable. |
+| 17 | Parcial | Parcial | Sí | No | No | E2E con host simulado; falta flujo autenticado y aceptación humana. |
+| 18 | Parcial | Parcial | Sí | No | No | Pi 1.2 está cubierto; la matriz local no admite Pi 1.5.2. |
+
+**Evidencia autenticada acotada:** el informe temporal `asen-t06-openai-pi-concurrent-cc715b55-513c-4c3a-900d-eb99f9983e34.json` registró el 19/11/2026 dos procesos Pi con `openai-codex/gpt-5.6-sol`: Explorer y Verifier completaron, con solapamiento real y worktrees limpios. El coste informado por Pi fue USD 0.00206 por proceso, sin verificación de facturación. El ensayo no concedió Writer (`writerGranted:false`) ni autorización de entrega.
+
+**Bloqueos reales:** no se encontró una credencial de proveedor en el entorno para ejecutar Writers autenticados y las pruebas de consentimiento requieren una concesión humana comprobable. No se simularon esos permisos.

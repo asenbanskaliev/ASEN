@@ -19,9 +19,13 @@ export function validateT06PiReply(input:{
 }):T06PiReplyValidation{
  const rejected=(reason:Exclude<T06PiReplyValidation["reason"],"verified">):T06PiReplyValidation=>
   Object.freeze({verified:false,modelActual:"unknown" as const,piReportedUsage:null,reason});
+ const modelParts=typeof input?.expectedModel==="string"?input.expectedModel.split("/"):[];
+ const [expectedProvider,expectedModelId]=modelParts;
  if(!input||typeof input.output!=="string"||input.output.length>128_000||
-  typeof input.expectedMarker!=="string"||!/^ASEN_PI_NVIDIA_[AB]_OK$/u.test(input.expectedMarker)||
-  input.expectedModel!=="nvidia/nemotron-3.5-lightning-30b-a3b")
+   typeof input.expectedMarker!=="string"||!/^ASEN_PI_[A-Z0-9_]+_[AB]_OK$/u.test(input.expectedMarker)||
+   modelParts.length!==2||!expectedProvider||!expectedModelId||
+   !/^[a-z0-9][a-z0-9-]{0,62}$/u.test(expectedProvider)||
+   !/^[a-z0-9][a-z0-9._-]{0,126}$/u.test(expectedModelId))
   return rejected("invalid-input");
  if(input.modelObservedByRunner!==input.expectedModel)return rejected("missing-selection");
  const ends:Record<string,unknown>[]=[];
@@ -41,9 +45,8 @@ export function validateT06PiReply(input:{
  if(ends.length!==1)return rejected("multiple-assistant-ends");
  const reply=ends[0]!;
  const model=reply.model;
- if(reply.provider!=="nvidia"||!(
-  model==="nemotron-3.5-lightning-30b-a3b"||model===input.expectedModel
- ))return rejected("model-mismatch");
+ if(reply.provider!==expectedProvider||!(model===expectedModelId||model===input.expectedModel))
+  return rejected("model-mismatch");
  if(!Array.isArray(reply.content)||reply.content.length===0)return rejected("unexpected-reply");
  const parts=reply.content as unknown[];
  if(parts.some(part=>!part||typeof part!=="object"||Array.isArray(part)||

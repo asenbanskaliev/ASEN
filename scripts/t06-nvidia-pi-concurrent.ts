@@ -12,12 +12,18 @@ import {createT06ReadOnlyGitFixture} from "../src/runtime/agents/t06-read-only-g
 import {validateT06PiReply} from "../src/runtime/agents/t06-pi-receipt-validator.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 
-const model="nvidia/nemotron-3.5-lightning-30b-a3b";
-const marker=["ASEN_PI_NVIDIA_A_OK","ASEN_PI_NVIDIA_B_OK"] as const;
+const model=process.env.ASEN_T06_MODEL??"nvidia/nemotron-3.5-lightning-30b-a3b";
+const [provider,modelId,...extra]=model.split("/");
+if(!provider||!modelId||extra.length)throw Error("Prueba Pi T06 BLOQUEADA: ASEN_T06_MODEL debe ser proveedor/modelo");
+const markerPrefix="ASEN_PI_"+provider.replace(/[^a-z0-9]/giu,"_").toUpperCase();
+const marker=[markerPrefix+"_A_OK",markerPrefix+"_B_OK"] as const;
 const roles=["explorer","verifier"] as const;
+const piCommand=process.platform==="win32"?(process.env.COMSPEC??"cmd.exe"):"pi";
+const piRpcArgs=process.platform==="win32"?["/d","/s","/c","pi.cmd","--mode","rpc"]:undefined;
 const root=resolve(process.env.GITHUB_WORKSPACE??process.cwd());
-const evidenceFile=process.env.ASEN_NVIDIA_PI_REPORT;
-if(!process.env.NVIDIA_API_KEY||!evidenceFile)throw Error("Prueba Pi NVIDIA BLOQUEADA: faltan credenciales o ubicación privada de evidencias");
+const evidenceFile=process.env.ASEN_T06_PI_REPORT??process.env.ASEN_NVIDIA_PI_REPORT;
+if((provider==="nvidia"&&!process.env.NVIDIA_API_KEY)||!evidenceFile)
+ throw Error("Prueba Pi T06 BLOQUEADA: falta credencial del proveedor o ubicación privada de evidencias");
 const base=mkdtempSync(join(tmpdir(),"asen-pi-nvidia-t06-"));
 const gitFixture=createT06ReadOnlyGitFixture();
 const instances=[0,1].map(index=>{
@@ -27,7 +33,7 @@ const instances=[0,1].map(index=>{
   pid:null,spawnedAt:null,closedAt:null,reportedModel:null,result:"pending"
  };
  const runner=new PiProcessRunner({
-  command:"pi",policyRoot:root,providerCredential:"NVIDIA_API_KEY",
+   command:piCommand,...(piRpcArgs?{rpcArgs:piRpcArgs}:{}),policyRoot:root,...(provider==="nvidia"?{providerCredential:"NVIDIA_API_KEY"}:{}),
   noTools:true,timeoutMs:90_000,maxOutputBytes:48_000,
   maxStreamBytes:128_000,maxRpcRecordBytes:64_000,
   onProcessStart:pid=>{observation.pid=pid;observation.spawnedAt=performance.now();},
@@ -37,8 +43,8 @@ const instances=[0,1].map(index=>{
   if(event.sessionId===identity.sessionId&&event.projectId===identity.projectId&&event.model)
    // Pi puede devolver el identificador con el prefijo del proveedor
    // incorporado; normalizarlo solo cuando coincide exactamente.
-   observation.reportedModel=event.model.provider==="nvidia"&&
-    (event.model.id===model||event.model.provider+"/"+event.model.id===model)?
+    observation.reportedModel=event.model.provider===provider&&
+     (event.model.id===modelId||event.model.provider+"/"+event.model.id===model)?
     model:event.model.provider+"/"+event.model.id;
  });
  return {identity,observation,runner};
@@ -50,7 +56,7 @@ const wrapper={
   return item.runner.run(request,signal);
  }
 };
-const status={schema:"asen.t06.nvidia.pi-dual/v2",source:"native-PiProcessRunner-and-AgentRuntime",
+const status={schema:"asen.t06.pi-dual/v3",source:"native-PiProcessRunner-and-AgentRuntime",
  requestedModel:model,modelActual:"unknown",costVerified:false,billingVerified:false,
  workers:[] as Array<Record<string,unknown>>,
  concurrentlyRunning:false,providerAuthenticated:false,autoMerge:false,writerGranted:false,
