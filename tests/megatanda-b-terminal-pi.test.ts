@@ -7,6 +7,8 @@ import {createAsenExtension} from "../extensions/asen.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 import {selectSkills} from "../src/skills/registry.js";
+import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 
 test("G49-B evento terminal de Pi: una exploración fallida no se repite y otra independiente gratuita continúa",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-g49-b-terminal-"));
@@ -29,6 +31,9 @@ test("G49-B evento terminal de Pi: una exploración fallida no se repite y otra 
   sessionManager:{getSessionId:()=>identity.sessionId,getEntries:()=>[]},
   ui:{notify(){},setWidget(){},setStatus(){}},
  };
+ await writeProfilesFile(join(root,".asen","profiles.json"),{
+  schema:ASEN_PROFILES_SCHEMA,active:"lecturas",profiles:[{name:"lecturas",routes:{explorer:{model:"local/cero"}}}],
+ });
  const pi={
   on(name:string,callback:(event:any,context:any)=>unknown){events.set(name,[...(events.get(name)??[]),callback]);},
   registerCommand(){},registerTool(tool:any){piTools.set(tool.name,tool);}
