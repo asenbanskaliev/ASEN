@@ -55,7 +55,7 @@ test("E1A: Pi ejecuta Explorer de perfil de pago tras cuatro consultas sin permi
  };
  const attempted=async(prompt="Buscar las relaciones de los módulos indicados")=>
   tool.execute("g49-launch",{prompt,budgetExplorer:true},new AbortController().signal,()=>{},context);
- context.model=FREE;
+ context.model=PAID;
  await assert.rejects(attempted(),/not authorized by one fresh/u);
  context.model=PAID;
  for(let index=0;index<4;index++){
