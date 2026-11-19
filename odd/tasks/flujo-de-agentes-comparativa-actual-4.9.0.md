@@ -58,3 +58,80 @@ Las rutas fuente siguientes son enlaces a líneas **del tag 4.9.0** y a **ASEN e
 **F-01 (auditoría independiente final):** revisar los hallazgos anteriores con otro revisor, pruebas negativas, regresiones de seguridad, recuperación, costes y aceptación exacta del SHA. Solo con todos los controles y pruebas reales aprobar la paridad.
 
 **Conclusión provisional:** ASEN no puede declararse «menos eficaz» o «igual de eficaz» sin el ensayo A/B. Es **más estricto** en admisión de escrituras, versión y costes. Sigue siendo **menos automático** que Gentle Shell 4.9.0 en el cambio de modo, inicio de Workers, continuación integral y verificación condicionada al riesgo. A-D corrigen partes sustanciales, pero `globalFull:false` es el estado correcto hasta disponer de evidencia real.
+
+---
+
+## 5. Decisiones tras investigación avanzada (19-11-2026)
+
+**Estado:** plan propuesto y revisado contra código, NO ejecutado. ASEN PR #61, código base dcb68a67a5801ee672523206235273ac72e7a7cc. Referencia 4.9.0 SHA ce64a9a708e50c0ca899c8023140e63f29f293e1. Megatanda D: CI verde. E y auditoría F: pendientes. globalFull:false.
+
+### Correcciones esenciales al informe
+
+1. La referencia SÍ dispone de modos organic y full-delegation por perfil (lib/orchestrator-mode-policy.ts). ASEN aún no ofrece modo equivalente.
+2. ASEN SÍ tiene dos jueces de Pi, actualmente ejecutados de forma secuencial (src/review/judgment-day.ts).
+3. ASEN SÍ tiene sustitución de modelos, máximo ocho alternativas y esperas de 30/2 minutos (src/runtime/lifecycle/model-fallback-policy.ts). No crear un segundo mecanismo.
+4. ASEN YA conserva tareas ODD, ámbitos autorizados, SHA, diarios y pruebas integradas con ejecutor simulado. No imponer git stash, reset, push o merge automáticos como alternativa superior.
+5. Prueba simulada no equivale a dos agentes reales, factura verificada o paridad con el producto de referencia.
+
+### Comparación y decisión final de los 18 puntos
+
+A = ASEN actual; B = referencia 4.9.0; C = diseño híbrido. Las decisiones son propuestas; las mejoras no están implementadas.
+
+| Nº / Función | Gentle (B) | ASEN actual (A) | Propuesta final | Elección |
+| --- | --- | --- | --- | --- |
+| 01 Decisión directo/delegar | Directo salvo motivo de delegación | Ruta ODD existente; decisión parcialmente en instrucciones | Decisión del anfitrión con motivo verificable y ruta directa por defecto | C |
+| 02 Dos modos de trabajo | Orgánico y delegación completa por perfil | Perfil por modelo y rol, sin modo equivalente | Dos modos compatibles; delegación completa prohíbe toda escritura directa del padre | C |
+| 03 Explorer | Presupuesto acumulado, resumen acotado | Tres lecturas/40 KiB, gratuito y un lanzamiento | Medir lecturas y tokens reales cuando Pi permita; mantener seguridad y evitar duplicados | C |
+| 04 Unidades independientes | Dos o más unidades grandes, cada una con código, pruebas y documentación | ODD y ámbitos detallados, menos detección automática | Deducir unidades por dependencias y superficies; no dividir por número de archivos | C |
+| 05 Writers en paralelo | Lanzamiento conjunto de independientes | Supervisor seguro con sesiones hijas preparadas | Preparación desde padre si el host lo permite; límite inicial dos y permisos individuales | C |
+| 06 Ampliación de ámbitos | Superficies editables acotadas | SHA, superficies y aprobación por Worker más estrictos | Mantener ASEN; proponer ampliación exacta solo con autorización nueva | A+ |
+| 07 Entrega de agentes | Resultado asentado y entrega única | Diario propio, evento terminal e identidad de sesión | Unificar semántica de asentado, recibido y consumido, con aviso una sola vez | C |
+| 08 Continuación tras fallos | Otras unidades independientes pueden avanzar | Continuación limitada a lecturas seguras y rechazos inequívocos | Continuar trabajos ya admitidos e independientes, nunca repetir escrituras dudosas | C |
+| 09 Sustitución de modelos | Cadena, categorías, esperas | Ya tiene cadena de hasta ocho, esperas y permisos de coste | Conservar; verificar uso real en padre e hijos sin duplicar mecanismo | A+ |
+| 10 Modelo inicial por perfil | Se resuelve para sesión elegible | Pi inicial con modelo gratuito verificado | Aplicar modelo autorizado de perfil sin alterar sesión reanudada o hijos activos | C |
+| 11 Verificación por riesgo | Seis clases de alto riesgo exigen verificador | Política proporcional aún informativa | Convertir condición de riesgo en obligación ejecutada, conservando pruebas/CI | C |
+| 12 Revisión coordinada | Revisión del candidato exacto | Revisión Pi ordinaria ya existe | Coordinar un solo ciclo persistente sobre candidato congelado y controles vigentes | C |
+| 13 Dos jueces | Juicios independientes, control de rondas | Dos jueces reales secuenciales, hallazgos y límite de rondas | Paralelos si Pi lo permite y hay consentimiento; ledger congelado y Fix ODD nuevo | C |
+| 14 Preguntas | Una pregunta focalizada, después continuar | Clarifier y confirmación Pi estricta | Registrar decisión, alternativas y reanudación; texto libre jamás autoriza gasto/escritura | C |
+| 15 Git y permisos | Control de alcance y cambios | SHA, recibos, bloqueo, diarios y sin fusión automática | Conservar la seguridad adicional de ASEN; corregir solo bloqueos demostrados | A |
+| 16 Medición | Ejemplos de tiempos, turnos y costes | Comparador existente con observaciones simuladas | A/B repetible con calidad, tiempo, modelo efectivo, consumo y coste observado | C |
+| 17 Prueba de todo el flujo | Ensayos del runtime, algunos con proveedor simulado | Prueba integrada Pi simulada, recibo firmado | Pruebas CI simuladas más ensayos auténticos con dos Writers y errores reales | C |
+| 18 Contratos Pi | Runtime y capacidades propias | Extensión Pi y comprobación v1.2 | Matriz de capacidades y degradación segura, no fingir eventos que no existan | C |
+
+### Plan quirúrgico con dependencias
+
+| Tanda | Puntos | Archivos principales que deben reutilizarse | Criterio de salida |
+| --- | --- | --- | --- |
+| **E1 Orquestador** | 01, 02, 03, 04, 10, 14 | profiles.ts, session-profile-binding.ts, orchestrator.ts, odd-routing.ts, explorer-budget.ts, request-guidance.ts, extensions/asen.ts | Dos modos realmente distintos; ruta elegida y justificada; pequeño directo; Explorer sin duplicado |
+| **E2 Ejecución** | 05, 06, 07, 08, 09, 15, 18 | parallel-parent-supervisor.ts, parallel-worktrees.ts, plan-dispatcher.ts, agent-terminal-delivery.ts, diarios, agente Pi | Dos procesos hijos realmente solapados; rechazo y cancelación seguros; entrega única; no gastos ni escrituras sin permiso |
+| **E3 Revisión y corrección** | 11, 12, 13 | review-assessment-policy.ts, ordinary-review-command.ts, judgment-day.ts, dual-rejudgment.ts, review-acceptance.ts | Riesgo alto obliga revisión; dos jueces distintos; hallazgos no ocultos; corrección solo tras autorización |
+| **E4 Equivalencia** | 16, 17, pruebas transversales | agent-flow-ab-comparison.ts, pruebas end-to-end de Pi, GitHub Actions | Escenarios A/B con mismo contexto y modelos autorizados; tiempo, calidad y costes conocidos o desconocidos explícitos; CI exacto |
+| **F Auditoría independiente** | Todos | Código, pruebas, permisos, CI y evidencias reales | Sin hallazgos graves, aprobación humana, evidencia de casos extremos y decisión final sobre paridad |
+
+**Orden:** E1 → E2 → E3 → E4 → F. Crear antes las pruebas que muestran el fallo de comportamiento, luego cambiar el mínimo código en la ruta productiva Pi y repetir todo el CI sobre el SHA exacto.
+
+### Requisitos no negociables y pruebas de aceptación
+
+- En modo delegación completa el padre no modifica código, pruebas ni documentación; si no hay Worker autorizado, la ejecución se bloquea.
+- Dos tareas que comparten archivos nunca arrancan dos Writers sobre esos mismos archivos sin aislamiento. Una tarea dependiente espera realmente a su predecesora.
+- Un rechazo de autorización, cambio de sesión, SHA diferente o resultado de escritura incierto no provoca reintentos ni permisos implícitos.
+- El aviso de fin se entrega una vez. Respuesta vacía, evento parcial o aviso encolado no equivalen a aceptación.
+- El modelo real, el coste y la duración se registran cuando hay evidencia. Dato ausente = unknown, nunca coste cero supuesto.
+- Riesgo de datos, seguridad, contratos públicos, concurrencia, despliegue o fallo no detectable exige la revisión definida.
+- Dos jueces distintos, observaciones congeladas, como máximo dos rondas; cualquier Fix necesita consentimiento nuevo.
+- Integración y fusión de ramas requieren aprobación humana. Prohibido añadir auto-merge o rebajar los controles de Git.
+- Prueba de la misma versión en Linux, macOS y Windows, arquitectura, Pi y publicación del mismo SHA.
+- Un ensayo con ejecutor simulado demuestra conexiones, no la paridad de comportamiento con un proveedor real.
+
+### Experimentos mínimos antes de declarar equivalencia
+
+1. Misma tarea pequeña y mismo modelo autorizado: comparar directo frente a delegación completa y comprobar la ruta elegida.
+2. Dos unidades independientes y una dependiente: observar dos sesiones Pi con solapamiento real, bloqueos y resultados aislados.
+3. Fallos controlados de proveedor, cuota y cancelación: comprobar continuación independiente sin duplicación ni gasto.
+4. Cambios de riesgo normal y alto: verificar coste de revisión, tasa de hallazgos y que ningún riesgo alto pasa sin verificador.
+5. Tareas de tres tamaños repetidas con condiciones comparables: medir tiempo, turnos, calidad y consumo. Sin datos de facturación, coste unknown.
+
+**Decisiones a medir, no inventar:** límite óptimo de concurrencia (comenzar con dos), umbral del Explorer, ventaja mínima para dividir, modelos exactos y necesidad de doble juicio en riesgo medio.
+
+**Resultado recomendado:** usar C para automatización y coordinación; conservar A para seguridad, permisos, integridad Git y límites de coste. No afirmar que la propuesta es más rápida antes de medir.
+
