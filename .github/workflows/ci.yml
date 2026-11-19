@@ -32,6 +32,12 @@ jobs:
         run: |
           npm run typecheck
           npx --no-install tsc -p tsconfig.t08.json
+      - name: Pruebas específicas de la Megatanda B sin modelos externos
+        run: |
+          node --import tsx --test \
+            tests/megatanda-b-continuation.test.ts \
+            tests/megatanda-b-terminal-pi.test.ts \
+            tests/megatanda-b-parallel-runtime.test.ts
       - name: Probar lectura de catálogo NVIDIA sin generación ni red
         run: node --test tests/catalogo-nvidia.test.mjs
       - name: Probar diagnóstico NVIDIA con respuestas simuladas y sin gasto
