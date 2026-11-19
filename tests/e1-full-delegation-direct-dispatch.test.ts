@@ -4,7 +4,7 @@ import {spawnSync} from "node:child_process";
 import {mkdir,mkdtemp,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {createAsenExtension} from "../extensions/asen.js";
+import {createPiExtension} from "../extensions/asen.js";
 import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
 import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 
@@ -37,7 +37,7 @@ test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura a
   }:undefined},
   ui:{notify(){},setStatus(){},setWidget(){},confirm:async()=>false},
  };
- createAsenExtension({homeDir:()=>root,profilesFile:profileFile,todoStoreFile:storeFile,agentStoreFile:agentsFile,
+ createPiExtension({homeDir:()=>root,profilesFile:profileFile,todoStoreFile:storeFile,agentStoreFile:agentsFile,
   enableMemoryRuntime:false,enableWorkspaceRuntime:false,autoAdvancePlans:false,
   agentRunner:{run:async(request:any)=>{launches.push(request);return {id:request.id,ok:true,output:"Solo se examinaron los archivos autorizados"};}},
  })(pi as any);
