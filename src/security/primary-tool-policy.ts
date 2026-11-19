@@ -4,6 +4,7 @@ import path from "node:path";
 import type {ExtensionContext,ToolCallEvent,ToolCallEventResult} from "@earendil-works/pi-coding-agent";
 import {classifyNormalShellCommand} from "./normal-shell-policy.js";
 import type {AsenPermissionMode} from "./permission-mode-policy.js";
+import type {DelegationMode} from "../runtime/lifecycle/profiles.js";
 import {isYoloRoutineDelivery,isSensitiveShellAction} from "./yolo-delivery-policy.js";
 import {isYoloTempScratchRemoval} from "./yolo-temp-scratch.js";
 
@@ -16,6 +17,8 @@ export type PrimaryToolPolicyHandler=(event:ToolCallEvent,context:ExtensionConte
 export {isYoloRoutinePush,isYoloRoutineDelivery} from "./yolo-delivery-policy.js";
 export interface PrimaryModeOptions{
  readonly getMode?:(context:ExtensionContext)=>AsenPermissionMode;
+ /** Solo el perfil elegido puede activar la prohibición de escritura directa del padre. */
+ readonly getDelegationMode?:(context:ExtensionContext)=>DelegationMode|Promise<DelegationMode>;
  readonly modeEpoch?:()=>number;
  /** Human-owned private preference file; model tool calls can never edit it. */
  readonly protectedPreferenceFile?:string;
@@ -34,6 +37,14 @@ const shellTools=new Set(["bash","bash_background","monitor","asen_background_st
 // answer them, and YOLO/Super YOLO must not inherit them to children.
 const consentTools=new Set(["ask_user","ask_user_question","question","asen_session_consult",
  "asen_todo_accept_result","asen_plan_dispatch_next"]);
+// Herramientas permitidas al padre en delegación total; las que escriben código
+// se ejecutan exclusivamente en el hijo con autorización propia.
+const fullDelegationTools=new Set([
+ "asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel",
+ "asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next",
+ "asen_todo_inspect_interrupted_write","asen_todo_add","asen_todo_update",
+ "asen_todo_list","asen_todo_accept_result","asen_plan_request",
+]);
 const denied=(reason:string):ToolCallEventResult=>({block:true,reason:`ASEN primary tool policy blocked ${reason}`});
 
 async function canonicalTarget(value:string,cwd:string):Promise<{lexical:string;canonical:string}>{
@@ -75,6 +86,10 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
  return async(event,context)=>{
   const mode=options.getMode?.(context)??"normal";
   const startEpoch=options.modeEpoch?.();
+  let delegation:DelegationMode;
+  try{delegation=await options.getDelegationMode?.(context)??"organic";}
+  catch{return denied("delegation profile could not be verified");}
+  if(delegation!=="organic"&&delegation!=="full-delegation")return denied("invalid delegation profile");
   const autoRequested=mode==="auto";
   let confirmationRejected=false;
   const autoAllowed=async()=>{
@@ -92,6 +107,17 @@ export function createPrimaryToolPolicyHandler(options:PrimaryModeOptions={}):Pr
   };
   try{
    const toolName=event.toolName;
+   if(delegation==="full-delegation"){
+    // No escrituras directas ni comandos de terminal: incluso bash puede
+    // escribir archivos mediante redirecciones, scripts o tareas externas.
+    if(toolName==="edit"||toolName==="write"||shellTools.has(toolName))
+     return denied("full delegation: parent cannot modify files or run shell commands");
+    if(toolName==="codegraph"||toolName==="asen_code_intelligence"){
+     const input=event.input as {operation?:unknown}|undefined;
+     if(input?.operation!=="query")return denied("full delegation: only read-only code queries are allowed");
+    }else if(!fileTools.has(toolName)&&!consentTools.has(toolName)&&!fullDelegationTools.has(toolName))
+     return denied("full delegation: tool not verified as read-only or scoped agent dispatch");
+   }
    if(!fileTools.has(toolName)&&!shellTools.has(toolName)){
     if(consentTools.has(toolName))return undefined; // Native UI owns the decision.
     return autoRequested&&!(await autoAllowed())?
