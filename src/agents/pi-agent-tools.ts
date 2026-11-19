@@ -11,6 +11,7 @@ import type {AgentNotificationJournal} from "../runtime/agents/agent-notificatio
 import type {TaskAgentLinkStore} from "../runtime/agents/task-agent-link-store.js";
 import type {SessionTodoStore,TodoPlanMetadata} from "../runtime/lifecycle/todo-store.js";
 import {runtimeRoutingMetadata,type RouteChoice} from "../runtime/lifecycle/profiles.js";
+import {catalogListsZeroCost} from "../runtime/lifecycle/startup-orchestrator-model.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {dispatchNextPlanTask} from "../runtime/lifecycle/plan-dispatcher.js";
 import {inspectInterruptedWrite} from "../runtime/lifecycle/interrupted-write-inspection.js";
@@ -45,18 +46,20 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
 }
 export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_todo_inspect_interrupted_write"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
-export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal):()=>void{
+export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal,claimBudgetExplorer?:(identity:AgentSessionIdentity)=>boolean):()=>void{
  const access=new AgentProjectAccess();
  // An exact status query records only a short-lived coordinator inspection
  // attempt; it is neither Pi model consumption nor approval for further work.
  const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number}>();
  const INSPECTION_WINDOW_MS=300_000;
  const selectedIdentity=async(root:unknown,context:any,launch:boolean,signal?:AbortSignal)=>access.resolve(root,context,await identity(context),launch,()=>confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize another project?",`Start a read-only ASEN agent in ${String(root)}? Access applies only to this live session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal),signal);
- pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated, read-only Pi agent task in the current session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema}},execute:async(_id,params,signal,_update,context)=>{
+ pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated read-only Pi Explorer. With budgetExplorer=true, require real same-session exhaustion and a zero-price catalog model, without fallback or writing.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema,budgetExplorer:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
   const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
   const todoId=(params as {todoId?:unknown}).todoId;
+  const budgetExplorer=(params as {budgetExplorer?:unknown}).budgetExplorer===true;
+  if(budgetExplorer&&todoId!==undefined)throw new Error("Budget Explorer cannot reuse a planned Todo or its authority");
   let dispatchRole:"explorer"|"reviewer"|"verifier"="explorer";
   let planSkillSelection:SkillSelectionContext|undefined,persistedPlan:TodoPlanMetadata|undefined;
   let todoSnapshot:Awaited<ReturnType<SessionTodoStore["list"]>>[number]|undefined;
@@ -72,6 +75,19 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const requested:RouteChoice=persistedPlan?{...(persistedPlan.model!==undefined?{model:persistedPlan.model}:{}),...(persistedPlan.thinking!==undefined?{thinking:persistedPlan.thinking}:{})}:{};
   let resolved:RouteChoice,routeSource:"session"|"project"|"global"|"default"|"persisted-plan",modelFallback:AgentModelFallback|undefined;
   if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const directExplorer=todoId===undefined&&dispatchRole==="explorer";const route=resolveRouting?await resolveRouting(dispatchRole,session,directExplorer):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;if(directExplorer)modelFallback=route.modelFallback;}
+  if(budgetExplorer){
+   // La consulta ya superó el límite real; no se presume gratuidad de un modelo desconocido.
+   const reference=resolved.model??(context?.model?.provider&&context?.model?.id?
+    `${context.model.provider}/${context.model.id}`:undefined);
+   const sep=typeof reference==="string"?reference.indexOf("/"):-1;
+   const model=sep>0&&sep<reference!.length-1?
+    context?.modelRegistry?.find?.(reference!.slice(0,sep),reference!.slice(sep+1)):undefined;
+   if(!model||!catalogListsZeroCost(model)||`${model.provider}/${model.id}`!==reference)
+    throw new Error("Budget Explorer requires a verified zero-price model in the current Pi catalog; no agent was launched");
+   if(prompt.length>2048)throw new Error("Budget Explorer instruction exceeds the read-only handoff limit");
+   resolved={...resolved,model:reference!};
+   modelFallback=undefined;
+  }
   const routing=runtimeRoutingMetadata(requested,resolved,routeSource);
   throwIfCancelled(signal);
   // Fresh starts of both planned and legacy Todos require the exact saved
@@ -88,7 +104,14 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
     await (await todoLink!.binder()).launchExact(todoSnapshot,agentId,session,enqueue,dispatch,validate);
    },
   }:{};
-  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback}:{}),...binding},signal);
+  const active=await runtime();
+  if(budgetExplorer){
+   const current=await identity(context);throwIfCancelled(signal);
+   if(current.sessionId!==session.sessionId||current.projectId!==session.projectId||
+      !claimBudgetExplorer?.(session))
+    throw new Error("Budget Explorer was not authorized by one fresh, same-session read budget");
+  }
+  const taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback}:{}),...binding},signal);
   return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema,includeNotices:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
