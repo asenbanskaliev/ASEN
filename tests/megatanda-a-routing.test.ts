@@ -104,3 +104,34 @@ test("G49-A2: los eventos Pi entregan el presupuesto solo a su sesión y proyect
  assert.equal((await prompt())[ASEN_EXPLORATION_BUDGET_SECTION],ASEN_EXPLORATION_BUDGET_GUIDANCE);
  assert.equal(tools.some(tool=>tool.name==="asen_plan_request"),true);
 });
+
+
+test("E1B: delegación completa convierte una edición directa en Writer con ámbito exacto",()=>{
+ const repository=process.cwd();
+ const request={...facts(),scope:{kind:"known",expectedPaths:["src/a.ts","src/b.ts","tests/a.test.ts"]},
+  writes:[{path:"src/a.ts",changeKind:"behavior"}]};
+ const candidate={id:"candidato-e1",repository,revision:"a".repeat(40),createdAt:"2026-11-19T10:00:00Z"};
+ const layers={global:{schema:"asen.runtime-profiles/v1" as const,active:"autonomo",profiles:[{
+  name:"autonomo",mode:"full-delegation" as const,routes:{worker:{model:"cloud/configurado"}}
+ }]}};
+ const planned=JSON.parse(controlledInstructionPlanCommand(JSON.stringify(request),repository,candidate,layers));
+ assert.equal(planned.route,"direct");
+ assert.deepEqual(planned.requiredAgentRoles,["worker"]);
+ assert.deepEqual(planned.executablePlan.tasks.map((task:{role:string})=>task.role),["worker"]);
+ assert.deepEqual(planned.executablePlan.tasks[0].writeSurfaces,["src/a.ts"]);
+ assert.equal(planned.executablePlan.tasks[0].model,"cloud/configurado");
+ assert.equal(planned.execution.started,false);
+ assert.equal(planned.execution.authorized,false);
+ const normal=JSON.parse(controlledInstructionPlanCommand(JSON.stringify(request),repository,candidate));
+ assert.deepEqual(normal.executablePlan.tasks.map((task:{role:string})=>task.role),["primary"]);
+});
+
+test("E1B: delegación completa no lanza agentes para lectura directa",()=>{
+ const repository=process.cwd(),request={...facts({intent:"analysis",writes:[]})};
+ const layers={global:{schema:"asen.runtime-profiles/v1" as const,active:"delegado",profiles:[{
+  name:"delegado",mode:"full-delegation" as const,routes:{}
+ }]}};
+ const planned=JSON.parse(controlledInstructionPlanCommand(JSON.stringify(request),repository,undefined,layers));
+ assert.deepEqual(planned.executablePlan.tasks.map((task:{role:string})=>task.role),["primary"]);
+ assert.equal(planned.execution.started,false);
+});
