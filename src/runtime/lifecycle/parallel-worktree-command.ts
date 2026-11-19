@@ -107,7 +107,8 @@ export function registerParallelWorktreeCommand(
        "Se solicitará una confirmación INDIVIDUAL por Worker con su instrucción y el candidato exacto.",
        "El coste real/monetario del modelo es DESCONOCIDO; consulta proveedor antes de consentir.",
        "Los Workers pueden ejecutarse simultáneamente tras lanzarse, bajo los límites del AgentRuntime.",
-       "Una denegación o fallo detendrá los lanzamientos restantes; los ya iniciados NO se reintentarán.",
+       "Una denegación explícita comprobada permite ofrecer otro Worker independiente, pero solo con una aprobación individual nueva.",
+       "Si hay un fallo o resultado incierto, se detiene el lote. Ningún Worker iniciado se repite automáticamente.",
        "No se crearán sesiones ficticias, no habrá modelo de pago implícito, retry, PASS, limpieza ni merge."
       ].join("\n"));
       await validateParent();return answer===true;
