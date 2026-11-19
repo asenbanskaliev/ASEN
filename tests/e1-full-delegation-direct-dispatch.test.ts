@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {spawnSync} from "node:child_process";
-import {mkdtemp,realpath,rm,writeFile} from "node:fs/promises";
+import {mkdir,mkdtemp,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
@@ -11,7 +11,8 @@ import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura al padre",async t=>{
  const root=await realpath(await mkdtemp(join(tmpdir(),"asen-e1b-directa-")));
  t.after(()=>rm(root,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
- const project=root,sessionId="delegacion-real";
+ const worktree=join(root,"proyecto");await mkdir(worktree);
+ const project=await realpath(worktree),sessionId="delegacion-real";
  await writeFile(join(project,"README.md"),"Documento inicial\n");
  const git=(...args:string[])=>{
   const run=spawnSync("git",["-C",project,...args],{encoding:"utf8",windowsHide:true});
