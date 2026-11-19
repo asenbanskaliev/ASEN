@@ -680,9 +680,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(activos<2){
       const rows=await todos.list(identity),byId=new Map(rows.map(row=>[row.taskId,row]));
       const next=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&row.current.state==="planned"&&
+       ["explorer","reviewer","verifier"].includes(row.plan?.role??"")&&
        (row.dependsOn??[]).every(dep=>["done","succeeded"].includes(byId.get(dep)?.current.state??"")))
        .sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-(b.plan?.priority??Number.MAX_SAFE_INTEGER))[0];
-      if(next&&["explorer","reviewer","verifier"].includes(next.plan?.role??"")){
+      if(next){
        const segundo=await dispatchNextPlanTask({...dispatchOptions,expectedTodoId:next.taskId});
        if(segundo.status==="dispatched"&&segundo.role!=="worker")lecturasIniciadas=2;
       }
