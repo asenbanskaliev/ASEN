@@ -210,6 +210,9 @@ export async function previewParentSupervisor(input:ParentSupervisorInput):Promi
 }
 export async function launchParentApprovedWorkers(input:ParentSupervisorInput):Promise<ParentSupervisorResult>{
  const initial=await prepare(input),started:ParentSupervisorResult["started"][number][]=[];
+ // Solo un rechazo humano explícito y comprobado permite continuar otro
+ // Worker independiente. Errores ambiguos conservan la parada inmediata.
+ const declinedIndependent:string[]=[];
  if(initial.status!=="ready")return nonAuthorizing("blocked",initial.batchId,started,initial.blockers);
  if(await input.confirmBatch(initial)!==true)return nonAuthorizing("declined",initial.batchId,started,[]);
  await input.validateParent();
@@ -326,7 +329,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     unit.sourceTodoId+": Child Pi identity changed before consent; inspect durable child Todo/Agent records and do not retry"
    ]);
   }
-  let wasApproved=false;
+  let wasApproved=false,explicitlyDeclined=false;
   let outcome:Awaited<ReturnType<ParentSupervisorInput["launchChild"]>>;
   try{
    outcome=await input.launchChild(unit,async task=>{
@@ -337,6 +340,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
      task.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i]))
      return false;
     wasApproved=await input.confirmWorker(unit,task)===true;
+    explicitlyDeclined=!wasApproved;
     await validateExact();
     return wasApproved;
    },validateExact);
@@ -353,10 +357,39 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": Child Pi dispatch or identity validation failed ambiguously; inspect its durable Todo/Agent records before any further action"]);
   }
+  // G49-B: el rechazo expreso de este Worker no concede permiso ni cancela
+  // las otras unidades. Antes de pasar a la siguiente se acredita que ESTE
+  // intento no inició un agente, cambió el Todo ni consumió un enlace.
+  if(outcome.status==="blocked"&&explicitlyDeclined&&!wasApproved){
+   try{
+    await input.validateParent();
+    const [todos,agents,links]=await Promise.all([
+     input.loadTodos(child),input.loadAgents(child),input.loadTaskAgentLinks(child)
+    ]);
+    const current=todos.find(row=>row.taskId===unit.childTodoId);
+    if(!current||!sameAuthorizedChildTodo(expectedChildTodo,current)||
+       current.current.state!=="planned"||
+       agents.some(agent=>agent.role==="worker")||
+       links.some(link=>link.taskId===unit.childTodoId))
+     throw new Error("Worker rejection had an ambiguous durable outcome");
+    await input.validateParent();
+   }catch{
+    return nonAuthorizing("partial-needs-review",initial.batchId,started,[
+     ...declinedIndependent,
+     unit.sourceTodoId+": Rejected Worker left an uncertain Todo/Agent state; stop before launching other units"
+    ]);
+   }
+   declinedIndependent.push(unit.sourceTodoId+": El usuario rechazó este Worker; no se inició y las otras unidades mantienen su aprobación independiente");
+   continue;
+  }
   if(outcome.status!=="dispatched"||outcome.role!=="worker"||
    outcome.todoId!==unit.childTodoId||!wasApproved)
-   return nonAuthorizing("partial-needs-review",initial.batchId,started,
-    [unit.sourceTodoId+": Worker dispatch blocked or declined; inspect persisted Todo/Agent records"]);
+   return nonAuthorizing("partial-needs-review",initial.batchId,started,[
+    ...declinedIndependent,
+    unit.sourceTodoId+": Worker dispatch blocked or ambiguous; inspect persisted Todo/Agent records"
+   ]);
  }
- return nonAuthorizing("started",initial.batchId,started,[]);
+ return declinedIndependent.length?
+  nonAuthorizing("partial-needs-review",initial.batchId,started,declinedIndependent):
+  nonAuthorizing("started",initial.batchId,started,[]);
 }
