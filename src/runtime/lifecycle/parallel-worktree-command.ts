@@ -20,7 +20,7 @@ import {controlledInstructionPlanCommand} from "./route-command.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | attach | plan-todo | supervise | collect | status | review (supervise pide autorización separada por Worker; collect no fusiona)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | plan-todo | supervise | collect | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
  sessionManager?:{getSessionId?:()=>string};
@@ -64,7 +64,7 @@ export function registerParallelWorktreeCommand(
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:async(args,ctx)=>{
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="attach"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
@@ -404,13 +404,14 @@ export function registerParallelWorktreeCommand(
     };
     ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
    }
-   if(!id||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.editor||!ctx.ui.confirm){
+   const automatic=action==="prepare-auto";
+   if(!id||ctx.mode!=="tui"||ctx.hasUI!==true||(!automatic&&!ctx.ui.editor)||!ctx.ui.confirm){
     const blocked={status:"unavailable" as const,reason:"Worktree creation requires live Pi TUI, editor, confirmation and an owned session"};
     ctx.ui.notify(blocked.reason,"warning");return blocked;
    }
    const root=realpathSync(path.resolve(ctx.cwd)),head=currentHead(root),
     manager=ctx.sessionManager;
-   const linked=action==="prepare-todos";
+   const linked=action==="prepare-todos"||automatic;
    if(linked&&(!options?.loadTodos||!options.journalFile)){
     const unavailable={status:"unavailable" as const,reason:"Linked worktree preparation needs Todo runtime and a private journal"};
     ctx.ui.notify(unavailable.reason,"warning");return unavailable;
@@ -437,10 +438,13 @@ export function registerParallelWorktreeCommand(
     units:linked?planned.slice(0,2).map(todo=>({taskId:todo.taskId,writeSurfaces:todo.plan!.writeSurfaces!})):
      [{taskId:"backend",writeSurfaces:["src/backend"]},{taskId:"frontend",writeSurfaces:["src/frontend"]}]
    };
-   const edited=await ctx.ui.editor("Preparar worktrees: directorio padre existente y dos a cuatro scopes separados (JSON)",JSON.stringify(sample,null,2));
+   // Dos tareas ODD y ámbitos persistidos: no se permite ampliar rutas por el editor.
+   const edited=automatic?undefined:await ctx.ui.editor!("Preparar worktrees: directorio padre existente y dos a cuatro scopes separados (JSON)",JSON.stringify(sample,null,2));
    checkIdentity();
-   if(!edited?.trim())return {status:"cancelled",grantsAuthority:false};
-   const selection=readRequest(edited);
+   if(!automatic&&!edited?.trim())return {status:"cancelled",grantsAuthority:false};
+   const selection=automatic?sample:readRequest(edited!);
+   if(automatic&&!existsSync(selection.parentDir))
+    return {status:"blocked" as const,reason:"Crear antes la carpeta hermana "+selection.parentDir+" para preparar automáticamente; no se reservó ningún permiso.",grantsAuthority:false as const};
    const bound=linked?bindParallelSourceTodos({
     identity:owner,expectedHead:head,rows:currentTodos,units:selection.units
    }):undefined;
@@ -507,7 +511,7 @@ export function registerParallelWorktreeCommand(
       {sourceTodoBound:false as const}),
     worktrees:result.allocations.map(a=>({taskId:a.taskId,root:a.root,head:a.baseRevision,writeSurfaces:a.writeSurfaces})),
     grantsAuthority:false as const,autoMerge:false as const,
-    next:"Abrir una sesión Pi por worktree, preparar ODD y obtener consentimiento Worker individual. Revisión e integración manuales."};
+    next:automatic?"Dos tareas ODD aisladas preparadas sin editar JSON. Faltan sesiones Pi hijas reales y consentimiento Worker individual.":"Abrir una sesión Pi por worktree, preparar ODD y obtener consentimiento Worker individual. Revisión e integración manuales."};
    ctx.ui.notify(JSON.stringify(display,null,2),"info");return display;
   }
  });

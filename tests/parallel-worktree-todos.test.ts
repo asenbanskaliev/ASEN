@@ -1444,3 +1444,22 @@ test("T06: tras crear el primer worktree no se libera una reserva si falla el se
  }));
  assert.equal((await f.journal.list(f.identity))[0]?.state,"reserved");
 });
+
+test("T06: preparar automáticamente selecciona dos tareas ODD sin editor ni permisos Writer",async t=>{
+ const f=fixture(t),sibling=resolve(f.source+"-worktrees");mkdirSync(sibling);
+ t.after(()=>{if(existsSync(sibling))rmSync(sibling,{recursive:true,force:true});});
+ f.ctx.ui.editor=undefined;
+ const result=await f.run("prepare-auto") as {status:string;sourceTodoBound:boolean;grantsAuthority:boolean;worktrees:readonly {root:string}[]};
+ assert.equal(result.status,"prepared");assert.equal(result.sourceTodoBound,true);
+ assert.equal(result.grantsAuthority,false);assert.equal(result.worktrees.length,2);
+ assert.equal(f.confirmMessages.length,1);assert.equal(f.dispatchedChildren.length,0);
+ assert.equal((await f.journal.list(f.identity)).length,1);
+});
+test("T06: la preparación automática rechazable nunca inicia ni reserva un Worker",async t=>{
+ const f=fixture(t),sibling=resolve(f.source+"-worktrees");mkdirSync(sibling);
+ t.after(()=>{if(existsSync(sibling))rmSync(sibling,{recursive:true,force:true});});
+ f.setConsent(false);f.ctx.ui.editor=undefined;
+ assert.deepEqual(await f.run("prepare-auto"),{status:"declined",grantsAuthority:false});
+ assert.deepEqual(await f.journal.list(f.identity),[]);
+ assert.equal(f.dispatchedChildren.length,0);
+});
