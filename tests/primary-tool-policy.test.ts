@@ -224,3 +224,42 @@ test("E1B: el padre conserva lecturas y delegación controlada",async()=>{
  const denied=await createPrimaryToolPolicyHandler({getDelegationMode:()=>Promise.reject(new Error("Perfil no disponible"))})(event("write",{path:"src/a.ts"}),ctx);
  assert.equal(denied?.block,true);
 });
+
+
+test("T18 el cambio de turno invalida las autorizaciones todavía pendientes",async()=>{
+ let epoch=0;let release!:(mode:"organic")=>void;
+ const gated=createPrimaryToolPolicyHandler({
+  getDelegationMode:()=>new Promise<"organic">(resolve=>{release=resolve;}),
+  modeEpoch:()=>`modo:${epoch}`,
+ });
+ const ctx=context(process.cwd());
+ const pending=gated(event("write",{path:"fuente.ts"}),ctx);
+ epoch++;
+ release("organic");
+ const result=await pending;
+ assert.equal(result?.block,true,"El permiso del turno anterior no puede admitir escritura");
+ assert.match(result?.reason??"",/turn changed/u);
+});
+
+test("T18 el cambio de turno durante una consulta automática invalida la autorización",async()=>{
+ let epoch=2;let release!:(approved:boolean)=>void;
+ const gated=createPrimaryToolPolicyHandler({
+  getMode:()=>"auto",modeEpoch:()=>`modo:${epoch}`,
+  reviewAuto:async()=>new Promise<boolean>(resolve=>{release=resolve;}),
+ });
+ const pending=gated(event("custom_extension_tool",{query:"estado"}),context(process.cwd()));
+ // La revisión comienza en el turno original y termina después de su reemplazo.
+ await new Promise<void>(resolve=>setImmediate(resolve));
+ assert.equal(typeof release,"function");
+ epoch++;
+ release(true);
+ const decision=await pending;
+ assert.equal(decision?.block,true,"Un revisor anterior no puede autorizar en un turno nuevo");
+});
+
+test("T18 una orden estable sigue siendo válida sin cambio de turno",async()=>{
+ let epoch=1;const guarded=createPrimaryToolPolicyHandler({modeEpoch:()=>`estado:${epoch}`,getDelegationMode:async()=>"organic"});
+ assert.equal(await guarded(event("read",{path:"archivo-normal.txt"}),context(process.cwd())),undefined);
+ epoch++;
+ assert.equal(await guarded(event("read",{path:"archivo-normal.txt"}),context(process.cwd())),undefined);
+});
