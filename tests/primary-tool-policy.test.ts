@@ -216,7 +216,7 @@ test("E1B: el modo delegación completa bloquea toda edición directa del padre"
 });
 
 test("E1B: el padre conserva lecturas y delegación controlada",async()=>{
- const handler=createPrimaryToolPolicyHandler({getDelegationMode:async()=>"full-delegation"});
+ const handler=createPrimaryToolPolicyHandler({getDelegationMode:async()=>("full-delegation" as const)});
  const ctx=context(process.cwd());
  for(const [name,input] of [["read",{path:"package.json"}],["asen_agent_start",{prompt:"Investigar"}],["asen_plan_request",{instruction:"Preparar un plan"}],["asen_plan_dispatch_next",{todoId:"tarea"}],["asen_code_intelligence",{operation:"query"}]] as const){
   assert.equal(await handler(event(name,input),ctx),undefined,name);
