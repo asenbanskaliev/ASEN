@@ -3,6 +3,7 @@ import test from "node:test";
 import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {withExclusiveFileLock} from "../src/io/exclusive-file-lock.js";
 import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 import {registerAgentTools} from "../src/agents/pi-agent-tools.js";
 test("EF-601 Pi ack only confirms an authenticated coordinator action in the same TUI session",async t=>{
@@ -162,4 +163,42 @@ test("EF-604 re-registering Pi tools after a restart discards earlier inspection
  assert.equal(confirmed.details.writerAuthorized,false);
  assert.equal(confirmed.details.humanReadConfirmed,false);
  assert.equal((await journal.list(owner)).find(x=>x.eventId===row.eventId)?.delivery,"acknowledged");
+});
+
+test("EF-605 CodeRabbit: una inspección caducada mientras espera el bloqueo no se reconoce",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-ack-locked-expiry-"));
+ t.after(()=>rm(root,{recursive:true,force:true,maxRetries:6,retryDelay:100}));
+ const owner={sessionId:"ack-expiry-session",projectId:await realpath(process.cwd())};
+ const journal=new AgentNotificationJournal(join(root,"notices.json"));
+ const row=await journal.record({id:"expiry-agent",state:"completed",...owner});
+ await journal.claim(row.eventId,owner);
+ await journal.markEnqueued(row.eventId,owner);
+ let now=1_000;
+ const registered=new Map<string,any>();
+ const runtime={list:async()=>[],query:async(id:string)=>({
+  record:{id,role:"explorer",state:"completed",...owner}
+ })};
+ registerAgentTools({registerTool:(tool:any)=>registered.set(tool.name,tool)} as never,
+  async()=>runtime as never,undefined,undefined,journal,undefined,undefined,()=>now);
+ const context={mode:"tui",hasUI:true,cwd:owner.projectId,
+  sessionManager:{getSessionId:()=>owner.sessionId},ui:{notify:()=>{}}};
+ const call=(name:string,params:object)=>registered.get(name).execute(name,params,
+  new AbortController().signal,()=>{},context);
+ await call("asen_agent_status",{id:"expiry-agent"});
+ let entered!:()=>void;
+ const reached=new Promise<void>(resolve=>{entered=resolve;});
+ const original=journal.acknowledge.bind(journal);
+ journal.acknowledge=async(...args:Parameters<typeof original>)=>{
+  entered();
+  return original(...args);
+ };
+ let pending!:Promise<unknown>;
+ await withExclusiveFileLock(journal.path,async()=>{
+  pending=call("asen_agent_ack",{eventId:row.eventId});
+  // La herramienta ya validó la inspección, pero el diario espera el bloqueo.
+  await reached;
+  now+=300_001;
+ });
+ await assert.rejects(pending,/Inspect this exact terminal agent/u);
+ assert.equal((await journal.list(owner))[0]?.delivery,"enqueued");
 });

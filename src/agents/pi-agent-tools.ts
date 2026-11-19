@@ -195,7 +195,9 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId))
    throw new Error("Pi coordinator session or project changed before acknowledgement");
   if(!inspectionIsFresh())throw new Error(inspectionError);
-  const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state,signal);
+  const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state,signal,()=>{
+   if(!inspectionIsFresh())throw new Error(inspectionError);
+  });
   return result({eventId:row.eventId,agentId:row.agentId,state:row.state,acknowledged,
    evidence:"COORDINATOR_ACTION_ONLY",humanReadConfirmed:false,writerAuthorized:false});
  }});

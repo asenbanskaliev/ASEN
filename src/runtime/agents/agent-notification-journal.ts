@@ -93,7 +93,7 @@ export class AgentNotificationJournal{
   if(!validDate(observed))throw new Error("Invalid agent notice clock");
   return previous&&observed<previous?previous:observed;
  }
- async #change<T>(transaction:(file:File)=>{result:T;changed:boolean},signal?:AbortSignal):Promise<T>{
+ async #change<T>(transaction:(file:File)=>{result:T;changed:boolean},signal?:AbortSignal,validate?:()=>void):Promise<T>{
   throwIfAborted(signal);
   // Lock across multiple independent Pi processes; never rewrite a newer row.
   await preparePrivateFile(this.path,true);
@@ -104,10 +104,13 @@ export class AgentNotificationJournal{
    const file=await read(this.path);
    // Reading yields while holding the lock; cancellation may arrive at that boundary.
    throwIfAborted(signal);
+   // Revalidar bajo el bloqueo antes de cambiar el estado persistido.
+   validate?.();
+   throwIfAborted(signal);
    const value=transaction(file);
    if(value.changed){file.revision++;await write(this.path,file);}
    return value.result;
-  });
+  },30_000,signal);
  }
  /** Record a verified terminal observation before trying the Pi transport. */
  async record(subject:AgentNoticeSubject):Promise<AgentNoticeRow>{
@@ -156,7 +159,7 @@ export class AgentNotificationJournal{
  }
  /** Explicit Pi coordinator acknowledgement, not a human-read or UI-consumption proof.
   * Cannot replay an uncertain send or grant additional permissions. */
- async acknowledge(eventId:string,scope:AgentNoticeScope,agentId:string,state:AgentNoticeTerminalState,signal?:AbortSignal):Promise<boolean>{
+ async acknowledge(eventId:string,scope:AgentNoticeScope,agentId:string,state:AgentNoticeTerminalState,signal?:AbortSignal,validate?:()=>void):Promise<boolean>{
   if(!valid(eventId)||!valid(scope.sessionId)||!valid(scope.projectId)||!valid(agentId)||!terminal.has(state))
    throw new Error("Invalid agent notice acknowledgement");
   return this.#change(file=>{
@@ -168,7 +171,7 @@ export class AgentNotificationJournal{
    (row as {delivery:AgentNoticeDelivery}).delivery="acknowledged";
    (row as {updatedAt:string}).updatedAt=this.#now(row.updatedAt);
    return{result:true,changed:true};
-  },signal);
+  },signal,validate);
  }
  /** Only pending results may auto-enqueue after restart; attempted stays uncertain. */
  async list(scope:AgentNoticeScope):Promise<readonly AgentNoticeRow[]>{
