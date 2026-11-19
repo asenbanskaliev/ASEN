@@ -98,7 +98,7 @@ test("G49-D: Pi recorre dos tareas dependientes y exige recibo + consentimiento 
   verdict:"PASSED"
  },key));
  const rejected=await accept(async()=>{requested++;return false;},true);
- assert.equal(rejected.status,"blocked");assert.equal(requested,1);
+ assert.equal(rejected.status,"blocked");assert.equal(requested,1,rejected.status==="blocked"?rejected.reason:"unexpected acceptance");
  assert.equal((await todos.list(identity)).find(x=>x.taskId===second.taskId)?.current.state,"blocked");
  const approved=await accept(async details=>{
   requested++;assert.equal(details.candidateRevision,sha);
