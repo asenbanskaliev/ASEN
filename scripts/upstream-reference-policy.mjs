@@ -23,6 +23,8 @@ const exactProvenanceDocs=new Set([
   "odd/evidence/portable-checkpoint-manifest.json",
   // Exact ODD comparison dossier; textual provenance only, never executable code.
   "odd/tasks/flujo-de-agentes.md",
+  // G49-A: exact human-readable comparison dossier. No runtime or test exception.
+  "odd/tasks/flujo-de-agentes-"+providerTerm+"-shell-4.9.0-investigacion.md",
   // T11: trazabilidad humana de layout, no código ejecutable ni un import.
   "odd/tasks/flujo-de-agentes-continuidad.md",
   "odd/tasks/flujo-de-agentes-t11-layout-"+providerTerm+"-shell-4.8.0.md",
