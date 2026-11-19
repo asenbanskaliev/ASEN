@@ -65,7 +65,7 @@ test("time and ordinary review do not trigger delegation",()=>{
 });
 
 test("multiple writes alone do not launch a redundant exploration agent",()=>{
- const decision=issueOddDecision({taskId:"broad-writes",repository:"r",paths:["src/a.ts","src/b.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"schema"}]});
+ const decision=issueOddDecision({taskId:"broad-writes",repository:"r",paths:["src/a.ts","src/b.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}]});
  const plan=buildOrchestrationPlan({taskId:"broad-writes",repository:"r",prompt:"p",writeSurfaces:["src/a.ts","src/b.ts"],candidate},decision);
  assert.equal(plan.decision.route,"direct");assert.deepEqual(plan.agents,[]);
  const graph=materializeExecutablePlan(plan,"Make the coordinated change");assert.equal(graph.tasks[0]?.role,"primary");assert.deepEqual(graph.tasks[0]?.dependsOn,[]);
@@ -351,4 +351,16 @@ test("EF-401 high-risk incident retains independent Verifier and an explicit ver
  const intentional=issueOddDecision({taskId:"verify-explicit",repository:"r",intent:"verification"});
  const plan=buildOrchestrationPlan({taskId:"verify-explicit",repository:"r",prompt:"Verify the original acceptance"},intentional);
  assert.deepEqual(plan.agents.map(agent=>agent.role),["verifier"]);
+});
+
+
+test("E3: el plan ODD con riesgo contractual añade Worker y Verifier vinculados",()=>{
+ const decision=issueOddDecision({taskId:"riesgo-contrato",repository:"r",paths:["src/api.ts"],writes:[{path:"src/api.ts",changeKind:"schema"}]});
+ assert.equal(decision.route,"orchestrate");
+ assert.equal(decision.verification,"independent");
+ const plan=buildOrchestrationPlan({taskId:"riesgo-contrato",repository:"r",prompt:"Cambiar contrato",writeSurfaces:["src/api.ts"],candidate},decision);
+ assert.deepEqual(plan.agents.map(agent=>agent.role),["worker","verifier"]);
+ const tasks=materializeExecutablePlan(plan,"Cambiar contrato");
+ assert.deepEqual(tasks.tasks.map(task=>task.role),["worker","verifier"]);
+ assert.deepEqual(tasks.tasks[1]?.dependsOn,[tasks.tasks[0]?.id]);
 });

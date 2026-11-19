@@ -15,7 +15,7 @@ export function routePreviewCommand(args:string,repositoryIdentity:string):strin
  if(typeof args!=="string"||!args.trim()||args.length>MAX_INPUT)throw new Error("Usage: /asen-route <JSON ODD facts>; input must be 1–16384 characters");
  if(typeof repositoryIdentity!=="string"||!path.isAbsolute(repositoryIdentity))throw new Error("ASEN route preview requires a canonical active project path");
  let value:unknown;try{value=JSON.parse(args);}catch{throw new Error("ASEN route preview expects valid JSON ODD facts");}
- if(!exact(value,INPUT_KEYS))throw new Error(`ASEN route facts must contain exactly: ${INPUT_KEYS.join(", ")}`);
+ if(!exact(value,Object.hasOwn(value??{},"namedRisks")?[...INPUT_KEYS,"namedRisks"]:INPUT_KEYS))throw new Error(`ASEN route facts must contain exactly: ${INPUT_KEYS.join(", ")} (optional namedRisks)`);
  const facts=deriveOddFacts({...value,repositoryIdentity} as unknown as OddRoutingRequest),decision=planOddRoute(facts);
  return [`route: ${decision.route}`,`risk: ${decision.risk}`,`verification: ${decision.verification}`,`reasons: ${decision.reasons.join(", ")}`,`isolated child required: ${decision.requiresIsolatedChild}`,"Preview only: no agent was dispatched and no write permission was granted."].join("\n");
 }
@@ -35,7 +35,7 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
   },null,2);
  }
  let value:unknown;try{value=JSON.parse(args);}catch{throw new Error("ASEN planning expects valid JSON instruction and ODD facts");}
- if(!exact(value,PLAN_INPUT_KEYS))throw new Error(`ASEN plan input must contain exactly: ${PLAN_INPUT_KEYS.join(", ")}`);
+ if(!exact(value,Object.hasOwn(value??{},"namedRisks")?[...PLAN_INPUT_KEYS,"namedRisks"]:PLAN_INPUT_KEYS))throw new Error(`ASEN plan input must contain exactly: ${PLAN_INPUT_KEYS.join(", ")} (optional namedRisks)`);
  if(typeof value.instruction!=="string"||!value.instruction.trim()||value.instruction!==value.instruction.trim()||value.instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(value.instruction))throw new Error("ASEN plan instruction is invalid");
  const {instruction,...factsInput}=value;
  const facts=deriveOddFacts({...factsInput,repositoryIdentity} as unknown as OddRoutingRequest),decision=planOddRoute(facts);

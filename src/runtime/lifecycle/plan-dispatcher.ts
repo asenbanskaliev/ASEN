@@ -47,7 +47,7 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(!metadata||metadata.role!=="worker"||!metadata.skillSelection||metadata.skillSelection.phase!=="apply"||!basisText||!candidate||!surfaces?.length)return {reason:"The worker plan lacks a persisted candidate, exact file scope or original ODD authorization facts; rebuild the plan in a Git project."};
  if(candidate.repository!==identity.projectId)return {reason:"The persisted worker candidate belongs to another project; rebuild the plan."};
  let parsed:unknown;try{parsed=JSON.parse(basisText);}catch{return {reason:"The worker ODD authorization facts are malformed; rebuild the plan."};}
- if(!exact(parsed,basisKeys)||typeof parsed.instruction!=="string"||!parsed.instruction.trim()||parsed.instruction!==parsed.instruction.trim())return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
+ if(!exact(parsed,Object.hasOwn(parsed??{},"namedRisks")?[...basisKeys,"namedRisks"]:basisKeys)||typeof parsed.instruction!=="string"||!parsed.instruction.trim()||parsed.instruction!==parsed.instruction.trim())return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
  const {instruction,...rawFacts}=parsed;
  let facts:ReturnType<typeof deriveOddFacts>,revision:string;
  try{
