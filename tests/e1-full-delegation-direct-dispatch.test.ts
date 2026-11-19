@@ -64,6 +64,12 @@ test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura a
  const declined=await dispatchTool.execute("denegado",{},new AbortController().signal,()=>{},context);
  assert.equal(declined.details.status,"blocked");
  assert.equal(launches.length,0);
+ // La interfaz de Pi no puede convertir texto/objeto con apariencia de permiso
+ // en autorización Writer. Debe ser exclusivamente el booleano verdadero.
+ context.ui.confirm=async()=>({approved:true} as any);
+ const ambiguo=await dispatchTool.execute("ambiguo",{},new AbortController().signal,()=>{},context);
+ assert.equal(ambiguo.details.status,"blocked");
+ assert.equal(launches.length,0,"No arranca Writer con confirmación ambigua");
  context.ui.confirm=async()=>{permissions++;return true;};
  const approved=await dispatchTool.execute("aprobado",{},new AbortController().signal,()=>{},context);
  assert.equal(approved.details.status,"dispatched",approved.details.reason);
