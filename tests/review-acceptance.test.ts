@@ -92,6 +92,18 @@ test("EF-502 denial leaves blocked review unchanged without a second agent",asyn
  assert.deepEqual(await f.todos.history(f.task.taskId,f.identity),before);
  assert.equal((await f.agents.list(f.identity)).length,1);
 });
+test("G49-C: ni texto afirmativo ni objetos de confirmación aceptan el código",async t=>{
+ const f=await makeFixture(t);
+ const initial=await f.todos.history(f.task.taskId,f.identity);
+ for(const ambiguous of ["sí",{accepted:true},1,undefined]){
+  const response=await acceptIndependentReview({...f,taskId:f.task.taskId,
+   validateIdentity:async()=>{},confirm:async()=>(ambiguous as boolean)});
+  assert.equal(response.status,"blocked");
+  assert.deepEqual(await f.todos.history(f.task.taskId,f.identity),initial);
+ }
+ assert.equal((await f.agents.list(f.identity)).length,1);
+});
+
 test("EF-503 malformed or failing Reviewer verdict cannot ask for approval or unlock dependency",async t=>{
  const f=await makeFixture(t,"reviewer",JSON.stringify({verdict:"fail",evidence:["Defect detected"]}));
  let prompts=0;
