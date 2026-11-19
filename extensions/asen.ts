@@ -35,7 +35,7 @@ import {readProfilesFile,mutateProfilesFile} from "../src/runtime/lifecycle/prof
 import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallbacksFile,setProfileFallbackChain,renameProfileFallbacks,removeProfileFallbacks,writeProfileFallbacksFile,MAX_PROFILE_FALLBACK_CHAIN_LENGTH} from "../src/runtime/lifecycle/profile-fallback-store.js";
 import {createParentModelFallback,type ParentCatalogModel} from "../src/runtime/lifecycle/parent-model-fallback.js";
 import {formatModelFallbackFailureNotice,formatModelFallbackNotice} from "../src/runtime/lifecycle/model-fallback-notice.js";
-import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/lifecycle/profiles.js";
+import {globalRuntimeRoutingFacts,resolveRuntimeRoute,resolveRuntimeDelegationMode,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/lifecycle/profiles.js";
 import {AGENT_PROFILE_TARGETS,isAgentProfileTarget,resolveAgentProfileTarget} from "../src/runtime/lifecycle/agent-profile-targets.js";
 import {canonicalProfilePartition,captureSessionProfile,readSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/lifecycle/session-profile-binding.js";
 import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/lifecycle/persona.js";
@@ -2012,7 +2012,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return {saved:true,scope,name,active:"unchanged",sessionProfile:"unchanged",parentModel:"unchanged"};
   };
   // Parsed valid profiles only: own roles sorted; absent fields differ from absent roles.
-  const savedProfileSignature=(profile:RuntimeProfile)=>JSON.stringify([profile.name,
+  const savedProfileSignature=(profile:RuntimeProfile)=>JSON.stringify([profile.name,profile.mode??"organic",
    Object.keys(profile.routes).sort().map(role=>[role,profile.routes[role]!.model??null,profile.routes[role]!.thinking??null])]);
   const editSavedProfile=async(ctx:CommandContext,guard:()=>void)=>{
    const projectId=path.normalize(realpathSync(path.resolve(ctx.cwd)));guard();
@@ -2025,8 +2025,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const name=selected.slice("Profile: ".length),original=structuredClone(inventory.profiles.find(profile=>profile.name===name)!);
    const signature=savedProfileSignature(original);
    const roles=[...AGENT_PROFILE_TARGETS].filter(role=>isAgentProfileTarget(role));
-   const target=await nativeChoice(ctx,"Add or replace one role route",[...roles.map(role=>"Role: "+role),"Back"],guard);
+   const target=await nativeChoice(ctx,"Edit role or delegation mode",[...roles.map(role=>"Role: "+role),"Delegation mode","Back"],guard);
    if(target===undefined||target==="Back")return {cancelled:true};
+   if(target==="Delegation mode"){
+    const choice=await nativeChoice(ctx,"Parent orchestration mode",["Organic (normal)","Full delegation (agents only)","Back"],guard);
+    if(choice===undefined||choice==="Back")return {cancelled:true};
+    const mode=choice==="Full delegation (agents only)"?"full-delegation":"organic";
+    const save=await nativeChoice(ctx,`Save mode for ${scope} profile ${name}: ${mode}. Active sessions keep their captured profile.`,["Save profile","Back"],guard);
+    if(save===undefined||save==="Back")return {cancelled:true};
+    guard();await mutateProfilesFile(file,current=>{
+     guard();const saved=current.profiles.find(profile=>profile.name===name);
+     if(!saved||savedProfileSignature(saved)!==signature)throw new Error("Saved profile changed; reopen Edit.");
+     return upsertProfile(current,{...saved,mode});
+    });guard();
+    return {saved:true,scope,name,mode,active:"unchanged",sessionProfile:"unchanged"};
+   }
    const role=target.slice("Role: ".length),picked=await pickSavedRoute(ctx,name,guard);
    if(!picked.route)return picked;
    const route=picked.route;
@@ -2410,6 +2423,16 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  pi.on("input",(event,ctx)=>autoPermission.capture(event,ctx));
  pi.on("tool_call",createPrimaryToolPolicyHandler({
   getMode:ctx=>permissionSession.mode(ctx),
+  getDelegationMode:async ctx=>{
+   const manager=ctx.sessionManager;
+   if(!manager?.getSessionId?.()||!ctx.cwd)return "organic";
+   const owned=await sessionIdentity(ctx as CommandContext);
+   const layers=await profileLayer(owned);
+   const fresh=await sessionIdentity(ctx as CommandContext);
+   if(fresh.sessionId!==owned.sessionId||fresh.projectId!==owned.projectId)
+    throw new Error("Profile session changed");
+   return resolveRuntimeDelegationMode(layers).mode;
+  },
   modeEpoch:()=>permissionSession.epoch,
   reviewAuto:autoReview,
   protectedStateDirs:[path.join(dependencies.homeDir?.() ?? homedir(),".asen")],
