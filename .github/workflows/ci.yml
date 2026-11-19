@@ -46,6 +46,11 @@ jobs:
             tests/ordinary-review-assessment.test.ts \
             tests/judgment-day.test.ts \
             tests/review-acceptance.test.ts
+      - name: Regresión Megatanda D del host Pi, permisos y plan completo
+        run: |
+          node --import tsx --test \
+            tests/pi-agent-runtime.test.ts \
+            tests/megatanda-d-e2e-pi.test.ts
       - name: Probar lectura de catálogo NVIDIA sin generación ni red
         run: node --test tests/catalogo-nvidia.test.mjs
       - name: Probar diagnóstico NVIDIA con respuestas simuladas y sin gasto
