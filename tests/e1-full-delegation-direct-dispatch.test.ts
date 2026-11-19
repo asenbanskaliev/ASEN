@@ -102,8 +102,9 @@ test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura a
 });
 
 
-test("E2B: dos sesiones hijas Pi ejecutan Writers simultáneos en proyectos aislados",async t=>{
- // Prueba del despachador y ejecutor reales, con proveedor simulado.
+test("E2B: dos sesiones hijas Pi modifican archivos distintos a la vez y dejan recibos separados",async t=>{
+ // Prueba del despachador, permiso Git y ejecución reales, con proveedor simulado.
+ // Ambos Writers modifican archivos auténticos pero no usan modelos externos.
  // No sustituye al ensayo autenticado de dos procesos Pi TUI.
  const root=await realpath(await mkdtemp(join(tmpdir(),"asen-e2b-hijos-writer-")));
  let release!:(value:void)=>void;
@@ -160,8 +161,13 @@ test("E2B: dos sesiones hijas Pi ejecutan Writers simultáneos en proyectos aisl
     active++;maxActive=Math.max(maxActive,active);
     launches.push({session:request.isolationKey,project:request.repository,
      model:request.model,surfaces:[...request.writeSurfaces]});
-    try{await hold;return {id:request.id,ok:true,output:"Prueba de escritura acotada sin modificar archivos"};}
-    finally{active--;}
+    try{
+     // Escribir de verdad bajo el permiso de un solo archivo de este hijo.
+     // Si el permiso Git no está vigente, el resultado no podrá aceptarse.
+     await writeFile(join(canonical,fileName),`Cambio autorizado por ${sessionId}\n`);
+     await hold;
+     return {id:request.id,ok:true,output:"Escritura acotada completada"};
+    }finally{active--;}
    }}
   })(pi as any);
   children.push({handlers,ctx,file:fileName,project:canonical,
@@ -232,6 +238,10 @@ test("E2B: dos sesiones hijas Pi ejecutan Writers simultáneos en proyectos aisl
   const clean=spawnSync("git",["-C",child.project,"status","--porcelain"],
    {encoding:"utf8",windowsHide:true});
   assert.equal(clean.status,0,clean.stderr);
-  assert.equal(clean.stdout,"","El ejecutor simulado no puede modificar archivos de otro hijo");
+  assert.equal(clean.stdout.trim(),`M ${child.file}`,
+   "Solo el archivo autorizado de ese hijo puede estar modificado");
+  assert.equal(await readFile(join(child.project,child.file),"utf8"),
+   `Cambio autorizado por ${child.sessionId}\n`,
+   "El resultado persistido debe coincidir con la escritura autorizada de su sesión");
  }
 });
