@@ -26,6 +26,14 @@ test("La skill de comentarios conserva las seis secciones, sus reglas y el presu
 test("La skill de mejora usa el registro propio de ASEN sin rutas heredadas",async()=>{
  const skill=await read("skills/asen-skill-improver/SKILL.md");
  assert.deepEqual([...skill.matchAll(/^## (.+)$/gm)].map(match=>match[1]),canonical);
+ assert.match(skill,/^description: "Trigger: /mu);
+ assert.match(skill,/Do not activate for one-off prose/u);
+ assert.match(skill,/Verify support paths inside this repository/u);
+ assert.match(skill,/Do not claim behavioral parity from format alone/u);
+ assert.match(skill,/positive and negative tests/u);
+ const body=skill.slice(skill.indexOf("## Activation Contract"));
+ const words=(body.match(/[\p{L}\p{N}]+/gu)??[]).length;
+ assert.ok(words>=180&&words<=450,"La skill de mejora excede el objetivo de palabras: "+words);
  assert.equal((skill.match(/\.asen\/skill-registry\.md/gu)??[]).length,2);
  assert.doesNotMatch(skill,/\.atl(?:\/|\\|\b)/u);
  assert.match(skill,/skills\/asen-skill-registry\/SKILL\.md/u);
