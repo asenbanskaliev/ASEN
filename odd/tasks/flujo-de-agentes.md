@@ -7,6 +7,22 @@ Rama padre: `feat/t12-integrated-acceptance-merge`
 Baseline inmutable para este plan: `2d20ecf2dff6b3f0a7cb509f85f0e06ca86827b6`
 Referencia a contrastar: Gentle Shell 4.8.0. No declarar paridad hasta observarla.
 
+## Megatanda B — ejecución quirúrgica y auditoría de continuidad (2026-11-19)
+
+**Estado:** CAMBIOS_CONECTADOS_EN_PR_DRAFT / CI_EN_VALIDACIÓN. `globalFull:false`. No consta prueba de equivalencia con modelos externos.
+
+**Auditoría, decisiones, 17 escenarios A/B y pruebas:** [Megatanda B — coordinación, comunicación, fallos y continuidad](./flujo-de-agentes-megatanda-b.md).
+
+- **B1 — Worktrees y paralelismo:** rechazo expreso de un Worker con Todo/Agent comprobado sin efectos permite avanzar otro Worker independiente, que sigue necesitando autorización propia. Nunca se reintenta el lote. Ambigüedad, cancelación, Git distinto o ámbito conflictivo detienen la ejecución.
+- **B2 — Fallos y continuación:** al asentarse un agente en `failed`, el reconciliador bloquea su Todo; solo se considera otra tarea ODD ya preparada, independiente, de solo lectura y con modelo de cuatro tarifas cero verificadas. `cancelled` no abre esa continuación.
+- **B3 — Notificaciones y diarios:** se reutilizan los eventos terminales y la entrega persistente ya existentes; siguen separados `enqueued` de consumo real y `completed` de aceptación. Sin nuevo segundo motor, temporizador de sondeo ni bucles de reintento.
+- **B4 — Conservación de la seguridad:** se mantienen los permisos exactos, las sesiones y los SHA de Git, el intento único, el rechazo de resultado dudoso y las revisiones independientes.
+- **Pruebas añadidas:** `tests/megatanda-b-continuation.test.ts`, `tests/megatanda-b-terminal-pi.test.ts`, `tests/megatanda-b-parallel-runtime.test.ts` y casos adicionales en `tests/parallel-worktree-todos.test.ts`. El funcionamiento probado con ejecutores simulados **no** certifica equivalencia real con otro producto.
+
+**Cierre pendiente:** controles completos del SHA final y evaluación con proveedores autorizados. No marcar FULL, no fusionar y no consumir modelos de pago sin permiso.
+
+---
+
 ## Actualización de la comparación funcional Gentle Shell 4.9.0 — 2026-11-19
 
 ### Ejecución quirúrgica de la Megatanda A — 2026-11-19
