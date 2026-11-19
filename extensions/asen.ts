@@ -1094,11 +1094,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // prompt only when the same live session and project still own it.
     // This is advice: never dispatch a child or grant permission from telemetry.
     let explorationOverBudget=false;
-    if(explorerBudget?.telemetry.snapshot().overBudget&&
-       (ctx as CommandContext|undefined)?.sessionManager?.getSessionId?.()===explorerBudget.sessionId){
+    const budget=explorerBudget;
+    if(budget?.telemetry.snapshot().overBudget&&
+       (ctx as CommandContext|undefined)?.sessionManager?.getSessionId?.()===budget.sessionId){
      try{
       const current=await sessionIdentity(ctx as CommandContext);
-      explorationOverBudget=current.sessionId===explorerBudget.sessionId&&current.projectId===explorerBudget.projectId;
+      explorationOverBudget=explorerBudget===budget&&
+       current.sessionId===budget.sessionId&&current.projectId===budget.projectId;
      }catch{/* A missing or changed identity never exposes an old session's budget. */}
     }
     addAsenRequestGuidance(options,!!pi.registerTool,explorationOverBudget);
