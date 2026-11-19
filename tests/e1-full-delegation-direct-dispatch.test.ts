@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {spawnSync} from "node:child_process";
-import {mkdir,mkdtemp,realpath,rm,writeFile} from "node:fs/promises";
+import {mkdir,mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createPiExtension} from "../extensions/asen.js";
@@ -65,9 +65,19 @@ test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura a
  assert.equal(permissions,1);
  // La respuesta "dispatched" no basta: el runner debe recibir exactamente
  // un Worker, con el modelo y los archivos autorizados.
- for(let attempt=0;attempt<150&&launches.length===0;attempt++)
-  await new Promise(resolve=>setTimeout(resolve,10));
- assert.equal(launches.length,1,"el escritor aprobado debe llegar realmente al ejecutor");
+ // Al arrancar en máquinas Windows el despachador puede tardar varios segundos
+ // en terminar las comprobaciones del candidato y las autorizaciones.
+ const limit=Date.now()+(process.platform==="win32"?30000:10000);
+ while(launches.length===0&&Date.now()<limit)
+  await new Promise(resolve=>setTimeout(resolve,20));
+ if(launches.length===0){
+  const journal=JSON.parse(await readFile(agentsFile,"utf8"));
+  const entry=journal.entries?.find((item:any)=>item.record?.id===approved.details.agentId)?.record;
+  assert.fail("El Writer no llegó al ejecutor: "+JSON.stringify({
+   status:entry?.state??"sin-registro",summary:String(entry?.summary??"sin-detalles").slice(0,700)
+  }));
+ }
+ assert.equal(launches.length,1,"una autorización produce un solo lanzamiento");
  assert.equal(launches[0].model,"local/modelo-elegido");
  assert.deepEqual(launches[0].writeSurfaces,["README.md"]);
  // El modelo del perfil se verifica en la tarea persistida, no se cambia
