@@ -73,7 +73,7 @@ import {agentParentRoute,agentTerminalWakeOptions,agentTerminalNoticeContent} fr
 import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 import {diagnoseAgentTerminal} from "../src/runtime/agents/agent-terminal-diagnostic.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/agents/explorer-budget.js";
-import {applyStartupOrchestratorModel,catalogListsZeroCost} from "../src/runtime/lifecycle/startup-orchestrator-model.js";
+import {applyStartupOrchestratorModel} from "../src/runtime/lifecycle/startup-orchestrator-model.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/agents/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
 import {PiNotificationProjection} from "../src/runtime/lifecycle/notification-projection.js";
@@ -640,15 +640,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false,reason:"ASEN is already advancing this plan."};advancingPlans.add(key);
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
-    const verifiedFreeModel=(ref:string):boolean=>{
+    const activeProfiles=await profileLayer(identity);
+    const verifiedConfiguredModel=(role:string,ref:string):boolean=>{
+     if(resolveRuntimeRoute(activeProfiles,role).choice?.model!==ref)return false;
      const slash=ref.indexOf("/");
      if(slash<=0||slash===ref.length-1)return false;
      const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
-     return !!model&&`${model.provider}/${model.id}`===ref&&catalogListsZeroCost(model);
+     return !!model&&`${model.provider}/${model.id}`===ref;
     };
     const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,
-     ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedFreeModel}}:{}),
-     runtimeProfiles:await profileLayer(identity),validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
+     ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
+     runtimeProfiles:activeProfiles,validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
      if(task.role==="clarifier")return false;
      if(!task.writeSurfaces)return true;
      if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")return false;
