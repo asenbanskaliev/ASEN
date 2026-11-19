@@ -18,6 +18,11 @@ test("only explicitly registered non-executable provenance paths are documents",
  assert.equal(isPinnedReferenceDocument(comparison),true,"Solo el documento de comparación exacto tiene procedencia");
  assert.equal(isPinnedReferenceDocument(comparison.replace(".md",".ts")),false);
  assert.equal(isPinnedReferenceDocument(comparison.replace("4.9.0","4.9.1")),false);
+ const masterPlan="odd/tasks/flujo-de-agentes-plan-implantacion-4.9.0.md";
+ assert.equal(isPinnedReferenceDocument(masterPlan),true,"El plan rector tiene solo una excepción documental exacta");
+ assert.equal(isPinnedReferenceDocument(masterPlan.replace(".md",".ts")),false,"Ningún archivo ejecutable hereda la excepción");
+ assert.equal(isPinnedReferenceDocument(masterPlan.replace("4.9.0","4.9.1")),false,"Una versión diferente requiere autorización expresa");
+ assert.equal(isPinnedReferenceDocument(masterPlan.replace("odd/tasks/","src/")),false,"Una ruta de código nunca es documento");
  for(const path of ["docs/portable-checkpoint-copy.md","odd/tasks/ui-runtime-delivery-order.md","src/review/native-rdd-control.ts","scripts/upstream-reference-policy.mjs"]){
   assert.equal(isPinnedReferenceDocument(path),false,path);
  }
