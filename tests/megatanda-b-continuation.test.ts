@@ -40,7 +40,7 @@ test("G49-B: un fallo no arranca otros Writers ni modelos de pago, pero sí una 
  const f=await fixture(t);let prompts=0;
  const result=await dispatchNextPlanTask({
   ...f,identity:f.identity,
-  independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedFreeModel:model=>model==="local/gratis"},
+  independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedConfiguredModel:model=>model==="local/gratis"},
   autoApproveReadOnly:true,validateIdentity:async()=>{},
   confirm:async()=>{prompts++;return true;}
  });
@@ -58,15 +58,15 @@ test("G49-B: un fallo no arranca otros Writers ni modelos de pago, pero sí una 
  assert.equal((await f.agents.list(f.identity)).length,1);
 });
 
-test("G49-B: si ningún modelo está verificado como gratuito, se detiene sin agentes ni permisos",async t=>{
+test("E1A/E2B: si ningún modelo del perfil está disponible, se detiene sin agentes ni permisos",async t=>{
  const f=await fixture(t);let confirms=0;
  const result=await dispatchNextPlanTask({
-  ...f,independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedFreeModel:()=>false},
+  ...f,independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedConfiguredModel:()=>false},
   autoApproveReadOnly:true,validateIdentity:async()=>{},
   confirm:async()=>{confirms++;return true;}
  });
  assert.equal(result.status,"blocked");
- if(result.status==="blocked")assert.match(result.reason,/verified zero-price model/u);
+ if(result.status==="blocked")assert.match(result.reason,/exact configured profile model/u);
  assert.equal(confirms,0);
  assert.equal((await f.agents.list(f.identity)).length,0);
 });
@@ -75,7 +75,7 @@ test("G49-B: el bloqueo ajeno o no persistido nunca sirve para continuar otras t
  const f=await fixture(t);
  for(const id of ["tarea-inventada",f.writer.taskId]){
   const result=await dispatchNextPlanTask({
-   ...f,independentReadOnly:{blockedTodoId:id,verifiedFreeModel:()=>true},
+   ...f,independentReadOnly:{blockedTodoId:id,verifiedConfiguredModel:()=>true},
    autoApproveReadOnly:true,validateIdentity:async()=>{},
    confirm:async()=>true
   });
@@ -85,15 +85,15 @@ test("G49-B: el bloqueo ajeno o no persistido nunca sirve para continuar otras t
  assert.equal((await f.agents.list(f.identity)).length,0);
 });
 
-test("G49-B: si el modelo pierde su tarifa gratuita antes de admitir el hijo, se aborta",async t=>{
+test("E1A/E2B: si el modelo deja de estar configurado antes de admitir el hijo, se aborta",async t=>{
  const f=await fixture(t);let calls=0;
  await assert.rejects(()=>dispatchNextPlanTask({
-  ...f,independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedFreeModel:()=>{
+  ...f,independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedConfiguredModel:()=>{
    calls++;return calls===1;
   }},
   autoApproveReadOnly:true,validateIdentity:async()=>{},
   confirm:async()=>true
- }),/lost its verified zero-price model/u);
+ }),/lost its exact configured profile model/u);
  assert.equal(calls>=2,true);
  assert.equal(f.requests.length,0,"el proceso hijo no debe llegar al ejecutor");
  assert.equal((await f.links.list(f.identity)).length,0);
@@ -103,11 +103,26 @@ test("G49-B: el supervisor de un Todo concreto nunca acepta el filtro de recuper
  const f=await fixture(t);
  const result=await dispatchNextPlanTask({
   ...f,expectedTodoId:f.free.taskId,
-  independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedFreeModel:()=>true},
+  independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedConfiguredModel:()=>true},
   autoApproveReadOnly:true,validateIdentity:async()=>{},
   confirm:async()=>true
  });
  assert.equal(result.status,"blocked");
  if(result.status==="blocked")assert.match(result.reason,/cannot override the exact child Todo/u);
  assert.equal((await f.agents.list(f.identity)).length,0);
+});
+
+
+test("E1A/E2B: una lectura pagada del perfil puede continuar sin habilitar escritura",async t=>{
+ const f=await fixture(t);let comprobaciones=0;
+ const result=await dispatchNextPlanTask({
+  ...f,independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedConfiguredModel:(role,model)=>{
+   comprobaciones++;return role==="explorer"&&model==="cloud/pago";
+  }},autoApproveReadOnly:true,validateIdentity:async()=>{},confirm:async()=>{throw new Error("No se autoriza edición");}
+ });
+ assert.equal(result.status,"dispatched");
+ if(result.status==="dispatched")assert.equal(result.todoId,f.paid.taskId);
+ assert.ok(comprobaciones>=2);
+ assert.equal((await f.agents.list(f.identity)).length,1);
+ assert.equal((await f.todos.list(f.identity)).find(r=>r.taskId===f.writer.taskId)?.current.state,"planned");
 });
