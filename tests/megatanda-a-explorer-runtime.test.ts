@@ -59,7 +59,7 @@ test("G49-A2: Pi ejecuta un único Explorer de lectura tras cuatro consultas, si
   for(const handler of handlers.get("tool_execution_end")??[])
    await handler({toolCallId:"lectura-"+index,toolName:"read",result:{content:[{type:"text",text:"dato"}]}},context);
  }
- assert.match((await options())[ASEN_EXPLORATION_BUDGET_SECTION],/budgetExplorer=true/u);
+ assert.match((await options())[ASEN_EXPLORATION_BUDGET_SECTION]??"",/budgetExplorer=true/u);
  await assert.rejects(attempted(),/verified zero-price model/u);
  assert.equal(requests.length,0);
  context.model=FREE;
