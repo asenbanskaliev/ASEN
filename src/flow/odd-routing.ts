@@ -76,7 +76,7 @@ function text(value: unknown, noun: string): string {
 }
 function path(value: unknown): string {
   const result = text(value, "path");
-  if (result.startsWith("/") || result.includes("\\") || result.includes(":") || result.split("/").some(part => !part || part === "." || part === "..")) throw new Error("path is not canonical relative data");
+  if (result.startsWith("/") || result.includes("\\") || result.includes(":") || result.split("/").some(part => !part || part === "." || part === ".." || part.toLowerCase() === ".git")) throw new Error("path is not canonical relative data");
   return result;
 }
 function count(value: unknown, noun: string): number {
