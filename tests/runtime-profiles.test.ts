@@ -1,4 +1,4 @@
-import test from "node:test";import assert from "node:assert/strict";import {ASEN_PROFILES_SCHEMA,parseRuntimeProfiles,resolveRuntimeRoute,removeProfile,renameProfile,serializeRuntimeProfiles,setActiveProfile,upsertProfile} from "../src/runtime/lifecycle/profiles.js";
+import test from "node:test";import assert from "node:assert/strict";import {ASEN_PROFILES_SCHEMA,parseRuntimeProfiles,resolveRuntimeRoute,resolveRuntimeDelegationMode,removeProfile,renameProfile,serializeRuntimeProfiles,setActiveProfile,upsertProfile} from "../src/runtime/lifecycle/profiles.js";
 import type {Thinking} from "../src/runtime/lifecycle/profiles.js";
 
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
@@ -54,4 +54,26 @@ test("T05 preserva constructor y toString como datos propios sin heredar modelos
  assert.match(serialized,/"constructor"/u);
  assert.match(serialized,/"toString"/u);
  assert.equal(({} as Record<string,unknown>)["thinking"],undefined);
+});
+
+
+test("E1B: perfiles antiguos continúan en modo orgánico y las capas conservan su prioridad",()=>{
+ const original=parseRuntimeProfiles(JSON.stringify(file()));assert.ok(original);
+ assert.deepEqual(resolveRuntimeDelegationMode({global:original}),{mode:"organic",source:"global"});
+ const project=upsertProfile(original,{name:"base",mode:"full-delegation",routes:{worker:{model:"cloud/modelo"}}});
+ const restored=parseRuntimeProfiles(serializeRuntimeProfiles(project));assert.ok(restored);
+ assert.deepEqual(resolveRuntimeDelegationMode({global:original,project:restored}),{mode:"full-delegation",source:"project"});
+ assert.deepEqual(resolveRuntimeDelegationMode({global:restored,session:original}),{mode:"organic",source:"session"});
+ assert.deepEqual(resolveRuntimeDelegationMode({}),{mode:"organic",source:"default"});
+ assert.equal(restored.profiles[0]?.mode,"full-delegation");
+});
+
+test("E1B: un modo inventado no se guarda ni altera perfiles existentes",()=>{
+ const original=file(),before=serializeRuntimeProfiles(original);
+ for(const value of ["delegar","FULL",null,0,true]){
+  const invalid={name:"base",mode:value as never,routes:{}};
+  assert.equal(parseRuntimeProfiles(JSON.stringify({...original,profiles:[invalid]})),undefined);
+  assert.throws(()=>upsertProfile(original,invalid),/Invalid profile/u);
+ }
+ assert.equal(serializeRuntimeProfiles(original),before);
 });
