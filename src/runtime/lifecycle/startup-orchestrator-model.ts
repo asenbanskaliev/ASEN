@@ -29,7 +29,7 @@ export function catalogListsZeroCost(model:ParentCatalogModel|undefined):boolean
   fields.every(field=>model.cost?.[field]===0);
 }
 
-/** Inicio propio de Pi: nunca cambia un modelo en una sesión reanudada, hija o con historial. */
+/** Inicio propio de Pi: modelo configurado, gratuito o de pago; no cambia sesiones reanudadas, hijas o con historial. */
 export async function applyStartupOrchestratorModel(input:StartupModelRequest):Promise<StartupModelOutcome>{
  if(input.reason!=="new"&&input.reason!=="startup")return "not-new";
  if(input.isChild)return "child";
@@ -52,7 +52,7 @@ export async function applyStartupOrchestratorModel(input:StartupModelRequest):P
  }
  const desired=input.findModel?.(target.slice(0,sep),target.slice(sep+1));
  if(!desired||`${desired.provider}/${desired.id}`!==target)return "model-missing";
- if(!catalogListsZeroCost(desired))return "unknown-price";
+ // Modelo del perfil: se admite precio positivo o desconocido sin elevar permisos de escritura.
  if(!input.setModel)return "unavailable";
  if(!input.stillOwned())return "session-changed";
  let applied=false;
