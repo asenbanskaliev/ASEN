@@ -5,7 +5,7 @@ const READ_TOOLS=new Set(["read","grep","find","ls","codegraph","asen_code_intel
 export interface ExplorerBudgetObservation{toolCallId:string;toolName:string;args?:unknown;result?:unknown;content?:unknown;}
 export interface ExplorerBudgetSnapshot{
  readonly queries:number;readonly outputBytes:number;readonly firstTool:string|undefined;
- readonly overBudget:boolean;readonly recommendationIssued:boolean;
+ readonly overBudget:boolean;readonly recommendationIssued:boolean;readonly delegationClaimed:boolean;
 }
 function bytesObserved(event:ExplorerBudgetObservation):number{
  const result=event.result as {content?:unknown}|undefined;
@@ -23,11 +23,16 @@ function bytesObserved(event:ExplorerBudgetObservation):number{
 export class ExplorerBudgetTelemetry{
  readonly #seen=new Set<string>();
  #queries=0;#bytes=0;#firstTool:string|undefined;
- #recommendationIssued=false;
+ #recommendationIssued=false;#delegationClaimed=false;
  snapshot():ExplorerBudgetSnapshot{
   return Object.freeze({queries:this.#queries,outputBytes:this.#bytes,firstTool:this.#firstTool,
    overBudget:this.#queries>EXPLORER_QUERY_LIMIT||this.#bytes>EXPLORER_OUTPUT_LIMIT_BYTES,
-   recommendationIssued:this.#recommendationIssued});
+   recommendationIssued:this.#recommendationIssued,delegationClaimed:this.#delegationClaimed});
+ }
+ /** El aviso solo puede consumirse una vez. Consumirlo no inicia un modelo. */
+ claimBudgetExplorer():boolean{
+  if(!this.#recommendationIssued||this.#delegationClaimed)return false;
+  this.#delegationClaimed=true;return true;
  }
  /** A single signal on query 4 or byte 40961; no model is launched. */
  observe(event:ExplorerBudgetObservation):boolean{
