@@ -17,6 +17,7 @@ import {attributeParallelChildWorker} from "../agents/parallel-worker-attributio
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
 import {controlledInstructionPlanCommand} from "./route-command.js";
+import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
@@ -50,6 +51,7 @@ export function registerParallelWorktreeCommand(
  register:(name:string,command:WorktreeCommand)=>void,
  options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;observationFile?:string;supervisorClaimsFile?:string;
   planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
+  childProfiles?:(identity:TodoContext)=>Promise<ProfileLayer>;
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
   loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>;
   loadChildAgentRecords?:(identity:TodoContext)=>Promise<readonly PublicAgentRecord[]>;
@@ -239,12 +241,17 @@ export function registerParallelWorktreeCommand(
       row.description!=="Perform only the authorized, scoped work for: "+
        (original as {instruction:string}).instruction)
       throw new Error("The original ODD task identity or instruction differs from the exact saved Worker plan");
+     // El padre no hereda perfiles: solo la vinculación de la sesión hija
+     // puede justificar un Writer directo en delegación completa.
+     const childProfiles=options.childProfiles?
+      await options.childProfiles({sessionId:id,projectId:root}):undefined;
+     verifyContext();
      const checked=JSON.parse(controlledInstructionPlanCommand(
       basis,root,{id:"source-todo-"+owner.taskId,repository:root,revision:owner.sourceHead,
-       createdAt:new Date().toISOString()}
+       createdAt:new Date().toISOString()},childProfiles
      )) as {route?:string;executablePlan?:{tasks?:readonly {role:string;writeSurfaces?:readonly string[]}[]}};
      const workerTasks=checked.executablePlan?.tasks?.filter(task=>task.role==="worker")??[];
-     if(checked.route!=="orchestrate"||workerTasks.length!==1||
+     if((checked.route!=="orchestrate"&&checked.route!=="direct")||workerTasks.length!==1||
       workerTasks[0]!.writeSurfaces?.length!==owner.writeSurfaces.length||
       workerTasks[0]!.writeSurfaces?.some((p,i)=>p!==owner.writeSurfaces[i]))
       throw new Error("Fresh child ODD policy does not produce a delegated Worker; rebuild manually");
