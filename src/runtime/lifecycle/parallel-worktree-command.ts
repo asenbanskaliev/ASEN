@@ -127,7 +127,9 @@ export function registerParallelWorktreeCommand(
        "Solo autoriza este único intento Writer. Se aplica el Dispatcher ODD existente.",
        "No se transferirán credenciales ni permisos del padre; no se ejecutará merge ni reintento."
       ].join("\n"));
-      await validateParent();return answer===true;
+      await validateParent();
+      // No convertir una cancelación o respuesta ambigua en un rechazo expreso.
+      return answer===true?true:answer===false?false:undefined;
      },
      launchChild:(unit,confirm,validateExact)=>options.launchChildWorker!(unit,confirm,validateExact)
     });
