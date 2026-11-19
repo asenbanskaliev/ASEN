@@ -72,7 +72,7 @@ import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-polic
 import {agentParentRoute,agentTerminalWakeOptions,agentTerminalNoticeContent} from "../src/runtime/agents/agent-terminal-delivery.js";
 import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/agents/explorer-budget.js";
-import {applyStartupOrchestratorModel} from "../src/runtime/lifecycle/startup-orchestrator-model.js";
+import {applyStartupOrchestratorModel,catalogListsZeroCost} from "../src/runtime/lifecycle/startup-orchestrator-model.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/agents/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
 import {PiNotificationProjection} from "../src/runtime/lifecycle/notification-projection.js";
@@ -633,13 +633,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const advancingPlans=new Set<string>();
-  const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
+  const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
    if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false,reason:"Automatic plan dispatch is disabled."};
    if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false,reason:"The local plan dispatcher is unavailable."};
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false,reason:"ASEN is already advancing this plan."};advancingPlans.add(key);
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
-    const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,runtimeProfiles:await profileLayer(identity),validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
+    const verifiedFreeModel=(ref:string):boolean=>{
+     const slash=ref.indexOf("/");
+     if(slash<=0||slash===ref.length-1)return false;
+     const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
+     return !!model&&`${model.provider}/${model.id}`===ref&&catalogListsZeroCost(model);
+    };
+    const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,
+     ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedFreeModel}}:{}),
+     runtimeProfiles:await profileLayer(identity),validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
      if(task.role==="clarifier")return false;
      if(!task.writeSurfaces)return true;
      if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")return false;
@@ -960,8 +968,19 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         await notifyTerminal();
         await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(owner);
         const latest=agentDeliveryContext,identity=agentDeliveryIdentity;
-        if(latest&&identity&&owner.sessionId===identity.sessionId&&owner.projectId===identity.projectId)
+        if(latest&&identity&&owner.sessionId===identity.sessionId&&owner.projectId===identity.projectId&&
+           latest.sessionManager?.getSessionId?.()===identity.sessionId){
+         // G49-B: un fallo no debe relanzarse. Solo otra tarea ODD que YA
+         // estuviera lista, sea de lectura y tenga modelo de coste cero
+         // comprobado puede avanzar en su propia autorización.
+         if(record.state==="failed"){
+          const [links,rows]=await Promise.all([taskAgentLinks.list(owner),store.list(owner)]);
+          const matches=links.filter(link=>link.agentId===record.id);
+          const blocked=matches.length===1?rows.find(row=>row.taskId===matches[0]?.taskId):undefined;
+          if(blocked?.current.state==="blocked")await advancePlan(latest,blocked.taskId);
+         }
          await refreshTodoWidget(latest);
+        }
         return;
        }
        await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(owner);
