@@ -209,7 +209,7 @@ test("MEGA-B7 una inspección caducada o con el reloj retrocedido no confirma av
  for(const [at,now] of [
   [Number.NaN,origin],[origin,Number.NaN],[Number.POSITIVE_INFINITY,origin],
   [origin,Number.NEGATIVE_INFINITY],[-1,origin],[origin,Number.MAX_SAFE_INTEGER+1]
- ])assert.equal(isFreshAgentInspection(at,now),false);
+ ] as const)assert.equal(isFreshAgentInspection(at,now),false);
  for(const invalidWindow of [0,-1,1.5,Number.NaN,Number.POSITIVE_INFINITY]){
   assert.equal(isFreshAgentInspection(origin,origin,invalidWindow),false);
  }
