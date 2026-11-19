@@ -784,8 +784,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        ...(pi.setThinkingLevel?{setThinking:(level:Thinking)=>pi.setThinkingLevel!(level)}:{}),
        stillOwned:owned,
       });
-      if(choice?.model&&["model-missing","unknown-price","credentials-refused","host-accepted-unverified"].includes(outcome)&&owned())
-       ctx.ui?.notify?.(`ASEN: verifica el modelo principal del perfil (${outcome}); no se autorizan llamadas ni costes nuevos.`,"warning");
+      if(choice?.model&&["model-missing","credentials-refused","host-accepted-unverified"].includes(outcome)&&owned())
+       ctx.ui?.notify?.(`ASEN: verifica el modelo principal del perfil (${outcome}); se conserva la selección anterior hasta comprobarlo.`,"warning");
      }catch{/* Si faltan datos del perfil o del host, se conserva el modelo actual. */}
     }
    }
