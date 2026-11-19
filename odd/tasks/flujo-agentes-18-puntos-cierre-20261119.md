@@ -7,30 +7,40 @@
 - En este SHA, GitHub Actions mostró `success` para CI, Release Gate, Phase 0 Architecture y Pi 1.2 runtime evidence. Pi Free Smoke quedó `skipped`; no acredita modelo autenticado.
 - PR en borrador, no fusionada. Este documento **no equivale a aceptación funcional**, ni puede sustituir pruebas de un SHA posterior.
 
-## Lista verificable de los 18 puntos
+## Lista verificable de los 18 puntos — correspondencia con el plan rector v1.1
 
-| Nº | Resultado que debe quedar probado | Estado de cierre |
+**Corrección de inventario:** los números siguientes corresponden exactamente a la [comparativa 4.9.0](./flujo-de-agentes-comparativa-actual-4.9.0.md) y al [plan rector auditado](./flujo-de-agentes-plan-implantacion-4.9.0.md). La versión inicial de este registro utilizaba descripciones resumidas que no respetaban esa correspondencia. Se corrige sin atribuir cierres falsos.
+
+| Nº | Función del plan rector | Evidencia actual / prueba que falta |
 | --- | --- | --- |
-| 1 | Decisión automática entre trabajar directamente y delegar | Pendiente de evidencia E2E |
-| 2 | Dos modos de delegación con conducta diferenciada | Pendiente de evidencia E2E |
-| 3 | Explorer investiga cuando aporta valor | Pendiente de evidencia E2E |
-| 4 | Divide trabajos manteniendo dependencias y ámbitos | Pendiente de evidencia E2E |
-| 5 | Varios Workers reales en paralelo, sin pisarse | Parcial: evidencias Pi/NVIDIA de Writer estático; flujo completo no probado |
-| 6 | Cada Writer respeta su propia autorización y archivos | Parcial: controles y pruebas de aislamiento; aceptación global no probada |
-| 7 | El padre recoge y muestra los resultados reales | Parcial: atribución y paneles; falta prueba integral |
-| 8 | Falla, cancela y recupera sin repetir escrituras dudosas | Parcial: controles y pruebas negativas; falta ejecución integral |
-| 9 | Alterna modelo ante fallo sin perder permisos ni contexto | Pendiente de evidencia E2E |
-| 10 | Aplica el modelo configurado por perfil y registra el real | Parcial: selección y pruebas; recibo real E2E pendiente |
-| 11 | Verifica resultados y riesgos antes de aceptar cambios | Parcial: controles existentes; falta aceptación integral |
-| 12 | Revisa cambios con pruebas y criterios independientes | Parcial: revisión conectada; falta prueba integral |
-| 13 | Dos jueces distintos deciden sin elevar permisos | Parcial: vía de revisión; falta revisión autenticada y evidencia final |
-| 14 | Pregunta solo lo necesario, respetando autorizaciones exigidas | Pendiente de evidencia E2E |
-| 15 | Protege rama, HEAD, credenciales y archivos autorizados | Parcial: controles y gates; falta ataque integral sobre versión final |
-| 16 | Mide duración, errores y coste auténticos de 1/2/4 agentes | Parcial: comparación instrumental; falta A/B real comparable |
-| 17 | Prueba el flujo desde petición hasta revisión y resultado | Pendiente de prueba E2E completa |
-| 18 | Demuestra compatibilidad entre Pi, agentes y ASEN | Parcial: Pi 1.2 runtime verde; falta integración con modelos reales |
+| 01 | Decidir entre trabajo directo y delegación | Guía y ruta ODD implementadas; decisión de host y Pi real comparativo pendientes |
+| 02 | Modo orgánico o delegación completa | Perfil compatible y guardas de despacho en código; falta ensayo autenticado de ambos modos |
+| 03 | Presupuesto y lanzamiento Explorer | Límite, modelo configurado y prueba con host simulado; falta medir consumo real |
+| 04 | Condiciones para lanzar Writer | Ruta ODD y Worker controlado; falta decisión automática por unidades independientes con evidencia real |
+| 05 | Dos Workers en paralelo | Supervisor y ensayos parciales; falta arranque autónomo desde padre y solapamiento E2E aceptado |
+| 06 | Ampliar archivos sin elevar permisos | Barreras de candidato, ámbito y consentimiento; falta prueba real de ampliación/rechazo |
+| 07 | Aviso de finalización en segundo plano | Diario y notificaciones existentes; falta demostrar entrega/asentamiento/reanudación nativos |
+| 08 | Recuperación tras fallos y avance independiente | Barreras de reintento dudoso y lecturas independientes; faltan escenarios reales de recuperación |
+| 09 | Sustitución de modelos configurados | Política de alternativas y pausas existente; falta prueba de cuota/error y modelo efectivo |
+| 10 | Modelo inicial del orquestador | Selección de catálogo en sesión nueva, admite modelos configurados de pago; falta observación autenticada |
+| 11 | Verificación proporcional al riesgo | Política de riesgos y revisión disponibles; falta verificación vinculante tras dos Writers |
+| 12 | Revisión ordinaria coordinada | Flujo de revisión conectado; falta prueba integral con proveedor y datos reales |
+| 13 | Dos jueces y corrección controlada | Dos jueces y propuesta Fix; falta ensayo autenticado con permisos y rondas |
+| 14 | Preguntas y decisiones bloqueantes | Confirmaciones protegidas; falta validación de respuestas ordinarias y reanudación |
+| 15 | Seguridad Git, permisos y recuperación | SHA, ámbitos e intentos duraderos; cierre pendiente de adversarios y CI exacto del cambio de confirmación |
+| 16 | Medición de costes, calidad y duración | Comparador instrumental; falta ensayo A/B auténtico frente a referencia |
+| 17 | Aceptación de principio a fin | Ensayo con anfitrión simulado; falta flujo autenticado, pruebas, revisión y aceptación humana |
+| 18 | Compatibilidad Pi/ASEN | Pi 1.2 y arquitectura probados en CI del SHA anterior; falta matriz de capacidades y ensayos completos |
 
-**Criterio único:** `TERMINADO` solo cuando existe evidencia enlazada de ejecución de producción o Pi real con las condiciones completas para ese punto, pruebas de error relevantes, revisión de permisos y CI/Release Gate del mismo SHA. `skipped`, pruebas simuladas, documentación o un modelo que no contesta no cuentan como FULL.
+**Criterio de cierre:** `TERMINADO` solo cuando la ruta funcional esté conectada, los controles negativos pasen, exista evidencia adecuada al punto, y CI/Release Gate del mismo SHA aprueben. `skipped`, simulaciones y planes no son pruebas reales de paridad.
+
+### Avance de seguridad del 19/11/2026
+
+- Confirmaciones `input.confirm` de Workers y agentes de solo lectura: el despachador exige ahora `approved===true`, nunca un objeto o cadena con aspecto de consentimiento.
+- `confirmWithAbort`: también exige `true` exacto en las rutas con y sin cancelación.
+- Nuevas pruebas con valores ambiguos, consentimiento positivo, cancelación y no lanzamiento.
+- `Audit all tracked references` falló en el SHA `4134dcf` porque este documento nuevo no estaba registrado. Se reparó añadiendo solo su ruta `.md` exacta y pruebas negativas para ruta y extensión distintas.
+- **Estado:** cambios publicados en la PR, **CI del último SHA por comprobar**, sin ampliar autoridad ni fusionar; `globalFull:false`.
 
 ## Megatandas de ejecución
 - A: 1, 2, 3, 4, 9, 10, 14, 18 — planificación, perfiles y modelos.
