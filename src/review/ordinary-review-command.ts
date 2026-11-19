@@ -27,6 +27,7 @@ import {hasSensitiveName} from "../security/primary-tool-policy.js";
 import {prepareReviewPanelDescriptor,renderReviewPanel} from "../runtime/ui/review-panel.js";
 import {createNativeRddControl,type NativeRddControl,type NativeRddObservation} from "./native-rdd-control.js";
 import type {ReviewLens,ReviewRiskInput} from "./review-risk.js";
+import {assessReviewPolicy,type ReviewAssessmentPolicyResult} from "./review-assessment-policy.js";
 
 interface CandidateReviewComponent{render(width:number):string[];invalidate():void;handleInput(data:string):void}
 interface CandidateReviewBindings{matches(data:string,action:"tui.select.cancel"|"tui.select.confirm"):boolean}
@@ -163,12 +164,23 @@ export function reviewRiskFromNativeAssessment(observation:NativeRddObservation|
  const reason=truncateClaim([DEFAULT_REVIEW_RISK.reason,parts.join("; ")].join("; "),REVIEW_RISK_REASON_MAX_BYTES).text;
  return {riskId:DEFAULT_REVIEW_RISK.riskId,reason:reason||DEFAULT_REVIEW_RISK.reason,severity:risk==="high"?"high":"low",lenses};
 }
-/** Silent read-only observation: the explicit `native assess` command keeps its own notification, this one only informs the plan. */
-async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:ReviewCommandContext):Promise<ReviewRiskInput>{
+/** La política es observación, nunca permiso. Los códigos nativos no se transforman
+ * en una escalada autorizada: esa decisión requiere evidencia independiente. */
+export function verificationAdviceFromNativeAssessment(observation:NativeRddObservation|undefined):ReviewAssessmentPolicyResult{
+ const raw=observation?.status==="available"?assessmentText(observation.data.risk).toLowerCase():"";
+ const nativeRisk=raw==="passive"||raw==="medium"||raw==="high"?raw:"unassessable";
+ const due=observation?.status==="available"?observation.data.review_due:undefined;
+ // Native assess no acredita por sí mismo que el modo RDD esté activo.
+ return assessReviewPolicy({nativeRisk,mode:"unavailable",
+  ...(typeof due==="boolean"?{reviewDue:due}:{})});
+}
+/** Una sola lectura real de evaluación, compartida por la revisión y el aviso proporcional. */
+async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:ReviewCommandContext):Promise<Readonly<{risk:ReviewRiskInput;policy:ReviewAssessmentPolicyResult}>>{
+ let observation:NativeRddObservation|undefined;
  try{
-  const observation=await nativeRdd.observe("assess",{cwd:context.cwd,sessionManager:context.sessionManager,ui:{notify:()=>{}},...(context.signal?{signal:context.signal}:{})});
-  return reviewRiskFromNativeAssessment(observation);
- }catch{return reviewRiskFromNativeAssessment(undefined);}
+  observation=await nativeRdd.observe("assess",{cwd:context.cwd,sessionManager:context.sessionManager,ui:{notify:()=>{}},...(context.signal?{signal:context.signal}:{})});
+ }catch{/* Sin lectura verificable, se conserva la revisión conservadora existente. */}
+ return Object.freeze({risk:reviewRiskFromNativeAssessment(observation),policy:verificationAdviceFromNativeAssessment(observation)});
 }
 async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,adaptive=false,judgmentDay=false,boundOdd?:BoundOddReview,persistFixProposal?:(context:ReviewCommandContext,proposal:JudgmentFixHandoff)=>Promise<{id:string}>):Promise<unknown>{
  const sessionId=context.sessionManager?.getSessionId?.(),registry=context.modelRegistry,author=context.model;
@@ -250,7 +262,8 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  }
  assertNoSensitiveReviewPaths([...reviewPaths,...intendedUntracked]);
  await assertOddCurrent();
- const assessed=await assessWorkspaceReviewRisk(nativeRdd,context);
+ const observed=await assessWorkspaceReviewRisk(nativeRdd,context);
+ const assessed=observed.risk,verificationAdvice=observed.policy;
  const selectedLenses:readonly ReviewLens[]=fourR?[...REVIEW_LENSES]:adaptive?selectAdaptiveReviewLenses(assessed).lenses:[];
  const specialized=fourR||adaptive;
  const risk:ReviewRiskInput=specialized?{...assessed,lenses:[...selectedLenses]}:assessed;
@@ -393,7 +406,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
     status:report.status,requestId:report.requestId,candidate:evidence.candidate,judges:report.judges,
     findings:visible,omittedFindings:report.findings.length-visible.length,
     acceptance:report.acceptance,deliveryAuthority:report.deliveryAuthority,autoMerge:report.autoMerge,
-    fixAgent:report.fixAgent,fixHandoff,fixStorage,...(fixProposalId?{fixProposalId}:{}),nativeRddAdmission:"not-attempted"
+    fixAgent:report.fixAgent,fixHandoff,fixStorage,...(fixProposalId?{fixProposalId}:{}),nativeRddAdmission:"not-attempted",verificationAdvice
    });
    closeWorkspace();
    revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
@@ -421,7 +434,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
       verdict:report.verdict,findingsCount:report.findings.length})),
     findings:visible,omittedFindings:bundle.findings.length-visible.length,
     acceptance:"not-accepted",deliveryAuthority:false,nativeRddAdmission:"not-attempted",
-    ...(adaptive?{independentVerification:assessed.severity==="high"?"required-not-run":"not-required"}:{})
+    ...(adaptive?{independentVerification:assessed.severity==="high"?"required-not-run":"not-required"}:{}),verificationAdvice
    });
    closeWorkspace();
    revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
@@ -459,7 +472,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   const result=Object.freeze({status,requestId:bound.requestId,resultId:bound.resultId,candidate:evidence.candidate,reviewerId:bound.reviewerId,
    verdict:bound.verdict,risk:evidence.risks,summary:verdict.summary,findings:verdict.findings,tests:evidence.tests,
    ...(correctionValidation?{correction:correctionValidation}:{}),...(correctionNext?{correctionId:correctionNext,allowedCorrectionPaths:workspaceCorrections.get(correctionNext)?.allowedPaths}:{}),
-   acceptance:"not-accepted",deliveryAuthority:false});
+   acceptance:"not-accepted",deliveryAuthority:false,verificationAdvice});
   closeWorkspace();
   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
   assertContextCurrent();
