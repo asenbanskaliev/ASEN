@@ -5,8 +5,10 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
 import {ASEN_EXPLORATION_BUDGET_SECTION} from "../src/runtime/ui/request-guidance.js";
+import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {ASEN_PROFILES_SCHEMA} from "../src/runtime/lifecycle/profiles.js";
 
-test("G49-A2: Pi ejecuta un único Explorer de lectura tras cuatro consultas, sin pagos ni duplicados",async t=>{
+test("E1A: Pi ejecuta Explorer de perfil de pago tras cuatro consultas sin permisos ni duplicados",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-a2-explorer-"));
  const handlers=new Map<string,Array<(event:any,ctx:any)=>unknown>>();
  const tools=new Map<string,any>(),requests:any[]=[];
@@ -23,6 +25,7 @@ test("G49-A2: Pi ejecuta un único Explorer de lectura tras cuatro consultas, si
   }},
   ui:{notify(){},setWidget(){},setStatus(){}},
  };
+ await writeProfilesFile(join(home,".asen","profiles.json"),{schema:ASEN_PROFILES_SCHEMA,active:"investigacion",profiles:[{name:"investigacion",routes:{explorer:{model:"cloud/modelo-pago"}}}]});
  const pi={
   registerTool(tool:any){tools.set(tool.name,tool);},
   registerCommand(){},
@@ -60,13 +63,14 @@ test("G49-A2: Pi ejecuta un único Explorer de lectura tras cuatro consultas, si
    await handler({toolCallId:"lectura-"+index,toolName:"read",result:{content:[{type:"text",text:"dato"}]}},context);
  }
  assert.match((await options())[ASEN_EXPLORATION_BUDGET_SECTION]??"",/budgetExplorer=true/u);
- await assert.rejects(attempted(),/verified zero-price model/u);
- assert.equal(requests.length,0);
  context.model=FREE;
+ await assert.rejects(attempted(),/exact configured Explorer model/u);
+ assert.equal(requests.length,0);
+ context.model=PAID;
  const result=await attempted();
  assert.equal(result.details.role,"explorer");
  const request=await launched;
- assert.equal(request.model,"local/sin-coste");
+ assert.equal(request.model,"cloud/modelo-pago");
  assert.equal(request.role,"explorer");
  for(const field of ["writeSurfaces","writerAdmission","phaseGrant","runnerWriteReceiver"])
   assert.equal(Object.hasOwn(request,field),false);
