@@ -47,6 +47,23 @@
 - B: 5, 6, 7, 8, 11, 12, 13, 15 — Workers, resultados, recuperación, revisiones y seguridad.
 - C: 16, 17 — medida y ensayo completo.
 
+## Megatanda A de seis puntos — 19/11/2026
+
+**Publicada en esta rama, pendiente de CI/Release Gate del SHA final.** No equivale a paridad con Gentle Shell ni a aceptación funcional.
+
+| Punto | Evidencia nueva | Cierre |
+| --- | --- | --- |
+| 02 · Modos de delegación | Modo guardado invalidado si cambia el turno durante la verificación de Pi; prueba negativa en delegation-turn-latch.test.ts | Parcial: falta Pi autenticado |
+| 03 · Presupuesto Explorer | Respuestas defectuosas de herramientas no interrumpen la sesión ni consumen el presupuesto; prueba negativa en explorer-budget.test.ts | Parcial: falta consumo real |
+| 06 · Ámbito de escritura | Ampliar archivos no hereda el consentimiento previo; rechazo con Git modificado en writer-authorization-snapshot.test.ts | Parcial: falta diálogo real |
+| 09 · Alternativas de modelos | Informe seguro ante nombres especiales y fechas fuera de rango; pruebas en model-fallback-policy.test.ts | Parcial: falta conmutación real |
+| 10 · Modelo inicial | Se comprueba la identidad de Pi después de observar el modelo y de aplicar el esfuerzo; pruebas de carrera en startup-orchestrator-model.test.ts | Parcial: falta verificación autenticada |
+| 15 · Seguridad Git | Cambios en archivos ajenos entre permiso y arranque bloquean autorización; prueba negativa | Parcial: faltan ensayos adversarios completos |
+
+**Último commit previo a este registro:** c685b3bd2ebb3831a61dffe7a9f5fff0fcda1751. No atribuirle resultados de un SHA anterior.
+
+**Siguiente megatanda B:** 01, 04, 07, 08, 11, 12, 13, 14 y 18. Después cerrar los puntos mayores 05, 16 y 17. Mantener globalFull:false y no fusionar main.
+
 ## Dependencias de cierre
 1. Confirmar los escenarios reales que ya cubre el código actual, evitando añadir un segundo orquestador.
 2. Completar pruebas negativas y de integración sobre la ruta Pi/Dispatcher vigente.
