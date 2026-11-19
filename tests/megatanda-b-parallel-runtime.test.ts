@@ -30,7 +30,9 @@ test("G49-B dos exploraciones independientes comienzan de verdad en paralelo y t
   runtime.startReadOnly({role:"explorer",prompt:"Estudiar módulo B",session}),
  ]);
  assert.notEqual(first,second);
- await Promise.race([concurrent,new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error("Dos agentes no se ejecutaron en paralelo")),5000))]);
+ let alarma:ReturnType<typeof setTimeout>|undefined;
+ try{await Promise.race([concurrent,new Promise<never>((_,reject)=>{alarma=setTimeout(()=>reject(new Error("Dos agentes no se ejecutaron en paralelo")),5000);})]);}
+ finally{if(alarma)clearTimeout(alarma);}
  assert.equal(maxActive,2);
  assert.deepEqual(received.sort(),["Estudiar módulo A","Estudiar módulo B"]);
  const running=await runtime.list(session);
