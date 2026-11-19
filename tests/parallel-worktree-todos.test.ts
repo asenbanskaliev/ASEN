@@ -808,6 +808,35 @@ test("G49-B rechazo expreso del primer Worker no paraliza al segundo independien
  assert.equal(f.dispatchedChildren.length,1);
 });
 
+test("G49-B una confirmación Writer ambigua detiene la tanda sin autorizar al segundo",async t=>{
+ for(const [label,answer] of [["cancelada",undefined],["objeto",{"approved":false}]] as const){
+  await t.test(label,async sub=>{
+   const f=fixture(sub);await prepareSupervisorChildren(f);
+   let asked=0;
+   f.ctx.ui.confirm=async(_title:string,message:string)=>{
+    f.confirmMessages.push(message);asked++;
+    return asked===1?true:answer;
+   };
+   const result=await f.run("supervise") as {
+    status:string;started:readonly unknown[];blockers:readonly string[];
+    autoRetry:boolean;autoMerge:boolean;acceptance:string
+   };
+   assert.equal(result.status,"partial-needs-review");
+   assert.equal(result.started.length,0);
+   assert.equal(f.dispatchedChildren.length,0,"No puede arrancar un Writer sin un sí verdadero");
+   assert.equal(asked,2,"La respuesta ambigua del primero impide preguntar por el segundo");
+   assert.ok(result.blockers.some(text=>/blocked or ambiguous/u.test(text)));
+   assert.equal(result.autoRetry,false);
+   assert.equal(result.autoMerge,false);
+   assert.equal(result.acceptance,"not-accepted");
+   assert.equal((await new ParentSupervisorClaimJournal(f.supervisorClaimsFile).listSource(f.identity)).length,1);
+   const repeat=await f.run("supervise") as {status:string;started:readonly unknown[]};
+   assert.equal(repeat.status,"blocked","El lote no se repite tras la incertidumbre");
+   assert.equal(f.dispatchedChildren.length,0);
+  });
+ }
+});
+
 test("G49-B nunca continúa tras un rechazo si el hijo tiene un Worker de resultado incierto",async t=>{
  const f=fixture(t);await prepareSupervisorChildren(f);
  const batch=(await f.journal.list(f.identity))[0]!;
