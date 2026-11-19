@@ -27,7 +27,8 @@ type WorktreeContext={
  sessionManager?:{getSessionId?:()=>string};
  ui:{notify:(message:string,kind:"info"|"error"|"warning")=>void;
   editor?:(title:string,prefill?:string)=>Promise<string|undefined>;
-  confirm?:(title:string,message:string)=>Promise<boolean>};
+  confirm?:(title:string,message:string)=>Promise<boolean>;
+  select?:(title:string,options:string[],preferences?:{signal?:AbortSignal})=>Promise<string|undefined>};
 };
 type WorktreeCommand={description:string;handler:(args:string|undefined,ctx:WorktreeContext)=>Promise<unknown>};
 function currentHead(root:string){
@@ -72,7 +73,7 @@ export function registerParallelWorktreeCommand(
    const id=ctx.sessionManager?.getSessionId?.();
    if(action==="supervise"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||
-     !ctx.ui.confirm||!options?.journalFile||!options.sessionLinksFile||
+     !ctx.ui.confirm||!ctx.ui.select||!options?.journalFile||!options.sessionLinksFile||
      !options.planClaimsFile||!options.supervisorClaimsFile||!options.loadTodos||!options.loadChildAgentRecords||
      !options.loadChildTaskAgentLinks||!options.launchChildWorker){
      const denied={status:"unavailable" as const,reason:"T06 supervisor requires the active parent Pi TUI, prepared child ODD, trusted AgentRuntime and a fresh confirmation per Worker"};
@@ -117,7 +118,10 @@ export function registerParallelWorktreeCommand(
      },
      confirmWorker:async(unit,task)=>{
       await validateParent();
-      const answer=await ctx.ui.confirm!("Autorizar Worker Pi separado?",[
+      const approvedLabel="Sí, autorizar únicamente este Worker";
+      const declinedLabel="No, rechazar expresamente este Worker";
+      const selected=await ctx.ui.select!([
+       "Autorizar Worker Pi separado?",
        "Todo original: "+unit.sourceTodoId,"Todo hijo: "+unit.childTodoId,
        "Sesión hija previamente adjunta: "+unit.childSessionId,
        "Worktree: "+unit.childProjectId,"HEAD: "+unit.baseRevision,
@@ -126,10 +130,10 @@ export function registerParallelWorktreeCommand(
        "Instrucción exacta de planificación (dato no confiable): "+task.instruction,
        "Solo autoriza este único intento Writer. Se aplica el Dispatcher ODD existente.",
        "No se transferirán credenciales ni permisos del padre; no se ejecutará merge ni reintento."
-      ].join("\n"));
+      ].join("\n"),[approvedLabel,declinedLabel],ctx.signal?{signal:ctx.signal}:undefined);
       await validateParent();
-      // No convertir una cancelación o respuesta ambigua en un rechazo expreso.
-      return answer===true?true:answer===false?false:undefined;
+      // Escape devuelve undefined. Solo una selección explícita puede denegar.
+      return selected===approvedLabel?true:selected===declinedLabel?false:undefined;
      },
      launchChild:(unit,confirm,validateExact)=>options.launchChildWorker!(unit,confirm,validateExact)
     });
