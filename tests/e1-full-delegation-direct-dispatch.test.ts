@@ -27,7 +27,7 @@ test("E1B: Pi despacha el Writer directo del perfil completo sin dar escritura a
  const launches:any[]=[];
  const pi={
   registerTool(tool:any){tools.set(tool.name,tool);},
-  registerCommand(){},
+  registerCommand(){},getCommands(){return [];},getAllTools(){return [];},
   on(name:string,handler:(event:any,ctx:any)=>unknown){events.set(name,[...(events.get(name)??[]),handler]);},
  };
  const context:any={cwd:project,mode:"rpc",hasUI:true,
