@@ -1449,7 +1449,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await profileLayer({sessionId,projectId:project}))) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
-   if(output.executablePlan.route==="direct"){
+   if(output.executablePlan.route==="direct"&&!output.executablePlan.tasks.some(task=>task.role==="worker")){
     output.persistence={status:"not-needed",reason:"A bounded direct request stays in the current Pi conversation; no Todo record is needed"};
     output.execution={started:false,authorized:false};
     output.inlineContinuation=true;
