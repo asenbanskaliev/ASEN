@@ -41,6 +41,23 @@ test("E1B: un turno cambiado durante una lectura lenta no activa el modo anterio
  assert.equal(await latch.mode(owner,async()=>"full-delegation",verify),"full-delegation");
 });
 
+test("MEGA-A2 un modo cacheado no se usa si el turno cambia durante su verificación",async()=>{
+ const latch=new DelegationTurnLatch();
+ await latch.mode(owner,async()=>("full-delegation" as const),async()=>{});
+ let release!:(value:void)=>void;
+ const gate=new Promise<void>(resolve=>{release=resolve;});
+ let checks=0;
+ const stale=latch.mode(owner,
+  async()=>{throw new Error("No debe releer el modo cacheado");},
+  async()=>{checks++;await gate;});
+ await Promise.resolve();
+ latch.nextTurn();
+ release();
+ await assert.rejects(stale,/turno del perfil ha cambiado/u);
+ assert.equal(checks,1);
+ assert.equal(await latch.mode(owner,async()=>("organic" as const),async()=>{}),"organic");
+});
+
 test("E1B: identidad no comprobada, modo inventado o sesión cambiada bloquean",async()=>{
  const latch=new DelegationTurnLatch();
  await assert.rejects(()=>latch.mode({sessionId:"",projectId:owner.projectId},async()=>"organic",verify),/identidad exacta/u);
