@@ -635,10 +635,19 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   },async identity=>profileLayer(identity)):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const advancingPlans=new Set<string>();
+  // Si un agente termina durante otro avance, no se pierde su señal. Guardar
+  // solo el identificador de tarea bloqueada; nunca el texto del agente.
+  const deferredPlanAdvances=new Map<string,Set<string|undefined>>();
   const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
    if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false,reason:"Automatic plan dispatch is disabled."};
    if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false,reason:"The local plan dispatcher is unavailable."};
-   const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false,reason:"ASEN is already advancing this plan."};advancingPlans.add(key);
+   const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key)){
+    const pending=deferredPlanAdvances.get(key)??new Set<string|undefined>();
+    if(pending.size<8)pending.add(independentBlockedTodoId);
+    deferredPlanAdvances.set(key,pending);
+    return {started:false,authorized:false,reason:"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
+   }
+   advancingPlans.add(key);
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
     // Una tanda no puede superar dos agentes vivos en el mismo proyecto y sesión.
@@ -688,7 +697,26 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }
     await refreshTodoWidget(ctx);
     return dispatched?{started:true,authorized:result.role==="worker",role:result.role,...(title?{title}:{})}:{started:false,authorized:false,...(result.status==="blocked"?{reason:result.reason}:{})};
-   }finally{advancingPlans.delete(key);}
+   }finally{
+    advancingPlans.delete(key);
+    const queued=deferredPlanAdvances.get(key);
+    deferredPlanAdvances.delete(key);
+    if(queued?.size){
+     // Un avance posterior vuelve a consultar el diario, el estado de los
+     // agentes y las autorizaciones. No es un reintento de ejecución Writer.
+     void (async()=>{
+      for(const blockedId of queued){
+       try{
+        const now=await sessionIdentity(ctx);
+        if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.signal?.aborted)break;
+        await advancePlan(ctx,blockedId);
+       }catch{
+        try{ctx.ui.notify("ASEN no pudo recuperar un aviso de avance. Las tareas siguen guardadas; no se repitieron escrituras.","error");}catch{}
+       }
+      }
+     })();
+    }
+   }
   };
   /** Una sola cabecera: arriba, debajo del editor o repartida, nunca duplicada. */
   const publishT11Chrome=(ctx:CommandContext):void=>{
