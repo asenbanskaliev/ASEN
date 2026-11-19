@@ -31,6 +31,10 @@ test("only explicitly registered non-executable provenance paths are documents",
  assert.equal(isPinnedReferenceDocument(cierre),true);
  assert.equal(isPinnedReferenceDocument(cierre.replace(".md",".ts")),false);
  assert.equal(isPinnedReferenceDocument(cierre.replace("20261119","20261120")),false);
+ const megatandas="odd/tasks/pr61-18-puntos-megatandas-a-e.md";
+ assert.equal(isPinnedReferenceDocument(megatandas),true);
+ assert.equal(isPinnedReferenceDocument(megatandas.replace(".md",".ts")),false);
+ assert.equal(isPinnedReferenceDocument(megatandas.replace("a-e","a-f")),false);
  assert.equal(isPinnedReferenceDocument(estado.replace(".md",".js")),false);
  assert.equal(isPinnedReferenceDocument(estado.replace("18-objetivos","19-objetivos")),false);
  assert.equal(isPinnedReferenceDocument(audit.replace(".md",".ts")),false);
