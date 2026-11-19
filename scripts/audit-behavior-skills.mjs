@@ -7,7 +7,7 @@ const required=[
  "asen-tasks","asen-apply","asen-verify","asen-archive","asen-skill-registry",
  "asen-adversarial-review","asen-skill-authoring","asen-skill-audit","asen-defect-workflow","asen-go-testing",
  "asen-delivery-branch","asen-delivery-chain","asen-issue-workflow","asen-doc-design","asen-collaboration-message",
- "asen-safe-change","asen-tdd","asen-odd","asen-review","asen-work-unit"
+ "asen-safe-change","asen-tdd","asen-odd","asen-review","asen-work-unit","asen-comment-writer"
 ];
 const sections=["Activation Contract","Hard Rules","Decision Gates","Execution Steps","Output Contract","References"];
 const bad=[];
