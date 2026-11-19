@@ -66,7 +66,7 @@ export interface ParentSupervisorInput{
  )=>Promise<{status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>;
  readonly confirmWorker:(worker:ParentSupervisorReadyWorker,
    task:Readonly<{id:string;title:string;role:string;instruction:string;
-     writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean>;
+     writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean|undefined>;
 }
 const same=(a:string,b:string)=>sameWorkspaceIdentityPath(a,b);
 /** El consentimiento se liga a la tarea ODD completa, no solo al modelo y al ámbito.
@@ -339,8 +339,11 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
      task.writeSurfaces?.length!==unit.writeSurfaces.length||
      task.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i]))
      return false;
-    wasApproved=await input.confirmWorker(unit,task)===true;
-    explicitlyDeclined=!wasApproved;
+    const decision:unknown=await input.confirmWorker(unit,task);
+    wasApproved=decision===true;
+    // Solo el booleano false equivale a rechazo humano expreso.
+    // Cancelación, valores indefinidos y respuestas ambiguas detienen la tanda.
+    explicitlyDeclined=decision===false;
     await validateExact();
     return wasApproved;
    },validateExact);
