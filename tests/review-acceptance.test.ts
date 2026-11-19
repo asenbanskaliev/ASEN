@@ -97,7 +97,7 @@ test("G49-C: ni texto afirmativo ni objetos de confirmación aceptan el código"
  const initial=await f.todos.history(f.task.taskId,f.identity);
  for(const ambiguous of ["sí",{accepted:true},1,undefined]){
   const response=await acceptIndependentReview({...f,taskId:f.task.taskId,
-   validateIdentity:async()=>{},confirm:async()=>(ambiguous as boolean)});
+   validateIdentity:async()=>{},confirm:async()=>(ambiguous as unknown as boolean)});
   assert.equal(response.status,"blocked");
   assert.deepEqual(await f.todos.history(f.task.taskId,f.identity),initial);
  }
