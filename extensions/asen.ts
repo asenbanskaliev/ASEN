@@ -72,6 +72,7 @@ import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-polic
 import {agentParentRoute,agentTerminalWakeOptions,agentTerminalNoticeContent} from "../src/runtime/agents/agent-terminal-delivery.js";
 import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/agents/explorer-budget.js";
+import {applyStartupOrchestratorModel} from "../src/runtime/lifecycle/startup-orchestrator-model.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/agents/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
 import {PiNotificationProjection} from "../src/runtime/lifecycle/notification-projection.js";
@@ -112,7 +113,7 @@ import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
 type CreateProfileCatalogModel=ParentCatalogModel&{reasoning?:boolean|undefined;thinkingLevelMap?:Partial<Record<Thinking,string|null|undefined>>|undefined};
-type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
+type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string;getEntries?:()=>readonly unknown[]};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
 type PiLike={getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -120,7 +121,7 @@ const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
 export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];autoPermissionStatus?:()=>{calls:number;totalTokens:number;totalCost:number;pending:boolean};homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;profileFallbacksFile?:string;profileFallbacksReader?:typeof readProfileFallbacksFile;fallbackClock?:()=>number;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string;nativeRdd?:NativeRddOptions}
-export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
+export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext,event?:{reason?:unknown}):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
 const longValidationNoticeMs=10_000;
@@ -654,7 +655,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     renderAsenFocusHeader(t11ChromeInfo,terminalColumns(),t11ChromeTheme,{part,surface:t11Surface}):undefined;
    ctx.ui.setWidget("asen:t11-chrome",lines?.length?lines:undefined,{placement:"belowEditor"});
   };
-  const startSession=async(ctx:CommandContext)=>{
+  const startSession=async(ctx:CommandContext,event?:{reason?:unknown})=>{
    t11Observer?.stop();t11Observer=undefined;
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
@@ -751,7 +752,29 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.()){
     const identity=await sessionIdentity(ctx);await inheritedProfile(identity);const current=await sessionIdentity(ctx);
-    if(parentGeneration===parentBindingGeneration&&current.sessionId===identity.sessionId&&current.projectId===identity.projectId)parentFallback.activate(identity);
+    const sessionManager=ctx.sessionManager,originalCwd=ctx.cwd;
+    const owned=()=>parentGeneration===parentBindingGeneration&&
+     ctx.sessionManager===sessionManager&&ctx.cwd===originalCwd&&
+     sessionManager?.getSessionId?.()===identity.sessionId;
+    if(owned()&&current.sessionId===identity.sessionId&&current.projectId===identity.projectId){
+     parentFallback.activate(identity);
+     // Solo las sesiones propias nuevas pueden adoptar el modelo inicial del perfil.
+     try{
+      const layers=await profileLayer(identity);
+      const choice=resolveRuntimeRoute(layers,"orchestrator").choice;
+      const outcome=await applyStartupOrchestratorModel({
+       reason:event?.reason,isChild:!!process.env.ASEN_PI_AUTHORITY,
+       entries:()=>sessionManager?.getEntries?.(),choice,
+       currentModel:()=>ctx.model,
+       findModel:(provider,id)=>ctx.modelRegistry?.find(provider,id),
+       setModel:pi.setModel?model=>pi.setModel!(model):undefined,
+       setThinking:pi.setThinkingLevel?level=>pi.setThinkingLevel!(level):undefined,
+       stillOwned:owned,
+      });
+      if(choice?.model&&["model-missing","unknown-price","credentials-refused","host-accepted-unverified"].includes(outcome)&&owned())
+       ctx.ui?.notify?.(`ASEN: verifica el modelo principal del perfil (${outcome}); no se autorizan llamadas ni costes nuevos.`,"warning");
+     }catch{/* Si faltan datos del perfil o del host, se conserva el modelo actual. */}
+    }
    }
    try {
     const startupSnapshot = dependencies.status?.();
@@ -972,7 +995,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
    try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN no pudo guardar el uso local.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}
   };
-  if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
+  if(!dependencies.deferSessionStart)pi.on?.("session_start",async(event,ctx)=>startSession(ctx,event));
   // This is a temporary UI projection only: it records no validation evidence and never changes task state.
   pi.on?.("tool_execution_start",async(event,ctx)=>{
    if(!todoStorePromise||!validationCommand(event?.toolName,event?.args)||typeof event?.toolCallId!=="string"||!event.toolCallId||event.toolCallId.length>512)return;
@@ -2366,10 +2389,10 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  }));
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
  const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
- let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
- pi.on("session_start",async(_event,ctx)=>{
+ let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext,event?:{reason?:unknown})=>Promise<void>)|undefined;
+ pi.on("session_start",async(event,ctx)=>{
   autoPermission.revoke();
-  if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx);}return;}
+  if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx,event);}return;}
   attempted=true;
   const token=++generation;let publicWrites=0;
   try{
@@ -2410,7 +2433,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
    });
    registrationsReady=true;
    sessionStart=facade.startSession;
-   await sessionStart(ctx);
+   await sessionStart(ctx,event);
   }catch(error){
    registrationsReady=false;
    if(publicWrites===0){attempted=false;generation++;}
