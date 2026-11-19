@@ -21,7 +21,9 @@ const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
 const idSchema={type:"string",minLength:1,maxLength:1024};
 const MAX_VISIBLE_AGENT_INSTRUCTION=4096;
-/** A clock rollback, invalid timestamp or expiry never revives an old notice inspection. */
+/** A clock rollback, invalid timestamp or expiry never revives an old notice inspection.
+ * Callers must pass monotonic readings: elapsed inspection lifetime never depends on the
+ * wall clock, which is recorded only as metadata. */
 export function isFreshAgentInspection(at:number,now:number,windowMs=300_000):boolean{
  return Number.isSafeInteger(at)&&Number.isSafeInteger(now)&&Number.isSafeInteger(windowMs)&&
   windowMs>0&&at>=0&&now>=at&&now-at<=windowMs;
@@ -50,12 +52,13 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
 }
 export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_todo_inspect_interrupted_write"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
-export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal,claimBudgetExplorer?:(identity:AgentSessionIdentity)=>boolean,loadProfiles?:(identity:AgentSessionIdentity)=>Promise<ProfileLayer>):()=>void{
+export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal,claimBudgetExplorer?:(identity:AgentSessionIdentity)=>boolean,loadProfiles?:(identity:AgentSessionIdentity)=>Promise<ProfileLayer>,monotonicNow:()=>number=()=>performance.now()):()=>void{
  const access=new AgentProjectAccess();
  // An exact status query records only a short-lived coordinator inspection
  // attempt; it is neither Pi model consumption nor approval for further work.
- const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number}>();
+ const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number;monoAt:number}>();
  const INSPECTION_WINDOW_MS=300_000;
+ const monotonicTick=()=>Math.floor(monotonicNow());
  const selectedIdentity=async(root:unknown,context:any,launch:boolean,signal?:AbortSignal)=>access.resolve(root,context,await identity(context),launch,()=>confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize another project?",`Start a read-only ASEN agent in ${String(root)}? Access applies only to this live session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal),signal);
  pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated read-only Pi Explorer. With budgetExplorer=true, require real same-session exhaustion and the exact Explorer model configured in the active profile, without writing.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema,budgetExplorer:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
@@ -138,7 +141,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
      if(row){
       if(inspected.size>=64)inspected.delete(inspected.keys().next().value!);
       inspected.set(row.eventId,{sessionId:session.sessionId,projectId:session.projectId,
-       agentId:row.agentId,state:row.state,at:Date.now()});
+       agentId:row.agentId,state:row.state,at:Date.now(),monoAt:monotonicTick()});
      }
     }catch{/* Corrupted journal does not prevent a read-only status query. */}
    }
@@ -169,21 +172,30 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const row=rows.find(entry=>entry.eventId===eventId);
   if(!row)throw new Error("Agent notice is not available to this Pi session and project");
   const inspection=inspected.get(row.eventId);
-  if(!inspection||inspection.sessionId!==session.sessionId||
-     !sameWorkspaceIdentityPath(inspection.projectId,session.projectId)||
-     inspection.agentId!==row.agentId||inspection.state!==row.state||
-     !isFreshAgentInspection(inspection.at,Date.now(),INSPECTION_WINDOW_MS))
-   throw new Error("Inspect this exact terminal agent with asen_agent_status before acknowledging it");
+  const inspectionError="Inspect this exact terminal agent with asen_agent_status before acknowledging it";
+  // Expiry is measured on the monotonic clock; the recorded wall-clock stamp is
+  // metadata only, so a system clock adjustment can neither revive nor extend it.
+  const inspectionIsFresh=():boolean=>{
+   if(!inspection||inspection.sessionId!==session.sessionId||
+      !sameWorkspaceIdentityPath(inspection.projectId,session.projectId)||
+      inspection.agentId!==row.agentId||inspection.state!==row.state)return false;
+   if(!Number.isSafeInteger(inspection.at)||inspection.at<=0)return false;
+   return isFreshAgentInspection(inspection.monoAt,monotonicTick(),INSPECTION_WINDOW_MS);
+  };
+  if(!inspectionIsFresh())throw new Error(inspectionError);
   const entry=await (await runtime()).query(row.agentId,session);
   if(!entry||entry.record.id!==row.agentId||entry.record.state!==row.state||
      entry.record.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(entry.record.projectId,session.projectId))
    throw new Error("Agent notice does not match an authenticated durable terminal agent");
   throwIfCancelled(signal);
+  // The durable query can cross the inspection boundary; revalidate it before acknowledging.
+  if(!inspectionIsFresh())throw new Error(inspectionError);
   const current=await identity(context);
   throwIfCancelled(signal); // Cancellation may arrive while Pi resolves its current workspace.
   if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId))
    throw new Error("Pi coordinator session or project changed before acknowledgement");
-  const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state);
+  if(!inspectionIsFresh())throw new Error(inspectionError);
+  const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state,signal);
   return result({eventId:row.eventId,agentId:row.agentId,state:row.state,acknowledged,
    evidence:"COORDINATOR_ACTION_ONLY",humanReadConfirmed:false,writerAuthorized:false});
  }});

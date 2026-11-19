@@ -35,6 +35,10 @@ const terminal=new Set(["completed","failed","cancelled"]);
 const modes=new Set(["pending","attempted","enqueued","acknowledged"]);
 const valid=(s:unknown):s is string=>typeof s==="string"&&s.length>0&&s.length<=1024&&s===s.trim()&&s===s.normalize("NFC")&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(s);
 const validDate=(s:unknown):s is string=>typeof s==="string"&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
+/** A cancelled coordinator must never persist a journal transition it abandoned. */
+const throwIfAborted=(signal?:AbortSignal):void=>{
+ if(signal?.aborted){const error=new Error("Agent notice journal access cancelled");error.name="AbortError";throw error;}
+};
 const keys=(v:unknown,wanted:readonly string[])=>v!==null&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).sort().join("|")===([...wanted].sort().join("|"));
 function validateSubject(value:AgentNoticeSubject):void{
  if(!value||!valid(value.id)||!valid(value.sessionId)||!valid(value.projectId)||!terminal.has(value.state))throw new Error("Invalid terminal agent notice identity");
@@ -89,10 +93,14 @@ export class AgentNotificationJournal{
   if(!validDate(observed))throw new Error("Invalid agent notice clock");
   return previous&&observed<previous?previous:observed;
  }
- async #change<T>(transaction:(file:File)=>{result:T;changed:boolean}):Promise<T>{
+ async #change<T>(transaction:(file:File)=>{result:T;changed:boolean},signal?:AbortSignal):Promise<T>{
+  throwIfAborted(signal);
   // Lock across multiple independent Pi processes; never rewrite a newer row.
   await preparePrivateFile(this.path,true);
   return withExclusiveFileLock(this.path,async()=>{
+   // A cancellation that arrives while journal access is pending must never
+   // persist a state transition the coordinator already abandoned.
+   throwIfAborted(signal);
    const file=await read(this.path),value=transaction(file);
    if(value.changed){file.revision++;await write(this.path,file);}
    return value.result;
@@ -145,7 +153,7 @@ export class AgentNotificationJournal{
  }
  /** Explicit Pi coordinator acknowledgement, not a human-read or UI-consumption proof.
   * Cannot replay an uncertain send or grant additional permissions. */
- async acknowledge(eventId:string,scope:AgentNoticeScope,agentId:string,state:AgentNoticeTerminalState):Promise<boolean>{
+ async acknowledge(eventId:string,scope:AgentNoticeScope,agentId:string,state:AgentNoticeTerminalState,signal?:AbortSignal):Promise<boolean>{
   if(!valid(eventId)||!valid(scope.sessionId)||!valid(scope.projectId)||!valid(agentId)||!terminal.has(state))
    throw new Error("Invalid agent notice acknowledgement");
   return this.#change(file=>{
@@ -157,7 +165,7 @@ export class AgentNotificationJournal{
    (row as {delivery:AgentNoticeDelivery}).delivery="acknowledged";
    (row as {updatedAt:string}).updatedAt=this.#now(row.updatedAt);
    return{result:true,changed:true};
-  });
+  },signal);
  }
  /** Only pending results may auto-enqueue after restart; attempted stays uncertain. */
  async list(scope:AgentNoticeScope):Promise<readonly AgentNoticeRow[]>{
