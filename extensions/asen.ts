@@ -74,6 +74,7 @@ import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification
 import {diagnoseAgentTerminal} from "../src/runtime/agents/agent-terminal-diagnostic.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/agents/explorer-budget.js";
 import {applyStartupOrchestratorModel} from "../src/runtime/lifecycle/startup-orchestrator-model.js";
+import {DelegationTurnLatch} from "../src/runtime/lifecycle/delegation-turn-latch.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/agents/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
 import {PiNotificationProjection} from "../src/runtime/lifecycle/notification-projection.js";
@@ -2458,23 +2459,28 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  const permissionSession=dependencies.permissionSession??new AsenPermissionSession();
  const autoPermission=new AsenAutoPermissionReviewer(()=>pi.getAllTools?.()??[]);
  const autoReview=dependencies.autoPermissionReview??autoPermission.review.bind(autoPermission);
- pi.on("input",(event,ctx)=>autoPermission.capture(event,ctx));
+ const delegationTurn=new DelegationTurnLatch();
+ pi.on("input",(event,ctx)=>{delegationTurn.nextTurn();autoPermission.capture(event,ctx);});
  pi.on("tool_call",createPrimaryToolPolicyHandler({
   getMode:ctx=>permissionSession.mode(ctx),
   getDelegationMode:async ctx=>{
    const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd;
-   if(!sessionId||!cwd)return "organic";
+   if(!sessionId||!cwd)throw new Error("No active Pi session for delegation authority");
    const projectId=await canonical(cwd);
-   const file=dependencies.profilesFile??path.join(dependencies.homeDir?.()??homedir(),".asen","profiles.json");
-   const partition=await canonicalProfilePartition(file);
-   const captured=await readSessionProfile(partition,{sessionId,projectId});
-   const global=captured?.file??await readProfilesFile(file);
-   const project=await readProfilesFile(path.join(projectId,".asen","profiles.json"));
-   const layers:ProfileLayer=captured?.source==="explicit-session"?{session:global,project}:{global,project};
-   const currentSession=ctx.sessionManager?.getSessionId?.(),currentProject=await canonical(ctx.cwd);
-   if(currentSession!==sessionId||currentProject!==projectId||ctx.signal?.aborted)
-    throw new Error("Profile session changed");
-   return resolveRuntimeDelegationMode(layers).mode;
+   const verify=async()=>{
+    if(ctx.signal?.aborted||ctx.sessionManager?.getSessionId?.()!==sessionId||
+       ctx.cwd!==cwd||await canonical(ctx.cwd)!==projectId)
+     throw new Error("Profile session changed");
+   };
+   return delegationTurn.mode({sessionId,projectId},async()=>{
+    const file=dependencies.profilesFile??path.join(dependencies.homeDir?.()??homedir(),".asen","profiles.json");
+    const partition=await canonicalProfilePartition(file);
+    const captured=await readSessionProfile(partition,{sessionId,projectId});
+    const global=captured?.file??await readProfilesFile(file);
+    const project=await readProfilesFile(path.join(projectId,".asen","profiles.json"));
+    const layers:ProfileLayer=captured?.source==="explicit-session"?{session:global,project}:{global,project};
+    return resolveRuntimeDelegationMode(layers).mode;
+   },verify);
   },
   modeEpoch:()=>permissionSession.epoch,
   reviewAuto:autoReview,
@@ -2484,6 +2490,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext,event?:{reason?:unknown})=>Promise<void>)|undefined;
  pi.on("session_start",async(event,ctx)=>{
+  delegationTurn.nextTurn();
   autoPermission.revoke();
   if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx,event);}return;}
   attempted=true;
