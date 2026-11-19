@@ -76,20 +76,22 @@ test("E2B: la segunda plaza de lectura nunca despacha un Writer sin permiso",asy
  const root=await realpath(await mkdtemp(join(tmpdir(),"asen-e2-no-writer-")));
  const identity={sessionId:"proteccion-oleada",projectId:root};
  const todos=await SessionTodoStore.open(join(root,"todos.json"));
- const firstPromise:{release?:()=>void}={};let launches=0,confirmations=0;
+ const releases:Array<()=>void>=[];let launches=0,confirmations=0;
  const agents=await AgentRuntime.open({storeFile:join(root,"agents.json"),runner:{
   run:async(request:{id:string})=>{
    launches++;
-   await new Promise<void>(resolve=>{firstPromise.release=resolve;});
+   await new Promise<void>(resolve=>{releases.push(resolve);});
    return {id:request.id,ok:true,output:"Lectura terminada"};
   }
  } as never});
  const selection={phase:"explore"} as const,writer={phase:"apply"} as const;
- const [read,write]=await todos.addPlan([
+ const [read,write,secondRead]=await todos.addPlan([
   {title:"Leer",requestId:"asen-plan:uno:explorer",dependsOn:[],description:"Consultar",
    plan:{role:"explorer",priority:1,skillPaths:selectSkills(selection).map(skill=>skill.path),skillSelection:selection}},
   {title:"Editar",requestId:"asen-plan:dos:worker",dependsOn:[],description:"Modificar código",
    plan:{role:"worker",priority:2,skillPaths:selectSkills(writer).map(skill=>skill.path),skillSelection:writer}},
+  {title:"Otra lectura",requestId:"asen-plan:tres:explorer",dependsOn:[],description:"Consultar por separado",
+   plan:{role:"explorer",priority:3,skillPaths:selectSkills(selection).map(skill=>skill.path),skillSelection:selection}},
  ],identity);
  const handlers=new Map<string,Array<(event:any,ctx:any)=>unknown>>();
  const ctx:any={cwd:root,mode:"rpc",hasUI:true,sessionManager:{getSessionId:()=>identity.sessionId,getEntries:()=>[]},
@@ -101,13 +103,15 @@ test("E2B: la segunda plaza de lectura nunca despacha un Writer sin permiso",asy
   handlers.set(name,[...(handlers.get(name)??[]),handler]);
  }} as any);
  t.after(async()=>{
-  firstPromise.release?.();
+  for(const release of releases)release();
   try{for(const handler of handlers.get("session_shutdown")??[])await handler({},ctx);}
   finally{await rm(root,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
  });
  for(const handler of handlers.get("session_start")??[])await handler({reason:"new"},ctx);
- await waitUntil(()=>launches===1,"primera lectura");
+ await waitUntil(()=>launches===2,"dos lecturas independientes");
  assert.equal((await todos.list(identity)).find(row=>row.taskId===read?.taskId)?.current.state,"running");
  assert.equal((await todos.list(identity)).find(row=>row.taskId===write?.taskId)?.current.state,"planned");
+ assert.equal((await todos.list(identity)).find(row=>row.taskId===secondRead?.taskId)?.current.state,"running");
+ assert.equal((await agents.list(identity)).filter(record=>record.state==="running").length,2);
  assert.equal(confirmations,0,"la segunda plaza no pregunta ni autoriza escrituras");
 });
