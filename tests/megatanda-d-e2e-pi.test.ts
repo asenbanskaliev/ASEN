@@ -83,7 +83,7 @@ test("G49-D: Pi recorre dos tareas dependientes y exige recibo + consentimiento 
  assert.deepEqual(requests.map(x=>x.role),["explorer","verifier"]);
  assert.equal(approvals,0,"las lecturas no necesitan autorización de escritura");
  assert.equal((await agents.list(identity)).filter(x=>x.state==="completed").length,2);
- const accept=(confirm:()=>Promise<boolean>,withReceipt:boolean)=>acceptIndependentReview({
+ const accept=(confirm:Parameters<typeof acceptIndependentReview>[0]["confirm"],withReceipt:boolean)=>acceptIndependentReview({
   todos,agents,links,identity,taskId:second.taskId,
   validateIdentity:async()=>{},confirm,
   ...(withReceipt?{receipts:new ReceiptVerifierService(join(home,"recibos"))}:{})
