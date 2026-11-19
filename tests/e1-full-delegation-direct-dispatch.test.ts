@@ -190,7 +190,18 @@ test("E2B: dos sesiones hijas Pi ejecutan Writers simultáneos en proyectos aisl
  assert.equal(second.approvals(),1);
  const deadline=Date.now()+(process.platform==="win32"?30000:12000);
  while(launches.length<2&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,25));
- assert.equal(launches.length,2,"Ambos Writers deben llegar al ejecutor real");
+ if(launches.length!==2){
+  const diagnostics=await Promise.all(children.map(async child=>{
+   try{
+    const saved=JSON.parse(await readFile(child.agentStore,"utf8"));
+    return {session:child.sessionId,entries:(saved.entries??[]).map((item:any)=>({
+     state:item.record?.state,summary:item.record?.summary,
+     history:item.events?.slice(-3)
+    }))};
+   }catch(error){return {session:child.sessionId,error:String(error)};}
+  }));
+  assert.fail("No se lanzaron ambos Writers; diagnóstico persistido: "+JSON.stringify(diagnostics).slice(0,2500));
+ }
  assert.equal(maxActive,2,"El segundo Writer empezó sin esperar al resultado del primero");
  assert.deepEqual(launches.map(x=>x.session).sort(),[first.sessionId,second.sessionId].sort());
  assert.deepEqual(launches.map(x=>x.model),["local/modelo-paralelo","local/modelo-paralelo"]);
