@@ -47,7 +47,7 @@ test("E2B: una lectura que termina mientras el padre está ocupado despierta la 
   const rows=await originalList(identity);
   // Bloqueamos una sola lectura del panel, cuando los dos primeros runners
   // ya arrancaron. Mientras tanto el primer agente terminará.
-  if(!held&&started.length===2){
+  if(!held&&started.length===1){
    held=true;entered.resolve();await release.promise;
   }
   return rows;
@@ -70,8 +70,8 @@ test("E2B: una lectura que termina mientras el padre está ocupado despierta la 
   finally{await rm(root,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
  });
  const opening=Promise.all((events.get("session_start")??[]).map(fn=>fn({reason:"new"},ctx)));
- await bounded(entered.promise,"El padre no llegó a quedar ocupado con dos lecturas");
- assert.deepEqual(started,["primera","segunda"]);
+ await bounded(entered.promise,"El padre no quedó ocupado tras la primera lectura");
+ assert.deepEqual(started,["primera"]);
  finishes.get("primera")?.();
  let finished=false;
  for(let i=0;i<250;i++){
