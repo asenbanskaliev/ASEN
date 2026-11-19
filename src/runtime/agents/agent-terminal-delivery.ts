@@ -55,9 +55,14 @@ function displayLabel(value:unknown):string{
 /** Match frozen reference A's 90-second freshness window: stale reports are announced,
  * but their full text is not replayed into the parent model context. */
 export const AGENT_NOTICE_STALE_AFTER_MS=90_000;
+/** Tolerancia a un desfase pequeño del reloj; no aceptar informes fechados
+ * demasiado en el futuro como si acabaran de terminar. */
+export const AGENT_NOTICE_MAX_FUTURE_SKEW_MS=300_000;
 export function agentNoticeIsStale(createdAt:string,now=Date.now()):boolean{
  const created=Date.parse(createdAt);
- return !Number.isFinite(created)||now-created>=AGENT_NOTICE_STALE_AFTER_MS;
+ return !Number.isFinite(created)||!Number.isFinite(now)||
+  created-now>AGENT_NOTICE_MAX_FUTURE_SKEW_MS||
+  now-created>=AGENT_NOTICE_STALE_AFTER_MS;
 }
 export function agentTerminalNoticeContent(input:{
  id:string;role:string;state:string;summary:string|undefined;eventId:string;
