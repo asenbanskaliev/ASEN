@@ -15,7 +15,7 @@ const FREE={provider:"local",id:"modelo-gratuito",cost:{input:0,output:0,cacheRe
 const PAID={provider:"cloud",id:"modelo-pago",cost:{input:1,output:1,cacheRead:0,cacheWrite:0}};
 const UNKNOWN={provider:"cloud",id:"modelo-no-tarifado"};
 const request=(overrides:Partial<StartupModelRequest>={}):StartupModelRequest=>{
- let current={provider:"local",id:"modelo-anterior",cost:FREE.cost};
+ let current:import("../src/runtime/lifecycle/parent-model-fallback.js").ParentCatalogModel={provider:"local",id:"modelo-anterior",cost:FREE.cost};
  return {
   reason:"new",isChild:false,entries:()=>[],choice:{model:"local/modelo-gratuito",thinking:"low"},
   currentModel:()=>current,findModel:()=>FREE,
