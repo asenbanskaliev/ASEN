@@ -640,6 +640,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false,reason:"ASEN is already advancing this plan."};advancingPlans.add(key);
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
+    // Una tanda no puede superar dos agentes vivos en el mismo proyecto y sesión.
+    // Un agente interrumpido no se relanza; solo el código de recuperación lo inspecciona.
+    const enCurso=(await agents.list(identity)).filter(agent=>agent.state==="queued"||agent.state==="running").length;
+    if(enCurso>=2)return {started:false,authorized:false,reason:"Ya existen dos agentes activos; las tareas restantes conservan su estado y se revisarán al recibir un resultado."};
     const activeProfiles=await profileLayer(identity);
     const verifiedConfiguredModel=(role:string,ref:string):boolean=>{
      if(resolveRuntimeRoute(activeProfiles,role).choice?.model!==ref)return false;
@@ -648,16 +652,39 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
      return !!model&&`${model.provider}/${model.id}`===ref;
     };
-    const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,
+    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,
      ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
      runtimeProfiles:activeProfiles,validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
      if(task.role==="clarifier")return false;
      if(!task.writeSurfaces)return true;
      if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")return false;
      return ctx.ui.confirm("Authorize scoped ASEN write?",`${task.title} (${task.role})\n\n${task.instruction}\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`);
-    }});
+    }};
+    const result=await dispatchNextPlanTask(dispatchOptions);
     const dispatched=result.status==="dispatched",title=dispatched?(await todos.list(identity)).find(task=>task.taskId===result.todoId)?.title:undefined;
-    if(dispatched){const labels:Record<string,string>={explorer:"la exploración",worker:"el cambio autorizado",reviewer:"la revisión",verifier:"la verificación"};ctx.ui.notify(`ASEN ha iniciado ${labels[result.role]??"la tarea siguiente"}${title?`: ${title}`:""}.`,"info");}
+    let lecturasIniciadas=dispatched&&result.role!=="worker"?1:0;
+    // Segunda unidad únicamente si la primera es de lectura y la siguiente
+    // está lista por sus propias dependencias. El supervisor nunca adelanta un Writer.
+    if(lecturasIniciadas===1&&!independentBlockedTodoId&&!ctx.signal?.aborted)try{
+     const activos=(await agents.list(identity)).filter(agent=>agent.state==="queued"||agent.state==="running").length;
+     if(activos<2){
+      const rows=await todos.list(identity),byId=new Map(rows.map(row=>[row.taskId,row]));
+      const next=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&row.current.state==="planned"&&
+       (row.dependsOn??[]).every(dep=>["done","succeeded"].includes(byId.get(dep)?.current.state??"")))
+       .sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-(b.plan?.priority??Number.MAX_SAFE_INTEGER))[0];
+      if(next&&["explorer","reviewer","verifier"].includes(next.plan?.role??"")){
+       const segundo=await dispatchNextPlanTask({...dispatchOptions,expectedTodoId:next.taskId});
+       if(segundo.status==="dispatched"&&segundo.role!=="worker")lecturasIniciadas=2;
+      }
+     }
+    }catch{
+     // La primera tarea ya puede estar en marcha: no se pierde ni se reintenta.
+     ctx.ui.notify("La segunda lectura no pudo iniciarse; se conserva el estado de las tareas para su comprobación.","warning");
+    }
+    if(dispatched){
+     const labels:Record<string,string>={explorer:"la exploración",worker:"el cambio autorizado",reviewer:"la revisión",verifier:"la verificación"};
+     ctx.ui.notify(lecturasIniciadas===2?"ASEN ha iniciado dos tareas independientes de lectura.":`ASEN ha iniciado ${labels[result.role]??"la tarea siguiente"}${title?`: ${title}`:""}.`,"info");
+    }
     await refreshTodoWidget(ctx);
     return dispatched?{started:true,authorized:result.role==="worker",role:result.role,...(title?{title}:{})}:{started:false,authorized:false,...(result.status==="blocked"?{reason:result.reason}:{})};
    }finally{advancingPlans.delete(key);}
