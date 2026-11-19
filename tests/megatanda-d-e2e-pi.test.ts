@@ -16,8 +16,9 @@ import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 test("G49-D: Pi recorre dos tareas dependientes y exige recibo + consentimiento para aceptar el verificador",async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-g49-d-")),root=join(home,"proyecto");
  await mkdir(root);await writeFile(join(root,"README.md"),"Base verificada\n");
+ await writeFile(join(root,".gitignore"),".asen/\n");
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
- git("init","-q");git("add","README.md");
+ git("init","-q");git("add","README.md",".gitignore");
  git("-c","user.name=ASEN D","-c","user.email=asen@example.invalid","commit","-qm","Base de prueba");
  const sha=git("rev-parse","HEAD"),tree=git("rev-parse","HEAD^{tree}");
  const identity={sessionId:"sesion-e2e-d",projectId:root};
