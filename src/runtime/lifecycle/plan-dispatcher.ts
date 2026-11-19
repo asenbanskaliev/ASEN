@@ -29,7 +29,10 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 }
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string};
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;
+ /** Tras un fallo terminal, solo otra tarea ya planificada, independiente y de lectura
+  * con modelo realmente gratuito. No concede aprobación, permisos ni reintentos. */
+ independentReadOnly?:Readonly<{blockedTodoId:string;verifiedFreeModel:(model:string)=>boolean}>;};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"inline";todoId:string;revision:number;role:"primary";instruction:string}|{status:"blocked";reason:string};
 
 function currentRevision(repository:string):string{
@@ -102,8 +105,24 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
 export async function dispatchNextPlanTask(input:DispatchInput):Promise<DispatchResult>{
  const context:TodoContext={sessionId:input.identity.sessionId,projectId:input.identity.projectId};
  const rows=await input.todos.list(context),byId=new Map(rows.map(row=>[row.taskId,row]));
- const ready=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&row.current.state==="planned"&&(row.dependsOn??[]).every(id=>["succeeded","done"].includes(byId.get(id)?.current.state??"")));
- if(!ready.length)return {status:"blocked",reason:"No persisted plan task is dependency-ready; complete independent verification or resolve the plan clarification first."};
+ const independence=input.independentReadOnly;
+ if(independence&&input.expectedTodoId!==undefined)
+  return {status:"blocked",reason:"Independent read-only recovery cannot override the exact child Todo supervisor selection."};
+ const blocker=independence?byId.get(independence.blockedTodoId):undefined;
+ if(independence&&(!blocker||blocker.current.state!=="blocked"||
+    !blocker.requestId?.startsWith("asen-plan:")))
+  return {status:"blocked",reason:"Independent continuation requires a verified, persisted blocked ODD task; no agent was launched."};
+ const ready=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&
+  row.current.state==="planned"&&
+  (row.dependsOn??[]).every(id=>["succeeded","done"].includes(byId.get(id)?.current.state??""))&&
+  (!independence||(
+   row.taskId!==blocker?.taskId&&
+   (row.plan?.role==="explorer"||row.plan?.role==="reviewer"||row.plan?.role==="verifier")&&
+   !!row.plan.model&&independence.verifiedFreeModel(row.plan.model)
+  )));
+ if(!ready.length)return {status:"blocked",reason:independence?
+  "No independent dependency-ready read-only Todo with a verified zero-price model; the failed task remains blocked.":
+  "No persisted plan task is dependency-ready; complete independent verification or resolve the plan clarification first."};
  ready.sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-(b.plan?.priority??Number.MAX_SAFE_INTEGER));
  const task=ready[0]!;
  // Un supervisor padre no puede lanzar otro Todo de la sesión hija, aunque tenga prioridad.
@@ -167,6 +186,11 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  }
 
  const readRole=role as ReadOnlyRole,selection=task.plan.skillSelection;
+ const validateReadOnlyLaunch=async()=>{
+  await input.validateIdentity();
+  if(independence&&(!task.plan?.model||!independence.verifiedFreeModel(task.plan.model)))
+   throw new Error("Independent continuation lost its verified zero-price model before dispatch");
+ };
  if(readRole==="clarifier"){
   if(input.autoApproveReadOnly)return {status:"blocked",reason:"Material clarification is required from the user before ASEN can continue this plan."};
   if(selection||task.plan.skillPaths.length)return {status:"blocked",reason:"The planned clarifier must remain read-only without delegated skills or phase authority; rebuild the plan."};
@@ -178,14 +202,14 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed after planning; rebuild the exploration against the current candidate."};}
  const approved=input.autoApproveReadOnly===true||await input.confirm({id:task.taskId,title:task.title,role,instruction:task.description});
  if(!approved)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
- await input.validateIdentity();
+ await validateReadOnlyLaunch();
  const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
  if(!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed while awaiting exploration approval; rebuild the plan against the current candidate."};}
- await input.validateIdentity();
+ await validateReadOnlyLaunch();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
  try{
-  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(task,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await validateReadOnlyLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateReadOnlyLaunch);}});
   return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
  }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }
