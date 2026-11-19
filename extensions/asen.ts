@@ -768,11 +768,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       const choice=resolveRuntimeRoute(layers,"orchestrator").choice;
       const outcome=await applyStartupOrchestratorModel({
        reason:event?.reason,isChild:!!process.env.ASEN_PI_AUTHORITY,
-       entries:()=>sessionManager?.getEntries?.(),choice,
+       entries:()=>sessionManager?.getEntries?.(),...(choice?{choice}:{}),
        currentModel:()=>ctx.model,
        findModel:(provider,id)=>ctx.modelRegistry?.find(provider,id),
-       setModel:pi.setModel?model=>pi.setModel!(model):undefined,
-       setThinking:pi.setThinkingLevel?level=>pi.setThinkingLevel!(level):undefined,
+       ...(pi.setModel?{setModel:(model:ParentCatalogModel)=>pi.setModel!(model)}:{}),
+       ...(pi.setThinkingLevel?{setThinking:(level:Thinking)=>pi.setThinkingLevel!(level)}:{}),
        stillOwned:owned,
       });
       if(choice?.model&&["model-missing","unknown-price","credentials-refused","host-accepted-unverified"].includes(outcome)&&owned())
