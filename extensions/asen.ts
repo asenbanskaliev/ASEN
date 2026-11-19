@@ -667,6 +667,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
        throw new Error("La sesión Pi terminó durante el avance: no se lanzará ningún agente");
       const current=await sessionIdentity(ctx);
+      if(ctx.signal?.aborted)
+       throw new Error("La sesión Pi terminó durante el avance: no se lanzará ningún agente");
       if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||
          current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
        throw new Error("Pi session or project changed during automatic plan advancement");
@@ -777,7 +779,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await refreshHostStatus(ctx);
    // Lecturas de los dos agentes Pi hijos cada cinco segundos, solo con lateral
    // realmente visible. Cualquier error retira los estados antiguos.
-   if(ctx.mode==="tui"&&ctx.hasUI===true){
+   if(parentGeneration===parentBindingGeneration&&!hostStatusClosed&&!ctx.signal?.aborted&&ctx.mode==="tui"&&ctx.hasUI===true){
     const guard=panelScope(ctx);
     t11ChildExpiry=createT11ChildExpiryController(()=>{
      try{guard();}catch{return;}
@@ -1505,7 +1507,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   registerData("asen-route",{description:"Read-only ODD route diagnostic; complexity never selects SDD; ordinary requests belong in chat",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
   const preparePlan=async(args:string|undefined,ctx:CommandContext,conversational=false,deferChildLaunch=false,fixSource?:Readonly<{proposalId:string;treeIdentity:string}>):Promise<string>=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;if(!manager||!sessionId)throw new Error("ASEN planning requires the active Pi session");
-   const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
+   const validateContext=()=>{if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed or was cancelled before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
    let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
    try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await profileLayer({sessionId,projectId:project}))) as typeof output;}
