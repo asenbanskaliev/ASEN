@@ -1,7 +1,7 @@
 # Megatanda C — fallos, revisión proporcional y correcciones (auditoría y ejecución)
 
 **Fecha:** 2026-11-19. **Rama:** `feat/flujo-de-agentes-20261115` · PR #61.
-**Estado:** AUDITORÍA REALIZADA / IMPLEMENTACIÓN EN CURSO; `globalFull:false`.
+**Estado:** IMPLEMENTACIÓN_CONECTADA / PRUEBAS_AÑADIDAS / CI_EN_VALIDACIÓN; `globalFull:false`. No hay paridad autenticada confirmada.
 **Referencia:** investigación 4.9.0 enlazada desde `flujo-de-agentes.md`. Solo el flujo de agentes, sin Desktop ni cambios de interfaz ajenos al flujo.
 
 ## Auditoría del código productivo
@@ -49,4 +49,11 @@
 
 ## Ejecución y pruebas realizadas
 
-Pendiente de registrar al cerrar el commit exacto. No confundir preparación, código conectado, pruebas simuladas, CI ni equivalencia real.
+- **C1:** `review-assessment-policy.ts` se conecta al consumidor real `ordinary-review-command.ts`, reutilizando su única lectura `native assess`. La recomendación conserva `lifecycleAuthority:false`; `mode:"unavailable"` cuando la lectura no acredita el modo RDD, sin inventar escaladas por texto nativo.
+- **C2:** `judgment-day.ts` conserva observaciones leves aunque ambos jueces den `pass`; `odd-agent-review-flow.ts` mantiene propuesta ODD, no ejecución ni aprobación.
+- **C3:** `agent-terminal-diagnostic.ts` y `extensions/asen.ts` muestran códigos cerrados `failed-unknown`, `interrupted`, `cancelled` y `completed-without-evidence`; no clasifican errores por texto de proveedor no confiable.
+- **C4:** los dos controles de consentimiento de revisión exigen `===true`; se añaden pruebas frente a valores ambiguos.
+- **Pruebas nuevas y ampliadas:** `tests/megatanda-c-review-policy.test.ts`, `tests/judgment-day.test.ts`, `tests/ordinary-review-assessment.test.ts` y `tests/review-acceptance.test.ts`. Se conserva `tests/review-assessment-policy.test.ts`.
+- **Estado de evidencia:** código y pruebas subidos a PR #61; todavía no se considera demostrada la ejecución con modelos reales ni el CI exacto al momento de esta actualización. No se ejecutó ningún modelo pago ni se fusionó la PR.
+
+**Pendiente:** observar las comprobaciones de GitHub del último SHA; probar con Pi y proveedores autorizados para `LIVE_AUTHENTICATED`; comparar casos A/B externos antes de declarar paridad. No cerrar `globalFull` solo por esta tanda.

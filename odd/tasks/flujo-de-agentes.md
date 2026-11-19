@@ -7,6 +7,22 @@ Rama padre: `feat/t12-integrated-acceptance-merge`
 Baseline inmutable para este plan: `2d20ecf2dff6b3f0a7cb509f85f0e06ca86827b6`
 Referencia a contrastar: Gentle Shell 4.8.0. No declarar paridad hasta observarla.
 
+## Megatanda C — auditoría, correcciones y pruebas (2026-11-19)
+
+**Estado:** CAMBIOS DE C PUBLICADOS EN LA PR #61; pendientes de resultado CI/Release Gate exacto y ejecución con proveedores reales. `globalFull:false`.
+
+**Informe detallado:** [Megatanda C — auditoría, casos negativos y evidencia](./flujo-de-agentes-megatanda-c.md).
+
+- **C1 — Política de revisión proporcional:** `ordinary-review-command.ts` usa la observación `native assess` que ya obtiene y ahora incorpora `verificationAdvice` de `review-assessment-policy.ts` a los resultados de revisión real, 4R, adaptativa y Judgment Day. Es **diagnóstico, no autorización** y nunca anula las comprobaciones conservadoras existentes.
+- **C2 — Hallazgos de ambos jueces:** `judgment-day.ts` no produce un análisis sin pendientes si cualquiera de los jueces aporta hallazgos de gravedad baja o media aun con ambos dictámenes `pass`. La continuación es **solo una propuesta ODD**, con permiso nuevo para cualquier Fix.
+- **C3 — Fallos terminales:** `agent-terminal-diagnostic.ts` clasifica el estado duradero en categorías cerradas, sin copiar texto de proveedores ni conceder reintentos, aceptación o escritura. `extensions/asen.ts` presenta el diagnóstico al padre.
+- **C4 — Permiso humano cerrado:** `ordinary-review-command.ts` y `review-acceptance.ts` solo consideran autorización una respuesta **exactamente `true`**. Ni texto libre ni objetos ambiguos permiten gastar modelos revisores o aceptar código.
+- **C5 — Pruebas:** `tests/megatanda-c-review-policy.test.ts`, `tests/ordinary-review-assessment.test.ts`, `tests/judgment-day.test.ts` y `tests/review-acceptance.test.ts`, incluidos casos negativos. CI ejecuta un bloque específico sin llamadas externas.
+
+**No modificado:** límite de una corrección ordinaria y dos rondas de nuevo juicio, perfiles de modelos pagos, permisos por Writer, diarios y SHA, aceptación humana, ni fusión de ramas. `LIVE_AUTHENTICATED` y `AB_PARITY` siguen sin demostrarse.
+
+---
+
 ## Megatanda B — ejecución quirúrgica y auditoría de continuidad (2026-11-19)
 
 **Estado:** CAMBIOS_CONECTADOS_EN_PR_DRAFT / CI_EN_VALIDACIÓN. `globalFull:false`. No consta prueba de equivalencia con modelos externos.
