@@ -1090,7 +1090,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     delete options.sections.asen_project_memory;
     delete options.sections.asen_project_memory_context;
     delete options.sections.asen_active_plan;
-    addAsenRequestGuidance(options,!!pi.registerTool);
+    // EF-202 / G49-A2: the already observed read budget reaches the parent Pi
+    // prompt only when the same live session and project still own it.
+    // This is advice: never dispatch a child or grant permission from telemetry.
+    let explorationOverBudget=false;
+    if(explorerBudget?.telemetry.snapshot().overBudget&&
+       (ctx as CommandContext|undefined)?.sessionManager?.getSessionId?.()===explorerBudget.sessionId){
+     try{
+      const current=await sessionIdentity(ctx as CommandContext);
+      explorationOverBudget=current.sessionId===explorerBudget.sessionId&&current.projectId===explorerBudget.projectId;
+     }catch{/* A missing or changed identity never exposes an old session's budget. */}
+    }
+    addAsenRequestGuidance(options,!!pi.registerTool,explorationOverBudget);
     if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}
     if(todoStorePromise)try{
      const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),rows=await (await todoStorePromise).list(identity);
