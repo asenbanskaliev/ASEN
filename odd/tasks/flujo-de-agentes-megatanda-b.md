@@ -65,4 +65,6 @@ Se siguieron las rutas productivas del mismo repositorio:
 3. **Costo:** cero llamadas deliberadas a modelos de pago en esta megatanda. Un precio de catálogo cero es un filtro conservador, **no una factura real de coste cero**.
 4. **Seguridad:** si existe escritura dudosa, consentimiento nuevo, Git divergente o identidad cambiada, detener y conservar los datos para revisión. Nunca rebajar ese bloqueo para presumir paridad.
 
+**Confirmación Git:** implementado y verificado en commit `f58ac3ab` (`fix(flujo): reconciliar agentes terminales al reiniciar Pi y validar continuidad`), documentado en `d38fdf03`.
+
 **Conclusión:** se corrigen dos puntos de interrupción innecesaria sin duplicar motor de agentes. La equivalencia externa y la aceptación del flujo completo siguen pendientes hasta obtener evidencias independientes.

@@ -56,4 +56,6 @@
 - **Pruebas nuevas y ampliadas:** `tests/megatanda-c-review-policy.test.ts`, `tests/judgment-day.test.ts`, `tests/ordinary-review-assessment.test.ts` y `tests/review-acceptance.test.ts`. Se conserva `tests/review-assessment-policy.test.ts`.
 - **Estado de evidencia:** código y pruebas subidos a PR #61; todavía no se considera demostrada la ejecución con modelos reales ni el CI exacto al momento de esta actualización. No se ejecutó ningún modelo pago ni se fusionó la PR.
 
+**Confirmación Git:** implementado y verificado en commit `b4920ae9` (`fix(agentes): preservar motivo de interrupción al reconciliar tareas y cerrar megatanda C`), documentado en `53c7492f`.
+
 **Pendiente:** observar las comprobaciones de GitHub del último SHA; probar con Pi y proveedores autorizados para `LIVE_AUTHENTICATED`; comparar casos A/B externos antes de declarar paridad. No cerrar `globalFull` solo por esta tanda.

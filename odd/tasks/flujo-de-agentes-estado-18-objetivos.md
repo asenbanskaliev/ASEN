@@ -10,12 +10,12 @@
 | 02 | Dos modos: normal y delegación completa | Código conectado; pendiente de validación final | Comprobar ambos modos con la misma petición y permisos reales |
 | 03 | Investigar solo cuando hace falta | Parcial | Contrastar presupuesto y utilidad del investigador en Pi auténtico |
 | 04 | Separar tareas y dependencias | Parcial | Partir tareas complejas en unidades verdaderamente independientes, sin trocear por archivos |
-| 05 | Dos agentes de escritura trabajando a la vez | Pendiente | Preparar y lanzar las dos sesiones Pi aisladas sin adjuntarlas manualmente; demostrar solape real |
+| 05 | Dos agentes de escritura trabajando a la vez | Conectado y probado en worktrees aislados | Demostrar solape con modelos autenticados externos en vivo |
 | 06 | Solicitar ampliación de archivos sin conceder permisos | Parcial | Propuesta exacta, revisión del nuevo alcance y consentimiento independiente |
-| 07 | Recibir cada resultado una sola vez | Código conectado; pruebas pendientes | Demostrar entrega única tras carrera, reinicio y cancelación |
-| 08 | Continuar después de un fallo seguro | Código conectado; pruebas pendientes | Demostrar lectura independiente tras fallo y detener siempre escrituras inciertas |
+| 07 | Recibir cada resultado una sola vez | Conectado y probado en host | Demostrar entrega única tras carrera y reanudación con proveedor real |
+| 08 | Continuar después de un fallo seguro | Conectado y probado en host | Demostrar recuperación con proveedor real manteniendo parada ante escrituras inciertas |
 | 09 | Cambiar de modelo cuando falla | Parcial | Probar credenciales, cuota y tiempos de espera con modelos del perfil; contabilizar coste real o desconocido |
-| 10 | Usar el modelo principal del perfil | Código conectado; pruebas pendientes | Confirmar selección real sin modificar sesiones reanudadas |
+| 10 | Usar el modelo principal del perfil | Conectado y probado en host | Confirmar selección real con proveedor autenticado sin modificar sesiones reanudadas |
 | 11 | Verificar según los riesgos del cambio | Parcial | Conectar seis motivos de riesgo a la verificación independiente obligatoria |
 | 12 | Una revisión completa del cambio | Parcial | Prueba integral del candidato congelado y recuperación de una revisión interrumpida |
 | 13 | Dos jueces y correcciones limitadas | Parcial | Recibos auténticos, desacuerdos y máximo de dos rondas; nunca autocorrección sin permiso |

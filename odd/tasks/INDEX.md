@@ -46,6 +46,7 @@ Fronts used here: `runtime`, `ui`, `parity`, `ci`, `acceptance`.
 
 | Plan | State | Front | Last touch | Prog | Evidence / next action |
 | --- | --- | --- | --- | --- | --- |
+| `pr61-18-puntos-megatandas-a-e.md` | ACTIVE | acceptance | 2026-11-19 | 7/7 | Megatandas A-E implementadas y verificadas con pruebas locales; commit `fbff63ad`. `globalFull:false`. |
 | `ui-runtime-delivery-order.md` | ACTIVE | ui | 2026-11-14 | prose | Status line: Task41/43/44 done, **Task45 feature-branch push is next**. Live front. |
 | `ui-functional-completion-and-acceptance.md` | ACTIVE | ui | 2026-11-14 | prose | Companion derived plan; trailing log: `globalFull:false` stands. |
 | `shell-experience-parity.md` | ACTIVE | ui | 2026-11-13 | prose | Trailing log carries the adopted P38 manual-palette outcome. |

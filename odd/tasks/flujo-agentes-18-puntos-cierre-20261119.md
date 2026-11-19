@@ -60,9 +60,13 @@
 | 10 · Modelo inicial | Se comprueba la identidad de Pi después de observar el modelo y de aplicar el esfuerzo; pruebas de carrera en startup-orchestrator-model.test.ts | Parcial: falta verificación autenticada |
 | 15 · Seguridad Git | Cambios en archivos ajenos entre permiso y arranque bloquean autorización; prueba negativa | Parcial: faltan ensayos adversarios completos |
 
-**Último commit previo a este registro:** c685b3bd2ebb3831a61dffe7a9f5fff0fcda1751. No atribuirle resultados de un SHA anterior.
+**Último commit previo a este registro:** fbff63ad. No atribuirle resultados de un SHA anterior.
 
-**Siguiente megatanda B:** 01, 04, 07, 08, 11, 12, 13, 14 y 18. Después cerrar los puntos mayores 05, 16 y 17. Mantener globalFull:false y no fusionar main.
+**Megatandas B a E — ejecución y verificación local completadas:**
+- **Megatanda B (f58ac3ab / d38fdf03):** reconciliación conectada al arrancar la sesión de Pi antes de todos.recover, bloqueo estricto de tareas sin enlace duradero. Suite B completa pasando (78/78).
+- **Megatanda C (b4920ae9 / 53c7492f):** dos Writers simultáneos en worktrees aislados sin interferencia de ámbitos (tests/parallel-worktree-todos.test.ts, 78 casos). Corrección en TaskAgentTodoReconciler preservando motivo interrupted. Suite C de revisión y Judgment Day pasando (55/55).
+- **Megatanda D (556b2399 / 0d3aa376):** paridad frente a referencia 4.9.0, recorrido dependiente Explorer -> Verifier con recibo firmado y consentimiento humano estricto sin autoaceptación. tests/pi-agent-runtime.test.ts pasando al 100% (77/77).
+- **Megatanda E & Procedencia (ef930dd9 / 3933afa3 / fbff63ad):** las 8 auditorías de arquitectura aprobadas, procedencia documentada en upstream-reference-policy.mjs. Matriz de 18 puntos sincronizada localmente; globalFull:false por ausencia de CI de SHA y pruebas autenticadas con proveedores en GitHub. No fusionar con main.
 
 ## Dependencias de cierre
 1. Confirmar los escenarios reales que ya cubre el código actual, evitando añadir un segundo orquestador.
@@ -84,7 +88,7 @@ La siguiente tanda funcional es cerrar las pruebas E2E de selección de perfiles
 | 02 | Sí | Sí | Sí | No | No | Perfiles y `DelegationTurnLatch`; falta ensayo autenticado. |
 | 03 | Sí | Sí | Sí | No | No | Presupuesto Explorer con controles negativos; falta consumo observado. |
 | 04 | Sí | Sí | Sí | No | No | Writer controlado; falta decisión autónoma real entre unidades. |
-| 05 | Parcial | Parcial | Sí | No | No | Explorer y Verifier Pi reales se solaparon; faltan dos Writers autorizados. |
+| 05 | Sí | Sí | Sí | No | No | Dos Writers en worktrees aislados y supervisor coordinado; probado en tests/parallel-worktree-todos.test.ts. Falta ensayo con modelos autenticados. |
 | 06 | Sí | Sí | Sí | No | No | Candidato, ámbito y consentimiento no reutilizable; falta diálogo Pi real. |
 | 07 | Sí | Sí | Sí | No | No | Diario y avisos; falta entrega/asentamiento nativo autenticado. |
 | 08 | Sí | Sí | Sí | No | No | Reintento seguro y continuidad probados en host; falta recuperación real. |

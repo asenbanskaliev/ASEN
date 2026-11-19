@@ -53,4 +53,6 @@ El commit base `061265997aed046e6239cebe707a3d094364f40c` tenía `Phase 0 Archit
 
 ## 5. Resultado de la intervención
 
-La corrección directa de los tres fallos anteriores y el ensayo Pi de investigación → verificación → firma → aceptación están incorporados en el código de PR #61. **Este documento no atribuye estado PASS al SHA final sin el resultado de GitHub**. Dejar `globalFull:false` hasta demostrar la equivalencia real.
+La corrección directa de los tres fallos anteriores y el ensayo Pi de investigación → verificación → firma → aceptación están incorporados en el código de PR #61. **Este documento no atribuye estado PASS al SHA final sin el resultado de GitHub**.
+
+**Confirmación Git:** verificado en commit `556b2399` (`docs(odd): verificar megatanda D y actualizar plan de 18 puntos`), documentado en `0d3aa376`. Dejar `globalFull:false` hasta demostrar la equivalencia real.
