@@ -78,6 +78,37 @@ test("A4: cambios de sesión y modelos no observables nunca se anuncian como apl
  assert.equal(thinking,0);
 });
 
+test("MEGA-A10 un cambio de sesión durante la verificación del modelo impide anunciar éxito",async()=>{
+ let owned=true,reads=0,thinkingCalls=0;
+ const selected=await applyStartupOrchestratorModel(request({
+  choice:{model:"local/modelo-gratuito",thinking:"high"},
+  stillOwned:()=>owned,
+  currentModel:()=>{
+   reads++;
+   if(reads===1)return {provider:"local",id:"modelo-anterior",cost:FREE.cost};
+   owned=false;return FREE;
+  },
+  setModel:async()=>true,
+  setThinking:()=>{thinkingCalls++;},
+ }));
+ assert.equal(selected,"session-changed");
+ assert.equal(reads,2);
+ assert.equal(thinkingCalls,0,"No se cambia el esfuerzo de una sesión ajena");
+});
+
+test("MEGA-A10 un modelo ya elegido no pertenece a otro turno de Pi",async()=>{
+ let owned=true;
+ let thinkingCalls=0;
+ const outcome=await applyStartupOrchestratorModel(request({
+  choice:{model:"local/modelo-gratuito",thinking:"medium"},
+  currentModel:()=>{owned=false;return FREE;},
+  stillOwned:()=>owned,
+  setThinking:()=>{thinkingCalls++;},
+ }));
+ assert.equal(outcome,"session-changed");
+ assert.equal(thinkingCalls,0);
+});
+
 test("E1A: una consulta de catálogo fallida no interrumpe el inicio ni atribuye un modelo falso",async()=>{
  let attempts=0;
  assert.equal(await applyStartupOrchestratorModel(request({
