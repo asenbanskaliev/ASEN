@@ -366,7 +366,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    "El índice real no se modifica. No se ejecutan pruebas en la vista.",
   ].join("\n"));
   assertContextCurrent();await assertOddCurrent();assertReviewSessionOpen(workspace.session);
-  if(!consent)return {status:"cancelled",requestId:workspace.requestId,candidate:evidence.candidate};
+  if(consent!==true)return {status:"cancelled",requestId:workspace.requestId,candidate:evidence.candidate};
   assertCorrectionReserved();
   assertNoSensitiveReviewPaths([...evidence.modifiedFiles.map(file=>file.path),...evidence.candidateFiles.map(file=>file.path)]);
   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
