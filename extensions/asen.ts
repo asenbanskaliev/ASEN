@@ -632,7 +632,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const budget=explorerBudget;
    return !!budget&&budget.sessionId===identity.sessionId&&
     budget.projectId===identity.projectId&&budget.telemetry.claimBudgetExplorer();
-  }):undefined;
+  },async identity=>profileLayer(identity)):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const advancingPlans=new Set<string>();
   const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
