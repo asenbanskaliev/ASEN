@@ -43,14 +43,16 @@ export async function applyStartupOrchestratorModel(input:StartupModelRequest):P
     target.includes("\n")||target.includes("\r"))return "invalid-model";
  const sep=target.indexOf("/");
  if(sep<1||sep===target.length-1)return "invalid-model";
- const current=input.currentModel?.();
+ let current:ParentCatalogModel|undefined;
+ try{current=input.currentModel?.();}catch{return "unavailable";}
  if(current&&`${current.provider}/${current.id}`===target){
   if(input.choice?.thinking!==undefined&&isThinking(input.choice.thinking)&&input.stillOwned()){
    try{input.setThinking?.(input.choice.thinking);}catch{/* No se promete nivel de esfuerzo si el host lo rechaza. */}
   }
   return "already-selected";
  }
- const desired=input.findModel?.(target.slice(0,sep),target.slice(sep+1));
+ let desired:ParentCatalogModel|undefined;
+ try{desired=input.findModel?.(target.slice(0,sep),target.slice(sep+1));}catch{return "model-missing";}
  if(!desired||`${desired.provider}/${desired.id}`!==target)return "model-missing";
  // Modelo del perfil: se admite precio positivo o desconocido sin elevar permisos de escritura.
  if(!input.setModel)return "unavailable";
@@ -59,7 +61,8 @@ export async function applyStartupOrchestratorModel(input:StartupModelRequest):P
  try{applied=await input.setModel(desired)===true;}catch{return "credentials-refused";}
  if(!input.stillOwned())return "session-changed";
  if(!applied)return "credentials-refused";
- const observed=input.currentModel?.();
+ let observed:ParentCatalogModel|undefined;
+ try{observed=input.currentModel?.();}catch{return "host-accepted-unverified";}
  if(!observed||`${observed.provider}/${observed.id}`!==target)return "host-accepted-unverified";
  if(input.choice?.thinking!==undefined&&isThinking(input.choice.thinking)){
   try{input.setThinking?.(input.choice.thinking);}catch{/* Pi puede limitar el esfuerzo del modelo elegido. */}
