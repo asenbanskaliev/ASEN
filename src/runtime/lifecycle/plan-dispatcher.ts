@@ -31,8 +31,8 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
 type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;
  /** Tras un fallo terminal, solo otra tarea ya planificada, independiente y de lectura
-  * con modelo realmente gratuito. No concede aprobación, permisos ni reintentos. */
- independentReadOnly?:Readonly<{blockedTodoId:string;verifiedFreeModel:(model:string)=>boolean}>;};
+  * con el modelo configurado del perfil. No concede aprobación, permisos ni reintentos. */
+ independentReadOnly?:Readonly<{blockedTodoId:string;verifiedConfiguredModel:(role:string,model:string)=>boolean}>;};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"inline";todoId:string;revision:number;role:"primary";instruction:string}|{status:"blocked";reason:string};
 
 function currentRevision(repository:string):string{
@@ -118,10 +118,10 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   (!independence||(
    row.taskId!==blocker?.taskId&&
    (row.plan?.role==="explorer"||row.plan?.role==="reviewer"||row.plan?.role==="verifier")&&
-   !!row.plan.model&&independence.verifiedFreeModel(row.plan.model)
+   !!row.plan.model&&independence.verifiedConfiguredModel(row.plan.role,row.plan.model)
   )));
  if(!ready.length)return {status:"blocked",reason:independence?
-  "No independent dependency-ready read-only Todo with a verified zero-price model; the failed task remains blocked.":
+  "No independent dependency-ready read-only Todo with a exact configured profile model; the failed task remains blocked.":
   "No persisted plan task is dependency-ready; complete independent verification or resolve the plan clarification first."};
  ready.sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-(b.plan?.priority??Number.MAX_SAFE_INTEGER));
  const task=ready[0]!;
@@ -188,8 +188,8 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  const readRole=role as ReadOnlyRole,selection=task.plan.skillSelection;
  const validateReadOnlyLaunch=async()=>{
   await input.validateIdentity();
-  if(independence&&(!task.plan?.model||!independence.verifiedFreeModel(task.plan.model)))
-   throw new Error("Independent continuation lost its verified zero-price model before dispatch");
+  if(independence&&(!task.plan?.model||!independence.verifiedConfiguredModel(readRole,task.plan.model)))
+   throw new Error("Independent continuation lost its exact configured profile model before dispatch");
  };
  if(readRole==="clarifier"){
   if(input.autoApproveReadOnly)return {status:"blocked",reason:"Material clarification is required from the user before ASEN can continue this plan."};
