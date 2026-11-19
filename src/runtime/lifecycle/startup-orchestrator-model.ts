@@ -23,8 +23,10 @@ export interface StartupModelRequest{
 /** Precios del catálogo: sin cuatro tarifas comprobadas no se presume gratuidad. */
 export function catalogListsZeroCost(model:ParentCatalogModel|undefined):boolean{
  if(!model?.cost||typeof model.cost!=="object")return false;
- const values=[model.cost.input,model.cost.output,model.cost.cacheRead,model.cost.cacheWrite];
- return values.every(value=>typeof value==="number"&&Number.isFinite(value)&&value===0);
+ const fields=["input","output","cacheRead","cacheWrite"] as const;
+ // Un campo nuevo o ausente representa un coste desconocido: no se presume cero.
+ return Object.keys(model.cost).length===fields.length&&
+  fields.every(field=>model.cost?.[field]===0);
 }
 
 /** Inicio propio de Pi: nunca cambia un modelo en una sesión reanudada, hija o con historial. */
