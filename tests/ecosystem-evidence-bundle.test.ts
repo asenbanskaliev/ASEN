@@ -5,6 +5,8 @@ import {createHash} from "node:crypto";
 import {validateEvidenceBundle} from "../scripts/ecosystem-evidence-bundle.mjs";
 // @ts-expect-error CI matrix planner.
 import {planPiSupportMatrix} from "../scripts/pi-support-matrix.mjs";
+// @ts-expect-error El catálogo de exports se calcula desde el paquete fuente.
+import {expectedPackageExportCount} from "../scripts/ecosystem-package-receipts.mjs";
 const candidate="a".repeat(40),sourceCommit="b".repeat(40);
 const hash=(bytes:string)=>createHash("sha256").update(bytes).digest("hex");
 const sourceManifestBytes=Buffer.from('{\n  "source": "fixed"\n}\n');
@@ -98,7 +100,7 @@ function withStatefulEvidence(){
   sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,
   publicHost:{mode:"rpc",canonicalCommands:11,canonicalTools:17,hasUI:true,toolsEnabled:true}};
  const integrity="sha512-"+"A".repeat(86)+"==";
- const log=JSON.stringify(journey)+"\n"+JSON.stringify({packedInstallVerified:true,publicExports:28,files:243,integrity})+"\nPACK_ENV_BOUNDARY_PASS\n";
+ const log=JSON.stringify(journey)+"\n"+JSON.stringify({packedInstallVerified:true,publicExports:expectedPackageExportCount(),files:243,integrity})+"\nPACK_ENV_BOUNDARY_PASS\n";
  for(const group of input.groups)(group as any).statefulReceipts=["restart","cross-session"].map(kind=>({log,
   bytes:JSON.stringify({id:`ECO-02A-${group.platform}-${kind}`,candidate,sourceCommit,sourceManifestSha256,
    kind,class:"REAL_PI_HOST",result:"PASS",command:"npm run verify:pack",observation:"real packaged session projection",
