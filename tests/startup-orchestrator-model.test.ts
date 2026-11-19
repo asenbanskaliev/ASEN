@@ -78,6 +78,26 @@ test("A4: cambios de sesión y modelos no observables nunca se anuncian como apl
  assert.equal(thinking,0);
 });
 
+test("E1A: una consulta de catálogo fallida no interrumpe el inicio ni atribuye un modelo falso",async()=>{
+ let attempts=0;
+ assert.equal(await applyStartupOrchestratorModel(request({
+  currentModel:()=>{throw new Error("Catálogo temporalmente inaccesible");},
+  setModel:()=>{attempts++;return true;},
+ })),"unavailable");
+ assert.equal(attempts,0);
+ assert.equal(await applyStartupOrchestratorModel(request({
+  findModel:()=>{throw new Error("Catálogo no disponible");},
+  setModel:()=>{attempts++;return true;},
+ })),"model-missing");
+ assert.equal(attempts,0);
+ let reads=0;
+ assert.equal(await applyStartupOrchestratorModel(request({
+  currentModel:()=>{reads++;if(reads===1)return {provider:"local",id:"modelo-anterior"};throw new Error("Pi perdió el catálogo");},
+  setModel:()=>{attempts++;return true;},
+ })),"host-accepted-unverified");
+ assert.equal(attempts,1,"No se repite un cambio de modelo ante una lectura posterior fallida");
+});
+
 test("A4: integración real con el inicio Pi y perfiles guardados",async t=>{
  const home=await mkdtemp(path.join(tmpdir(),"asen-a4-"));
  const calls:any[]=[];const events=new Map<string,Array<(event:any,context:any)=>unknown>>();
