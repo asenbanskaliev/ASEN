@@ -32,10 +32,10 @@ function assertCurrentReadOnlyCandidate(plan:TodoPlanMetadata,projectId:string):
 }
 function cancelled():Error{const error=new Error("Agent task cancelled");error.name="AbortError";return error;}
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted)throw cancelled();}
-async function confirmWithAbort(confirm:(signal?:AbortSignal)=>Promise<boolean>,signal?:AbortSignal):Promise<boolean>{
- throwIfCancelled(signal);if(!signal)return confirm();let onAbort!:()=>void;
+export async function confirmWithAbort(confirm:(signal?:AbortSignal)=>Promise<boolean>,signal?:AbortSignal):Promise<boolean>{
+ throwIfCancelled(signal);if(!signal)return (await confirm())===true;let onAbort!:()=>void;
  const aborted=new Promise<never>((_resolve,reject)=>{onAbort=()=>reject(cancelled());signal.addEventListener("abort",onAbort,{once:true});if(signal.aborted)onAbort();});
- try{const result=await Promise.race([Promise.resolve().then(()=>confirm(signal)),aborted]);throwIfCancelled(signal);return result;}finally{signal.removeEventListener("abort",onAbort);}
+ try{const result=await Promise.race([Promise.resolve().then(()=>confirm(signal)),aborted]);throwIfCancelled(signal);return result===true;}finally{signal.removeEventListener("abort",onAbort);}
 }
 const result=(value:unknown)=>({content:[{type:"text" as const,text:JSON.stringify(value)}],details:value});
 async function identity(context:any):Promise<AgentSessionIdentity>{
