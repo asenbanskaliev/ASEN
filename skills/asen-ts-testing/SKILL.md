@@ -1,224 +1,68 @@
 ---
 name: asen-ts-testing
-description: "Trigger: writing or reviewing TypeScript tests in ASEN, node:test, assert, check:fast, check:full, test isolation, fixtures. Apply ASEN-specific Node test runner patterns."
+description: "Trigger: writing or reviewing TypeScript tests, node:test, assert, check:fast, test isolation, fixtures, agent test patterns in ASEN."
 license: MIT
 metadata:
   author: ASEN
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 ## Activation Contract
 
 Use when writing, reviewing, or diagnosing TypeScript tests in ASEN.
-Covers unit tests, behavior tests, integration tests, and audit scripts.
+Do not activate for audit scripts (`scripts/audit-*.mjs`) — those are policy scripts, not tests.
 
-## Stack
+Stack: `node:test` (native) · `node:assert/strict` · `tsx` via `--import tsx` · orchestrated by `scripts/run-tests.mjs`.
+No Jest, Vitest, Mocha, or `expect()`.
 
-| Layer | Tool |
-|---|---|
-| Runner | `node:test` (native Node.js test runner) |
-| Assertions | `node:assert/strict` |
-| Transpiler | `tsx` via `--import tsx` |
-| Orchestrator | `scripts/run-tests.mjs` (sharded, watchdog timeouts) |
-| Typecheck | `tsc --noEmit` |
-
-**No Jest. No Vitest. No Mocha.**
+| Command | Scope | When |
+|---|---|---|
+| `npm run check:fast` | typecheck + 4 unit tests | Before every commit |
+| `npm test` | all tests, sharded | Full validation |
+| `npm run check` | typecheck + tests + all audits | Pre-push / CI gate |
+| `node --import tsx --test tests/foo.test.ts` | single file | While writing |
 
 ## Hard Rules
 
 - Always `import test from "node:test"` and `import assert from "node:assert/strict"`.
-- Never use `expect()`, `describe()`, `it()` or any Jest-style API.
-- Isolate stateful tests with their own temp home: `mkdtemp(join(tmpdir(), "asen-<prefix>-"))`.
-- Always clean up temp directories with `t.after(async () => rm(home, { recursive: true, force: true }))`.
+- Never use `expect()`, `describe()`, `it()`, or any Jest-style API.
+- Isolate stateful tests with their own temp home via `mkdtemp(join(tmpdir(), "asen-<prefix>-"))`.
+- Always register cleanup with `t.after(async () => rm(home, { recursive: true, force: true }))`.
 - Never share mutable state between top-level `test()` calls.
-- Audit scripts (`audit:*`) are **not** test files — they live in `scripts/` and run separately.
-
-## Test Suites
-
-| Command | What it runs | When to use |
-|---|---|---|
-| `npm run check:fast` | typecheck + 4 fast unit tests | Before every commit |
-| `npm test` | all tests via sharded runner | Full validation |
-| `npm run check` | typecheck + tests + all audits | Pre-push / CI gate |
-| `node --import tsx --test tests/foo.test.ts` | single file | While writing a test |
+- Never use `process.env.HOME` or hardcoded paths inside tests.
 
 ## Decision Gates
 
 | Situation | Pattern |
 |---|---|
-| Pure behavior / data transform | Flat `test()` calls, `assert.deepEqual` |
-| Event-driven / async behavior | `async t =>` with `await`, `AbortController` |
-| State that depends on filesystem | `routingFixture` / `sessionProfileFixture` pattern |
-| Fake host/plugin surface | `host()` factory returning pi mock + context |
+| Pure behavior / data transform | Flat `test()` + `assert.deepEqual` |
+| Async or event-driven behavior | `async t =>` + `AbortController` |
+| State that depends on filesystem | `routingFixture` / `sessionProfileFixture` |
+| Fake host / plugin surface | `host()` factory returning pi mock + context |
 | Agent dispatch behavior | `captureRunner` / `requestQueue` helpers |
-| Catalog or registry invariants | Direct import + `assert.deepEqual(array.sort(), expected.sort())` |
-| Audit policy (boundary, parity) | Script in `scripts/`, not a test file |
+| Catalog or registry invariant | Direct import + `assert.deepEqual(arr.sort(), expected.sort())` |
+| External policy (boundary, parity) | Script in `scripts/`, not a test file |
 
-## Canonical Patterns
+## Execution Steps
 
-### Pattern 1: Simple behavior test
-
-```ts
-import test from "node:test";
-import assert from "node:assert/strict";
-import { myFunction } from "../src/module.js";
-
-test("does X given Y", () => {
-  const result = myFunction("input");
-  assert.equal(result, "expected");
-});
-
-test("throws on invalid input", () => {
-  assert.throws(() => myFunction(""), /must not be empty/);
-});
-```
-
-### Pattern 2: Async test with AbortController
-
-```ts
-test("cooperative cancellation stops processing", async () => {
-  const controller = new AbortController();
-  const thing = new MyProcessor({ signal: controller.signal });
-
-  assert.equal(thing.isCancelled(), false);
-  controller.abort();
-  assert.equal(thing.isCancelled(), true);
-});
-```
-
-### Pattern 3: Filesystem-isolated test (routingFixture pattern)
-
-```ts
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import type { TestContext } from "node:test";
-
-async function routingFixture(t: TestContext, prefix: string) {
-  const home = await mkdtemp(join(tmpdir(), prefix));
-  t.after(async () => rm(home, { recursive: true, force: true }));
-  return { home };
-}
-
-test("persists state across sessions", async t => {
-  const { home } = await routingFixture(t, "asen-my-feature-");
-  // use `home` as isolated root — never process.env.HOME
-});
-```
-
-### Pattern 4: Fake host (pi mock)
-
-```ts
-function host() {
-  const events = new Map<string, Function[]>();
-  const commands = new Map<string, any>();
-  const tools = new Map<string, any>();
-  const messages: string[] = [];
-
-  const pi = {
-    on(name: string, handler: Function) {
-      events.set(name, [...(events.get(name) ?? []), handler]);
-    },
-    registerCommand(name: string, command: any) { commands.set(name, command); },
-    registerTool(tool: any) { tools.set(tool.name, tool); },
-    getCommands() { return []; },
-    getAllTools() { return []; },
-  };
-
-  const context = (session = "session-a", cwd = process.cwd()) => ({
-    mode: "rpc",
-    hasUI: true,
-    cwd,
-    sessionManager: { getSessionId: () => session },
-    ui: {
-      notify: (msg: string) => messages.push(msg),
-      confirm: async () => true,
-    },
-  });
-
-  return { pi, events, commands, tools, messages, context };
-}
-
-test("registers the expected tool on init", () => {
-  const { pi, tools } = host();
-  createMyExtension()(pi as any);
-  assert.ok(tools.has("my_tool_name"));
-});
-```
-
-### Pattern 5: Agent request capture
-
-```ts
-import type { AgentRunner } from "../src/agents/dispatcher.js";
-
-function captureRunner(output = "ok") {
-  const requests: AgentRequest[] = [];
-  const runner: AgentRunner = {
-    run: async request => {
-      requests.push(request);
-      return { id: request.id, ok: true, output };
-    },
-  };
-  return { requests, runner };
-}
-
-test("dispatches with frozen session model", async () => {
-  const { requests, runner } = captureRunner();
-  // ... wire extension with runner ...
-  assert.equal(requests[0]!.model, "expected/model");
-});
-```
-
-### Pattern 6: Catalog/registry invariant
-
-```ts
-import { ASEN_COMMAND_CATALOG, implementedCommands } from "../src/runtime/ui/command-catalog.js";
-
-test("catalog has no duplicate names", () => {
-  const names = ASEN_COMMAND_CATALOG.map(x => x.name);
-  assert.equal(new Set(names).size, names.length);
-});
-
-test("all implemented commands are present", () => {
-  assert.deepEqual(
-    implementedCommands().sort(),
-    ["asen", "asen-doctor", /* ... */].sort()
-  );
-});
-```
-
-## Test File Location
-
-```
-tests/
-├── activity-stream.test.ts        # Behavior: formatter state
-├── command-catalog.test.ts        # Catalog invariants
-├── pi-agent-runtime.test.ts       # Full agent runtime (large, slow)
-├── <feature>.test.ts              # One file per feature boundary
-scripts/
-├── audit-upstream-boundary.mjs    # Policy audit (not a test)
-├── audit-parity.mjs               # Parity audit
-```
-
-One test file per feature boundary. No barrel test files.
-
-## Running a Single Test
-
-```bash
-# Single file
-node --import tsx --test tests/activity-stream.test.ts
-
-# Single test by name pattern
-node --import tsx --test --test-name-pattern "cancellation" tests/activity-stream.test.ts
-
-# Typecheck only
-npx tsc --noEmit
-```
+1. Identify the smallest behavior boundary to cover.
+2. Select the appropriate pattern from the Decision Gates table.
+3. Write success, failure, and edge cases as separate `test()` calls.
+4. Run the single file with `node --import tsx --test tests/<file>.test.ts`.
+5. Run `npm run check:fast` before committing.
+6. Place the test file in `tests/` named `<feature>.test.ts`; one file per feature boundary.
 
 ## Output Contract
 
-When adding tests, return:
-1. Test file changed
-2. Scenarios covered (success / failure / edge)
-3. Run command and result
-4. Any fixtures created and why
+Return:
+- Test file changed and its path.
+- Scenarios covered (success / failure / edge).
+- Run command and result.
+- Fixtures created and why (if any).
+
+## References
+
+- `references/patterns.md` — canonical code examples for all six test patterns.
+- `tests/pi-agent-runtime.test.ts` — authoritative example of host mock, captureRunner, sessionProfileFixture.
+- `tests/activity-stream.test.ts` — authoritative example of behavior and AbortController tests.
+- `scripts/run-tests.mjs` — test orchestrator; shard config and watchdog timeouts.
