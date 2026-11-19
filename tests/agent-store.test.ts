@@ -12,7 +12,7 @@ import {PersistentAgentStore,parseAgentStore} from "../src/runtime/agents/agent-
 async function fixture(t:import("node:test").TestContext){const dir=await mkdtemp(join(tmpdir(),"asen-agent-store-"));t.after(()=>rm(dir,{recursive:true,force:true}));return join(dir,"agents.json");}
 const owner={kind:"user" as const,id:"pi:session-a"};
 function req(id:string,sessionId="session-a",repository="/repo"):AgentRequest{return {id,role:"explorer",prompt:`inspect ${id}`,repository,isolationKey:sessionId,owner};}
-async function until(check:()=>boolean){for(let i=0;i<200;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,5));}assert.fail("condition did not become true");}
+async function until(check:()=>boolean,attempts=200){for(let i=0;i<attempts;i++){if(check())return;await new Promise(resolve=>setTimeout(resolve,5));}assert.fail("condition did not become true");}
 
 test("persistent queue survives reopen and both queued and running work are quarantined for explicit review",async t=>{
  const file=await fixture(t),child=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"pair"],{encoding:"utf8",timeout:30000});assert.equal(child.status,0,`${child.error?.message??""}\n${child.stderr}`);
@@ -132,7 +132,7 @@ test("concurrent writers preserve every unique task under the cross-process file
 
 test("a completed task missing its receipt is interrupted without losing verified completed results",async t=>{
  const file=await fixture(t),runner:AgentRunner={run:async request=>({id:request.id,ok:true,output:`valid:${request.id}`})},runtime=await AgentRuntime.open({storeFile:file,runner}),session={sessionId:"session-a",projectId:"/repo"};
- const ids=await Promise.all(["missing-receipt","invalid-receipt","verified"].map(prompt=>runtime.startExplorer({prompt,session,owner})));await until(()=>runtime.snapshot().filter(row=>ids.includes(row.id)).every(row=>row.state==="completed"));
+ const ids=await Promise.all(["missing-receipt","invalid-receipt","verified"].map(prompt=>runtime.startExplorer({prompt,session,owner})));try{await until(()=>runtime.snapshot().filter(row=>ids.includes(row.id)).every(row=>row.state==="completed"),3000);}catch{assert.fail("Los tres resultados deben estar guardados antes de modificar el recibo: "+JSON.stringify(runtime.snapshot().filter(row=>ids.includes(row.id)).map(row=>({id:row.id,state:row.state}))));}
  const parsed=JSON.parse(await readFile(file,"utf8"));delete parsed.entries.find((entry:{record:{id:string}})=>entry.record.id===ids[0])!.result;parsed.entries.find((entry:{record:{id:string}})=>entry.record.id===ids[1])!.result.sha256="0".repeat(64);await writeFile(file,`${JSON.stringify(parsed)}\n`,{mode:0o600});
  const reopened=await PersistentAgentStore.open(file),rows=await reopened.store.list(session.sessionId,session.projectId),unverified=await reopened.store.get(ids[0]!,session.sessionId,session.projectId),invalid=await reopened.store.get(ids[1]!,session.sessionId,session.projectId),verified=await reopened.store.get(ids[2]!,session.sessionId,session.projectId);
  for(const id of ids.slice(0,2))assert.equal(rows.find(row=>row.id===id)?.state,"interrupted");for(const entry of [unverified,invalid]){assert.match(entry?.record.summary??"",/Unverified completion after restart/);assert.equal(entry?.result,undefined);}
