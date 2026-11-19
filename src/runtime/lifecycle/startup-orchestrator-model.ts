@@ -46,10 +46,11 @@ export async function applyStartupOrchestratorModel(input:StartupModelRequest):P
  let current:ParentCatalogModel|undefined;
  try{current=input.currentModel?.();}catch{return "unavailable";}
  if(current&&`${current.provider}/${current.id}`===target){
-  if(input.choice?.thinking!==undefined&&isThinking(input.choice.thinking)&&input.stillOwned()){
+  if(!input.stillOwned())return "session-changed";
+  if(input.choice?.thinking!==undefined&&isThinking(input.choice.thinking)){
    try{input.setThinking?.(input.choice.thinking);}catch{/* No se promete nivel de esfuerzo si el host lo rechaza. */}
   }
-  return "already-selected";
+  return input.stillOwned()?"already-selected":"session-changed";
  }
  let desired:ParentCatalogModel|undefined;
  try{desired=input.findModel?.(target.slice(0,sep),target.slice(sep+1));}catch{return "model-missing";}
@@ -62,10 +63,12 @@ export async function applyStartupOrchestratorModel(input:StartupModelRequest):P
  if(!input.stillOwned())return "session-changed";
  if(!applied)return "credentials-refused";
  let observed:ParentCatalogModel|undefined;
- try{observed=input.currentModel?.();}catch{return "host-accepted-unverified";}
+ try{observed=input.currentModel?.();}catch{return input.stillOwned()?"host-accepted-unverified":"session-changed";}
+ // La consulta de Pi también puede ceder control: no confiar en una sesión anterior.
+ if(!input.stillOwned())return "session-changed";
  if(!observed||`${observed.provider}/${observed.id}`!==target)return "host-accepted-unverified";
  if(input.choice?.thinking!==undefined&&isThinking(input.choice.thinking)){
   try{input.setThinking?.(input.choice.thinking);}catch{/* Pi puede limitar el esfuerzo del modelo elegido. */}
  }
- return "applied";
+ return input.stillOwned()?"applied":"session-changed";
 }
