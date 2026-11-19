@@ -46,12 +46,17 @@ test("A4: reanudar, recargar, bifurcar o tener historial conserva el modelo",asy
  assert.equal(called,0);
 });
 
-test("A4: precio desconocido o positivo, modelo inexistente y credenciales fallidas bloquean",async()=>{
- let called=0;
- const setModel=()=>{called++;return true;};
- assert.equal(await applyStartupOrchestratorModel(request({findModel:()=>PAID,choice:{model:"cloud/modelo-pago"},setModel})),"unknown-price");
- assert.equal(await applyStartupOrchestratorModel(request({findModel:()=>UNKNOWN,choice:{model:"cloud/modelo-no-tarifado"},setModel})),"unknown-price");
+test("E1A: un modelo configurado puede tener precio cero, positivo o desconocido",async()=>{
+ for(const model of [FREE,PAID,UNKNOWN]){
+  const choice={model:`${model.provider}/${model.id}`};
+  assert.equal(await applyStartupOrchestratorModel(request({choice,findModel:()=>model})),"applied");
+ }
+});
+
+test("E1A: modelo ajeno, inválido o sin credenciales no cambia la sesión",async()=>{
+ let called=0;const setModel=()=>{called++;return true;};
  assert.equal(await applyStartupOrchestratorModel(request({findModel:()=>undefined,setModel})),"model-missing");
+ assert.equal(await applyStartupOrchestratorModel(request({findModel:()=>PAID,setModel})),"model-missing");
  assert.equal(await applyStartupOrchestratorModel(request({choice:{model:"sin-separador"},setModel})),"invalid-model");
  assert.equal(await applyStartupOrchestratorModel(request({choice:{thinking:"low"},setModel})),"unavailable");
  assert.equal(called,0);
