@@ -71,7 +71,7 @@ test("workspace review keeps the default risk triple when native assess is unava
 });
 
 test("G49-C: una confirmación ambigua no permite llamar a ningún modelo revisor",async t=>{
- for(const invalid of ["sí",{accepted:true},1,undefined]){
+ for(const invalid of ["sí",{accepted:true},1,null]){
   const state=setup(t,assessmentData({risk:"medium"}),invalid as unknown as boolean);
   const result=await state.handler("workspace",state.context) as {status:string};
   assert.equal(result.status,"cancelled");
