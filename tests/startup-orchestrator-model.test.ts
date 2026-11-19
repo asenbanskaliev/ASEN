@@ -29,7 +29,7 @@ test("A4: el inicio nuevo elige el modelo gratuito comprobado sin inferencia",as
  assert.equal(await applyStartupOrchestratorModel(request({setThinking:value=>levels.push(value)})),"applied");
  assert.deepEqual(levels,["low"]);
  assert.equal(catalogListsZeroCost(FREE),true);
- for(const model of [PAID,UNKNOWN,{...FREE,cost:{input:0,output:0}},{...FREE,cost:{input:-1,output:0,cacheRead:0,cacheWrite:0}}])
+ for(const model of [PAID,UNKNOWN,{...FREE,cost:{input:0,output:0}},{...FREE,cost:{input:-1,output:0,cacheRead:0,cacheWrite:0}},{...FREE,cost:{...FREE.cost,surcharge:0}}])
   assert.equal(catalogListsZeroCost(model),false);
 });
 
