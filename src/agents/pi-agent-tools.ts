@@ -11,7 +11,6 @@ import type {AgentNotificationJournal} from "../runtime/agents/agent-notificatio
 import type {TaskAgentLinkStore} from "../runtime/agents/task-agent-link-store.js";
 import type {SessionTodoStore,TodoPlanMetadata} from "../runtime/lifecycle/todo-store.js";
 import {runtimeRoutingMetadata,type RouteChoice} from "../runtime/lifecycle/profiles.js";
-import {catalogListsZeroCost} from "../runtime/lifecycle/startup-orchestrator-model.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {dispatchNextPlanTask} from "../runtime/lifecycle/plan-dispatcher.js";
 import {inspectInterruptedWrite} from "../runtime/lifecycle/interrupted-write-inspection.js";
@@ -53,7 +52,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
  const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number}>();
  const INSPECTION_WINDOW_MS=300_000;
  const selectedIdentity=async(root:unknown,context:any,launch:boolean,signal?:AbortSignal)=>access.resolve(root,context,await identity(context),launch,()=>confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize another project?",`Start a read-only ASEN agent in ${String(root)}? Access applies only to this live session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal),signal);
- pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated read-only Pi Explorer. With budgetExplorer=true, require real same-session exhaustion and a zero-price catalog model, without fallback or writing.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema,budgetExplorer:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
+ pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated read-only Pi Explorer. With budgetExplorer=true, require real same-session exhaustion and the exact Explorer model configured in the active profile, without writing.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema,budgetExplorer:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
   const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
@@ -76,14 +75,14 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   let resolved:RouteChoice,routeSource:"session"|"project"|"global"|"default"|"persisted-plan",modelFallback:AgentModelFallback|undefined;
   if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const directExplorer=todoId===undefined&&dispatchRole==="explorer";const route=resolveRouting?await resolveRouting(dispatchRole,session,directExplorer):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;if(directExplorer)modelFallback=route.modelFallback;}
   if(budgetExplorer){
-   // La consulta ya superó el límite real; no se presume gratuidad de un modelo desconocido.
-   const reference=resolved.model??(context?.model?.provider&&context?.model?.id?
-    `${context.model.provider}/${context.model.id}`:undefined);
+   // Sin modelo explícito de perfil, no se utiliza el modelo del padre por accidente.
+   // El precio del modelo configurado no concede derechos adicionales.
+   const reference=routeSource!=="default"?resolved.model:undefined;
    const sep=typeof reference==="string"?reference.indexOf("/"):-1;
    const model=sep>0&&sep<reference!.length-1?
     context?.modelRegistry?.find?.(reference!.slice(0,sep),reference!.slice(sep+1)):undefined;
-   if(!model||!catalogListsZeroCost(model)||`${model.provider}/${model.id}`!==reference)
-    throw new Error("Budget Explorer requires a verified zero-price model in the current Pi catalog; no agent was launched");
+   if(!model||`${model.provider}/${model.id}`!==reference)
+    throw new Error("Budget Explorer requires the exact configured Explorer model in the current Pi catalog; no agent was launched");
    if(prompt.length>2048)throw new Error("Budget Explorer instruction exceeds the read-only handoff limit");
    resolved={...resolved,model:reference!};
    modelFallback=undefined;
