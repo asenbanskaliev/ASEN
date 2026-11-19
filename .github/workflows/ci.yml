@@ -44,7 +44,8 @@ jobs:
             tests/megatanda-c-review-policy.test.ts \
             tests/review-assessment-policy.test.ts \
             tests/ordinary-review-assessment.test.ts \
-            tests/judgment-day.test.ts
+            tests/judgment-day.test.ts \
+            tests/review-acceptance.test.ts
       - name: Probar lectura de catálogo NVIDIA sin generación ni red
         run: node --test tests/catalogo-nvidia.test.mjs
       - name: Probar diagnóstico NVIDIA con respuestas simuladas y sin gasto
