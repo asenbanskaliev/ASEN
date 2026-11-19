@@ -40,7 +40,7 @@ test("G49-B: un fallo no arranca otros Writers ni modelos de pago, pero sí una 
  const f=await fixture(t);let prompts=0;
  const result=await dispatchNextPlanTask({
   ...f,identity:f.identity,
-  independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedConfiguredModel:model=>model==="local/gratis"},
+  independentReadOnly:{blockedTodoId:f.blocked.taskId,verifiedConfiguredModel:(role,model)=>role==="explorer"&&model==="local/gratis"},
   autoApproveReadOnly:true,validateIdentity:async()=>{},
   confirm:async()=>{prompts++;return true;}
  });
