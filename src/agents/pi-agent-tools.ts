@@ -10,7 +10,7 @@ import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,type TrustedTaskAgentBinder} fro
 import type {AgentNotificationJournal} from "../runtime/agents/agent-notification-journal.js";
 import type {TaskAgentLinkStore} from "../runtime/agents/task-agent-link-store.js";
 import type {SessionTodoStore,TodoPlanMetadata} from "../runtime/lifecycle/todo-store.js";
-import {runtimeRoutingMetadata,type RouteChoice} from "../runtime/lifecycle/profiles.js";
+import {runtimeRoutingMetadata,type RouteChoice,type ProfileLayer} from "../runtime/lifecycle/profiles.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {dispatchNextPlanTask} from "../runtime/lifecycle/plan-dispatcher.js";
 import {inspectInterruptedWrite} from "../runtime/lifecycle/interrupted-write-inspection.js";
@@ -45,7 +45,7 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
 }
 export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_todo_inspect_interrupted_write"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
-export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal,claimBudgetExplorer?:(identity:AgentSessionIdentity)=>boolean):()=>void{
+export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal,claimBudgetExplorer?:(identity:AgentSessionIdentity)=>boolean,loadProfiles?:(identity:AgentSessionIdentity)=>Promise<ProfileLayer>):()=>void{
  const access=new AgentProjectAccess();
  // An exact status query records only a short-lived coordinator inspection
  // attempt; it is neither Pi model consumption nor approval for further work.
@@ -214,8 +214,12 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   throwIfCancelled(signal);const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
   if(!todoLink)throw new Error("ASEN plan dispatch requires the session Todo and durable task-agent link stores");
   const [todos,links,runtimeValue]=await Promise.all([todoLink.todos(),todoLink.links(),runtime()]);
-  const validateIdentity=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before plan task dispatch");};
-  const dispatched=await dispatchNextPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,autoApproveReadOnly:true,confirm:async task=>{if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function")return false;return confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize scoped ASEN write?",`${task.title} (${task.role})\n\n${task.instruction}\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces!.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal);}});
+  const validateIdentity=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId)||signal?.aborted)throw new Error("Pi session or project changed before plan task dispatch");};
+  // Usamos la misma fuente de perfiles que usó el planificador, con la sesión
+  // vinculada. Sin esta fuente no se deduce autorización para un Writer directo.
+  const runtimeProfiles=loadProfiles?await loadProfiles(session):undefined;
+  await validateIdentity();
+  const dispatched=await dispatchNextPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,autoApproveReadOnly:true,...(runtimeProfiles?{runtimeProfiles}:{}),confirm:async task=>{if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function")return false;return confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize scoped ASEN write?",`${task.title} (${task.role})\n\n${task.instruction}\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces!.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal);}});
   return result(dispatched);
  }});
  pi.registerTool?.({name:"asen_todo_inspect_interrupted_write",label:"Inspect interrupted ASEN write",description:"Read-only inspection for one interrupted linked writer in the active Pi session and project. Compares its saved Git candidate and exact file scope with current Git state; never edits files, resumes work, or restores permission. A fresh plan and explicit new authorization are required.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["agentId"],properties:{agentId:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{
