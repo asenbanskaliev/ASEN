@@ -104,6 +104,31 @@ test("F4-B Git worktree rename never moves an authorized file outside its origin
  assert.throws(()=>assertWriterAuthorizationSnapshotCurrent(snapshot),
   /unchanged workspace snapshot/);
 });
+test("MEGA-A6 una ampliación de archivos no hereda la autorización del Writer anterior",async t=>{
+ const {repository,candidate}=await fixture(t);
+ const original=captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]);
+ await writeFile(join(repository,"allowed.txt"),"cambio del Writer aprobado\n");
+ assert.deepEqual(assertWriterAuthorizationSnapshotOutcome(original),["allowed.txt"]);
+ assert.throws(()=>captureWriterAuthorizationSnapshot(candidate,["allowed.txt","outside.txt"]),
+  /unchanged workspace snapshot/u,
+  "Una nueva lista de archivos no puede saltarse el estado del primer Writer");
+ await writeFile(join(repository,"outside.txt"),"modificación sin autorizar\n");
+ assert.throws(()=>assertWriterAuthorizationSnapshotOutcome(original),
+  /outside its exact scope: outside.txt/u);
+ assert.throws(()=>captureWriterAuthorizationSnapshot(candidate,["outside.txt"]),
+  /unchanged workspace snapshot/u,
+  "Ni otro Writer ni un permiso más amplio se pueden crear sobre Git modificado");
+});
+
+test("MEGA-A15 un cambio ajeno al archivo autorizado bloquea el inicio aunque tenga el mismo SHA",async t=>{
+ const {repository,candidate}=await fixture(t);
+ const grant=captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]);
+ await writeFile(join(repository,"outside.txt"),"alteración entre permiso y arranque\n");
+ assert.throws(()=>assertWriterAuthorizationSnapshotCurrent(grant),/unchanged workspace snapshot/u);
+ assert.throws(()=>captureWriterAuthorizationSnapshot(candidate,["allowed.txt"]),
+  /unchanged workspace snapshot/u);
+});
+
 test("F4-B an external tracked-file rename prevents a new writer authorization",async t=>{
  const {repository,candidate}=await fixture(t);
  execFileSync("git",["-C",repository,"mv","outside.txt","renamed-outside.txt"]);
