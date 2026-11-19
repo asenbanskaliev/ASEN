@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions,agentTerminalContinuationMessage,agentNoticeIsStale,AGENT_NOTICE_STALE_AFTER_MS,agentTerminalNoticeContent} from "../src/runtime/agents/agent-terminal-delivery.js";
+import {agentParentRoute,agentTerminalDeliveryOptions,agentTerminalWakeOptions,agentTerminalContinuationMessage,agentNoticeIsStale,AGENT_NOTICE_STALE_AFTER_MS,AGENT_NOTICE_MAX_FUTURE_SKEW_MS,agentTerminalNoticeContent} from "../src/runtime/agents/agent-terminal-delivery.js";
 
 const id={sessionId:"primary-a",projectId:"/workspace/a"};
 test("EF-601 Pi parent routing: active steer, idle stored+separate wake, compaction holds",()=>{
@@ -156,6 +156,25 @@ test("EF-601 durable notice freshness uses the pinned threshold and fails closed
  assert.equal(agentNoticeIsStale(new Date(1_100_000).toISOString(),1_000_000),false,
   "Small clock skew must not label a future receipt stale");
  assert.equal(agentNoticeIsStale("invalid",1_000_000),true);
+});
+
+test("E2B avisos de reloj futuro fuera de tolerancia nunca exponen el informe",()=>{
+ const now=1_000_000;
+ assert.equal(AGENT_NOTICE_MAX_FUTURE_SKEW_MS,300_000);
+ assert.equal(agentNoticeIsStale(new Date(now+300_000).toISOString(),now),false,
+  "Un desfase limitado no inventa antigüedad");
+ assert.equal(agentNoticeIsStale(new Date(now+300_001).toISOString(),now),true,
+  "Un informe del futuro lejano no puede parecer reciente");
+ assert.equal(agentNoticeIsStale(new Date(now).toISOString(),Number.NaN),true,
+  "Si el reloj local no es fiable tampoco lo es la frescura");
+ const eventId=`asen:agent:${"d".repeat(64)}:terminal`;
+ const delivered=agentTerminalNoticeContent({id:"reloj-futuro",role:"explorer",state:"completed",
+  summary:"INFORME_NO_VERIFICADO",eventId,
+  createdAt:new Date(now+300_001).toISOString(),now});
+ assert.equal(delivered.stale,true);
+ assert.doesNotMatch(delivered.content,/INFORME_NO_VERIFICADO/u);
+ assert.match(delivered.content,/asen_agent_status/u);
+ assert.match(delivered.content,/Never turn this message into Writer authorization/u);
 });
 
 test("EF-601 extension notice composer applies freshness to the durable timestamp",()=>{
