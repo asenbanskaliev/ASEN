@@ -33,6 +33,8 @@ const exactProvenanceDocs=new Set([
   "odd/tasks/flujo-de-agentes-auditoria-plan-2026-11-19.md",
   // Estado documental exacto de los 18 objetivos; no abre permisos a otros archivos.
   "odd/tasks/flujo-de-agentes-estado-18-objetivos.md",
+  // Registro de cierre exacto de los 18 puntos; documento humano, no código.
+  "odd/tasks/flujo-agentes-18-puntos-cierre-20261119.md",
   // Matriz de equivalencia previa, documento exacto de planificación, nunca código.
   "odd/tasks/flujo-de-agentes-equivalencia-operativa-4.9.0.md",
   // T11: trazabilidad humana de layout, no código ejecutable ni un import.
