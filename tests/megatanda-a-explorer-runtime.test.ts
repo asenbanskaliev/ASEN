@@ -52,7 +52,9 @@ test("G49-A2: Pi ejecuta un único Explorer de lectura tras cuatro consultas, si
  };
  const attempted=async(prompt="Buscar las relaciones de los módulos indicados")=>
   tool.execute("g49-launch",{prompt,budgetExplorer:true},new AbortController().signal,()=>{},context);
+ context.model=FREE;
  await assert.rejects(attempted(),/not authorized by one fresh/u);
+ context.model=PAID;
  for(let index=0;index<4;index++){
   for(const handler of handlers.get("tool_execution_end")??[])
    await handler({toolCallId:"lectura-"+index,toolName:"read",result:{content:[{type:"text",text:"dato"}]}},context);
