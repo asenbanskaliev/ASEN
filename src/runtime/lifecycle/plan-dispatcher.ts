@@ -1,6 +1,6 @@
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
-import type {ProfileLayer} from "./profiles.js";
+import {resolveRuntimeDelegationMode,type ProfileLayer} from "./profiles.js";
 import type {Candidate} from "../../core/types.js";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../../flow/odd-routing.js";
 import {inspectStoredFixSourceTree} from "../../review/judgment-fix-odd-preflight.js";
@@ -70,7 +70,10 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  const candidateBound={id:candidate.id,repository:candidate.repository,revision:candidate.revision,createdAt:candidate.createdAt},decision=planOddRoute(facts);
  let plan:ReturnType<typeof buildOrchestrationPlan>;
  try{plan=buildOrchestrationPlan({taskId:facts.taskIdentity,repository:identity.projectId,prompt:instruction,candidate:candidateBound,writeSurfaces:exactSurfaces,...(metadata.skillSelection.selectionProfile?{selectionProfile:metadata.skillSelection.selectionProfile}:{}),...(input.runtimeProfiles?{runtimeProfiles:input.runtimeProfiles}:{})},decision);}catch{return {reason:"The original ODD route no longer authorizes this worker plan."};}
- if(decision.route!=="orchestrate")return {reason:"The original ODD route does not authorize delegated worker execution."};
+ const delegatedDirect=decision.route==="direct"&&
+  resolveRuntimeDelegationMode(input.runtimeProfiles??{}).mode==="full-delegation";
+ if(decision.route!=="orchestrate"&&!delegatedDirect)
+  return {reason:"The original ODD route does not authorize delegated worker execution."};
  const worker=plan.agents.find(agent=>agent.role==="worker");
  if(!worker?.skillContext||!worker.skillPaths||!worker.writeSurfaces||worker.writeSurfaces.length!==exactSurfaces.length||worker.writeSurfaces.some((surface,index)=>surface!==exactSurfaces[index]))return {reason:"The current ODD plan does not produce the exact persisted worker scope."};
  const expectedPaths=selectSkills(metadata.skillSelection).map(skill=>skill.path);
