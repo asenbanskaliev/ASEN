@@ -781,6 +781,32 @@ test("T06 supervisor refuses after consent declined for second Worker, never ret
  assert.equal(f.dispatchedChildren.length,1);
 });
 
+test("G49-B rechazo expreso del primer Worker no paraliza al segundo independiente",async t=>{
+ const f=fixture(t);await prepareSupervisorChildren(f);
+ let asked=0;
+ f.ctx.ui.confirm=async(_title:string,message:string)=>{
+  f.confirmMessages.push(message);
+  asked++;
+  return asked!==2; // Lote admitido; primer Writer rechazado; segundo confirmado.
+ };
+ const result=await f.run("supervise") as {
+  status:string;started:readonly {sourceTodoId:string;agentId:string}[];
+  blockers:readonly string[];autoRetry:boolean;autoMerge:boolean;acceptance:string
+ };
+ assert.equal(result.status,"partial-needs-review");
+ assert.deepEqual(result.started.map(item=>item.sourceTodoId),["todo-frontend"]);
+ assert.deepEqual(f.dispatchedChildren.map(item=>item.sourceTodoId),["todo-frontend"]);
+ assert.equal(asked,3,"cada Worker sigue requiriendo consentimiento propio");
+ assert.equal(result.blockers.length,1);
+ assert.match(result.blockers[0]!,/rechazó este Worker/u);
+ assert.equal(result.autoRetry,false);
+ assert.equal(result.autoMerge,false);
+ assert.equal(result.acceptance,"not-accepted");
+ assert.equal((await f.run("supervise") as {status:string}).status,"blocked",
+  "el lote completo se consumió una vez: el rechazo nunca puede reintentarse");
+ assert.equal(f.dispatchedChildren.length,1);
+});
+
 test("T06 supervisor never starts a Worker when child ODD is unclaimed or its root is dirty",async t=>{
  const f=fixture(t);
  const created=await f.run("prepare-todos") as {worktrees:readonly {root:string}[]};
