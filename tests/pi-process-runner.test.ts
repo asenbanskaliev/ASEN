@@ -596,13 +596,13 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
  for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(join(root,source),target);}
  await writeFile(p,`import {writeFileSync} from "node:fs";import {resolve} from "node:path";
-const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true};let buffer="",turn=0,commands=[],stateReady=false;
+const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true},initialSuccess=${options.initialSuccess===true};let buffer="",turn=0,commands=[],stateReady=false;
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands}));
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
@@ -613,7 +613,7 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
   if(stateRequired&&!stateReady){emit({type:"response",id:request.id,command:"prompt",success:false});emit({type:"agent_end"});continue;}
   turn++;
   const reply={type:"response",id:request.id,command:"prompt",success:turn===1||!rejectContinuation};
-  if(turn===1){emit(reply);const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}
+  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"respuesta de prueba completada"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
   else if(coalesceSecondTurn){
    const records=[reply];
    if(duplicateContinuationResponse)records.push({...reply});
@@ -630,7 +630,7 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
 }
 
 test("T06: el prompt se envía solo después de recibir get_state del mismo Pi",async t=>{
- const {d,p,log}=await fallbackRpcFixture({stateDelayMs:80,stateRequiredBeforePrompt:true,
+ const {d,p,log}=await fallbackRpcFixture({stateDelayMs:80,stateRequiredBeforePrompt:true,initialSuccess:true,
   stateModel:{provider:"nvidia",id:"nvidia/nemotron-3.5-lightning-30b-a3b"}});
  t.after(()=>rm(d,{recursive:true,force:true}));
  const observations:unknown[]=[],child=runner(p,{timeoutMs:process.env.CI==="true"?10_000:5_000,
@@ -712,7 +712,7 @@ for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undef
 test("effort runtime parity rejects invalid args and drops invalid child effort",async t=>{
  for(const thinking of ["extreme","HIGH","inherit","",null,7]){
   assert.throws(()=>piRuntimeRouteArgs({thinking:thinking as import("../src/runtime/lifecycle/profiles.js").Thinking}),/Invalid routed Pi thinking/);
-  const {d,p}=await fallbackRpcFixture({selectionThinking:thinking});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],child=runner(p,{timeoutMs:5000});child.subscribeChildSelection(value=>seen.push(value));
+  const {d,p}=await fallbackRpcFixture({selectionThinking:thinking,initialSuccess:true});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],child=runner(p,{timeoutMs:5000});child.subscribeChildSelection(value=>seen.push(value));
   const result=await child.run({id:"invalid-observation",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true,result.output);assert.deepEqual(seen,[]);
  }
 });
@@ -774,7 +774,7 @@ test("fallback-thinking-refusal omits an effort level rejected by RPC",async t=>
 });
 
 test("fallback-child preserves the ordinary no-chain process path",async t=>{
- const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-no-chain",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary"});assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-no-chain",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary"});assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
 });
 
 test("fallback-child does not continue for a noneligible final failure",async t=>{
