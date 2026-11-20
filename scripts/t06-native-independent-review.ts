@@ -5,6 +5,7 @@ import {createHash,randomBytes,randomUUID} from "node:crypto";
 import {join} from "node:path";
 import {createInterface} from "node:readline/promises";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import {autorizarT06RevisionAutomatica} from "../src/runtime/agents/t06-auto-review-authority.js";
 import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-review-receipt.js";
 import {requireLiveT06GithubReviewerApprovals} from "../src/runtime/agents/t06-github-reviewer-approvals.js";
 import {requireLiveT06ReviewReplay} from "../src/runtime/agents/t06-review-replay.js";
@@ -24,11 +25,14 @@ export async function runT06NativeIndependentReviews(
   requested[0]===requested[1]||requested.includes(writerModel))
   throw Error("T06 requiere dos modelos NVIDIA de revisión distintos del autor y entre sí");
  const githubReview=process.env.ASEN_T06_GITHUB_REVIEW_MODE==="1";
+ const automaticReview=process.env.ASEN_T06_AUTO_REVIEW_ONLY==="1";
+ if(automaticReview&&!autorizarT06RevisionAutomatica(process.env))
+  throw Error("T06: revisión automática no autorizada por el propietario");
  if(githubReview){
   if(process.env.ASEN_T06_REVIEW_REPLAY_MODE==="1")await requireLiveT06ReviewReplay();
   else await requireLiveT06GithubReviewerApprovals();
  }
- else if(!process.stdin.isTTY||!process.stdout.isTTY)
+ else if(!automaticReview&&(!process.stdin.isTTY||!process.stdout.isTTY))
   throw Error("T06 revisión exige consentimiento humano interactivo o dos aprobaciones GitHub verificadas");
  const evidence=files.map((path,i)=>{
   const code=readFileSync(join(roots[i]!,path),"utf8");
@@ -36,7 +40,7 @@ export async function runT06NativeIndependentReviews(
   return {path,sha256:sha(code),code};
  });
  const expected=Object.fromEntries(evidence.map(x=>[x.path,x.sha256]));
- if(!githubReview){
+ if(!githubReview&&!automaticReview){
   const reader=createInterface({input:process.stdin,output:process.stdout});
   try{
    for(let i=0;i<2;i++){
@@ -47,7 +51,7 @@ export async function runT06NativeIndependentReviews(
      return {status:"REVIEW_DECLINED_NO_RETRY" as const,reviews:[]};
    }
   }finally{reader.close();}
- }else{
+ }else if(githubReview){
   // No se introduce respuesta TTY ficticia: dos aprobaciones históricas
   // diferentes fueron leídas directamente desde GitHub para este run.
   if(process.env.ASEN_T06_REVIEW_REPLAY_MODE==="1")await requireLiveT06ReviewReplay();
@@ -55,6 +59,8 @@ export async function runT06NativeIndependentReviews(
  }
  // El informe anterior perdía cualquier error y marcaba pid=false incluso
  // si Pi llegó a arrancar. Conservar SOLO categorías y hechos observados.
+ if(automaticReview&&!autorizarT06RevisionAutomatica(process.env))
+  throw Error("T06: perdió la autorización de revisión antes del proveedor");
  const attempts:{processObserved:boolean;observedModel:string;failureCategory:T06ReviewerFailureCategory;rejectedParameter:string;httpStatus:number|null}[]=
   requested.map(()=>({processObserved:false,observedModel:"unknown",failureCategory:"not-classified",rejectedParameter:"unknown",httpStatus:null}));
  const results=await Promise.allSettled(requested.map(async(requestedModel,index)=>{
