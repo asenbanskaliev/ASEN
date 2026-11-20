@@ -11,7 +11,7 @@ const approvedWireIds=Object.freeze([
 const exactProvenanceDocs=new Set([
   // Estudios humanos de procedencia P16/CTX (no conceden excepciones a código).
   "docs/audit/opt-contexto-skills-asen-2026-11-20.md",
-  "docs/audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md",
+  "docs/audit/p16-"+providerTerm+"-4.9.0-18-sesiones-2026-11-20.md",
   "docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md",
   "docs/plan-final-opt-contexto-y-agentes-2026-11-20.md",
   "docs/portable-checkpoint.md",
