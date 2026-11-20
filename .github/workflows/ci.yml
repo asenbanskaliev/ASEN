@@ -501,7 +501,7 @@ jobs:
         run: |
           set -euo pipefail
           node --import tsx scripts/flow-closure-report.ts recibos-pi/matrix-evidence cierre-16-17-18.json
-          node --input-type=module -e 'import fs from "node:fs";const r=JSON.parse(fs.readFileSync("cierre-16-17-18.json"));if(r.globalFull!==false||r.point18.cellsObserved!==12||r.point18.status!=="evidence-ready-for-independent-audit"||r.point17.accepted!==false||r.point16.accepted!==false)process.exit(1)'
+          node --input-type=module -e 'import fs from "node:fs";const r=JSON.parse(fs.readFileSync("cierre-16-17-18.json"));if(r.globalFull!==false||r.point18.cellsObserved!==12||!["evidence-ready-for-independent-audit"].includes(r.point18.status)||r.point17.accepted!==false||r.point16.accepted!==false)process.exit(1)'
       - name: Conservar diagnóstico por SHA sin secretos ni permisos
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
