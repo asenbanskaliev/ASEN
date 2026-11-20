@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
-          npm ci --ignore-scripts --no-audit --no-fund
+          npm ci --no-audit --no-fund
           node --import tsx --test tests/pi-support-matrix.test.ts
       - name: Empaquetar el código comprobado
         shell: bash
