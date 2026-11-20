@@ -657,6 +657,10 @@ export class PiProcessRunner implements AgentRunner{
       const envelope=responses[0];
       if(envelope.success!==true)return finish({id:request.id,ok:false,output:"pi correlated response failed"});
       if(settlementRequired&&!finalAgentSettled)return finish({id:request.id,ok:false,output:`pi child exited before final agent_settled${rpcFailure?` (${rpcFailure})`:""}`});
+      // Sin fallback ni cierre estricto, el código de salida 0 de Pi no
+      // convierte un mensaje terminal del proveedor con error en éxito.
+      if(!settlementRequired&&lastAssistantFailure)
+       return finish({id:request.id,ok:false,output:`pi assistant failed: ${lastAssistantFailure}`});
       if(finalFailure)return finish({id:request.id,ok:false,output:`pi assistant failed: ${finalFailure}${rpcFailure?` (${rpcFailure})`:""}`});
      }catch{
       return finish({id:request.id,ok:false,output:"pi response envelope invalid"});

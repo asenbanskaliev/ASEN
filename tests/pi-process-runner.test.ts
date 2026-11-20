@@ -676,6 +676,23 @@ test("T06: sin observador Pi no se inicia el ensayo de modelo",async t=>{
  await assert.rejects(readFile(log,"utf8"),{code:"ENOENT"});
 });
 
+test("Pi sin alternativas no presenta errores reales del proveedor como ejecución correcta",async t=>{
+ for(const category of ["rate_limit","context_length"] as const){
+  const {d,p,log}=await fallbackRpcFixture({category});
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const result=await runner(p,{timeoutMs:process.env.CI==="true"?10_000:5_000}).run({
+   id:"pi-error-sin-alternativa",role:"explorer",prompt:"Consultar sin escribir",
+   repository:d,model:"provider/primary"
+  });
+  assert.equal(result.ok,false,"El código de salida 0 no valida un error terminal del proveedor");
+  assert.equal(result.output,"pi assistant failed: "+category,
+   "Solo se informa la categoría controlada, nunca datos privados del proveedor");
+  const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.deepEqual(trace.commands.map((row:{type:string})=>row.type),
+   ["get_commands","prompt"],"La corrección no repite solicitudes ni cambia el modelo");
+ }
+});
+
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort runtime parity scripted args RPC and child selection preserve ${thinking??"omission"}`,async t=>{
   const {d,p,log}=await fallbackRpcFixture({selectionThinking:thinking});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],changes:unknown[]=[];
