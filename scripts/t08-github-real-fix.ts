@@ -460,7 +460,8 @@ async function main():Promise<void>{
  const version=execFileSync(process.env.PI_EXECUTABLE??"pi",["--version"],{
   encoding:"utf8",timeout:5_000,stdio:["ignore","pipe","pipe"]
  }).trim();
- if(!/(?:^|\s)1\.2\.0(?:\s|$)/u.test(version))throw Error("T08 requiere Pi 1.2.0");
+ if(!/(?:^|\s)1\.(?:2\.0|5\.2)(?:\s|$)/u.test(version))
+  throw Error("T08 requiere Pi 1.2.0 o 1.5.2 compatible");
  const models=checkModels(),runId=process.env.GITHUB_RUN_ID??"";
  const root=t08TemporaryRoot(runId);
  if(process.env.ASEN_T08_OWNER_AUTO==="1"){
