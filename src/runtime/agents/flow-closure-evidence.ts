@@ -7,7 +7,7 @@ import {compareAgentFlowSeries,type AgentFlowSeriesPair} from "../../review/agen
  * forman parte de la identidad y no se pueden descartar. */
 export function isPiMatrixReceiptPath(file:unknown):boolean{
  return typeof file==="string"&&
-  /^(?:[a-zA-Z0-9_-]+[/\\])?(?:linux|win32|darwin)-1.2.0-(?:tui|rpc|json|print).json$/u.test(file);
+  /^(?:[a-zA-Z0-9_-]+[/\\])?(?:linux|win32|darwin)-1\.2\.0-(?:tui|rpc|json|print)\.json$/u.test(file);
 }
 const SHA=/^[0-9a-f]{40}$/u;
 const DIGEST=/^[0-9a-f]{64}$/u;

@@ -101,6 +101,7 @@ test("18 incluye win32 al leer los recibos del mismo candidato en CI",()=>{
   }
  for(const name of ["win-1.2.0-rpc.json","win32-1.5.2-rpc.json",
   "../../win32-1.2.0-rpc.json","win32-1.2.0-other.json",
-  "linux-1.2.0-rpc.json.bak","windows-1.2.0-rpc.json"])
+  "linux-1.2.0-rpc.json.bak","windows-1.2.0-rpc.json",
+  "win32-1X2X0-rpcZjson"])
   assert.equal(isPiMatrixReceiptPath(name),false,name);
 });
