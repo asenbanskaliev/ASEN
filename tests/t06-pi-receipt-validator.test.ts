@@ -75,6 +75,29 @@ test("T06 rechaza un cierre erróneo aunque el mensaje y modelo sean exactos",()
  assert.equal(call(message(expectedMarker,{stopReason:"stop"})).verified,true);
 });
 
+test("T06 rechaza herramientas, reintentos y cancelaciones aunque el texto sea correcto",()=>{
+ for(const event of [
+  {type:"tool_execution_start",toolName:"write"},
+  {type:"tool_execution_end",toolName:"read",isError:false},
+  {type:"agent_end",willRetry:true},
+  {type:"agent_settled",aborted:true}
+ ]){
+  for(const stream of [
+   [event,message(expectedMarker)],
+   [message(expectedMarker),event]
+  ]){
+   const result=call(stream.map(row=>typeof row==="string"?row:JSON.stringify(row)).join("\n"));
+   assert.equal(result.verified,false,JSON.stringify(event));
+   assert.equal(result.reason,"unexpected-reply");
+   assert.equal(result.modelActual,"unknown");
+   assert.equal(result.piReportedUsage,null);
+  }
+ }
+ const valid=[message(expectedMarker),JSON.stringify({type:"agent_end",willRetry:false}),
+  JSON.stringify({type:"agent_settled",aborted:false})].join("\n");
+ assert.equal(call(valid).verified,true);
+});
+
 test("T06 mensajes duplicados, parciales o falsos nunca son recibos válidos",()=>{
  for(const data of [
   message(expectedMarker)+"\n"+message(expectedMarker),

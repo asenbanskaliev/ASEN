@@ -52,6 +52,12 @@ export function validateT06PiReply(input:{
   try{event=JSON.parse(line);}catch{return rejected("invalid-input");}
   if(!event||typeof event!=="object"||Array.isArray(event))return rejected("invalid-input");
   const row=event as Record<string,unknown>;
+  // Este ensayo es exclusivamente de lectura. Ningún uso de herramientas,
+  // reintento pendiente ni cancelación puede acreditar un resultado completo.
+  if(row.type==="tool_execution_start"||row.type==="tool_execution_end"||
+    row.type==="agent_end"&&row.willRetry===true||
+    row.type==="agent_settled"&&row.aborted===true)
+   return rejected("unexpected-reply");
   if(row.type!=="message_end")continue;
   const message=row.message;
   if(!message||typeof message!=="object"||Array.isArray(message))return rejected("invalid-input");
