@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {auditFlowPoints16to18,inspectFlow17,inspectComparison16,inspectPiMatrix18,
- type PiMatrixEvidence,type FlowEndToEndWitness} from "../src/runtime/agents/flow-closure-evidence.js";
+ isPiMatrixReceiptPath,type PiMatrixEvidence,type FlowEndToEndWitness} from "../src/runtime/agents/flow-closure-evidence.js";
 import type {AgentFlowSeriesPair} from "../src/review/agent-flow-series-comparison.js";
 
 const sha="a".repeat(40),reference="ce64a9a708e50c0ca899c8023140e63f29f293e1";
@@ -91,4 +91,16 @@ test("informe conjunto 16-18 nunca declara finalizado sin verificación independ
  assert.equal(report.point16.status,"blocked");
  assert.equal(report.globalFull,false);
  assert.throws(()=>auditFlowPoints16to18({sha:"no-es-sha",matrix:[],flow:null,pairs:null}));
+});
+
+test("18 incluye win32 al leer los recibos del mismo candidato en CI",()=>{
+ for(const platform of ["linux","win32","darwin"])
+  for(const mode of ["tui","rpc","json","print"]){
+   assert.equal(isPiMatrixReceiptPath(platform+"-1.2.0-"+mode+".json"),true);
+   assert.equal(isPiMatrixReceiptPath("matrix-evidence/"+platform+"-1.2.0-"+mode+".json"),true);
+  }
+ for(const name of ["win-1.2.0-rpc.json","win32-1.5.2-rpc.json",
+  "../../win32-1.2.0-rpc.json","win32-1.2.0-other.json",
+  "linux-1.2.0-rpc.json.bak","windows-1.2.0-rpc.json"])
+  assert.equal(isPiMatrixReceiptPath(name),false,name);
 });
