@@ -7,6 +7,7 @@
  * No sustituye la confirmación dentro de Pi TUI ni permite merge.
  */
 import {blockUnisolatedGeneratedCodeTrial} from "../src/runtime/agents/generated-code-trial-admission.js";
+import {autorizaT06EscrituraAislada} from "../src/runtime/agents/t06-owner-auto-authorization.js";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
 import {createHash,randomBytes,randomUUID} from "node:crypto";
@@ -184,9 +185,12 @@ async function nativeWriter(
 }
 async function main():Promise<void>{
  const staticOnly=process.env.ASEN_T06_STATIC_WRITE_ONLY==="1";
+ const automaticMode=process.env.ASEN_T06_AUTO_OWNER==="1";
+ if(automaticMode&&!autorizaT06EscrituraAislada(process.env))
+  throw Error("T06 automático: autorización de propietario y SHA no verificados");
  // El modo completo sigue bloqueado: solo se permite escribir sin ejecutar el código.
  if(!staticOnly)blockUnisolatedGeneratedCodeTrial("T06");
- if(staticOnly&&(process.env.ASEN_T06_GITHUB_MODE!=="1"||
+ if(staticOnly&&((process.env.ASEN_T06_GITHUB_MODE!=="1"&&!automaticMode)||
    process.env.GITHUB_ACTIONS!=="true"||process.env.GITHUB_RUN_ATTEMPT!=="1"))
   throw Error("T06 estático bloqueado: solo la primera ejecución manual aprobada en GitHub");
  const policyRoot=realpathSync(process.env.GITHUB_WORKSPACE??process.cwd());
@@ -203,6 +207,9 @@ async function main():Promise<void>{
  if(!/(?:^|\s)1\.2\.0(?:\s|$)/u.test(version))throw Error("T06 bloqueado: se requiere Pi 1.2.0");
  const githubMode=process.env.ASEN_T06_GITHUB_MODE==="1";
  if(githubMode)await requireLiveT06GithubApprovals();
+ else if(automaticMode){
+  if(!autorizaT06EscrituraAislada(process.env))throw Error("T06: permiso automático vencido");
+ }
  else if(!process.stdin.isTTY||!process.stdout.isTTY)
   throw Error("T06 bloqueado: exige dos consentimientos humanos TTY o dos revisiones reales de GitHub");
  const dir=process.env.ASEN_T06_WRITER_REPORT_DIR?
@@ -229,6 +236,8 @@ async function main():Promise<void>{
    // Segunda consulta DESPUÉS de crear los worktrees y justo antes de lanzar
    // ambos Writers. El run no puede heredar aprobaciones de otro intento.
    await requireLiveT06GithubApprovals();
+  }else if(automaticMode){
+   if(!autorizaT06EscrituraAislada(process.env))throw Error("T06: permiso de push revocado");
   }else{
    const reader=createInterface({input:process.stdin,output:process.stdout});
    let replies:string[]=[];
@@ -280,10 +289,12 @@ async function main():Promise<void>{
   }
   const evidence={
    schema:"asen.t06.native-dual-writer/v1",sha:expected,piVersion:version,
-   executionKind:githubMode?
+   executionKind:automaticMode?
+    "NATIVE_PI_RPC_WRITER_WITH_EXACT_OWNER_PUSH_AUTHORIZATION":githubMode?
     "NATIVE_PI_RPC_WRITER_WITH_TWO_GITHUB_APPROVALS":
     "NATIVE_PI_RPC_WRITER_WITH_TWO_MANUAL_TERMINAL_APPROVALS",
-   consentMethod:githubMode?
+   consentMethod:automaticMode?
+    "one-owner-push-two-disjoint-scoped-writers-no-github-environment":githubMode?
     "two-distinct-github-environment-human-approvals-not-native-pi-TUI":
     "two-distinct-interactive-parent-terminal-prompts-not-native-pi-TUI",
    requestedModel:model,modelCostVerified:false,billingVerified:false,
