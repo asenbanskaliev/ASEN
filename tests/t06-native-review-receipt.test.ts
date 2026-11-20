@@ -70,9 +70,8 @@ test("T06 no disimula dos dictámenes exitosos ni errores finales",()=>{
   role:"assistant",stopReason:"error",content:[{type:"text",text:"error"}]
  }});
  for(const output of [success+"\n"+success,
-  success+"\n"+failed, failed+"\n"+stream(good),
+  success+"\n"+failed,
   failed+"\n"+JSON.stringify({type:"tool_execution_start"})+"\n"+success]){
-  if(output===failed+"\n"+stream(good))continue;
   assert.throws(()=>parseT06NativeReviewReceipt(output,sha),/T06 independent/u);
  }
  assert.equal(parseT06NativeReviewReceipt(failed+"\n"+success,sha).verdict,"pass");

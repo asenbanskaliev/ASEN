@@ -36,12 +36,12 @@ export function parseT06NativeReviewReceipt(
  // mecanismo de recuperación repite el intento. Los mensajes anteriores
  // SOLO se ignoran si stopReason confirma explícitamente "error".
  const prior=messages.slice(0,-1);
- if(prior.some(row=>!("message" in row)||typeof row.message!=="object"||
+ if(prior.some(row=>typeof row!=="object"||row===null||!("message" in row)||typeof row.message!=="object"||
   row.message===null||!("stopReason" in row.message)||
   row.message.stopReason!=="error"))
   throw new Error("T06 independent review requires exactly one final assistant verdict");
  const message=messages.at(-1);
- if(!message||!("message" in message)||typeof message.message!=="object"||
+ if(!message||typeof message!=="object"||!("message" in message)||typeof message.message!=="object"||
   message.message===null||!("stopReason" in message.message)&&
   "errorMessage" in message.message)
   throw new Error("T06 independent review requires exactly one final assistant verdict");
