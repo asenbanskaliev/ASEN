@@ -364,7 +364,7 @@ test("EF-606 bloquea acuses si el coordinador cambia durante un bloqueo real",{t
   const entered=new Promise<void>(resolve=>{ackCalled=resolve;});
   const lockOwner=withExclusiveFileLock(file,async()=>{lockReady();await released;});
   const originalAck=journal.acknowledge.bind(journal);
-  (journal as any).acknowledge=(...args:any[])=>{ackCalled();return originalAck(...args);};
+  (journal as any).acknowledge=(...args:any[])=>{ackCalled();return Reflect.apply(originalAck,journal,args);};
   try{
    await acquired;
    const pending=tools.get("asen_agent_ack").execute("acuse",{eventId:row.eventId},new AbortController().signal,()=>{},context);
