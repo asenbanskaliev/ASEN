@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {dirname,join} from "node:path";
+import {withExclusiveFileLock} from "../src/io/exclusive-file-lock.js";
 import {tmpdir} from "node:os";
 import {AgentNotificationJournal,agentNoticeEventId} from "../src/runtime/agents/agent-notification-journal.js";
 import {isFreshAgentInspection,registerAgentTools} from "../src/agents/pi-agent-tools.js";
@@ -285,6 +286,60 @@ test("EF-606 cancelar tras entrar al bloqueo y durante la lectura conserva el av
   ()=>journal.acknowledge(row.eventId,subject,subject.id,"completed",signal),
   (error:any)=>error?.name==="AbortError");
  assert.equal(await readFile(file,"utf8"),before,"La cancelación no puede cambiar un solo byte del diario");
+ assert.equal((await journal.list(subject))[0]?.delivery,"enqueued");
+});
+
+test("EF-606 cancelar mientras otro proceso mantiene el bloqueo real no reconoce el aviso",{timeout:10000},async t=>{
+ const {file,journal}=await fixture(t);
+ const row=await journal.record(subject);
+ await journal.claim(row.eventId,subject);
+ await journal.markEnqueued(row.eventId,subject);
+ const before=await readFile(file,"utf8");
+ let locked!:()=>void,unlock!:()=>void;
+ const acquired=new Promise<void>(resolve=>{locked=resolve;});
+ const released=new Promise<void>(resolve=>{unlock=resolve;});
+ const owner=withExclusiveFileLock(file,async()=>{locked();await released;});
+ const controller=new AbortController();
+ try{
+  await acquired;
+  const pending=journal.acknowledge(row.eventId,subject,subject.id,"completed",controller.signal);
+  let settled=false;
+  void pending.then(()=>{settled=true;},()=>{settled=true;});
+  await new Promise(resolve=>setTimeout(resolve,60));
+  assert.equal(settled,false,"El aviso debe seguir esperando el bloqueo real");
+  controller.abort();
+  await assert.rejects(pending,(error:unknown)=>error instanceof Error&&error.name==="AbortError");
+ }finally{unlock();await owner;}
+ assert.equal(await readFile(file,"utf8"),before,"No debe modificarse el diario");
+ const recovered=await new AgentNotificationJournal(file).recoveryReview(subject);
+ assert.equal(recovered[0]?.delivery,"enqueued");
+ assert.equal(recovered[0]?.disposition,"ENQUEUED_REQUIRES_COORDINATOR_INSPECTION");
+ assert.equal(await journal.claim(row.eventId,subject),false,"Nunca se reenvía el aviso");
+});
+
+test("EF-605 la inspección que caduca durante un bloqueo real no reconoce el aviso",{timeout:10000},async t=>{
+ const {file,journal}=await fixture(t);
+ const row=await journal.record(subject);
+ await journal.claim(row.eventId,subject);
+ await journal.markEnqueued(row.eventId,subject);
+ const before=await readFile(file,"utf8");
+ let locked!:()=>void,unlock!:()=>void;
+ const acquired=new Promise<void>(resolve=>{locked=resolve;});
+ const released=new Promise<void>(resolve=>{unlock=resolve;});
+ const owner=withExclusiveFileLock(file,async()=>{locked();await released;});
+ let now=1000,validations=0;
+ try{
+  await acquired;
+  const pending=journal.acknowledge(row.eventId,subject,subject.id,"completed",undefined,()=>{
+   validations++;
+   if(!isFreshAgentInspection(1000,now))throw new Error("Inspección caducada mientras esperaba el bloqueo");
+  });
+  now=301_002;
+  unlock();
+  await assert.rejects(pending,/Inspección caducada/u);
+ }finally{unlock();await owner;}
+ assert.equal(validations,1,"La vigencia se comprueba dentro de la transacción protegida");
+ assert.equal(await readFile(file,"utf8"),before);
  assert.equal((await journal.list(subject))[0]?.delivery,"enqueued");
 });
 
