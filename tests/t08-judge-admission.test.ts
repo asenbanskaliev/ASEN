@@ -25,5 +25,5 @@ test("T08 diferencia rechazo del proveedor sin copiar errores sensibles",()=>{
  }),"judge-runner-policy-extension");
  assert.equal(classifyT08JudgeAdmission({...base,ok:false,
   runnerOutput:"pi agent_settled without a completed final assistant turn"
- }),"judge-runner-settlement-incomplete");
+ }),"judge-runner-pi-no-final-settlement");
 });
