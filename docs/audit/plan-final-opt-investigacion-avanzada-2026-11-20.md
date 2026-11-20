@@ -90,3 +90,50 @@ La investigación aporta un patrón útil (contexto más selectivo), pero su tex
 - **Alcance real de esta auditoría:** revisión de documentos, fuentes de código accesibles y contrato publicado de Pi; no se ejecutaron tests, no se instaló nada y no hay revisión independiente de un tercero. Los resultados de CI tras estos cambios documentales deberán comprobarse por commit.
 
 **Dictamen final:** **APROBADO EL PLAN DOCUMENTAL PARA COMENZAR CTX-0 SIN MODELOS**. **Bloqueado el despliegue de OPT y la declaración de eficacia superior** hasta pruebas reales, resultados medidos, revisión independiente y permiso de integración. No fusionar a `main`.
+
+---
+
+## 7. Auditoría de preparación quirúrgica aplicada al plan (20/11/2026)
+
+**Referencia de implementación documental:** [`docs/plan-final-opt-contexto-y-agentes-2026-11-20.md`](../plan-final-opt-contexto-y-agentes-2026-11-20.md), apartados **9–12**. **Estado:** auditoría estática de documentación y repositorio completada; **NO** se ha ejecutado Pi, la batería de pruebas, CI ni modelos reales por esta revisión.
+
+### 7.1 Qué se ha corregido y cómo cubre las observaciones IA-01…IA-18
+
+| Observaciones de la auditoría | Cambio incorporado al plan final | Prueba/decisión que lo cerrará en ejecución |
+| --- | --- | --- |
+| **IA-01, IA-02, IA-12, IA-16**: comparar con Gentle incompleto y atribuir tokens a una causa | Separación estricta de A/B **ASEN anterior/nueva** frente a comparación **Gentle completo aparte**; línea base por sección | CTX-0 y CTX-5; no afirmar superioridad con P16 |
+| **IA-03, IA-04, IA-05, IA-17**: API errónea, prompt completo y herramientas vs skills | Caso con `selectedTools=[]`, ausente y real; conservar ensamblado de Pi; `--no-tools` distinto de `--no-skills` | CTX-1; test SDK y fallback conservador |
+| **IA-06, IA-07, IA-08, IA-09**: duplicar selector, clasificación textual y reglas críticas | No crear segundo selector/modelo; módulos por estado y capacidades; tabla regla→guardia ejecutable→prueba negativa | CTX-2/3; S02, S04–S13 |
+| **IA-10, IA-13**: reducción arbitraria de memoria y herramientas ocultas | CTX-3 solo con duplicados demostrados; CTX-4 **pospuesto por defecto** | Resultado legítimo `NO_APLICAR` sin código nuevo |
+| **IA-11, IA-14, IA-15, IA-18**: ahorro supuesto, CI aislado, costes desconocidos y cierre prematuro | Métricas por proceso, caché y coste `unknown`; permisos y CI exactos; revisión independiente; sin saltar E2/E3 | CTX-5/6 y G5/G6; no `globalFull:true` |
+
+### 7.2 Auditoría de estructura y fuentes
+
+- **Existencia comprobada en la rama:** `extensions/asen.ts`, `src/runtime/ui/request-guidance.ts`, `src/memory/pi-integration.ts`, `src/runtime/lifecycle/plan-context.ts`, `src/skills/registry.ts`, `src/agents/pi-process-runner.ts`, `package.json` y `package-lock.json`.
+- **Pruebas reutilizables presentes:** `tests/pi-host-compatibility-matrix.test.ts`, `tests/pi-native-skill-load.test.ts`, `tests/pi-memory-skill-sdk-lifecycle.test.ts`, `tests/plan-context.test.ts`. Los comandos `typecheck`, `check:fast`, `check` y `release:check` están definidos en `package.json`. **Presencia no equivale a ejecución verde**.
+- **Prueba nueva no presente:** `tests/context-guidance-assembly.test.ts`. El plan la identifica como archivo a **crear en CTX-0/1**, no como prueba ya existente.
+- **Rutas `extensions/gentle-*.ts` y `extensions/child-context.ts`** citadas en el rector son de **Gentle Shell externo**, no archivos ausentes de ASEN.
+- **Comprobación documental de bloques Markdown:** el documento final contiene pares equilibrados de bloques de código, incluidas instrucciones de terminal y diagrama. Se deben comprobar de nuevo en el SHA de implementación.
+- **Aclaración sobre P32:** `tests/p32-context-gauge.test.ts` mide representación del porcentaje de ventana de contexto; **no** sirve de medidor de tokens facturados. El plan lo indica explícitamente.
+- **Consolidación de duplicidades:** rector 11–13 = antecedentes; 14 = remisión al plan final; CTX-0…CTX-6 = **las únicas unidades**. OPT-00…OPT-07 y C0–C4 quedan como nombres históricos, nunca trabajos paralelos.
+
+### 7.3 Riesgos residuales que no pueden cerrarse redactando documentos
+
+| Riesgo | Estado | Condición antes de activar |
+| --- | --- | --- |
+| Composición efectiva del prompt en el proveedor | **NO MEDIDO** | CTX-0: diferenciar ensamblado, envío y facturación, con variantes |
+| Contrato efectivo de `selectedTools` en Pi 1.2.0 en ASEN | **SIN PRUEBA EJECUTADA** | CTX-1: prueba SDK y casos malformados |
+| Pérdida de reglas de seguridad al modularizar | **RIESGO P0** | CTX-2: negativos automáticos S02, S05, S07–S13, S15 |
+| Contexto de agentes y elección de skills | **RUTA EXISTENTE, REQUIERE PRUEBA REAL** | CTX-3 y CTX-5: hijo lee contrato y conserva restricciones |
+| Ahorro, caché, coste y tiempo total | **NO DEMOSTRADO** | CTX-5: comparación justa por pareja, presupuesto antes de probar |
+| Calidad y ausencia de efectos secundarios | **NO DEMOSTRADO** | CTX-5: lectura, código, memoria, cancelación, concurrencia y revisión |
+| Revisión independiente y CI del mismo SHA | **PENDIENTES** | CTX-6: otro revisor, resultados por plataforma y sin hallazgos graves |
+| Estado del plan original de 18 objetivos | **NO ALTERADO** | Sus propias puertas G0–G6, no una declaración por este anexo |
+
+### 7.4 Veredicto de admisión
+
+**Resultado:** **LISTO PARA EJECUTAR CTX-0 SIN PROVEEDOR**, con megatandas A→B→C condicional→D, permisos acotados, cambios secuenciales sobre los mismos archivos y prueba nueva identificada. No se detectó una nueva dependencia que obligue a rehacer el motor.
+
+**No autorizado por este documento:** activar una variante nueva, consumir proveedores de pago, ejecutar Workers sin admisión, eliminar skills, reducir políticas de seguridad, declarar paridad total o fusionar ramas. Ante conflicto de archivos o fallo negativo, conservar el código previo y abrir una incidencia concreta.
+
+**Límite de esta auditoría:** puede asegurar que el **plan está escrito y trazado**, no que **funcione**. Las pruebas reales y la auditoría independiente deberán emitir otro dictamen después de implementar CTX.
