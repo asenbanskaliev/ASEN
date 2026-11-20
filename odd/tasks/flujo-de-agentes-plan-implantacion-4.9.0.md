@@ -377,7 +377,7 @@ flowchart TD
 
 ## 11. OPT — Optimización quirúrgica del contexto de ASEN (20/11/2026)
 
-**Estado:** PROPUESTA GUARDADA / NO IMPLEMENTADA / AUDITORÍA TÉCNICA PENDIENTE DE CIERRE.
+**Estado:** PROPUESTA GUARDADA Y AUDITADA DOCUMENTALMENTE / NO IMPLEMENTADA / REVISIÓN INDEPENDIENTE PENDIENTE.
 **Encaje:** línea transversal de E0 → E1B → E4 → F. No sustituye los 18 objetivos, ni cambia permisos, ni declara paridad con Gentle Shell. Auditoría asociada: [OPT, código y riesgos](../../docs/audit/opt-contexto-skills-asen-2026-11-20.md).
 
 ### 11.1 Objetivo y decisiones
@@ -448,4 +448,4 @@ Decidir por **estado fiable de la sesión, capacidades del host, tipo de operaci
 - Cualquier alternativa externa (Claude Code, Codex AGENTS.md, carga progresiva, aislamiento de agentes, herramientas ocultas de Gentle) exige compatibilidad comprobada; no trasplantar API ajenas a Pi.
 - En caso de duda, mantener el contexto anterior mediante interruptor de reversión. Sin cambios a main ni fusión automática.
 
-**Estado final de la propuesta:** incorporada al plan rector, pendiente de auditoría documental separada y de implantación por unidades. No transforma P16 en demostración de paridad ni marca E0–F como ejecutadas.
+**Estado final de la propuesta:** incorporada al plan rector y auditada documentalmente; pendiente de pruebas, revisión independiente e implantación por unidades. No transforma P16 en demostración de paridad ni marca E0–F como ejecutadas.
