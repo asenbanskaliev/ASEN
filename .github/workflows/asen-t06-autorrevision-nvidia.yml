@@ -89,6 +89,7 @@ jobs:
           test "$(pi --version | tr -d '\r')" = "1.5.2"
           mkdir -p "$PI_CODING_AGENT_DIR"
           node scripts/t12-pi-retry-settings.mjs
+          node scripts/t06-aislamiento-modelos-nvidia.mjs
       - name: Recuperar solo las fuentes del ensayo real anterior
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
         with:
