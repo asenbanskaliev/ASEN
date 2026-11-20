@@ -28,6 +28,9 @@ export interface PiProcessOptions{
  /** Esperar agent_settled cuando Pi pueda continuar después de agent_end.
   * Activar solo para revisiones con evidencia de fin de sesión. */
  requireFinalSettlement?:boolean;
+ /** Exigir get_state de Pi con el modelo exacto antes de enviar el prompt.
+  * Es un control de admisión, no un permiso para usar herramientas o escribir. */
+ requireChildModelBeforePrompt?:boolean;
  attributionFile?:string;
  /**
   * Binds a worker turn to one exact file result.  The authority extension
@@ -217,6 +220,9 @@ export class PiProcessRunner implements AgentRunner{
   }
   if(this.options.onModelFallback||fallbackSubscriptions.length){const taskId=request.id,sessionId=request.isolationKey??"default",projectId=request.repository;if(selectionText(taskId,1024)&&selectionText(sessionId,1024)&&selectionText(projectId,32768))fallbackOwner=Object.freeze({taskId,sessionId,projectId});}
   const receiverValid=request.runnerWriteReceiver!==undefined&&consumeRunnerWriteReceiver(request.runnerWriteReceiver,request);
+  const strictModelPreflight=this.options.requireChildModelBeforePrompt===true;
+  if(strictModelPreflight&&(!selectionOwner||!selectionSubscriptions.length||typeof request.model!=="string"))
+   return Promise.resolve({id:request.id,ok:false,output:"Pi model preflight requires a selected model and an identified child observer"});
   if(request.runnerWriteReceiver!==undefined&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
   if(request.skillContext){
@@ -550,9 +556,22 @@ export class PiProcessRunner implements AgentRunner{
       if(selectionRequested&&!selectionResponded&&response.id===selectionId&&policyLoaded&&!settled&&!stopResult&&!agentEnded&&!signal?.aborted){
        selectionResponded=true;
        const observation=response.success===true&&response.command==="get_state"?childSelection(selectionOwner,response.data):undefined;
+       if(strictModelPreflight){
+        const expected=request.model!,slash=expected.indexOf("/"),selected=observation?.model;
+        if(slash<=0||slash===expected.length-1||!selected||
+           selected.provider!==expected.slice(0,slash)||
+           selected.id!==expected.slice(slash+1)&&selected.id!==expected){
+         stop({id:request.id,ok:false,output:"Pi child model selection was not confirmed before prompt"});
+         return;
+        }
+       }
        if(observation)for(const subscription of selectionSubscriptions){
         if(!this.#selectionSubscriptions.has(subscription))continue;
         try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}
+       }
+       if(strictModelPreflight){
+        armPhase("turn");
+        void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
        }
       }
       continue; // Raw state is never part of the retained execution output.
@@ -613,8 +632,10 @@ export class PiProcessRunner implements AgentRunner{
      if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
      if(selectionOwner&&selectionSubscriptions.length&&!selectionRequested){selectionRequested=true;void writeLine(JSON.stringify({id:selectionId,type:"get_state"})+"\n");}
-     armPhase("turn");
-     void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+     if(!strictModelPreflight){
+      armPhase("turn");
+      void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+     }
     }
     if(Buffer.byteLength(buffer)>maxRecord){overflow=true;stop({id:request.id,ok:false,output:`pi RPC record exceeded ${maxRecord} bytes`});}
    });

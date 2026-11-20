@@ -34,7 +34,7 @@ const instances=[0,1].map(index=>{
  };
  const runner=new PiProcessRunner({
    command:piCommand,...(piRpcArgs?{rpcArgs:piRpcArgs}:{}),policyRoot:root,...(provider==="nvidia"?{providerCredential:"NVIDIA_API_KEY"}:{}),
-  noTools:true,timeoutMs:90_000,maxOutputBytes:48_000,
+  noTools:true,requireChildModelBeforePrompt:true,timeoutMs:90_000,maxOutputBytes:48_000,
   maxStreamBytes:128_000,maxRpcRecordBytes:64_000,
   onProcessStart:pid=>{observation.pid=pid;observation.spawnedAt=performance.now();},
   onProcessClose:()=>{observation.closedAt=performance.now();}
