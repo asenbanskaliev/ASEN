@@ -105,7 +105,7 @@ export async function runT06NativeIndependentReviews(
    JSON.stringify(evidence)
   ].join("\n");
   const result=await runner.run({id:taskId,role:"reviewer",repository:roots[index]!,
-   isolationKey:sessionId,prompt,model:requestedModel!,thinking:"minimal"});
+   isolationKey:sessionId,prompt,model:requestedModel!,thinking:"off"});
   if(!result.ok){
    attempts[index]!.failureCategory=classifyT06ReviewerFailure(result.output);
    throw Error("T06: Pi no devolvió un resultado verificable");

@@ -1,7 +1,7 @@
 name: T06 dos revisores NVIDIA reales sin aprobaciones de entorno
 # Única autorización por cambio exacto del propietario; nunca en PR.
 # Segunda prueba: modelos verificados con GET oficial al catálogo NVIDIA.
-# Primera revisión real: dos modelos distintos y archivos ya probados.
+# Ajuste de compatibilidad: Pi 1.5.2 y razonamiento desactivado en ambos jueces.
 on:
   push:
     branches:
@@ -84,8 +84,8 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
           npm ci --ignore-scripts --no-audit --no-fund
-          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
-          test "$(pi --version | tr -d '\r')" = "1.2.0"
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.5.2
+          test "$(pi --version | tr -d '\r')" = "1.5.2"
           mkdir -p "$PI_CODING_AGENT_DIR"
           node scripts/t12-pi-retry-settings.mjs
       - name: Recuperar solo las fuentes del ensayo real anterior
