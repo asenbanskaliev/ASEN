@@ -1,5 +1,6 @@
 name: T06 dos revisores NVIDIA reales sin aprobaciones de entorno
 # Única autorización por cambio exacto del propietario; nunca en PR.
+# Primera revisión real: dos modelos distintos y archivos ya probados.
 on:
   push:
     branches:
