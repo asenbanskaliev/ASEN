@@ -87,3 +87,33 @@ test("T06 rechaza lista en lugar de un dictamen o gravedad de texto",()=>{
   assert.throws(()=>parseT06NativeReviewReceipt(stream(output),sha),/T06 independent/u);
  }
 });
+
+test("T06 admite texto JSON final con bloques de razonamiento no publicados",()=>{
+ const json=JSON.stringify(good),middle=Math.floor(json.length/2);
+ const output=JSON.stringify({type:"message_end",message:{
+  role:"assistant",stopReason:"stop",content:[
+   {type:"thinking",thinking:"Analizo reglas sin herramientas"},
+   {type:"text",text:json.slice(0,middle)},
+   {type:"thinking",thinking:"Verifico casos límite"},
+   {type:"text",text:json.slice(middle)}
+  ]
+ }});
+ const report=parseT06NativeReviewReceipt(output,sha);
+ assert.equal(report.verdict,"pass");
+ assert.equal(report.reviewerSummary,good.summary);
+ assert.equal(JSON.stringify(report).includes("Analizo"),false);
+});
+test("T06 nunca acepta herramientas, razonamiento ilegible ni respuestas vacías",()=>{
+ const candidate=(blocks:unknown[])=>JSON.stringify({type:"message_end",
+  message:{role:"assistant",stopReason:"stop",content:blocks}});
+ for(const blocks of [
+  [{type:"thinking",thinking:"solo esto"}],
+  [{type:"thinking",thinking:12},{type:"text",text:JSON.stringify(good)}],
+  [{type:"thinking",thinking:"a".repeat(128001)},{type:"text",text:JSON.stringify(good)}],
+  [{type:"text",text:JSON.stringify(good)},{type:"toolCall",name:"write"}],
+  [{type:"text",text:JSON.stringify(good)+"\nNO JSON"}],
+  Array.from({length:65},()=>({type:"text",text:"a"}))
+ ]){
+  assert.throws(()=>parseT06NativeReviewReceipt(candidate(blocks),sha),/T06 independent/u);
+ }
+});

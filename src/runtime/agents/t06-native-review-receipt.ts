@@ -56,10 +56,29 @@ export function parseT06NativeReviewReceipt(
  if(!("content" in message)||!Array.isArray(message.content))
   throw new Error("T06 independent Pi review returned no assistant message");
  const contents=message.content;
- if(contents.length!==1||!contents[0]||typeof contents[0]!=="object"||
-  contents[0].type!=="text"||typeof contents[0].text!=="string")
+ if(contents.length<1||contents.length>64)
   throw new Error("T06 independent reviewer returned unsupported content");
- let payload:unknown;try{payload=JSON.parse(contents[0].text.trim());}
+ let jsonText="",thoughtLength=0;
+ for(const block of contents){
+  if(!block||typeof block!=="object")
+   throw new Error("T06 independent reviewer returned unsupported content");
+  if(block.type==="thinking"){
+   if(typeof block.thinking!=="string")
+    throw new Error("T06 independent reviewer returned unsupported thinking");
+   thoughtLength+=block.thinking.length;
+   if(thoughtLength>128_000)
+    throw new Error("T06 independent reviewer thinking exceeded limit");
+   continue;
+  }
+  if(block.type!=="text"||typeof block.text!=="string")
+   throw new Error("T06 independent reviewer returned unsupported content");
+  jsonText+=block.text;
+  if(jsonText.length>24_000)
+   throw new Error("T06 independent reviewer verdict exceeded limit");
+ }
+ if(!jsonText.trim())
+  throw new Error("T06 independent reviewer returned no JSON verdict");
+ let payload:unknown;try{payload=JSON.parse(jsonText.trim());}
  catch{throw new Error("T06 independent reviewer did not return strict JSON");}
  if(!payload||typeof payload!=="object"||Array.isArray(payload)||
   Object.keys(payload).sort().join(",")!=="findings,reviewedFiles,summary,verdict"||
