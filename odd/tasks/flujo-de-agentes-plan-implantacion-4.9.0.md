@@ -1,6 +1,6 @@
 # ASEN — Plan rector completo de implantación del flujo de agentes
 
-**Versión:** 1.5 (plan listo para iniciar CTX-0, pendiente de implantación y validación) · **Fecha:** 2026-11-20 · **Estado:** PLAN AUDITADO CONTRA CÓDIGO Y COMPLETADO PARA IMPLANTACIÓN; fases E y F aún no ejecutadas. Auditoría independiente de los cambios futuros pendiente.
+**Versión:** 1.6 (matriz contrastada con el código y CI; diagnóstico permitido, implantación bloqueada por G0) · **Fecha:** 2026-11-20 · **Estado:** PLAN RECTO PARA DIAGNÓSTICO; G0 BLOQUEADO EN EL SHA DE CÓDIGO AUDITADO; fases E y F no aceptadas. Auditoría independiente de los cambios futuros pendiente.
 **Referencia ejecutable OPT:** [plan final único CTX-0–CTX-6](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md) y [auditoría crítica](../../docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md). Los apartados 11–13 quedan como antecedentes, no como ejecución duplicada.
 **Repositorio:** asenbanskaliev/ASEN · **PR:** #61, borrador · **Rama:** `feat/flujo-de-agentes-20261115`.
 **Objetivo de referencia:** Gentle Shell 4.9.0, commit `ce64a9a708e50c0ca899c8023140e63f29f293e1`. Objetivo propio: misma eficacia **observable** con controles de seguridad de ASEN y más autonomía útil.
@@ -68,24 +68,24 @@ flowchart TD
 
 | Nº | Situación real de ASEN | Resultado final que debe demostrarse | Fase | Evidencia principal |
 | --- | --- | --- | --- | --- |
-| **01** | Ruta directo/delegar parcialmente guiada por texto | Política observable con motivo; directo si seguro y suficiente | E1B | Prueba Pi de selección |
-| **02** | Solo perfiles por rol/modelo | `organic` y `full-delegation` por perfil y sesión | E1B | A/B mismo encargo |
-| **03** | Explorer limitado por lecturas/bytes y coste cero | Un Explorer por presupuesto/contexto, modelo configurado aun si es de pago; resumen acotado | E1A+E1B | Pruebas de presupuesto y coste |
-| **04** | ODD y ámbito requieren preparación | Unidades de comportamiento completas y dependencias explícitas, sin partición artificial | E1B | Matriz de independencia |
-| **05** | Supervisor exige preparar hijos | Padre prepara y lanza hasta 2 Writers Pi reales en paralelo | E2A | Tiempos de procesos solapados |
-| **06** | Ámbitos exactos ya seguros | Propuesta de ampliación verificable; nunca permiso implícito | E2A | Prueba de rutas no admitidas |
-| **07** | Entrega terminal con diario propio | Única entrega tras estado asentado y despertar sin duplicidad | E2B | Cancelación, reinicio, padre ocupado |
-| **08** | Continuación tras fallo conservadora | Continuar otras unidades ya autorizadas; jamás repetir escritura incierta | E2B | Pruebas de fallo y dependencia |
-| **09** | Cadena de modelos y esperas existentes | Usar modelos configurados pagos/gratuitos, alternativas, cuotas y coste observado | E1A+E2B | Fallos 429/red/autenticación |
-| **10** | Modelo principal requiere tarifa cero | Modelo del perfil con identidad válida, sin cambiar sesiones reanudadas | E1A | Pruebas positiva y de reanudación |
-| **11** | Riesgo informativo conectado a revisión | Riesgos nombrados obligan a Verifier; casos simples no sobrerrevisan | E3 | Pruebas de seis riesgos |
-| **12** | Revisión ordinaria Pi existente | Ciclo único sobre candidato congelado, estados y decisiones recuperables | E3 | Revisión + interrupción |
-| **13** | Dos jueces secuenciales y Fix separado | Dos jueces distintos cuando corresponda, hallazgos visibles, ≤2 rondas y Fix autorizado | E3 | Discrepancia, agotamiento |
-| **14** | Clarifier y permiso estricto | Preguntas normales con opciones, respuesta y reanudación; no convertir texto en consentimiento | E1B | Pregunta + cancelación |
-| **15** | SHA, ámbitos y diarios robustos | Conservar garantías y reducir solo bloqueos falsos demostrados | E0+E2 | Pruebas de carrera y Git |
-| **16** | Comparador sin A/B autenticado | Medir calidad, tiempo, turnos, tokens, coste real cuando exista | E4 | Repeticiones comparables |
-| **17** | Flujo integrado probado sobre todo con simulación | Demostrar recorrido completo con proveedores Pi reales y dos Workers | E4 | Registros de procesos y resultados |
-| **18** | Contratos Pi distintos de la referencia | Detectar capacidades reales, degradar de forma segura; no fingir eventos | E0+E2 | Matriz Pi por versión/sistema |
+| **01** | Ruta ODD y guía textual existentes; decisión real no verificada | Demostrar ruta coherente desde Pi en tareas simples, ambiguas y críticas | E1B | Pruebas de ruta y CTX-2 |
+| **02** | Perfiles `organic`/`full-delegation` conectados | Confirmar permisos de ambos modos y conservación tras reinicio | E1B | Pruebas Pi por modo |
+| **03** | Explorer con umbral 3 consultas/40 KiB y modelo por perfil | Un Explorer cuando aporta valor; medir uso real y evitar duplicados | E1A+E1B | Pruebas de presupuesto y proveedor |
+| **04** | Plan y dependencias presentes; división por comportamiento no certificada | Conservar unidades completas, independencia y dependencias verificables | E1B | Dos independientes + una dependiente |
+| **05** | Supervisor y worktrees presentes; confirmación fresca por Worker | Dos Writers Pi auténticos solapados; permiso de lote solo si Pi deriva concesiones comprobables | E2A | Procesos, ámbitos y consentimiento |
+| **06** | Propuesta de ámbito adicional bloqueada sin nueva autorización | Candidato y rutas exactos; rechazo de ampliaciones no admitidas | E2A | Pruebas de deriva y diálogo |
+| **07** | Diario terminal, avisos y rutas de entrega existentes | Una única entrega asentada; reanudar sin duplicidad | E2B | Cancelación, reinicio y padre ocupado |
+| **08** | Reconciliación y cola de avance presentes | Continuar unidades independientes; nunca repetir escritura incierta | E2B | Caída, fallo, dependencia y recuperación |
+| **09** | Fallback acotado a 8; espera 30/2 minutos; coste del perfil | Comprobar 429/red/credenciales con modelo efectivo y coste observado o `unknown` | E1A+E2B | Pruebas Pi/proveedor |
+| **10** | Modelo principal configurable sin veto general por tarifa positiva | Verificar selección realmente observada; no cambiar sesión reanudada | E1A | Catálogo y Pi auténtico |
+| **11** | Seis riesgos y política `independentVerifier` presentes | Probar consumidor/guardia que impone Verifier; no confundir consejo con control | E3 | Seis casos y negativos |
+| **12** | Revisión ordinaria con candidato y recibo existente | Ciclo completo, interrupción y aceptación separada del resultado | E3 | Revisión y recuperación |
+| **13** | Dos jueces distintos y hasta dos rondas en código | Hallazgos persistidos, discrepancias y Fix autorizado; prueba específica por crear | E3 | Juicio, dos rondas y límites |
+| **14** | Entrada natural y Clarifier controlado | Pregunta concreta, cancelación y recuperación sin consentimiento implícito | E1B | Casos de Clarifier |
+| **15** | SHA/ámbitos/diarios protegidos; arquitectura y T06 en rojo en `daa250a8` | Primero PRE-0 y PRE-1, CI y controles negativos sin debilitar protecciones | E0+E2 | Phase 0, CI 3 SO y recibos |
+| **16** | Comparador presente y 18 sesiones P16 reales de solo lectura, no equivalentes | A/B completo por pares, ASEN previo/optimizado y referencia por separado | E4 | Calidad, tokens, caché, precios/`unknown` |
+| **17** | Ruta de evidencia T17 presente; aceptación auténtica pendiente | Dos Writers reales, revisores, pruebas, aceptación y no fusión | E4 | Pruebas integrales, recibos externos |
+| **18** | Pi mínimo 1.2.0, paquete fijado en 1.2.0; matriz exacta de 12 celdas | Validar 3 sistemas operativos × 4 modos; otras versiones requieren matriz propia | E0+E2 | Evidencia Pi y CI exacto |
 
 ## 4. Plan de implantación — secuencia y entregables
 
@@ -475,23 +475,23 @@ Decidir por **estado fiable de la sesión, capacidades del host, tipo de operaci
 
 | Nº | Prioridad | Hallazgo / riesgo | Acción necesaria antes de darlo por cerrado |
 | --- | --- | --- | --- |
-| **01** | P0 | **La referencia P16 no es equivalente:** ASEN cargó `extensions/asen.ts`; Gentle cargó solo `extensions/gentle-shell.ts`, sin el coordinador completo. | Mantener el ensayo histórico; crear otro con componentes de orquestación y selección de herramientas funcionalmente comparables. No anunciar ahorros frente a Gentle con P16. |
-| **02** | P0 | **La guía fija contiene obligaciones mixtas**, unas de funcionamiento y otras de seguridad. Recortarla por porcentaje puede silenciar procedimientos no aplicados por código. | Hacer matriz «instrucción → ruta de ejecución → guardia de código → escenario donde cargar»; si no hay guardia demostrada, mantener la indicación necesaria. |
-| **03** | P0 | **False-positive de herramientas**: `!!pi.registerTool` comprueba capacidad de registrar, no carga efectiva. Pero `selectedTools` tampoco debe asumirse disponible o idéntico en Pi 1.2 y futuras versiones. | Probar evento real `before_agent_start` con `--no-tools`, `--tools`, extensiones, ausencia de inventario y entorno de agente hijo. Caso desconocido = protección conservadora. |
-| **04** | P0 | **Inyección por datos externos:** memoria, resultados de herramientas, AGENTS.md y texto de terceros pueden contener órdenes adversarias. Un enrutador textual o el plan recuperado no es autoridad. | Mantener límites de sesión/candidato/alcance/permisos en código; probar desvíos y cruce de proyecto incluso con instrucciones mínimas. |
-| **05** | P1 | **Skills del hijo ya están resueltas por ruta exacta**: `selectSkills` y `--no-skills ... --skill ruta` son existentes. No está demostrado que se carguen de más en los nueve casos de P16. | No recrear el registro ni un selector de skills. Medir las skills anunciadas y las efectivamente leídas en el trabajo real del hijo; conservar controles de identidad. |
-| **06** | P1 | **El padre añade más que una guía:** persona, permisos/mode, memoria (hasta 4096 B), estado de plan (hasta 2048 B), catálogo Pi y declaraciones. | Inventario real por capa, usuario/proyecto y primera vs siguientes peticiones; no adjudicar automáticamente 1373 tokens a una sola función. |
-| **07** | P1 | **Caché del proveedor**: reducir bytes puede cambiar el prefijo reutilizable, producir más escrituras de caché y empeorar coste o demora. No todos los proveedores exponen uso de caché. | Estabilizar las secciones comunes y medir `cacheRead/cacheWrite` cuando existan, más latencia y euros observados/unknown. No asumir ahorro monetario por recorte textual. |
-| **08** | P1 | **Continuidad delicada:** un «continúa», respuesta corta o sesión recuperada necesita plan/identidad previos; suprimir contexto por palabras clave puede causar reinicios o pérdida de reglas. | Tabla de rutas con estado real, cancelación, fallo parcial, planes múltiples, permiso denegado y escritura incierta; pruebas tras reinicio. |
-| **09** | P1 | **Las declaraciones de herramientas cuestan contexto** aunque no se use una skill. Gentle reduce algunas bajo `codemode`, pero no equivale a una función disponible en ASEN. | Inventariar `tools`/descripciones; solo optimizar si Pi demuestra mecanismo alcanzable y permisos intactos. |
-| **10** | P1 | **Medir solo al padre oculta el gasto total**: un Explorer/Writer/Verifier puede consumir más que la petición inicial; sus resultados también incrementan contexto. | Instrumentar coste/uso por proceso y por tarea, número de turnos, tamaño de entrega, fallos y reintentos; agregados seguros sin guardar prompts. |
-| **11** | P1 | **No basta probar tres preguntas:** P16 tiene 9 ejecuciones por sistema, 3 tareas sintéticas; el marcador 8/9 de Gentle **no es** una puntuación de seguridad. | Ensayos con acciones reales, verificación, continuidad, fallos y controles adversarios; revisión de resultados legibles bajo resguardo de secretos. |
-| **12** | P1 | **Posible conflicto con el plan funcional E1B:** modos organic/full-delegation y permisos condicionan qué guía es válida; un mismo archivo lo tocan varias tandas. | Cada prueba de contexto debe cruzar modo, herramientas y autorización; cambios en `extensions/asen.ts` secuenciales, SHA y pruebas después de integrar. |
-| **13** | P1 | **No acelerar con un modelo clasificador aparte:** consumiría tokens, tiempo y dinero antes de cada pregunta, y podría fallar en instrucciones implícitas. | Clasificación por estado/herramientas/plan ya comprobados, sin llamada adicional; ante duda, comportamiento conservador y lectura permitida. |
-| **14** | P1 | **Cálculo de ahorro incompleto:** ASEN 16.940 entrada + 1.093 salida; Gentle 4.584 entrada + 3.551 salida, sin costes facturados ni funcionamiento completo. | Medir entrada, salida, caché, calidad, tiempo hasta primera salida y tiempo total en cada escenario. No usar 60–70 % como requisito contractual. |
-| **15** | P0 | **Una métrica puede exponer datos**: guardar texto de prompts, memorias, credenciales o respuestas privadas en artefactos de GitHub es un riesgo innecesario. | Registrar contadores/identificadores no sensibles, hashes controlados y categorías de secciones; usar muestras sintéticas para inspecciones exhaustivas. |
-| **16** | P1 | **La reversión debe incluir estado persistente:** cambiar de ensamblado en mitad de un plan activo puede invalidar la continuidad o confundir evidencias. | Usar opción de vuelta atrás sin migrar estado ni invalidar permisos; comparar sesiones nuevas y reanudadas y no alterar trabajos en curso. |
-| **17** | P2 | **No hay ventaja demostrada de cambiar todo el motor por otro producto.** Reescribir herramientas, perfiles y autorizaciones ampliaría el riesgo y el trabajo. | Adoptar patrones, no dependencias: carga progresiva de Claude, reducción de duplicados de Gentle y controles por herramienta de agentes externos. |
+| **01** | Ruta ODD y guía textual existentes; decisión real no verificada | Demostrar ruta coherente desde Pi en tareas simples, ambiguas y críticas | E1B | Pruebas de ruta y CTX-2 |
+| **02** | Perfiles `organic`/`full-delegation` conectados | Confirmar permisos de ambos modos y conservación tras reinicio | E1B | Pruebas Pi por modo |
+| **03** | Explorer con umbral 3 consultas/40 KiB y modelo por perfil | Un Explorer cuando aporta valor; medir uso real y evitar duplicados | E1A+E1B | Pruebas de presupuesto y proveedor |
+| **04** | Plan y dependencias presentes; división por comportamiento no certificada | Conservar unidades completas, independencia y dependencias verificables | E1B | Dos independientes + una dependiente |
+| **05** | Supervisor y worktrees presentes; confirmación fresca por Worker | Dos Writers Pi auténticos solapados; permiso de lote solo si Pi deriva concesiones comprobables | E2A | Procesos, ámbitos y consentimiento |
+| **06** | Propuesta de ámbito adicional bloqueada sin nueva autorización | Candidato y rutas exactos; rechazo de ampliaciones no admitidas | E2A | Pruebas de deriva y diálogo |
+| **07** | Diario terminal, avisos y rutas de entrega existentes | Una única entrega asentada; reanudar sin duplicidad | E2B | Cancelación, reinicio y padre ocupado |
+| **08** | Reconciliación y cola de avance presentes | Continuar unidades independientes; nunca repetir escritura incierta | E2B | Caída, fallo, dependencia y recuperación |
+| **09** | Fallback acotado a 8; espera 30/2 minutos; coste del perfil | Comprobar 429/red/credenciales con modelo efectivo y coste observado o `unknown` | E1A+E2B | Pruebas Pi/proveedor |
+| **10** | Modelo principal configurable sin veto general por tarifa positiva | Verificar selección realmente observada; no cambiar sesión reanudada | E1A | Catálogo y Pi auténtico |
+| **11** | Seis riesgos y política `independentVerifier` presentes | Probar consumidor/guardia que impone Verifier; no confundir consejo con control | E3 | Seis casos y negativos |
+| **12** | Revisión ordinaria con candidato y recibo existente | Ciclo completo, interrupción y aceptación separada del resultado | E3 | Revisión y recuperación |
+| **13** | Dos jueces distintos y hasta dos rondas en código | Hallazgos persistidos, discrepancias y Fix autorizado; prueba específica por crear | E3 | Juicio, dos rondas y límites |
+| **14** | Entrada natural y Clarifier controlado | Pregunta concreta, cancelación y recuperación sin consentimiento implícito | E1B | Casos de Clarifier |
+| **15** | SHA/ámbitos/diarios protegidos; arquitectura y T06 en rojo en `daa250a8` | Primero PRE-0 y PRE-1, CI y controles negativos sin debilitar protecciones | E0+E2 | Phase 0, CI 3 SO y recibos |
+| **16** | Comparador presente y 18 sesiones P16 reales de solo lectura, no equivalentes | A/B completo por pares, ASEN previo/optimizado y referencia por separado | E4 | Calidad, tokens, caché, precios/`unknown` |
+| **17** | Ruta de evidencia T17 presente; aceptación auténtica pendiente | Dos Writers reales, revisores, pruebas, aceptación y no fusión | E4 | Pruebas integrales, recibos externos |
 
 ### 13.3 Comparación de terceras opciones: decisiones fundamentadas
 
@@ -579,3 +579,18 @@ La matriz completa y las pruebas por objetivo están en [el plan final](../../do
 **Tandas siguientes, siempre condicionadas:** B = CTX-1/2 secuenciales; C = CTX-3 únicamente con duplicados probados y CTX-4 pospuesto por defecto; D = CTX-5/6 con autorización de presupuesto, A/B comparable, revisión independiente, CI exacto y reversión. Si una etapa no aporta mejora neta o falla seguridad, `NO_APLICAR` o bloqueo, sin reescribir el motor.
 
 **Estado comprobado al preparar estos documentos:** plan final y auditoría guardados en PR #61; sin cambios de producción; sin proveedores reales; sin pruebas de implementación y sin CI de aceptación demostrado. **No** declarar `globalFull:true` ni fusionar.
+
+### 14.5 Auditar antes de implementar — actualización de los 18 puntos
+
+**Nueva auditoría vinculante por código, líneas, pruebas y CI:** [Auditoría de las 18 funciones y CTX-0…6](../../docs/audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md). **Plan operativo detallado:** [Apartado 13, matriz y órdenes](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#13-auditoría-de-coherencia-contra-el-código-de-los-18-objetivos-actualización-vinculante).
+
+**Prioridad corregida:**
+1. **PRE-0 / arquitectura:** [Actions 44824200893](https://github.com/asenbanskaliev/ASEN/actions/runs/44824200893) y [CI 44824200603](https://github.com/asenbanskaliev/ASEN/actions/runs/44824200603) fallaron en SHA `daa250a80b58d80c48336ac017deaf8e68cc396c`. Auditoría de referencias externas de procedencia **por ruta exacta**; no desactivar ni ampliar exenciones generales.
+2. **PRE-1 / T06:** un test exige `if(!githubReview)` aunque la ruta actual usa `if(!githubReview&&!automaticReview)` y revisa consentimiento por separado. Comprobar comportamientos y escenarios negativos; solo después cambiar el test o el código mínimo.
+3. **G0:** verde **del nuevo SHA** en Phase 0, arquitectura y CI Linux/Windows/macOS. Un éxito de Release Gate aislado no compensa un fracaso de CI.
+4. **CTX-0:** puede comenzar **solo en modo diagnóstico y prueba sin red**, incluso durante PRE-0/PRE-1. CTX-1/2 no tocan contexto productivo hasta G0.
+5. **E1A/E1B → E2A/E2B → E3 → E4 → F**, conservando el orden propio y evitando ediciones simultáneas de `extensions/asen.ts`. CTX es transversal, no una segunda implantación de agentes.
+
+**Correcciones de alcance:** 01–14 ya tienen piezas de código; 05 sigue exigiendo permiso verificable por Writer; 15 está bloqueado por CI; 16 cuenta con P16 **autenticada de lectura** pero sin comparación completa, 17 exige aceptación de procesos reales y 18 diferencia **versión mínima de Pi** de **matriz exacta de 1.2.0**. No se declara completo ningún objetivo por documentación, revisión textual o éxito de un subtrabajo.
+
+**Regla de coherencia:** cualquier apartado anterior que indique «listo para implantar» se interpreta a partir de ahora como **«listo para diagnóstico sin proveedor; no habilitado para cambios de producción hasta G0»**. Ante contradicción prevalecen el código del SHA inspeccionado, la auditoría por punto y este apartado 14.5. Ningún `SKIP` ni `UNKNOWN` equivale a `PASS`; `globalFull:false` hasta aceptación independiente de los 18 puntos.
