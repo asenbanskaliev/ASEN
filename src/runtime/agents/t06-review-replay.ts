@@ -3,8 +3,8 @@
 import {validateT06GithubApprovals,type T06GithubApprovalContext} from "./t06-github-approvals.js";
 import {T06_REVIEW_ENVIRONMENTS,validT06ReviewerModels,type T06ReviewPermission} from "./t06-github-reviewer-approvals.js";
 
-export const T06_REPLAY_SOURCE_RUN=44389671458;
-export const T06_REPLAY_SOURCE_SHA="a33da9eebb92ac3131c958b14846945c31cd24a7";
+export const T06_REPLAY_SOURCE_RUN=44755907429;
+export const T06_REPLAY_SOURCE_SHA="7bdbbc351b81da8b40236a66f2cf03a13c2c69fb";
 const repo="asenbanskaliev/ASEN";
 const branch="feat/flujo-de-agentes-20261115";
 const object=(value:unknown):value is Record<string,unknown>=>

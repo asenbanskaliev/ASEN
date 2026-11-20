@@ -116,6 +116,8 @@ jobs:
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           test -z "$(git status --porcelain=v1)"
+      - name: Descargar la imagen fijada para las pruebas sin red
+        run: docker pull node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8
       - name: Ejecutar dos jueces auténticos y guardar propuesta no ejecutable
         shell: bash
         env:
@@ -184,6 +186,8 @@ jobs:
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           test -z "$(git status --porcelain=v1)"
+      - name: Descargar la imagen fijada para las pruebas sin red
+        run: docker pull node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8
       - name: Guardar ODD, ejecutar un Pi Writer con permiso exacto y revisar de nuevo
         shell: bash
         env:

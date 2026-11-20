@@ -60,8 +60,8 @@ jobs:
     env:
       ASEN_T06_EXPECTED_SHA: ${{ inputs.candidate_sha }}
       ASEN_T06_COST_ACK: ${{ inputs.coste_desconocido_autorizado }}
-      ASEN_T06_SOURCE_RUN_ID: '44389671458'
-      ASEN_T06_SOURCE_SHA: 'a33da9eebb92ac3131c958b14846945c31cd24a7'
+      ASEN_T06_SOURCE_RUN_ID: '44755907429'
+      ASEN_T06_SOURCE_SHA: '7bdbbc351b81da8b40236a66f2cf03a13c2c69fb'
       ASEN_T06_REVIEW_MODEL_A: ${{ inputs.reviewer_a }}
       ASEN_T06_REVIEW_MODEL_B: ${{ inputs.reviewer_b }}
     steps:
@@ -96,7 +96,7 @@ jobs:
         with:
           name: asen-t06-dos-writers-${{ env.ASEN_T06_SOURCE_SHA }}-${{ env.ASEN_T06_SOURCE_RUN_ID }}
           repository: asenbanskaliev/ASEN
-          run-id: 44389671458
+          run-id: 44755907429
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/asen-t06-fuentes-originales
       - name: Descargar los 17 casos del mismo run original sin NVIDIA
@@ -104,7 +104,7 @@ jobs:
         with:
           name: asen-t06-pruebas-aisladas-${{ env.ASEN_T06_SOURCE_SHA }}-${{ env.ASEN_T06_SOURCE_RUN_ID }}
           repository: asenbanskaliev/ASEN
-          run-id: 44389671458
+          run-id: 44755907429
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/asen-t06-pruebas-originales
       - name: Validar bytes, huellas, informe y 17 pruebas antes de solicitar revisiones
@@ -158,8 +158,8 @@ jobs:
       ASEN_T06_REVIEW_MODEL_B: ${{ inputs.reviewer_b }}
       ASEN_T06_GITHUB_REVIEW_MODE: '1'
       ASEN_T06_REVIEW_REPLAY_MODE: '1'
-      ASEN_T06_SOURCE_RUN_ID: '44389671458'
-      ASEN_T06_SOURCE_SHA: 'a33da9eebb92ac3131c958b14846945c31cd24a7'
+      ASEN_T06_SOURCE_RUN_ID: '44755907429'
+      ASEN_T06_SOURCE_SHA: '7bdbbc351b81da8b40236a66f2cf03a13c2c69fb'
     steps:
       - name: Obtener el SHA actual sin credenciales Git persistentes
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -192,7 +192,7 @@ jobs:
         with:
           name: asen-t06-dos-writers-${{ env.ASEN_T06_SOURCE_SHA }}-${{ env.ASEN_T06_SOURCE_RUN_ID }}
           repository: asenbanskaliev/ASEN
-          run-id: 44389671458
+          run-id: 44755907429
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/asen-t06-fuentes-originales
       - name: Recuperar las 17 pruebas aisladas del mismo origen
@@ -200,7 +200,7 @@ jobs:
         with:
           name: asen-t06-pruebas-aisladas-${{ env.ASEN_T06_SOURCE_SHA }}-${{ env.ASEN_T06_SOURCE_RUN_ID }}
           repository: asenbanskaliev/ASEN
-          run-id: 44389671458
+          run-id: 44755907429
           github-token: ${{ github.token }}
           path: ${{ runner.temp }}/asen-t06-pruebas-originales
       - name: Verificar procedencia, cuatro consentimientos en dos runs y modelos

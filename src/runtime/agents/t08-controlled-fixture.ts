@@ -1,5 +1,6 @@
 /** Escenario T08: análisis estático, pero NO ejecutar código generado hasta
  * tener aislamiento de red del sistema operativo y cierre verificable. */
+import {isGithubHostedT08SandboxRun,runDockerBehaviorCases,type TrustedBehaviorCase} from "./generated-code-docker-sandbox.js";
 import ts from "typescript";
 import {lstatSync,readFileSync,realpathSync} from "node:fs";
 import {join,relative} from "node:path";
@@ -35,16 +36,23 @@ export function verifyT08Source(code:unknown):boolean{
  };
  walk(fn);return safe;
 }
-export function checkT08Behavior(root:string):boolean{
+export function checkT08Behavior(root:string,original=false):boolean{
  try{
   const base=realpathSync(root),target=join(base,T08_TARGET);
   const stat=lstatSync(target);
   if(!stat.isFile()||stat.isSymbolicLink()||
    relative(base,realpathSync(target))!==T08_TARGET)return false;
   if(!verifyT08Source(readFileSync(target,"utf8")))return false;
-  // P0 CodeRabbit: no existe un control de red del SO verificado para esta
-  // función. El resultado queda NO COMPROBADO sin ejecutar código del modelo.
-  // Ni una salida 0 ni una lista de identificadores prohibidos acredita PASS.
-  return false;
+  if(!isGithubHostedT08SandboxRun())return false;
+  const cases:TrustedBehaviorCase[]=[
+   {id:"vacio",input:[],expected:{kind:"value",value:0}},
+   {id:"pares",input:[-4,2,5],expected:{kind:"value",value:-2}},
+   {id:"sin-lista",input:null,expected:{kind:"throws",name:"TypeError"}},
+   {id:"decimal",input:[2,1.5],expected:original?{kind:"value",value:2}:{kind:"throws",name:"TypeError"}},
+   {id:"texto",input:["x"],expected:original?{kind:"value",value:0}:{kind:"throws",name:"TypeError"}}
+  ];
+  const result=runDockerBehaviorCases({root:base,target:T08_TARGET,fn:"sumEvenNumbers",
+   image:"node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8",cases});
+  return result.verified&&result.completed===cases.length;
  }catch{return false;}
 }

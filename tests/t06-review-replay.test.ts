@@ -47,8 +47,8 @@ test("T06 reutiliza Writers anteriores solo con dos consentimientos nuevos para 
  assert.equal(result.accepted,false);
  assert.equal(result.globalFull,false);
  assert.equal(result.authority,"read-only-review-only");
- assert.equal(T06_REPLAY_SOURCE_RUN,44389671458);
- assert.equal(T06_REPLAY_SOURCE_SHA,"a33da9eebb92ac3131c958b14846945c31cd24a7");
+ assert.equal(T06_REPLAY_SOURCE_RUN,44755907429);
+ assert.equal(T06_REPLAY_SOURCE_SHA,"7bdbbc351b81da8b40236a66f2cf03a13c2c69fb");
 });
 test("T06 la historia Writer antigua no concede revisiones en un nuevo run",()=>{
  for(const history of [
@@ -108,15 +108,15 @@ test("T06 solo revisión nunca consume dos Writers ni omite la validación origi
  assert.match(yaml,/^on:\s*\n  workflow_dispatch:/mu);
  assert.doesNotMatch(yaml,/^  (?:push|pull_request|schedule):/mu);
  assert.match(yaml,/^  workflow_call:/mu);
- assert.match(yaml,/run-id: 44389671458/u);
+ assert.match(yaml,/run-id: 44755907429/u);
  assert.match(yaml,/github-token: \$\{\{ github\.token \}\}/u);
  assert.match(yaml,/name: asen-t06-reviewer-a/u);
  assert.match(yaml,/name: asen-t06-reviewer-b/u);
  assert.match(yaml,/needs: \[aprobar-revisor-a\]/u);
  assert.match(yaml,/needs: \[comprobar-origen, aprobar-revisor-b\]/u);
  assert.match(yaml,/ASEN_T06_REVIEW_REPLAY_MODE: '1'/u);
- assert.match(yaml,/ASEN_T06_SOURCE_SHA: 'a33da9eebb92ac3131c958b14846945c31cd24a7'/u);
- assert.match(yaml,/ASEN_T06_SOURCE_RUN_ID: '44389671458'/u);
+ assert.match(yaml,/ASEN_T06_SOURCE_SHA: '7bdbbc351b81da8b40236a66f2cf03a13c2c69fb'/u);
+ assert.match(yaml,/ASEN_T06_SOURCE_RUN_ID: '44755907429'/u);
  assert.match(yaml,/ASEN_T06_COST_ACK:/u);
  assert.match(yaml,/test "\$GITHUB_RUN_ATTEMPT" = 1/u);
  assert.match(yaml,/requireLiveT06ReviewReplay/u);
