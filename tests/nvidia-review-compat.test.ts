@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {normalizarSolicitudNvidia} from "../extensions/nvidia-review-compat.ts";
+import {normalizarSolicitudNvidia} from "../extensions/nvidia-review-compat.js";
 const modelo="nvidia/nemotron-3.5-bolt-e4b";
 const base=()=>({model:modelo,stream:true,stream_options:{include_usage:true},
  max_completion_tokens:4096,reasoning_effort:"high",tools:[],
@@ -8,8 +8,8 @@ const base=()=>({model:modelo,stream:true,stream_options:{include_usage:true},
 test("NVIDIA: solo texto, sin esfuerzos o parámetros que el modelo rechaza",()=>{
  const request=base();
  assert.equal(normalizarSolicitudNvidia(request,"nvidia",modelo),true);
- assert.equal(request.messages[0].content,"Primera línea\nSegunda línea");
- assert.equal(request.max_tokens,1200);
+ assert.equal(request.messages[0]?.content,"Primera línea\nSegunda línea");
+ assert.equal(Object.getOwnPropertyDescriptor(request,"max_tokens")?.value,1200);
  assert.equal(request.stream,true);
  for(const key of ["reasoning_effort","stream_options","max_completion_tokens","tools"])
   assert.equal(Object.hasOwn(request,key),false,key);
