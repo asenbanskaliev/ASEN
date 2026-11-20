@@ -124,7 +124,7 @@ export function inspectFlow17(sha:string,proof:FlowEndToEndWitness|null):Closure
    new Set(worker.authorizedPaths).size!==worker.authorizedPaths.length||
    new Set(worker.changedPaths).size!==worker.changedPaths.length||
    !worker.authorizedPaths.every(path)||!worker.changedPaths.every(path)||
-   worker.changedPaths.some(f=>!worker.authorizedPaths.includes(f)))
+   worker.changedPaths.some((f:string)=>!worker.authorizedPaths.includes(f)))
    problems.push("Writer sin identidad y ámbito exactos");
   if(!Number.isSafeInteger(worker.startedAtMs)||!Number.isSafeInteger(worker.completedAtMs)||
    worker.startedAtMs<0||worker.completedAtMs<=worker.startedAtMs)
@@ -135,8 +135,8 @@ export function inspectFlow17(sha:string,proof:FlowEndToEndWitness|null):Closure
  }
  if(a.taskId===b.taskId||a.sessionId===b.sessionId||a.worktree===b.worktree)
   problems.push("Dos Workers comparten identidad o carpeta");
- if(a.authorizedPaths.some(x=>b.authorizedPaths.includes(x))||
-    a.changedPaths.some(x=>b.changedPaths.includes(x)))
+ if(a.authorizedPaths.some((x:string)=>b.authorizedPaths.includes(x))||
+    a.changedPaths.some((x:string)=>b.changedPaths.includes(x)))
   problems.push("Los ámbitos de Writer se solapan");
  if(Number.isSafeInteger(a.startedAtMs)&&Number.isSafeInteger(b.startedAtMs)&&
     Number.isSafeInteger(a.completedAtMs)&&Number.isSafeInteger(b.completedAtMs)&&
