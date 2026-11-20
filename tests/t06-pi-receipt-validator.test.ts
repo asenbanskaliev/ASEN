@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {validateT06PiReply} from "../src/runtime/agents/t06-pi-receipt-validator.js";
+import {normalizeT06PiChildSelection,validateT06PiReply} from "../src/runtime/agents/t06-pi-receipt-validator.js";
 
 const expectedModel="nvidia/nemotron-3.5-lightning-30b-a3b";
 const expectedMarker="ASEN_PI_NVIDIA_A_OK";
@@ -105,4 +105,26 @@ test("T02/T05 un recibo de modelo falso no puede presentar métricas verificadas
  assert.equal(result.verified,false);
  assert.equal(result.modelActual,"unknown");
  assert.equal(result.piReportedUsage,null);
+});
+
+test("T06 normaliza el ID completo real de NVIDIA sin duplicar el proveedor",()=>{
+ const full={provider:"nvidia",id:"nvidia/nemotron-3.5-lightning-30b-a3b"};
+ const short={provider:"nvidia",id:"nemotron-3.5-lightning-30b-a3b"};
+ assert.equal(normalizeT06PiChildSelection(full,expectedModel),expectedModel);
+ assert.equal(normalizeT06PiChildSelection(short,expectedModel),expectedModel);
+ const receipt=call(message(expectedMarker),normalizeT06PiChildSelection(full,expectedModel));
+ assert.equal(receipt.reason,"verified");
+ assert.equal(receipt.modelActual,expectedModel);
+});
+test("T06 no atribuye el modelo NVIDIA a otro proveedor o selección distinta",()=>{
+ for(const actual of [
+  {provider:"nvidia",id:"nvidia/otro-modelo"},
+  {provider:"openrouter",id:"nvidia/nemotron-3.5-lightning-30b-a3b"},
+  {provider:"nvidia",id:"nvidia/nvidia/nemotron-3.5-lightning-30b-a3b"},
+  null
+ ]){
+  const selected=normalizeT06PiChildSelection(actual,expectedModel);
+  assert.notEqual(selected,expectedModel);
+  assert.equal(call(message(expectedMarker),selected).verified,false);
+ }
 });

@@ -9,7 +9,7 @@ import {join,resolve} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import {settleT06ReadOnlyTrial} from "../src/runtime/agents/t06-read-only-trial-cleanup.js";
 import {createT06ReadOnlyGitFixture} from "../src/runtime/agents/t06-read-only-git-fixture.js";
-import {validateT06PiReply} from "../src/runtime/agents/t06-pi-receipt-validator.js";
+import {normalizeT06PiChildSelection,validateT06PiReply} from "../src/runtime/agents/t06-pi-receipt-validator.js";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 
 const model=process.env.ASEN_T06_MODEL??"nvidia/nemotron-3.5-lightning-30b-a3b";
@@ -40,12 +40,10 @@ const instances=[0,1].map(index=>{
   onProcessClose:()=>{observation.closedAt=performance.now();}
  });
  runner.subscribeChildSelection(event=>{
-  if(event.sessionId===identity.sessionId&&event.projectId===identity.projectId&&event.model)
-   // Pi puede devolver el identificador con el prefijo del proveedor
-   // incorporado; normalizarlo solo cuando coincide exactamente.
-    observation.reportedModel=event.model.provider===provider&&
-     (event.model.id===modelId||event.model.provider+"/"+event.model.id===model)?
-    model:event.model.provider+"/"+event.model.id;
+  if(event.sessionId!==identity.sessionId||event.projectId!==identity.projectId)return;
+  // Pi 1.2 puede comunicar id=nvidia/nemotron... con provider=nvidia.
+  // No duplicar el proveedor ni dar por validado otro modelo.
+  observation.reportedModel=normalizeT06PiChildSelection(event.model,model);
  });
  return {identity,observation,runner};
 });

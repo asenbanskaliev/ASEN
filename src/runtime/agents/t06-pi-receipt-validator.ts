@@ -11,6 +11,23 @@ export type T06PiReplyValidation=Readonly<{
  readonly reason:"verified"|"missing-selection"|"missing-assistant-end"|"multiple-assistant-ends"|
   "model-mismatch"|"unexpected-reply"|"invalid-input";
 }>;
+/** Normaliza solo las dos formas que Pi puede comunicar para el modelo pedido.
+ * El catálogo NVIDIA devuelve el ID completo dentro del proveedor nvidia.
+ * No infiere selección desde el texto del modelo ni concede permisos.
+ */
+export function normalizeT06PiChildSelection(
+ observed:Readonly<{provider:string;id:string}>|null|undefined,
+ expectedModel:string
+):string|null{
+ if(!observed||typeof observed.provider!=="string"||typeof observed.id!=="string"||
+  typeof expectedModel!=="string")return null;
+ const slash=expectedModel.indexOf("/");
+ if(slash<=0||slash!==expectedModel.lastIndexOf("/")||slash===expectedModel.length-1)return null;
+ const provider=expectedModel.slice(0,slash),shortId=expectedModel.slice(slash+1);
+ if(observed.provider===provider&&(observed.id===shortId||observed.id===expectedModel))
+  return expectedModel;
+ return observed.provider+"/"+observed.id;
+}
 export function validateT06PiReply(input:{
  readonly output:string;
  readonly expectedMarker:string;
