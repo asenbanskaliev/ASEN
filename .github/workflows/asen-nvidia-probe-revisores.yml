@@ -1,4 +1,5 @@
 name: Diagnosticar modelos NVIDIA por API sin reintentos
+# Diagnóstico independiente del protocolo nativo Pi.
 on:
   push:
     branches:
