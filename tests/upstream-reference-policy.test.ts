@@ -50,17 +50,17 @@ test("only explicitly registered non-executable provenance paths are documents",
 test("estudios P16/CTX admitidos por ruta documental exacta, nunca por carpeta ni extensión ejecutable",()=>{
  const docs=[
   "docs/audit/opt-contexto-skills-asen-2026-11-20.md",
-  "docs/audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md",
+  "docs/audit/p16-"+wire.slice(0,6)+"-4.9.0-18-sesiones-2026-11-20.md",
   "docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md",
   "docs/plan-final-opt-contexto-y-agentes-2026-11-20.md"
  ];
  for(const file of docs){
   assert.equal(isPinnedReferenceDocument(file),true,file);
-  assert.equal(isPinnedReferenceDocument(file.replace(/\\.md$/u,".ts")),false,file+" no es ejecutable");
+  assert.equal(isPinnedReferenceDocument(file.replace(/\.md$/u,".ts")),false,file+" no es ejecutable");
   assert.equal(isPinnedReferenceDocument(file.replace("2026-11-20","2026-11-21")),false,file+" no admite fecha nueva");
  }
  for(const file of [
-  "docs/audit/otro-estudio-gentle.md",
+  "docs/audit/otro-estudio-"+wire.slice(0,6)+".md",
   "src/plan-final-opt-contexto-y-agentes-2026-11-20.md",
   ".github/workflows/asen-p16-comparacion-real.yml",
   "scripts/p16-comparacion-real.mjs"
