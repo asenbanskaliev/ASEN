@@ -1,29 +1,33 @@
 # ASEN — Estado verificable de los 18 objetivos
 
-**Fecha:** 19 de noviembre de 2026. **Rama:** `feat/flujo-de-agentes-20261115`. **PR:** #61 (borrador; no fusionar).
+**Fecha de actualización auditada:** 20 de noviembre de 2026. **Código de referencia:** `daa250a80b58d80c48336ac017deaf8e68cc396c`. **Rama:** `feat/flujo-de-agentes-20261115`. **PR:** #61 (borrador; no fusionar).
+
+**Auditoría de cada punto:** [análisis de código y pruebas](../../docs/audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md). **Plan ejecutable:** [plan final, apartado 13](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#13-auditoría-de-coherencia-contra-el-código-de-los-18-objetivos-actualización-vinculante).
+
+**Prioridad actual:** PRE-0 (referencias externas) y PRE-1 (test T06), que bloquean G0. CTX-0 admite solo diagnóstico sin proveedor. No se declara cerrado ningún objetivo con pruebas locales únicamente.
 
 **Importante:** lo publicado en GitHub no equivale a trabajo validado. Todos los estados de esta matriz son conservadores. Ninguna prueba simulada demuestra por sí sola el comportamiento con proveedores reales. **`globalFull:false`**.
 
 | Nº | Objetivo para el usuario | Estado de implantación | Falta para cerrarlo |
 | --- | --- | --- | --- |
-| 01 | Decidir cuándo ASEN resuelve y cuándo delega | Parcial | Demostrar decisiones automáticas y repetibles, no solo sugerencias de texto |
-| 02 | Dos modos: normal y delegación completa | Código conectado; pendiente de validación final | Comprobar ambos modos con la misma petición y permisos reales |
-| 03 | Investigar solo cuando hace falta | Parcial | Contrastar presupuesto y utilidad del investigador en Pi auténtico |
-| 04 | Separar tareas y dependencias | Parcial | Partir tareas complejas en unidades verdaderamente independientes, sin trocear por archivos |
-| 05 | Dos agentes de escritura trabajando a la vez | Conectado y probado en worktrees aislados | Demostrar solape con modelos autenticados externos en vivo |
-| 06 | Solicitar ampliación de archivos sin conceder permisos | Parcial | Propuesta exacta, revisión del nuevo alcance y consentimiento independiente |
-| 07 | Recibir cada resultado una sola vez | Conectado y probado en host | Demostrar entrega única tras carrera y reanudación con proveedor real |
-| 08 | Continuar después de un fallo seguro | Conectado y probado en host | Demostrar recuperación con proveedor real manteniendo parada ante escrituras inciertas |
-| 09 | Cambiar de modelo cuando falla | Parcial | Probar credenciales, cuota y tiempos de espera con modelos del perfil; contabilizar coste real o desconocido |
-| 10 | Usar el modelo principal del perfil | Conectado y probado en host | Confirmar selección real con proveedor autenticado sin modificar sesiones reanudadas |
-| 11 | Verificar según los riesgos del cambio | Parcial | Conectar seis motivos de riesgo a la verificación independiente obligatoria |
-| 12 | Una revisión completa del cambio | Parcial | Prueba integral del candidato congelado y recuperación de una revisión interrumpida |
-| 13 | Dos jueces y correcciones limitadas | Parcial | Recibos auténticos, desacuerdos y máximo de dos rondas; nunca autocorrección sin permiso |
-| 14 | Preguntar lo imprescindible y seguir | Parcial | Demostrar respuesta, cancelación y reanudación sin inferir permisos de un mensaje |
-| 15 | Mantener la seguridad y el control de cambios | En verificación | CI completo por SHA y pruebas negativas sin regresión de permisos |
-| 16 | Medir velocidad, consumo, calidad y costes | Comparador ampliado; sin ensayos reales | Tres escenarios × tres repeticiones con recibos auténticos de ASEN y Gentle Shell |
-| 17 | Probar todo el recorrido con modelos reales | Pendiente | Dos Writers Pi auténticos, revisores, comprobaciones, consentimiento y aceptación externa |
-| 18 | Comprobar la compatibilidad real de Pi | Parcial | Acreditar creación automática de sesiones hijas, permisos por lote y mismas pruebas en los tres sistemas |
+| 01 | Decidir cuándo ASEN resuelve y cuándo delega | Parcial, ruta ODD implementada | Probar decisión Pi real frente a guía del padre y contexto simple, ambiguo o de riesgo alto |
+| 02 | Dos modos: normal y delegación completa | Modos conectados; aceptación pendiente | Probar `organic` y `full-delegation`, cambio de perfil y prohibición efectiva de escribir en modo completo |
+| 03 | Investigar solo cuando hace falta | Presupuesto y Explorer conectados; aceptación pendiente | Acreditar 3 lecturas/40 KiB, utilidad, identidad y consumo real de Explorer sin duplicar lanzamientos |
+| 04 | Separar tareas y dependencias | Plan y dependencias presentes; decisión real pendiente | Probar dos unidades independientes y una dependiente, sin trocear artificialmente por archivos |
+| 05 | Dos agentes de escritura trabajando a la vez | Supervisor y carpetas aisladas probados localmente | Dos procesos Writer autenticados solapados; por ahora persiste confirmación exacta por Worker |
+| 06 | Solicitar ampliación de archivos sin conceder permisos | Controles de ámbito implementados; aceptación pendiente | Probar permiso nuevo y rechazo tras ampliar rutas, cambiar candidato o variar SHA |
+| 07 | Recibir cada resultado una sola vez | Diario y avisos conectados; aceptación pendiente | Entregar una vez con padre ocupado, duplicación, cancelación y reinicio real |
+| 08 | Continuar después de un fallo seguro | Reconciliación y continuidad conectadas; aceptación pendiente | Continuar otras unidades seguras sin repetir ninguna escritura de resultado incierto |
+| 09 | Cambiar de modelo cuando falla | Alternativas de modelos y esperas presentes | Comprobar 429, credenciales, modelo efectivo, reintentos y coste observado o desconocido |
+| 10 | Usar el modelo principal del perfil | Modelo de perfil integrado; aceptación pendiente | Confirmar en Pi autenticado el modelo realmente usado; respetar sesión reanudada |
+| 11 | Verificar según los riesgos del cambio | Seis riesgos y política de Verifier presentes | Demostrar que la decisión se aplica en el ejecutor y no se limita a un aviso |
+| 12 | Una revisión completa del cambio | Revisión ordinaria con recibo conectada | Probar candidato congelado, interrupción, resultado y aceptación humana separada |
+| 13 | Dos jueces y correcciones limitadas | Dos jueces y límite de dos rondas implementados | Comprobar hallazgos, discrepancia, Fix autorizado y prueba nueva del límite de rondas |
+| 14 | Preguntar lo imprescindible y seguir | Entrada natural y Clarifier presentes | Demostrar pregunta única, respuesta, cancelación y reanudación sin inferir permisos |
+| 15 | Mantener la seguridad y el control de cambios | Bloqueado por CI en SHA `daa250a8` | Resolver PRE-0: seis referencias externas, y PRE-1: test T06; repetir Phase 0 y CI exacto |
+| 16 | Medir velocidad, consumo, calidad y costes | P16: 18 sesiones Pi auténticas de solo lectura; paridad no probada | A/B completo con condiciones comparables, orquestación, hijos, tokens, caché y coste observable |
+| 17 | Probar todo el recorrido con modelos reales | Pruebas locales y verificador de evidencias presentes | Dos Writers reales, dos jueces, permisos exactos, pruebas conjuntas, revisión y aceptación auténtica |
+| 18 | Comprobar la compatibilidad real de Pi | Host >=1.2, paquete fijado 1.2.0; matriz parcial | 3 sistemas operativos × 4 modos con Pi 1.2.0 exacto; otras versiones requieren matriz propia |
 
 ## Avances comprobables de esta tanda
 
@@ -42,4 +46,4 @@
 4. Resultado completo de las 18 filas con evidencia identificable por versión; pruebas omitidas, en espera o simuladas no acreditan equivalencia real.
 5. No fusionar la PR ni fijar `globalFull:true` sin evidencias y decisión humana.
 
-**Prioridad del siguiente bloque:** estabilizar el CI y cerrar el ciclo Pi Writer con perfiles, sesiones aisladas y pruebas reales; después unir verificación proporcional y comparación controlada.
+**Orden actualizado:** PRE-0 + PRE-1 (diagnóstico en paralelo, cambios secuenciales) → G0 verde por SHA → CTX-0 de medición → E1A/E1B y CTX-1/2 sin editar los mismos archivos a la vez → E2A/E2B → E3 → E4/CTX-5 → auditoría F/CTX-6. CTX-3 solo si hay duplicados probados; CTX-4 opcional. `globalFull:false`.
