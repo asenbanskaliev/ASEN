@@ -32,8 +32,8 @@ jobs:
       ASEN_T06_SOURCE_SHA: 5bd752374f2db630a9d2ab0887e1025134a4e13f
       ASEN_T06_SOURCE_RUN_ID: "44792916571"
       ASEN_T06_BEHAVIOR_RUN_ID: "44794317489"
-      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3-nano-30b-a3b
-      ASEN_T06_REVIEW_MODEL_B: nvidia/nemotron-3-super-120b-a12b
+      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3.5-bolt-e4b
+      ASEN_T06_REVIEW_MODEL_B: nvidia/nemotron-3.5-super-vl-120b-a12b
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -65,8 +65,8 @@ jobs:
       ASEN_T06_SOURCE_SHA: 5bd752374f2db630a9d2ab0887e1025134a4e13f
       ASEN_T06_SOURCE_RUN_ID: "44792916571"
       ASEN_T06_BEHAVIOR_RUN_ID: "44794317489"
-      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3-nano-30b-a3b
-      ASEN_T06_REVIEW_MODEL_B: nvidia/nemotron-3-super-120b-a12b
+      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3.5-bolt-e4b
+      ASEN_T06_REVIEW_MODEL_B: nvidia/nemotron-3.5-super-vl-120b-a12b
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:

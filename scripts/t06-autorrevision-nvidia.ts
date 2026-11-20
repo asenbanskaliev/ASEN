@@ -13,7 +13,7 @@ import {consultarCatalogoNvidia} from "./catalogo-nvidia.mjs";
 import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js";
 
 const names=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
-const models=["nvidia/nemotron-3-nano-30b-a3b","nvidia/nemotron-3-super-120b-a12b"] as const;
+const models=["nvidia/nemotron-3.5-bolt-e4b","nvidia/nemotron-3.5-super-vl-120b-a12b"] as const;
 const data=(path:string,max:number):unknown=>{
  const st=lstatSync(path);
  assert.ok(st.isFile()&&!st.isSymbolicLink()&&st.size>1&&st.size<=max);
