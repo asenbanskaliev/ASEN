@@ -84,7 +84,7 @@ async function ejecutarSesion({sistema,caso,repeticion,piBin,referencia,carpeta}
  await disablePiRetries(agent);
  const extension=sistema==="ASEN"?join(raiz,"extensions","asen.ts"):
   join(referencia,"extensions","gentle-shell.ts");
- const comando=sistema==="ASEN"?"asen-status":"gentle:status";
+ const comando=sistema==="ASEN"?"asen-status":"gentle:panel";
  const args=[piBin,"--mode","rpc","--no-extensions","--extension",extension,
   "--no-skills","--no-tools","--model",MODELO,"--thinking","off"];
  const child=spawn(process.execPath,args,{cwd:sesion,env:entornoSeguro(home,agent),
@@ -200,7 +200,7 @@ export async function ejecutarComparacion(){
  assert.equal(process.env.GITHUB_REF,"refs/heads/feat/flujo-de-agentes-20261115");
  assert.equal(process.env.GITHUB_RUN_ATTEMPT,"1");
  assert.equal(process.env.P16_AUTORIZACION_18,"SI");
- assert.equal(process.env.P16_MENSAJE_COMMIT,"ci(asen): ejecutar comparacion P16 real autorizada");
+ assert.equal(process.env.P16_MENSAJE_COMMIT,"ci(asen): completar 18 sesiones P16 reales autorizadas");
  assert.ok(isSha(process.env.GITHUB_SHA));
  assert.equal(execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),process.env.GITHUB_SHA);
  assert.ok(process.env.NVIDIA_API_KEY?.length>=16,"Falta clave NVIDIA");
@@ -216,6 +216,7 @@ export async function ejecutarComparacion(){
   referenciaSha:REFERENCIA_SHA,referenciaVersion:"gentle-pi@4.9.0",
   modelo:MODELO,sesionesPrevistas:TOTAL,sesionesAutenticadas:0,
   comparacionCompletada:false,sesiones:[],resultado:"NO_EJECUTADO",
+  sesionRecuperada:0,evidenciaAnteriorRun:null,codigoBaseEquivalente:false,
   bloqueo:null,precioVerificado:false,equivalenciaFuncionalCompleta:false,
   revisionIndependiente:false,globalFull:false,
   alcance:"Tres casos RPC de solo lectura con extensiones nativas; no prueba Workers, Writer, TDD, ni paridad completa."
@@ -228,6 +229,40 @@ export async function ejecutarComparacion(){
   assert.equal(catalogo.completo,true,"Catálogo NVIDIA no disponible");
   assert.ok(catalogo.modelos.includes(MODELO),"Modelo autorizado ausente del catálogo");
   informe.catalogoVerificado=true;
+  // El artefacto del ensayo anterior acreditó CALCULO/ASEN/1 en Pi real.
+  // Se reutiliza una vez; no se repite un consumo NVIDIA ya acreditado.
+  const anterior=process.env.P16_EVIDENCIA_ANTERIOR;
+  assert.ok(typeof anterior==="string"&&anterior.startsWith("/"),"Evidencia anterior no configurada");
+  const previa=JSON.parse(readFileSync(anterior,"utf8"));
+  assert.equal(previa.esquema,"asen.p16.pi-18-comparable/v1");
+  assert.equal(previa.asenSha,"52ad42cb597234d2ce6671ec96f242e75acef1ef");
+  assert.equal(previa.referenciaSha,REFERENCIA_SHA);
+  assert.equal(previa.versionPi,"1.2.0");
+  assert.equal(previa.modelo,MODELO);
+  assert.equal(previa.sesionesAutenticadas,1);
+  assert.equal(previa.sesiones.length,1);
+  assert.equal(previa.sesiones[0].caso,"CALCULO");
+  assert.equal(previa.sesiones[0].repeticion,1);
+  assert.equal(previa.sesiones[0].sistema,"ASEN");
+  assert.equal(previa.sesiones[0].verificada,true);
+  assert.equal(previa.sesiones[0].respuestaCorrecta,true);
+  assert.equal(previa.sesiones[0].sinHerramientas,true);
+  assert.equal(previa.sesiones[0].modeloDeclarado,MODELO);
+  assert.ok(previa.sesiones[0].usoInformadoPorPi?.entrada>0);
+  assert.match(previa.sesiones[0].respuestaSha256,/^[a-f0-9]{64}$/u);
+  // Ningún archivo de producto puede cambiar entre los dos commits.
+  const cambios=execFileSync("git",["diff","--name-only",
+   previa.asenSha,process.env.GITHUB_SHA],{cwd:raiz,encoding:"utf8",timeout:20000})
+   .trim().split(/\r?\n/u).filter(Boolean);
+  assert.ok(cambios.length>0&&cambios.every(x=>x==="scripts/p16-comparacion-real.mjs"||
+   x===".github/workflows/asen-p16-comparacion-real.yml"),
+   "Cambió el producto ASEN entre las dos mediciones");
+  informe.sesiones.push({...previa.sesiones[0],origen:"run-44811868817"});
+  informe.sesionesAutenticadas=1;
+  informe.sesionRecuperada=1;
+  informe.evidenciaAnteriorRun=44811868817;
+  informe.codigoBaseEquivalente=true;
+  guardar();
   const meta=JSON.parse(readFileSync(join(raiz,"node_modules","@earendil-works","pi-coding-agent","package.json"),"utf8"));
   const versionGentle=JSON.parse(readFileSync(join(referencia,"node_modules","@earendil-works","pi-coding-agent","package.json"),"utf8"));
   assert.equal(meta.version,versionGentle.version,"Versiones Pi distintas");
@@ -239,6 +274,7 @@ export async function ejecutarComparacion(){
    for(let repeticion=1;repeticion<=REPETICIONES;repeticion++){
     const orden=repeticion===2?["GENTLE","ASEN"]:["ASEN","GENTLE"];
     for(const sistema of orden){
+     if(informe.sesiones.some(x=>x.caso===caso.id&&x.repeticion===repeticion&&x.sistema===sistema))continue;
      const carpeta=join(temporal,caso.id+"-"+repeticion+"-"+sistema);
      const fila=await ejecutarSesion({sistema,caso,repeticion,piBin,referencia,carpeta});
      informe.sesiones.push(fila);
