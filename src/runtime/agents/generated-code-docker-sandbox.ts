@@ -162,6 +162,17 @@ export function isGithubHostedT06ManualSandboxRun(
   env.GITHUB_SHA===env.ASEN_EXPECTED_SHA;
 }
 
+/** La autorización T08 corresponde a la rama y al intento manual comprobados. */
+export function isGithubHostedT08SandboxRun(env=process.env):boolean{
+ return env.GITHUB_ACTIONS==="true"&&env.RUNNER_ENVIRONMENT==="github-hosted"&&
+  env.RUNNER_OS==="Linux"&&env.GITHUB_REPOSITORY==="asenbanskaliev/ASEN"&&
+  env.GITHUB_EVENT_NAME==="workflow_dispatch"&&env.GITHUB_ACTOR==="asenbanskaliev"&&
+  env.GITHUB_REF==="refs/heads/feat/flujo-de-agentes-20261115"&&
+  env.GITHUB_RUN_ATTEMPT==="1"&&env.ASEN_T08_COST_ACK==="true"&&
+  /^[0-9a-f]{40}$/u.test(env.ASEN_T08_EXPECTED_SHA??"")&&
+  env.GITHUB_SHA===env.ASEN_T08_EXPECTED_SHA;
+}
+
 /** No produce PASS si falta Docker, imagen local fijada o aislamiento.
  * No utiliza variables del proveedor, claves, red del host ni permisos Pi.
  */
@@ -173,7 +184,7 @@ export function runDockerBehaviorCases(input:Readonly<{
     !targetPattern.test(input.target)||!/^[A-Za-z][A-Za-z0-9]*$/u.test(input.fn))
   return {verified:false,completed:0,reason:"configuracion-invalida"};
  if(process.platform!=="linux"||
-    !(isGithubHostedSandboxRun()||isGithubHostedT06ManualSandboxRun()))
+    !(isGithubHostedSandboxRun()||isGithubHostedT06ManualSandboxRun()||isGithubHostedT08SandboxRun()))
   return {verified:false,completed:0,reason:"solo-github-actions"};
  let staging:string|undefined;
  try{

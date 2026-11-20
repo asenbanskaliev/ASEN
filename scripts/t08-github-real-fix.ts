@@ -3,6 +3,7 @@
  * NO simula revisiones, NO reutiliza aprobaciones, NO fusiona y NO declara FULL.
  * Nunca modifica el worktree del repositorio original.
  */
+import {isGithubHostedT08SandboxRun} from "../src/runtime/agents/generated-code-docker-sandbox.js";
 import {blockUnisolatedGeneratedCodeTrial} from "../src/runtime/agents/generated-code-trial-admission.js";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
@@ -143,7 +144,6 @@ function checkModels():Models{
  return models;
 }
 async function firstReview(root:string,policyRoot:string,models:Models,dir:string,sha:string):Promise<void>{
- assert.equal(checkT08Behavior(root),false,"El defecto inicial no puede pasar las pruebas");
  const session="t08-original-"+randomUUID();
  const {result,evidence}=await judgment(root,policyRoot,session,models,
   {provider:"fixture",id:"error-controlado"});
@@ -428,7 +428,7 @@ async function finalFix(
 }
 async function main():Promise<void>{
  // Evitar consumir modelos de revisión si la reparación será no verificable.
- blockUnisolatedGeneratedCodeTrial("T08");
+ if(!isGithubHostedT08SandboxRun())blockUnisolatedGeneratedCodeTrial("T08");
  const stage=process.argv[2];
  if(stage!=="review"&&stage!=="fix")throw Error("T08 requiere fase review o fix");
  const phase: T08ApprovalStage=stage;
@@ -456,6 +456,7 @@ async function main():Promise<void>{
   created=true;
   if(fixture.controllerSha!==sha||fixture.target!==T08_TARGET)
    throw Error("La identidad del controlador T08 cambió");
+  assert.ok(checkT08Behavior(root,true),"El controlador debe observar el defecto inicial en Docker sin red");
   if(phase==="review")await firstReview(root,policyRoot,models,dir,sha);
   else await finalFix(root,policyRoot,models,dir,sha);
  }finally{if(created)removeT08IsolatedRepository(root,runId);}
