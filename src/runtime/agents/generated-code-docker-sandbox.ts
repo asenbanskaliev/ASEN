@@ -162,6 +162,27 @@ export function isGithubHostedT06ManualSandboxRun(
   env.GITHUB_SHA===env.ASEN_EXPECTED_SHA;
 }
 
+/** Replay sin NVIDIA: un solo run histórico, un único SHA verificador y un
+ * único mensaje de autorización del propietario en GitHub alojado. */
+export function isGithubHostedT06OwnerReplayRun(
+ env:Readonly<Record<string,string|undefined>>=process.env
+):boolean{
+ return env.ASEN_DOCKER_TESTS_CI==="1"&&
+  env.ASEN_T06_ISOLATED_REPLAY==="1"&&
+  env.ASEN_T06_OWNER_OFFLINE_REPLAY==="1"&&
+  env.GITHUB_ACTIONS==="true"&&
+  env.RUNNER_ENVIRONMENT==="github-hosted"&&env.RUNNER_OS==="Linux"&&
+  env.GITHUB_REPOSITORY==="asenbanskaliev/ASEN"&&
+  env.GITHUB_EVENT_NAME==="push"&&env.GITHUB_ACTOR==="asenbanskaliev"&&
+  env.GITHUB_REF==="refs/heads/feat/flujo-de-agentes-20261115"&&
+  env.GITHUB_RUN_ATTEMPT==="1"&&
+  env.ASEN_T06_HEAD_COMMIT_MESSAGE==="ci(asen): verificar T06 sin NVIDIA"&&
+  env.ASEN_T06_SOURCE_RUN_ID==="44792916571"&&
+  env.ASEN_EXPECTED_SHA==="5bd752374f2db630a9d2ab0887e1025134a4e13f"&&
+  /^[a-f0-9]{40}$/u.test(env.ASEN_T06_VERIFIER_SHA??"")&&
+  env.GITHUB_SHA===env.ASEN_T06_VERIFIER_SHA;
+}
+
 /** La autorización T08 corresponde a la rama y al intento manual comprobados. */
 export function isGithubHostedT08SandboxRun(env=process.env):boolean{
  return env.GITHUB_ACTIONS==="true"&&env.RUNNER_ENVIRONMENT==="github-hosted"&&
@@ -184,7 +205,8 @@ export function runDockerBehaviorCases(input:Readonly<{
     !targetPattern.test(input.target)||!/^[A-Za-z][A-Za-z0-9]*$/u.test(input.fn))
   return {verified:false,completed:0,reason:"configuracion-invalida"};
  if(process.platform!=="linux"||
-    !(isGithubHostedSandboxRun()||isGithubHostedT06ManualSandboxRun()||isGithubHostedT08SandboxRun()))
+    !(isGithubHostedSandboxRun()||isGithubHostedT06ManualSandboxRun()||
+      isGithubHostedT06OwnerReplayRun()||isGithubHostedT08SandboxRun()))
   return {verified:false,completed:0,reason:"solo-github-actions"};
  let staging:string|undefined;
  try{

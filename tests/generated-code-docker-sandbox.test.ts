@@ -4,7 +4,8 @@ import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {
- dockerBehaviorArguments,isGithubHostedSandboxRun,runDockerBehaviorCases,verifyExternalBehaviorCases,
+ dockerBehaviorArguments,isGithubHostedSandboxRun,isGithubHostedT06OwnerReplayRun,
+ runDockerBehaviorCases,verifyExternalBehaviorCases,
  type ContainerObservation,type TrustedBehaviorCase
 } from "../src/runtime/agents/generated-code-docker-sandbox.js";
 
@@ -153,4 +154,25 @@ test("T08: el exceso de salida no es un fallo de arranque Docker",()=>{
   error:"proceso-no-disponible",errorCode:"ENOBUFS"};
  assert.deepEqual(verifyExternalBehaviorCases(cases,[good[0]!,overflow,good[2]!]),
   {verified:false,completed:1,reason:"salida-excesiva"});
+});
+
+test("T06 replay solo admite SHA, run original, primer push y propietario",()=>{
+ const valid={
+  ASEN_DOCKER_TESTS_CI:"1",ASEN_T06_ISOLATED_REPLAY:"1",
+  ASEN_T06_OWNER_OFFLINE_REPLAY:"1",
+  GITHUB_ACTIONS:"true",RUNNER_ENVIRONMENT:"github-hosted",RUNNER_OS:"Linux",
+  GITHUB_REPOSITORY:"asenbanskaliev/ASEN",GITHUB_EVENT_NAME:"push",
+  GITHUB_ACTOR:"asenbanskaliev",
+  GITHUB_REF:"refs/heads/feat/flujo-de-agentes-20261115",
+  GITHUB_RUN_ATTEMPT:"1",GITHUB_SHA:"a".repeat(40),
+  ASEN_T06_VERIFIER_SHA:"a".repeat(40),ASEN_EXPECTED_SHA:"5bd752374f2db630a9d2ab0887e1025134a4e13f",
+  ASEN_T06_SOURCE_RUN_ID:"44792916571",
+  ASEN_T06_HEAD_COMMIT_MESSAGE:"ci(asen): verificar T06 sin NVIDIA"
+ };
+ assert.equal(isGithubHostedT06OwnerReplayRun(valid),true);
+ for(const key of Object.keys(valid)){
+  assert.equal(isGithubHostedT06OwnerReplayRun({...valid,[key]:"no"}),false,key);
+  const without:Record<string,string>={...valid};delete without[key];
+  assert.equal(isGithubHostedT06OwnerReplayRun(without),false,key);
+ }
 });

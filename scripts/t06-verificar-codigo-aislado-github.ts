@@ -5,7 +5,7 @@ import {spawnSync,execFileSync} from "node:child_process";
 import {existsSync,lstatSync,mkdirSync,readFileSync,realpathSync,writeFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {validateT06Handoff} from "../src/runtime/agents/t06-behavior-handoff.js";
-import {isGithubHostedT06ManualSandboxRun,runDockerBehaviorCases,
+import {isGithubHostedT06ManualSandboxRun,isGithubHostedT06OwnerReplayRun,runDockerBehaviorCases,
  type TrustedBehaviorCase} from "../src/runtime/agents/generated-code-docker-sandbox.js";
 
 const sha=process.env.ASEN_EXPECTED_SHA??"";
@@ -52,7 +52,7 @@ let record={
  independentlyReviewed:false,accepted:false,globalFull:false
 };
 try{
- assert.equal(isGithubHostedT06ManualSandboxRun(),true);
+ assert.equal(isGithubHostedT06ManualSandboxRun()||isGithubHostedT06OwnerReplayRun(),true);
  assert.match(sha,/^[a-f0-9]{40}$/u);
  assert.match(image,/^node@sha256:[a-f0-9]{64}$/u);
  assert.ok(sourceRoot.startsWith("/")&&outputDir.startsWith("/"));
@@ -62,7 +62,8 @@ try{
  record.providerSecretsAbsent=true;
  assert.equal(execFileSync("git",["rev-parse","HEAD"],{
   encoding:"utf8",timeout:12000
- }).trim(),sha);
+ }).trim(),process.env.ASEN_T06_OWNER_OFFLINE_REPLAY==="1"?
+  process.env.ASEN_T06_VERIFIER_SHA:sha);
  const root=realpathSync(sourceRoot);
  const candidate=join(root,"t06-codigo-aislado");
  const manifest=readJson(join(candidate,"manifiesto.json"),5000);
