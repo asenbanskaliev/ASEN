@@ -9,12 +9,15 @@ import {join,resolve} from "node:path";
 const referenceSha="ce64a9a708e50c0ca899c8023140e63f29f293e1";
 export function comprobarReferenciaP16({asenRoot,referenceRoot,expectedAsenSha}){
  const git=(root)=>execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8",timeout:10_000}).trim();
- const state=(root)=>execFileSync("git",["-C",root,"status","--porcelain=v1","--untracked-files=all"],{encoding:"utf8",timeout:10_000}).trim();
+ const state=(root,excludeNested=false)=>execFileSync("git",
+  ["-C",root,"status","--porcelain=v1","--untracked-files=all",
+   ...(excludeNested?["--",".",":(exclude)referencia-gentle-shell"]:[])],
+  {encoding:"utf8",timeout:10_000}).trim();
  assert.match(expectedAsenSha,/^[a-f0-9]{40}$/u);
  const asen=realpathSync(asenRoot),reference=realpathSync(referenceRoot);
  assert.equal(git(asen),expectedAsenSha,"SHA de ASEN no coincide");
  assert.equal(git(reference),referenceSha,"La referencia Gentle no coincide");
- assert.equal(state(asen),"","ASEN alterado");
+ assert.equal(state(asen,true),"","ASEN alterado");
  assert.equal(state(reference),"","Gentle alterado");
  const asenPackage=JSON.parse(readFileSync(join(asen,"package.json"),"utf8"));
  const gentlePackage=JSON.parse(readFileSync(join(reference,"package.json"),"utf8"));

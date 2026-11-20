@@ -32,3 +32,10 @@ test("P16 solo informa de fuentes comprobadas y nunca declara A/B sin ejecucione
  const source=String.raw`ce64a9a708e50c0ca899c8023140e63f29f293e1`;
  assert.equal(source,sha);
 });
+
+test("P16 protege el repositorio padre aunque la referencia sea un Git anidado",()=>{
+ const script=readFileSync(new URL("../scripts/p16-comprobar-referencia.mjs",import.meta.url),"utf8");
+ assert.match(script,/":\(exclude\)referencia-gentle-shell"/u);
+ assert.match(script,/state\(asen,true\)/u);
+ assert.match(script,/BLOCKED_NOT_EXECUTED/u);
+});
