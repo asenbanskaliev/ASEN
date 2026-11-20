@@ -50,8 +50,7 @@ jobs:
     env:
       ASEN_P16_SHA: ${{ github.sha }}
       P16_AUTORIZACION_18: 'SI'
-      GITHUB_HEAD_MENSAJE: ${{ github.event.head_commit.message }}
-      P16_SALIDA: ${{ runner.temp }}/asen-p16-comparacion/resultado.json
+      P16_MENSAJE_COMMIT: ${{ github.event.head_commit.message }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -87,6 +86,7 @@ jobs:
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          P16_SALIDA: ${{ runner.temp }}/asen-p16-comparacion/resultado.json
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
