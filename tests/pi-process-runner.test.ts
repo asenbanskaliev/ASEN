@@ -647,6 +647,34 @@ test("T06: el prompt se envía solo después de recibir get_state del mismo Pi",
   {provider:"nvidia",id:"nvidia/nemotron-3.5-lightning-30b-a3b"});
 });
 
+test("T06: cancelar durante la selección o antes del envío no llama al modelo",async t=>{
+ for(const mode of ["inmediata","en-cola"] as const){
+  const {d,p,log}=await fallbackRpcFixture({
+   initialSuccess:true,stateRequiredBeforePrompt:true
+  });
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const controller=new AbortController(),seen:unknown[]=[];
+  const child=runner(p,{timeoutMs:process.env.CI==="true"?10_000:5_000,
+   requireChildModelBeforePrompt:true,noTools:true});
+  child.subscribeChildSelection(observation=>{
+   seen.push(observation);
+   if(mode==="inmediata")controller.abort();
+   else queueMicrotask(()=>controller.abort());
+  });
+  const result=await child.run({
+   id:"seleccion-cancelada",role:"explorer",prompt:"No se debe enviar",
+   repository:d,model:"provider/primary"
+  },controller.signal);
+  assert.equal(result.ok,false,"Una selección cancelada no se acepta");
+  assert.match(result.output,/cancelled/u);
+  assert.equal(seen.length,1,"Se recibió get_state del mismo proceso");
+  const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.deepEqual(trace.commands.map((command:{type:string})=>command.type),
+   ["get_commands","get_state"],
+   "No se puede enviar prompt ni gastar proveedor después de cancelar");
+ }
+});
+
 test("T06: selección errónea o get_state rechazado impiden enviar el prompt",async t=>{
  for(const options of [
   {stateModel:{provider:"otro",id:"nemotron-3.5-lightning-30b-a3b"}},

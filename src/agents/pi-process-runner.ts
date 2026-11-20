@@ -401,7 +401,12 @@ export class PiProcessRunner implements AgentRunner{
    // One serialized writer keeps RPC order and honors stdin backpressure.
    let writeChain:Promise<void>=Promise.resolve();
    const writeLine=(line:string):Promise<void>=>{
-    const next=writeChain.then(()=>writeStdinLine(child.stdin,line)).catch(()=>{/* stdin errors stop the run through the stdin error handler */});
+    // Comprobar de nuevo al despachar: la cancelación puede llegar cuando
+    // el comando ya está en cola, incluso tras confirmar get_state.
+    const next=writeChain.then(()=>{
+     if(!alive())return;
+     return writeStdinLine(child.stdin,line);
+    }).catch(()=>{/* stdin errors stop the run through the stdin error handler */});
     writeChain=next;
     return next;
    };
@@ -570,6 +575,9 @@ export class PiProcessRunner implements AgentRunner{
         try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}
        }
        if(strictModelPreflight){
+        // Un observador de selección puede cancelar de forma síncrona.
+        // Esa cancelación no debe permitir una llamada al proveedor.
+        if(!alive())return;
         armPhase("turn");
         void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
        }
