@@ -159,11 +159,11 @@ export function inspectComparison16(
 ):ClosurePoint{
  if(!pairs)return outcome(["Faltan las 18 ejecuciones A/B comparables"]);
  const issues:string[]=[];
- if(!SHA.test(referenceSha))issues.push("Referencia Gentle Shell no identificada");
+ if(!SHA.test(referenceSha))issues.push("Versión de referencia no identificada");
  for(const pair of pairs){
   if(pair?.asen?.commit!==sha)issues.push("La ejecución ASEN no corresponde al SHA actual");
   if(pair?.reference?.commit!==referenceSha)
-   issues.push("La referencia no corresponde a Gentle Shell 4.9.0");
+   issues.push("La referencia no corresponde a la revisión fijada");
  }
  try{
   const comparison=compareAgentFlowSeries(pairs);
