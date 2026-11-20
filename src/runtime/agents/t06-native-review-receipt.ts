@@ -36,22 +36,26 @@ export function parseT06NativeReviewReceipt(
  // mecanismo de recuperación repite el intento. Los mensajes anteriores
  // SOLO se ignoran si stopReason confirma explícitamente "error".
  const prior=messages.slice(0,-1);
- if(prior.some(row=>typeof row!=="object"||row===null||!("message" in row)||typeof row.message!=="object"||
-  row.message===null||!("stopReason" in row.message)||
-  row.message.stopReason!=="error"))
+ const isFailedAttempt=(row:unknown):boolean=>{
+  if(!row||typeof row!=="object"||!("message" in row))return false;
+  const assistant=row.message;
+  return !!assistant&&typeof assistant==="object"&&
+   "stopReason" in assistant&&assistant.stopReason==="error";
+ };
+ if(prior.some(row=>!isFailedAttempt(row)))
   throw new Error("T06 independent review requires exactly one final assistant verdict");
- const message=messages.at(-1);
- if(!message||typeof message!=="object"||!("message" in message)||typeof message.message!=="object"||
-  message.message===null||!("stopReason" in message.message)&&
-  "errorMessage" in message.message)
-  throw new Error("T06 independent review requires exactly one final assistant verdict");
- if("stopReason" in message.message&&message.message.stopReason!=="stop")
-  throw new Error("T06 independent review requires exactly one final assistant verdict");
- if(!message||typeof message!=="object"||!("message" in message)||
-  !message.message||typeof message.message!=="object"||
-  !("content" in message.message)||!Array.isArray(message.message.content))
+ const finalEntry=messages.at(-1);
+ if(!finalEntry||typeof finalEntry!=="object"||!("message" in finalEntry))
   throw new Error("T06 independent Pi review returned no assistant message");
- const contents=message.message.content;
+ const message=finalEntry.message;
+ if(!message||typeof message!=="object")
+  throw new Error("T06 independent Pi review returned no assistant message");
+ if("stopReason" in message&&message.stopReason!=="stop"||
+  prior.length>0&&(!("stopReason" in message)||message.stopReason!=="stop"))
+  throw new Error("T06 independent review requires exactly one final assistant verdict");
+ if(!("content" in message)||!Array.isArray(message.content))
+  throw new Error("T06 independent Pi review returned no assistant message");
+ const contents=message.content;
  if(contents.length!==1||!contents[0]||typeof contents[0]!=="object"||
   contents[0].type!=="text"||typeof contents[0].text!=="string")
   throw new Error("T06 independent reviewer returned unsupported content");
