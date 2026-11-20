@@ -147,3 +147,117 @@ Se normalizan los nombres duplicados de anexos 11–13: **CTX-0…CTX-6** son la
 - **No** alterar la autoridad sobre modelos configurados, Writers, cambios destructivos, proveedores y fusión.
 
 **Decisión final de diseño:** ejecutar **CTX-0 y pruebas de CTX-1 primero**, en modo sin red. Con resultados, abordar solo la composición de texto de ASEN. **El ahorro nunca se antepone a la seguridad ni al cumplimiento funcional de los 18 objetivos.**
+
+---
+
+## 9. Ejecución quirúrgica preparada (aplicación de la auditoría)
+
+**Estado de todas las unidades:** `PENDIENTE`. Esta sección vuelve el diseño **directamente ejecutable**, no certifica que se hayan ejecutado pruebas, que exista ahorro ni que estén cerradas E0–E4/F.
+
+**Una única fuente de ejecución:** apartados **3, 9–13 de este documento**. El rector mantiene las condiciones originales E0–E4/F; sus anexos 11–13 y las denominaciones OPT son referencias históricas. **Nunca crear dos tareas por el mismo código CTX.**
+
+### 9.1 Megatandas para trabajar rápido sin interferencias
+
+| Megatanda | Qué agrupar y qué NO | Resultado que deja | Puerta |
+| --- | --- | --- | --- |
+| **A · Diagnóstico sin red** | **CTX-0 + pruebas de CTX-1** en una misma revisión; lectura de Pi, mediciones sintéticas, matriz de obligaciones. **Sin cambios en guías activas.** | Base por SHA, evidencia de `selectedTools`, decisión «cambio pequeño posible / no posible» | **G0**; si no hay evidencia de API, no iniciar B |
+| **B · Parche mínimo** | **CTX-1 y CTX-2 en serie**, cada uno con su propio commit y pruebas. Solo código de composición del padre; sin tocar seguridad, memoria ni runner. | Guía por contexto detrás de selección **desactivada inicialmente**, con comparación offline | **G1 y G3**; rechazo ante pérdida de regla crítica |
+| **C · Depuración condicional** | **CTX-3** únicamente para duplicaciones concretas medidas. **CTX-4 aplazado por defecto** salvo compatibilidad y beneficio demostrados | Se eliminan solo duplicados observados; ningún cambio del motor | **G1/G3**; «NO APLICAR» es resultado válido |
+| **D · Ensayo y admisión** | **CTX-5 + CTX-6**: ensayo dentro de ASEN; **Gentle completo por separado**; revisión independiente, CI exacto y decisión de activación | Informe de eficacia y seguridad, opción de revertir y estado verificable | **G5/G6**; sin cerrar E2/E3 por herencia |
+
+**Paralelismo permitido:** preparar en lectura las matrices de código/guías y tests en archivos independientes. **Prohibido** que dos agentes escriban `extensions/asen.ts` o `request-guidance.ts` a la vez. Una sola integración por SHA; las ramas/tareas ajenas se conservan. Sin reintentos automáticos de trabajos con escritura incierta.
+
+### 9.2 Tarjetas de trabajo exactas (una modificación mínima por unidad)
+
+| ID y responsable lógico | Archivos a inspeccionar o modificar | Prueba roja / resultado verde esperado | No tocar |
+| --- | --- | --- | --- |
+| **A1 · Exploración/medición** (`CTX-0`; Explorer o padre, solo lectura) | `extensions/asen.ts`, `src/runtime/ui/request-guidance.ts`, `src/memory/pi-integration.ts`, `src/runtime/lifecycle/plan-context.ts`, `src/skills/registry.ts`, `src/agents/pi-process-runner.ts`, `package-lock.json` | Inventario de secciones del padre y de hijos, orden, bytes, habilidades, herramientas declaradas/activas y capacidades desconocidas; 0 contenidos privados en el registro | Ejecutar proveedor o modificar producción |
+| **A2 · Pruebas de Pi** (`CTX-0/CTX-1`; Writer de pruebas autorizado) | **Nuevo solo si no existe:** `tests/context-guidance-assembly.test.ts`; ampliar `tests/pi-host-compatibility-matrix.test.ts` / `tests/pi-memory-skill-sdk-lifecycle.test.ts` | Caso RED: `registerTool` existe con `selectedTools=[]` y guía extensa aún aparece; matriz de ausente/vacío/lectura/edición, normal y completo, sesiones distintas; no consumir red | `event.systemPrompt`, `pi.setActiveTools()`, runner de hijos |
+| **B1 · Capacidad efectiva** (`CTX-1`; Writer acotado) | `src/runtime/ui/request-guidance.ts` y **solo la llamada relevante** de `extensions/asen.ts` | Se decide con la selección real que Pi 1.2.0 entrega; si falta, ruta conservadora. Pruebas anteriores y de guardas pasan | Políticas de autorización, registro general de herramientas, API pública adicional |
+| **B2 · Guía por etapas** (`CTX-2`; Writer acotado) | `src/runtime/ui/request-guidance.ts`, llamada `before_agent_start` y pruebas focalizadas | Núcleo estable; los detalles de código, exploración, plan, delegación y recuperación solo aparecen cuando corresponde **sin clasificador de pago**. Regla crítica no se pierde | `src/agents/pi-process-runner.ts`, diarios, memoria, permisos, modelos |
+| **C1 · Relevancia probada** (`CTX-3`; investigador antes de Writer) | `src/memory/pi-integration.ts`, `src/runtime/lifecycle/plan-context.ts`, `src/skills/registry.ts`, `tests/pi-native-skill-load.test.ts`, `tests/plan-context.test.ts` | Dos fragmentos redundantes identificados con procedencia, caso y prueba. Si no hay duplicación, entregar `NO_APLICAR` sin cambio de código | Disminución arbitraria de 4096/2048 bytes o eliminación de `--skill` |
+| **C2 · Posible ahorro adicional** (`CTX-4`; solo si C1 demuestra valor) | Inventario de herramientas y versión Pi concreta | Herramienta sigue descubrible, ejecutable y con la misma guardia; si Pi no admite mecanismo público, `NO_APLICAR` | Simular mecanismos privados de Gentle |
+| **D1 · A/B** (`CTX-5`; probador con presupuesto) | `scripts/p16-comparacion-real.mjs` **solo como antecedente**, crear ensayo nuevo sin activar P16; pruebas existentes | ASEN previo vs ASEN optimizado pareados; informe separado Gentle completo; resultados por proceso y escenario | Ejecutar P16 antiguo o pagar sin presupuesto/permiso |
+| **D2 · Cierre** (`CTX-6`; auditor distinto del autor) | Todos los cambios CTX, recibos, PR, CI y plan rector | G0–G6 satisfechas donde apliquen; revisión independiente, selector reversible, sin hallazgos P0; `globalFull:false` hasta cerrar los 18 puntos | Autoaceptación, auto-fusión o afirmar ahorro desconocido |
+
+**Acotación de modificaciones:** si las pruebas descubren que un módulo tiene una dependencia no listada, **registrar el archivo y el motivo** antes de ampliar la unidad. No ampliar de forma silenciosa el ámbito del Writer. Una aprobación de lectura no concede escritura.
+
+## 10. Pruebas listas para ejecutar y registro de evidencia
+
+### 10.1 Secuencia sin proveedor (primer paso real)
+
+Ejecutar desde la raíz exacta del repositorio, con Node y dependencias ya instaladas o instalación reproducible autorizada. El operador comprueba previamente el árbol y no sobrescribe archivos existentes.
+
+```bash
+git rev-parse HEAD
+git status --porcelain=v1 --untracked-files=all
+node -p "require('./node_modules/@earendil-works/pi-coding-agent/package.json').version"
+npm run typecheck
+node --import tsx --test tests/pi-host-compatibility-matrix.test.ts tests/pi-native-skill-load.test.ts tests/pi-memory-skill-sdk-lifecycle.test.ts tests/plan-context.test.ts
+```
+
+**Después de crear las pruebas nuevas de CTX-0/1:** ejecutar `node --import tsx --test tests/context-guidance-assembly.test.ts`. Para cada unidad: primero prueba que detecte el defecto, después parche mínimo, después la misma prueba en verde y regresiones de permisos, modos y continuidad.
+
+**Integración antes de D:** `npm run check:fast`, `npm run check` y, al preparar la aceptación, `npm run release:check`, conservando resultado exacto por SHA. No tratar un resultado `SKIP` como verde.
+
+**Entorno:** comprobar `npm ci`/dependencias y la versión exacta desde `package-lock.json` antes de ensayos. El plan no ordena instalar dependencias ni ejecutar comandos de escritura sin la autorización apropiada.
+
+**No confundir:** la barra `P32` de `tests/p32-context-gauge.test.ts` muestra el **porcentaje de ventana de contexto** y no mide el texto adicional, tokens enviados, caché ni factura. No reutilizarla como prueba de ahorro CTX.
+
+### 10.2 Contrato del registro mínimo (sin datos privados)
+
+Para cada escenario y proceso guardar únicamente:
+- `id_escenario`, `sha`, `version_pi`, `variante` (`anterior` / `nueva`), `modo`, `tipo_agente`, `estado` (`PASS` / `FAIL` / `SKIP` / `UNKNOWN` / `NO_APLICAR`).
+- `secciones[]`: **nombre controlado**, longitud en bytes y orden; número de skills y herramientas, sin nombres de archivos privados ni texto.
+- `tokens_entrada`, `tokens_salida`, `cacheRead`, `cacheWrite`, duración, número de llamadas e intentos **solo donde el anfitrión/proveedor lo informe**. Ausencia de dato = `unknown`, nunca cero inventado.
+- `tipo_resultado`, `motivo_bloqueo`, categoría de fallo y referencia a CI, sin mensajes privados. Usar datos sintéticos y versiones de prueba.
+
+**Prohibido** guardar prompts, textos de memorias, conversaciones, credenciales, respuestas privadas y huellas de datos sensibles en logs de GitHub. Registrar el hecho de que una métrica no pudo obtenerse sin obligar al usuario a compartir contenido.
+
+### 10.3 Matriz cerrada de escenarios de aceptación
+
+| Caso | Resultado obligatorio |
+| --- | --- |
+| **S01** pregunta sencilla, `selectedTools=[]` | Guía de agentes ausente si el host lo acredita; respuesta correcta, sin pérdida del núcleo |
+| **S02** `selectedTools` ausente o malformado | Guía conservadora; nunca asumir permiso o capacidad adicional |
+| **S03** lectura de código con CodeGraph disponible/no disponible | Se conserva alternativa de lectura y límites de exploración; no ejecutar `init/sync` sin permiso |
+| **S04** cambio simple `organic` | Misma autoridad de escritura y pruebas; sin Writer artificial |
+| **S05** cambio simple `full-delegation` | Padre no escribe; Writer exige ámbito y admisión propios |
+| **S06** plan activo, consulta de estado y «continúa» | Proyección fiel de plan/sesión; sin reintentar Writer dudoso |
+| **S07** dos planes activos, cancelación y reinicio | Sin cruce de sesiones ni cancelación ajena |
+| **S08** memoria relevante/irrelevante y texto adverso | Sin filtrar secretos; texto recuperado nunca concede autoridad |
+| **S09** skill nativa válida/ausente o ilegible | Se usa ruta exacta; fallo explícito, sin saltarse contrato |
+| **S10** dos Writers independientes y uno dependiente | No se pisan; dependencia espera; entrega única |
+| **S11** resultado duplicado, padre ocupado y fallo tras escritura | Una entrega; estado incierto bloquea reintento |
+| **S12** SHA cambiado, permiso denegado o herramienta no disponible | Operación bloqueada, sin atajo por otra ruta |
+| **S13** revisión con riesgo alto y hallazgos | Verifier/revisión y permisos se mantienen |
+| **S14** 2 turnos iguales y reinicio con estado | Medir cambios de prefijo y caché; continuidad segura |
+| **S15** datos sintéticos con claves falsas en métricas | Ninguna clave ni contenido libre aparece en los artefactos |
+
+**Resultado aceptable de CTX:** `PASS` en todos los negativos críticos S02, S05, S07–S13 y S15, además de la funcionalidad propia de cada unidad. Cualquier `FAIL/UNKNOWN` relevante bloquea activación. `SKIP` significa no probado.
+
+## 11. Decisiones para cerrar cada etapa sin preguntas repetidas
+
+- **CTX-0:** si hay inventario y medidas reproducibles del ensamblado, continuar automáticamente a las pruebas offline de CTX-1. Si `selectedTools` no está en el SDK real, clasificar `CAPABILITY_BLOCKED` y mantener el texto anterior.
+- **CTX-1:** solo después de comprobar el SDK, redactar un parche mínimo y pasar la prueba con `selectedTools=[]`, ausente y activo. Un fallo de autoridad **detiene esa unidad**.
+- **CTX-2:** activar la variante nueva **solo para pruebas**, manteniendo variante anterior como valor inicial de producción. Enviar al modelo las reglas mínimas según estado/capacidades reales; ante duda, guía anterior.
+- **CTX-3:** sin doble carga demostrada, `NO_APLICAR`; no alargar por investigar un ahorro hipotético.
+- **CTX-4:** `POSPUESTO` por defecto; únicamente si hay API Pi pública y mejora atribuible.
+- **CTX-5:** las pruebas sintéticas sin red pueden prepararse de inmediato. Para proveedores reales, fijar antes modelo, número máximo de sesiones, reintentos, coste y autorización de consumo. **No consumir NVIDIA** por el hecho de existir este plan.
+- **CTX-6:** el auditor debe ser independiente del autor; revisar diffs, contratos, registros, permisos y CI del mismo SHA. Activación gradual con vía de reversión. No fusionar sin autorización distinta.
+
+**Regla de rapidez:** mientras una unidad está bloqueada, investigar otra unidad **realmente independiente y de solo lectura** sin alterar tareas en curso. No crear una cola perpetua ni volver a preguntar por decisiones ya resueltas.
+
+## 12. Comprobación previa a la implantación
+
+| Control | Valor documental actual | Para marcar LISTO |
+| --- | --- | --- |
+| Fuente única y 18 objetivos | **DOCUMENTADO** | Rector enlaza esta sección y evita interpretar anexos como trabajos adicionales |
+| Pi 1.2.0 / APIs | **BLOQUEADO HASTA TEST SDK** | Evidencia de `selectedTools`, herramientas reales y modos |
+| Matriz de seguridad | **DEFINIDA, NO EJECUTADA** | Casos negativos automatizados y control de guardias en código |
+| Skills, memoria y plan | **PRESENTES EN CÓDIGO** | Evidencia de carga por tarea/sesión sin duplicados |
+| A/B completo y calidad | **PENDIENTE** | Sesiones comparables, coste/caché o `unknown` y revisión |
+| CI y revisión independiente | **PENDIENTES** | Mismo SHA, revisión por otra persona/agente y sin hallazgos graves |
+| Reversión | **DISEÑADA, NO PROBADA** | Volver a variante anterior sin pérdida de memoria ni replantear permisos |
+
+**Veredicto para empezar:** `LISTO_PARA_EJECUTAR_CTX_0_OFFLINE`. No interpretar como `LISTO_PARA_DESPLEGAR` ni `GLOBAL_FULL`. El primer cambio de producción solo se admite tras CTX-0 y la prueba de Pi 1.2.0.
