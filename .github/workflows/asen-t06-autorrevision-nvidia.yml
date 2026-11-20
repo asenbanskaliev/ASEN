@@ -1,6 +1,7 @@
 name: T06 dos revisores NVIDIA reales sin aprobaciones de entorno
 # Única autorización por cambio exacto del propietario; nunca en PR.
 # Segunda prueba: modelos verificados con GET oficial al catálogo NVIDIA.
+# Tercera prueba: con Pi 1.5.2, sin razonamiento y sin reintentos.
 # Ajuste de compatibilidad: Pi 1.5.2 y razonamiento desactivado en ambos jueces.
 on:
   push:
