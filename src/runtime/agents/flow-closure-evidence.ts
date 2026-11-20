@@ -121,6 +121,9 @@ export function inspectFlow17(sha:string,proof:FlowEndToEndWitness|null):Closure
  }
  const [a,b]=proof.writers;
  if(!a||!b)return outcome(["Falta al menos uno de los dos Writers"]);
+ if([a,b].some(worker=>!Array.isArray(worker.authorizedPaths)||
+     !Array.isArray(worker.changedPaths)))
+  return outcome(["Faltan listas válidas de archivos autorizados o cambiados"]);
  for(const worker of [a,b]){
   if(!text(worker.taskId)||!text(worker.sessionId)||!text(worker.worktree,1024)||
    !text(worker.modelActual)||worker.modelActual==="unknown"||
@@ -135,8 +138,8 @@ export function inspectFlow17(sha:string,proof:FlowEndToEndWitness|null):Closure
   if(!Number.isSafeInteger(worker.startedAtMs)||!Number.isSafeInteger(worker.completedAtMs)||
    worker.startedAtMs<0||worker.completedAtMs<=worker.startedAtMs)
    problems.push("Duración de Writer no acreditada");
-  if(!worker.piProcessObserved||!worker.providerReceiptObserved||
-   !worker.humanGrantVerified||!worker.testsPassed||!worker.nativeWriteObserved)
+  if(worker.piProcessObserved!==true||worker.providerReceiptObserved!==true||
+   worker.humanGrantVerified!==true||worker.testsPassed!==true||worker.nativeWriteObserved!==true)
    problems.push("Escritura real o permiso de Writer no acreditado");
  }
  if(a.taskId===b.taskId||a.sessionId===b.sessionId||a.worktree===b.worktree)
@@ -163,7 +166,7 @@ export function inspectComparison16(
  sha:string,pairs:readonly AgentFlowSeriesPair[]|null,
  referenceSha="ce64a9a708e50c0ca899c8023140e63f29f293e1"
 ):ClosurePoint{
- if(!pairs)return outcome(["Faltan las 18 ejecuciones A/B comparables"]);
+ if(!Array.isArray(pairs))return outcome(["Faltan listas válidas de las 18 ejecuciones A/B comparables"]);
  const issues:string[]=[];
  if(!SHA.test(referenceSha))issues.push("Versión de referencia no identificada");
  for(const pair of pairs){

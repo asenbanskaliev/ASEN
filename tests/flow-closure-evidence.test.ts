@@ -71,7 +71,12 @@ test("17 rechaza conflictos, permisos, ejecuciones sin solape y revisión incomp
   {...ok,review:{...ok.review,judgeBReceiptObserved:false}},
   {...ok,review:{...ok.review,verdictA:"unknown"}},
   {...ok,humanAcceptanceVerified:false},
-  {...ok,githubRunId:"no-es-real"}
+  {...ok,githubRunId:"no-es-real"},
+  {...ok,writers:[{...a,humanGrantVerified:"false"} as unknown as FlowEndToEndWitness["writers"][number],b]},
+  {...ok,writers:[{...a,providerReceiptObserved:"true"} as unknown as FlowEndToEndWitness["writers"][number],b]},
+  {...ok,writers:[{...a,nativeWriteObserved:1} as unknown as FlowEndToEndWitness["writers"][number],b]},
+  {...ok,writers:[{...a,authorizedPaths:null} as unknown as FlowEndToEndWitness["writers"][number],b]},
+  {...ok,writers:[a,{...b,changedPaths:null} as unknown as FlowEndToEndWitness["writers"][number]]}
  ];
  assert.equal(inspectFlow17(sha,null).status,"blocked");
  for(const candidate of rejected)
@@ -83,6 +88,9 @@ test("16 no confunde 18 recibos falsos o inexistentes con una comparación real"
   reference:{commit:reference}}] as unknown as AgentFlowSeriesPair[];
  assert.equal(inspectComparison16(sha,malformed).status,"blocked");
  assert.equal(inspectComparison16(sha,[]).status,"blocked");
+ for(const malformed of [{},false,{"0":{}}]){
+  assert.equal(inspectComparison16(sha,malformed as unknown as AgentFlowSeriesPair[]).status,"blocked");
+ }
 });
 test("informe conjunto 16-18 nunca declara finalizado sin verificación independiente",()=>{
  const report=auditFlowPoints16to18({sha,matrix:mkMatrix(),flow:null,pairs:null});

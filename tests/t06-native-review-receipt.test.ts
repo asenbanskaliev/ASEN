@@ -47,3 +47,33 @@ test("T06 revisiones sin mensaje Pi final o con herramientas no se aceptan",()=>
   assert.throws(()=>parseT06NativeReviewReceipt(output,sha),/T06 independent/u);
  }
 });
+
+test("T06 acepta solo el último dictamen después de un intento Pi fallido",()=>{
+ const previous=JSON.stringify({type:"message_end",message:{
+  role:"assistant",stopReason:"error",errorMessage:"fallo de modelo",
+  content:[{type:"text",text:JSON.stringify({...good,verdict:"fail"})}]
+ }});
+ const recovered=JSON.stringify({type:"message_end",message:{
+  role:"assistant",stopReason:"stop",
+  content:[{type:"text",text:JSON.stringify(good)}]
+ }});
+ const report=parseT06NativeReviewReceipt(previous+"\n"+recovered,sha);
+ assert.equal(report.verdict,"pass");
+ assert.equal(report.acceptance,"not-accepted");
+ assert.equal(report.writerAuthority,false);
+});
+test("T06 no disimula dos dictámenes exitosos ni errores finales",()=>{
+ const success=JSON.stringify({type:"message_end",message:{
+  role:"assistant",stopReason:"stop",content:[{type:"text",text:JSON.stringify(good)}]
+ }});
+ const failed=JSON.stringify({type:"message_end",message:{
+  role:"assistant",stopReason:"error",content:[{type:"text",text:"error"}]
+ }});
+ for(const output of [success+"\n"+success,
+  success+"\n"+failed, failed+"\n"+stream(good),
+  failed+"\n"+JSON.stringify({type:"tool_execution_start"})+"\n"+success]){
+  if(output===failed+"\n"+stream(good))continue;
+  assert.throws(()=>parseT06NativeReviewReceipt(output,sha),/T06 independent/u);
+ }
+ assert.equal(parseT06NativeReviewReceipt(failed+"\n"+success,sha).verdict,"pass");
+});
