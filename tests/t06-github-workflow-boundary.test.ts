@@ -171,6 +171,12 @@ test("T06 no activa revisores por PR ni reintento y conserva T08 separado",()=>{
  assert.match(source,/runT06NativeIndependentReviews\(/u);
  assert.match(source,/globalFull:false/u);
  assert.match(reviewer,/noTools:true,requireFinalSettlement:true/u);
- assert.match(reviewer,/if\(!githubReview\)/u);
+ // T06 tiene tres rutas: aprobación GitHub, consentimiento TTY y
+ // revisión automática con autorización específica. No exigir un if obsoleto.
+ assert.match(reviewer,/if\(githubReview\)\{/u);
+ assert.match(reviewer,/if\(!githubReview&&!automaticReview\)/u);
+ assert.match(reviewer,/else if\(githubReview\)\{/u);
+ assert.match(reviewer,/if\(automaticReview&&!autorizarT06RevisionAutomatica\(process\.env\)\)/u);
+ assert.match(reviewer,/else if\(!automaticReview&&\(!process\.stdin\.isTTY\|\|!process\.stdout\.isTTY\)\)/u);
  assert.match(reviewer,/await requireLiveT06GithubReviewerApprovals\(\)/u);
 });
