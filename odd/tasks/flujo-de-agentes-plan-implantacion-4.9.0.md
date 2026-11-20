@@ -1,6 +1,7 @@
 # ASEN — Plan rector completo de implantación del flujo de agentes
 
-**Versión:** 1.3 (propuesta y auditoría documental de contexto) · **Fecha:** 2026-11-20 · **Estado:** PLAN AUDITADO CONTRA CÓDIGO Y COMPLETADO PARA IMPLANTACIÓN; fases E y F aún no ejecutadas. Auditoría independiente de los cambios futuros pendiente.
+**Versión:** 1.4 (plan final consolidado, pendiente de validación) · **Fecha:** 2026-11-20 · **Estado:** PLAN AUDITADO CONTRA CÓDIGO Y COMPLETADO PARA IMPLANTACIÓN; fases E y F aún no ejecutadas. Auditoría independiente de los cambios futuros pendiente.
+**Referencia ejecutable OPT:** [plan final único CTX-0–CTX-6](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md) y [auditoría crítica](../../docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md). Los apartados 11–13 quedan como antecedentes, no como ejecución duplicada.
 **Repositorio:** asenbanskaliev/ASEN · **PR:** #61, borrador · **Rama:** `feat/flujo-de-agentes-20261115`.
 **Objetivo de referencia:** Gentle Shell 4.9.0, commit `ce64a9a708e50c0ca899c8023140e63f29f293e1`. Objetivo propio: misma eficacia **observable** con controles de seguridad de ASEN y más autonomía útil.
 **Punto de partida seguro:** D, commit `dcb68a67a5801ee672523206235273ac72e7a7cc`, con CI, arquitectura, Pi y publicación correctos. Los commits posteriores no heredan ese resultado.
@@ -522,3 +523,46 @@ Decidir por **estado fiable de la sesión, capacidades del host, tipo de operaci
 - **Código de producción cambiado por esta auditoría**: NO. **Modelos externos ejecutados**: NO.
 - **Ahorro de tokens, coste o tiempo demostrado**: NO. **Comparación completa con Gentle**: NO. **Revisión independiente / CI final**: PENDIENTES.
 - **Estado global**: `globalFull:false`. La auditoría define cambios y puertas, **no** los da por realizados.
+
+---
+
+## 14. Plan final consolidado tras investigación avanzada (20/11/2026)
+
+**Estado:** PLAN FINAL DE DISEÑO + AUDITORÍA DOCUMENTAL CONTRASTADA. **NO IMPLEMENTADO**; revisión independiente, experimentos y CI exacto siguen pendientes.
+
+**Única autoridad de ejecución para la línea de optimización de contexto (OPT):**
+- **[Plan final de ASEN: arquitectura, cambios, pruebas, A/B y reversión](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md)**.
+- **[Auditoría crítica del plan final: 18 observaciones y condiciones de aprobación](../../docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md)**.
+- Referencias históricas de los apartados **11, 12 y 13**: evidencias y decisiones anteriores. **No** se ejecutan como planes separados. No duplicar tandas por conservar esos anexos.
+
+**Decisión de la investigación:** mantener los 18 objetivos originales, el flujo E0–E4/F y G0–G6. Optimizar **primero** el contexto de la sesión principal sin sustituir Pi, el motor de agentes, las skills, la memoria, las autorizaciones ni los mecanismos de continuidad. La referencia P16 no es A/B de los sistemas completos. El ahorro, coste y mejora de latencia no están demostrados.
+
+### 14.1 Secuencia única ejecutable
+
+| Etapa única | OPT históricos asociados | Dependencia y efecto esperado | Puerta de cierre |
+| --- | --- | --- | --- |
+| **CTX-0 — medir** | OPT-00 | E0: congelar SHA/Pi 1.2.0, separar cada sección, herramientas, skills, memoria, plan y consumos, sin proveedor | G0: informe y pruebas reproducibles sin secretos |
+| **CTX-1 — detectar** | OPT-01 | E0/E1B: comprobar en Pi real herramientas seleccionadas; sustituir `!!pi.registerTool` solo si se demuestra correcto | G1: cero pérdida de rutas o permisos |
+| **CTX-2 — modular** | OPT-02 | E1B: núcleo pequeño + procedimientos condicionales; conservar reglas que debe conocer el modelo antes de actuar | G1/G3: pruebas de decisiones, continuidad y seguridad |
+| **CTX-3 — deduplicar** | OPT-03 y OPT-04 | E1B/E2B: quitar solo repeticiones demostradas entre memoria, plan, AGENTS.md y skills | G3: skills exactas, estado correcto y ningún cruce de proyecto |
+| **CTX-4 — herramientas** | OPT-05 | E4: estudiar ocultar declaraciones **solo si** Pi conserva herramientas y reglas | G1: optativo, NO APLICAR si API no válida |
+| **CTX-5 — comparación** | OPT-06 | E4: ASEN anterior/optimizado comparables; Gentle completo en ensayo separado, con agentes reales | G5: calidad, tokens, caché, tiempo, coste real o `unknown` |
+| **CTX-6 — revisión y retorno** | OPT-07 | F: revisión independiente, CI exacto, activación gradual y vuelta atrás solo de CTX | G6: sin regresiones graves ni fusión automática |
+
+**Orden:** CTX-0 → CTX-1 → CTX-2 → CTX-3 (si la medición lo justifica) → CTX-4 (opcional) → CTX-5 → CTX-6. Se admite una primera comparación sin red tras CTX-2 para decidir si CTX-3 aporta valor. Nunca hacer escrituras concurrentes sobre `extensions/asen.ts` mientras E1A/E1B/E2B lo modifiquen.
+
+### 14.2 Correcciones vinculantes a la investigación
+
+1. **No reemplazar ni vaciar el mensaje completo de Pi** mediante `event.systemPrompt = ""`. Usar secciones propias de `systemPromptOptions` solo tras pruebas con la versión Pi fijada.
+2. **No confundir** `registerTool` (registrar) o `setActiveTools` (cambiar selección) con **comprobar** herramientas activas; el ejemplo publicado de Pi 1.2.0 utiliza `systemPromptOptions.selectedTools`, que debe verificarse en el anfitrión real.
+3. **No rehacer las skills:** ASEN ya posee selección, comprobación de rutas y carga nativa para hijos. No suprimir `SKILL.md` ni su lectura sin evidencia.
+4. **No dar por codificadas todas las obligaciones de seguridad:** exigir matriz instrucción → guardia ejecutable → prueba negativa. Ante incertidumbre, conservar la guía relevante.
+5. **No deducir ahorros** del dibujo ni de P16; «30–50 %», «60–70 %» y «paridad superior» no son hechos. El umbral de activación debe quedar fijado antes de un A/B real, con línea base, sin comprometer funcionalidad.
+6. **No repetir P16 como prueba de equivalencia global:** su comparación de ASEN con solo `gentle-shell.ts` no incluía el coordinador completo de Gentle; `--no-tools` y `--no-skills` son controles distintos.
+7. **No activar modelos pagados** ni cambiar permisos al guardar este plan. La autorización de modelo y la de escritura son cosas distintas; ninguna concede fusión de ramas.
+
+### 14.3 Conservación de los objetivos 01–18
+
+La matriz completa y las pruebas por objetivo están en [el plan final](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#6-conservación-de-los-18-objetivos-y-puertas-g0g6). Se comprueban: **01–04** decisiones y ODD, **05–08** paralelismo/entrega/continuidad, **09–10** modelos, **11–14** verificaciones/revisión/Clarifier, **15** seguridad Git, **16–17** comparación auténtica, **18** capacidades reales de Pi. Las fases E0–E4 y F no se declaran cerradas por documentar CTX.
+
+**Estado tras investigación y auditoría:** documentos preparados para CTX-0 en modo sin red, código de producción sin cambios por esta línea, sin llamadas pagadas y sin merge a `main`. **Ahorro demostrado: NO. Paridad completa: NO. CI exacto de los nuevos commits: NO COMPROBADO. globalFull:false.**
