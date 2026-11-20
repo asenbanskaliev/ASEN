@@ -1,6 +1,7 @@
 import {AgentProjectAccess} from "./agent-project-access.js";
 import {execFileSync} from "node:child_process";
 import {realpath} from "node:fs/promises";
+import {realpathSync} from "node:fs";
 import {isAbsolute,resolve} from "node:path";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 import type {AgentRuntime} from "./agent-runtime.js";
@@ -168,6 +169,8 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const eventId=(params as {eventId?:unknown})?.eventId;
   if(typeof eventId!=="string"||!/^asen:agent:[0-9a-f]{64}:terminal$/u.test(eventId))
    throw new Error("Invalid durable agent notice ID");
+  // Registrar el gestor original para revalidar identidad después del bloqueo.
+  const originalSessionManager=context.sessionManager;
   const session=await identity(context),rows=await notificationJournal.list(session);
   const row=rows.find(entry=>entry.eventId===eventId);
   if(!row)throw new Error("Agent notice is not available to this Pi session and project");
@@ -196,6 +199,16 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    throw new Error("Pi coordinator session or project changed before acknowledgement");
   if(!inspectionIsFresh())throw new Error(inspectionError);
   const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state,signal,()=>{
+   // Tras el bloqueo, una sesión o carpeta nueva no puede reconocer el aviso anterior.
+   if(context.sessionManager!==originalSessionManager||
+      context.sessionManager?.getSessionId?.()!==session.sessionId||
+      typeof context.cwd!=="string"||!isAbsolute(context.cwd))
+    throw new Error("Pi coordinator session or project changed during acknowledgement");
+   let currentProject:string;
+   try{currentProject=realpathSync(resolve(context.cwd));}
+   catch{throw new Error("Pi coordinator project is unavailable during acknowledgement");}
+   if(!sameWorkspaceIdentityPath(currentProject,session.projectId))
+    throw new Error("Pi coordinator session or project changed during acknowledgement");
    if(!inspectionIsFresh())throw new Error(inspectionError);
   });
   return result({eventId:row.eventId,agentId:row.agentId,state:row.state,acknowledged,

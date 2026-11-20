@@ -343,6 +343,49 @@ test("EF-605 la inspección que caduca durante un bloqueo real no reconoce el av
  assert.equal((await journal.list(subject))[0]?.delivery,"enqueued");
 });
 
+test("EF-606 bloquea acuses si el coordinador cambia durante un bloqueo real",{timeout:20000},async t=>{
+ for(const variant of ["sesión","carpeta","gestor","sin cambios"] as const){
+  const {file,journal}=await fixture(t);
+  const projectId=await realpath(dirname(file)),sessionId="sesion-origen";
+  const record={id:"explorador-"+variant,sessionId,projectId,role:"explorer",state:"completed",summary:"Resultado observado"};
+  const row=await journal.record(record);
+  await journal.claim(row.eventId,record);await journal.markEnqueued(row.eventId,record);
+  const before=await readFile(file,"utf8");
+  const tools=new Map<string,any>();
+  const fakeRuntime={query:async()=>({record}),list:async()=>[record]};
+  registerAgentTools({registerTool(tool:any){tools.set(tool.name,tool);}},
+   async()=>fakeRuntime as never,undefined,undefined,journal);
+  const context:any={cwd:projectId,mode:"tui",hasUI:true,
+   sessionManager:{getSessionId:()=>sessionId},ui:{confirm:async()=>true}};
+  await tools.get("asen_agent_status").execute("consulta",{id:record.id},new AbortController().signal,()=>{},context);
+  let lockReady!:()=>void,releaseLock!:()=>void,ackCalled!:()=>void;
+  const acquired=new Promise<void>(resolve=>{lockReady=resolve;});
+  const released=new Promise<void>(resolve=>{releaseLock=resolve;});
+  const entered=new Promise<void>(resolve=>{ackCalled=resolve;});
+  const lockOwner=withExclusiveFileLock(file,async()=>{lockReady();await released;});
+  const originalAck=journal.acknowledge.bind(journal);
+  (journal as any).acknowledge=(...args:any[])=>{ackCalled();return originalAck(...args);};
+  try{
+   await acquired;
+   const pending=tools.get("asen_agent_ack").execute("acuse",{eventId:row.eventId},new AbortController().signal,()=>{},context);
+   await entered;
+   if(variant==="sesión")context.sessionManager.getSessionId=()=>"sesion-ajena";
+   if(variant==="carpeta")context.cwd=dirname(projectId);
+   if(variant==="gestor")context.sessionManager={getSessionId:()=>sessionId};
+   releaseLock();
+   if(variant==="sin cambios"){
+    const result=await pending;
+    assert.equal(result.details.acknowledged,true);
+    assert.equal((await journal.list(record))[0]?.delivery,"acknowledged");
+   }else{
+    await assert.rejects(pending,/Pi coordinator session or project changed/u,variant);
+    assert.equal(await readFile(file,"utf8"),before,"Un aviso ajeno no puede cambiar");
+    assert.equal((await journal.list(record))[0]?.delivery,"enqueued");
+   }
+  }finally{releaseLock();await lockOwner;}
+ }
+});
+
 test("MEGA-B7 la cancelación durante la comprobación final impide reconocer el aviso",async t=>{
  const {file,journal}=await fixture(t);
  const projectId=await realpath(dirname(file)),sessionId="session-pi-cancel";

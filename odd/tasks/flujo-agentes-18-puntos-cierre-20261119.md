@@ -65,7 +65,7 @@
 **Megatandas B a E — ejecución y verificación local completadas:**
 - **Megatanda B (f58ac3ab / d38fdf03):** reconciliación conectada al arrancar la sesión de Pi antes de todos.recover, bloqueo estricto de tareas sin enlace duradero. Suite B completa pasando (78/78).
 - **Megatanda C (b4920ae9 / 53c7492f):** dos Writers simultáneos en worktrees aislados sin interferencia de ámbitos (tests/parallel-worktree-todos.test.ts, 78 casos). Corrección en TaskAgentTodoReconciler preservando motivo interrupted. Suite C de revisión y Judgment Day pasando (55/55).
-- **Megatanda D (556b2399 / 0d3aa376):** paridad frente a referencia 4.9.0, recorrido dependiente Explorer -> Verifier con recibo firmado y consentimiento humano estricto sin autoaceptación. tests/pi-agent-runtime.test.ts pasando al 100% (77/77).
+- **Megatanda D (556b2399 / 0d3aa376):** ensayo interno ASEN del recorrido Explorer → Verifier, recibo y consentimiento estricto. `tests/megatanda-d-e2e-pi.test.ts` y `tests/pi-agent-runtime.test.ts` (77/77) prueban comportamiento local, **no una comparación A/B ejecutada con Gentle Shell 4.9.0**. Paridad general pendiente.
 - **Megatanda E & Procedencia (ef930dd9 / 3933afa3 / fbff63ad):** las 8 auditorías de arquitectura aprobadas, procedencia documentada en upstream-reference-policy.mjs. Matriz de 18 puntos sincronizada localmente; globalFull:false por ausencia de CI de SHA y pruebas autenticadas con proveedores en GitHub. No fusionar con main.
 
 ## Dependencias de cierre

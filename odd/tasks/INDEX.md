@@ -46,7 +46,7 @@ Fronts used here: `runtime`, `ui`, `parity`, `ci`, `acceptance`.
 
 | Plan | State | Front | Last touch | Prog | Evidence / next action |
 | --- | --- | --- | --- | --- | --- |
-| `pr61-18-puntos-megatandas-a-e.md` | ACTIVE | acceptance | 2026-11-19 | 7/7 | Megatandas A-E implementadas y verificadas con pruebas locales; commit `fbff63ad`. `globalFull:false`. |
+| `pr61-18-puntos-megatandas-a-e.md` | ACTIVE | acceptance | 2026-11-19 | 4/7 | T1–T3 y T7 con pruebas locales; T4–T6 requieren Writers autenticados y revisión, paridad A/B y aceptación real. `globalFull:false`. |
 | `flujo-de-agentes-plan-implantacion-4.9.0.md` | ACTIVE | acceptance | 2026-11-19 | prose | Plan rector v1.1 auditado contra código. |
 | `flujo-agentes-18-puntos-cierre-20261119.md` | ACTIVE | acceptance | 2026-11-19 | prose | Control de cierre de 18 puntos sincronizado con HEAD `fbff63ad`. |
 | `ui-runtime-delivery-order.md` | ACTIVE | ui | 2026-11-14 | prose | Status line: Task41/43/44 done, **Task45 feature-branch push is next**. Live front. |
