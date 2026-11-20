@@ -64,6 +64,11 @@ export function validateT06PiReply(input:{
  const model=reply.model;
  if(reply.provider!==expectedProvider||!(model===expectedModelId||model===input.expectedModel))
   return rejected("model-mismatch");
+ // Un marcador correcto no convierte una respuesta interrumpida o fallida en éxito.
+ // Pi puede informar del error aunque entregue texto y el proceso termine normalmente.
+ if((reply.stopReason!==undefined&&reply.stopReason!=="stop")||
+   (reply.errorMessage!==undefined&&reply.errorMessage!==null&&reply.errorMessage!==""))
+  return rejected("unexpected-reply");
  if(!Array.isArray(reply.content)||reply.content.length===0)return rejected("unexpected-reply");
  const parts=reply.content as unknown[];
  if(parts.some(part=>!part||typeof part!=="object"||Array.isArray(part)||

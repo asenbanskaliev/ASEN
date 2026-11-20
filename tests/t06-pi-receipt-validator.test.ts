@@ -57,6 +57,24 @@ test("T06 requiere coincidencia entre evento de Pi y metadatos de respuesta",()=
   assert.equal(result.reason,"model-mismatch");
  }
 });
+test("T06 rechaza un cierre erróneo aunque el mensaje y modelo sean exactos",()=>{
+ for(const options of [
+  {stopReason:"error",errorMessage:"límite de peticiones"},
+  {stopReason:"length"},
+  {stopReason:"aborted"},
+  {stopReason:"toolUse"},
+  {stopReason:null},
+  {stopReason:"stop",errorMessage:"fallo informado por el proveedor"}
+ ]){
+  const result=call(message(expectedMarker,options));
+  assert.equal(result.verified,false,JSON.stringify(options));
+  assert.equal(result.reason,"unexpected-reply");
+  assert.equal(result.modelActual,"unknown");
+  assert.equal(result.piReportedUsage,null);
+ }
+ assert.equal(call(message(expectedMarker,{stopReason:"stop"})).verified,true);
+});
+
 test("T06 mensajes duplicados, parciales o falsos nunca son recibos válidos",()=>{
  for(const data of [
   message(expectedMarker)+"\n"+message(expectedMarker),
