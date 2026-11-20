@@ -72,6 +72,10 @@ const pinnedParityPlanDocs=new Set([
 // Solo estos bytes ya auditados pueden citar la referencia externa; cambiar
 // cualquier archivo invalida su huella y bloquea CI hasta nueva auditoría.
 const pinnedBenchmarkBlobs=new Map([
+ // P16 ya existente: solo estos dos blobs exactos están aprobados.
+ // Cualquier cambio de un solo byte debe bloquear arquitectura y revisarse.
+ [".github/workflows/asen-p16-comparacion-real.yml","78c829c5ab1f626cf9c09887c9b76893e7aaecdb"],
+ ["scripts/p16-comparacion-real.mjs","82b2885600f9dcf41ea7c02685d3aac5e9db7ee9"],
  [".github/workflows/asen-p16-gentle-referencia.yml","e72ea4bdacc0e058f18062200d388d6f858f50bb"],
  ["scripts/p16-comprobar-referencia.mjs","6a61fed8d97817b93aba0fa00ce8bf4e164e32d8"],
  ["tests/p16-comprobar-referencia.test.mjs","380c7da9159ba85b18d24ed642a2a0a20bb0d55e"]
