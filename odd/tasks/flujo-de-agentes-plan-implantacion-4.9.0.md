@@ -1,6 +1,6 @@
 # ASEN — Plan rector completo de implantación del flujo de agentes
 
-**Versión:** 1.2 (con anexo C propuesto) · **Fecha:** 2026-11-20 · **Estado:** PLAN AUDITADO CONTRA CÓDIGO Y COMPLETADO PARA IMPLANTACIÓN; fases E y F aún no ejecutadas. Auditoría independiente de los cambios futuros pendiente.
+**Versión:** 1.3 (propuesta y auditoría documental de contexto) · **Fecha:** 2026-11-20 · **Estado:** PLAN AUDITADO CONTRA CÓDIGO Y COMPLETADO PARA IMPLANTACIÓN; fases E y F aún no ejecutadas. Auditoría independiente de los cambios futuros pendiente.
 **Repositorio:** asenbanskaliev/ASEN · **PR:** #61, borrador · **Rama:** `feat/flujo-de-agentes-20261115`.
 **Objetivo de referencia:** Gentle Shell 4.9.0, commit `ce64a9a708e50c0ca899c8023140e63f29f293e1`. Objetivo propio: misma eficacia **observable** con controles de seguridad de ASEN y más autonomía útil.
 **Punto de partida seguro:** D, commit `dcb68a67a5801ee672523206235273ac72e7a7cc`, con CI, arquitectura, Pi y publicación correctos. Los commits posteriores no heredan ese resultado.
@@ -305,20 +305,20 @@ Cada fase debe publicar: contrato de estados y permisos; código mínimo; prueba
 
 ## 11. Anexo C — Optimización del contexto y selección inteligente (20/11/2026)
 
-**Estado:** PROPUESTO / PENDIENTE DE VERIFICACIÓN REAL; no se declara implementado. **Propósito:** mejorar el coste de contexto sin alterar los 18 objetivos ni sustituir las fases E0–E4 y F. Este anexo queda subordinado a las concesiones de Pi y a las puertas G0–G6. **Referencia de trabajo:** ASEN rama \`feat/flujo-de-agentes-20261115\`, HEAD observado antes de este anexo \`05340ec03fed768921149247f0d43f8607c31169\`; Gentle Shell 4.9.0 \`ce64a9a708e50c0ca899c8023140e63f29f293e1\`.
+**Estado:** PROPUESTO / PENDIENTE DE VERIFICACIÓN REAL; no se declara implementado. **Propósito:** mejorar el coste de contexto sin alterar los 18 objetivos ni sustituir las fases E0–E4 y F. Este anexo queda subordinado a las concesiones de Pi y a las puertas G0–G6. **Referencia de trabajo:** ASEN rama `feat/flujo-de-agentes-20261115`, HEAD observado antes de este anexo `05340ec03fed768921149247f0d43f8607c31169`; Gentle Shell 4.9.0 `ce64a9a708e50c0ca899c8023140e63f29f293e1`.
 
 ### 11.1 Hechos, no hipótesis
 
-- **ASEN ya dispone de skills por tarea:** \`src/skills/registry.ts::selectSkills\`, \`src/orchestration/orchestrator.ts::buildOrchestrationPlan\` y \`src/agents/pi-process-runner.ts::promptWithSkills\` eligen rutas, comprueban el contexto emitido por ASEN y pasan \`--no-skills\` junto a las rutas explícitas \`--skill\` para el agente hijo. No rehacer este circuito ni quitar sus comprobaciones.
-- **Candidato a sobrecarga del padre:** \`src/runtime/ui/request-guidance.ts\` define \`ASEN_REQUEST_GUIDANCE\` como una guía general de aproximadamente 6 KB. \`extensions/asen.ts\` la añade mediante \`addAsenRequestGuidance(options, !!pi.registerTool, explorationOverBudget)\`. La existencia del método de registro **no demuestra** que la herramienta esté activa en esa ejecución; hay que medir y corregir esa condición usando una capacidad real de Pi, si está disponible.
-- **Contexto adicional ya limitado:** \`extensions/asen.ts\` también puede incluir estilo, modo, memoria y plan; \`projectMemoryContext\` recibe hasta 4096 bytes y \`formatActivePlanContext\` limita a 2048 bytes. No asumir que todos esos bloques aparecen en cada petición.
-- **Gentle Shell combina núcleo y detalles:** \`assets/orchestrator.md\` conserva reglas principales y enlaza \`orchestrator-skills.md\`, \`orchestrator-memory.md\` y otras referencias bajo demanda. \`extensions/skill-registry.ts\` expone índice de skills ausentes de la lista Pi; los agentes de paquete reciben rutas concretas y \`extensions/child-context.ts\` suprime el catálogo general en ciertos hijos. También evita bloques de contexto repetidos mediante \`lib/child-context-files.ts\`.
-- **Comparación P16 incompleta para esta pregunta:** \`docs/audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md\` recoge 18 sesiones reales de solo lectura, ASEN 9/9 y Gentle 8/9, 16.940 frente a 4.584 tokens de entrada. El lanzador usa \`--no-skills --no-tools\` y carga \`extensions/asen.ts\` frente a \`extensions/gentle-shell.ts\`; **no carga el orquestador completo de Gentle** (\`extensions/gentle-ai.ts\` más piezas necesarias). Los 1.372–1.373 tokens adicionales por petición son una observación que requiere aislamiento, **no** prueba de que esa guía sea el único factor ni de que ambos productos tengan distinto coste en funcionamiento completo.
+- **ASEN ya dispone de skills por tarea:** `src/skills/registry.ts::selectSkills`, `src/orchestration/orchestrator.ts::buildOrchestrationPlan` y `src/agents/pi-process-runner.ts::promptWithSkills` eligen rutas, comprueban el contexto emitido por ASEN y pasan `--no-skills` junto a las rutas explícitas `--skill` para el agente hijo. No rehacer este circuito ni quitar sus comprobaciones.
+- **Candidato a sobrecarga del padre:** `src/runtime/ui/request-guidance.ts` define `ASEN_REQUEST_GUIDANCE` como una guía general de aproximadamente 6 KB. `extensions/asen.ts` la añade mediante `addAsenRequestGuidance(options, !!pi.registerTool, explorationOverBudget)`. La existencia del método de registro **no demuestra** que la herramienta esté activa en esa ejecución; hay que medir y corregir esa condición usando una capacidad real de Pi, si está disponible.
+- **Contexto adicional ya limitado:** `extensions/asen.ts` también puede incluir estilo, modo, memoria y plan; `projectMemoryContext` recibe hasta 4096 bytes y `formatActivePlanContext` limita a 2048 bytes. No asumir que todos esos bloques aparecen en cada petición.
+- **Gentle Shell combina núcleo y detalles:** `assets/orchestrator.md` conserva reglas principales y enlaza `orchestrator-skills.md`, `orchestrator-memory.md` y otras referencias bajo demanda. `extensions/skill-registry.ts` expone índice de skills ausentes de la lista Pi; los agentes de paquete reciben rutas concretas y `extensions/child-context.ts` suprime el catálogo general en ciertos hijos. También evita bloques de contexto repetidos mediante `lib/child-context-files.ts`.
+- **Comparación P16 incompleta para esta pregunta:** `docs/audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md` recoge 18 sesiones reales de solo lectura, ASEN 9/9 y Gentle 8/9, 16.940 frente a 4.584 tokens de entrada. El lanzador usa `--no-skills --no-tools` y carga `extensions/asen.ts` frente a `extensions/gentle-shell.ts`; **no carga el orquestador completo de Gentle** (`extensions/gentle-ai.ts` más piezas necesarias). Los 1.372–1.373 tokens adicionales por petición son una observación que requiere aislamiento, **no** prueba de que esa guía sea el único factor ni de que ambos productos tengan distinto coste en funcionamiento completo.
 - **La ilustración es una hipótesis de diseño**, no una medición: “-60/70 %”, menor latencia, misma fiabilidad y “seguridad 3/3 frente a 2/3” no son beneficios confirmados. La última cifra era coincidencia exacta de marcador, no nota de seguridad.
 
 ### 11.2 Arquitectura deseada de mínima intervención
 
-\`\`\`mermaid
+```mermaid
 flowchart TD
   U[Petición + sesión y proyecto verificados] --> P[Pi: reglas mínimas y permisos invariables]
   P --> D[Componer contexto según capacidades y estado real]
@@ -334,53 +334,53 @@ flowchart TD
   X --> V[Pruebas, revisión proporcional y conciliación de permisos]
   V --> T
   T --> B[Medidas agregadas: uso, tiempo, calidad y errores]
-\`\`\`
+```
 
-**Regla central:** el modelo recibe la instrucción breve aplicable; el **código** mantiene los límites de autorización, alcance, SHA, herramientas, seguridad y recuperación. Ningún clasificador de texto convierte una petición ambigua en autorización. No añadir una llamada a otro modelo solo para elegir instrucciones. Si Pi no permite comprobar una capacidad, usar la ruta segura actual y registrar \`UNKNOWN\`.
+**Regla central:** el modelo recibe la instrucción breve aplicable; el **código** mantiene los límites de autorización, alcance, SHA, herramientas, seguridad y recuperación. Ningún clasificador de texto convierte una petición ambigua en autorización. No añadir una llamada a otro modelo solo para elegir instrucciones. Si Pi no permite comprobar una capacidad, usar la ruta segura actual y registrar `UNKNOWN`.
 
 **Módulos de orientación propuestos:** (i) núcleo de comunicación + prohibiciones necesarias; (ii) lectura y programación; (iii) coordinación ODD/Workers; (iv) estado y continuidad; (v) recuperación de errores; (vi) memoria relevante; (vii) permisos/modos especiales. Solo ensamblarlos cuando la ruta o el estado comprobado lo justifique. Mantener orden estable para aprovechar posibles mecanismos de caché y no depender exclusivamente de coincidencias de palabras (“continúa”, “hazlo”, “revisa”).
 
-**Agentes especializados:** mantener su selección exacta de skills, límites de rutas y contexto emitido; registrar cuántas habilidades se han anunciado, seleccionado y leído **sin registrar su contenido**. No modificar \`src/agents/pi-process-runner.ts\` hasta demostrar un exceso en sesiones hijas reales.
+**Agentes especializados:** mantener su selección exacta de skills, límites de rutas y contexto emitido; registrar cuántas habilidades se han anunciado, seleccionado y leído **sin registrar su contenido**. No modificar `src/agents/pi-process-runner.ts` hasta demostrar un exceso en sesiones hijas reales.
 
 ### 11.3 Implantación quirúrgica, integrada en E0–E4
 
 | Paquete | Depende de | Cambios mínimos candidatos | Prueba de cierre |
 | --- | --- | --- | --- |
-| **C0 — Auditoría de composición (P0)** | E0/G0 | Instrumentación de solo lectura en \`extensions/asen.ts\` y pruebas de composición; medir secciones, bytes, inventario de herramientas, skills anunciadas/seleccionadas, contexto de memoria/plan y declaraciones. No guardar contenido ni secretos. | Inventario por ejecución sin datos privados, clasificación \`BASE/CONDICIONAL/NO PRESENTE\` y reproducción de la diferencia P16 sin proveedor. |
-| **C1 — Núcleo modular (P1)** | C0 y G1 para permisos | Dividir solamente \`src/runtime/ui/request-guidance.ts\` en módulos pequeños; ensamblar en \`before_agent_start\` con el estado/capacidades ya verificados. No cambiar semántica de consentimiento ni reanudación. | Instantánea de cada tipo de petición; no faltan instrucciones esenciales; modo directo, ODD, “continúa”, paro, bloqueo, denegación y recuperación. |
+| **C0 — Auditoría de composición (P0)** | E0/G0 | Instrumentación de solo lectura en `extensions/asen.ts` y pruebas de composición; medir secciones, bytes, inventario de herramientas, skills anunciadas/seleccionadas, contexto de memoria/plan y declaraciones. No guardar contenido ni secretos. | Inventario por ejecución sin datos privados, clasificación `BASE/CONDICIONAL/NO PRESENTE` y reproducción de la diferencia P16 sin proveedor. |
+| **C1 — Núcleo modular (P1)** | C0 y G1 para permisos | Dividir solamente `src/runtime/ui/request-guidance.ts` en módulos pequeños; ensamblar en `before_agent_start` con el estado/capacidades ya verificados. No cambiar semántica de consentimiento ni reanudación. | Instantánea de cada tipo de petición; no faltan instrucciones esenciales; modo directo, ODD, “continúa”, paro, bloqueo, denegación y recuperación. |
 | **C2 — Duplicados y memoria (P1/P2)** | C1 | Revisar el solapamiento entre guía, estilo, modo, memoria, plan y textos Pi/AGENTS.md; eliminar **solo** duplicados demostrables. Evitar leer recuerdos irrelevantes, pero no perder decisiones vigentes ni evidencia. | Sin duplicaciones semánticas verificadas; contexto estable por sesión; memoria correcta al reanudar y al cambiar de proyecto. |
-| **C3 — Herramientas visibles (P2, condicional)** | C0; capacidad Pi demostrada | Sustituir \`!!pi.registerTool\` por comprobación real de carga del conjunto de herramientas. Explorar declaraciones abreviadas solo si Pi de ASEN tiene vía segura de ejecución y resolución; no copiar la opción \`codemode\` de Gentle sin ella. | \`--no-tools\` no recibe guía de uso de herramientas; catálogo y llamadas reales siguen accesibles en ejecuciones normales; ausencia de herramientas no se disfraza. |
+| **C3 — Herramientas visibles (P2, condicional)** | C0; capacidad Pi demostrada | Sustituir `!!pi.registerTool` por comprobación real de carga del conjunto de herramientas. Explorar declaraciones abreviadas solo si Pi de ASEN tiene vía segura de ejecución y resolución; no copiar la opción `codemode` de Gentle sin ella. | `--no-tools` no recibe guía de uso de herramientas; catálogo y llamadas reales siguen accesibles en ejecuciones normales; ausencia de herramientas no se disfraza. |
 | **C4 — Comparativa y admisión (P0 de medición)** | C1–C3 y E4/G5 | A/B entre ASEN actual y candidato sobre **mismo Pi, modelo, tareas, herramientas, permisos, memoria y skills**; comparación separada con Gentle Shell **completo**; pruebas reales solo con presupuesto autorizado. | Informe por SHA, 3+ repeticiones por caso, uso y caché si están disponibles, tiempo, respuestas, fallos, calidad, consentimiento y recuperación; sin “paridad” prematura. |
 
-**Orden recomendado:** C0 → C1 → C2 → C3 solo si aporta reducción comprobada → C4. Estas tareas pueden convivir con E1–E3, pero **no** editar simultáneamente \`extensions/asen.ts\` ni los controladores de permisos de otras tandas: integrar de forma secuencial, rehacer pruebas y confirmar el SHA antes de cada unión. En caso de conflicto, prevalece completar la capacidad funcional y su seguridad antes de optimizar el texto.
+**Orden recomendado:** C0 → C1 → C2 → C3 solo si aporta reducción comprobada → C4. Estas tareas pueden convivir con E1–E3, pero **no** editar simultáneamente `extensions/asen.ts` ni los controladores de permisos de otras tandas: integrar de forma secuencial, rehacer pruebas y confirmar el SHA antes de cada unión. En caso de conflicto, prevalece completar la capacidad funcional y su seguridad antes de optimizar el texto.
 
 ### 11.4 Ensayo A/B justo: condiciones y frenos
 
 1. Congelar la referencia ASEN actual y la optimizada sobre el mismo estado de repositorio; mantener otro ensayo separado para Gentle 4.9.0 **con sus extensiones de orquestación, registro, memoria y herramientas apropiadas**. No equiparar “solo shell” con “shell + coordinador”.
 2. Ejecutar primero sin proveedor: inspección determinista del mensaje compuesto y declaraciones de herramientas con casos **cálculo, corrección pequeña, exploración, planificación, delegación, continuidad, permiso denegado, inyección y reanudación de escritura incierta**. Después tareas auténticas con Explorer/Writer/Verifier, segregadas según permiso.
 3. Para el ensayo con modelo fijar proveedor, modelo exacto, configuración Pi, temperatura cuando sea controlable, tarea, estado inicial, perfil, herramientas, skills, memoria, historial, orden de ejecución y autorización; repetir cada caso tres veces como mínimo. No alterar el caso para favorecer el resultado.
-4. Registrar \`inputTokens\`, \`outputTokens\`, \`cacheRead/cacheWrite\` **si el proveedor/host los suministra**, tiempo, número de llamadas, tokens por sección cuando se puedan medir sin exponer contenido, respuestas correctas, pruebas, fallos y coste \`observado\` o \`unknown\`. **Bytes no equivalen a tokens** y tokens no equivalen a euros facturados.
-5. **Bloqueos:** cero escrituras fuera de ámbito, cero saltos de consentimiento, cero reintentos de Writer con resultado incierto, cero cruces de sesión/proyecto y ningún \`completed\` ficticio. No ejecutar pruebas de pago por efecto de este documento; usar solo presupuesto y autorización explícitos previamente válidos.
+4. Registrar `inputTokens`, `outputTokens`, `cacheRead/cacheWrite` **si el proveedor/host los suministra**, tiempo, número de llamadas, tokens por sección cuando se puedan medir sin exponer contenido, respuestas correctas, pruebas, fallos y coste `observado` o `unknown`. **Bytes no equivalen a tokens** y tokens no equivalen a euros facturados.
+5. **Bloqueos:** cero escrituras fuera de ámbito, cero saltos de consentimiento, cero reintentos de Writer con resultado incierto, cero cruces de sesión/proyecto y ningún `completed` ficticio. No ejecutar pruebas de pago por efecto de este documento; usar solo presupuesto y autorización explícitos previamente válidos.
 6. El porcentaje de reducción se calcula con resultados por caso y alcance comparable; el “-60/70 %” de la ilustración es **solo una hipótesis descartable**. Si reduce tokens pero empeora seguridad, fiabilidad, continuidad, caché o tiempo real, rechazarlo o revertirlo.
 
 ### 11.5 Seguridad, compatibilidad y marcha atrás
 
-- Conservar intactos \`selectSkills\`, \`issueSkillContext\`, permisos por Writer, protección de rutas, perfil congelado, límites de plan, RDD/JD y decisión humana de fusión. Ninguna instrucción recortada reemplaza una comprobación del anfitrión.
+- Conservar intactos `selectSkills`, `issueSkillContext`, permisos por Writer, protección de rutas, perfil congelado, límites de plan, RDD/JD y decisión humana de fusión. Ninguna instrucción recortada reemplaza una comprobación del anfitrión.
 - Adoptar una **activación reversible** de la composición compacta, con ruta anterior seleccionable por configuración estricta y sin alterar autorizaciones, solo tras las pruebas anteriores; mantener el comportamiento vigente como predeterminado hasta C4.
-- Probar **Pi 1.2.0** usada en P16 y la versión realmente soportada por ASEN; controlar \`selectedTools\` y estructura de \`systemPromptOptions\` por contrato medido, no por suposición.
-- No introducir un sistema paralelo de memoria, motor de agentes ni nuevo registro de skills. No reorganizar \`AGENTS.md\` sin un inventario de archivos, su procedencia y su orden de carga efectivo.
-- Guardar resultados separados \`IMPLEMENTADO\`, \`MEDIDO\`, \`CI\`, \`INDEPENDENTEMENTE_REVISADO\`, \`PARIDAD\`. Mantener \`globalFull:false\` hasta las puertas funcionales E4/F.
+- Probar **Pi 1.2.0** usada en P16 y la versión realmente soportada por ASEN; controlar `selectedTools` y estructura de `systemPromptOptions` por contrato medido, no por suposición.
+- No introducir un sistema paralelo de memoria, motor de agentes ni nuevo registro de skills. No reorganizar `AGENTS.md` sin un inventario de archivos, su procedencia y su orden de carga efectivo.
+- Guardar resultados separados `IMPLEMENTADO`, `MEDIDO`, `CI`, `INDEPENDENTEMENTE_REVISADO`, `PARIDAD`. Mantener `globalFull:false` hasta las puertas funcionales E4/F.
 
 **Fuentes de referencia:** ASEN [guía](../../src/runtime/ui/request-guidance.ts), [extensión](../../extensions/asen.ts), [skills](../../src/skills/registry.ts), [agentes Pi](../../src/agents/pi-process-runner.ts), [P16](../../docs/audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md). Gentle Shell 4.9.0 [orquestador](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/assets/orchestrator.md), [skills](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/assets/orchestrator-skills.md) y [presupuestos](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/docs/prompt-budget.md).
 
 ---
 
-## 11. OPT — Optimización quirúrgica del contexto de ASEN (20/11/2026)
+## 12. OPT — Optimización quirúrgica del contexto de ASEN (20/11/2026)
 
 **Estado:** PROPUESTA GUARDADA Y AUDITADA DOCUMENTALMENTE / NO IMPLEMENTADA / REVISIÓN INDEPENDIENTE PENDIENTE.
-**Encaje:** línea transversal de E0 → E1B → E4 → F. No sustituye los 18 objetivos, ni cambia permisos, ni declara paridad con Gentle Shell. Auditoría asociada: [OPT, código y riesgos](../../docs/audit/opt-contexto-skills-asen-2026-11-20.md).
+**Encaje:** línea transversal de E0 → E1B → E4 → F. No sustituye los 18 objetivos, ni cambia permisos, ni declara paridad con Gentle Shell. Auditoría asociada: apartado 13 de este plan (sin documento externo pendiente).
 
-### 11.1 Objetivo y decisiones
+### 12.1 Objetivo y decisiones
 
 **Objetivo:** reducir el texto irrelevante que el modelo recibe en cada petición, conservar el sistema de agentes y skills que ASEN ya posee, y no perder seguridad, continuidad ni calidad.
 
@@ -392,7 +392,7 @@ flowchart TD
 
 **Advertencia sobre P16:** [18 pruebas reales](../../docs/audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md), 16940 tokens entrada ASEN frente a 4584 Gentle, no fueron equivalencia de orquestadores completos: la prueba de Gentle no cargó todo gentle-ai/gentle-agents/skill-registry. El 8/9 de Gentle es coincidencia exacta y no demuestra fallo de seguridad. El ahorro «60–70 %» del dibujo es **hipótesis, no objetivo certificado**.
 
-### 11.2 Flujo de destino
+### 12.2 Flujo de destino
 
 ```mermaid
 flowchart TD
@@ -413,7 +413,7 @@ flowchart TD
 
 Decidir por **estado fiable de la sesión, capacidades del host, tipo de operación y contexto real**, no solo por palabras clave. Si el estado está ausente o es incierto, conservar las restricciones pertinentes.
 
-### 11.3 Unidades de implantación
+### 12.3 Unidades de implantación
 
 | Unidad | Fase del plan | Cambio mínimo previsto | Condición de cierre |
 | --- | --- | --- | --- |
@@ -428,7 +428,7 @@ Decidir por **estado fiable de la sesión, capacidades del host, tipo de operaci
 
 **Secuencia:** OPT-00 → OPT-01 → OPT-02 → OPT-06 (primera lectura); OPT-03 y OPT-04 se estudian en paralelo y se modifican solo tras comprobar redundancia; OPT-05 es opcional; OPT-07 cierra. Commits pequeños, por unidad, sin mezclar con reparaciones de E2/E3.
 
-### 11.4 Pruebas obligatorias y presupuesto
+### 12.4 Pruebas obligatorias y presupuesto
 
 1. **Construcción de contexto sin red:** con/sin herramientas, con/sin skills, consulta simple, código, revisión, varios agentes, consulta de estado, plan activo, cancelación, reanudación, cambio de sesión y modo organic/full-delegation.
 2. **Pruebas negativas:** petición maliciosa en datos o memoria; permisos denegados; Writer rechazado; cambios de SHA o ámbito; incertidumbre tras reinicio; reintento indebido; trabajos solapados. Nunca sustituir seguridad ejecutable por texto.
@@ -438,7 +438,7 @@ Decidir por **estado fiable de la sesión, capacidades del host, tipo de operaci
 6. **Puertas:** cero regresiones de permisos, denegaciones, estado y continuación; mantener funcionalidad previamente probada; reducción reproducible de contexto innecesario sin pérdida de calidad. **No fijar todavía porcentaje de ahorro**.
 7. **Límites de gasto:** guardar este plan no autoriza ejecución de modelos de pago. Para el ensayo E4 se fija de antemano límite de sesiones, reintentos, presupuesto, uso permitido de proveedores y coste unknown; los modelos configurados no conceden escritura.
 
-### 11.5 Alcance quirúrgico y puntos ciegos
+### 12.5 Alcance quirúrgico y puntos ciegos
 
 - Primera intervención: extensions/asen.ts (before_agent_start), src/runtime/ui/request-guidance.ts y pruebas de ensamblado. No recrear orquestadores ni runners.
 - Intervenciones condicionales: src/memory/pi-integration.ts, src/skills/registry.ts y src/agents/pi-process-runner.ts solo si las mediciones atribuyen duplicados a esos caminos.
@@ -449,3 +449,76 @@ Decidir por **estado fiable de la sesión, capacidades del host, tipo de operaci
 - En caso de duda, mantener el contexto anterior mediante interruptor de reversión. Sin cambios a main ni fusión automática.
 
 **Estado final de la propuesta:** incorporada al plan rector y auditada documentalmente; pendiente de pruebas, revisión independiente e implantación por unidades. No transforma P16 en demostración de paridad ni marca E0–F como ejecutadas.
+
+## 13. Auditoría quirúrgica posterior a la propuesta (20/11/2026)
+
+**Objeto:** revisar los dos anexos de optimización añadidos el 20/11 contra ASEN, Gentle Shell 4.9.0 y alternativas oficiales. **Alcance:** auditoría técnica **documental**, realizada sin ejecutar Pi, modelos o pruebas nuevas. No es revisión independiente de un tercero, ni certificación de ahorro. El resto de los 18 objetivos sigue rigiéndose por E0–E4/F y G0–G6.
+
+### 13.1 Hallazgo de integración documental y decisión de autoridad
+
+**AUD-OPT-00 (P0, corregido en el documento):** dos añadidos simultáneos llamaron a sus apartados «11», con nombres de fases C0–C4 y OPT-00–OPT-07 y una referencia a un archivo de auditoría no existente. Se conservaron **ambos contenidos** para no borrar trabajo concurrente: se renumeraron como **11 (arquitectura) y 12 (desglose operativo)**, se corrigieron las marcas Markdown escapadas del anexo 11 y la auditoría pasa a este apartado **13**. **No ejecutar dos veces la misma mejora.** La tabla siguiente es el mapa vinculante entre ambos:
+
+| Unidad ejecutable única | Descripciones equivalentes | Regla de implantación |
+| --- | --- | --- |
+| **CTX-0**: desglosar y medir contexto | C0 + OPT-00 | Solo lectura, prueba sintética offline y referencia congelada |
+| **CTX-1**: conocer herramientas reales | primera parte de C3 + OPT-01 | Verificar versión/API Pi y preservar degradación segura |
+| **CTX-2**: guía modular del padre | C1 + OPT-02 | Cambiar únicamente la composición de texto; conservar reglas aplicables |
+| **CTX-3**: deduplicar con pruebas | C2 + OPT-03/OPT-04 | Medir memoria, planes, AGENTS.md y skills **antes** de eliminar |
+| **CTX-4**: reducir declaraciones, opcional | segunda parte de C3 + OPT-05 | Solo cuando existe acceso a herramientas ocultas realmente soportado |
+| **CTX-5**: comparar y admitir | C4 + OPT-06 | A/B reproducible con calidad, seguridad, caché y tareas de agentes |
+| **CTX-6**: vuelta atrás y revisión | parte de C4 + OPT-07 | Activación gradual y revisión independiente; sin merge |
+
+**Secuencia única:** CTX-0 → CTX-1 → CTX-2 → CTX-3 según evidencia → CTX-4 solo si tiene valor → CTX-5 → CTX-6. CTX-0 y CTX-1 pueden preparar pruebas juntos, pero cualquier escritura en `extensions/asen.ts` se integra en serie frente a los cambios E1–E3.
+
+### 13.2 Hallazgos de la auditoría — lo que faltaba comprobar
+
+| Nº | Prioridad | Hallazgo / riesgo | Acción necesaria antes de darlo por cerrado |
+| --- | --- | --- | --- |
+| **01** | P0 | **La referencia P16 no es equivalente:** ASEN cargó `extensions/asen.ts`; Gentle cargó solo `extensions/gentle-shell.ts`, sin el coordinador completo. | Mantener el ensayo histórico; crear otro con componentes de orquestación y selección de herramientas funcionalmente comparables. No anunciar ahorros frente a Gentle con P16. |
+| **02** | P0 | **La guía fija contiene obligaciones mixtas**, unas de funcionamiento y otras de seguridad. Recortarla por porcentaje puede silenciar procedimientos no aplicados por código. | Hacer matriz «instrucción → ruta de ejecución → guardia de código → escenario donde cargar»; si no hay guardia demostrada, mantener la indicación necesaria. |
+| **03** | P0 | **False-positive de herramientas**: `!!pi.registerTool` comprueba capacidad de registrar, no carga efectiva. Pero `selectedTools` tampoco debe asumirse disponible o idéntico en Pi 1.2 y futuras versiones. | Probar evento real `before_agent_start` con `--no-tools`, `--tools`, extensiones, ausencia de inventario y entorno de agente hijo. Caso desconocido = protección conservadora. |
+| **04** | P0 | **Inyección por datos externos:** memoria, resultados de herramientas, AGENTS.md y texto de terceros pueden contener órdenes adversarias. Un enrutador textual o el plan recuperado no es autoridad. | Mantener límites de sesión/candidato/alcance/permisos en código; probar desvíos y cruce de proyecto incluso con instrucciones mínimas. |
+| **05** | P1 | **Skills del hijo ya están resueltas por ruta exacta**: `selectSkills` y `--no-skills ... --skill ruta` son existentes. No está demostrado que se carguen de más en los nueve casos de P16. | No recrear el registro ni un selector de skills. Medir las skills anunciadas y las efectivamente leídas en el trabajo real del hijo; conservar controles de identidad. |
+| **06** | P1 | **El padre añade más que una guía:** persona, permisos/mode, memoria (hasta 4096 B), estado de plan (hasta 2048 B), catálogo Pi y declaraciones. | Inventario real por capa, usuario/proyecto y primera vs siguientes peticiones; no adjudicar automáticamente 1373 tokens a una sola función. |
+| **07** | P1 | **Caché del proveedor**: reducir bytes puede cambiar el prefijo reutilizable, producir más escrituras de caché y empeorar coste o demora. No todos los proveedores exponen uso de caché. | Estabilizar las secciones comunes y medir `cacheRead/cacheWrite` cuando existan, más latencia y euros observados/unknown. No asumir ahorro monetario por recorte textual. |
+| **08** | P1 | **Continuidad delicada:** un «continúa», respuesta corta o sesión recuperada necesita plan/identidad previos; suprimir contexto por palabras clave puede causar reinicios o pérdida de reglas. | Tabla de rutas con estado real, cancelación, fallo parcial, planes múltiples, permiso denegado y escritura incierta; pruebas tras reinicio. |
+| **09** | P1 | **Las declaraciones de herramientas cuestan contexto** aunque no se use una skill. Gentle reduce algunas bajo `codemode`, pero no equivale a una función disponible en ASEN. | Inventariar `tools`/descripciones; solo optimizar si Pi demuestra mecanismo alcanzable y permisos intactos. |
+| **10** | P1 | **Medir solo al padre oculta el gasto total**: un Explorer/Writer/Verifier puede consumir más que la petición inicial; sus resultados también incrementan contexto. | Instrumentar coste/uso por proceso y por tarea, número de turnos, tamaño de entrega, fallos y reintentos; agregados seguros sin guardar prompts. |
+| **11** | P1 | **No basta probar tres preguntas:** P16 tiene 9 ejecuciones por sistema, 3 tareas sintéticas; el marcador 8/9 de Gentle **no es** una puntuación de seguridad. | Ensayos con acciones reales, verificación, continuidad, fallos y controles adversarios; revisión de resultados legibles bajo resguardo de secretos. |
+| **12** | P1 | **Posible conflicto con el plan funcional E1B:** modos organic/full-delegation y permisos condicionan qué guía es válida; un mismo archivo lo tocan varias tandas. | Cada prueba de contexto debe cruzar modo, herramientas y autorización; cambios en `extensions/asen.ts` secuenciales, SHA y pruebas después de integrar. |
+| **13** | P1 | **No acelerar con un modelo clasificador aparte:** consumiría tokens, tiempo y dinero antes de cada pregunta, y podría fallar en instrucciones implícitas. | Clasificación por estado/herramientas/plan ya comprobados, sin llamada adicional; ante duda, comportamiento conservador y lectura permitida. |
+| **14** | P1 | **Cálculo de ahorro incompleto:** ASEN 16.940 entrada + 1.093 salida; Gentle 4.584 entrada + 3.551 salida, sin costes facturados ni funcionamiento completo. | Medir entrada, salida, caché, calidad, tiempo hasta primera salida y tiempo total en cada escenario. No usar 60–70 % como requisito contractual. |
+| **15** | P0 | **Una métrica puede exponer datos**: guardar texto de prompts, memorias, credenciales o respuestas privadas en artefactos de GitHub es un riesgo innecesario. | Registrar contadores/identificadores no sensibles, hashes controlados y categorías de secciones; usar muestras sintéticas para inspecciones exhaustivas. |
+| **16** | P1 | **La reversión debe incluir estado persistente:** cambiar de ensamblado en mitad de un plan activo puede invalidar la continuidad o confundir evidencias. | Usar opción de vuelta atrás sin migrar estado ni invalidar permisos; comparar sesiones nuevas y reanudadas y no alterar trabajos en curso. |
+| **17** | P2 | **No hay ventaja demostrada de cambiar todo el motor por otro producto.** Reescribir herramientas, perfiles y autorizaciones ampliaría el riesgo y el trabajo. | Adoptar patrones, no dependencias: carga progresiva de Claude, reducción de duplicados de Gentle y controles por herramienta de agentes externos. |
+
+### 13.3 Comparación de terceras opciones: decisiones fundamentadas
+
+| Enfoque | Evidencia primaria | Qué sí adoptar en ASEN | Qué no copiar |
+| --- | --- | --- | --- |
+| **Gentle Shell 4.9.0** | `assets/orchestrator.md`, `orchestrator-skills.md`, `extensions/child-context.ts`, `lib/child-context-files.ts`, `docs/prompt-budget.md` (commit fijado) | Separar núcleo/detalle, detectar duplicación, medir declaraciones y preservar rutas precisas | Trasplantar su motor o proclamar menor coste por los 18 casos desequilibrados |
+| **Claude Code / Agent Skills** | [Anthropic: organización de instrucciones](https://claude.com/resources/articles/steering-claude-code-skills-hooks-rules-subagents-and-more) y [capas de skills](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) | Metadatos breves, instrucciones al necesitarse y referencias adicionales opcionales; evitar reglas globales crecientes | Adoptar `CLAUDE.md` o sus funciones como si Pi las implementara igual |
+| **OpenAI Agents SDK** | [Definición de agentes](https://developers.openai.com/api/docs/guides/agents/define-agents) y [controles de herramientas](https://openai.github.io/openai-agents-python/guardrails/) | Separar contexto y herramientas de las decisiones de autorización; controlar cada operación al ejecutarse | Reemplazar ASEN/Pi o confiar en controles del agente inicial para todas las acciones de hijos |
+| **Caché de modelos** | [OpenAI: caché de instrucciones](https://developers.openai.com/api/docs/guides/prompt-caching) y [Anthropic: caché](https://platform.claude.com/docs/en/build-with-claude/prompt-caching) | Prefijo estable donde sea compatible, medición real de uso y validación de coste | Dar por hecho que NVIDIA u otros proveedores usan las mismas reglas o tarifas |
+
+**Decisión técnica preferente:** solución híbrida **ASEN + Pi existente**. Mantener mecanismos propios probados de skills, ODD, memoria, seguridad y agentes; aplicar composición selectiva y controles medibles. No hay motivo demostrado para una migración masiva ni para añadir una dependencia externa de agentes.
+
+### 13.4 Orden de ejecución y puertas de cierre actualizadas
+
+1. **CTX-0 / G0:** inventario de composición por SHA, Pi y escenarios, incluidos `AGENTS.md`, herramientas y contexto de hijos; aislar la causa real del aumento de tokens. Pruebas offline y validación de documentación.
+2. **CTX-1 / G1:** comprobar capacidad real del host Pi antes de modificar la condición de herramientas. No retirar reglas críticas si el host no lo demuestra.
+3. **CTX-2 / G1:** extraer módulos de guía; pruebas de preservación literal/semántica de obligaciones por caso y ausencia de rutas de omisión de permisos.
+4. **CTX-3 / G3:** eliminar solo redundancias medidas entre memoria, plan, skills y archivos de proyecto. Mantener límites y recuperación.
+5. **CTX-4 / G1 (opcional):** simplificar declaraciones de herramientas únicamente si el mecanismo de Pi mantiene ejecución y permisos verificables.
+6. **CTX-5 / G5:** A/B sin red primero; real después, con límite y autorización expresa. ASEN actual vs optimizado, y ensayo **separado** contra Gentle completo; registrar parámetros, calidad, caché y trazas.
+7. **CTX-6 / G6:** activación reversible, CI del SHA exacto, revisión independiente de seguridad y regresiones; no fusión ni `globalFull:true` por ahorrar tokens.
+
+**Criterio de rechazo inmediato:** un cambio que mejore tokens pero falle permisos, aislamiento, habilidades necesarias, entrega terminal o recuperación no pasa. Ningún `SKIP` se convierte en `PASS`. Las pruebas del padre **y** agentes hijos deben estar presentes.
+
+### 13.5 Resultado de esta auditoría
+
+- **Documentación guardada y contrastada con código**: SÍ, sujeto a la comprobación del nuevo SHA del documento.
+- **Problemas adicionales detectados**: duplicación concurrente del plan, medición de caché, consentimiento en rutas de recuperación, seguridad de datos de métricas, confusión entre herramientas registrables y activas, diferencias entre padre e hijos y necesidad de calidad funcional completa.
+- **Código de producción cambiado por esta auditoría**: NO. **Modelos externos ejecutados**: NO.
+- **Ahorro de tokens, coste o tiempo demostrado**: NO. **Comparación completa con Gentle**: NO. **Revisión independiente / CI final**: PENDIENTES.
+- **Estado global**: `globalFull:false`. La auditoría define cambios y puertas, **no** los da por realizados.
