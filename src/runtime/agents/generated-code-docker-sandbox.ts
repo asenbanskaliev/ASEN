@@ -4,6 +4,7 @@
  * Todos los casos y sus respuestas esperadas se deciden fuera del contenedor.
  */
 import {spawnSync} from "node:child_process";
+import {isGithubHostedT08AutoSandboxRun} from "./t08-owner-auto-authorization.js";
 import {isDeepStrictEqual} from "node:util";
 import {closeSync,constants,fstatSync,lstatSync,mkdtempSync,openSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -206,7 +207,8 @@ export function runDockerBehaviorCases(input:Readonly<{
   return {verified:false,completed:0,reason:"configuracion-invalida"};
  if(process.platform!=="linux"||
     !(isGithubHostedSandboxRun()||isGithubHostedT06ManualSandboxRun()||
-      isGithubHostedT06OwnerReplayRun()||isGithubHostedT08SandboxRun()))
+      isGithubHostedT06OwnerReplayRun()||isGithubHostedT08SandboxRun()||
+      isGithubHostedT08AutoSandboxRun()))
   return {verified:false,completed:0,reason:"solo-github-actions"};
  let staging:string|undefined;
  try{

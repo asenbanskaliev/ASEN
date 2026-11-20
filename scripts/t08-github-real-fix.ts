@@ -4,6 +4,7 @@
  * Nunca modifica el worktree del repositorio original.
  */
 import {isGithubHostedT08SandboxRun} from "../src/runtime/agents/generated-code-docker-sandbox.js";
+import {autorizarT08Auto,isGithubHostedT08AutoSandboxRun} from "../src/runtime/agents/t08-owner-auto-authorization.js";
 import {blockUnisolatedGeneratedCodeTrial} from "../src/runtime/agents/generated-code-trial-admission.js";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
@@ -407,9 +408,13 @@ async function finalFix(
 ):Promise<void>{
  const source=parseFirstReview(dir,root,sha,models);
  // La aprobación para reparar NO se infiere del primer visto bueno.
- await requireLiveT08GithubApprovals("fix");
+ if(process.env.ASEN_T08_OWNER_AUTO==="1"){
+  if(!autorizarT08Auto())throw Error("T08: autorización Fix vencida");
+ }else await requireLiveT08GithubApprovals("fix");
  const plan=await saveOddPlan(root,source,dir);
- await requireLiveT08GithubApprovals("fix");
+ if(process.env.ASEN_T08_OWNER_AUTO==="1"){
+  if(!autorizarT08Auto())throw Error("T08: autorización Fix vencida");
+ }else await requireLiveT08GithubApprovals("fix");
  const outcome=await fixWorker(root,policyRoot,models,source,dir,{
   writerId:plan.workerId,session:"t08-writer-"+randomUUID()
  });
@@ -438,7 +443,8 @@ async function finalFix(
 }
 async function main():Promise<void>{
  // Evitar consumir modelos de revisión si la reparación será no verificable.
- if(!isGithubHostedT08SandboxRun())blockUnisolatedGeneratedCodeTrial("T08");
+ if(!isGithubHostedT08SandboxRun()&&!isGithubHostedT08AutoSandboxRun())
+  blockUnisolatedGeneratedCodeTrial("T08");
  const stage=process.argv[2];
  if(stage!=="review"&&stage!=="fix")throw Error("T08 requiere fase review o fix");
  const phase: T08ApprovalStage=stage;
@@ -457,7 +463,9 @@ async function main():Promise<void>{
  if(!/(?:^|\s)1\.2\.0(?:\s|$)/u.test(version))throw Error("T08 requiere Pi 1.2.0");
  const models=checkModels(),runId=process.env.GITHUB_RUN_ID??"";
  const root=t08TemporaryRoot(runId);
- await requireLiveT08GithubApprovals(phase);
+ if(process.env.ASEN_T08_OWNER_AUTO==="1"){
+  if(!autorizarT08Auto())throw Error("T08: autorización por lote no válida");
+ }else await requireLiveT08GithubApprovals(phase);
  let created=false;
  try{
   const fixture=createT08IsolatedRepository({
