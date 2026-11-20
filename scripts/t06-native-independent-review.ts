@@ -55,8 +55,8 @@ export async function runT06NativeIndependentReviews(
  }
  // El informe anterior perdía cualquier error y marcaba pid=false incluso
  // si Pi llegó a arrancar. Conservar SOLO categorías y hechos observados.
- const attempts:{processObserved:boolean;observedModel:string;failureCategory:T06ReviewerFailureCategory}[]=
-  requested.map(()=>({processObserved:false,observedModel:"unknown",failureCategory:"not-classified"}));
+ const attempts:{processObserved:boolean;observedModel:string;failureCategory:T06ReviewerFailureCategory;rejectedParameter:string;httpStatus:number|null}[]=
+  requested.map(()=>({processObserved:false,observedModel:"unknown",failureCategory:"not-classified",rejectedParameter:"unknown",httpStatus:null}));
  const results=await Promise.allSettled(requested.map(async(requestedModel,index)=>{
   const sessionId="t06-independent-"+randomUUID();
   const taskId="t06-reviewer-"+randomUUID();
@@ -67,7 +67,9 @@ export async function runT06NativeIndependentReviews(
    // Una revisión pagada tampoco se inicia con un modelo desconocido o ajeno.
    requireChildModelBeforePrompt:true,
    timeoutMs:180_000,maxOutputBytes:85_000,maxStreamBytes:512_000,
-   onProcessStart:processId=>{pid=processId;attempts[index]!.processObserved=true;}
+   onProcessStart:processId=>{pid=processId;attempts[index]!.processObserved=true;},
+   onInvalidRequest:facts=>{attempts[index]!.rejectedParameter=facts.rejectedParameter;
+    attempts[index]!.httpStatus=facts.httpStatus;}
   });
   runner.subscribeChildSelection(event=>{
    if(event.taskId!==taskId||event.sessionId!==sessionId||
@@ -129,6 +131,7 @@ export async function runT06NativeIndependentReviews(
   requestedModel:requested[i]!,observedModel:attempts[i]!.observedModel,
   piProcessObserved:attempts[i]!.processObserved,
   failureCategory:attempts[i]!.failureCategory,
+  rejectedParameter:attempts[i]!.rejectedParameter,httpStatus:attempts[i]!.httpStatus,
   verdict:"unknown",findingCount:null,
   writerAuthority:false as const,acceptance:"not-accepted" as const
  });

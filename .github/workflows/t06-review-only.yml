@@ -90,6 +90,7 @@ jobs:
           set -euo pipefail
           npm ci --ignore-scripts --no-audit --no-fund
           npm run typecheck
+          node --import tsx --test tests/pi-provider-request-diagnostic.test.ts tests/t08-judge-admission.test.ts
           node --import tsx --input-type=module -e "import {validT06ReviewerModels} from './src/runtime/agents/t06-github-reviewer-approvals.ts';if(!validT06ReviewerModels(process.env.ASEN_T06_REVIEW_MODEL_A,process.env.ASEN_T06_REVIEW_MODEL_B))process.exit(1)"
       - name: Descargar exactamente los dos Writers acreditados del run original
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v4.3.0

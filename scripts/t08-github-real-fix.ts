@@ -37,6 +37,7 @@ import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import {assessT06WriterEvidence} from "../src/runtime/agents/t06-writer-evidence.js";
 import {parseT08NativeReviewText} from "../src/runtime/agents/t08-pi-review-text.js";
 import {describeT08ReviewFailure} from "../src/runtime/agents/t08-pi-review-diagnostics.js";
+import {classifyT08JudgeAdmission} from "../src/runtime/agents/t08-judge-admission.js";
 import {createT08IsolatedRepository,removeT08IsolatedRepository,t08TemporaryRoot}
  from "../src/runtime/agents/t08-isolated-repository.js";
 
@@ -71,12 +72,14 @@ function nativeRegistry(
     throw Error("Modelo revisor no seleccionado");
    const taskId="t08-judge-"+randomUUID(),session="t08-review-"+randomUUID();
    let pid=0,observed:string|null=null,toolEvents=0,textEvents=0,observedCharacters=0;
+   let rejectedParameter="unknown",httpStatus:number|null=null;
    const runner=new PiProcessRunner({
     command:process.env.PI_EXECUTABLE??"pi",policyRoot,
     providerCredential:"NVIDIA_API_KEY",noTools:true,
     requireFinalSettlement:true,
     timeoutMs:150_000,maxOutputBytes:95_000,maxStreamBytes:512_000,
     onProcessStart:p=>{pid=p;},onToolExecution:()=>{toolEvents++;},
+    onInvalidRequest:facts=>{rejectedParameter=facts.rejectedParameter;httpStatus=facts.httpStatus;},
     onAssistantTextDelta:event=>{
      textEvents=Math.min(textEvents+1,1_000_000);
      observedCharacters=Math.min(observedCharacters+event.observedCharacters,1_000_000);
@@ -97,8 +100,15 @@ function nativeRegistry(
     id:taskId,role:"reviewer",repository:root,isolationKey:session,
     prompt,model:requested,thinking:"minimal"
    });
-   if(options?.signal?.aborted||!result.ok||!pid||observed!==requested||toolEvents)
-    throw Error("No se pudo verificar el proceso, modelo o aislamiento del juez Pi");
+   const admission=classifyT08JudgeAdmission({
+    cancelled:Boolean(options?.signal?.aborted),ok:result.ok,runnerOutput:result.output,
+    processObserved:pid>0,observedModel:observed??"unknown",
+    requestedModel:requested,toolEvents
+   });
+   if(admission!=="verified")
+    throw Error("T08 juez Pi bloqueado: "+admission+
+     "; parametroRechazado="+rejectedParameter+
+     "; estadoHTTP="+(httpStatus??"desconocido"));
    let text:string;
    try{text=parseT08NativeReviewText(result.output,{requireFinalSettlement:true});}
    catch(error){

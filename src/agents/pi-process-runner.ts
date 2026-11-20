@@ -13,6 +13,7 @@ import {authorityAssets} from "./pi-authority-assets.js";
 import {isThinking} from "../runtime/lifecycle/profiles.js";
 import {classifyAssistantError,getProcessModelFallbackCooldown,pickFallbackModel,shouldFallback,type TerminalErrorCategory} from "../runtime/lifecycle/model-fallback-policy.js";
 import {applyToolOverlay,loadToolOverlays} from "./tool-overlay.js";
+import {summarizePiInvalidRequest,type PiInvalidRequestFacts} from "../runtime/agents/pi-provider-request-diagnostic.js";
 
 export interface PiProcessOptions{
  command?:string;
@@ -48,6 +49,8 @@ export interface PiProcessOptions{
  providerCredential?:PiProviderCredential;
  onProcessStart?:(pid:number)=>void;
  onProcessClose?:(details:{code:number|null;signal:NodeJS.Signals|null;stderr:string})=>void;
+ /** Solo categoría, parámetro de lista cerrada y estado HTTP; sin datos libres. */
+ onInvalidRequest?:(facts:PiInvalidRequestFacts)=>void;
  onToolExecution?:(event:Readonly<{type:"tool_execution_start"|"tool_execution_end";pid:number;toolName?:string;toolCallId?:string;isError?:boolean}>)=>void;
  /** Optional bounded native streaming witness. Never supplies model text or
   * authority; cancellation from a listener uses the existing AbortSignal. */
@@ -525,7 +528,12 @@ export class PiProcessRunner implements AgentRunner{
      }
      if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant"&&
         (!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
-      lastAssistantFailure=classifyAssistantError((record as {message?:Parameters<typeof classifyAssistantError>[0]}).message);
+      const assistant=(record as {message?:Parameters<typeof classifyAssistantError>[0]}).message;
+      lastAssistantFailure=classifyAssistantError(assistant);
+      if(lastAssistantFailure==="invalid_request"&&this.options.onInvalidRequest){
+       const facts=summarizePiInvalidRequest(assistant);
+       if(facts)try{this.options.onInvalidRequest(facts);}catch{/* Observadores sin autoridad. */}
+      }
       if(continuationTurnPending&&continuationAcked)continuationMessageEnded=true;
      }
      // Pi 1.2 RPC wire strips cumulative message from message_update; bind
