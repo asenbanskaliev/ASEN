@@ -1,5 +1,6 @@
 name: T06 dos Writers NVIDIA aislados sin aprobaciones repetidas
 # Solo propietario + cambio de ESTE archivo + mensaje exacto; ni PR ni reintentos.
+# Consentimiento explícito para dos escrituras limitadas; pruebas sin red después.
 on:
   push:
     branches:
