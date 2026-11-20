@@ -1,7 +1,7 @@
 # ASEN — Plan rector completo de implantación del flujo de agentes
 
-**Versión:** 1.6 (matriz contrastada con el código y CI; diagnóstico permitido, implantación bloqueada por G0) · **Fecha:** 2026-11-20 · **Estado:** PLAN RECTO PARA DIAGNÓSTICO; G0 BLOQUEADO EN EL SHA DE CÓDIGO AUDITADO; fases E y F no aceptadas. Auditoría independiente de los cambios futuros pendiente.
-**Referencia ejecutable OPT:** [plan final único CTX-0–CTX-6](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md) y [auditoría crítica](../../docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md). Los apartados 11–13 quedan como antecedentes, no como ejecución duplicada.
+**Versión:** 1.6 (matriz contrastada con el código y CI; diagnóstico permitido, implantación bloqueada por G0) · **Fecha:** 2026-11-20 · **Estado:** PLAN RECTOR APTO SOLO PARA DIAGNÓSTICO; G0 BLOQUEADO EN EL SHA DE CÓDIGO AUDITADO; fases E y F no aceptadas. Auditoría independiente de los cambios futuros pendiente.
+**Referencia ejecutable OPT:** [plan final único CTX-0–CTX-6](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md), [auditoría detallada de código y CI](../../docs/audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md) y [auditoría crítica previa](../../docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md). Los apartados 11–13 quedan como antecedentes, no como ejecución duplicada.
 **Repositorio:** asenbanskaliev/ASEN · **PR:** #61, borrador · **Rama:** `feat/flujo-de-agentes-20261115`.
 **Objetivo de referencia:** Gentle Shell 4.9.0, commit `ce64a9a708e50c0ca899c8023140e63f29f293e1`. Objetivo propio: misma eficacia **observable** con controles de seguridad de ASEN y más autonomía útil.
 **Punto de partida seguro:** D, commit `dcb68a67a5801ee672523206235273ac72e7a7cc`, con CI, arquitectura, Pi y publicación correctos. Los commits posteriores no heredan ese resultado.
