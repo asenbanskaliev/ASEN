@@ -69,6 +69,29 @@ test("T06 conecta el diario privado de autoría antes de abrir el Writer",()=>{
  assert.match(authority,/!authority\.agentId\|\|!authority\.sessionId\|\|!authority\.attributionFile/u);
 });
 
+
+test("T06: los dos Writers y los revisores exigen modelo Pi antes de consumir NVIDIA",()=>{
+ const writer=load("scripts/t06-nvidia-dual-writer-native.ts");
+ const reviewer=load("scripts/t06-native-independent-review.ts");
+ const pi=load("src/agents/pi-process-runner.ts");
+ for(const [name,source] of [["Writer",writer],["revisor",reviewer]] as const){
+  assert.match(source,/requireChildModelBeforePrompt:true/u,
+   name+": falta exigir get_state antes del prompt");
+  assert.match(source,/subscribeChildSelection\(/u,
+   name+": falta observar proveedor e identificador del proceso hijo");
+  assert.match(source,/providerCredential:"NVIDIA_API_KEY"/u,
+   name+": debe aislarse la credencial del proveedor");
+ }
+ assert.match(writer,/oneShotWritePath:target/u);
+ assert.match(reviewer,/noTools:true,requireFinalSettlement:true/u);
+ assert.match(pi,/if\(!strictModelPreflight\)/u,
+  "El prompt sin selección solo se permite a ejecuciones que no exigen el control");
+ assert.match(pi,/Pi child model selection was not confirmed before prompt/u);
+ // Sin aprobación humana real no se eleva ninguna autoridad de escritura.
+ assert.match(protectedWriter,/needs: \[aprobar-a, aprobar-b\]/u);
+ assert.doesNotMatch(protectedWriter,/contents: write|pull-requests: write/u);
+});
+
 test("T09 solo lee el informe guardado y no sustituye el resultado del Writer",()=>{
  const source=load(".github/workflows/t06-github-approved-writers.yml");
  const script=load("scripts/t09-auditar-ensayo-t06.ts");

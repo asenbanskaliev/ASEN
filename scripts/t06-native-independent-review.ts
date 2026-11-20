@@ -64,6 +64,8 @@ export async function runT06NativeIndependentReviews(
   const runner=new PiProcessRunner({
    command:process.env.PI_EXECUTABLE??"pi",policyRoot,
    providerCredential:"NVIDIA_API_KEY",noTools:true,requireFinalSettlement:true,
+   // Una revisión pagada tampoco se inicia con un modelo desconocido o ajeno.
+   requireChildModelBeforePrompt:true,
    timeoutMs:180_000,maxOutputBytes:85_000,maxStreamBytes:512_000,
    onProcessStart:processId=>{pid=processId;attempts[index]!.processObserved=true;}
   });
