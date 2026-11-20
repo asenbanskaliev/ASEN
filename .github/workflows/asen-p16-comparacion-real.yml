@@ -9,6 +9,7 @@ on:
       - .github/workflows/asen-p16-comparacion-real.yml
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: p16-comparacion-real-${{ github.ref }}
   cancel-in-progress: false
@@ -19,7 +20,7 @@ jobs:
       github.event_name == 'push' &&
       github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
       github.run_attempt == 1 &&
-      github.event.head_commit.message == 'ci(asen): ejecutar comparacion P16 real autorizada'
+      github.event.head_commit.message == 'ci(asen): completar 18 sesiones P16 reales autorizadas'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
@@ -55,6 +56,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -82,11 +84,19 @@ jobs:
           (cd referencia-gentle-shell && npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund "@earendil-works/pi-coding-agent@$PI_VERSION")
           test "$PI_VERSION" = "$(node -p 'require("./referencia-gentle-shell/node_modules/@earendil-works/pi-coding-agent/package.json").version')"
           test -z "$(git status --porcelain=v1 --untracked-files=all -- . ':(exclude)referencia-gentle-shell')"
+      - name: Recuperar solo la sesión ASEN real del ensayo anterior
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
+        with:
+          run-id: 44811868817
+          name: p16-sesiones-reales-52ad42cb597234d2ce6671ec96f242e75acef1ef-44811868817
+          path: ${{ runner.temp }}/asen-p16-anterior
+          github-token: ${{ github.token }}
       - name: Consultar catálogo y ejecutar máximo 18 sesiones reales sin reintentos
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           P16_SALIDA: ${{ runner.temp }}/asen-p16-comparacion/resultado.json
+          P16_EVIDENCIA_ANTERIOR: ${{ runner.temp }}/asen-p16-anterior/resultado.json
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
