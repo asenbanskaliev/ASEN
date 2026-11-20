@@ -89,11 +89,12 @@ async function ejecutarSesion({sistema,caso,repeticion,piBin,referencia,carpeta}
   "--no-skills","--no-tools","--model",MODELO,"--thinking","off"];
  const child=spawn(process.execPath,args,{cwd:sesion,env:entornoSeguro(home,agent),
   stdio:["pipe","pipe","pipe"],detached:false});
- let buffer="",logBytes=0,assistant="",stream="",assistantError=false,
+ let buffer="",logBytes=0,assistant="",stream="",assistantError=false,modeloRespuesta=false,reintento=false,usoPi=null,
   huboInicio=false,huboFinal=false,huboHerramienta=false,terminado=false,exitCode=null,stderrBytes=0;
  const pendientes=new Map();
  let resolverFinal,rechazarFinal;
  const final=new Promise((resolve,reject)=>{resolverFinal=resolve;rechazarFinal=reject;});
+ void final.catch(()=>{}); // Una salida temprana no debe producir rechazo sin gestionar.
  const cierre=new Promise(resolve=>child.once("close",code=>{
   exitCode=code;
   for(const p of pendientes.values())p.reject(new Error("PI_CERRADO"));
@@ -129,9 +130,15 @@ async function ejecutarSesion({sistema,caso,repeticion,piBin,referencia,carpeta}
    }
    if(evento?.type==="message_end"&&evento.message?.role==="assistant"){
     assistant=soloTexto(evento.message)||stream.trim();
-    assistantError=!!evento.message?.errorMessage||evento.message?.stopReason==="error";
+    assistantError=!!evento.message?.errorMessage||evento.message?.stopReason!=="stop";
+    modeloRespuesta=evento.message?.provider==="nvidia"&&
+      (evento.message?.model===MODELO||evento.message?.model===MODELO.slice(7));
+    const uso=evento.message?.usage;
+    if(Number.isSafeInteger(uso?.input)&&Number.isSafeInteger(uso?.output)&&
+      uso.input>=0&&uso.output>=0)usoPi={entrada:uso.input,salida:uso.output};
    }
    if(evento?.type==="agent_end"){
+    reintento=evento.willRetry===true;
     huboFinal=true;
     resolverFinal();
    }
@@ -161,6 +168,8 @@ async function ejecutarSesion({sistema,caso,repeticion,piBin,referencia,carpeta}
   await final;
   assert.ok(huboInicio&&huboFinal,"No hay ciclo Pi autenticado");
   assert.equal(assistantError,false,"Respuesta de modelo con error");
+  assert.equal(modeloRespuesta,true,"El asistente no acredita el modelo NVIDIA solicitado");
+  assert.equal(reintento,false,"El proveedor intentó reintentar la operación");
   assert.equal(huboHerramienta,false,"Hubo una herramienta no autorizada");
   assert.ok(assistant.length>0&&assistant.length<=20000,"Respuesta vacía del modelo");
   assert.equal(hash(readFileSync(join(sesion,"README.md"),"utf8")),huella,
@@ -170,7 +179,7 @@ async function ejecutarSesion({sistema,caso,repeticion,piBin,referencia,carpeta}
    extensionCargada:true,modeloSeleccionado:true,finPiObservado:true,
    sinHerramientas:true,verificada:true,
    respuestaCorrecta:assistant.trim().toUpperCase()===caso.esperado,
-   respuestaSha256:hash(assistant),
+   respuestaSha256:hash(assistant),usoInformadoPorPi:usoPi,
    duracionMs:Math.round(performance.now()-inicio),bytesSalida:logBytes,
    huellaFixture:huella,fecha:saltos()
   };
@@ -243,12 +252,19 @@ export async function ejecutarComparacion(){
     }
    }
   }
- }catch{
+ }catch(error){
   informe.resultado="BLOQUEADO";
   informe.comparacionCompletada=false;
   // Un fallo no transforma ejecuciones previas en aceptación.
-  informe.bloqueo=informe.sesionesAutenticadas===0?"PREPARACION_O_PRIMERA_SESION":
-   "EJECUCION_INTERRUMPIDA";
+  const mensaje=error instanceof Error?error.message:"";
+  const categorias=[["Catálogo","CATALOGO_NVIDIA"],["Modelo autorizado","MODELO_FUERA_DE_CATALOGO"],
+   ["Extensión nativa","EXTENSION_NO_CARGADA"],["Modelo Pi","SELECCION_MODELO"],
+   ["No hay comandos","COMANDOS_NO_DISPONIBLES"],["modelo NVIDIA","RESPUESTA_MODELO_NO_ACREDITADA"],
+   ["Respuesta vacía","RESPUESTA_VACIA"],["TIEMPO_AGOTADO","TIEMPO_AGOTADO"],
+   ["PI_SALIO","PI_FINALIZO_CON_ERROR"],["Versiones Pi","VERSIONES_PI_DISTINTAS"],
+   ["ASEN alterado","ARBOL_ASEN_MODIFICADO"],["Gentle alterado","ARBOL_GENTLE_MODIFICADO"]];
+  informe.bloqueo=categorias.find(([patron])=>mensaje.includes(patron))?.[1]??
+   (informe.sesionesAutenticadas===0?"PREPARACION_O_PRIMERA_SESION":"EJECUCION_INTERRUMPIDA");
   guardar();
   console.error("P16 bloqueado; consulte artefacto de diagnóstico (sin textos privados)");
   process.exitCode=1;
