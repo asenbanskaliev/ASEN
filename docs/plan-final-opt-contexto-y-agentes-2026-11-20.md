@@ -1,6 +1,6 @@
 # ASEN — Plan final de optimización del contexto y conservación del flujo de agentes
 
-**Fecha:** 20/11/2026 · **Versión:** 1.0 de diseño · **Estado:** LISTO PARA PREPARAR PRUEBAS SIN PROVEEDOR; IMPLEMENTACIÓN PENDIENTE.
+**Fecha:** 20/11/2026 · **Versión:** 1.2 del plan consolidado y auditado · **Estado:** DIAGNÓSTICO OFFLINE PERMITIDO; G0 BLOQUEADO POR CI; IMPLANTACIÓN PENDIENTE.
 **Rama/PR:** `feat/flujo-de-agentes-20261115` / [PR #61](https://github.com/asenbanskaliev/ASEN/pull/61). **Referencia de código auditada:** `a05424fec15ba5770b45695fefd126638c88b1a7`. No representa la versión futura del producto.
 **Fuente rectora:** [plan de los 18 objetivos, E0–E4 y F](../odd/tasks/flujo-de-agentes-plan-implantacion-4.9.0.md), cuya **sección 14** remite a este plan. Los apartados 11–13 previos son antecedentes documentales, no otras tandas ejecutables.
 **Contraste:** [auditoría OPT anterior](audit/opt-contexto-skills-asen-2026-11-20.md), [auditoría crítica final](audit/plan-final-opt-investigacion-avanzada-2026-11-20.md), [P16](audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md); Gentle Shell 4.9.0 en `ce64a9a708e50c0ca899c8023140e63f29f293e1`.
@@ -260,4 +260,82 @@ Para cada escenario y proceso guardar únicamente:
 | CI y revisión independiente | **PENDIENTES** | Mismo SHA, revisión por otra persona/agente y sin hallazgos graves |
 | Reversión | **DISEÑADA, NO PROBADA** | Volver a variante anterior sin pérdida de memoria ni replantear permisos |
 
-**Veredicto para empezar:** `LISTO_PARA_EJECUTAR_CTX_0_OFFLINE`. No interpretar como `LISTO_PARA_DESPLEGAR` ni `GLOBAL_FULL`. El primer cambio de producción solo se admite tras CTX-0 y la prueba de Pi 1.2.0.
+**Veredicto actualizado por la revisión de CI:** `CTX_0_DIAGNOSTICO_OFFLINE_PERMITIDO`; `G0_BLOQUEADO`. No interpretar como `LISTO_PARA_DESPLEGAR` ni `GLOBAL_FULL`. El primer cambio de producción requiere resolver PRE-0/PRE-1 y obtener G0 en verde, además de la prueba Pi 1.2.0.
+
+---
+
+## 13. Auditoría de coherencia contra el código de los 18 objetivos (actualización vinculante)
+
+**Referencia de código y CI:** `daa250a80b58d80c48336ac017deaf8e68cc396c` (20/11/2026). **Auditoría por archivo, línea y prueba:** [auditoría detallada de 18 objetivos y CTX-0–CTX-6](audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md). La evidencia corresponde a aquel SHA y **no prueba** el CI de los commits documentales posteriores.
+
+**CAMBIO DE ESTADO PRIORITARIO:** antes de editar instrucciones o dar por admitida una megatanda, solucionar o aislar dos fallos reales: arquitectura por referencias externas no admitidas y una prueba T06 que depende de una forma textual exacta. **El plan continúa listo para diagnóstico offline, pero NO para activar las mejoras ni avanzar por G0.**
+
+### 13.1 Dos reparaciones previas obligatorias (PRE-0 y PRE-1)
+
+| Unidad | Evidencia real | Intervención mínima (por decidir con pruebas) | Puerta |
+| --- | --- | --- | --- |
+| **PRE-0 — Arquitectura y procedencia** | [Phase 0 44824200893](https://github.com/asenbanskaliev/ASEN/actions/runs/44824200893), [CI 44824200603](https://github.com/asenbanskaliev/ASEN/actions/runs/44824200603). `scripts/audit-upstream-boundary.mjs` rechaza 6 archivos con referencias externas no registradas | Auditar cada referencia. Documentos: preferir trasladar procedencia a archivos exactos previamente aprobados; si es imprescindible admitir nuevas rutas, usar **solo excepciones individuales justificadas y revisadas**. Scripts/flujos: identidad y huella de blob fija, controles de origen intactos. Nunca apagar ni generalizar el auditor | **G0**, arquitectura en verde y sin ampliar permisos |
+| **PRE-1 — Prueba T06** | `tests/t06-github-workflow-boundary.test.ts` exige `if(!githubReview)`; `scripts/t06-native-independent-review.ts` usa `if(!githubReview&&!automaticReview)` y verificaciones separadas de aprobación | Matriz de verdad de revisión automática/GitHub/replay. Crear negativos de consentimiento y no ejecución, y **solo entonces** ajustar el test rígido si ambas rutas son equivalentes. Corregir código únicamente si hay bypass reproducible | G0, test T06 en Linux/Windows, preservando aprobación real |
+
+**Regla de seguridad:** `PRE-0` no es un permiso para incorporar código de terceros, y `PRE-1` no permite convertir un test rojo en verde eliminando una comprobación de autorización. Los cambios en `scripts`, `tests` y políticas requieren su propio ámbito de edición, revisión y prueba; este documento **no ejecuta esos cambios**.
+
+**Actuación en paralelo:** PRE-0 y PRE-1 se investigan en solo lectura a la vez porque no comparten archivos; sus ediciones aprobadas se integran secuencialmente. **CTX-0 puede medir sin proveedor mientras tanto**, pero CTX-1/2 **no modifican producción** hasta superar G0.
+
+### 13.2 Única matriz de adaptación de los 18 objetivos
+
+La columna «faltante» es la **brecha mínima**, no una solicitud para reimplantar un módulo que ya existe. Cada punto conserva su puerta E0–F y su evidencia independiente.
+
+| Nº | Ya existe en ASEN | Adaptación mínima o evidencia faltante | Validación/fase |
+| --- | --- | --- | --- |
+| **01** | `odd-routing.ts` y `orchestrator.ts` deciden ruta | Trazar decisión Pi real y evitar que la guía del padre contradiga la ruta | Ruta pequeña/ambigua/riesgosa; E1B + CTX-2 |
+| **02** | `profiles.ts` y guardas de delegación | Perfil inmutable durante turno, rechazo de escritura directa en modo completo, reanudación | Pruebas de modos y SDK; E1B |
+| **03** | `explorer-budget.ts` y `pi-agent-tools.ts` | Medir ventaja del Explorer y no lanzarlo dos veces por una señal textual | Presupuesto 3/40 KiB, gasto real; E1A/E1B |
+| **04** | `executable-plan.ts` y `plan-dispatcher.ts` | Probar unidades de comportamiento y dependencia sin repartir por archivos | Dos independientes + una dependiente; E1B |
+| **05** | `parallel-parent-supervisor.ts` y `parallel-worktrees.ts` | **Verificar dos Pi Writer simultáneos**; consentimiento por lote aún exige concesión ejecutable comprobada por hijo | Dos procesos, ámbitos y permisos; E2A |
+| **06** | `route-command.ts` y controles de candidatura | Cambio de ámbito requiere nueva aprobación; nunca heredar consentimiento | Git deriva/rechazo; E2A |
+| **07** | `agent-notification-journal.ts` y `agent-terminal-delivery.ts` | Demostrar aviso asentado único con padre ocupado y reinicio | Duplicados/cancelación; E2B |
+| **08** | `task-agent-reconciler.ts` y `plan-advance-queue.ts` | Continuar trabajo independiente; **nunca** repetir Writer incierto | Caída y dependencia; E2B |
+| **09** | `model-fallback-policy.ts`, hasta 8 modelos y espera 30/2 min | Ensayo con modelo configurado, 429, credencial y coste `unknown` | Proveedor auténtico con límites; E1A/E2B |
+| **10** | `startup-orchestrator-model.ts` | Confirmar modelo **utilizado** y no cambiar sesiones reanudadas | Pi autenticado, identidad; E1A |
+| **11** | Seis riesgos en `odd-routing.ts` y evaluación en `review-assessment-policy.ts` | Trazar consumidor/guardia efectiva de `independentVerifier`; no equiparar sugerencia con verificación | Seis riesgos con negativas; E3 |
+| **12** | `ordinary-review-command.ts` y `review-acceptance.ts` | Demostrar candidato congelado, pausa/retorno, recibo y aceptación separada | Revisión integral; E3 |
+| **13** | `judgment-day.ts` y `dual-rejudgment.ts` | Diferencias entre jueces, Fix autorizado y dos rondas máximo; **prueba específica por crear** | Modelos distintos/negativas; E3 |
+| **14** | `natural-plan-tool.ts` y Clarifier en despachador | Respuesta normal, cancelación y recuperación **sin** inferir permisos | Clarifier real; E1B |
+| **15** | Controles Git/SHA/ámbito y worktrees | **PRE-0 + PRE-1 y CI rojo del SHA actual** antes de cualquier afirmación de seguridad global | Phase 0 y CI 3 SO; E0/E2/F |
+| **16** | `agent-flow-ab-comparison.ts` y métricas P16 limitadas | A/B **ASEN previo/optimizado** y comparación externa completa separada; medición hijos/caché/coste | Pares comparables; E4 + CTX-5 |
+| **17** | `flow-closure-evidence.ts`, arreglos de tipos/arrays ya presentes | Testigos realmente autenticados de 2 Writers, revisión, pruebas y aceptación; no dar por válido un recibo alegado | E2E integral; E4/F |
+| **18** | `pi-host.ts` acepta desde 1.2; `package-lock.json` fija 1.2.0 | La matriz de cierre exige **1.2.0 exacto**, 3 **sistemas operativos** × 4 modos. Versión futura requiere su propia matriz | 12 celdas sin SKIP; E0/E2/F |
+
+**Estado general de todos los puntos:** piezas de código presentes, pero **ningún cierre integral** de `LIVE_AUTHENTICATED + AB_PARITY + CI_EXACT_SHA + ACCEPTED`. P16 acredita una ejecución real limitada de lectura, no cierre 16/17.
+
+### 13.3 Adaptaciones CTX-0…6 y orden único sin solapamiento
+
+| Etapa | Condiciones que no se deben saltar | Decisión |
+| --- | --- | --- |
+| **CTX-0 · Medir** | Separar texto ensamblado, texto remitido y tokens/caché facturados. Medir padre **e hijos**; datos sintéticos sin secretos | Empezar en **solo lectura y pruebas offline**, aunque se investigue G0 |
+| **CTX-1 · Herramientas** | Verificar `systemPromptOptions.selectedTools` en Pi 1.2.0 real. Ausencia de herramientas **no** implica ausencia de plan o reglas de seguridad | Parche tras PRE/G0, con fallback conservador |
+| **CTX-2 · Modular** | Tabla **regla → guardia de código → momento de carga**; si guardia no demostrada, conservar regla esencial siempre | Parche mínimo después de CTX-1 |
+| **CTX-3 · Duplicados** | Memoria 4096 B y plan 2048 B ya limitados. Catálogo Pi no prueba lectura del cuerpo `SKILL.md` | `NO_APLICAR` si no se demuestra redundancia |
+| **CTX-4 · Herramientas ocultas** | API pública Pi y herramientas accesibles con mismos permisos | **POSPONER** por defecto |
+| **CTX-5 · A/B** | Primero ASEN antes/después, por parejas; referencia externa separada con extensiones completas. Coste desconocido = `unknown` | Solo con autorización, límites y G0–G4 |
+| **CTX-6 · Activación** | Calidad/seguridad sin regresión, revisión independiente, CI de SHA exacto, reversión sin migración | **NO ACTIVAR** mientras haya FAIL crítico |
+
+**Secuencia vinculante:** `PRE-0 + PRE-1 (investigación paralela; integración separada) → G0 → CTX-0/1 offline → CTX-1 y CTX-2 cambios seriados → CTX-3 solo si hay prueba → CTX-4 opcional → E2/E3 cerrados según sus puertas → CTX-5 → CTX-6/F`.
+
+Las fases funcionales E1A/E1B/E2A/E2B/E3 conservan el orden del rector. **No** editar `extensions/asen.ts` a la vez para E1 y CTX; si coinciden, primero resolver el control de funcionalidad y después la modificación de texto, con pruebas en cada commit.
+
+### 13.4 Pruebas adicionales obligatorias para coherencia
+
+Añadir a los 15 escenarios S01–S15 ya descritos **12 negativos N01–N12** de la [auditoría detallada](audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md#7-pruebas-negativas-adicionales-que-faltaba-distinguir). En particular: plan/cancelación sin herramientas, modo completo, lote sin consentimiento por hijo, reporte con arrays malformados, T06 combinando modos, Pi 1.5 sin matriz y reinicio con Writer incierto.
+
+**Auditoría de existencia de archivos:** `tests/context-guidance-assembly.test.ts` y la prueba específica de dos rondas **todavía no existen** y deben crearse en una unidad acotada. El resto de rutas mencionadas en la nueva auditoría se comprobó en el árbol del SHA inspeccionado. No presentar esas pruebas pendientes como verdes.
+
+### 13.5 Dictamen sustituye estados antiguos de preparación
+
+- **PRE-0:** `FALLA` en CI de arquitectura; requiere clasificación segura de excepciones.
+- **PRE-1:** `FALLA` en tests T06 Linux/Windows, por una condición textual que debe contrastarse con su semántica.
+- **G0:** `BLOQUEADO`; otras pruebas CI en `daa250a8` no están completas.
+- **CTX-0:** `PREPARABLE_DIAGNÓSTICO_OFFLINE`.
+- **CTX-1…CTX-6:** `NO IMPLEMENTADAS NI VALIDADAS` por esta actualización.
+- **18 objetivos:** `SIN PARIDAD FUNCIONAL COMPLETA`. **Revisión independiente:** pendiente. **Ahorro real:** no demostrado.
+- **Prohibiciones:** sin modelos reales por esta actualización, sin autorizaciones adicionales, sin reintento oculto, sin cambios de producción, sin fusión.
