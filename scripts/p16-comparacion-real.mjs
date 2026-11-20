@@ -200,7 +200,7 @@ export async function ejecutarComparacion(){
  assert.equal(process.env.GITHUB_REF,"refs/heads/feat/flujo-de-agentes-20261115");
  assert.equal(process.env.GITHUB_RUN_ATTEMPT,"1");
  assert.equal(process.env.P16_AUTORIZACION_18,"SI");
- assert.equal(process.env.GITHUB_HEAD_MENSAJE,"ci(asen): ejecutar comparacion P16 real autorizada");
+ assert.equal(process.env.P16_MENSAJE_COMMIT,"ci(asen): ejecutar comparacion P16 real autorizada");
  assert.ok(isSha(process.env.GITHUB_SHA));
  assert.equal(execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),process.env.GITHUB_SHA);
  assert.ok(process.env.NVIDIA_API_KEY?.length>=16,"Falta clave NVIDIA");
