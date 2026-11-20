@@ -1,6 +1,7 @@
 name: NVIDIA real ASEN sin validaciones manuales (una vez)
 # Autorización expresa del propietario. SOLO el push exacto con mensaje único
 # y modificación de este archivo activa la prueba. Nunca en PR ni en CI normal.
+# Ejecución única posterior a la prueba HTTP positiva: dos sesiones Pi sin escritura.
 on:
   push:
     branches:
