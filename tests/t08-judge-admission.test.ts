@@ -17,4 +17,13 @@ test("T08 diferencia rechazo del proveedor sin copiar errores sensibles",()=>{
  assert.equal(result,"judge-runner-pi-provider-invalid-request");
  assert.ok(!result.includes("SECRETO"));
  assert.equal(classifyT08JudgeAdmission({...base,ok:false,runnerOutput:"CLAVE_PRIVADA"}),"judge-runner-pi-unclassified");
+ assert.equal(classifyT08JudgeAdmission({...base,ok:false,
+  runnerOutput:"Pi child model selection was not confirmed before prompt"
+ }),"judge-runner-model-selection");
+ assert.equal(classifyT08JudgeAdmission({...base,ok:false,
+  runnerOutput:"pi ASEN policy extension was not loaded"
+ }),"judge-runner-policy-extension");
+ assert.equal(classifyT08JudgeAdmission({...base,ok:false,
+  runnerOutput:"pi agent_settled without a completed final assistant turn"
+ }),"judge-runner-settlement-incomplete");
 });
