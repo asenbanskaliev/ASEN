@@ -1,6 +1,6 @@
 # ASEN — Plan rector completo de implantación del flujo de agentes
 
-**Versión:** 1.4 (plan final consolidado, pendiente de validación) · **Fecha:** 2026-11-20 · **Estado:** PLAN AUDITADO CONTRA CÓDIGO Y COMPLETADO PARA IMPLANTACIÓN; fases E y F aún no ejecutadas. Auditoría independiente de los cambios futuros pendiente.
+**Versión:** 1.5 (plan listo para iniciar CTX-0, pendiente de implantación y validación) · **Fecha:** 2026-11-20 · **Estado:** PLAN AUDITADO CONTRA CÓDIGO Y COMPLETADO PARA IMPLANTACIÓN; fases E y F aún no ejecutadas. Auditoría independiente de los cambios futuros pendiente.
 **Referencia ejecutable OPT:** [plan final único CTX-0–CTX-6](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md) y [auditoría crítica](../../docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md). Los apartados 11–13 quedan como antecedentes, no como ejecución duplicada.
 **Repositorio:** asenbanskaliev/ASEN · **PR:** #61, borrador · **Rama:** `feat/flujo-de-agentes-20261115`.
 **Objetivo de referencia:** Gentle Shell 4.9.0, commit `ce64a9a708e50c0ca899c8023140e63f29f293e1`. Objetivo propio: misma eficacia **observable** con controles de seguridad de ASEN y más autonomía útil.
@@ -566,3 +566,16 @@ Decidir por **estado fiable de la sesión, capacidades del host, tipo de operaci
 La matriz completa y las pruebas por objetivo están en [el plan final](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#6-conservación-de-los-18-objetivos-y-puertas-g0g6). Se comprueban: **01–04** decisiones y ODD, **05–08** paralelismo/entrega/continuidad, **09–10** modelos, **11–14** verificaciones/revisión/Clarifier, **15** seguridad Git, **16–17** comparación auténtica, **18** capacidades reales de Pi. Las fases E0–E4 y F no se declaran cerradas por documentar CTX.
 
 **Estado tras investigación y auditoría:** documentos preparados para CTX-0 en modo sin red, código de producción sin cambios por esta línea, sin llamadas pagadas y sin merge a `main`. **Ahorro demostrado: NO. Paridad completa: NO. CI exacto de los nuevos commits: NO COMPROBADO. globalFull:false.**
+
+### 14.4 Preparación de implantación quirúrgica — auditoría aplicada
+
+**Plan listo para iniciar pruebas, no despliegue:**
+- [Tarjetas exactas y megatandas A–D](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#9-ejecución-quirúrgica-preparada-aplicación-de-la-auditoría).
+- [Comandos de pruebas sin proveedor y 15 escenarios](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#10-pruebas-listas-para-ejecutar-y-registro-de-evidencia).
+- [Auditoría de cobertura IA-01…IA-18 y riesgos sin cerrar](../../docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md#7-auditoría-de-preparación-quirúrgica-aplicada-al-plan-20112026).
+
+**Primera tanda única:** CTX-0 + pruebas negativas de CTX-1 **sin proveedor**. Si Pi 1.2.0 no confirma `selectedTools`, no aplicar el parche de herramientas: registrar `CAPABILITY_BLOCKED` y mantener la guía anterior. La prueba nueva propuesta `tests/context-guidance-assembly.test.ts` aún **no existe**; se creará solo al iniciar CTX-0.
+
+**Tandas siguientes, siempre condicionadas:** B = CTX-1/2 secuenciales; C = CTX-3 únicamente con duplicados probados y CTX-4 pospuesto por defecto; D = CTX-5/6 con autorización de presupuesto, A/B comparable, revisión independiente, CI exacto y reversión. Si una etapa no aporta mejora neta o falla seguridad, `NO_APLICAR` o bloqueo, sin reescribir el motor.
+
+**Estado comprobado al preparar estos documentos:** plan final y auditoría guardados en PR #61; sin cambios de producción; sin proveedores reales; sin pruebas de implementación y sin CI de aceptación demostrado. **No** declarar `globalFull:true` ni fusionar.
