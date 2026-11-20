@@ -20,6 +20,8 @@ jobs:
       github.actor == 'asenbanskaliev' &&
       github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
       github.run_attempt == 1 &&
+      github.run_id == 44792916571 &&
+      github.sha == '5bd752374f2db630a9d2ab0887e1025134a4e13f' &&
       github.event.head_commit.message == 'ci(asen): probar dos Writers T06 NVIDIA una vez'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -86,6 +88,7 @@ jobs:
           test -n "$NVIDIA_API_KEY"
           test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
           mkdir -p "$PI_CODING_AGENT_DIR" "$ASEN_T06_WRITER_REPORT_DIR"
+          node scripts/t12-pi-retry-settings.mjs
           timeout 420s node --import tsx scripts/t06-nvidia-dual-writer-native.ts
       - name: Guardar dos archivos Pi y huellas acotadas
         if: always()

@@ -13,6 +13,8 @@ export function autorizarNvidiaUnaVez(e=process.env){
   e.GITHUB_ACTOR==="asenbanskaliev"&&
   e.GITHUB_REF==="refs/heads/feat/flujo-de-agentes-20261115"&&
   e.GITHUB_RUN_ATTEMPT==="1"&&
+  e.GITHUB_RUN_ID==="44790981792"&&
+  e.GITHUB_SHA==="08c484560fac6e0d599e3872e366993c1e07cba0"&&
   /^[1-9][0-9]{0,16}$/u.test(e.GITHUB_RUN_ID??"")&&
   SHA.test(e.GITHUB_SHA??"")&&
   e.GITHUB_SHA===e.ASEN_NVIDIA_EXPECTED_SHA&&

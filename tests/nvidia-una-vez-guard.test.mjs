@@ -7,8 +7,8 @@ const valid=()=>({
  GITHUB_ACTIONS:"true",GITHUB_REPOSITORY:"asenbanskaliev/ASEN",
  GITHUB_EVENT_NAME:"push",GITHUB_ACTOR:"asenbanskaliev",
  GITHUB_REF:"refs/heads/feat/flujo-de-agentes-20261115",
- GITHUB_RUN_ATTEMPT:"1",GITHUB_RUN_ID:"123456789",
- GITHUB_SHA:"a".repeat(40),ASEN_NVIDIA_EXPECTED_SHA:"a".repeat(40),
+ GITHUB_RUN_ATTEMPT:"1",GITHUB_RUN_ID:"44790981792",
+ GITHUB_SHA:"08c484560fac6e0d599e3872e366993c1e07cba0",ASEN_NVIDIA_EXPECTED_SHA:"08c484560fac6e0d599e3872e366993c1e07cba0",
  ASEN_NVIDIA_COST_ACK:"1",
  ASEN_NVIDIA_HEAD_COMMIT_MESSAGE:MENSAJE_NVIDIA_UNICO
 });
@@ -44,4 +44,10 @@ test("El flujo aislado no requiere aprobación de entornos y no concede escritur
  assert.doesNotMatch(flow,/^\s+environment:/mu);
  assert.doesNotMatch(flow,/^\s+workflow_dispatch:|^\s+pull_request:|^\s+schedule:/mu);
  assert.doesNotMatch(flow,/contents: write|pull-requests: write|git push|git merge|rerun/iu);
+});
+
+test("Una autorización usada no puede arrancar otra ejecución NVIDIA",()=>{
+ assert.equal(autorizarNvidiaUnaVez({...valid(),GITHUB_RUN_ID:"999999999"}),false);
+ assert.equal(autorizarNvidiaUnaVez({...valid(),GITHUB_SHA:"b".repeat(40),
+  ASEN_NVIDIA_EXPECTED_SHA:"b".repeat(40)}),false);
 });

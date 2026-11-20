@@ -21,6 +21,8 @@ jobs:
       github.actor == 'asenbanskaliev' &&
       github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
       github.run_attempt == 1 &&
+      github.run_id == 44790981792 &&
+      github.sha == '08c484560fac6e0d599e3872e366993c1e07cba0' &&
       github.event.head_commit.message == 'ci(asen): ejecutar prueba única NVIDIA autorizada'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -132,6 +134,7 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1
           node scripts/autorizar-nvidia-una-vez.mjs
           mkdir -p "$PI_CODING_AGENT_DIR" "$(dirname "$ASEN_NVIDIA_PI_REPORT")"
+          node scripts/t12-pi-retry-settings.mjs
           timeout 280s node --import tsx scripts/t06-nvidia-pi-concurrent.ts
       - name: Guardar las identidades y resultados Pi sin exponer textos privados
         if: always()

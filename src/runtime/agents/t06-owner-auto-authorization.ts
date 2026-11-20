@@ -12,6 +12,8 @@ export function autorizaT06EscrituraAislada(e:NodeJS.ProcessEnv):boolean{
   e.GITHUB_EVENT_NAME==="push"&&
   e.GITHUB_REF==="refs/heads/feat/flujo-de-agentes-20261115"&&
   e.GITHUB_RUN_ATTEMPT==="1"&&
+  e.GITHUB_RUN_ID==="44792916571"&&
+  e.GITHUB_SHA==="5bd752374f2db630a9d2ab0887e1025134a4e13f"&&
   /^[1-9][0-9]{0,16}$/u.test(e.GITHUB_RUN_ID??"")&&
   SHA.test(e.GITHUB_SHA??"")&&
   e.GITHUB_SHA===e.ASEN_T06_EXPECTED_SHA&&
