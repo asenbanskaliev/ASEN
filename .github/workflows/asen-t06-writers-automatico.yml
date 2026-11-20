@@ -1,0 +1,144 @@
+name: T06 dos Writers NVIDIA aislados sin aprobaciones repetidas
+# Solo propietario + cambio de ESTE archivo + mensaje exacto; ni PR ni reintentos.
+on:
+  push:
+    branches:
+      - feat/flujo-de-agentes-20261115
+    paths:
+      - .github/workflows/asen-t06-writers-automatico.yml
+permissions:
+  contents: read
+concurrency:
+  group: asen-t06-writers-auto-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  preparar:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.actor == 'asenbanskaliev' &&
+      github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci(asen): probar dos Writers T06 NVIDIA una vez'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ASEN_T06_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_T06_AUTO_OWNER: "1"
+      ASEN_T06_STATIC_WRITE_ONLY: "1"
+      ASEN_T06_COST_ACK: "true"
+      ASEN_T06_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Comprobar permiso, árbol exacto, tipos y pruebas
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node --import tsx --input-type=module -e "import {autorizaT06EscrituraAislada} from './src/runtime/agents/t06-owner-auto-authorization.ts'; if(!autorizaT06EscrituraAislada(process.env))process.exit(1)"
+          node --import tsx --test tests/t06-owner-auto-authorization.test.ts tests/t06-github-workflow-boundary.test.ts tests/t06-behavior-handoff.test.ts
+          test -z "$(git status --porcelain=v1)"
+  escribir:
+    needs: [preparar]
+    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'push' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 11
+    env:
+      ASEN_T06_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_T06_AUTO_OWNER: "1"
+      ASEN_T06_STATIC_WRITE_ONLY: "1"
+      ASEN_T06_COST_ACK: "true"
+      ASEN_T06_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Preparar Pi 1.2 con dos Writers sin ejecutar scripts de instalación
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
+          test "$(pi --version | tr -d '\r')" = "1.2.0"
+      - name: Dos Writers reales NVIDIA con ámbito exacto y un intento
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_T06_WRITER_REPORT_DIR: ${{ runner.temp }}/asen-t06-auto-writers
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-auto-config
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test -n "$NVIDIA_API_KEY"
+          test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
+          mkdir -p "$PI_CODING_AGENT_DIR" "$ASEN_T06_WRITER_REPORT_DIR"
+          timeout 420s node --import tsx scripts/t06-nvidia-dual-writer-native.ts
+      - name: Guardar dos archivos Pi y huellas acotadas
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-t06-writers-auto-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t06-auto-writers/
+          if-no-files-found: warn
+          retention-days: 14
+  probar-codigo-aislado:
+    needs: [escribir]
+    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'push' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_DOCKER_TESTS_CI: "1"
+      ASEN_T06_ISOLATED_REPLAY: "1"
+      ASEN_DOCKER_NODE_IMAGE: "node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Recuperar archivos SOLO de este run y SHA
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
+        with:
+          name: asen-t06-writers-auto-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t06-auto-descarga
+      - name: Probar los 17 casos del código Pi sin red y sin NVIDIA
+        shell: bash
+        env:
+          ASEN_T06_ISOLATED_DIR: ${{ runner.temp }}/asen-t06-auto-descarga
+          ASEN_T06_SANDBOX_REPORT_DIR: ${{ runner.temp }}/asen-t06-auto-verificacion
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test -z "$(printenv NVIDIA_API_KEY || true)"
+          npm ci --ignore-scripts --no-audit --no-fund
+          node --import tsx --test tests/t06-behavior-handoff.test.ts
+          docker pull "$ASEN_DOCKER_NODE_IMAGE"
+          docker image inspect "$ASEN_DOCKER_NODE_IMAGE" >/dev/null
+          node --import tsx scripts/t06-verificar-codigo-aislado-github.ts
+      - name: Guardar resultado aislado sin atribuir aceptación FULL
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-t06-verificado-auto-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t06-auto-verificacion/t06-veredicto-aislado.json
+          if-no-files-found: warn
+          retention-days: 14
