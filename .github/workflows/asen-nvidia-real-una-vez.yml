@@ -62,7 +62,6 @@ jobs:
       ASEN_NVIDIA_EXPECTED_SHA: ${{ github.sha }}
       ASEN_NVIDIA_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       ASEN_NVIDIA_COST_ACK: "1"
-      ASEN_NVIDIA_PROBE_REPORT: ${{ runner.temp }}/asen-nvidia-real/resultado-api.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -75,6 +74,7 @@ jobs:
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_NVIDIA_PROBE_REPORT: ${{ runner.temp }}/asen-nvidia-real/resultado-api.json
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$ASEN_NVIDIA_EXPECTED_SHA"
@@ -101,8 +101,6 @@ jobs:
       ASEN_NVIDIA_EXPECTED_SHA: ${{ github.sha }}
       ASEN_NVIDIA_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
       ASEN_NVIDIA_COST_ACK: "1"
-      ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-nvidia-real/resultado-pi.json
-      PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-nvidia-real/pi-config
       ASEN_T06_MODEL: nvidia/nemotron-3.5-lightning-30b-a3b
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -125,6 +123,8 @@ jobs:
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-nvidia-real/resultado-pi.json
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-nvidia-real/pi-config
         run: |
           set -euo pipefail
           test -n "$NVIDIA_API_KEY"
