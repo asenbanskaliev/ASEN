@@ -48,3 +48,24 @@ test("matrix admission rejects forced exit, model calls and missing host invento
  for(const patch of [{mode:"unknown"},{commands:[]},{tools:[]},{tools:["asen_ask_choice"]},{modelCalls:1},{shutdownObserved:false},{exitCode:1},{signal:"SIGTERM"},{timedOut:true},{keyboardCommandObserved:false}])
   assert.throws(()=>validateCellObservation(cell,{...valid,...patch}));
 });
+
+test("Pi 1.5.2 se añade solo bajo petición y no reemplaza la línea base",()=>{
+ const metadata={
+  peerDependencies:{"@earendil-works/pi-coding-agent":">=1.2.0"},
+  devDependencies:{"@earendil-works/pi-coding-agent":"^1.2.0"}
+ };
+ const normal=planPiSupportMatrix(metadata);
+ const extended=planPiSupportMatrix(metadata,["1.5.2"]);
+ assert.equal(normal.length,12);
+ assert.equal(extended.length,24);
+ assert.equal(extended.filter((cell:{version:string})=>cell.version==="1.5.2").length,12);
+ assert.equal(new Set(extended.map((cell:{id:string})=>cell.id)).size,24);
+});
+test("La prueba de Pi adicional rechaza versiones ambiguas o inferiores",()=>{
+ const metadata={
+  peerDependencies:{"@earendil-works/pi-coding-agent":">=1.2.0"},
+  devDependencies:{"@earendil-works/pi-coding-agent":"^1.2.0"}
+ };
+ for(const invalid of [["1.1.0"],["latest"],["1.5.x"],["1.5.2","1.5.3","1.5.4"]])
+  assert.throws(()=>planPiSupportMatrix(metadata,invalid),/Supplemental Pi version/u);
+});
