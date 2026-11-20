@@ -1,7 +1,7 @@
 name: T06 dos revisores NVIDIA reales sin aprobaciones de entorno
 # Única autorización por cambio exacto del propietario; nunca en PR.
 # Segunda prueba: modelos verificados con GET oficial al catálogo NVIDIA.
-# Tercera prueba: con Pi 1.5.2, sin razonamiento y sin reintentos.
+# Cuarta prueba: compatibilidad de modelos fijados, sin razón ni reintentos.
 # Ajuste de compatibilidad: Pi 1.5.2 y razonamiento desactivado en ambos jueces.
 on:
   push:
@@ -51,7 +51,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
           npm ci --ignore-scripts --no-audit --no-fund
           npm run typecheck
-          node --import tsx --test tests/t06-auto-review-authority.test.ts tests/t06-independent-review-admission.test.ts tests/t06-native-review-receipt.test.ts
+          node --import tsx --test tests/t06-auto-review-authority.test.ts tests/t06-independent-review-admission.test.ts tests/t06-native-review-receipt.test.ts tests/t06-aislamiento-modelos-nvidia.test.mjs
           node --import tsx --input-type=module -e "import {autorizarT06RevisionAutomatica} from './src/runtime/agents/t06-auto-review-authority.ts';if(!autorizarT06RevisionAutomatica(process.env))process.exit(1)"
           test -z "$(git status --porcelain=v1)"
   revisar:
