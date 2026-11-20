@@ -1,4 +1,5 @@
 name: Consultar catálogo NVIDIA para revisar T06
+# Se consultan identificadores públicos; cero llamadas de inferencia.
 on:
   push:
     branches:
