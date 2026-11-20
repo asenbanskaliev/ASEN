@@ -76,3 +76,14 @@ test("T06 no disimula dos dictámenes exitosos ni errores finales",()=>{
  }
  assert.equal(parseT06NativeReviewReceipt(failed+"\n"+success,sha).verdict,"pass");
 });
+
+test("T06 rechaza lista en lugar de un dictamen o gravedad de texto",()=>{
+ for(const output of [
+  {...good,verdict:["pass"]},
+  {...good,verdict:["fail"],findings:[{path:"t06-writer-a.mjs",severity:"high",description:"Error"}]},
+  {...good,verdict:"pass",findings:[{path:"t06-writer-a.mjs",severity:["high"],description:"Error"}]},
+  {...good,verdict:"fail",findings:[{path:"t06-writer-a.mjs",severity:["low"],description:"Error"}]}
+ ]){
+  assert.throws(()=>parseT06NativeReviewReceipt(stream(output),sha),/T06 independent/u);
+ }
+});

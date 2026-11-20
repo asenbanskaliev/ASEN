@@ -63,7 +63,8 @@ export function parseT06NativeReviewReceipt(
  catch{throw new Error("T06 independent reviewer did not return strict JSON");}
  if(!payload||typeof payload!=="object"||Array.isArray(payload)||
   Object.keys(payload).sort().join(",")!=="findings,reviewedFiles,summary,verdict"||
-  !("verdict" in payload)||!["pass","fail"].includes(String(payload.verdict))||
+  !("verdict" in payload)||typeof payload.verdict!=="string"||
+  !["pass","fail"].includes(payload.verdict)||
   !("summary" in payload)||!safeText(payload.summary,1000)||
   !("reviewedFiles" in payload)||!Array.isArray(payload.reviewedFiles)||
   payload.reviewedFiles.length!==2||
@@ -85,7 +86,8 @@ export function parseT06NativeReviewReceipt(
    Object.keys(finding).sort().join(",")!=="description,path,severity"||
    !("description" in finding)||!safeText(finding.description,500)||
    !("path" in finding)||!expectedPaths.includes(finding.path as never)||
-   !("severity" in finding)||!["critical","high","medium","low"].includes(String(finding.severity)))
+   !("severity" in finding)||typeof finding.severity!=="string"||
+   !["critical","high","medium","low"].includes(finding.severity))
    throw new Error("T06 independent reviewer returned invalid finding");
  }
  if(payload.verdict==="pass"&&payload.findings.some(row=>["critical","high"].includes(String(row.severity)))||
