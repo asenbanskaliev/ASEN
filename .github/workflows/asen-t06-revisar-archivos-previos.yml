@@ -1,5 +1,6 @@
 name: T06 verificar Writers previos sin volver a gastar NVIDIA
 # Repite SOLO 17 pruebas sin red; no ejecuta escritores ni proveedores.
+# Nueva comprobación: un archivo ausente se clasifica según el contexto autorizado.
 # Consentimiento del propietario para verificar el código existente una vez.
 on:
   push:

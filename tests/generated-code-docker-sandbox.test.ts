@@ -5,6 +5,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {
  dockerBehaviorArguments,isGithubHostedSandboxRun,isGithubHostedT06OwnerReplayRun,
+ isGithubHostedT06ManualSandboxRun,isGithubHostedT08SandboxRun,
  runDockerBehaviorCases,verifyExternalBehaviorCases,
  type ContainerObservation,type TrustedBehaviorCase
 } from "../src/runtime/agents/generated-code-docker-sandbox.js";
@@ -97,9 +98,13 @@ test("no ejecuta contenido sin imagen fijada, casos completos o archivo real",t=
  }
  // El test local prueba exclusivamente que no se puede ejecutar Docker.
  // La prueba de archivo ausente se hace en el trabajo aislado GitHub.
- if(process.platform!=="linux"||!isGithubHostedSandboxRun())
-  assert.deepEqual(runDockerBehaviorCases({root,target:"inexistente.mjs",fn:"sumEvenNumbers",image:digest,cases}),
-   {verified:false,completed:0,reason:"solo-github-actions"});
+ const outcome=runDockerBehaviorCases({root,target:"inexistente.mjs",
+  fn:"sumEvenNumbers",image:digest,cases});
+ const authorized=process.platform==="linux"&&
+  (isGithubHostedSandboxRun()||isGithubHostedT06ManualSandboxRun()||
+   isGithubHostedT06OwnerReplayRun()||isGithubHostedT08SandboxRun());
+ assert.deepEqual(outcome,{verified:false,completed:0,
+  reason:authorized?"origen-ausente":"solo-github-actions"});
 });
 
 test("Docker solo se habilita en GitHub Actions de la PR y rama autorizadas",()=>{
