@@ -16,7 +16,6 @@ jobs:
     timeout-minutes: 8
     env:
       ASEN_P16_SHA: ${{ github.sha }}
-      ASEN_P16_REPORT_DIR: ${{ runner.temp }}/asen-p16-evidencia
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -38,6 +37,8 @@ jobs:
           node --test tests/p16-comprobar-referencia.test.mjs
       - name: Registrar fuentes y límites sin hacer llamadas NVIDIA
         shell: bash
+        env:
+          ASEN_P16_REPORT_DIR: ${{ runner.temp }}/asen-p16-evidencia
         run: |
           set -euo pipefail
           node scripts/p16-comprobar-referencia.mjs
