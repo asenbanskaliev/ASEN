@@ -5,6 +5,12 @@ export const ASEN_REQUEST_GUIDANCE=`Handle requests in the user's ordinary langu
 
 For a code or repository task, infer the ODD facts internally from the request and bounded read-only inspection of the active project. Prefer a CodeGraph query first for structural read-only research; if the query is unavailable, not initialized or failed, use read/grep/find within the 3-query/40-KiB budget. Never run CodeGraph init or sync without separate human consent, never treat cancellation as consent, and record observed tool status before suggesting an Explorer. Preserve the user's instruction exactly. Derive likely files, change kinds, testing and review needs yourself; use unknown scope only when inspection cannot establish it. Ask one concise natural-language message only for material product, safety, or scope decisions that cannot be inferred. Group related unresolved decisions into that same message so the user does not answer a series of avoidable follow-up questions; do not ask about facts the project can reveal.
 
+Decide la ruta antes de delegar. Una tarea pequeña tiene el objetivo, la ubicación y las decisiones claros, un riesgo acotado y puede retomarse con la petición original y el diff de Git. Resuélvela directamente aunque afecte a varios archivos. Una tarea grande puede necesitar seguimiento ODD, pero no automáticamente un Writer. Delega Writers solo para unidades suficientemente grandes e independientes, una ruta ODD de doble revisión expresamente autorizada o un límite real de contexto del host. Incluye código, pruebas y documentación de cada comportamiento en la misma unidad. Mantén los controles existentes para riesgos altos y decisiones pendientes.
+
+Investiga directamente hasta tres consultas de lectura o 40 KiB acumulados. Si aún falta información relevante, utiliza un único Explorer de solo lectura y pide un resumen breve con archivos y líneas. No lances agentes duplicados ni concedas escritura por un simple aviso de presupuesto. El modelo de pago configurado en el perfil puede utilizarse sin que eso amplíe permisos. La lectura previa a un cambio ya entendido permanece en la sesión principal.
+
+Si se rechaza un Writer por falta de motivo válido, no repitas el mismo lanzamiento. Continúa directamente solo si el objetivo está claro y la sesión principal ya tiene autorización. Si el usuario exige agentes separados, pregunta y detente. Si cambia el candidato, se deniega el Writer, hay conflictos de ámbito o la escritura quedó incierta, conserva el bloqueo y aplica la recuperación controlada, nunca un atajo.
+
 Use ${ASEN_PLAN_REQUEST_TOOL} for a bounded plan when the request needs delegation, several dependent steps, or explicit ASEN task tracking. ASEN may automatically dispatch dependency-ready read-only tasks and continue the plan after each successful task. Genuinely dependent work retains the existing bounded plan dependency DAG. A writer still requires exact one-run Pi approval. For a small, clear request, keep the work inline in the primary Pi session and within the user's stated scope. Do not decompose or delegate merely because of task count, file count, or step count. Never treat a plan, route, inferred fact, or tool result as permission to perform unrelated, destructive, external, credential, or security-boundary operations.
 
 For explicitly named, non-overlapping read-only branches, keep the exact original request in each explicitly scoped instruction, create separate Todos, and launch each with Todo-bound asen_agent_start. Those agents may run concurrently within ASEN's bounded dispatcher capacity. Never infer branch independence or scope: if the work overlaps or one branch depends on another, use the bounded plan dependency DAG instead. Never use this independent-branch path for writers or infer write authority from it.
@@ -17,7 +23,13 @@ When the user explicitly says to stop, cancel, or replace work, inspect the curr
 
 Explain the result briefly in normal language: what will happen, any unresolved decision, and what needs approval. Do not expose internal task IDs or require the user to copy them between commands.`;
 
-export function addAsenRequestGuidance(options:{sections?:Record<string,string>},toolAvailable:boolean):void{
- if(!toolAvailable||!options.sections)return;
+export const ASEN_EXPLORATION_BUDGET_SECTION="asen_exploration_budget";
+export const ASEN_EXPLORATION_BUDGET_GUIDANCE="ASEN ha observado más de tres consultas de lectura o 40 KiB de salida en esta sesión y proyecto de Pi. Es una orientación, no una autorización de Writer, una aprobación del plan ni una prueba de que haga falta otro agente. Si todavía hace falta investigar y el perfil activo tiene un modelo Explorer configurado, llama una sola vez a asen_agent_start con budgetExplorer=true, un prompt breve, rutas y líneas; la herramienta comprobará sesión, presupuesto y modelo exacto del perfil, sin conceder escritura. Si no puede comprobarlo, informa y continúa de forma limitada. No dupliques trabajos, no repitas una tarea fallida ni deduzcas permisos de escritura por usar modelos de pago. Si ya existe información suficiente, continúa dentro del ámbito autorizado sin lanzar Explorer.";
+
+export function addAsenRequestGuidance(options:{sections?:Record<string,string>},toolAvailable:boolean,explorationOverBudget=false):void{
+ if(!options.sections)return;
+ delete options.sections[ASEN_EXPLORATION_BUDGET_SECTION];
+ if(!toolAvailable)return;
  options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=ASEN_REQUEST_GUIDANCE;
+ if(explorationOverBudget)options.sections[ASEN_EXPLORATION_BUDGET_SECTION]=ASEN_EXPLORATION_BUDGET_GUIDANCE;
 }

@@ -3,6 +3,7 @@ import test,{type TestContext} from "node:test";
 import {mkdtemp,readFile,realpath,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
+import {setTimeout as pause} from "node:timers/promises";
 import {createAsenExtension} from "../extensions/asen.js";
 import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
 import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile} from "../src/runtime/lifecycle/profiles.js";
@@ -37,7 +38,20 @@ async function selectionFixture(t:TestContext){
   return request;
  };
  const plan=(facts:unknown,ctx:ReturnType<typeof context>)=>commands.get("asen-plan").handler(JSON.stringify(facts),ctx);
- return {file,data,requests,context,start,command,dispatch,plan};
+ // Las exploraciones idénticas activas se reutilizan por seguridad. Para probar
+ // dos capturas sucesivas, esperar el estado terminal real de la primera.
+ const awaitTerminal=async(id:string,ctx:ReturnType<typeof context>)=>{
+  for(let attempt=0;attempt<300;attempt++){
+   const status=await tools.get("asen_agent_status").execute(
+    "selection-terminal",{id},new AbortController().signal,()=>{},ctx
+   );
+   const state=status.details.task?.record?.state;
+   if(state==="completed"||state==="failed"||state==="cancelled")return state;
+   await pause(20);
+  }
+  throw new Error("La exploración de prueba no alcanzó un estado terminal");
+ };
+ return {file,data,requests,context,start,command,dispatch,plan,awaitTerminal};
 }
 
 test("profile command selects a copied session route without changing global data",async t=>{
@@ -51,7 +65,12 @@ test("profile command selects a copied session route without changing global dat
  assert.deepEqual(planned.execution,{started:false,authorized:false});assert.equal(planned.persistence.status,"unavailable");assert.equal(f.requests.length,0);
  const first=await f.dispatch(a);assert.equal(first.model,"profile/selected");assert.equal(first.thinking,"low");
  const edited:RuntimeProfilesFile=structuredClone(f.data);edited.profiles[1]!.routes.explorer!.model="changed-definition";await writeProfilesFile(f.file,edited);
- assert.equal((await f.dispatch(a)).model,"profile/selected","a selected profile must be copied, not re-read");assert.equal(f.requests.length,2);
+ const state=await f.awaitTerminal(first.id,a);
+ assert.equal(state,"completed","La primera tarea debe terminar antes de exigir una segunda ejecución");
+ const second=await f.dispatch(a);
+ assert.notEqual(second.id,first.id,"Una ejecución terminada no puede reutilizarse como activa");
+ assert.equal(second.model,"profile/selected","a selected profile must be copied, not re-read");
+ assert.equal(f.requests.length,2);
 });
 
 test("profile command inherit reveals the original snapshot and preserves the name default",async t=>{

@@ -1,6 +1,7 @@
 name: CI
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches: [main]
 permissions:
@@ -9,6 +10,105 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  agentes-t02-t05-t06:
+    name: Megatanda T02–T10 y T11 (pruebas integradas sin modelos)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Comprobar SHA exacto
+        run: node -e "const {execFileSync}=require('node:child_process');if(execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.ASEN_EXPECTED_SHA)process.exit(1)"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - run: npm ci --no-audit --no-fund
+      - name: Compilar contratos y tipos
+        run: |
+          npm run typecheck
+          npx --no-install tsc -p tsconfig.t08.json
+      - name: Pruebas específicas de la Megatanda B sin modelos externos
+        run: |
+          node --import tsx --test \
+            tests/megatanda-b-continuation.test.ts \
+            tests/megatanda-b-terminal-pi.test.ts \
+            tests/megatanda-b-parallel-runtime.test.ts
+      - name: Pruebas quirúrgicas de la Megatanda C sin llamadas externas
+        run: |
+          node --import tsx --test \
+            tests/megatanda-c-review-policy.test.ts \
+            tests/review-assessment-policy.test.ts \
+            tests/ordinary-review-assessment.test.ts \
+            tests/judgment-day.test.ts \
+            tests/review-acceptance.test.ts
+      - name: Regresión Megatanda D del host Pi, permisos y plan completo
+        run: |
+          node --import tsx --test \
+            tests/pi-agent-runtime.test.ts \
+            tests/megatanda-d-e2e-pi.test.ts
+      - name: Probar lectura de catálogo NVIDIA sin generación ni red
+        run: node --test tests/catalogo-nvidia.test.mjs
+      - name: Probar diagnóstico NVIDIA con respuestas simuladas y sin gasto
+        run: node --test tests/comprobar-nvidia.test.mjs
+      - name: Aislamiento, modelos, recibos y permisos por Worker
+        run: |
+          node --import tsx --test \
+            tests/runtime-profiles.test.ts \
+            tests/odd-agent-review-flow.test.ts \
+            tests/pi-model-reviewer.test.ts \
+            tests/judgment-day.test.ts \
+            tests/judgment-fix-odd-save.test.ts \
+            tests/fix-odd-real-plan-persistence.test.ts \
+            tests/parallel-parent-supervisor-claims.test.ts \
+            tests/parallel-worker-model-route.test.ts \
+            tests/parallel-worktree-todos.test.ts \
+            tests/t06-pi-receipt-validator.test.ts \
+            tests/t06-read-only-git-fixture.test.ts \
+            tests/t06-live-consent.test.ts \
+            tests/t06-native-review-receipt.test.ts \
+            tests/t06-github-approvals.test.ts \
+            tests/t06-github-workflow-boundary.test.ts \
+            tests/t06-writer-evidence.test.ts \
+            tests/t06-static-write-evidence.test.ts \
+            tests/t06-behavior-handoff.test.ts \
+            tests/t06-github-reviewer-approvals.test.ts \
+            tests/t06-independent-review-admission.test.ts \
+            tests/t06-review-replay.test.ts \
+            tests/t06-review-failure-diagnostic.test.ts \
+            tests/t06-javascript-syntax.test.ts \
+            tests/pi-authority.test.ts \
+            tests/t09-native-trial-readiness.test.ts \
+            tests/t09-audit-script.test.ts \
+            tests/t08-github-approvals.test.ts \
+            tests/t08-controlled-fixture.test.ts \
+            tests/t08-github-workflow-boundary.test.ts \
+            tests/generated-code-trial-admission.test.ts \
+            tests/t08-isolated-repository.test.ts \
+            tests/t08-pi-review-text.test.ts \
+            tests/t08-pi-review-diagnostics.test.ts \
+            tests/t08-pi-settlement.test.ts \
+            tests/pi-artifact-runner-cancellation.test.ts \
+            tests/pi-artifact-runner-recovery.test.ts \
+            tests/ordinary-review-assessment.test.ts \
+            tests/odd-agent-review-command.test.ts \
+            tests/agent-flow-overview.test.ts \
+            tests/agent-flow-ab-comparison.test.ts \
+            tests/agent-flow-ab-series.test.ts \
+            tests/parallel-worktree-change-inspection.test.ts \
+            tests/parallel-worktree-reconciliation.test.ts \
+            tests/panel-observation-integration.test.ts \
+            tests/t06-t07-trial-evidence.test.ts \
+            tests/review-acceptance.test.ts \
+            tests/review-acceptance-receipt.test.ts \
+            tests/t11-git-observation.test.ts \
+            tests/t11-rail-observer.test.ts \
+            tests/t11-native-rail.test.ts \
+            tests/flujo-agentes-nvidia-workflow.test.ts
   test:
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
@@ -364,6 +464,52 @@ jobs:
             contract-evidence
           if-no-files-found: error
           retention-days: 14
+  cierre-puntos-16-17-18:
+    name: Auditar compatibilidad Pi y evidencias 17/16 sin proveedores
+    needs: [pi-support-matrix]
+    if: needs.pi-support-matrix.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Comprobar revisión exacta e instalar pruebas sin ejecutar scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node --import tsx --test tests/flow-closure-evidence.test.ts
+      - name: Recuperar las doce celdas Pi reales de los tres sistemas
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v4.3.0
+        with:
+          pattern: pi-support-*-${{ env.ASEN_EXPECTED_SHA }}
+          path: recibos-pi
+          merge-multiple: true
+      - name: Auditar los 18 recibos pendientes sin convertirlos en éxito
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/flow-closure-report.ts recibos-pi/matrix-evidence cierre-16-17-18.json
+          node --input-type=module -e 'import fs from "node:fs";const r=JSON.parse(fs.readFileSync("cierre-16-17-18.json"));if(r.globalFull!==false||r.point18.cellsObserved!==12||!["evidence-ready-for-independent-audit"].includes(r.point18.status)||r.point17.accepted!==false||r.point16.accepted!==false)process.exit(1)'
+      - name: Conservar diagnóstico por SHA sin secretos ni permisos
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-cierre-16-17-18-${{ env.ASEN_EXPECTED_SHA }}
+          path: cierre-16-17-18.json
+          if-no-files-found: warn
+          retention-days: 14
   r4-integrated:
     name: r4-integrated-evidence
     if: >-
@@ -560,3 +706,179 @@ jobs:
           path: ${{ runner.temp }}/asen-t04-t05-evidence/
           if-no-files-found: error
           retention-days: 30
+
+  # Ensayos autenticados solo cuando asenbanskaliev AÑADE el label de un uso
+  # asen-t06-nvidia-una-vez. Un synchronize/push visual no consume proveedor.
+  # El label persistente NO concede consentimiento Writer ni ejecuta en pushes.
+  # Prueba de API NVIDIA para la PR #61. No ejecuta herramientas Pi ni escribe
+  # código del proyecto. Dos solicitudes de prueba con 128 tokens de salida máximo.
+  # No se amplía la autorización del escenario T04/T05 ni se acepta un modelo de pago.
+  t06-nvidia-free-api:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 61 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/flujo-de-agentes-20261115' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-t06-nvidia-una-vez' &&
+      github.actor == 'asenbanskaliev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Verificar candidato y pruebas negativas sin secretos
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          node --test tests/t06-nvidia-free-api-probe.test.mjs
+      - name: NVIDIA gratuita — dos solicitudes reales en paralelo
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_NVIDIA_PROBE_REPORT: ${{ runner.temp }}/asen-t06-nvidia/probe.json
+        run: |
+          set -euo pipefail
+          if [ -z "$NVIDIA_API_KEY" ]; then
+            echo "::error::NVIDIA_API_KEY no existe en Secrets del repositorio; llamadas reales BLOQUEADAS"
+            exit 1
+          fi
+          # Usa únicamente nvidia/nemotron-3.5-lightning-30b-a3b, sin
+          # reintentos, sin fallback a proveedores de pago ni código privado.
+          node scripts/t06-nvidia-free-api-probe.mjs
+      - name: Conservar informe acotado del SHA exacto
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: t06-nvidia-free-api-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/asen-t06-nvidia/probe.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  # T06: dos sesiones Pi RPC auténticas después del sondeo API NVIDIA gratuito.
+  # Explorer y Verifier reales, sin herramientas ni escritura; no acredita Writer.
+  t06-nvidia-pi-native:
+    needs: [t06-nvidia-free-api]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 61 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/flujo-de-agentes-20261115' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-t06-nvidia-una-vez' &&
+      github.actor == 'asenbanskaliev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Comprobar SHA y preparar Pi 1.2 sin scripts externos
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          pi --version
+      - name: Explorer y Verifier Pi simultáneos con NVIDIA (solo lectura)
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-pi-config
+          ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-t06-nvidia-pi/receipt.json
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY ausente; prueba Pi auténtica bloqueada"; exit 1; }
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          timeout 250s tsx scripts/t06-nvidia-pi-concurrent.ts
+      - name: Conservar informe de agentes Pi del SHA exacto
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: t06-nvidia-pi-native-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/asen-t06-nvidia-pi/receipt.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
+  # Ensayo adicional exclusivamente por etiqueta manual de un solo evento,
+  # sin modelos, permisos Writer ni secretos; nunca en el equipo local.
+  generated-code-docker-sandbox:
+    name: T06/T08 contenedor opcional sin red (solo GitHub, sin modelos)
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-codigo-aislado-una-vez' &&
+      github.actor == 'asenbanskaliev' &&
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event.pull_request.number == 61 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/flujo-de-agentes-20261115'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      ASEN_DOCKER_TESTS_CI: "1"
+      ASEN_DOCKER_NODE_IMAGE: "node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8"
+    steps:
+      - name: Obtener el candidato exacto sin conservar credenciales
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Exigir SHA exacto y ejecutor GitHub alojado
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$GITHUB_HEAD_REF" = feat/flujo-de-agentes-20261115
+          test "$GITHUB_REPOSITORY" = asenbanskaliev/ASEN
+          test "$GITHUB_EVENT_NAME" = pull_request
+          test "$GITHUB_ACTIONS" = true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instalar dependencias sin ejecutar scripts externos
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verificar tipos y pruebas negativas sin contenedores
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run typecheck
+          node --import tsx --test tests/generated-code-docker-sandbox.test.ts
+      - name: Descargar imagen Node oficial fijada por huella
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$ASEN_DOCKER_NODE_IMAGE"
+          docker image inspect "$ASEN_DOCKER_NODE_IMAGE" >/dev/null
+      - name: Comprobar sin red, resultados completos y falsificación
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --import tsx scripts/verify-generated-code-docker-github.ts

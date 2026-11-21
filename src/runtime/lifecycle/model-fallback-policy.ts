@@ -90,7 +90,9 @@ export class ModelFallbackCooldown{
  mark(model:string,category:TerminalErrorCategory,now?:number):void{
   if(!validModel(model))throw new Error("Invalid fallback model");
   const at=this.time(now);if(!shouldFallback(category))return;
-  const next=at+(EXHAUSTED_CATEGORIES.has(category)?COOLDOWN_MS.exhausted:COOLDOWN_MS.transient),current=this.until.get(model)??0;
+  const duration=EXHAUSTED_CATEGORIES.has(category)?COOLDOWN_MS.exhausted:COOLDOWN_MS.transient;
+  if(at>Number.MAX_SAFE_INTEGER-duration)throw new Error("Invalid fallback clock: cooldown deadline exceeds the safe range");
+  const next=at+duration,current=this.until.get(model)??0;
   if(next>=current)this.why.set(model,category);
   this.until.set(model,Math.max(current,next));
  }
@@ -114,7 +116,11 @@ export class ModelFallbackCooldown{
  clear(model:string):void{if(!validModel(model))throw new Error("Invalid fallback model");this.until.delete(model);this.why.delete(model);}
  snapshot(now?:number):Readonly<Record<string,{until:number;reason:TerminalErrorCategory}>>{
   const at=this.time(now),result:Record<string,{until:number;reason:TerminalErrorCategory}>={};
-  for(const model of [...this.until.keys()].sort())if(!this.available(model,at))result[model]={until:this.until.get(model)!,reason:this.why.get(model)??TERMINAL_ERROR_CATEGORY.QUOTA};
+  for(const model of [...this.until.keys()].sort())if(!this.available(model,at)){
+   // Los IDs de proveedores son datos: __proto__, constructor y otros
+   // nombres especiales no pueden alterar el prototipo del informe.
+   Object.defineProperty(result,model,{value:Object.freeze({until:this.until.get(model)!,reason:this.why.get(model)??TERMINAL_ERROR_CATEGORY.QUOTA}),enumerable:true});
+  }
   return Object.freeze(result);
  }
 }

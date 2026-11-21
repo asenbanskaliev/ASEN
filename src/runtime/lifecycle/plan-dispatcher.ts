@@ -1,8 +1,9 @@
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
-import type {ProfileLayer} from "./profiles.js";
+import {resolveRuntimeDelegationMode,type ProfileLayer} from "./profiles.js";
 import type {Candidate} from "../../core/types.js";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../../flow/odd-routing.js";
+import {inspectStoredFixSourceTree} from "../../review/judgment-fix-odd-preflight.js";
 import {decideLifecycleApplicability} from "../../lifecycle/applicability.js";
 import {issueOrganicWriterAdmission} from "../../lifecycle/skill-lifecycle.js";
 import {buildOrchestrationPlan} from "../../orchestration/orchestrator.js";
@@ -28,7 +29,13 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 }
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer};
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;
+ /** Solo el coordinador interno puede reservar una plaza de lectura.
+  * Nunca es permiso para iniciar un Writer ni eludir las selecciones hijas. */
+ readOnlyWave?:boolean;
+ /** Tras un fallo terminal, solo otra tarea ya planificada, independiente y de lectura
+  * con el modelo configurado del perfil. No concede aprobación, permisos ni reintentos. */
+ independentReadOnly?:Readonly<{blockedTodoId:string;verifiedConfiguredModel:(role:string,model:string)=>boolean}>;};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"inline";todoId:string;revision:number;role:"primary";instruction:string}|{status:"blocked";reason:string};
 
 function currentRevision(repository:string):string{
@@ -40,7 +47,7 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(!metadata||metadata.role!=="worker"||!metadata.skillSelection||metadata.skillSelection.phase!=="apply"||!basisText||!candidate||!surfaces?.length)return {reason:"The worker plan lacks a persisted candidate, exact file scope or original ODD authorization facts; rebuild the plan in a Git project."};
  if(candidate.repository!==identity.projectId)return {reason:"The persisted worker candidate belongs to another project; rebuild the plan."};
  let parsed:unknown;try{parsed=JSON.parse(basisText);}catch{return {reason:"The worker ODD authorization facts are malformed; rebuild the plan."};}
- if(!exact(parsed,basisKeys)||typeof parsed.instruction!=="string"||!parsed.instruction.trim()||parsed.instruction!==parsed.instruction.trim())return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
+ if(!exact(parsed,Object.hasOwn(parsed??{},"namedRisks")?[...basisKeys,"namedRisks"]:basisKeys)||typeof parsed.instruction!=="string"||!parsed.instruction.trim()||parsed.instruction!==parsed.instruction.trim())return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
  const {instruction,...rawFacts}=parsed;
  let facts:ReturnType<typeof deriveOddFacts>,revision:string;
  try{
@@ -52,10 +59,24 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  const originalScope=facts.scope;
  const exactSurfaces=facts.writes.map(write=>write.path);
  if(exactSurfaces.length!==surfaces.length||exactSurfaces.some((surface,index)=>surface!==surfaces[index])||exactSurfaces.some(surface=>!originalScope.expectedPaths.includes(surface)))return {reason:"The persisted worker write scope differs from the exact ODD request."};
+ if(metadata.fixSource){
+  if(facts.taskIdentity!==`fix-${metadata.fixSource.proposalId.slice(0,24)}`||
+   task.requestId!==`asen-plan:fix-${metadata.fixSource.proposalId.slice(0,24)}:worker`)
+   return {reason:"Fix ODD proposal identity does not match the exact Writer task"};
+  try{
+   const observed=inspectStoredFixSourceTree(identity.projectId,exactSurfaces,
+    metadata.fixSource.treeIdentity);
+   if(observed.repositoryHead!==candidate.revision)
+    return {reason:"Fix ODD Git HEAD differs from its saved candidate"};
+  }catch{return {reason:"Fix ODD reviewed tree changed; rebuild the plan before Writer approval"};}
+ }
  const candidateBound={id:candidate.id,repository:candidate.repository,revision:candidate.revision,createdAt:candidate.createdAt},decision=planOddRoute(facts);
  let plan:ReturnType<typeof buildOrchestrationPlan>;
  try{plan=buildOrchestrationPlan({taskId:facts.taskIdentity,repository:identity.projectId,prompt:instruction,candidate:candidateBound,writeSurfaces:exactSurfaces,...(metadata.skillSelection.selectionProfile?{selectionProfile:metadata.skillSelection.selectionProfile}:{}),...(input.runtimeProfiles?{runtimeProfiles:input.runtimeProfiles}:{})},decision);}catch{return {reason:"The original ODD route no longer authorizes this worker plan."};}
- if(decision.route!=="orchestrate")return {reason:"The original ODD route does not authorize delegated worker execution."};
+ const delegatedDirect=decision.route==="direct"&&
+  resolveRuntimeDelegationMode(input.runtimeProfiles??{}).mode==="full-delegation";
+ if(decision.route!=="orchestrate"&&!delegatedDirect)
+  return {reason:"The original ODD route does not authorize delegated worker execution."};
  const worker=plan.agents.find(agent=>agent.role==="worker");
  if(!worker?.skillContext||!worker.skillPaths||!worker.writeSurfaces||worker.writeSurfaces.length!==exactSurfaces.length||worker.writeSurfaces.some((surface,index)=>surface!==exactSurfaces[index]))return {reason:"The current ODD plan does not produce the exact persisted worker scope."};
  const expectedPaths=selectSkills(metadata.skillSelection).map(skill=>skill.path);
@@ -90,10 +111,30 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
 export async function dispatchNextPlanTask(input:DispatchInput):Promise<DispatchResult>{
  const context:TodoContext={sessionId:input.identity.sessionId,projectId:input.identity.projectId};
  const rows=await input.todos.list(context),byId=new Map(rows.map(row=>[row.taskId,row]));
- const ready=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&row.current.state==="planned"&&(row.dependsOn??[]).every(id=>["succeeded","done"].includes(byId.get(id)?.current.state??"")));
- if(!ready.length)return {status:"blocked",reason:"No persisted plan task is dependency-ready; complete independent verification or resolve the plan clarification first."};
+ const independence=input.independentReadOnly;
+ if(independence&&input.expectedTodoId!==undefined)
+  return {status:"blocked",reason:"Independent read-only recovery cannot override the exact child Todo supervisor selection."};
+ const blocker=independence?byId.get(independence.blockedTodoId):undefined;
+ if(independence&&(!blocker||blocker.current.state!=="blocked"||
+    !blocker.requestId?.startsWith("asen-plan:")))
+  return {status:"blocked",reason:"Independent continuation requires a verified, persisted blocked ODD task; no agent was launched."};
+ const ready=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&
+  row.current.state==="planned"&&
+  (row.dependsOn??[]).every(id=>["succeeded","done"].includes(byId.get(id)?.current.state??""))&&
+  (!input.readOnlyWave||row.plan?.role==="explorer"||row.plan?.role==="reviewer"||row.plan?.role==="verifier")&&
+  (!independence||(
+   row.taskId!==blocker?.taskId&&
+   (row.plan?.role==="explorer"||row.plan?.role==="reviewer"||row.plan?.role==="verifier")&&
+   !!row.plan.model&&independence.verifiedConfiguredModel(row.plan.role,row.plan.model)
+  )));
+ if(!ready.length)return {status:"blocked",reason:independence?
+  "No independent dependency-ready read-only Todo with a exact configured profile model; the failed task remains blocked.":
+  "No persisted plan task is dependency-ready; complete independent verification or resolve the plan clarification first."};
  ready.sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-(b.plan?.priority??Number.MAX_SAFE_INTEGER));
  const task=ready[0]!;
+ // Un supervisor padre no puede lanzar otro Todo de la sesión hija, aunque tenga prioridad.
+ if(input.expectedTodoId!==undefined&&task.taskId!==input.expectedTodoId)
+  return {status:"blocked",reason:"The selected child Worker is not the next dependency-ready Todo; no confirmation or agent was started."};
  if(!task.plan)return {status:"blocked",reason:"The next plan task has no persisted role or skill selection."};
  const role=task.plan.role;
  if(role==="primary"){
@@ -115,21 +156,48 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  if(role==="worker"){
   const prepared=await workerAuthorization(task,input.identity,input);if("reason" in prepared)return {status:"blocked",reason:prepared.reason};
   const approved=await input.confirm({id:task.taskId,title:task.title,role,instruction:prepared.instruction,writeSurfaces:prepared.writeSurfaces,candidateRevision:prepared.candidate.revision});
-  if(!approved)return {status:"blocked",reason:"Pi user declined the exact scoped write authorization; the plan was not changed."};
+  if(approved!==true)return {status:"blocked",reason:"Pi user declined the exact scoped write authorization; the plan was not changed."};
   await input.validateIdentity();
   const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
   if(!fresh||!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};
   let head:string;try{head=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The project stopped being a readable Git candidate; no writer was launched."};}
   if(head!==prepared.candidate.revision)return {status:"blocked",reason:"The project changed while awaiting authorization; rebuild the plan against the current candidate."};
   await input.validateIdentity();
+  if(task.plan.fixSource){
+   try{
+    const observed=inspectStoredFixSourceTree(input.identity.projectId,
+     prepared.writeSurfaces,task.plan.fixSource.treeIdentity);
+    if(observed.repositoryHead!==prepared.candidate.revision)
+     return {status:"blocked",reason:"Fix ODD candidate changed while awaiting Writer approval"};
+   }catch{return {status:"blocked",reason:"Fix ODD reviewed tree changed while awaiting Writer approval"};}
+  }
   const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
   try{
-   const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(fresh,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
+   const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
+    const validateLaunch=async()=>{
+     await input.validateIdentity();
+     if(task.plan?.fixSource){
+      const current=inspectStoredFixSourceTree(input.identity.projectId,
+       prepared.writeSurfaces,task.plan.fixSource.treeIdentity);
+      if(current.repositoryHead!==prepared.candidate.revision)
+       throw new Error("Fix ODD reviewed source changed before the Pi agent launch");
+     }
+    };
+    await validateLaunch();
+    // El almacén vuelve a ejecutar esta verificación dentro del bloqueo,
+    // inmediatamente antes de arrancar el agente.
+    await binder.launchExact(fresh,id,input.identity,enqueue,dispatch,validateLaunch);
+   }});
    return {status:"dispatched",todoId:task.taskId,agentId,role};
   }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};throw error;}
  }
 
  const readRole=role as ReadOnlyRole,selection=task.plan.skillSelection;
+ const validateReadOnlyLaunch=async()=>{
+  await input.validateIdentity();
+  if(independence&&(!task.plan?.model||!independence.verifiedConfiguredModel(readRole,task.plan.model)))
+   throw new Error("Independent continuation lost its exact configured profile model before dispatch");
+ };
  if(readRole==="clarifier"){
   if(input.autoApproveReadOnly)return {status:"blocked",reason:"Material clarification is required from the user before ASEN can continue this plan."};
   if(selection||task.plan.skillPaths.length)return {status:"blocked",reason:"The planned clarifier must remain read-only without delegated skills or phase authority; rebuild the plan."};
@@ -140,15 +208,15 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  }
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed after planning; rebuild the exploration against the current candidate."};}
  const approved=input.autoApproveReadOnly===true||await input.confirm({id:task.taskId,title:task.title,role,instruction:task.description});
- if(!approved)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
- await input.validateIdentity();
+ if(approved!==true)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
+ await validateReadOnlyLaunch();
  const fresh=(await input.todos.list(context)).find(row=>row.taskId===task.taskId);
  if(!sameApprovedTaskSnapshot(task,fresh))return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed while awaiting exploration approval; rebuild the plan against the current candidate."};}
- await input.validateIdentity();
+ await validateReadOnlyLaunch();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
  try{
-  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await input.validateIdentity();await binder.launchExact(task,id,input.identity,enqueue,dispatch,input.validateIdentity);}});
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await validateReadOnlyLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateReadOnlyLaunch);}});
   return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
  }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }

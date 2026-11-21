@@ -377,10 +377,12 @@ test("native panel command forwards injected navigation bindings and rejects pro
    panel.handleInput("\u0014");assert.match(panel.render(80)[0]!,/JOBS/u);
    panel.handleInput("\u0006");assert.doesNotMatch(panel.render(80).join("\n"),/TODOS/u);
    panel.handleInput("\u0018");assert.equal(closes,1);
+   // Tras cerrar, el componente ya no debe volver a llamar al cierre del host.
    context.cwd=home;
    assert.match(panel.render(80).join("\n"),/scope changed/u);
-   panel.handleInput("\u0014");assert.equal(closes,2);
-   assert.equal(redraws,2,"project drift closes without navigation or redraw");
+   panel.handleInput("\u0014");assert.equal(closes,1);
+   await panel.refreshNow();
+   assert.equal(redraws,2,"closed panel ignores navigation and refresh after project drift");
   }},
  };
  assert.match(String(await h.commands.get("asen-panel")!.handler("",context)),/closed/u);

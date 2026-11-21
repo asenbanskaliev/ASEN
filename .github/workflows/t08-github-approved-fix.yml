@@ -1,0 +1,217 @@
+name: T08 dos jueces y reparación real con aprobaciones
+# Solo reusable desde la entrada manual existente, nunca desde push ni PR.
+on:
+  workflow_call:
+    inputs:
+      candidate_sha:
+        required: true
+        type: string
+      cost_acknowledged:
+        required: true
+        type: boolean
+      reviewer_a:
+        required: true
+        type: string
+      reviewer_b:
+        required: true
+        type: string
+      writer_model:
+        required: true
+        type: string
+    secrets:
+      NVIDIA_API_KEY:
+        required: true
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: asen-t08-manual-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  preparar:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.actor == 'asenbanskaliev' &&
+      github.ref == 'refs/heads/feat/flujo-de-agentes-20261115'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    permissions:
+      contents: read
+    steps:
+      - name: Comprobar consentimiento de coste y SHA exacto
+        shell: bash
+        env:
+          SHA_ESPERADO: ${{ inputs.candidate_sha }}
+          COSTE_AUTORIZADO: ${{ inputs.cost_acknowledged }}
+          REVISOR_A: ${{ inputs.reviewer_a }}
+          REVISOR_B: ${{ inputs.reviewer_b }}
+          MODELO_REPARADOR: ${{ inputs.writer_model }}
+        run: |
+          set -euo pipefail
+          [[ "$SHA_ESPERADO" =~ ^[a-f0-9]{40}$ ]]
+          test "$GITHUB_SHA" = "$SHA_ESPERADO"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$COSTE_AUTORIZADO" = true
+          for model in "$REVISOR_A" "$REVISOR_B" "$MODELO_REPARADOR"; do
+            [[ "$model" =~ ^nvidia/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$ ]]
+            if [[ "$model" == "nvidia/nemotron-3-ultra-550b-a55b" ]]; then
+              echo "T08 bloqueado: Nemotron 3 Ultra presenta respuestas vacías; elegir otro modelo" >&2
+              exit 1
+            fi
+          done
+          test "$REVISOR_A" != "$REVISOR_B"
+          test "$REVISOR_A" != "$MODELO_REPARADOR"
+          test "$REVISOR_B" != "$MODELO_REPARADOR"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Comprobar código y pruebas negativas antes de solicitar aprobaciones
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npx --no-install tsc -p tsconfig.t08.json
+          node --import tsx --test tests/t08-github-approvals.test.ts tests/t08-controlled-fixture.test.ts tests/t08-isolated-repository.test.ts tests/t08-pi-review-text.test.ts tests/t08-pi-review-diagnostics.test.ts tests/t08-pi-settlement.test.ts tests/pi-provider-request-diagnostic.test.ts tests/t08-judge-admission.test.ts tests/pi-artifact-runner-cancellation.test.ts tests/pi-artifact-runner-recovery.test.ts
+          test -z "$(git status --porcelain=v1)"
+  aprobar-revisores:
+    needs: [preparar]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment:
+      name: asen-t08-revisores
+    permissions:
+      contents: read
+    steps:
+      - name: Aprobación separada de los dos jueces Pi
+        run: echo "La primera aprobación se comprobará contra la API de GitHub."
+  revisar:
+    needs: [aprobar-revisores]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instalar Pi 1.2 sin scripts ajenos
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
+          test "$(pi --version | tr -d '\r')" = "1.2.0"
+      - name: Instalar dependencias del candidato comprobado
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          test -z "$(git status --porcelain=v1)"
+      - name: Descargar la imagen fijada para las pruebas sin red
+        run: docker pull node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8
+      - name: Ejecutar dos jueces auténticos y guardar propuesta no ejecutable
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_T08_EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          ASEN_T08_COST_ACK: ${{ inputs.cost_acknowledged }}
+          ASEN_T08_REVIEW_A: ${{ inputs.reviewer_a }}
+          ASEN_T08_REVIEW_B: ${{ inputs.reviewer_b }}
+          ASEN_T08_WRITER_MODEL: ${{ inputs.writer_model }}
+          ASEN_T08_REPORT_DIR: ${{ runner.temp }}/asen-t08-initial
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t08-review-pi
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY"
+          test "$(git rev-parse HEAD)" = "$ASEN_T08_EXPECTED_SHA"
+          mkdir -p "$ASEN_T08_REPORT_DIR" "$PI_CODING_AGENT_DIR"
+          timeout 660s npx --no-install tsx scripts/t08-github-real-fix.ts review
+      - name: Guardar propuesta auténtica, sin código ni claves
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-t08-propuesta-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t08-initial/t08-first-review.json
+          if-no-files-found: warn
+          retention-days: 7
+  aprobar-reparacion:
+    needs: [revisar]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    environment:
+      name: asen-t08-reparacion
+    permissions:
+      contents: read
+    steps:
+      - name: Aprobación humana distinta, solo tras los dictámenes
+        run: echo "La aprobación de reparación se comprobará antes de Pi Writer."
+  reparar-y-revisar:
+    needs: [aprobar-reparacion]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ inputs.candidate_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Recuperar solo la propuesta del mismo run
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
+        with:
+          name: asen-t08-propuesta-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t08-downloaded
+      - name: Preparar Pi nativo 1.2
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
+          test "$(pi --version | tr -d '\r')" = "1.2.0"
+      - name: Preparar dependencias con SHA exacto
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          test -z "$(git status --porcelain=v1)"
+      - name: Descargar la imagen fijada para las pruebas sin red
+        run: docker pull node@sha256:a34ab6d7f6f4813f4d0c5469d74685604b962fbdbf5793a7bc7b4998ecb867c8
+      - name: Guardar ODD, ejecutar un Pi Writer con permiso exacto y revisar de nuevo
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_T08_EXPECTED_SHA: ${{ inputs.candidate_sha }}
+          ASEN_T08_COST_ACK: ${{ inputs.cost_acknowledged }}
+          ASEN_T08_REVIEW_A: ${{ inputs.reviewer_a }}
+          ASEN_T08_REVIEW_B: ${{ inputs.reviewer_b }}
+          ASEN_T08_WRITER_MODEL: ${{ inputs.writer_model }}
+          ASEN_T08_SOURCE_REPORT: ${{ runner.temp }}/asen-t08-downloaded/t08-first-review.json
+          ASEN_T08_REPORT_DIR: ${{ runner.temp }}/asen-t08-final
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t08-fix-pi
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY"
+          test "$(git rev-parse HEAD)" = "$ASEN_T08_EXPECTED_SHA"
+          mkdir -p "$ASEN_T08_REPORT_DIR" "$PI_CODING_AGENT_DIR"
+          timeout 720s npx --no-install tsx scripts/t08-github-real-fix.ts fix
+      - name: Guardar informe limitado sin secretos
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-t08-resultado-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t08-final/t08-result.json
+          if-no-files-found: warn
+          retention-days: 7

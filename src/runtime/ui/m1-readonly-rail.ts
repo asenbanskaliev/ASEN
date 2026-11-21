@@ -16,6 +16,20 @@ export function renderM1Surface(snapshot:AsenPanelSnapshot,width:number):M1Surfa
  if(lines.some(line=>visibleWidth(line)>width))throw Error("M1 width overflow");
  return {mode:"rail",lines};
 }
+/** T11: degradación compacta cuando Pi no admite el árbol lateral auténtico.
+ * No presenta una lista aboveEditor como un falso lateral; no infiere trabajo. */
+export function renderT11CompactFallback(snapshot:AsenPanelSnapshot,width:number):string{
+ if(!Number.isSafeInteger(width)||width<1||width>1000)throw Error("Invalid T11 fallback width");
+ const command="/asen-panel",separator=" · ";
+ if(width<12)return truncateForTerminal(command,width);
+ const summary=renderAsenWorkRow(snapshot,width);
+ if(summary?.endsWith(command))return summary;
+ // El comando de acceso es funcional: jamás acortarlo para preservar contadores.
+ if(width<visibleWidth(command)+visibleWidth(separator)+3)return command;
+ const base=(summary??"▸ Panel ASEN").replace(/\s*·\s*\/asen-panel.*$/u,"");
+ const head=truncateForTerminal(base,width-visibleWidth(command)-visibleWidth(separator)).trimEnd();
+ return head+separator+command;
+}
 export function createM1SurfaceCache(){
  let last="";
  return {

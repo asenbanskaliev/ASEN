@@ -11,6 +11,8 @@ import {mkdtemp,mkdir,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {acceptIndependentReview} from "../src/runtime/lifecycle/review-acceptance.js";
+import {createReviewReceiptSigned,loadReceiptSigningKey,writeReviewReceipt} from "../src/evidence/review-receipt.js";
+import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
@@ -27,6 +29,13 @@ async function makeFixture(t:import("node:test").TestContext){
  execFileSync("git",["-C",root,"add","README.md"]);
  execFileSync("git",["-C",root,"-c","user.name=AsenTest","-c","user.email=test@example.invalid","commit","-q","-m","base"]);
  const candidateRevision=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const treeSha=execFileSync("git",["-C",root,"rev-parse","HEAD^{tree}"],{encoding:"utf8"}).trim();
+ const receiptDir=join(home,"receipts");
+ const key=await loadReceiptSigningKey(receiptDir);
+ await writeReviewReceipt(receiptDir,createReviewReceiptSigned({commitSha:candidateRevision,treeSha,
+  oddTask:"odd/tasks/test-review.md",testSuite:{total:1,passed:1,failed:0,durationMs:1,runner:"node --test"},
+  verdict:"PASSED"},key));
+ const receipts=new ReceiptVerifierService(receiptDir);
  const identity={sessionId:"review-session",projectId:root},todos=await SessionTodoStore.open(join(home,"todos.json"));
  const links=new TaskAgentLinkStore(join(home,"links.json"));
  const role="reviewer" as const;
@@ -45,7 +54,7 @@ async function makeFixture(t:import("node:test").TestContext){
  await links.bind({taskId:task!.taskId,agentId,sessionId:identity.sessionId,projectId:identity.projectId,createdAt:new Date().toISOString()});
  await terminal;
  await new TaskAgentTodoReconciler(todos,agents,links).reconcile(identity);
- return {home,root,identity,todos,links,agents,task:task!};
+ return {home,root,identity,todos,links,agents,task:task!,receipts};
 }
 
 test("T5.3 a dirty worktree names the offending files",async t=>{
@@ -55,7 +64,7 @@ test("T5.3 a dirty worktree names the offending files",async t=>{
  await writeFile(join(fixture.root,"README.md"),"changed\n");
  const result=await acceptIndependentReview({
   todos:fixture.todos,agents:fixture.agents,links:fixture.links,identity:fixture.identity,
-  taskId:fixture.task.taskId,
+  taskId:fixture.task.taskId,receipts:fixture.receipts,
   validateIdentity:async()=>{},
   confirm:async()=>true,
  });
@@ -68,7 +77,7 @@ test("T5.3 a clean worktree keeps the review acceptable",async t=>{
  const fixture=await makeFixture(t);
  const result=await acceptIndependentReview({
   todos:fixture.todos,agents:fixture.agents,links:fixture.links,identity:fixture.identity,
-  taskId:fixture.task.taskId,
+  taskId:fixture.task.taskId,receipts:fixture.receipts,
   validateIdentity:async()=>{},
   confirm:async()=>true,
  });

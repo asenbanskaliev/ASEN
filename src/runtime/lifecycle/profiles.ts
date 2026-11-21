@@ -1,7 +1,8 @@
 export const ASEN_PROFILES_SCHEMA="asen.runtime-profiles/v1" as const;
 export type Thinking="off"|"minimal"|"low"|"medium"|"high"|"xhigh"|"max";
 export interface RouteChoice{model?:string;thinking?:Thinking}
-export interface RuntimeProfile{name:string;routes:Record<string,RouteChoice>}
+export type DelegationMode="organic"|"full-delegation";
+export interface RuntimeProfile{name:string;routes:Record<string,RouteChoice>;mode?:DelegationMode}
 export interface RuntimeProfilesFile{schema:typeof ASEN_PROFILES_SCHEMA;active?:string;profiles:RuntimeProfile[]}
 export type ProfileLayer={global?:RuntimeProfilesFile;project?:RuntimeProfilesFile;session?:RuntimeProfilesFile};
 export interface RuntimeRoutingMetadata{requested:RouteChoice;resolved:RouteChoice;source:"session"|"project"|"global"|"default"|"persisted-plan";actual:"unknown"}
@@ -13,7 +14,7 @@ function record(v:unknown):v is Record<string,unknown>{return !!v&&typeof v==="o
 function validRoute(v:unknown):v is RouteChoice{return record(v)&&Object.keys(v).every(k=>k==="model"||k==="thinking")&&(v.model===undefined||(typeof v.model==="string"&&v.model.length>0&&v.model.length<=256&&v.model===v.model.trim()&&!/[\u0000-\u001f\u007f]/u.test(v.model)))&&(v.thinking===undefined||isThinking(v.thinking));}
 export function parseRuntimeProfiles(raw:string):RuntimeProfilesFile|undefined{
  let v:unknown;try{v=JSON.parse(raw);}catch{return undefined;}if(!record(v)||v.schema!==ASEN_PROFILES_SCHEMA||!Array.isArray(v.profiles)||v.profiles.length>64)return undefined;
- const names=new Set<string>(),profiles:RuntimeProfile[]=[];for(const p of v.profiles){if(!record(p)||typeof p.name!=="string"||!NAME.test(p.name)||names.has(p.name)||!record(p.routes))return undefined;const routes:Record<string,RouteChoice>={};for(const [role,route] of Object.entries(p.routes)){if(!NAME.test(role)||!validRoute(route))return undefined;routes[role]={...route};}names.add(p.name);profiles.push({name:p.name,routes});}
+ const names=new Set<string>(),profiles:RuntimeProfile[]=[];for(const p of v.profiles){if(!record(p)||typeof p.name!=="string"||!NAME.test(p.name)||names.has(p.name)||!record(p.routes)||(p.mode!==undefined&&p.mode!=="organic"&&p.mode!=="full-delegation"))return undefined;const routes:Record<string,RouteChoice>={};for(const [role,route] of Object.entries(p.routes)){if(!NAME.test(role)||!validRoute(route))return undefined;Object.defineProperty(routes,role,{value:{...route},enumerable:true,writable:true,configurable:true});}names.add(p.name);profiles.push({name:p.name,routes,...(p.mode?{mode:p.mode}:{})});}
  const active=v.active;if(active!==undefined&&(typeof active!=="string"||!names.has(active)))return undefined;return {schema:ASEN_PROFILES_SCHEMA,...(typeof active==="string"?{active}:{}),profiles};
 }
 function selected(file:RuntimeProfilesFile|undefined):RuntimeProfile|undefined{return file?.active?file.profiles.find(p=>p.name===file.active):undefined;}
@@ -21,10 +22,19 @@ export function resolveRuntimeRoute(layers:ProfileLayer,role:string):{choice?:Ro
  if(typeof role!=="string"||!NAME.test(role))return {source:"default"};
  for(const [source,file] of [["session",layers.session],["project",layers.project],["global",layers.global]] as const){const routes=selected(file)?.routes;if(routes&&Object.hasOwn(routes,role)){const route=routes[role];if(route)return {choice:{...route},source};}}return {source:"default"};
 }
+/** El modo se resuelve por perfil activo. Los perfiles anteriores mantienen organic. */
+export function resolveRuntimeDelegationMode(layers:ProfileLayer):{mode:DelegationMode;source:"session"|"project"|"global"|"default"}{
+ for(const [source,file] of [["session",layers.session],["project",layers.project],["global",layers.global]] as const){
+  const active=selected(file);
+  if(active)return {mode:active.mode??"organic",source};
+ }
+ return {mode:"organic",source:"default"};
+}
+
 export function runtimeRoutingMetadata(requested:RouteChoice,resolved:RouteChoice,source:RuntimeRoutingMetadata["source"]):RuntimeRoutingMetadata{return {requested:{...requested},resolved:{...resolved},source,actual:"unknown"};}
 export function globalRuntimeRoutingFacts(file:RuntimeProfilesFile):Record<string,RuntimeRoutingMetadata>{const routes=selected(file)?.routes;if(!routes)return {};return Object.fromEntries(Object.entries(routes).map(([role,choice])=>[role,runtimeRoutingMetadata(choice,choice,"global")]));}
 export function setActiveProfile(file:RuntimeProfilesFile,name:string):RuntimeProfilesFile{if(!file.profiles.some(p=>p.name===name))throw new Error("Profile does not exist");return {...file,active:name};}
-export function upsertProfile(file:RuntimeProfilesFile,profile:RuntimeProfile):RuntimeProfilesFile{if(!NAME.test(profile.name)||Object.entries(profile.routes).some(([r,v])=>!NAME.test(r)||!validRoute(v)))throw new Error("Invalid profile");const i=file.profiles.findIndex(p=>p.name===profile.name),profiles=file.profiles.map(p=>({name:p.name,routes:structuredClone(p.routes)}));if(i<0){if(profiles.length>=64)throw new Error("Too many profiles");profiles.push(structuredClone(profile));}else profiles[i]=structuredClone(profile);return {...file,profiles};}
+export function upsertProfile(file:RuntimeProfilesFile,profile:RuntimeProfile):RuntimeProfilesFile{if(!NAME.test(profile.name)||(profile.mode!==undefined&&profile.mode!=="organic"&&profile.mode!=="full-delegation")||Object.entries(profile.routes).some(([r,v])=>!NAME.test(r)||!validRoute(v)))throw new Error("Invalid profile");const i=file.profiles.findIndex(p=>p.name===profile.name),profiles=file.profiles.map(p=>structuredClone(p));if(i<0){if(profiles.length>=64)throw new Error("Too many profiles");profiles.push(structuredClone(profile));}else profiles[i]=structuredClone(profile);return {...file,profiles};}
 
 export function serializeRuntimeProfiles(file:RuntimeProfilesFile):string{const checked=parseRuntimeProfiles(JSON.stringify(file));if(!checked)throw new Error("Invalid profiles file");return JSON.stringify(checked,null,2)+"\n";}
 export function removeProfile(file:RuntimeProfilesFile,name:string):RuntimeProfilesFile{if(file.active===name)throw new Error("Cannot remove active profile");if(!file.profiles.some(p=>p.name===name))throw new Error("Profile does not exist");return {...file,profiles:file.profiles.filter(p=>p.name!==name).map(p=>structuredClone(p))};}

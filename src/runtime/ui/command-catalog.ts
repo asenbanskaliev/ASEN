@@ -3,6 +3,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"core",name:"asen",implemented:true,owner:"extensions/asen.ts"},
  {group:"workflow",name:"asen-route",implemented:true,owner:"extensions/asen.ts"},
  {group:"workflow",name:"asen-plan",implemented:true,owner:"extensions/asen.ts"},
+ {group:"workflow",name:"asen-worktrees",implemented:true,owner:"src/runtime/lifecycle/parallel-worktree-command.ts"},
  {group:"review",name:"asen-review",implemented:true,owner:"src/review/ordinary-review-command.ts"},
  {group:"review",name:"asen-accept-review",implemented:true,owner:"extensions/asen.ts"},
  {group:"skills",name:"asen-skill-registry",implemented:true,owner:"extensions/asen.ts"},
@@ -45,7 +46,7 @@ export const CURATED_PALETTE_GROUPS:readonly{title:string;commands:readonly stri
  {title:"Session",commands:["asen-status","asen-agents","asen-todos","asen-changes","asen-history","asen-panel"]},
  {title:"Configuration",commands:["asen-profiles","asen-persona","asen-mode","asen-customize","asen-language","asen-banner","asen-presentation"]},
  {title:"Diagnostics",commands:["asen-doctor","asen-stats","asen-usage","asen-telemetry","asen-integrations"]},
- {title:"Workflow",commands:["asen-plan","asen-route","asen-review","asen-accept-review","asen-memory","asen-commands","asen-skill-registry"]},
+ {title:"Workflow",commands:["asen-plan","asen-route","asen-worktrees","asen-review","asen-accept-review","asen-memory","asen-commands","asen-skill-registry"]},
 ];
 
 export const COMMAND_SHORTCUT_HINTS:ReadonlyMap<string,string>=new Map([

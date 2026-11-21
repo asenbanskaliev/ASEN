@@ -1,0 +1,114 @@
+name: P16 comparar 18 sesiones reales ASEN y Gentle Shell 4.9.0
+# Autorización expresa en esta conversación. Una sola ejecución por push
+# con mensaje exacto; nunca se lanza por PR, CI, rerun o programación.
+on:
+  push:
+    branches:
+      - feat/flujo-de-agentes-20261115
+    paths:
+      - .github/workflows/asen-p16-comparacion-real.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: p16-comparacion-real-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  comprobar-sin-modelos:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci(asen): completar 18 sesiones P16 reales autorizadas'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Comprobar codigo, identidad y limites sin consumir NVIDIA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node --check scripts/p16-comparacion-real.mjs
+          node --test tests/p16-comparacion-real.test.mjs tests/p16-comprobar-referencia.test.mjs
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+  comparar-nvidia:
+    needs: [comprobar-sin-modelos]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      ASEN_P16_SHA: ${{ github.sha }}
+      P16_AUTORIZACION_18: 'SI'
+      P16_MENSAJE_COMMIT: ${{ github.event.head_commit.message }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          repository: Gentleman-Programming/gentle-shell
+          ref: ce64a9a708e50c0ca899c8023140e63f29f293e1
+          path: referencia-gentle-shell
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Verificar primero las fuentes originales intactas
+        shell: bash
+        env:
+          ASEN_P16_REPORT_DIR: ${{ runner.temp }}/asen-p16-comparacion
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/p16-comprobar-referencia.mjs
+      - name: Instalar el mismo Pi en los dos sistemas sin scripts externos
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          PI_VERSION="$(node -p 'require("./node_modules/@earendil-works/pi-coding-agent/package.json").version')"
+          (cd referencia-gentle-shell && npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund "@earendil-works/pi-coding-agent@$PI_VERSION")
+          test "$PI_VERSION" = "$(node -p 'require("./referencia-gentle-shell/node_modules/@earendil-works/pi-coding-agent/package.json").version')"
+          test -z "$(git status --porcelain=v1 --untracked-files=all -- . ':(exclude)referencia-gentle-shell')"
+      - name: Recuperar solo la sesión ASEN real del ensayo anterior
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
+        with:
+          run-id: 44811868817
+          name: p16-sesiones-reales-52ad42cb597234d2ce6671ec96f242e75acef1ef-44811868817
+          path: ${{ runner.temp }}/asen-p16-anterior
+          github-token: ${{ github.token }}
+      - name: Consultar catálogo y ejecutar máximo 18 sesiones reales sin reintentos
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          P16_SALIDA: ${{ runner.temp }}/asen-p16-comparacion/resultado.json
+          P16_EVIDENCIA_ANTERIOR: ${{ runner.temp }}/asen-p16-anterior/resultado.json
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test -n "$NVIDIA_API_KEY"
+          timeout 2100s node scripts/p16-comparacion-real.mjs
+      - name: Guardar informe de las sesiones y huellas sin textos ni credenciales
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: p16-sesiones-reales-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/asen-p16-comparacion/fuentes-p16.json
+            ${{ runner.temp }}/asen-p16-comparacion/resultado.json
+          if-no-files-found: warn
+          retention-days: 30

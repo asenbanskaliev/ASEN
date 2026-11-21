@@ -6,6 +6,7 @@ export type OddIntent = "implementation" | "analysis" | "incident" | "verificati
 export type OddChangeKind = "behavior" | "schema" | "security" | "configuration" | "migration" | "documentation" | "format" | "generated";
 export type OddRiskOperation = "destructive_git" | "external_write" | "credential_or_auth" | "security_boundary";
 export type OddReviewKind = "none" | "ordinary" | "dual_explicit";
+export interface OddNamedRisk { readonly item:1|2|3|4|5|6; readonly reason:string; }
 export type OddRoute = "direct" | "plan" | "orchestrate" | "incident" | "verify";
 export type OddScope = Readonly<{ kind: "known"; expectedPaths: readonly string[] }> | Readonly<{ kind: "unknown"; reason: string }>;
 export type OddTesting = Readonly<{ kind: "required" }> | Readonly<{ kind: "n_a"; reason: string }>;
@@ -16,6 +17,8 @@ export interface OddRoutingRequest {
   readonly scope: OddScope;
   readonly writes: readonly Readonly<{ path: string; changeKind: OddChangeKind }>[];
   readonly riskOperations: readonly OddRiskOperation[];
+  /** Riesgos declarados de forma explícita; no son autorizaciones de escritura. */
+  readonly namedRisks?: readonly OddNamedRisk[];
   readonly session: Readonly<{ estimatedMinutes: number; continuation: boolean }>;
   readonly testing: OddTesting;
   readonly review: Readonly<{ kind: OddReviewKind; estimatedMinutes: number }>;
@@ -23,7 +26,7 @@ export interface OddRoutingRequest {
 }
 export interface OddDerivedFacts {
   readonly taskIdentity: string; readonly repositoryIdentity: string; readonly intent: OddIntent;
-  readonly scope: OddScope; readonly writes: OddRoutingRequest["writes"]; readonly riskOperations: readonly OddRiskOperation[];
+  readonly scope: OddScope; readonly writes: OddRoutingRequest["writes"]; readonly riskOperations: readonly OddRiskOperation[]; readonly namedRisks:readonly OddNamedRisk[];
   readonly session: OddRoutingRequest["session"]; readonly testing: OddTesting; readonly review: OddRoutingRequest["review"];
   readonly unresolvedDecisions: readonly string[]; readonly filesTouched: number; readonly nonTrivialWrites: number;
   readonly incident: boolean; readonly verificationIntent: boolean; readonly longSession: boolean; readonly risk: Risk;
@@ -73,7 +76,7 @@ function text(value: unknown, noun: string): string {
 }
 function path(value: unknown): string {
   const result = text(value, "path");
-  if (result.startsWith("/") || result.includes("\\") || result.includes(":") || result.split("/").some(part => !part || part === "." || part === "..")) throw new Error("path is not canonical relative data");
+  if (result.startsWith("/") || result.includes("\\") || result.includes(":") || result.split("/").some(part => !part || part === "." || part === ".." || part.toLowerCase() === ".git")) throw new Error("path is not canonical relative data");
   return result;
 }
 function count(value: unknown, noun: string): number {
@@ -109,7 +112,8 @@ function parseTesting(value: unknown): OddTesting {
 
 /** Validates exact request records and derives immutable local routing facts. */
 export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
-  const input = record(value, requestKeys, "ODD request");
+  const withNamedRisks=Object.hasOwn(value,"namedRisks");
+  const input = record(value,withNamedRisks?[...requestKeys,"namedRisks"]:requestKeys,"ODD request");
   const scope = parseScope(input.scope);
   const writes = array(input.writes, "writes").map(item => {
     const write = record(item, ["path", "changeKind"], "write");
@@ -119,6 +123,14 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   if (new Set(writePaths).size !== writes.length) throw new Error("write paths contain duplicates");
   if (scope.kind !== "known" && writes.length || scope.kind === "known" && writePaths.some(item => !scope.expectedPaths.includes(item))) throw new Error("writes must be unique members of known scope");
   const operations = uniqueStrings(input.riskOperations, "risk operations").map(item => member(item, riskOperations, "risk operation"));
+  const declared=withNamedRisks?array(input.namedRisks,"named risks").map(entry=>{
+    const raw=record(entry,["item","reason"],"named risk");
+    if(typeof raw.item!=="number"||!Number.isInteger(raw.item)||raw.item<1||raw.item>6)throw new Error("named risk item must be 1..6");
+    const reason=text(raw.reason,"named risk reason");
+    if(reason.length>500)throw new Error("named risk reason is too long");
+    return Object.freeze({item:raw.item as OddNamedRisk["item"],reason});
+  }):[];
+  if(declared.length>6||new Set(declared.map(item=>item.item)).size!==declared.length)throw new Error("named risks contain duplicates or exceed six categories");
   const sessionInput = record(input.session, ["estimatedMinutes", "continuation"], "session");
   if (typeof sessionInput.continuation !== "boolean") throw new Error("session continuation is invalid");
   const session = Object.freeze({ estimatedMinutes: count(sessionInput.estimatedMinutes, "session estimate"), continuation: sessionInput.continuation });
@@ -130,9 +142,19 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   const filesTouched = scope.kind === "known" ? scope.expectedPaths.length : 0;
   const medium = writes.some(write => nonTrivialKinds.has(write.changeKind));
   const risk: Risk = high ? "high" : unknown ? "unknown" : medium ? "medium" : "low";
+  // Solo se infieren riesgos respaldados por los tipos de cambio declarados.
+  // Concurrencia y entrega requieren una señal explícita, nunca una suposición por nombre de archivo.
+  const inferred:OddNamedRisk[]=[];
+  if(writes.some(write=>write.changeKind==="migration"))inferred.push({item:1,reason:"Migración de datos o estado"});
+  if(writes.some(write=>write.changeKind==="security"))inferred.push({item:2,reason:"Cambio en un límite de seguridad"});
+  if(writes.some(write=>write.changeKind==="schema"))inferred.push({item:3,reason:"Cambio en un contrato o esquema consumido"});
+  if(writes.some(write=>nonTrivialKinds.has(write.changeKind))&&
+     (input.testing as {kind?:string})?.kind==="n_a")inferred.push({item:6,reason:"Cambio relevante sin prueba de regresión declarada"});
+  const declaredItems=new Set(declared.map(item=>item.item));
+  const namedRisks=Object.freeze([...declared,...inferred.filter(item=>!declaredItems.has(item.item))].sort((a,b)=>a.item-b.item).map(item=>Object.freeze(item)));
   const facts = Object.freeze({
     taskIdentity: text(input.taskIdentity, "task identity"), repositoryIdentity: text(input.repositoryIdentity, "repository identity"),
-    intent: member(input.intent, intents, "intent"), scope, writes: Object.freeze(writes), riskOperations: Object.freeze(operations), session,
+    intent: member(input.intent, intents, "intent"), scope, writes: Object.freeze(writes), riskOperations: Object.freeze(operations), namedRisks, session,
     testing: parseTesting(input.testing), review, unresolvedDecisions, filesTouched,
     nonTrivialWrites: writes.filter(write => nonTrivialKinds.has(write.changeKind)).length,
     incident: input.intent === "incident", verificationIntent: input.intent === "verification",
@@ -148,13 +170,15 @@ export function planOddRoute(facts: OddDerivedFacts): OddRouteDecision {
   if (plannedFacts.has(facts)) throw new Error("ODD facts have already been planned");
   plannedFacts.add(facts);
   let route: OddRoute; let reasons: string[];
+  const needsIndependent=!!facts.writes.length&&facts.namedRisks.length>0;
   if (facts.incident) { route = "incident"; reasons = ["incident-intent"]; }
   else if (facts.verificationIntent) { route = "verify"; reasons = ["verification-intent"]; }
   else if (facts.scope.kind === "unknown" || facts.unresolvedDecisions.length) { route = "plan"; reasons = [...(facts.scope.kind === "unknown" ? ["unknown-scope"] : []), ...(facts.unresolvedDecisions.length ? ["unresolved-decisions"] : [])]; }
   else if (facts.risk === "high") { route = "plan"; reasons = ["high-risk"]; }
   else if (facts.review.kind === "dual_explicit") { route = "orchestrate"; reasons = ["explicit-independent-review"]; }
+  else if (needsIndependent) { route = "orchestrate"; reasons = facts.namedRisks.map(item=>`named-risk-${item.item}`); }
   else { route = "direct"; reasons = ["bounded-work-with-controlled-risk"]; }
-  const payload = { taskIdentity: facts.taskIdentity, repositoryIdentity: facts.repositoryIdentity, route, risk: facts.risk, verification: verificationLevel(facts.risk), reasons, requiresSingleWriter: route === "orchestrate" || route === "incident", requiresIsolatedChild: route === "orchestrate" || route === "incident" || route === "verify" };
+  const payload = { taskIdentity: facts.taskIdentity, repositoryIdentity: facts.repositoryIdentity, route, risk: facts.risk, verification: needsIndependent?"independent" as const:verificationLevel(facts.risk), reasons, requiresSingleWriter: route === "orchestrate" || route === "incident", requiresIsolatedChild: route === "orchestrate" || route === "incident" || route === "verify" };
   const decision = Object.freeze({ decisionId: createHash("sha256").update(JSON.stringify(payload)).digest("hex"), ...payload, reasons: Object.freeze(reasons) });
   issuedDecisions.add(decision);
   decisionFacts.set(decision, facts);

@@ -4,7 +4,7 @@ import { stripVTControlCharacters } from 'node:util';
 import test from 'node:test';
 import { Theme } from '@earendil-works/pi-coding-agent';
 import { visibleWidth } from '@earendil-works/pi-tui';
-import { renderAsenFocusHeader } from '../src/runtime/ui/focus-chrome.js';
+import { renderAsenFocusHeader,t11ChromeParts } from '../src/runtime/ui/focus-chrome.js';
 
 // The renderer needs only public fg/bold methods; the real SDK instance exercises ANSI output.
 const fgKeys = 'accent border borderAccent borderMuted success error warning muted dim text thinkingText scrollbarTrack scrollbarThumb searchMatchText userMessageText customMessageText customMessageLabel toolTitle toolOutput mdHeading mdLink mdLinkUrl mdCode mdCodeBlock mdCodeBlockBorder mdQuote mdQuoteBorder mdHr mdListBullet toolDiffAdded toolDiffRemoved toolDiffContext syntaxComment syntaxKeyword syntaxFunction syntaxVariable syntaxString syntaxNumber syntaxType syntaxOperator syntaxPunctuation thinkingOff thinkingMinimal thinkingLow thinkingMedium thinkingHigh thinkingXhigh thinkingMax bashMode'.split(' ');
@@ -43,4 +43,33 @@ test('header is deterministic and never mutates metadata or performs I/O', () =>
   assert.deepEqual(renderAsenFocusHeader(info, 80, theme), renderAsenFocusHeader(info, 80, theme));
   const source = readFileSync(new URL('../src/runtime/ui/focus-chrome.ts', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /\b(process|readFile|writeFile|setTheme|SettingsManager|createAgentSession)\b/);
+});
+
+test("T11 partes de cabecera no duplican el nombre ni los datos de versión",()=>{
+ const info={asenVersion:"2.1.0",piVersion:"1.2.0"};
+ assert.deepEqual(t11ChromeParts("top"),{top:"full",bottom:"none"});
+ assert.deepEqual(t11ChromeParts("below-input"),{top:"none",bottom:"full"});
+ assert.deepEqual(t11ChromeParts("split"),{top:"brand",bottom:"facts"});
+ const top=renderAsenFocusHeader(info,70,theme,{part:"brand"});
+ const below=renderAsenFocusHeader(info,70,theme,{part:"facts"});
+ assert.equal(stripVTControlCharacters(top.join("")),"π ASEN");
+ assert.equal(stripVTControlCharacters(below.join("")),"v2.1.0 · Pi 1.2.0");
+ assert.equal(renderAsenFocusHeader(info,70,theme,{part:"none"}).length,0);
+ assert.equal((top.join("")+below.join("")).match(/ASEN/g)?.length,1);
+ for(const w of [1,2,5,12,24,40,140]){
+  for(const part of ["full","brand","facts"] as const){
+   const row=renderAsenFocusHeader(info,w,theme,{part})[0]!;
+   assert.ok(visibleWidth(row)<=w,`${w}/${part}: ${row}`);
+  }
+ }
+});
+test("T11 superficie tinted aplica solo el fondo, sin cambiar el texto ni inventar datos",()=>{
+ const info=Object.freeze({asenVersion:"1.2.3",piVersion:"1.2.0"});
+ const a=renderAsenFocusHeader(info,70,theme,{surface:"transparent"});
+ const b=renderAsenFocusHeader(info,70,theme,{surface:"tinted"});
+ assert.deepEqual(a.map(line=>stripVTControlCharacters(line).trimEnd()),b.map(line=>stripVTControlCharacters(line).trimEnd()));
+ assert.equal(visibleWidth(b[0]!),70,"la superficie tintada ocupa todo el ancho disponible");
+ assert.notDeepEqual(a,b);
+ const noBg={fg:theme.fg.bind(theme),bold:theme.bold.bind(theme)};
+ assert.equal(renderAsenFocusHeader(info,70,noBg,{surface:"tinted"}).length,1);
 });

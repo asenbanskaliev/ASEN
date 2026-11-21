@@ -31,7 +31,7 @@ Return evidence.
 `;
 // Metadata-only coverage for the project-owned legacy Skills, not body conformance.
 const metadataSkillNames=[
- "apply","archive","context-init","design","explore","go-testing","phase-protocol",
+ "apply","archive","context-init","design","explore","phase-protocol",
  "proposal","review","safe-change","specification","status","tasks","verify"
 ].map(suffix=>`asen-${suffix}`);
 function assertProjectMetadata(text:string,directoryName:string){

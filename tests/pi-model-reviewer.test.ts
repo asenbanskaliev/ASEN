@@ -5,17 +5,19 @@ import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview} from "../src/review/workspace-review-session.js";
-import {availableIndependentPiReviewers,runIndependentPiReview,type PiReviewRegistry,type PiReviewEvent,type PiReviewerModel} from "../src/review/pi-model-reviewer.js";
+import {availableIndependentPiReviewers,runIndependentPiReview,runPiLensReview,isIssuedPiLensReview,type PiReviewRegistry,type PiReviewEvent,type PiReviewerModel} from "../src/review/pi-model-reviewer.js";
+import {consolidatePiLensReviews,isIssuedPiLensBundle} from "../src/review/review-results.js";
+import type {ReviewLens} from "../src/review/review-risk.js";
 
 const author={provider:"provider-a",id:"writer"},reviewer={provider:"provider-b",id:"reviewer"};
-function fixture(t:unknown,sensitivePath?:string){
+function fixture(t:unknown,sensitivePath?:string,reviewLenses:ReviewLens[]=["risk"]){
  const root=mkdtempSync(join(tmpdir(),"asen-pi-reviewer-repo-")),parent=mkdtempSync(join(tmpdir(),"asen-pi-reviewer-view-"));
  (t as {after(callback:()=>void):void}).after(()=>{rmSync(root,{recursive:true,force:true});rmSync(parent,{recursive:true,force:true});});
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
  git("init","-q");git("config","user.name","ASEN test");git("config","user.email","asen@example.invalid");writeFileSync(join(root,"src.txt"),"before\n");git("add","src.txt");git("commit","-qm","base");
  if(sensitivePath){writeFileSync(join(root,sensitivePath),"sensitive-test-marker\n");git("add",sensitivePath);git("commit","-qm","add sensitive path");writeFileSync(join(root,sensitivePath),"changed sensitive-test-marker\n");}
  writeFileSync(join(root,"src.txt"),"after\n");
- const workspace=openWorkspaceReview({repositoryRoot:resolve(root),intendedUntracked:[],sessionId:"s",reviewerId:"provider-b/reviewer",viewParent:resolve(parent),risk:{riskId:"T05",reason:"test review",severity:"high",lenses:["risk"]}});
+ const workspace=openWorkspaceReview({repositoryRoot:resolve(root),intendedUntracked:[],sessionId:"s",reviewerId:"provider-b/reviewer",viewParent:resolve(parent),risk:{riskId:"T05",reason:"test review",severity:"high",lenses:reviewLenses}});
  return {workspace,evidence:readWorkspaceReviewEvidence(workspace)};
 }
 function response(verdict:"pass"|"fail"="pass",findings:unknown[]=[]):string{return JSON.stringify({verdict,summary:"Reviewed exact candidate bytes",findings});}
@@ -62,4 +64,76 @@ test("refuses sensitive-path evidence before calling the external reviewer",asyn
  await assert.rejects(()=>runIndependentPiReview({registry:models.value,model:reviewer,author,evidence,requirements:"review"}),/sensitive path/u);
  assert.equal(models.called(),undefined);
  closeWorkspaceReview(workspace);
+});
+
+test("a 4R specialist uses an isolated lens prompt and remains read-only",async t=>{
+ const {workspace,evidence}=fixture(t),models=registry(response());
+ const result=await runPiLensReview({registry:models.value,model:reviewer,author,evidence,requirements:"Verify safety",lens:"risk"});
+ assert.equal(isIssuedPiLensReview(result),true);
+ assert.equal(result.candidateTreeIdentity,evidence.candidate.treeIdentity);
+ assert.equal(result.requestId,evidence.requestId);
+ const call=models.called() as {context:{systemPrompt:string;messages:unknown[]}};
+ assert.match(call.context.systemPrompt,/Specialization: risk/u);
+ assert.match(call.context.systemPrompt,/no tools, no edits/u);
+ assert.equal("tools" in call.context,false);
+ closeWorkspaceReview(workspace);
+});
+
+test("unrequested, invented or forged specialist lens cannot use the model",async t=>{
+ const {workspace,evidence}=fixture(t),models=registry(response());
+ await assert.rejects(()=>runPiLensReview({registry:models.value,model:reviewer,author,evidence,requirements:"Verify safety",lens:"readability"}),/not present/u);
+ await assert.rejects(()=>runPiLensReview({registry:models.value,model:reviewer,author,evidence,requirements:"Verify safety",lens:"unknown" as never}),/Unknown independent review lens/u);
+ assert.equal(models.called(),undefined);
+ closeWorkspaceReview(workspace);
+});
+
+test("4R aggregation requires all genuine reports bound to same review request and candidate",async t=>{
+ const {workspace,evidence}=fixture(t,undefined,["risk","reliability"]),models=registry(response());
+ const a=await runPiLensReview({registry:models.value,model:reviewer,author,evidence,requirements:"Review",lens:"risk"});
+ const b=await runPiLensReview({registry:models.value,model:reviewer,author,evidence,requirements:"Review",lens:"reliability"});
+ const expected={requestId:evidence.requestId,sessionId:evidence.sessionId,candidateTreeIdentity:evidence.candidate.treeIdentity,candidateRevision:evidence.candidate.revision,lenses:["risk","reliability"] as ReviewLens[]};
+ const bundle=consolidatePiLensReviews(expected,[b,a]);
+ assert.equal(isIssuedPiLensBundle(bundle),true);assert.equal(bundle.status,"pass");assert.equal(bundle.deliveryAuthority,false);
+ assert.deepEqual(bundle.lenses,["risk","reliability"]);
+ await Promise.resolve(assert.throws(()=>consolidatePiLensReviews(expected,[a]),/Incomplete 4R/u));
+ assert.throws(()=>consolidatePiLensReviews(expected,[a,a]),/forged, duplicated/u);
+ assert.throws(()=>consolidatePiLensReviews(expected,[{...a},b]),/forged, duplicated/u);
+ assert.throws(()=>consolidatePiLensReviews({...expected,candidateRevision:"different"},[a,b]),/another candidate/u);
+ closeWorkspaceReview(workspace);
+});
+
+test("4R preserves blocking findings rather than synthesizing an approval",async t=>{
+ const {workspace,evidence}=fixture(t),models=registry(response("fail",[{id:"r1",severity:"high",path:"src.txt",description:"Specific security risk"}]));
+ const a=await runPiLensReview({registry:models.value,model:reviewer,author,evidence,requirements:"Security",lens:"risk"});
+ const bundle=consolidatePiLensReviews({requestId:evidence.requestId,sessionId:evidence.sessionId,candidateTreeIdentity:evidence.candidate.treeIdentity,candidateRevision:evidence.candidate.revision,lenses:["risk"]},[a]);
+ assert.equal(bundle.status,"fail");assert.equal(bundle.findings.length,1);assert.equal(bundle.findings[0]!.finding.severity,"high");
+ assert.equal(bundle.acceptance,"not-accepted");
+ closeWorkspaceReview(workspace);
+});
+
+test("T03 rechaza modelos Pi falsificados, controles y duplicados antes de ofrecer revisión 4R",()=>{
+ const valid={provider:"nvidia",id:"meta-llama/llama-3.3-70b-instruct"};
+ const malformed:PiReviewerModel[]=[
+  {provider:"nvidia\nengancho",id:"modelo"},
+  {provider:"nvidia/otro",id:"modelo"},
+  {provider:"nvidia",id:"modelo\nmalicioso"},
+  {provider:"nvidia",id:"modelo//invalido"},
+  {provider:"nvidia",id:"modelo/../escape"},
+  {provider:"nvidia",id:""},
+  {provider:"nvidia",id:"model\u0000evil"}
+ ];
+ const entries=[author,valid,{...valid},...malformed];
+ const eligible=availableIndependentPiReviewers({
+  getAvailable:()=>entries,
+  hasConfiguredAuth:()=>true,
+  streamSimple:()=>{throw new Error("No se debe ejecutar ninguna llamada");}
+ },author);
+ assert.deepEqual(eligible,[valid]);
+ assert.equal(Object.isFrozen(eligible),true);
+ assert.equal(Object.isFrozen(eligible[0]!),true);
+ assert.deepEqual(availableIndependentPiReviewers({
+  getAvailable:()=>malformed,
+  hasConfiguredAuth:()=>true,
+  streamSimple:()=>{throw new Error("Sin ejecución");}
+ },author),[]);
 });

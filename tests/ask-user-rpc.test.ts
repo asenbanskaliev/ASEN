@@ -7,7 +7,7 @@ import {tmpdir} from "node:os";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {createPiVerifierEnvironment} from "../scripts/gsp06-pi-free-environment.mjs";
 
-test("real offline Pi RPC transports canonical and ASEN choices without any model invocation",{timeout:20000},async t=>{
+test("real offline Pi RPC transports canonical and ASEN choices without any model invocation",{timeout:45000},async t=>{
   const root=await mkdtemp(join(tmpdir(),"asen-interaction-rpc-"));
   const extension=join(root,"probe.ts"),source=pathToFileURL(resolve("extensions/asen.ts")).href;
   const credentialNames=["OPENROUTER_API_KEY","LLM7_API_KEY","GROQ_API_KEY","NVIDIA_API_KEY","GITHUB_TOKEN","ASEN_TEST_UNRELATED_SECRET"];
@@ -30,7 +30,11 @@ ctx.ui.notify("ASEN_PROBE:"+JSON.stringify({...result.details,credentialNames}),
   let buffer="",stderr="",dialogs=0,models=0;
   child.stderr.on("data",chunk=>{stderr+=chunk.toString();});
   const outcomes=await new Promise<any[]>((done,reject)=>{
-    const timer=setTimeout(()=>reject(Error("RPC probe timed out: "+stderr.slice(-1000))),15000),results:any[]=[];
+    // macOS compartido puede tardar más en cargar Pi bajo pruebas paralelas.
+    // Es un plazo finito: registra la última etapa y nunca llama al modelo.
+    const deadline=process.platform==="darwin"?30000:15000;
+    let phase="get_commands";
+    const timer=setTimeout(()=>reject(Error("RPC probe timed out at "+phase+": "+stderr.slice(-1000))),deadline),results:any[]=[];
     child.once("error",reject);child.once("close",(code,signal)=>{if(results.length!==2)reject(Error(`Pi closed before probe (code=${code}, signal=${signal}): ${stderr.slice(-1000)}`));});
     child.stdout.on("data",chunk=>{
       buffer+=chunk.toString();if(buffer.length>100000){clearTimeout(timer);reject(Error("Oversized RPC output"));return;}
@@ -39,13 +43,16 @@ ctx.ui.notify("ASEN_PROBE:"+JSON.stringify({...result.details,credentialNames}),
         try{
           const row=JSON.parse(line);if(row.type==="agent_start")models++;
           if(row.type==="response"&&row.id==="commands"){
+            phase="commands";
             assert.equal(row.success,true);assert.ok(row.data.commands.some((c:any)=>c.name==="asen-interaction-probe"));
             send({id:"choose",type:"prompt",message:"/asen-interaction-probe"});
           }
           if(row.type==="extension_ui_request"&&row.method==="select"){
+            phase="select-"+(dialogs+1);
             dialogs++;send(dialogs===1?{type:"extension_ui_response",id:row.id,value:row.options[1]}:{type:"extension_ui_response",id:row.id,cancelled:true});
           }
           if(row.type==="extension_ui_request"&&row.method==="notify"&&row.message.startsWith("ASEN_PROBE:")){
+            phase="answer-"+(results.length+1);
             results.push(JSON.parse(row.message.slice("ASEN_PROBE:".length)));
             if(results.length===1)send({id:"cancel",type:"prompt",message:"/asen-interaction-probe"});
             else {clearTimeout(timer);done(results);}

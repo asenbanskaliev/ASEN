@@ -1,0 +1,127 @@
+name: T06 dos revisores NVIDIA reales sin aprobaciones de entorno
+# Única autorización por cambio exacto del propietario; nunca en PR.
+# Segunda prueba: modelos verificados con GET oficial al catálogo NVIDIA.
+# Cuarta prueba: compatibilidad de modelos fijados, sin razón ni reintentos.
+# Ajuste de compatibilidad: Pi 1.5.2 y razonamiento desactivado en ambos jueces.
+on:
+  push:
+    branches:
+      - feat/flujo-de-agentes-20261115
+    paths:
+      - .github/workflows/asen-t06-autorrevision-nvidia.yml
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: asen-t06-nvidia-revisores-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  preparar:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.actor == 'asenbanskaliev' &&
+      github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci(asen): revisar T06 con dos NVIDIA reales'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ASEN_T06_AUTO_REVIEW_ONLY: "1"
+      ASEN_T06_COST_ACK: "true"
+      ASEN_T06_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_T06_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      ASEN_T06_SOURCE_SHA: 5bd752374f2db630a9d2ab0887e1025134a4e13f
+      ASEN_T06_SOURCE_RUN_ID: "44792916571"
+      ASEN_T06_BEHAVIOR_RUN_ID: "44794317489"
+      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3.5-bolt-e4b
+      ASEN_T06_REVIEW_MODEL_B: nvidia/nemotron-3.5-super-vl-120b-a12b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Verificar identidad y pruebas negativas antes de pedir consumo
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node --import tsx --test tests/t06-auto-review-authority.test.ts tests/t06-independent-review-admission.test.ts tests/t06-native-review-receipt.test.ts tests/t06-aislamiento-modelos-nvidia.test.mjs
+          node --import tsx --input-type=module -e "import {autorizarT06RevisionAutomatica} from './src/runtime/agents/t06-auto-review-authority.ts';if(!autorizarT06RevisionAutomatica(process.env))process.exit(1)"
+          test -z "$(git status --porcelain=v1)"
+  revisar:
+    needs: [preparar]
+    if: github.repository == 'asenbanskaliev/ASEN' && github.event_name == 'push' && github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      ASEN_T06_AUTO_REVIEW_ONLY: "1"
+      ASEN_T06_COST_ACK: "true"
+      ASEN_T06_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_T06_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      ASEN_T06_SOURCE_SHA: 5bd752374f2db630a9d2ab0887e1025134a4e13f
+      ASEN_T06_SOURCE_RUN_ID: "44792916571"
+      ASEN_T06_BEHAVIOR_RUN_ID: "44794317489"
+      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3.5-bolt-e4b
+      ASEN_T06_REVIEW_MODEL_B: nvidia/nemotron-3.5-super-vl-120b-a12b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instalar Pi 1.2 y bloquear reintentos antes de obtener credenciales
+        shell: bash
+        env:
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-revision-pi
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.5.2
+          test "$(pi --version | tr -d '\r')" = "1.5.2"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node scripts/t12-pi-retry-settings.mjs
+          node scripts/t06-aislamiento-modelos-nvidia.mjs
+      - name: Recuperar solo las fuentes del ensayo real anterior
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
+        with:
+          run-id: 44792916571
+          name: asen-t06-writers-auto-5bd752374f2db630a9d2ab0887e1025134a4e13f-44792916571
+          path: ${{ runner.temp }}/asen-t06-fuentes
+          github-token: ${{ github.token }}
+      - name: Recuperar exclusivamente los 17 casos superados
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
+        with:
+          run-id: 44794317489
+          name: asen-t06-17-casos-replay-5d8ef7d8c05f693b1dfd4d9dcbb147cbc11ab1fd-44794317489
+          path: ${{ runner.temp }}/asen-t06-pruebas
+          github-token: ${{ github.token }}
+      - name: Consultar catálogo y solicitar dos dictámenes reales, sin herramientas
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_T06_REVIEW_CODE_DIR: ${{ runner.temp }}/asen-t06-fuentes
+          ASEN_T06_REVIEW_BEHAVIOR_DIR: ${{ runner.temp }}/asen-t06-pruebas
+          ASEN_T06_REVIEW_REPORT_DIR: ${{ runner.temp }}/asen-t06-opiniones
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-revision-pi
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          timeout 420s node --import tsx scripts/t06-autorrevision-nvidia.ts
+      - name: Conservar dictámenes sin credenciales ni permisos de aceptación
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-t06-dos-revisores-auto-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-t06-opiniones/t06-opiniones-reales.json
+          if-no-files-found: warn
+          retention-days: 14

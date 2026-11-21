@@ -10,6 +10,7 @@ const scope={oneOf:[
 ]};
 const writes={type:"array",maxItems:256,items:{type:"object",additionalProperties:false,required:["path","changeKind"],properties:{path:{type:"string",minLength:1,maxLength:4096},changeKind:{type:"string",enum:["behavior","schema","security","configuration","migration","documentation","format","generated"]}}}};
 const riskOperations={type:"array",maxItems:32,items:{type:"string",enum:["destructive_git","external_write","credential_or_auth","security_boundary"]}};
+const namedRisks={type:"array",maxItems:6,items:{type:"object",additionalProperties:false,required:["item","reason"],properties:{item:{type:"integer",minimum:1,maximum:6},reason:{type:"string",minLength:1,maxLength:500}}}};
 const session={type:"object",additionalProperties:false,required:["estimatedMinutes","continuation"],properties:{estimatedMinutes:{type:"integer",minimum:0,maximum:100000},continuation:{type:"boolean"}}};
 const testing={oneOf:[
  {type:"object",additionalProperties:false,required:["kind"],properties:{kind:{type:"string",const:"required"}}},
@@ -19,12 +20,17 @@ const review={type:"object",additionalProperties:false,required:["kind","estimat
 const unresolvedDecisions={type:"array",maxItems:64,items:{type:"string",minLength:1,maxLength:2048}};
 
 function assertExactRequest(value:unknown):asserts value is Record<(typeof planKeys)[number],unknown>{
- if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype||Object.keys(value).length!==planKeys.length||planKeys.some(key=>!Object.hasOwn(value,key)))throw new Error("ASEN plan request is incomplete; inspect the project and resolve material uncertainty before planning.");
+ const keys=Object.hasOwn(value??{},"namedRisks")?[...planKeys,"namedRisks"]:planKeys;
+ if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype||Object.keys(value).length!==keys.length||keys.some(key=>!Object.hasOwn(value,key)))throw new Error("ASEN plan request is incomplete; inspect the project and resolve material uncertainty before planning.");
 }
 
 function userSummary(value:unknown):string{
  if(!value||typeof value!=="object"||Array.isArray(value))return "ASEN could not prepare a readable plan.";
- const plan=value as {status?:unknown;route?:unknown;risk?:unknown;verification?:unknown;requiredAgentRoles?:unknown;executablePlan?:{tasks?:unknown};persistence?:{status?:unknown};execution?:{started?:unknown;authorized?:unknown}};
+ const plan=value as {status?:unknown;route?:unknown;risk?:unknown;verification?:unknown;requiredAgentRoles?:unknown;executablePlan?:{tasks?:unknown};persistence?:{status?:unknown};execution?:{started?:unknown;authorized?:unknown};additionalPaths?:unknown};
+ if(plan.status==="needs-scope-approval"){
+  const paths=Array.isArray(plan.additionalPaths)?plan.additionalPaths.filter((p):p is string=>typeof p==="string"):[];
+  return `El plan pide modificar archivos fuera del ámbito original: ${paths.join(", ")}. No he iniciado agentes ni autorizado escrituras. Es necesaria la aprobación expresa de esos archivos y un plan nuevo.`;
+ }
  if(plan.status==="needs-verified-facts")return "ASEN needs more information before it can prepare a safe plan. I will ask only about decisions that cannot be inferred from the request or project.";
  if((value as {inlineClarification?:unknown}).inlineClarification===true)return plan.risk==="high"?"La petición cruza un límite de riesgo alto. No inicies tareas ni escribas; explica brevemente en lenguaje normal qué control falta y espera la siguiente instrucción, sin pedir comandos ni datos internos.":"Falta una decisión importante. Haz un único mensaje breve en esta conversación; agrupa en él las decisiones relacionadas que necesiten respuesta y no preguntes por datos que puedas deducir del proyecto. Cuando responda, vuelve a evaluar la petición. No guardes una tarea pendiente ni pidas comandos, JSON o IDs.";
  if((value as {inlineContinuation?:unknown}).inlineContinuation===true)return "La petición es acotada: continúa en esta misma conversación de Pi. No guardes una tarea Todo, no pidas al usuario ejecutar comandos ni detalles internos de planificación. No se lanzó ningún agente.";
@@ -53,7 +59,7 @@ export function registerAsenPlanRequestTool(
   name:ASEN_PLAN_REQUEST_TOOL,label:"Prepare ASEN task plan",
   description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Bounded requests stay in chat; material clarifications are asked there without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs fresh exact Pi approval. Review and independent verification are included only when present in the issued plan; completion requires explicit user acceptance after reviewing available results.",
   executionMode:"sequential",
-  parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,session,testing,review,unresolvedDecisions}},
+  parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,namedRisks,session,testing,review,unresolvedDecisions}},
   execute:async(_callId,params,_signal,_update,context)=>{
    assertExactRequest(params);
    const id=taskIdentity();if(!id||id.trim()!==id)throw new Error("ASEN could not create an internal task identity.");

@@ -1,15 +1,15 @@
 {
-  "_provenance": "Synthetic public regression oracle transcribed from the current WIP runtime palette. NOT the unpublished original design source, independent design approval, or real host visual acceptance.",
+  "_provenance": "Valores de referencia fijados para T11; solo verifican el tema, no la paridad de pantalla Pi.",
   "dark": {
-    "text": "#E5EEF5",
-    "muted": "#A6B5C3",
-    "accent": "#83D7C0",
-    "surface": "#15232E",
-    "focus": "#153D35",
-    "border": "#526879",
-    "warning": "#E7BF7A",
-    "error": "#F0A4AA",
-    "info": "#A9CBE3"
+    "text": "#F6EFF3",
+    "muted": "#A78E9B",
+    "accent": "#F43888",
+    "surface": "#100A0F",
+    "focus": "#28121E",
+    "border": "#563040",
+    "warning": "#F2B86D",
+    "error": "#FF718F",
+    "info": "#A9C7EE"
   },
   "light": {
     "text": "#172B35",

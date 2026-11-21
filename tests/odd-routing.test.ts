@@ -119,3 +119,42 @@ test("facts plan once and decisions claim once; structural forgeries stay invali
   claimOddRouteDecision(decision);
   assert.throws(() => claimOddRouteDecision(decision));
 });
+
+
+test("un riesgo nombrado obliga a verificador independiente sin conceder permisos",()=>{
+ for(const item of [1,2,3,4,5,6] as const){
+  const decision=route({namedRisks:[{item,reason:"Riesgo comprobado de la categoría "+item}]});
+  assert.equal(decision.route,"orchestrate");
+  assert.equal(decision.verification,"independent");
+  assert.ok(decision.reasons.includes("named-risk-"+item));
+ }
+ assert.equal(route({namedRisks:[{item:4,reason:"Concurrencia"}],writes:[]}).route,"direct");
+ assert.equal(route({namedRisks:[{item:2,reason:"Seguridad"}],riskOperations:["security_boundary"]}).route,"plan");
+});
+
+test("esquema y migración infieren verificación; cambios sencillos mantienen ruta directa",()=>{
+ for(const [kind,item] of [["schema",3],["migration",1]] as const){
+  const facts=deriveOddFacts(request({writes:[{path:"src/a.ts",changeKind:kind}]}));
+  assert.ok(facts.namedRisks.some(risk=>risk.item===item));
+  const decision=planOddRoute(facts);
+  assert.equal(decision.route,"orchestrate");
+  assert.equal(decision.verification,"independent");
+ }
+ assert.equal(route().route,"direct");
+ assert.equal(route({writes:[{path:"src/a.ts",changeKind:"documentation"}]}).verification,"structural");
+ const missing=route({testing:{kind:"n_a",reason:"Sin pruebas disponibles"}});
+ assert.equal(missing.route,"orchestrate");
+ assert.equal(missing.verification,"independent");
+});
+
+test("riesgos mal formados y duplicados no permiten plan ni autorizaciones",()=>{
+ for(const risks of [
+  [{item:0,reason:"No autorizado"}],
+  [{item:7,reason:"No autorizado"}],
+  [{item:4,reason:"Duplicado"},{item:4,reason:"Duplicado"}],
+  [{item:1,reason:" "}],
+  [{item:3,reason:"X".repeat(501)}],
+  [{item:2,reason:"Válido",other:true}],
+  Array.from({length:7},(_,i)=>({item:i+1,reason:"Exceso"}))
+ ])assert.throws(()=>deriveOddFacts(request({namedRisks:risks as NonNullable<OddRoutingRequest["namedRisks"]>})));
+});

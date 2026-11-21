@@ -7,6 +7,8 @@ import {
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
+import {projectParallelAgentFlow} from "../src/runtime/ui/agent-flow-overview.js";
+import {renderM1Surface} from "../src/runtime/ui/m1-readonly-rail.js";
 
 type Todo=AsenPanelSnapshot["todos"][number];
 type Agent=AsenPanelSnapshot["agents"][number];
@@ -181,4 +183,265 @@ test("UFC-M1-02 presence never implies connection and omission stays legacy-safe
  const row=renderAsenStatusLine(snapshot({integrationInspection:inspectIntegrationProfiles({getCommands:()=>[{name:"asen-doctor"}],getAllTools:()=>[]})}),160);
  assert.doesNotMatch(row,/connected|healthy/iu,"presence of a registered tool is not a connection (UI-07 discipline)");
  assert.equal(renderAsenStatusLine(snapshot(),160),"ASEN","snapshots without an inspection keep the shipped omission");
+});
+
+
+test("T07 existing Pi panel shows cross-session flow in TODOS AGENTS CHANGES INTEGRATIONS without invented PASS",()=>{
+ const overview=projectParallelAgentFlow([{
+  batchId:"flow-1",state:"prepared",tasks:[
+   {sourceTodoId:"source-worker-1",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+    changes:{status:"scoped-changes",changedPaths:["a.ts"],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"pi-child-1",agents:[{id:"worker-1",role:"worker",state:"running"}]}},
+   {sourceTodoId:"source-worker-2",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+    changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false}}
+  ]
+ }]);
+ const source=snapshot({agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview},
+  todos:[],agents:[],jobs:[]});
+ const before=structuredClone(source);
+ for(const width of [24,50,110]){
+  const todos=renderAsenPanelSection(source,"TODOS",width).join("\n");
+  const agents=renderAsenPanelSection(source,"AGENTS",width).join("\n");
+  const changes=renderAsenPanelSection(source,"CHANGES",width).join("\n");
+  const integrations=renderAsenPanelSection(source,"INTEGRATIONS",width).join("\n");
+  if(width>=50){
+   assert.match(todos,/Linked source Todos:/u);
+   assert.match(agents,/Worktree Workers:/u);
+   assert.match(changes,/Linked worktrees:/u);
+   assert.match(integrations,/Cross-session ODD:/u);
+  }
+  const rendered=renderAsenPanel(source,width);
+  assert.ok(rendered.every(line=>visibleWidth(line)<=width));
+  assert.ok(rendered.every(line=>!line.includes("\u001b")&&!line.includes("\n")));
+ }
+ assert.equal(source.agentFlow?.overview.tasks[0]?.modelActual,"unknown");
+ assert.equal(source.agentFlow?.overview.acceptance,"not-accepted");
+ assert.deepEqual(source,before);
+});
+
+test("T06/T07 distingue cola y lanzamiento no acreditado en TODOS y AGENTS",()=>{
+ const overview=projectParallelAgentFlow([{batchId:"lote-pendiente",state:"prepared",
+  supervisorClaimed:true,tasks:[
+   {sourceTodoId:"origen-a",sourceTodoUnchanged:true,worktreePresent:true,
+    handoffClaimed:true,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"child-a",agents:[]}},
+   {sourceTodoId:"origen-b",sourceTodoUnchanged:true,worktreePresent:true,
+    handoffClaimed:true,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"child-b",agents:[{id:"worker-b",role:"worker",state:"queued"}]}}
+  ]}]);
+ const scope=snapshot({todos:[],agents:[],jobs:[],
+  agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const todos=renderAsenPanelSection(scope,"TODOS",140).join("\n");
+ const agents=renderAsenPanelSection(scope,"AGENTS",140).join("\n");
+ assert.match(todos,/launch-unverified/u);
+ assert.match(todos,/queued-observed/u);
+ assert.match(agents,/Lanzamientos sin verificar: 1/u);
+ assert.match(agents,/Agentes hijos observados en cola: 1(?!\d)/u);
+  assert.doesNotMatch("Agentes hijos observados en cola: 10",/Agentes hijos observados en cola: 1(?!\d)/u,
+   "Diez hijos no pueden satisfacer la observación exacta de uno");
+ assert.match(agents,/Worktree Workers: 0 active observed/u);
+ const status=renderAsenWorkRow(scope,160);
+ assert.ok(status);
+ assert.match(status,/1 hijos en cola/u);
+ assert.match(status,/1 lanzamientos sin verificar/u);
+ assert.doesNotMatch(status,/child Workers observed|merged|accepted/iu);
+ assert.doesNotMatch(todos+"\n"+agents,/merged|accepted:true|model actually used/iu);
+});
+
+test("T07 missing or unreadable flow never claims a model, Worker or successful integration",()=>{
+ const rows=renderAsenPanelSection(snapshot({agentFlowUnavailable:true}),"INTEGRATIONS",90).join("\n");
+ assert.match(rows,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(rows,/PASS|actual model [^u]|healthy/u);
+});
+
+test("T07 distingue sesión local vacía del trabajo de hijos y enseña el siguiente paso sin ejecutar",()=>{
+ const overview=projectParallelAgentFlow([{batchId:"batch-ui",state:"prepared",tasks:[
+  {sourceTodoId:"worker-ui-a",sourceTodoUnchanged:true,worktreePresent:true,
+   handoffClaimed:true,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"pi-child-a",agents:[{id:"real-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"worker-ui-b",sourceTodoUnchanged:true,worktreePresent:true,
+   handoffClaimed:false,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false}}
+ ]}]);
+ const base=snapshot({todos:[],agents:[],jobs:[],
+  agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const before=structuredClone(base);
+ const todos=renderAsenPanelSection(base,"TODOS",140).join("\n");
+ const agents=renderAsenPanelSection(base,"AGENTS",140).join("\n");
+ assert.match(todos,/No local Todos · linked worktree tasks observed/u);
+ assert.match(todos,/next observe-agent/u);
+ assert.match(todos,/next attach-child-session/u);
+ assert.match(agents,/Sin agentes locales · tareas hijas vinculadas/u);
+ assert.match(agents,/Worktree Workers: 1 active observed/u);
+ assert.doesNotMatch(todos+"\n"+agents,/model verified|accepted:true|merge complete/iu);
+ assert.equal(base.agentFlow?.overview.tasks[0]?.modelActual,"unknown");
+ assert.deepEqual(base,before);
+});
+
+test("T07 barra inferior reconoce Workers hijos reales sin actividades locales",()=>{
+ const overview=projectParallelAgentFlow([{batchId:"batch-bar",state:"prepared",tasks:[
+  {sourceTodoId:"bar-worker-a",sourceTodoUnchanged:true,worktreePresent:true,
+   handoffClaimed:true,changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"bar-child-a",agents:[{id:"bar-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"bar-worker-b",sourceTodoUnchanged:true,worktreePresent:true,
+   handoffClaimed:true,changes:{status:"scoped-changes",changedPaths:["x.ts"],outOfScopePaths:[],
+    headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"bar-child-b",agents:[{id:"bar-b",role:"worker",state:"completed"}]}}
+ ]}]);
+ const source=snapshot({todos:[],agents:[],jobs:[],
+  agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const row=renderAsenWorkRow(source,120);
+ assert.ok(row);assert.match(row,/1 child Workers observed/u);
+ assert.match(row,/1 child review pending/u);
+ assert.doesNotMatch(row,/accepted|completed successfully|merged/iu);
+ assert.equal(renderAsenWorkRow(snapshot(),120),undefined);
+ for(const width of [12,32,80,120])
+  assert.ok(visibleWidth(renderAsenWorkRow(source,width)!)<=width);
+});
+
+test("T02/T05/T06/T07 panel diferencia modelo solicitado, intento y recibo de modelo real",()=>{
+ const overview=projectParallelAgentFlow([{batchId:"lote-pi-observado",state:"prepared",
+  supervisorClaimed:true,tasks:[
+   {sourceTodoId:"todo-origen-a",sourceTodoUnchanged:true,worktreePresent:true,
+    handoffClaimed:true,receiptRecorded:true,
+    changes:{status:"scoped-changes",changedPaths:["codigo.ts"],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"sesion-a",modelRequested:"nvidia/modelo-solicitado",
+     agents:[{id:"agente-a",role:"worker",state:"completed"}]}},
+   {sourceTodoId:"todo-origen-b",sourceTodoUnchanged:true,worktreePresent:true,
+    handoffClaimed:false,receiptRecorded:false,
+    changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted",autoMerge:false}}
+  ]}]);
+ const panel=snapshot({agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const before=structuredClone(panel);
+ const rows=renderAsenPanelSection(panel,"AGENTS",140).join("\n");
+ assert.match(rows,/requested nvidia\/modelo-solicitado · actual unknown/u);
+ assert.match(rows,/Supervisor attempts recorded: 2 tasks/u);
+ assert.match(rows,/Collected Worker receipts: 1 · human review required/u);
+ assert.doesNotMatch(rows,/actual nvidia|FULL|automatically approved/iu);
+ assert.equal(overview.tasks[0]!.modelActual,"unknown");
+ assert.equal(overview.tasks[0]!.modelConsumedProven,false);
+ assert.deepEqual(panel,before);
+});
+
+test("T11: un origen fallido no dibuja cero tareas o agentes como si se hubieran observado",()=>{
+ const data=snapshot({activityUnavailable:true,todos:[],agents:[],jobs:[]});
+ for(const width of [12,24,40,50,140]){
+  const rows=renderAsenPanel(data,width);
+  if(width>=40){
+   assert.ok(rows.some(row=>row.includes("TODOS · unavailable")));
+   assert.ok(rows.some(row=>row.includes("JOBS · unavailable")));
+   assert.ok(rows.some(row=>row.includes("AGENTS · unavailable")));
+   assert.ok(rows.some(row=>row.includes("Actividad no disponible")));
+  }else{
+   assert.ok(rows.some(row=>row.includes("TODOS")));
+   assert.ok(rows.some(row=>row.includes("JOBS")));
+   assert.ok(rows.some(row=>row.includes("AGENTS")));
+  }
+  assert.doesNotMatch(rows.join("\n"),/No tasks in this session|No owned jobs|No agents|TODOS · 0\/0|JOBS · 0 running/);
+  assert.ok(rows.every(row=>visibleWidth(row)<=width));
+ }
+ assert.deepEqual(data,snapshot({activityUnavailable:true,todos:[],agents:[],jobs:[]}));
+});
+
+test("T11: revisión y actividad no reutilizan resultados previos ante fallo de lectura",()=>{
+ const old=snapshot({
+  activityUnavailable:true,todosObserved:true,
+  todos:[task("succeeded","Revisión antigua"),task("blocked")],
+  agents:[agent("running")],jobs:[job("running")],review:{pending:2},
+ });
+ const review=renderAsenPanelSection(old,"REVIEW",100).join("\n");
+ assert.match(review,/Actividad no disponible/u);
+ assert.doesNotMatch(review,/Results awaiting review|ODD Workers|2 stored/u);
+ const headings=renderAsenPanel(old,100).join("\n");
+ assert.match(headings,/REVIEW · unverified/u);
+ assert.doesNotMatch(headings,/REVIEW · 2 needs review/u);
+ const row=renderAsenWorkRow(old,100)??"";
+ assert.match(row,/actividad no disponible/u);
+ assert.doesNotMatch(row,/agents|jobs|todos|review pending/iu);
+ const recovered={...old,activityUnavailable:false};
+ assert.match(renderAsenPanelSection(recovered,"REVIEW",100).join("\n"),/Results awaiting review · 2/u);
+ assert.match(renderAsenWorkRow(recovered,100)??"",/1 agents/u);
+});
+
+
+test("T11/T07: la fuente hija desconocida no puede reutilizar observaciones antiguas en ningún ancho",()=>{
+ const previous=projectParallelAgentFlow([{batchId:"hijos-antiguos",state:"prepared",tasks:[{
+  sourceTodoId:"worker-antiguo",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+  changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+   headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+  childSession:{id:"sesion-anterior",agents:[{id:"agent-antiguo",role:"worker",state:"running"}]}
+ },{
+  // Los lotes genuinos contienen de 2 a 4 tareas; un registro unitario es inválido.
+  sourceTodoId:"worker-pendiente",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+  changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+   headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}
+ }]}]);
+ const input=snapshot({todos:[],agents:[],jobs:[],agentFlowUnavailable:true,
+  agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview:previous}});
+ const before=structuredClone(input);
+ for(const width of [24,40,50,80,120,139,140,180]){
+  const rows=renderAsenPanel(input,width).join("\n");
+  assert.doesNotMatch(rows,/Worktree Workers: 1 active observed|Linked source Todos: 1|sesion-anterior|worker-antiguo|agent-antiguo/u);
+  if(width>=50)assert.match(rows,/hijos no disponibles/u);
+  else assert.match(rows,/TODOS|AGENTS/u,"Los títulos siguen siendo visibles");
+  const compact=renderAsenWorkRow(input,width)??"";
+  if(width>=40)assert.match(compact,/hijos no disponibles/u);
+  else assert.match(compact,/hijos \?/u);
+  assert.match(compact,/\/asen-panel$/u,"El comando de inspección no debe truncarse");
+  assert.ok(visibleWidth(compact)<=width);
+  assert.doesNotMatch(compact,/child Workers observed|1 linked|PASS|accepted/iu);
+  const fallback=renderM1Surface(input,width);
+  if(width<140){
+   if(width>=40)assert.match(fallback.lines.join("\n"),/hijos no disponibles/u);
+   else assert.match(fallback.lines.join("\n"),/hijos \?/u);
+   assert.match(fallback.lines.join("\n"),/\/asen-panel$/u);
+   assert.ok(fallback.lines.every(line=>visibleWidth(line)<=width));
+  }
+ }
+ assert.deepEqual(input,before,"La presentación no debe modificar la evidencia");
+ assert.equal(renderAsenWorkRow(snapshot(),80),undefined,"Sin fallo ni actividad no se añade un aviso ficticio");
+});
+
+test("T07 observa Workers activos y en cola aunque Git esté bloqueado",()=>{
+ const changes={status:"out-of-scope" as const,changedPaths:["prohibido.ts"],outOfScopePaths:["prohibido.ts"],headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted" as const,autoMerge:false as const};
+ const overview=projectParallelAgentFlow([{batchId:"bloqueado",state:"prepared",tasks:[
+  {sourceTodoId:"activo",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,changes,childSession:{id:"pi-a",agents:[{id:"ag-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"cola",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,changes,childSession:{id:"pi-b",agents:[{id:"ag-b",role:"worker",state:"queued"}]}}
+ ]}]);
+ assert.equal(overview.stages.blocked,2);assert.equal(overview.stages["running-observed"],0);
+ const input=snapshot({todos:[],agents:[],jobs:[],agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const rows=renderAsenPanel(input,150).join("\n");
+ assert.match(rows,/AGENTS · 0 local running · 1 child observed/u);
+ assert.match(rows,/Worktree Workers: 1 active observed/u);
+ assert.match(rows,/Agentes hijos observados en cola: 1(?!\d)/u);
+ const row=renderAsenWorkRow(input,160)??"";
+ assert.match(row,/2 child tasks blocked/u);assert.match(row,/1 child Workers observed/u);
+ assert.match(row,/1 hijos en cola/u);
+});
+test("T07 REVIEW presenta revisión de hijos y no la confunde con cero resultados",()=>{
+ const changes={status:"clean" as const,changedPaths:[],outOfScopePaths:[],headMatchesBase:true,sourceVerified:true,acceptance:"not-accepted" as const,autoMerge:false as const};
+ const overview=projectParallelAgentFlow([{batchId:"revision",state:"prepared",tasks:[
+  {sourceTodoId:"finalizado",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,changes,childSession:{id:"pi-fin",agents:[{id:"ag-fin",role:"worker",state:"completed"}]}},
+  {sourceTodoId:"sin-lanzar",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,changes}
+ ]}]);
+ assert.equal(overview.stages["manual-review-required"],1);
+ const input=snapshot({todos:[],todosObserved:true,agents:[],jobs:[],agentFlow:{state:"observed",totalRecordedBatches:1,limited:false,overview}});
+ const panel=renderAsenPanel(input,145).join("\n"),review=renderAsenPanelSection(input,"REVIEW",145).join("\n");
+ assert.match(panel,/REVIEW · 0 local · 1 child needs review/u);
+ assert.match(review,/Linked child results awaiting human review: 1/u);
+ assert.doesNotMatch(review,/^[ \t]*No pending review results observed/mu);
+ const unavailable=renderAsenPanel(snapshot({...input,agentFlowUnavailable:true}),145).join("\n");
+ assert.match(unavailable,/REVIEW · 0 local · hijos no disponibles/u);
+ const body=renderAsenPanelSection(snapshot({...input,agentFlowUnavailable:true}),"REVIEW",145).join("\n");
+ assert.match(body,/No pending local review results observed/u);
+ assert.match(body,/Linked child reviews: unavailable/u);
+ assert.doesNotMatch(body,/^[ \t]*No pending review results observed/mu);
 });

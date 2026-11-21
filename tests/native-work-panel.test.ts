@@ -5,6 +5,7 @@ import {ASEN_PANEL_SECTIONS,renderAsenPanel,type AsenPanelSnapshot} from "../src
 import {visibleWidth} from "../src/runtime/responsive-layout.js";
 import {KeybindingsManager,TUI_KEYBINDINGS} from "@earendil-works/pi-tui";
 import {inspectIntegrationProfiles} from "../src/runtime/ui/integration-profile-inspection.js";
+import {projectParallelAgentFlow} from "../src/runtime/ui/agent-flow-overview.js";
 
 const snapshot={todos:[],agents:[],jobs:[],changes:{branch:"main",files:0},profile:"free",permission:"normal"} satisfies AsenPanelSnapshot;
 test("sheet overview collapses empty bodies and bounds inventory without losing observed detail",()=>{
@@ -170,7 +171,7 @@ test("CHANGES Enter requests the host viewer without running Git inside the pane
  for(let index=0;index<3;index++)q.handleInput("\t");
  q.handleInput("q");assert.equal(opened,1,"cancel does not activate viewer");
  current=false;q.handleInput("\r");
- assert.equal(opened,1,"stale panel cannot activate viewer");assert.equal(closed,2);
+ assert.equal(opened,1,"stale panel cannot activate viewer");assert.equal(closed,1,"el cierre no puede repetirse");
 });
 
 test("M2 native overlay renders six real sections, scrolls and changes section without effects",()=>{
@@ -200,7 +201,7 @@ test("M2 native overlay renders six real sections, scrolls and changes section w
  overlay.handleInput("j");
  assert.equal(closes,1,"stale native overlay must close without agent action");
  overlay.handleInput("q");
- assert.equal(closes,2);
+ assert.equal(closes,1,"el modal ya cerrado no debe volver a cerrarse");
  overlay.invalidate();
  rows=5;
  assert.ok(overlay.render(35).every(line=>visibleWidth(line)<=35));
@@ -258,7 +259,7 @@ test("Close-only fallback retains local close, host cancel and stale-scope rejec
   panel.handleInput("\u0018");assert.equal(closes,1,"configured cancel remains enabled");
   current=false;
   assert.ok(panel.render(width).every(line=>visibleWidth(line)<=width),"stale message fits actual width");
-  panel.handleInput("j");assert.equal(closes,2,"stale scope closes before hidden control rejection");
+  panel.handleInput("j");assert.equal(closes,1,"un cierre anterior invalida nuevas entradas");
  }
 });
 
@@ -294,14 +295,14 @@ test("panel honors injected host navigation bindings and disabled defaults",()=>
  assert.equal(redraws,rendersBefore+3,"panel-local fold and scroll aliases remain available");
  panel.handleInput("\u0018");assert.equal(closes,1);
  current=false;panel.handleInput("\u0014");
- assert.equal(closes,2,"scope rejection precedes configured navigation");
+ assert.equal(closes,1,"la sesión cerrada no acepta nuevas entradas");
  assert.deepEqual(snapshot,before,"navigation must not mutate projection data");
  const disabled=createNativeWorkPanel(snapshot,{
   keybindings:new KeybindingsManager(TUI_KEYBINDINGS,{"tui.select.cancel":[]}),
   requestRender(){},close:()=>closes++,terminalRows:()=>20,
  });
- disabled.handleInput("\u001b");assert.equal(closes,2);
- disabled.handleInput("q");assert.equal(closes,3,"q remains the panel-local close alias");
+ disabled.handleInput("\u001b");assert.equal(closes,1);
+ disabled.handleInput("q");assert.equal(closes,2,"q remains the panel-local close alias");
 });
 
 
@@ -324,4 +325,351 @@ test("native panel mouse clicks target only actually rendered headings after scr
  assert.equal(tiny.render(110).length,1);
  assert.equal(tiny.handleMouse({type:"press",button:"left",x:0,y:1} as any),undefined,
   "close-only overlay has no clickable sections");
+});
+
+test("T07 native overlay exposes linked Worker flow without a parent Agent or Todo",()=>{
+ const overview=projectParallelAgentFlow([{
+  batchId:"linked",state:"prepared",tasks:[
+   {sourceTodoId:"work-a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+    changes:{status:"scoped-changes",changedPaths:["work-a.ts"],outOfScopePaths:[],
+     sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+    childSession:{id:"pi-child",agents:[{id:"worker-a",role:"worker",state:"running"}]}},
+   {sourceTodoId:"work-b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+    changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+     sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}}
+  ]
+ }]);
+ const data={...snapshot,agentFlow:{state:"observed" as const,totalRecordedBatches:1,limited:false,overview}};
+ const before=structuredClone(data),panel=createNativeWorkPanel(data,{
+  requestRender(){},close(){},terminalRows:()=>130
+ });
+ const rows=panel.render(130);
+ assert.match(rows.join("\n"),/Linked source Todos: 2/u);
+ assert.match(rows.join("\n"),/TODOS.*2 linked/u);
+ assert.match(rows.join("\n"),/AGENTS.*1 child observed/u);
+ assert.doesNotMatch(rows.join("\n"),/No work in this session/u);
+ assert.match(rows.join("\n"),/Worktree Workers: 1 active observed/u);
+ assert.match(rows.join("\n"),/Linked worktrees: 1\/2/u);
+ assert.match(rows.join("\n"),/Cross-session ODD: linked/u);
+ assert.doesNotMatch(rows.join("\n"),/actual model: (?!unknown)/u);
+ for(const width of [12,35,80,130]){
+  const output=panel.render(width);
+  assert.ok(output.every(row=>visibleWidth(row)<=width));
+ }
+ assert.deepEqual(data,before);
+});
+
+test("T07 actualización automática consulta solo mientras el modal continúa abierto",{timeout:10_000},async t=>{
+ let reads=0,paints=0,finish!:()=>void;
+ const observed=new Promise<void>(resolve=>{finish=resolve;});
+ const pane=createNativeWorkPanel(snapshot,{
+  requestRender(){paints++;},close(){},terminalRows:()=>30,
+  refresh:async()=>{reads++;return snapshot;},
+  onRefreshed:()=>finish(),autoRefreshMs:1000,
+ });
+ t.after(()=>pane.dispose());
+ let watchdog:ReturnType<typeof setTimeout>|undefined;
+ try{
+  await Promise.race([observed,new Promise<void>((_resolve,reject)=>{
+   watchdog=setTimeout(()=>reject(Error("La actualización automática no llegó")),5500);
+  })]);
+ }finally{if(watchdog)clearTimeout(watchdog);}
+ assert.ok(reads>=1);assert.ok(paints>=1);
+ pane.dispose();
+ const before=reads;
+ await new Promise(resolve=>setTimeout(resolve,1200));
+ assert.equal(reads,before,"Un modal cerrado no mantiene consultas de hijos");
+});
+
+test("T06/T07 ventana abierta actualiza Workers reales observados sin ejecutar ni aceptar cambios",async()=>{
+ const running=projectParallelAgentFlow([{batchId:"live-real",state:"prepared",supervisorClaimed:true,tasks:[
+  {sourceTodoId:"source-a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-a",agents:[{id:"agent-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"source-b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-b",agents:[{id:"agent-b",role:"worker",state:"queued"}]}}
+ ]}]);
+ const finished=projectParallelAgentFlow([{batchId:"live-real",state:"prepared",supervisorClaimed:true,tasks:[
+  {sourceTodoId:"source-a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"scoped-changes",changedPaths:["a.ts"],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-a",agents:[{id:"agent-a",role:"worker",state:"completed"}]}},
+  {sourceTodoId:"source-b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"out-of-scope",changedPaths:["fuera.ts"],outOfScopePaths:["fuera.ts"],
+    sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-b",agents:[{id:"agent-b",role:"worker",state:"failed"}]}}
+ ]}]);
+ const observed=(overview:typeof running)=>({...snapshot,agentFlow:{
+  state:"observed" as const,totalRecordedBatches:1,limited:false,overview
+ }});
+ let current=observed(running),calls=0,paints=0,closed=0;
+ const pane=createNativeWorkPanel(current,{requestRender(){paints++;},close(){closed++;},
+  terminalRows:()=>160,refresh:async()=>{calls++;return current;}});
+ assert.match(pane.render(120).join("\n"),/Worktree Workers: 1 active observed/u);
+ current=observed(finished);
+ await pane.refreshNow();
+ const after=pane.render(120).join("\n");
+ assert.match(after,/Worktree Workers: 0 active observed/u);
+ assert.match(after,/Linked worktrees: 2\/2/u);
+ assert.match(after,/blocked/u);
+ assert.equal(calls,1);assert.equal(paints,1);
+ assert.equal(finished.autoMerge,false);
+ assert.equal(finished.acceptance,"not-accepted");
+ pane.dispose();
+ await pane.refreshNow();
+ assert.equal(calls,1,"Cerrar la ventana detiene las lecturas");
+ assert.equal(closed,0);
+});
+
+test("T07 descarta lecturas tardías y marca como no disponible un registro de hijo ilegible",async()=>{
+ const active=projectParallelAgentFlow([{batchId:"batch",state:"prepared",tasks:[
+  {sourceTodoId:"a",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"child-a",agents:[{id:"agent-a",role:"worker",state:"running"}]}},
+  {sourceTodoId:"b",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+    headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}}
+ ]}]);
+ const data={...snapshot,agentFlow:{state:"observed" as const,totalRecordedBatches:1,limited:false,overview:active}};
+ let releases!: (value:AsenPanelSnapshot)=>void,rendered=0,current=true,closed=0;
+ const pane=createNativeWorkPanel(data,{requestRender(){rendered++;},close(){closed++;},
+  stillCurrent:()=>current,terminalRows:()=>140,
+  refresh:()=>new Promise(resolve=>{releases=resolve;})});
+ const pending=pane.refreshNow();
+ current=false;releases({...snapshot});
+ await pending;
+ assert.equal(closed,1,"Un cambio de sesión cierra la ventana");
+ assert.equal(rendered,0,"No se presentan datos de otra sesión");
+ const failing=createNativeWorkPanel(data,{requestRender(){rendered++;},close(){},
+  terminalRows:()=>140,refresh:async()=>{throw Error("datos privados");}});
+ await failing.refreshNow();
+ const after=failing.render(140).join("\n");
+ assert.match(after,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(after,/Worktree Workers: 1 active observed/u);
+ assert.doesNotMatch(after,/datos privados/u);
+ failing.dispose();
+});
+
+test("T11 ratón y teclado pliegan la misma sección sin lanzar agentes",()=>{
+ const options={requestRender(){},close(){},terminalRows:()=>60};
+ const keyboard=createNativeWorkPanel(snapshot,options),mouse=createNativeWorkPanel(snapshot,options);
+ for(let i=0;i<3;i++)keyboard.handleInput("\t");
+ keyboard.handleInput(" ");
+ const before=mouse.render(100);
+ const y=before.findIndex(line=>/▾ CHANGES/u.test(line));
+ assert.ok(y>0);
+ assert.equal(mouse.handleMouse({type:"press",button:"left",x:1,y} as any)?.handled,true);
+ assert.deepEqual(mouse.render(100),keyboard.render(100));
+ mouse.handleInput("q");keyboard.handleInput("q");
+});
+
+test("T06/T07: lectura fallida retira tareas, revisiones y Git antiguos; la recuperación exige nueva lectura",async()=>{
+ const todo={title:"Tarea anterior",current:{state:"blocked",reason:"Consentimiento pendiente"}} as AsenPanelSnapshot["todos"][number];
+ const previous={...snapshot,todosObserved:true,todos:[todo],review:{pending:3},
+  changes:{branch:"rama-obsoleta",files:4}};
+ const fresh={...snapshot,todosObserved:true,review:{pending:1},
+  changes:{branch:"rama-actual",files:0}};
+ let fail=true,reads=0,paints=0;
+ const panel=createNativeWorkPanel(previous,{
+  requestRender(){paints++;},close(){},terminalRows:()=>150,
+  refresh:async()=>{reads++;if(fail)throw Error("lectura privada");return fresh;}
+ });
+ const before=panel.render(120).join("\n");
+ assert.match(before,/3 needs review/u);
+ await panel.refreshNow();
+ const missing=panel.render(120).join("\n");
+ assert.match(missing,/TODOS\s+unavailable/u);
+ assert.match(missing,/REVIEW\s+unverified/u);
+ assert.match(missing,/Actividad no disponible/u);
+ assert.match(missing,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(missing,/No work in this session|rama-obsoleta|3 needs review|Tarea anterior|Consentimiento pendiente/iu);
+ fail=false;await panel.refreshNow();
+ const recovered=panel.render(120).join("\n");
+ assert.match(recovered,/1 needs review/u);
+ assert.doesNotMatch(recovered,/Actividad no disponible|rama-obsoleta|3 needs review/u);
+ assert.equal(reads,2);assert.equal(paints,2);
+ panel.dispose();
+});
+
+test("T07: fallo aislado del origen hijo no declara que no exista trabajo",async()=>{
+ const unavailable={...snapshot,todosObserved:true,agentFlowUnavailable:true};
+ const before=structuredClone(unavailable);
+ const flat=renderAsenPanel(unavailable,140).join("\n");
+ assert.match(flat,/TODOS.*hijos no disponibles/u);
+ assert.match(flat,/AGENTS.*hijos no disponibles/u);
+ assert.match(flat,/CHANGES.*cambios hijos no disponibles/u);
+ assert.match(flat,/estado de tareas hijas no disponible/u);
+ assert.match(flat,/estado de agentes hijos no disponible/u);
+ assert.match(flat,/Cambios de worktrees hijos: no disponibles/u);
+ assert.doesNotMatch(flat,/No tasks in this session|No agents ·/u);
+ const recoveredFlow=projectParallelAgentFlow([{
+  batchId:"lote-observado",state:"prepared",tasks:[{
+   sourceTodoId:"tarea-real",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+   childSession:{id:"sesion-hija",agents:[{id:"agente-hijo",role:"worker",state:"running"}]}
+  },{
+   sourceTodoId:"tarea-pendiente",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+   changes:{status:"clean",changedPaths:[],outOfScopePaths:[],
+    sourceVerified:true,headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}
+  }]
+ }]);
+ let redraws=0,reads=0;
+ const pane=createNativeWorkPanel(unavailable,{
+  requestRender(){redraws++;},close(){},terminalRows:()=>150,
+  refresh:async()=>{reads++;return {...snapshot,todosObserved:true,agentFlow:{
+   state:"observed" as const,totalRecordedBatches:1,limited:false,overview:recoveredFlow
+  }};}
+ });
+ const visible=pane.render(140).join("\n");
+ assert.match(visible,/estado de agentes hijos no disponible/u);
+ assert.match(visible,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(visible,/No work in this session|No tasks in this session|No agents ·/u);
+ await pane.refreshNow();
+ const fresh=pane.render(140).join("\n");
+ assert.match(fresh,/Worktree Workers: 1 active observed/u);
+ assert.match(fresh,/Linked source Todos: 2/u);
+ assert.doesNotMatch(fresh,/hijos no disponibles|estado de agentes hijos no disponible/u);
+ assert.equal(reads,1);assert.equal(redraws,1);
+ assert.deepEqual(unavailable,before,"La proyección no modifica datos de origen");
+ pane.dispose();
+});
+
+test("T11/T07 modal: pérdida del registro hijo no reutiliza una ejecución previa",()=>{
+ const previous=projectParallelAgentFlow([{batchId:"old-branch",state:"prepared",tasks:[{
+  sourceTodoId:"old-task",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:true,
+  changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+   headMatchesBase:true,acceptance:"not-accepted",autoMerge:false},
+  childSession:{id:"old-child",agents:[{id:"old-agent",role:"worker",state:"running"}]}
+ },{
+  sourceTodoId:"old-task-pending",sourceTodoUnchanged:true,worktreePresent:true,handoffClaimed:false,
+  changes:{status:"clean",changedPaths:[],outOfScopePaths:[],sourceVerified:true,
+   headMatchesBase:true,acceptance:"not-accepted",autoMerge:false}
+ }]}]);
+ const bad:AsenPanelSnapshot={...snapshot,agentFlowUnavailable:true,agentFlow:{
+  state:"observed",totalRecordedBatches:1,limited:false,overview:previous
+ }};
+ const panel=createNativeWorkPanel(bad,{requestRender(){},close(){},terminalRows:()=>70});
+ const rows=panel.render(120).join("\n");
+ assert.match(rows,/hijos no disponibles|Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(rows,/Worktree Workers: 1 active observed|No work in this session|old-task|old-child|old-agent/u);
+ for(let i=0;i<5;i++)panel.handleInput("\t");
+ panel.handleInput("\r");
+ const detail=panel.render(120).join("\n");
+ assert.match(detail,/Cross-session ODD: unavailable/u);
+ assert.doesNotMatch(detail,/Worktree Workers: 1 active observed|old-task|old-child/u);
+ panel.dispose();
+});
+
+test("T11/T07: un fallo en la ventana avisa a la barra compartida y la recuperación restablece datos frescos",async()=>{
+ const previous:AsenPanelSnapshot={...snapshot,todosObserved:true,
+  review:{pending:4},changes:{branch:"antigua",files:2}};
+ const fresh:AsenPanelSnapshot={...snapshot,todosObserved:true,
+  review:{pending:1},changes:{branch:"actual",files:0}};
+ let shared:AsenPanelSnapshot=previous,fail=true;
+ let unavailableCount=0,successCount=0,renderCount=0;
+ const panel=createNativeWorkPanel(previous,{
+  requestRender(){renderCount++;},close(){},terminalRows:()=>120,
+  refresh:async()=>{if(fail)throw Error("información privada");return fresh;},
+  onUnavailable:unknown=>{unavailableCount++;shared=unknown;},
+  onRefreshed:observed=>{successCount++;shared=observed;}
+ });
+ assert.match(renderAsenPanel(shared,120).join("\n"),/4 needs review/u);
+ await panel.refreshNow();
+ assert.equal(unavailableCount,1);
+ assert.equal(successCount,0);
+ assert.equal(shared.activityUnavailable,true);
+ assert.equal(shared.agentFlowUnavailable,true);
+ assert.equal(shared.todos.length,0);
+ assert.equal(shared.agents.length,0);
+ assert.doesNotMatch(renderAsenPanel(shared,120).join("\n"),
+  /4 needs review|antigua|2 files/u);
+ assert.match(renderAsenPanel(shared,120).join("\n"),/REVIEW · unverified/u);
+ fail=false;
+ await panel.refreshNow();
+ assert.equal(unavailableCount,1);
+ assert.equal(successCount,1);
+ assert.equal(shared,fresh,"La lectura válida reemplaza el estado desconocido");
+ assert.match(renderAsenPanel(shared,120).join("\n"),/1 needs review/u);
+ assert.equal(renderCount,2);
+ panel.dispose();
+});
+
+test("T11/T07: cambio de sesión y cierre no publican errores ni datos antiguos en el lateral",async()=>{
+ let current=true,finish!:(value:AsenPanelSnapshot)=>void;
+ let updates=0,unavailable=0,closed=0;
+ const panel=createNativeWorkPanel(snapshot,{
+  requestRender(){updates++;},close(){closed++;},terminalRows:()=>90,
+  stillCurrent:()=>current,
+  refresh:()=>new Promise(resolve=>{finish=resolve;}),
+  onUnavailable:()=>{unavailable++;},
+  onRefreshed:()=>{updates++;}
+ });
+ const pending=panel.refreshNow();
+ current=false;
+ finish({...snapshot,review:{pending:5}});
+ await pending;
+ assert.equal(closed,1);
+ assert.equal(updates,0);
+ assert.equal(unavailable,0);
+ const another=createNativeWorkPanel(snapshot,{
+  requestRender(){updates++;},close(){},terminalRows:()=>90,
+  refresh:async()=>{throw Error("debe mantenerse privado");},
+  onUnavailable:()=>{unavailable++;}
+ });
+ another.dispose();
+ await another.refreshNow();
+ assert.equal(unavailable,0);
+ assert.equal(updates,0);
+});
+
+test("T11: el modal rechaza una lectura antigua antes de dibujar",async()=>{
+ let resolveRead!:(value:AsenPanelSnapshot)=>void;
+ let accept=false,refreshed=0,renders=0;
+ const previous:AsenPanelSnapshot={...snapshot,changes:{branch:"actual",files:1}};
+ const old:AsenPanelSnapshot={...snapshot,changes:{branch:"obsoleta",files:7}};
+ const panel=createNativeWorkPanel(previous,{
+  terminalRows:()=>80,requestRender(){renders++;},close(){},
+  refresh:()=>new Promise(resolve=>{resolveRead=resolve;}),
+  acceptSnapshot:()=>accept,onRefreshed:()=>{refreshed++;}
+ });
+ const pending=panel.refreshNow();resolveRead(old);await pending;
+ assert.equal(refreshed,0);assert.equal(renders,0);
+ assert.doesNotMatch(panel.render(100).join("\n"),/obsoleta/u);
+ accept=true;
+ const current=panel.refreshNow();resolveRead(old);await current;
+ assert.equal(refreshed,1);assert.equal(renders,1);
+ panel.dispose();
+});
+test("T11: ignorar una lectura superada no invalida una observación correcta",async()=>{
+ let unavailable=0,renders=0;
+ const panel=createNativeWorkPanel(snapshot,{
+  terminalRows:()=>80,requestRender(){renders++;},close(){},
+  refresh:async()=>{throw Error("lectura superada");},
+  ignoreReadFailure:error=>error instanceof Error&&error.message==="lectura superada",
+  onUnavailable:()=>{unavailable++;}
+ });
+ await panel.refreshNow();assert.equal(unavailable,0);assert.equal(renders,0);
+ panel.dispose();
+});
+
+
+test("T11: cerrar el modal fuera de sesión aunque se ignore un fallo antiguo",async()=>{
+ let current=true,closed=0,ignored=0,unavailable=0,renders=0;
+ const panel=createNativeWorkPanel(snapshot,{
+  terminalRows:()=>80,requestRender(){renders++;},close(){closed++;},
+  stillCurrent:()=>current,
+  refresh:async()=>{current=false;throw new Error("lectura superada");},
+  ignoreReadFailure:()=>{ignored++;return true;},
+  onUnavailable:()=>{unavailable++;}
+ });
+ await panel.refreshNow();
+ assert.equal(closed,1,"cambio de sesión debe cerrar la ventana");
+ assert.equal(ignored,0,"no saltar el control de sesión");
+ assert.equal(unavailable,0);assert.equal(renders,0);
+ await panel.refreshNow();assert.equal(closed,1,"no se cierra dos veces");
 });

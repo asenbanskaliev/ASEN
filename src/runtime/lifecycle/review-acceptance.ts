@@ -74,20 +74,25 @@ function candidateAtCleanHead(repository:string):{commit:string;tree:string}{
 /** Resolve and authenticate the review receipt of the candidate commit.
  *
  * A present receipt must be authentic and bound to the exact candidate tree,
- * otherwise acceptance is refused. When no receipt exists the acceptance falls
- * back to structural verification (clean worktree, exact HEAD, authenticated
- * agent result and explicit human confirmation) and declares that fallback. */
+ * otherwise acceptance is refused. Structural checks alone are provisional.
+ * No receipt means the Todo stays blocked, without a human acceptance prompt. */
 async function resolveReviewVerification(
  receipts:ReviewReceiptReader|undefined,repository:string,revision:string
 ):Promise<ReviewVerification>{
- if(!receipts)return {mode:"structural-fallback"};
+ if(!receipts)throw new Error("Review receipt unavailable: structural evidence is provisional; signed tests are required before acceptance");
  const state=await receipts.readReceiptState(revision);
- if(state.status==="absent")return {mode:"structural-fallback"};
+ if(state.status==="absent")throw new Error("Review receipt absent: structural evidence is provisional; signed tests are required before acceptance");
  if(state.status==="invalid")
   throw new Error(`Review receipt for ${revision} is not authentic: ${state.reason}`);
  const receipt=state.receipt;
  if(receipt.verdict!=="PASSED")
   throw new Error(`Review receipt for ${revision} records a FAILED verdict`);
+ const suite=receipt.testSuite;
+ if(!Number.isSafeInteger(suite.total)||suite.total<1||
+    !Number.isSafeInteger(suite.passed)||suite.passed!==suite.total||
+    !Number.isSafeInteger(suite.failed)||suite.failed!==0||
+    typeof suite.runner!=="string"||!suite.runner.trim())
+  throw new Error("Review receipt does not prove at least one passing test with zero failures");
  const {tree}=candidateAtCleanHead(repository);
  if(receipt.treeSha!==tree)
   throw new Error(`Review receipt tree does not match the candidate tree ${tree}`);
@@ -139,7 +144,7 @@ export async function acceptIndependentReview(input:{
  try{details=await evidence();}catch(error){return blocked(error instanceof Error?error.message:"Review result could not be verified");}
  let approved=false;
  try{approved=await input.confirm(details);}catch{return blocked("Pi review confirmation was interrupted; no state changed.");}
- if(!approved)return blocked("User did not authorize accepting this independent review.");
+ if(approved!==true)return blocked("User did not authorize accepting this independent review.");
  if(input.signal?.aborted)return blocked("Review acceptance was cancelled; no state changed.");
  await input.validateIdentity();
  const fresh=(await input.todos.list(identity)).find(task=>task.taskId===item.taskId);

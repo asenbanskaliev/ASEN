@@ -6,8 +6,9 @@ import {join} from "node:path";
 import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {spawnSync} from "node:child_process";
-import {authorizeToolCall} from "../extensions/authority.js";
+import authorityExtension,{authorizeToolCall} from "../extensions/authority.js";
 import {writeFile} from "node:fs/promises";
+import {readFileSync,writeFileSync,existsSync} from "node:fs";
 
 test("Pi authority rejects redelegation and writes beyond exact surfaces",async t=>{
  const repo=await mkdtemp(join(tmpdir(),"asen-tool-authority-"));
@@ -46,3 +47,70 @@ test("Pi authority rejects sensitive reads delegated from primary policy", async
   assert.equal(authorizeToolCall(authority as any, "read" as any, {path: target}), false, target);
  }
 });
+
+test("T06 impide la segunda llamada antes de escribir sin alterar Writers normales",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-t06-una-escritura-"));
+ t.after(()=>rm(root,{recursive:true,force:true}));
+ const previous=process.env.ASEN_PI_AUTHORITY;
+ const base={repository:root,role:"worker",writeSurfaces:["solo.mjs"],
+  agentId:"t06-writer-a:worker",sessionId:"t06-prueba",
+  attributionFile:join(root,"diario-privado.json")};
+ type Event={toolName:string;input:{path:string};toolCallId:string};
+ type Hook=(event:Event)=>{block?:boolean;reason?:string}|undefined;
+ const listeners=new Map<string,Hook>();
+ const install=(config:unknown):Hook=>{
+  process.env.ASEN_PI_AUTHORITY=JSON.stringify(config);
+  authorityExtension({on:(name:string,callback:unknown)=>{listeners.set(name,callback as Hook);},
+   registerCommand:()=>{}} as unknown as Parameters<typeof authorityExtension>[0]);
+  const hook=listeners.get("tool_call");assert.ok(hook);return hook;
+ };
+ const fire=(hook:Hook,toolName:string,id:string,path="solo.mjs")=>
+  hook({toolName,input:{path},toolCallId:id});
+ try{
+  const asOneShot=(config:typeof base)=>({
+   ...config,oneShotWritePath:"solo.mjs",
+   oneShotClaimFile:config.attributionFile+".t06-claim"
+  });
+  const hook=install(asOneShot(base)),file=join(root,"solo.mjs");
+  assert.equal(fire(hook,"edit","edit-inicial")?.block,true);
+  const first=fire(hook,"write","primero");assert.equal(first?.block,undefined);
+  if(!first?.block)writeFileSync(file,"export const primera=1;\n");
+  const second=fire(hook,"write","segundo");assert.equal(second?.block,true);
+  if(!second?.block)writeFileSync(file,"export const segunda=2;\n");
+  assert.equal(readFileSync(file,"utf8"),"export const primera=1;\n");
+  assert.equal(fire(hook,"edit","edit-posterior")?.block,true);
+  assert.equal(fire(hook,"write","fuera","../fuera.mjs")?.block,true);
+  assert.equal(existsSync(base.attributionFile+".t06-claim"),true);
+  // Un proceso Pi reiniciado con la MISMA identidad no puede volver a escribir.
+  const reiniciado=install(asOneShot(base));
+  assert.equal(fire(reiniciado,"write","tras-reinicio")?.block,true);
+  assert.equal(readFileSync(file,"utf8"),"export const primera=1;\n");
+  // La ausencia del registro persistente se considera configuración inválida.
+  const sinDiario=install({...base,oneShotWritePath:"solo.mjs"});
+  assert.equal(fire(sinDiario,"write","sin-claim")?.block,true);
+  // Dos extensiones que compiten con la misma reserva admiten solo una.
+  const competidor={...base,sessionId:"t06-competidor",
+   attributionFile:join(root,"diario-competidor.json")};
+  const izquierda=install(asOneShot(competidor)),derecha=install(asOneShot(competidor));
+  const puertas=[fire(izquierda,"write","competidor-1"),fire(derecha,"write","competidor-2")];
+  assert.equal(puertas.filter(p=>p?.block!==true).length,1);
+  // Incluso sin tool_result, la tentativa consumió el permiso duradero.
+  const otro={...base,sessionId:"t06-otra-sesion",
+   attributionFile:join(root,"diario-otro.json")};
+  const abortado=install(asOneShot(otro));
+  assert.equal(fire(abortado,"write","sin-respuesta")?.block,undefined);
+  assert.equal(fire(abortado,"write","reintento")?.block,true);
+  assert.equal(fire(install(asOneShot(otro)),"write","reinicio-sin-respuesta")?.block,true);
+  const malicioso=install({...base,oneShotWritePath:"otro.mjs",oneShotClaimFile:base.attributionFile+".t06-claim"});
+  assert.equal(fire(malicioso,"write","falso")?.block,true);
+  assert.equal(existsSync(join(root,"otro.mjs")),false);
+  // Sin la opción nueva se conserva el contrato del Writer productivo.
+  const normal=install(base);
+  assert.equal(fire(normal,"write","normal-1")?.block,undefined);
+  assert.equal(fire(normal,"write","normal-2")?.block,undefined);
+ }finally{
+  if(previous===undefined)delete process.env.ASEN_PI_AUTHORITY;
+  else process.env.ASEN_PI_AUTHORITY=previous;
+ }
+});
+
