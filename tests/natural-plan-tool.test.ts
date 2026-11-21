@@ -135,16 +135,19 @@ test("Pi guidance keeps explicitly scoped read-only parallelism proportional and
  });
 });
 
-test("ASEN registers the natural-language planning tool and injects its guidance into Pi turns",async()=>{
+test("ASEN anuncia el planificador sin sugerir agentes no disponibles",async()=>{
  const events=new Map<string,(...args:any[])=>unknown>(),tools=new Map<string,unknown>();
  const pi={registerCommand(){},registerTool(tool:{name:string}){tools.set(tool.name,tool);},on(name:string,handler:(...args:any[])=>unknown){events.set(name,handler);}};
  createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(pi);
  assert.ok(tools.has(ASEN_PLAN_REQUEST_TOOL));
- const options={sections:{} as Record<string,string>};await events.get("before_agent_start")?.({systemPromptOptions:options},{});
+ const options={sections:{} as Record<string,string>,selectedTools:[...tools.keys()]};
+ assert.equal(tools.has("asen_agent_start"),false,"El motor de agentes está desactivado");
+ await events.get("before_agent_start")?.({systemPromptOptions:options},{});
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/ordinary language/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Never ask the user to write JSON/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_todo_inspect_interrupted_write/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/fresh plan plus a new explicit write authorization/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_plan_request/u);
+ assert.doesNotMatch(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_agent_start|asen_todo_inspect_interrupted_write/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/does not grant permission to write/u);
 });
 
 test("natural-language plan request persists the real planner output without authorizing a write",async()=>{

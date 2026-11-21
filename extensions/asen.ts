@@ -65,7 +65,7 @@ import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/agents/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/ui/todo-presentation.js";
-import {addAsenRequestGuidance} from "../src/runtime/ui/request-guidance.js";
+import {activeAsenRequestTools,addAsenRequestGuidance} from "../src/runtime/ui/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/lifecycle/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/lifecycle/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
@@ -1194,7 +1194,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   });
   if(pi.registerTool)pi.registerTool({name:"asen_session_consult",label:"Consult minimal session metadata",description:"With one explicit confirmation, read only the label and classification of another live Pi session in the same project. Prompts, transcripts and credentials are never shared.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["targetSessionId"],properties:{targetSessionId:{type:"string",minLength:1,maxLength:256}}},execute:async(_id:any,params:any,signal:any,_update:any,host:any)=>{if(signal?.aborted)throw new Error("Session consultation cancelled");const value=params as {targetSessionId?:unknown};if(typeof value.targetSessionId!=="string")throw new Error("Invalid target session");const requester=await sessionIdentity(host as CommandContext),targetSessionId=value.targetSessionId,target=sessionDirectory.list(requester.projectId).find(row=>row.sessionId===targetSessionId);if(!target||targetSessionId===requester.sessionId)return {content:[{type:"text" as const,text:"Target session is unavailable."}],details:{status:"unavailable"}};if(host?.hasUI!==true||typeof host?.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"Cross-session consultation requires the interactive Pi UI."}],details:{status:"consent-required"}};const accepted=await host.ui.confirm("Allow one-time session metadata access?",`Read only the session label and activity classification for ${targetSessionId} in this project? No prompts, transcripts, files or credentials will be shared.`);if(signal?.aborted)throw new Error("Session consultation cancelled");if(!accepted)return {content:[{type:"text" as const,text:"Session consultation declined."}],details:{status:"declined"}};const currentRequester=await sessionIdentity(host as CommandContext);if(signal?.aborted)throw new Error("Session consultation cancelled");const currentTarget=sessionDirectory.list(currentRequester.projectId).find(row=>row.sessionId===targetSessionId);if(currentRequester.sessionId!==requester.sessionId||currentRequester.projectId!==requester.projectId||!currentTarget) return {content:[{type:"text" as const,text:"Session consultation is unavailable after the consent prompt."}],details:{status:"unavailable"}};const consent=sessionDirectory.issueConsent({requesterSessionId:requester.sessionId,targetSessionId,projectId:requester.projectId}),record=sessionDirectory.consult(consent.token,requester.sessionId,targetSessionId,requester.projectId);return {content:[{type:"text" as const,text:JSON.stringify({status:"consulted",scope:"session-metadata",sessionId:record.sessionId,subject:record.subject,classification:record.classification,updatedAt:record.updatedAt})}],details:{status:"consulted",scope:"session-metadata",sessionId:record.sessionId,subject:record.subject,classification:record.classification,updatedAt:record.updatedAt}};}} as any);
   pi.on?.("before_agent_start",async(event,ctx)=>{
-   const options=(event as {systemPromptOptions?:{sections?:Record<string,string>}}|undefined)?.systemPromptOptions;
+   const options=(event as {systemPromptOptions?:{sections?:Record<string,string>;selectedTools?:readonly string[]}}|undefined)?.systemPromptOptions;
    if(options?.sections){
     delete options.sections[ASEN_PERSONA_STYLE_SECTION];
     try{const files=await personaFiles(ctx as CommandContext),selection=await resolvePersonaStyle(files.globalFile,files.projectFile);options.sections[ASEN_PERSONA_STYLE_SECTION]=personaStyleText(selection.style);}
@@ -1221,7 +1221,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        current.sessionId===budget.sessionId&&current.projectId===budget.projectId;
      }catch{/* Una identidad cambiada nunca expone el presupuesto de otra sesión. */}
     }
-    addAsenRequestGuidance(options,!!pi.registerTool,explorationOverBudget);
+    addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget);
     delete options.sections.asen_delegation_mode;
     try{
      const owner=await sessionIdentity(ctx as CommandContext),layers=await profileLayer(owner);
