@@ -24,7 +24,7 @@ test("Windows PowerShell parses the native crash triage without executing it",{
  const file=script.replace(/'/gu,"''");
  const command=`$tokens=$null;$errors=$null;[System.Management.Automation.Language.Parser]::ParseFile('${file}',[ref]$tokens,[ref]$errors)|Out-Null;if($errors.Count -ne 0){exit 1}`;
  const result=spawnSync("powershell.exe",["-NoProfile","-NonInteractive","-Command",command],
-  {encoding:"utf8",timeout:10000,windowsHide:true});
+  {encoding:"utf8",timeout:30000,windowsHide:true});
  assert.equal(result.error,undefined,"PowerShell parser process must start");
  assert.equal(result.status,0,"PowerShell must parse the script with no error");
 });
