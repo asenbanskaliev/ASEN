@@ -14,7 +14,7 @@
 
 - **PRE-0/PRE-1:** corregidos e incorporados mediante [PR #64](https://github.com/asenbanskaliev/ASEN/pull/64). Se validó el CI exacto y la revisión externa antes de incorporar.
 - **CTX-0:** pruebas sintéticas integradas mediante [PR #65](https://github.com/asenbanskaliev/ASEN/pull/65). No suponen ahorro de tokens real demostrado.
-- **Rama de trabajo PR #61:** referencia integrada `508b31f543bf2547c6104ec562b1f826308746f2`. Comprobar siempre el HEAD vigente y el CI de ese SHA antes de dar un paso dependiente.
+- **Rama de trabajo PR #61:** `508b31f543bf2547c6104ec562b1f826308746f2` es un **corte histórico**, anterior a la integración Windows de la [PR #69](https://github.com/asenbanskaliev/ASEN/pull/69). Consultar siempre el HEAD actual de la [PR #61](https://github.com/asenbanskaliev/ASEN/pull/61) y el CI de ese SHA antes de dar un paso dependiente; no fijar un SHA antiguo como referencia vigente.
 - **CTX-1:** [PR #66](https://github.com/asenbanskaliev/ASEN/pull/66) con prueba de SDK Pi para herramientas seleccionadas; no equivale a activar nuevas guías.
 - **Revisión de propuestas:** CodeRabbit y controles CI independientes. Ninguna revisión convierte pruebas omitidas en superadas.
 - **18 objetivos:** aceptación funcional global pendiente; `globalFull:false`.
