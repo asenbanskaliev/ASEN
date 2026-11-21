@@ -92,15 +92,15 @@ test("PRE-0 rechaza cambiar un byte de cada archivo P16 protegido",()=>{
  ] as const;
  for(const [path,expected] of files){
   const original=readFileSync(path);
-  assert.equal(coincideHuellaGit(original,expected),true,path+" debe conservar la huella esperada");
+  assert.equal(coincideHuellaGit(original,expected,path),true,path+" debe conservar la huella esperada");
   for(const index of [0,Math.floor(original.length/2),original.length-1]){
    const changed=Buffer.from(original);
    changed[index]=changed[index]!^1;
-   assert.equal(coincideHuellaGit(changed,expected),false,path+" debe bloquear byte "+index);
+   assert.equal(coincideHuellaGit(changed,expected,path),false,path+" debe bloquear byte "+index);
   }
-  assert.equal(coincideHuellaGit(Buffer.concat([original,Buffer.from("\n")]),expected),false,
+  assert.equal(coincideHuellaGit(Buffer.concat([original,Buffer.from("\n")]),expected,path),false,
    path+" debe bloquear bytes añadidos");
  }
- assert.equal(coincideHuellaGit(Buffer.from(""),"0".repeat(40)),false);
- assert.equal(coincideHuellaGit(Buffer.from("datos"),"malformado"),false);
+ assert.equal(coincideHuellaGit(Buffer.from(""),"0".repeat(40),"scripts/p16-comparacion-real.mjs"),false);
+ assert.equal(coincideHuellaGit(Buffer.from("datos"),"malformado","scripts/p16-comparacion-real.mjs"),false);
 });
