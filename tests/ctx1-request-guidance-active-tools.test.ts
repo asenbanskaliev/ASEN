@@ -68,7 +68,7 @@ test("CTX-1: registrar herramientas no demuestra que el modelo las tenga activas
  const puedeRegistrar=true;
  const seleccion:readonly string[]=[];
  assert.equal(puedeRegistrar,true);
- assert.deepEqual(activeAsenRequestTools(seleccion),{plan:false,agent:false});
+ assert.deepEqual(activeAsenRequestTools(seleccion),{plan:false,agent:false,todo:false});
  assert.equal(hasActiveAsenRequestTools(seleccion),false);
 });
 
@@ -97,4 +97,13 @@ test("CTX-1: al desactivar Todo se retira la guía completa anterior",()=>{
  assert.equal(sections[ASEN_REQUEST_GUIDANCE_SECTION],ASEN_REQUEST_GUIDANCE);
  addAsenRequestGuidance({sections},activeAsenRequestTools([ASEN_PLAN_REQUEST_TOOL,"asen_agent_start"]));
  assert.equal(sections[ASEN_REQUEST_GUIDANCE_SECTION],ASEN_PLAN_AGENT_NO_TODO_GUIDANCE);
+});
+
+test("CTX-1: la API sintética antigua conserva la guía completa sin afectar al turno Pi real",()=>{
+ const sections:Record<string,string>={};
+ addAsenRequestGuidance({sections},true);
+ assert.equal(sections[ASEN_REQUEST_GUIDANCE_SECTION],ASEN_REQUEST_GUIDANCE);
+ const real:Record<string,string>={};
+ addAsenRequestGuidance({sections:real},activeAsenRequestTools([ASEN_PLAN_REQUEST_TOOL,"asen_agent_start"]));
+ assert.equal(real[ASEN_REQUEST_GUIDANCE_SECTION],ASEN_PLAN_AGENT_NO_TODO_GUIDANCE);
 });

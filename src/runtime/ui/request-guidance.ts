@@ -62,7 +62,8 @@ export function addAsenRequestGuidance(
  if(!options.sections)return;
  delete options.sections[ASEN_REQUEST_GUIDANCE_SECTION];
  delete options.sections[ASEN_EXPLORATION_BUDGET_SECTION];
- const tools=typeof toolsAvailable==="boolean"?{plan:toolsAvailable,agent:toolsAvailable,todo:false}:toolsAvailable;
+ // Compatibilidad del contrato sintético anterior; los turnos Pi pasan siempre selección real.
+ const tools=typeof toolsAvailable==="boolean"?{plan:toolsAvailable,agent:toolsAvailable,todo:toolsAvailable}:toolsAvailable;
  if(tools.plan&&tools.agent)options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=tools.todo===true?ASEN_REQUEST_GUIDANCE:ASEN_PLAN_AGENT_NO_TODO_GUIDANCE;
  else if(tools.plan)options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=ASEN_PLAN_ONLY_GUIDANCE;
  else if(tools.agent)options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=ASEN_AGENT_ONLY_GUIDANCE;
