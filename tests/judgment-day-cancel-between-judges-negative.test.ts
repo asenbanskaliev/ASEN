@@ -11,13 +11,16 @@ import type {PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-revi
 test("E3: cancelar durante el primer juez impide llamar al segundo y emitir aceptación",async t=>{
  const root=mkdtempSync(join(tmpdir(),"asen-jueces-cancelacion-"));
  const view=mkdtempSync(join(tmpdir(),"asen-jueces-vista-"));
- t.after(()=>{rmSync(root,{recursive:true,force:true});rmSync(view,{recursive:true,force:true});});
+ let workspace:ReturnType<typeof openWorkspaceReview>|undefined;
+ t.after(()=>{
+  try{if(workspace)closeWorkspaceReview(workspace);}
+  finally{rmSync(root,{recursive:true,force:true});rmSync(view,{recursive:true,force:true});}
+ });
  const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{stdio:["ignore","pipe","pipe"],encoding:"utf8"});
  git("init","-q");git("config","user.name","Prueba ASEN");git("config","user.email","prueba@invalid.example");
  writeFileSync(join(root,"codigo.ts"),"antes\n");git("add","codigo.ts");git("commit","-qm","Base de prueba");
  writeFileSync(join(root,"codigo.ts"),"despues\n");
- const workspace=openWorkspaceReview({repositoryRoot:resolve(root),intendedUntracked:[],sessionId:"cancelacion-e3",reviewerId:"simulado/juez-a",viewParent:resolve(view),risk:{riskId:"E3",reason:"Cancelación entre revisores",severity:"high",lenses:["risk","reliability"]}});
- t.after(()=>closeWorkspaceReview(workspace));
+ workspace=openWorkspaceReview({repositoryRoot:resolve(root),intendedUntracked:[],sessionId:"cancelacion-e3",reviewerId:"simulado/juez-a",viewParent:resolve(view),risk:{riskId:"E3",reason:"Cancelación entre revisores",severity:"high",lenses:["risk","reliability"]}});
  const evidence=readWorkspaceReviewEvidence(workspace);
  const author:PiReviewerModel={provider:"autor",id:"escritor"};
  const judgeA:PiReviewerModel={provider:"simulado",id:"juez-a"};
