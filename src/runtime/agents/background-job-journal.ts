@@ -142,10 +142,17 @@ export class BackgroundJobJournal{
  private withExclusiveLock<T>(operation:()=>T):T{
   privatePath(this.file);const lock=`${this.file}.lock`,startedAt=Date.now(),absoluteDeadline=startedAt+15_000,waitCell=new Int32Array(new SharedArrayBuffer(4));
    let inactiveDeadline=startedAt+3_000,journalIdentity:string|undefined;
-   let fd:number|undefined,identity:{dev:number;ino:number}|undefined,permissionError:unknown;
+   let fd:number|undefined,identity:{dev:number;ino:number}|undefined,ownedLockContents:string|undefined,permissionError:unknown;
+  const ownsCurrentLock=():boolean=>{
+   if(!identity)return false;
+   const current=lstatSync(lock);
+   if(!current.isFile()||current.isSymbolicLink()||current.dev!==identity.dev||current.ino!==identity.ino)return false;
+   // En Windows, la identidad del archivo puede no distinguir un bloqueo sustituido.
+   return ownedLockContents!==undefined?readFileSync(lock,"utf8")===ownedLockContents:current.size===0;
+  };
   while(fd===undefined){
-   try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);const stat=fstatSync(fd);identity={dev:stat.dev,ino:stat.ino};writeFileSync(fd,JSON.stringify({pid:process.pid,createdAt:Date.now()}));fsyncSync(fd);}
-   catch(error){const failedToCreate=fd===undefined;if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{const current=lstatSync(lock);if(current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Preserve an unowned replacement lock. */}identity=undefined;}
+   try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);const stat=fstatSync(fd);identity={dev:stat.dev,ino:stat.ino};const lockContents=JSON.stringify({pid:process.pid,createdAt:Date.now(),nonce:randomUUID()});writeFileSync(fd,lockContents);ownedLockContents=lockContents;fsyncSync(fd);}
+   catch(error){const failedToCreate=fd===undefined;if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{if(ownsCurrentLock())unlinkSync(lock);}catch{/* Conservar un bloqueo ajeno o de identidad incierta. */}identity=undefined;ownedLockContents=undefined;}
     const code=(error as NodeJS.ErrnoException).code,windowsPermission=failedToCreate&&process.platform==="win32"&&code==="EPERM";
     if(!failedToCreate||code!=="EEXIST"&&!windowsPermission)throw error;
     try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");}
@@ -166,6 +173,6 @@ export class BackgroundJobJournal{
      Atomics.wait(waitCell,0,0,10);
    }
   }
-  try{return operation();}finally{try{closeSync(fd);}finally{try{const current=lstatSync(lock);if(identity&&current.dev===identity.dev&&current.ino===identity.ino)unlinkSync(lock);}catch{/* Never unlink a lock owned by another process. */}}}
+  try{return operation();}finally{try{closeSync(fd);}finally{try{if(ownsCurrentLock())unlinkSync(lock);}catch{/* Nunca borrar un bloqueo ajeno o de propiedad incierta. */}}}
  }
 }
