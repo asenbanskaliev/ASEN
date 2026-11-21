@@ -122,7 +122,9 @@ test("CTX-1: el ciclo nativo de AgentSession.prompt transmite las herramientas a
     name:"asen-ctx1-turno-real",
     factory:pi=>{
      pi.on("before_agent_start",event=>{
-      selected.push([...(event.systemPromptOptions.selectedTools??[])]);
+      const herramientas=event.systemPromptOptions.selectedTools;
+      // Conservar undefined: una señal ausente nunca equivale a una selección vacía.
+      selected.push(Array.isArray(herramientas)?[...herramientas]:herramientas);
      });
     }
    }],
