@@ -49,15 +49,16 @@ import {syncBuiltinESMExports} from "node:module";
 import {BackgroundJobJournal} from ${JSON.stringify(moduleUrl)};
 const scenario=process.env.ASEN_TEST_SCENARIO,root=process.env.ASEN_TEST_ROOT,file=root+"/"+scenario+".json",lock=file+".lock";
 if(scenario!=="non-windows")Object.defineProperty(process,"platform",{value:"win32"});
-const originalOpen=fs.openSync,originalWrite=fs.writeFileSync,originalClose=fs.closeSync,originalSync=fs.fsyncSync,originalWait=Atomics.wait,originalNow=Date.now;
-const denied=Object.assign(new Error("injected lock denial"),{code:"EPERM"}),exists=Object.assign(new Error("injected post-open failure"),{code:"EEXIST"});let attempts=0,lockFd,waits=0,clock=0;
+const originalOpen=fs.openSync,originalWrite=fs.writeFileSync,originalClose=fs.closeSync,originalLstat=fs.lstatSync,originalSync=fs.fsyncSync,originalWait=Atomics.wait,originalNow=Date.now;
+const denied=Object.assign(new Error("injected lock denial"),{code:"EPERM"}),exists=Object.assign(new Error("injected post-open failure"),{code:"EEXIST"});let attempts=0,lockFd,waits=0,clock=0,ownedLockIdentity,foreignSwapped=false;
 if(["recover","persistent","progress","churn"].includes(scenario))originalWrite(lock,"other owner");
 if(scenario==="unsafe")fs.mkdirSync(lock);
 if(scenario==="symlink")fs.symlinkSync("foreign-target",lock);
-fs.openSync=function(path,...args){if(path===lock){attempts++;if(["recover","persistent","missing","vanished","unsafe","symlink","non-windows"].includes(scenario)&&(!["recover","vanished"].includes(scenario)||attempts===1))throw denied;const result=originalOpen.call(this,path,...args);lockFd=result;return result;}return originalOpen.call(this,path,...args);};
+fs.openSync=function(path,...args){if(path===lock){attempts++;if(["recover","persistent","missing","vanished","unsafe","symlink","non-windows"].includes(scenario)&&(!["recover","vanished"].includes(scenario)||attempts===1))throw denied;const result=originalOpen.call(this,path,...args);lockFd=result;ownedLockIdentity=fs.fstatSync(result);return result;}return originalOpen.call(this,path,...args);};
 fs.writeFileSync=function(path,...args){if(path===lockFd&&["post-open","post-open-swap"].includes(scenario))throw denied;if(path===lockFd&&scenario==="post-open-eexist")throw exists;return originalWrite.call(this,path,...args);};
 fs.fsyncSync=function(fd){if(scenario==="post-fsync"&&fd===lockFd)throw denied;return originalSync.call(this,fd);};
-fs.closeSync=function(fd){const result=originalClose.call(this,fd);if(["cleanup-swap","post-open-swap"].includes(scenario)&&fd===lockFd){fs.renameSync(lock,lock+".original");originalWrite(lock,"foreign replacement");}return result;};
+fs.closeSync=function(fd){const result=originalClose.call(this,fd);if(["cleanup-swap","post-open-swap"].includes(scenario)&&fd===lockFd){fs.renameSync(lock,lock+".original");originalWrite(lock,"foreign replacement");foreignSwapped=true;}return result;};
+fs.lstatSync=function(path,...args){const stat=originalLstat.call(this,path,...args);if(path===lock&&foreignSwapped&&ownedLockIdentity){return {...stat,dev:ownedLockIdentity.dev,ino:ownedLockIdentity.ino,isFile:()=>stat.isFile(),isSymbolicLink:()=>stat.isSymbolicLink()};}return stat;};
 Atomics.wait=function(){waits++;
   if(scenario==="recover"){assert.equal(fs.readFileSync(lock,"utf8"),"other owner");fs.unlinkSync(lock);}
   if(scenario==="progress"||scenario==="churn"){
@@ -77,7 +78,7 @@ try{
   else if(scenario==="churn"){assert.throws(()=>journal.record(snapshot),/busy/u);assert.equal(attempts,16);assert.equal(waits,15);assert.equal(fs.readFileSync(lock,"utf8"),"other owner");}
  else if(scenario==="cleanup-swap"){journal.record(snapshot);assert.equal(fs.readFileSync(lock,"utf8"),"foreign replacement");assert.equal(fs.readFileSync(lock+".original","utf8").includes("pid"),true);}
  else{assert.throws(()=>journal.record(snapshot),error=>error===(scenario==="post-open-eexist"?exists:denied));assert.equal(fs.existsSync(file),false);if(scenario==="persistent"||scenario==="missing"){assert.equal(attempts,4);assert.equal(waits,3);if(scenario==="persistent")assert.equal(fs.readFileSync(lock,"utf8"),"other owner");}else{assert.equal(attempts,1);assert.equal(waits,0);if(scenario==="unsafe")assert.equal(fs.lstatSync(lock).isDirectory(),true);if(scenario==="symlink")assert.equal(fs.lstatSync(lock).isSymbolicLink(),true);if(scenario==="post-open-swap")assert.equal(fs.readFileSync(lock,"utf8"),"foreign replacement");if(["post-open","post-open-eexist","post-fsync"].includes(scenario))assert.equal(fs.existsSync(lock),false);}}
-}finally{fs.openSync=originalOpen;fs.writeFileSync=originalWrite;fs.closeSync=originalClose;fs.fsyncSync=originalSync;Atomics.wait=originalWait;Date.now=originalNow;syncBuiltinESMExports();}
+}finally{fs.openSync=originalOpen;fs.writeFileSync=originalWrite;fs.closeSync=originalClose;fs.lstatSync=originalLstat;fs.fsyncSync=originalSync;Atomics.wait=originalWait;Date.now=originalNow;syncBuiltinESMExports();}
 `;
  for(const scenario of ["recover","persistent","progress","churn","missing","vanished","unsafe","post-open","post-open-swap","post-open-eexist","post-fsync","cleanup-swap",...(process.platform==="win32"?[]:["non-windows","symlink"])]){
   const result=spawnSync(process.execPath,["--import","tsx","--input-type=module","-e",script],{cwd:process.cwd(),env:{...process.env,ASEN_TEST_ROOT:root,ASEN_TEST_SCENARIO:scenario},encoding:"utf8",timeout:15000});
