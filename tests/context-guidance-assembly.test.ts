@@ -38,7 +38,7 @@ for(const mode of modes){
     assert.match(guide,/permis|permission|consent|confirm|autoriza|approval|write/iu);
     assert.doesNotMatch(guide,/automatically grant write|auto-merge approved/iu);
    }
-   if(!selection.tools?.includes("asen_agent_start"))
+   if(!activeAsenRequestTools(selection.tools).agent)
     assert.equal(sections[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
    // El modo no se transmite a la API actual: esta prueba no atribuye
    // protección del padre full-delegation a la guía textual.
@@ -57,7 +57,7 @@ test("CTX-2: cambio reversible no contamina otra sesión ni conserva guía obsol
  addAsenRequestGuidance({sections:b},activeAsenRequestTools(["asen_agent_start"]),false);
  const bSnapshot={...b};
  addAsenRequestGuidance({sections:a},activeAsenRequestTools([]),false);
- assert.deepEqual(a,{identity_session:"A",policy:"sin escritura heredada"});
+ assert.deepEqual({...a},{identity_session:"A",policy:"sin escritura heredada"});
  assert.deepEqual(b,bSnapshot);
  addAsenRequestGuidance({sections:a},activeAsenRequestTools(full),true);
  assert.equal(a[ASEN_REQUEST_GUIDANCE_SECTION],original);
