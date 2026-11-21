@@ -37,9 +37,9 @@ function genuineCandidate(){
   focusedTestPaths:["tests/dual-rejudgment-two-rounds-negative.test.ts"],
   documentationPaths:[],generatedArtifacts:[],
   focusedTests:{status:"pass",command:"node --import tsx --test tests/dual-rejudgment-two-rounds-negative.test.ts",
-   scenario:"Contrato de rondas independientes",exitCode:0,summary:"Pruebas de contrato completadas"},
+   scenario:"Contrato de rondas independientes",exitCode:0,summary:"PASS sintético: contrato de pruebas simulado, sin ejecución externa"},
   runtimeHarness:{status:"pass",command:"npm run audit:skill-parity",
-   scenario:"Aislamiento de los dos jueces",exitCode:0,summary:"Comprobaciones de contrato completadas"},
+   scenario:"Aislamiento de los dos jueces",exitCode:0,summary:"PASS sintético: comprobación simulada, sin ejecución externa"},
   documentation:{status:"n_a",reason:"No hay documento adicional"},
   taskDocumentCommitIdentity:revision,
  };
