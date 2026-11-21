@@ -1,4 +1,4 @@
-import {closeSync,fstatSync,fsyncSync,lstatSync,mkdirSync,openSync,readFileSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
+import {closeSync,fstatSync,fsyncSync,lstatSync,mkdirSync,openSync,readFileSync,readSync,renameSync,unlinkSync,writeFileSync} from "node:fs";
 import {randomUUID} from "node:crypto";
 import {constants} from "node:fs";
 import {dirname} from "node:path";
@@ -150,9 +150,19 @@ export class BackgroundJobJournal{
    // En Windows, la identidad del archivo puede no distinguir un bloqueo sustituido.
    return ownedLockContents!==undefined?readFileSync(lock,"utf8")===ownedLockContents:current.size===0;
   };
+  // Leer los bytes desde nuestro descriptor, no desde la ruta, para reconocer
+  // una escritura parcial sin confundirla con el bloqueo de otro proceso.
+  const captureOwnLock=():void=>{
+   if(fd===undefined)return;
+   const stat=fstatSync(fd);
+   if(!stat.isFile()||stat.size>1024)return;
+   const data=Buffer.alloc(stat.size);let offset=0;
+   while(offset<data.length){const count=readSync(fd,data,offset,data.length-offset,offset);if(count===0)throw new Error("No se pudo leer el bloqueo propio");offset+=count;}
+   ownedLockContents=data.toString("utf8");
+  };
   while(fd===undefined){
-   try{fd=openSync(lock,constants.O_WRONLY|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);const stat=fstatSync(fd);identity={dev:stat.dev,ino:stat.ino};const lockContents=JSON.stringify({pid:process.pid,createdAt:Date.now(),nonce:randomUUID()});writeFileSync(fd,lockContents);ownedLockContents=lockContents;fsyncSync(fd);}
-   catch(error){const failedToCreate=fd===undefined;if(fd!==undefined){try{closeSync(fd);}catch{}fd=undefined;if(identity)try{if(ownsCurrentLock())unlinkSync(lock);}catch{/* Conservar un bloqueo ajeno o de identidad incierta. */}identity=undefined;ownedLockContents=undefined;}
+   try{fd=openSync(lock,constants.O_RDWR|constants.O_CREAT|constants.O_EXCL|(constants.O_NOFOLLOW??0),0o600);const stat=fstatSync(fd);identity={dev:stat.dev,ino:stat.ino};const lockContents=JSON.stringify({pid:process.pid,createdAt:Date.now(),nonce:randomUUID()});writeFileSync(fd,lockContents);ownedLockContents=lockContents;fsyncSync(fd);}
+   catch(error){const failedToCreate=fd===undefined;if(fd!==undefined){try{captureOwnLock();}catch{ownedLockContents=undefined;}try{closeSync(fd);}catch{}fd=undefined;if(identity)try{if(ownsCurrentLock())unlinkSync(lock);}catch{/* Conservar un bloqueo ajeno o de identidad incierta. */}identity=undefined;ownedLockContents=undefined;}
     const code=(error as NodeJS.ErrnoException).code,windowsPermission=failedToCreate&&process.platform==="win32"&&code==="EPERM";
     if(!failedToCreate||code!=="EEXIST"&&!windowsPermission)throw error;
     try{const observed=lstatSync(lock);if(!observed.isFile()||observed.isSymbolicLink()||(process.platform!=="win32"&&(observed.mode&0o077)!==0))throw new Error("Background journal lock is unsafe");}
