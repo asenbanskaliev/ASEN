@@ -26,10 +26,46 @@ Explain the result briefly in normal language: what will happen, any unresolved 
 export const ASEN_EXPLORATION_BUDGET_SECTION="asen_exploration_budget";
 export const ASEN_EXPLORATION_BUDGET_GUIDANCE="ASEN ha observado más de tres consultas de lectura o 40 KiB de salida en esta sesión y proyecto de Pi. Es una orientación, no una autorización de Writer, una aprobación del plan ni una prueba de que haga falta otro agente. Si todavía hace falta investigar y el perfil activo tiene un modelo Explorer configurado, llama una sola vez a asen_agent_start con budgetExplorer=true, un prompt breve, rutas y líneas; la herramienta comprobará sesión, presupuesto y modelo exacto del perfil, sin conceder escritura. Si no puede comprobarlo, informa y continúa de forma limitada. No dupliques trabajos, no repitas una tarea fallida ni deduzcas permisos de escritura por usar modelos de pago. Si ya existe información suficiente, continúa dentro del ámbito autorizado sin lanzar Explorer.";
 
-export function addAsenRequestGuidance(options:{sections?:Record<string,string>},toolAvailable:boolean,explorationOverBudget=false):void{
+// El registro de una herramienta no demuestra que Pi la haya activado para el turno.
+export type ActiveAsenRequestTools=Readonly<{plan:boolean;agent:boolean;todo?:boolean}>;
+// Una guía que menciona tareas Todo solo es válida con todas sus herramientas activas.
+export const ASEN_GUIDANCE_TODO_TOOLS=Object.freeze([
+ "asen_todo_add","asen_todo_update","asen_todo_list","asen_todo_accept_result","asen_todo_inspect_interrupted_write",
+] as const);
+export function activeAsenRequestTools(selectedTools:readonly string[]|undefined):ActiveAsenRequestTools{
+ const selected=Array.isArray(selectedTools)?selectedTools:[];
+ return {plan:selected.includes(ASEN_PLAN_REQUEST_TOOL),agent:selected.includes("asen_agent_start"),todo:ASEN_GUIDANCE_TODO_TOOLS.every(name=>selected.includes(name))};
+}
+export function hasActiveAsenRequestTools(selectedTools:readonly string[]|undefined):boolean{
+ const tools=activeAsenRequestTools(selectedTools);
+ return tools.plan&&tools.agent;
+}
+
+// Orientación segura cuando solo está disponible el planificador.
+export const ASEN_PLAN_ONLY_GUIDANCE=`Handle requests in the user's ordinary language. Never ask the user to write JSON, ODD fields, task IDs or file paths merely to work. Prefer bounded direct work for small clear requests, and ask one focused question only for material decisions. Use ${ASEN_PLAN_REQUEST_TOOL} for dependent steps or explicit tracking if needed. Planning does not grant permission to write, start an agent, or bypass review. Do not suggest tools unavailable in this turn. Preserve the original instructions and explain blocked actions.`;
+
+// Orientación de lectura cuando está disponible Explorer pero no el planificador.
+export const ASEN_AGENT_ONLY_GUIDANCE="Handle requests in the user's ordinary language. Prefer direct bounded read-only research when enough. When available in this turn, asen_agent_start may start one scoped read-only Explorer; never infer write permissions, call an unavailable planner, or retry an uncertain write. Stop for material authorization or scope decisions.";
+
+// Plan y agente activos, pero sin inventar funciones Todo que no estén seleccionadas.
+export const ASEN_PLAN_AGENT_NO_TODO_GUIDANCE=`Atiende la petición en lenguaje normal. Averigua los datos ODD mediante lecturas acotadas y no pidas identificadores técnicos ni rutas que puedas descubrir. Una tarea pequeña y clara se resuelve directamente dentro de los permisos existentes; una tarea con dependencias puede utilizar ${ASEN_PLAN_REQUEST_TOOL}. La planificación no concede permiso de escritura.
+
+Para investigar, utiliza lecturas directas o un único Explorer de solo lectura mediante asen_agent_start cuando aporte valor. No dupliques agentes ni repitas una escritura incierta. Respeta los modelos configurados y el ámbito exacto, y solicita confirmación para cualquier cambio que la necesite. No sugieras herramientas ausentes en el turno.
+
+Ante errores, bloqueos, cancelaciones o cambios de sesión o de candidato, conserva el estado existente, comprueba la identidad y explica el siguiente paso seguro. Nunca reanudes automáticamente un Writer ni conviertas un resultado de agente o una sugerencia del plan en autorización. Para detener tareas, respeta exclusivamente la petición y la sesión activas. Entrega el resultado con claridad, sin exigir que el usuario copie identificadores.`;
+
+export function addAsenRequestGuidance(
+ options:{sections?:Record<string,string>},
+ toolsAvailable:boolean|ActiveAsenRequestTools,
+ explorationOverBudget=false,
+):void{
  if(!options.sections)return;
+ delete options.sections[ASEN_REQUEST_GUIDANCE_SECTION];
  delete options.sections[ASEN_EXPLORATION_BUDGET_SECTION];
- if(!toolAvailable)return;
- options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=ASEN_REQUEST_GUIDANCE;
- if(explorationOverBudget)options.sections[ASEN_EXPLORATION_BUDGET_SECTION]=ASEN_EXPLORATION_BUDGET_GUIDANCE;
+ // Compatibilidad del contrato sintético anterior; los turnos Pi pasan siempre selección real.
+ const tools=typeof toolsAvailable==="boolean"?{plan:toolsAvailable,agent:toolsAvailable,todo:toolsAvailable}:toolsAvailable;
+ if(tools.plan&&tools.agent)options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=tools.todo===true?ASEN_REQUEST_GUIDANCE:ASEN_PLAN_AGENT_NO_TODO_GUIDANCE;
+ else if(tools.plan)options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=ASEN_PLAN_ONLY_GUIDANCE;
+ else if(tools.agent)options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=ASEN_AGENT_ONLY_GUIDANCE;
+ if(tools.agent&&explorationOverBudget)options.sections[ASEN_EXPLORATION_BUDGET_SECTION]=ASEN_EXPLORATION_BUDGET_GUIDANCE;
 }
