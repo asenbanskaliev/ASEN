@@ -1,10 +1,10 @@
 # ASEN — Estado verificable de los 18 objetivos
 
-**Fecha de línea base auditada:** 20/11/2026 · **Actualización operativa:** 21/11/2026. **Código de referencia:** `daa250a80b58d80c48336ac017deaf8e68cc396c`. **Rama:** `feat/flujo-de-agentes-20261115`. **PR:** #61 (borrador; no fusionar).
+**Fecha de línea base auditada:** 20/11/2026 · **Estado operativo comprobado:** 21/11/2026. **HEAD de desarrollo al revisar:** `8b62891f2545f5053b065220154f03ddd8bdac29` (pruebas de ese SHA en curso, no aceptadas). **Rama:** `feat/flujo-de-agentes-20261115`. **PR:** #61 (borrador; no fusionar). La matriz de 18 objetivos conserva su criterio de aceptación independiente.
 
 **Auditoría de cada punto:** [análisis de código y pruebas](../../docs/audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md). **Plan ejecutable:** [plan final, apartado 13](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#13-auditoría-de-coherencia-contra-el-código-de-los-18-objetivos-actualización-vinculante).
 
-**Prioridad actual (21/11):** PRE-0/PRE-1 incorporados con CI verde en `ae14e10d`; CTX-0 añade pruebas sintéticas en `508b31f5`. CTX-1 requiere verificar Pi real mediante PR #66. Las fases E4/F y la equivalencia de ejecución completa siguen abiertas. Las pruebas simuladas no prueban por sí solas un flujo real.
+**Prioridad actual (21/11, tras integrar #75):** las PR auxiliares #64–#75 están cerradas e integradas en sus ramas de destino, y los cambios admitidos están incluidos en desarrollo #61. CTX-1 ya pasó de investigación a código y pruebas de selección de herramientas; no repetir el trabajo de #66/#71. La nueva CI del HEAD `8b62891f` es [44946902816](https://github.com/asenbanskaliev/ASEN/actions/runs/44946902816), aún en curso al tomar esta fotografía; Phase0 y Pi 1.2 correctos, Release Gate y Pi 1.5 pendientes, Pi Free Smoke omitida (**no es PASS**). Priorizar cierre de estas puertas, E1/E2/E3 con pruebas reales y luego E4/F. Ninguna simulación demuestra por sí sola equivalencia completa.
 
 **Importante:** lo publicado en GitHub no equivale a trabajo validado. Todos los estados de esta matriz son conservadores. Ninguna prueba simulada demuestra por sí sola el comportamiento con proveedores reales. **`globalFull:false`**.
 
@@ -22,7 +22,7 @@
 | 10 | Usar el modelo principal del perfil | Modelo de perfil integrado; aceptación pendiente | Confirmar en Pi autenticado el modelo realmente usado; respetar sesión reanudada |
 | 11 | Verificar según los riesgos del cambio | Seis riesgos y política de Verifier presentes | Demostrar que la decisión se aplica en el ejecutor y no se limita a un aviso |
 | 12 | Una revisión completa del cambio | Revisión ordinaria con recibo conectada | Probar candidato congelado, interrupción, resultado y aceptación humana separada |
-| 13 | Dos jueces y correcciones limitadas | Dos jueces y límite de dos rondas implementados | Comprobar hallazgos, discrepancia, Fix autorizado y prueba nueva del límite de rondas |
+| 13 | Dos jueces y correcciones limitadas | Dos jueces, límite de dos rondas y prueba negativa de rejuicio integrados; aceptación real pendiente | Comprobar con revisores efectivos los hallazgos, la discrepancia y el Fix autorizado, sin confundir prueba negativa con doble revisión real |
 | 14 | Preguntar lo imprescindible y seguir | Entrada natural y Clarifier presentes | Demostrar pregunta única, respuesta, cancelación y reanudación sin inferir permisos |
 | 15 | Mantener la seguridad y el control de cambios | PRE-0/PRE-1 corregidos e integrados; CI y arquitectura correctos en `ae14e10d` | Mantener controles de regresión en nuevos SHA, probar consentimiento real y no asumir aceptación E4/F |
 | 16 | Medir velocidad, consumo, calidad y costes | P16: 18 sesiones Pi auténticas de solo lectura; paridad no probada | A/B completo con condiciones comparables, orquestación, hijos, tokens, caché y coste observable |
@@ -46,4 +46,4 @@
 4. Resultado completo de las 18 filas con evidencia identificable por versión; pruebas omitidas, en espera o simuladas no acreditan equivalencia real.
 5. No fusionar la PR ni fijar `globalFull:true` sin evidencias y decisión humana.
 
-**Orden actualizado (21/11):** PRE-0/PRE-1 integrados → CTX-0 pruebas sintéticas (medición real pendiente) → CTX-1 verificación de SDK mediante PR #66 → E1A/E1B y CTX-1/2 sin editar los mismos archivos a la vez → E2A/E2B → E3 → E4/CTX-5 → auditoría F/CTX-6. CTX-3 solo si hay duplicados probados; CTX-4 opcional. `globalFull:false`.
+**Orden operativo revisado (21/11):** comprobar CI, Release Gate, Pi 1.2/1.5 y arquitectura del HEAD vigente de #61 → E1A/E1B (ruta real y modos) y E2A/E2B (dos Writers y recuperación) en ramas separadas → E3 (revisión y dos jueces reales) → CTX-2/5 medidos y E4 → auditoría independiente F/CTX-6. CTX-0 es sintético; CTX-1 está implementado pero no demuestra ahorro ni aceptación funcional global. CTX-3 solo con duplicados observados; CTX-4 opcional. Antes de trabajar, verificar HEAD y reservas [#63](https://github.com/asenbanskaliev/ASEN/issues/63), nunca reutilizar SHA antiguos por inercia. `globalFull:false`.
