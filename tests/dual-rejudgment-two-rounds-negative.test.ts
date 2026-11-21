@@ -30,7 +30,7 @@ function genuineCandidate(){
   deliveryRelationship:boundary.deliveryRelationship,previousReviewedBoundary:boundary.previousReviewedBoundary,
   rollbackBoundary:boundary.rollbackBoundaries[0]!,
   commit:{identity:revision,treeIdentity:tree,parentIdentity:parent,
-   message:"Prueba de revisión de dos rondas",currentTreeIdentity:tree},
+   message:"test: comprobar dos rondas de revisión",currentTreeIdentity:tree},
   authoredAdditions:boundary.authoredAdditions,authoredDeletions:boundary.authoredDeletions,
   changedPaths:[...boundary.expectedChangedPaths],
   behaviorPaths:["src/review/dual-rejudgment.ts"],
