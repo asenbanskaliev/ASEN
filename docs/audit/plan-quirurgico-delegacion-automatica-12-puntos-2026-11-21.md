@@ -142,3 +142,34 @@ Estados diferenciados: **CÓDIGO**, **PRUEBA UNITARIA**, **EJECUTOR SIMULADO**, 
 - [OpenHands: tareas delegadas](https://docs.openhands.dev/sdk/guides/task-tool-set): alternativa con ejecución normalmente sincrónica, no copia de permisos.
 - [LangGraph: control de estados y continuidad](https://docs.langchain.com/oss/python/langgraph/overview): patrón conceptual, no nueva dependencia recomendada.
 - [Plan rector ASEN](../../odd/tasks/flujo-de-agentes-plan-implantacion-4.9.0.md) y [coordinación #63](https://github.com/asenbanskaliev/ASEN/issues/63).
+
+## 8. Contraste complementario con dos terceros por punto
+
+Esta matriz **no presupone que un marco externo sea más rápido o seguro**. Compara patrones que tienen evidencia pública; solo se traslada el principio pertinente sin añadir dependencia a ASEN.
+
+| Punto | Alternativa externa 1 | Alternativa externa 2 | Por qué no copiar literalmente |
+| --- | --- | --- | --- |
+| 01 Modos | [Claude Code, subagentes](https://code.claude.com/docs/en/sub-agents): delegación seleccionada por función | [OpenHands, tareas](https://docs.openhands.dev/sdk/guides/task-tool-set): tarea delegada con contexto aparte | No demuestran el mismo bloqueo de escritura del padre que ASEN debe conservar |
+| 02 Decidir | Claude Code: descripción breve de agente orienta la decisión del modelo | [LangGraph, rutas condicionales](https://docs.langchain.com/oss/python/langgraph/overview): lógica explícita entre estados | Solo instrucciones no bastan; introducir LangGraph duplicaría el motor ODD |
+| 03 Independencia | [Claude Code, sesiones en paralelo](https://code.claude.com/docs/en/agents): carpetas Git separadas | LangGraph: dependencias y bifurcaciones explícitas | Carpetas separadas no prueban independencia de comportamiento; conservar Todo/ODD |
+| 04 Explorer | Claude Code: subagentes con conversación propia | OpenHands: agentes para tareas acotadas con resultado al padre | Aislar contexto no reemplaza el contador ni garantiza buena decisión; conservar 3 consultas/40 KiB |
+| 05 Plan multiunidad | LangGraph: grafo de estados y aristas | [CrewAI](https://github.com/crewAIInc/crewAI): tareas y roles definidos en flujos | Rehacer el plan en otros formatos rompe identidades y registros de ASEN; extender el existente |
+| 06 Lanzar hijos | Claude Code: lanzamiento integrado en su ejecución | OpenHands: herramienta de delegación con identificación de tarea | Ninguna API garantiza que Pi 1.2.0 ofrezca la misma firma; primero prueba de contrato nativo |
+| 07 Paralelismo | Claude Code: sesiones con carpetas Git opcionalmente separadas | OpenHands: [límite configurable de concurrencia](https://docs.openhands.dev/sdk/guides/task-tool-set) | No aumentar el límite sin medición; conservar dos y comprobar intersecciones de ámbitos |
+| 08 Consentimiento | Claude Code: políticas de herramientas propias del entorno | LangGraph: interrupciones/humano para decisiones importantes | No reutilizar claves o permisos entre ejecutores; el consentimiento es del anfitrión Pi, exacto por unidad |
+| 09 Continuar | LangGraph: estado y ejecución duraderos | OpenHands: reanudación por ID de tarea con contexto preservado | Ninguna librería externa sustituye el journal actual ni permite repetir una escritura ambigua |
+| 10 Verificar | Claude Code: un subagente puede inspeccionar una tarea sin escribir | LangGraph: nodo de validación condicionado y revisión humana | Un segundo agente no es automáticamente independiente; exigir riesgo real, candidato congelado y recibos |
+| 11 Contexto | Claude Code: instrucción detallada se carga cuando se usa el subagente | LangGraph: estado explícito separado del historial narrativo | Eliminar material de contexto sin medir puede quitar seguridad o convenciones; CTX-2/CTX-5 primero |
+| 12 Medir | Claude Code: sesiones distintas observables | LangGraph: flujos repetibles y estados inspeccionables | Ninguna comparación externa reemplaza A/B con mismos modelos, proyecto, permisos, tareas y coste efectivo |
+
+**Nivel de evidencia:** documentación pública para capacidades de terceros; código exacto para ASEN; ensayos [Gentle #1494](https://github.com/Gentleman-Programming/gentle-shell/issues/1494) y [#1587](https://github.com/Gentleman-Programming/gentle-shell/issues/1587) para sus propios escenarios. No se han ejecutado aquí proveedores ni ensayos de ASEN contra esas herramientas. Estas alternativas son **referencias de diseño**, no requisitos ni cambios de dependencias.
+
+## 9. Segunda auditoría de consistencia y salida
+
+- **Cobertura:** doce filas de solución, doce filas de correspondencia del plan rector y doce pares de terceros. No se incorporan doce objetivos nuevos.
+- **Contratos de autoridad:** la ruta propone, el despachador comprueba, Pi autoriza, el agente ejecuta únicamente su ámbito; prueba y aceptación humana son pasos separados.
+- **Contrato de concurrencia:** máximo inicial dos; independencia por comportamiento, dependencias y ámbito; el aislamiento físico y la simultaneidad no acreditan por sí solos calidad.
+- **Contrato de continuidad:** señales, diario y reclamación existentes; continuaciones solo para pasos seguros, nunca repetición automática de Writer incierto.
+- **Orden único:** E1A/E1B/CTX-2 → E2A/E2B → E3 → E4/CTX-5 (CTX-4 opcional) → F/CTX-6. CTX-3 condicionado a prueba.
+- **Límites:** sin cambios de código, sin pruebas ejecutadas en este documento, sin aceptación E4/F, sin merge, sin ahorro demostrado y con estado global false.
+- **Dictamen:** **coherencia documental favorable con condiciones técnicas**; se debe validar con CI/CodeRabbit del SHA exacto y prueba Pi auténtica antes de declarar funcionalidad completa.
