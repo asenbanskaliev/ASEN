@@ -65,7 +65,7 @@ import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/agents/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/ui/todo-presentation.js";
-import {addAsenRequestGuidance,hasActiveAsenRequestTools} from "../src/runtime/ui/request-guidance.js";
+import {activeAsenRequestTools,addAsenRequestGuidance} from "../src/runtime/ui/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/lifecycle/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/lifecycle/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
@@ -1221,7 +1221,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        current.sessionId===budget.sessionId&&current.projectId===budget.projectId;
      }catch{/* Una identidad cambiada nunca expone el presupuesto de otra sesión. */}
     }
-    addAsenRequestGuidance(options,hasActiveAsenRequestTools(options.selectedTools),explorationOverBudget);
+    addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget);
     delete options.sections.asen_delegation_mode;
     try{
      const owner=await sessionIdentity(ctx as CommandContext),layers=await profileLayer(owner);

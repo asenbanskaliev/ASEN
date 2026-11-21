@@ -66,7 +66,7 @@ test("G49-A2: el agotamiento se comunica solo como consejo, sin ejecutar ni conc
  assert.equal(options.sections[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
 });
 
-test("G49-A2: los eventos Pi entregan el presupuesto solo a su sesión y proyecto",async t=>{
+test("G49-A2: Pi no anuncia Explorer si el motor de agentes no está activo",async t=>{
  const root=await mkdtemp(join(tmpdir(),"asen-g49-a-"));
  const handlers=new Map<string,Array<(event:any,context:any)=>unknown>>(),tools:any[]=[];
  const pi={
@@ -88,7 +88,7 @@ test("G49-A2: los eventos Pi entregan el presupuesto solo a su sesión y proyect
  });
  await facade.startSession(ctx);
  const prompt=async(context=ctx)=>{
-  const options={sections:{} as Record<string,string>};
+  const options={sections:{} as Record<string,string>,selectedTools:tools.map(tool=>tool.name)};
   for(const handler of handlers.get("before_agent_start")??[])await handler({systemPromptOptions:options},context);
   return options.sections;
  };
@@ -98,11 +98,12 @@ test("G49-A2: los eventos Pi entregan el presupuesto solo a su sesión y proyect
    await handler({toolCallId:"g49-read-"+i,toolName:"read",result:{content:[{type:"text",text:"datos"}]}},ctx);
   }
  }
- assert.equal((await prompt())[ASEN_EXPLORATION_BUDGET_SECTION],ASEN_EXPLORATION_BUDGET_GUIDANCE);
+ assert.equal((await prompt())[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
  const another={...ctx,sessionManager:{getSessionId:()=>"g49-session-b"}};
  assert.equal((await prompt(another))[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
- assert.equal((await prompt())[ASEN_EXPLORATION_BUDGET_SECTION],ASEN_EXPLORATION_BUDGET_GUIDANCE);
+ assert.equal((await prompt())[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
  assert.equal(tools.some(tool=>tool.name==="asen_plan_request"),true);
+ assert.equal(tools.some(tool=>tool.name==="asen_agent_start"),false,"No se debe sugerir un agente ausente");
 });
 
 

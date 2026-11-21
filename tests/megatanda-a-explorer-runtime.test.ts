@@ -48,7 +48,9 @@ test("E1A: Pi ejecuta Explorer de perfil de pago tras cuatro consultas sin permi
  for(const h of handlers.get("session_start")??[])await h({reason:"new"},context);
  const tool=tools.get("asen_agent_start");assert.ok(tool);
  const options=async()=>{
-  const result={sections:{} as Record<string,string>};
+  const result={sections:{} as Record<string,string>,selectedTools:[...tools.keys()]};
+  assert.ok(result.selectedTools.includes("asen_plan_request"));
+  assert.ok(result.selectedTools.includes("asen_agent_start"));
   for(const h of handlers.get("before_agent_start")??[])
    await h({systemPromptOptions:result},context);
   return result.sections;
