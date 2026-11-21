@@ -1,10 +1,10 @@
 # ASEN — Estado verificable de los 18 objetivos
 
-**Fecha de actualización auditada:** 20 de noviembre de 2026. **Código de referencia:** `daa250a80b58d80c48336ac017deaf8e68cc396c`. **Rama:** `feat/flujo-de-agentes-20261115`. **PR:** #61 (borrador; no fusionar).
+**Fecha de línea base auditada:** 20/11/2026 · **Actualización operativa:** 21/11/2026. **Código de referencia:** `daa250a80b58d80c48336ac017deaf8e68cc396c`. **Rama:** `feat/flujo-de-agentes-20261115`. **PR:** #61 (borrador; no fusionar).
 
 **Auditoría de cada punto:** [análisis de código y pruebas](../../docs/audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md). **Plan ejecutable:** [plan final, apartado 13](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#13-auditoría-de-coherencia-contra-el-código-de-los-18-objetivos-actualización-vinculante).
 
-**Prioridad actual:** PRE-0 (referencias externas) y PRE-1 (test T06), que bloquean G0. CTX-0 admite solo diagnóstico sin proveedor. No se declara cerrado ningún objetivo con pruebas locales únicamente.
+**Prioridad actual (21/11):** PRE-0/PRE-1 incorporados con CI verde en `ae14e10d`; CTX-0 añade pruebas sintéticas en `508b31f5`. CTX-1 requiere verificar Pi real mediante PR #66. Las fases E4/F y la equivalencia de ejecución completa siguen abiertas. Las pruebas simuladas no prueban por sí solas un flujo real.
 
 **Importante:** lo publicado en GitHub no equivale a trabajo validado. Todos los estados de esta matriz son conservadores. Ninguna prueba simulada demuestra por sí sola el comportamiento con proveedores reales. **`globalFull:false`**.
 
@@ -24,7 +24,7 @@
 | 12 | Una revisión completa del cambio | Revisión ordinaria con recibo conectada | Probar candidato congelado, interrupción, resultado y aceptación humana separada |
 | 13 | Dos jueces y correcciones limitadas | Dos jueces y límite de dos rondas implementados | Comprobar hallazgos, discrepancia, Fix autorizado y prueba nueva del límite de rondas |
 | 14 | Preguntar lo imprescindible y seguir | Entrada natural y Clarifier presentes | Demostrar pregunta única, respuesta, cancelación y reanudación sin inferir permisos |
-| 15 | Mantener la seguridad y el control de cambios | Bloqueado por CI en SHA `daa250a8` | Resolver PRE-0: seis referencias externas, y PRE-1: test T06; repetir Phase 0 y CI exacto |
+| 15 | Mantener la seguridad y el control de cambios | PRE-0/PRE-1 corregidos e integrados; CI y arquitectura correctos en `ae14e10d` | Mantener controles de regresión en nuevos SHA, probar consentimiento real y no asumir aceptación E4/F |
 | 16 | Medir velocidad, consumo, calidad y costes | P16: 18 sesiones Pi auténticas de solo lectura; paridad no probada | A/B completo con condiciones comparables, orquestación, hijos, tokens, caché y coste observable |
 | 17 | Probar todo el recorrido con modelos reales | Pruebas locales y verificador de evidencias presentes | Dos Writers reales, dos jueces, permisos exactos, pruebas conjuntas, revisión y aceptación auténtica |
 | 18 | Comprobar la compatibilidad real de Pi | Host >=1.2, paquete fijado 1.2.0; matriz parcial | 3 sistemas operativos × 4 modos con Pi 1.2.0 exacto; otras versiones requieren matriz propia |
@@ -46,4 +46,4 @@
 4. Resultado completo de las 18 filas con evidencia identificable por versión; pruebas omitidas, en espera o simuladas no acreditan equivalencia real.
 5. No fusionar la PR ni fijar `globalFull:true` sin evidencias y decisión humana.
 
-**Orden actualizado:** PRE-0 + PRE-1 (diagnóstico en paralelo, cambios secuenciales) → G0 verde por SHA → CTX-0 de medición → E1A/E1B y CTX-1/2 sin editar los mismos archivos a la vez → E2A/E2B → E3 → E4/CTX-5 → auditoría F/CTX-6. CTX-3 solo si hay duplicados probados; CTX-4 opcional. `globalFull:false`.
+**Orden actualizado (21/11):** PRE-0/PRE-1 integrados → CTX-0 pruebas sintéticas (medición real pendiente) → CTX-1 verificación de SDK mediante PR #66 → E1A/E1B y CTX-1/2 sin editar los mismos archivos a la vez → E2A/E2B → E3 → E4/CTX-5 → auditoría F/CTX-6. CTX-3 solo si hay duplicados probados; CTX-4 opcional. `globalFull:false`.

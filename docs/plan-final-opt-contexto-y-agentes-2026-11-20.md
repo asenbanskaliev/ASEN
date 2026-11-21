@@ -1,6 +1,8 @@
 # ASEN — Plan final de optimización del contexto y conservación del flujo de agentes
 
-**Fecha:** 20/11/2026 · **Versión:** 1.2 del plan consolidado y auditado · **Estado:** DIAGNÓSTICO OFFLINE PERMITIDO; G0 BLOQUEADO POR CI; IMPLANTACIÓN PENDIENTE.
+> **Actualización 21/11/2026:** PRE-0/PRE-1 reparados e integrados con CI verde en `ae14e10d`. CTX-0 incorpora pruebas sintéticas en `508b31f5`, pero no mide tokens ni demuestra ahorro. CTX-1 verifica `selectedTools` mediante la [PR #66](https://github.com/asenbanskaliev/ASEN/pull/66); no cambiar las instrucciones activas hasta concluir pruebas SDK, CI y CodeRabbit. CTX-2…6 y aceptación real E4/F siguen pendientes. La declaración G0 bloqueado del 20/11 no representa el estado actual.
+
+**Corte histórico:** 20/11/2026 · **Versión:** 1.2 del plan consolidado y auditado · **Estado en aquel corte (superado para PRE-0/PRE-1):** DIAGNÓSTICO OFFLINE PERMITIDO; G0 BLOQUEADO POR CI; IMPLANTACIÓN PENDIENTE. **Estado vigente:** ver actualización del 21/11 y verificar el último SHA; las demás puertas siguen siendo obligatorias.
 **Rama/PR:** `feat/flujo-de-agentes-20261115` / [PR #61](https://github.com/asenbanskaliev/ASEN/pull/61). **Referencia de código auditada:** `a05424fec15ba5770b45695fefd126638c88b1a7`. No representa la versión futura del producto.
 **Fuente rectora:** [plan de los 18 objetivos, E0–E4 y F](../odd/tasks/flujo-de-agentes-plan-implantacion-4.9.0.md), cuya **sección 14** remite a este plan. Los apartados 11–13 previos son antecedentes documentales, no otras tandas ejecutables.
 **Contraste:** [auditoría OPT anterior](audit/opt-contexto-skills-asen-2026-11-20.md), [auditoría crítica final](audit/plan-final-opt-investigacion-avanzada-2026-11-20.md), [P16](audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md); Gentle Shell 4.9.0 en `ce64a9a708e50c0ca899c8023140e63f29f293e1`.
@@ -260,7 +262,7 @@ Para cada escenario y proceso guardar únicamente:
 | CI y revisión independiente | **PENDIENTES** | Mismo SHA, revisión por otra persona/agente y sin hallazgos graves |
 | Reversión | **DISEÑADA, NO PROBADA** | Volver a variante anterior sin pérdida de memoria ni replantear permisos |
 
-**Veredicto actualizado por la revisión de CI:** `CTX_0_DIAGNOSTICO_OFFLINE_PERMITIDO`; `G0_BLOQUEADO`. No interpretar como `LISTO_PARA_DESPLEGAR` ni `GLOBAL_FULL`. El primer cambio de producción requiere resolver PRE-0/PRE-1 y obtener G0 en verde, además de la prueba Pi 1.2.0.
+**Veredicto histórico de CI (corte 20/11, sustituido por la actualización del 21/11):** `CTX_0_DIAGNOSTICO_OFFLINE_PERMITIDO`; `G0_BLOQUEADO` en aquel SHA. PRE-0/PRE-1 fueron reparados e integrados posteriormente; repetir CI y arquitectura en el SHA vigente sigue siendo obligatorio. No interpretar como `LISTO_PARA_DESPLEGAR` ni `GLOBAL_FULL`; la prueba funcional Pi 1.2.0 y las restantes puertas siguen pendientes donde corresponda.
 
 ---
 
@@ -268,9 +270,11 @@ Para cada escenario y proceso guardar únicamente:
 
 **Referencia de código y CI:** `daa250a80b58d80c48336ac017deaf8e68cc396c` (20/11/2026). **Auditoría por archivo, línea y prueba:** [auditoría detallada de 18 objetivos y CTX-0–CTX-6](audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md). La evidencia corresponde a aquel SHA y **no prueba** el CI de los commits documentales posteriores.
 
-**CAMBIO DE ESTADO PRIORITARIO:** antes de editar instrucciones o dar por admitida una megatanda, solucionar o aislar dos fallos reales: arquitectura por referencias externas no admitidas y una prueba T06 que depende de una forma textual exacta. **El plan continúa listo para diagnóstico offline, pero NO para activar las mejoras ni avanzar por G0.**
+**DIAGNÓSTICO HISTÓRICO DEL 20/11 (NO REEJECUTAR COMO PRIORIDAD VIGENTE):** este corte detectó fallos PRE-0 (referencias externas) y PRE-1 (prueba textual T06). Ambos se repararon e integraron después mediante PR #64, con CI del candidato y revisión externa. **Antes de cualquier paso nuevo, verificar el CI y la arquitectura del SHA actual; esta reparación no acredita E2/E3, CTX-1 ni aceptación global.**
 
-### 13.1 Dos reparaciones previas obligatorias (PRE-0 y PRE-1)
+### 13.1 Dos reparaciones previas en el corte del 20/11 (PRE-0 y PRE-1, ya corregidas)
+
+La tabla siguiente conserva las evidencias y propuestas **históricas** que motivaron la reparación. No es una lista de tareas nuevas.
 
 | Unidad | Evidencia real | Intervención mínima (por decidir con pruebas) | Puerta |
 | --- | --- | --- | --- |
@@ -279,7 +283,7 @@ Para cada escenario y proceso guardar únicamente:
 
 **Regla de seguridad:** `PRE-0` no es un permiso para incorporar código de terceros, y `PRE-1` no permite convertir un test rojo en verde eliminando una comprobación de autorización. Los cambios en `scripts`, `tests` y políticas requieren su propio ámbito de edición, revisión y prueba; este documento **no ejecuta esos cambios**.
 
-**Actuación en paralelo:** PRE-0 y PRE-1 se investigan en solo lectura a la vez porque no comparten archivos; sus ediciones aprobadas se integran secuencialmente. **CTX-0 puede medir sin proveedor mientras tanto**, pero CTX-1/2 **no modifican producción** hasta superar G0.
+**Actuación prevista en el corte del 20/11 (histórica):** PRE-0 y PRE-1 se investigaban en solo lectura y sus ediciones se integrarían secuencialmente. **Ambas reparaciones ya se incorporaron.** CTX-0 puede medir sin proveedor; cualquier cambio CTX-1/2 requiere verificar los controles del SHA actual y los requisitos de Pi, sin relajar autorizaciones.
 
 ### 13.2 Única matriz de adaptación de los 18 objetivos
 
@@ -301,7 +305,7 @@ La columna «faltante» es la **brecha mínima**, no una solicitud para reimplan
 | **12** | `ordinary-review-command.ts` y `review-acceptance.ts` | Demostrar candidato congelado, pausa/retorno, recibo y aceptación separada | Revisión integral; E3 |
 | **13** | `judgment-day.ts` y `dual-rejudgment.ts` | Diferencias entre jueces, Fix autorizado y dos rondas máximo; **prueba específica por crear** | Modelos distintos/negativas; E3 |
 | **14** | `natural-plan-tool.ts` y Clarifier en despachador | Respuesta normal, cancelación y recuperación **sin** inferir permisos | Clarifier real; E1B |
-| **15** | Controles Git/SHA/ámbito y worktrees | **PRE-0 + PRE-1 y CI rojo del SHA actual** antes de cualquier afirmación de seguridad global | Phase 0 y CI 3 SO; E0/E2/F |
+| **15** | Controles Git/SHA/ámbito y worktrees | PRE-0/PRE-1 reparados después del corte inicial; **comprobar CI y arquitectura del SHA actual** antes de afirmar seguridad global | Phase 0 y CI 3 SO; E0/E2/F |
 | **16** | `agent-flow-ab-comparison.ts` y métricas P16 limitadas | A/B **ASEN previo/optimizado** y comparación externa completa separada; medición hijos/caché/coste | Pares comparables; E4 + CTX-5 |
 | **17** | `flow-closure-evidence.ts`, arreglos de tipos/arrays ya presentes | Testigos realmente autenticados de 2 Writers, revisión, pruebas y aceptación; no dar por válido un recibo alegado | E2E integral; E4/F |
 | **18** | `pi-host.ts` acepta desde 1.2; `package-lock.json` fija 1.2.0 | La matriz de cierre exige **1.2.0 exacto**, 3 **sistemas operativos** × 4 modos. Versión futura requiere su propia matriz | 12 celdas sin SKIP; E0/E2/F |
@@ -330,11 +334,11 @@ Añadir a los 15 escenarios S01–S15 ya descritos **12 negativos N01–N12** de
 
 **Auditoría de existencia de archivos:** `tests/context-guidance-assembly.test.ts` y la prueba específica de dos rondas **todavía no existen** y deben crearse en una unidad acotada. El resto de rutas mencionadas en la nueva auditoría se comprobó en el árbol del SHA inspeccionado. No presentar esas pruebas pendientes como verdes.
 
-### 13.5 Dictamen sustituye estados antiguos de preparación
+### 13.5 Dictamen histórico del 20/11 y estado corregido el 21/11
 
-- **PRE-0:** `FALLA` en CI de arquitectura; requiere clasificación segura de excepciones.
-- **PRE-1:** `FALLA` en tests T06 Linux/Windows, por una condición textual que debe contrastarse con su semántica.
-- **G0:** `BLOQUEADO`; otras pruebas CI en `daa250a8` no están completas.
+- **PRE-0:** `FALLABA` en el CI de arquitectura del corte antiguo; **reparado e integrado** mediante PR #64 con excepciones limitadas a rutas verificadas.
+- **PRE-1:** `FALLABA` en los tests T06 del corte antiguo; **reparado e integrado** mediante PR #64 manteniendo controles de autorización.
+- **G0:** `BLOQUEADO` en `daa250a8` (histórico); después hubo CI verde para la reparación integrada. **Volver a comprobar las puertas del SHA vigente antes de cualquier nueva promoción.**
 - **CTX-0:** `PREPARABLE_DIAGNÓSTICO_OFFLINE`.
 - **CTX-1…CTX-6:** `NO IMPLEMENTADAS NI VALIDADAS` por esta actualización.
 - **18 objetivos:** `SIN PARIDAD FUNCIONAL COMPLETA`. **Revisión independiente:** pendiente. **Ahorro real:** no demostrado.

@@ -63,6 +63,7 @@ const pinnedParityPlanDocs=new Set([
  "odd/tasks/asen-command-registry-and-review-receipts.md",
  // INDEX.md only enumerates parity-document filenames already pinned above; a
  // catalog of references is not itself an upstream dependency.
+ "odd/archive/2026-11/INDEX-inventario-2026-11-14.md",
  "odd/tasks/INDEX.md",
  // This scanner necessarily embeds the forbidden pattern it enforces.
  "scripts/audit-upstream-boundary.mjs",

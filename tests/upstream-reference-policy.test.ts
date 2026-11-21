@@ -48,6 +48,22 @@ test("only explicitly registered non-executable provenance paths are documents",
   assert.equal(isPinnedReferenceDocument(path),false,path);
  }
 });
+test("archivo ODD: solo documentos históricos explícitos, nunca ejecutables",()=>{
+ const permitted=[
+  "odd/archive/2026-11/flujo-de-agentes.md",
+  "odd/archive/2026-11/flujo-de-agentes-continuidad.md",
+  "odd/archive/2026-11/flujo-de-agentes-auditoria-plan-2026-11-19.md",
+  "odd/archive/2026-11/flujo-agentes-18-puntos-cierre-20261119.md"
+ ];
+ for(const file of permitted){
+  assert.equal(isPinnedReferenceDocument(file),true,file);
+  assert.equal(isPinnedReferenceDocument(file.replace(/\.md$/u,".ts")),false,file);
+  assert.equal(isPinnedReferenceDocument(file.replace("2026-11/","2026-12/")),false,file);
+ }
+ assert.equal(isPinnedReferenceDocument("odd/archive/2026-11/documento-no-validado.md"),false);
+ assert.equal(isPinnedReferenceDocument("src/archive/2026-11/flujo-de-agentes.md"),false);
+});
+
 test("estudios P16/CTX admitidos por ruta documental exacta, nunca por carpeta ni extensión ejecutable",()=>{
  const docs=[
   "docs/audit/opt-contexto-skills-asen-2026-11-20.md",
