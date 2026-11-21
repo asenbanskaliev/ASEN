@@ -57,6 +57,10 @@ test("T06 E2B: dos supervisores independientes compiten sin duplicar sesiones",a
  ]);
  assert.equal(outcomes.filter(x=>x.status==="fulfilled").length,1);
  assert.equal(outcomes.filter(x=>x.status==="rejected").length,1);
+ const rechazo=outcomes.find((x):x is PromiseRejectedResult=>x.status==="rejected");
+ assert.ok(rechazo,"Debe existir un intento rechazado");
+ assert.match(String(rechazo.reason),/previously claimed/u,
+  "Solo un rechazo por duplicado acredita la protección frente a reintentos");
  const persisted=await new ParentSupervisorClaimJournal(file).listSource(source);
  assert.equal(persisted.length,1);
  assert.equal(persisted[0]?.status,"claimed-not-verified");
