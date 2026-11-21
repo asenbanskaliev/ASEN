@@ -303,7 +303,7 @@ La columna «faltante» es la **brecha mínima**, no una solicitud para reimplan
 | **10** | `startup-orchestrator-model.ts` | Confirmar modelo **utilizado** y no cambiar sesiones reanudadas | Pi autenticado, identidad; E1A |
 | **11** | Seis riesgos en `odd-routing.ts` y evaluación en `review-assessment-policy.ts` | Trazar consumidor/guardia efectiva de `independentVerifier`; no equiparar sugerencia con verificación | Seis riesgos con negativas; E3 |
 | **12** | `ordinary-review-command.ts` y `review-acceptance.ts` | Demostrar candidato congelado, pausa/retorno, recibo y aceptación separada | Revisión integral; E3 |
-| **13** | `judgment-day.ts` y `dual-rejudgment.ts` | Diferencias entre jueces, Fix autorizado y dos rondas máximo; **prueba específica por crear** | Modelos distintos/negativas; E3 |
+| **13** | `judgment-day.ts` y `dual-rejudgment.ts` | Diferencias entre jueces, Fix autorizado y límite de dos rondas; prueba negativa ya presente en `tests/dual-rejudgment-two-rounds-negative.test.ts` | Pendiente demostrar jueces reales, discrepancias y Fix autorizado; E3 |
 | **14** | `natural-plan-tool.ts` y Clarifier en despachador | Respuesta normal, cancelación y recuperación **sin** inferir permisos | Clarifier real; E1B |
 | **15** | Controles Git/SHA/ámbito y worktrees | PRE-0/PRE-1 reparados después del corte inicial; **comprobar CI y arquitectura del SHA actual** antes de afirmar seguridad global | Phase 0 y CI 3 SO; E0/E2/F |
 | **16** | `agent-flow-ab-comparison.ts` y métricas P16 limitadas | A/B **ASEN previo/optimizado** y comparación externa completa separada; medición hijos/caché/coste | Pares comparables; E4 + CTX-5 |
@@ -332,7 +332,7 @@ Las fases funcionales E1A/E1B/E2A/E2B/E3 conservan el orden del rector. **No** e
 
 Añadir a los 15 escenarios S01–S15 ya descritos **12 negativos N01–N12** de la [auditoría detallada](audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md#7-pruebas-negativas-adicionales-que-faltaba-distinguir). En particular: plan/cancelación sin herramientas, modo completo, lote sin consentimiento por hijo, reporte con arrays malformados, T06 combinando modos, Pi 1.5 sin matriz y reinicio con Writer incierto.
 
-**Auditoría de existencia de archivos:** `tests/context-guidance-assembly.test.ts` y la prueba específica de dos rondas **todavía no existen** y deben crearse en una unidad acotada. El resto de rutas mencionadas en la nueva auditoría se comprobó en el árbol del SHA inspeccionado. No presentar esas pruebas pendientes como verdes.
+**Auditoría de existencia de archivos:** `tests/context-guidance-assembly.test.ts` **todavía no existe** y requiere una unidad acotada, sin duplicar pruebas ya presentes. La prueba negativa de dos rondas **ya existe** en `tests/dual-rejudgment-two-rounds-negative.test.ts`; no crear otra. El resto de rutas mencionadas en la auditoría se comprobó en el árbol del SHA inspeccionado. No presentar pruebas pendientes como verdes ni una prueba negativa como aceptación completa con dos jueces reales.
 
 ### 13.5 Dictamen histórico del 20/11 y estado corregido el 21/11
 
