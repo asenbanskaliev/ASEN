@@ -1,6 +1,8 @@
 # ASEN — Plan final de optimización del contexto y conservación del flujo de agentes
 
-**Fecha:** 20/11/2026 · **Versión:** 1.2 del plan consolidado y auditado · **Estado:** DIAGNÓSTICO OFFLINE PERMITIDO; G0 BLOQUEADO POR CI; IMPLANTACIÓN PENDIENTE.
+> **Actualización 21/11/2026:** PRE-0/PRE-1 reparados e integrados con CI verde en `ae14e10d`. CTX-0 incorpora pruebas sintéticas en `508b31f5`, pero no mide tokens ni demuestra ahorro. CTX-1 verifica `selectedTools` mediante la [PR #66](https://github.com/asenbanskaliev/ASEN/pull/66); no cambiar las instrucciones activas hasta concluir pruebas SDK, CI y CodeRabbit. CTX-2…6 y aceptación real E4/F siguen pendientes. La declaración G0 bloqueado del 20/11 no representa el estado actual.
+
+**Corte histórico:** 20/11/2026 · **Versión:** 1.2 del plan consolidado y auditado · **Estado:** DIAGNÓSTICO OFFLINE PERMITIDO; G0 BLOQUEADO POR CI; IMPLANTACIÓN PENDIENTE.
 **Rama/PR:** `feat/flujo-de-agentes-20261115` / [PR #61](https://github.com/asenbanskaliev/ASEN/pull/61). **Referencia de código auditada:** `a05424fec15ba5770b45695fefd126638c88b1a7`. No representa la versión futura del producto.
 **Fuente rectora:** [plan de los 18 objetivos, E0–E4 y F](../odd/tasks/flujo-de-agentes-plan-implantacion-4.9.0.md), cuya **sección 14** remite a este plan. Los apartados 11–13 previos son antecedentes documentales, no otras tandas ejecutables.
 **Contraste:** [auditoría OPT anterior](audit/opt-contexto-skills-asen-2026-11-20.md), [auditoría crítica final](audit/plan-final-opt-investigacion-avanzada-2026-11-20.md), [P16](audit/p16-gentle-4.9.0-18-sesiones-2026-11-20.md); Gentle Shell 4.9.0 en `ce64a9a708e50c0ca899c8023140e63f29f293e1`.

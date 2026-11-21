@@ -2,7 +2,7 @@
 
 **Fecha:** 19/11/2026 · **Rama:** `feat/flujo-de-agentes-20261115` · **PR:** #61 (borrador).
 **Fuente:** `flujo-de-agentes-plan-implantacion-4.9.0.md`.
-**Estado:** ARCHIVADO / SUPERSEDIDO por [pr61-18-puntos-megatandas-a-e.md](pr61-18-puntos-megatandas-a-e.md) (las megatandas A-E unificaron la ejecución de PR #61).
+**Estado:** ARCHIVADO / SUPERSEDIDO por [pr61-18-puntos-megatandas-a-e.md](../../tasks/pr61-18-puntos-megatandas-a-e.md) (las megatandas A-E unificaron la ejecución de PR #61).
 
 ## A · Modelos, perfiles y decisiones (8 de 18 puntos)
 **Puntos 01, 02, 03, 04, 09, 10, 14, 18.**
