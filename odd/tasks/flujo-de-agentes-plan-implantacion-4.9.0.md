@@ -596,3 +596,42 @@ La matriz completa y las pruebas por objetivo están en [el plan final](../../do
 **Correcciones de alcance:** 01–14 ya tienen piezas de código; 05 sigue exigiendo permiso verificable por Writer; 15 está bloqueado por CI; 16 cuenta con P16 **autenticada de lectura** pero sin comparación completa, 17 exige aceptación de procesos reales y 18 diferencia **versión mínima de Pi** de **matriz exacta de 1.2.0**. No se declara completo ningún objetivo por documentación, revisión textual o éxito de un subtrabajo.
 
 **Regla de coherencia:** cualquier apartado anterior que indique «listo para implantar» se interpreta a partir de ahora como **«listo para diagnóstico sin proveedor; no habilitado para cambios de producción hasta G0»**. Ante contradicción prevalecen el código del SHA inspeccionado, la auditoría por punto y este apartado 14.5. Ningún `SKIP` ni `UNKNOWN` equivale a `PASS`; `globalFull:false` hasta aceptación independiente de los 18 puntos.
+
+---
+
+## 15. Delegación automática selectiva — incorporación auditada de los 12 puntos (21/11/2026)
+
+**Decisión funcional:** ASEN utiliza el modo organic por defecto y elige automáticamente si resolver la petición directamente o solicitar un agente especializado. El modo full-delegation sigue siendo una elección **explícita por perfil**, nunca una pregunta obligatoria por petición. La decisión de delegar **no concede** escritura, nuevos modelos/proveedores, publicación ni fusión.
+
+**Documento de implantación complementario, con la auditoría crítica del informe avanzado:** [Plan quirúrgico de delegación automática — 12 puntos](../../docs/audit/plan-quirurgico-delegacion-automatica-12-puntos-2026-11-21.md). Es un **subplan de E1B/E2A/E2B/E3/E4/F**, no un nuevo programa que duplique los 18 objetivos originales. Este apartado 15 prevalece únicamente sobre afirmaciones históricas incompatibles acerca de los **12 puntos de delegación automática**, y no sustituye los contratos vigentes de permisos, fases, CTX, G0–G6 o decisiones humanas.
+
+### 15.1 Correcciones obligatorias del informe avanzado
+
+El informe describe equivocadamente como ausentes varias funciones que ASEN **ya tiene**: decisión ODD programada, telemetría 3 lecturas/40 KiB de Explorer, grafo Todo con dependencias, worktrees, avisos/cola y selección condicional de Verifier. Su tabla original **solo incluye diez filas** pese a proponer doce. Las doce aparecen corregidas en el documento vinculado, separando código existente, prueba simulada y aceptación real.
+
+**No aplicar**: delegar por número de archivos o tamaño solamente; inventar API Pi session.run/runChildAgent; copiar permisos, credenciales o tokens del padre a hijos; permitir escritura del padre en modo completo; equiparar segundo despacho automático de solo lectura con incapacidad para dos Writers; afirmar ahorro/aceptación no medidos.
+
+### 15.2 Mapa vinculante de 12 puntos a fases ya aprobadas
+
+| Nº | Punto | Tratamiento | Fase original |
+| --- | --- | --- | --- |
+| 01 | Dos modos, organic predeterminado | MANTENER + probar cambio de perfil y bloqueo real | E1B/G1 |
+| 02 | Elegir automáticamente ruta con motivo verificable | MEJORAR ruta ODD ya existente | E1B |
+| 03 | Reconocer unidades independientes | MEJORAR derivación sin contar archivos | E1B |
+| 04 | Explorer solo cuando aporta valor | MANTENER contador; MEJORAR enlace al lanzamiento | E1B/CTX-2 |
+| 05 | Varias unidades y dependencias Todo | MANTENER almacén; MEJORAR preparación | E1B/E2A |
+| 06 | Lanzar hijos sin preparación manual insegura | CONDICIONAL a Pi 1.2.0 y autorización exacta | E2A |
+| 07 | Dos Writers aislados concurrentes | MANTENER supervisor; PROBAR ejecución auténtica integrada | E2A |
+| 08 | Autorizaciones por unidad/lote | MANTENER un uso por Worker; lote solo con concesiones Pi derivadas verificables | E2A/G1 |
+| 09 | Continuidad y no duplicación | MANTENER diarios/cola; PROBAR interrupción y entrega única | E2B |
+| 10 | Verificación proporcional | MANTENER Verifier y conectar riesgos efectivos | E3 |
+| 11 | Contexto pequeño del padre/hijos | MEDIR; CTX-2 antes de E2/E3; CTX-3 solo si justificado | E1B/CTX-2; E4/CTX-5 |
+| 12 | Pruebas integrales y A/B | COMPLETAR evidencias reales y auditoría independiente | E4/F |
+
+**Secuencia única:** E1A/E1B + CTX-2 (respetar PR #78) → E2A (contratos Pi y dos Writers) → E2B (respetar PR #77) → E3 (Verifier/revisión/jueces) → E4 (CTX-4 opcional **después de E2/E3**, CTX-5 y A/B) → F/CTX-6. La prueba aislada no autoriza pasar a la siguiente puerta. CTX-3 únicamente si se mide una duplicación real.
+
+**Regla de seguridad sin excepciones:** ningún permiso se copia a hijos. Para un lote, la única optimización admisible son permisos **individuales, exactos, de un solo uso** derivados por el anfitrión Pi de una autorización verificable; si esa capacidad no existe, conservar la confirmación separada por Writer. No ampliar ámbito, SHA ni sesión; no repetir escrituras dudosas; no fusionar ni publicar por automatismo.
+
+**Condiciones de cierre:** tests negativos con Pi auténtico (modos, consultas, conflictos, identidad, consentimiento, reinicio), dos Writers realmente solapados, recepción única, riesgo y revisión ejecutables, ensayo A/B comparable con coste observado o unknown, CI del SHA nuevo y auditoría independiente. Hasta entonces se mantienen **aceptación pendiente** y **globalFull:false**.
+
+**No confundir planes:** las cuatro megatandas DA-A…DA-D del documento asociado son agrupaciones de estas fases originales, no tareas nuevas paralelas. Toda reserva y modificación de código requiere consultar [#63](https://github.com/asenbanskaliev/ASEN/issues/63); la PR documental #76 y las PR de pruebas #77/#78 mantienen sus dueños y no se pisan.
