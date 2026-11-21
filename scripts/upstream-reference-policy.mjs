@@ -1,3 +1,4 @@
+import {execFileSync} from "node:child_process";
 // Explicitly bounded upstream provenance and wire-schema exceptions.
 // These do not authorize executable upstream imports, new paths or native review.
 const providerTerm="gen"+"tle";
@@ -9,6 +10,11 @@ const approvedWireIds=Object.freeze([
   wirePrefix+".review-assessment/v1",
 ]);
 const exactProvenanceDocs=new Set([
+  // Estudios humanos de procedencia P16/CTX (no conceden excepciones a código).
+  "docs/audit/opt-contexto-skills-asen-2026-11-20.md",
+  "docs/audit/p16-"+providerTerm+"-4.9.0-18-sesiones-2026-11-20.md",
+  "docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md",
+  "docs/plan-final-opt-contexto-y-agentes-2026-11-20.md",
   "docs/portable-checkpoint.md",
   "docs/remote-continuation.md",
   // Pinned human-readable Shell architecture study; not executable or imported source.
@@ -268,4 +274,22 @@ export function maskApprovedWireSchemas(path,content){
     remaining=remaining.replace(property,'$1<approved-native-wire-schema>$2');
   }
   return remaining;
+}
+
+
+// Calcula la huella Git del contenido SIN modificar el árbol real.
+// El mismo comprobador se usa en la auditoría y en las pruebas negativas.
+export function coincideHuellaGit(bytes,expectedSha,path,root=process.cwd()){
+ if(!Buffer.isBuffer(bytes)||typeof expectedSha!=="string"||!/^[a-f0-9]{40}$/u.test(expectedSha)||
+  typeof path!=="string"||!path||! /^[a-zA-Z0-9._/-]+$/u.test(path)||
+  path.startsWith("/")||path.includes(".."))return false;
+ try{
+  // La opción --path aplica exactamente los filtros Git del archivo:
+  // en Windows convierte CRLF del árbol de trabajo al blob original.
+  // El contenido alterado se pasa por stdin: no escribimos nunca en disco.
+  const actual=execFileSync("git",["hash-object","--path="+path,"--stdin"],{
+   cwd:root,input:bytes,encoding:"utf8",timeout:10_000,windowsHide:true
+  }).trim();
+  return actual===expectedSha;
+ }catch{return false;}
 }
