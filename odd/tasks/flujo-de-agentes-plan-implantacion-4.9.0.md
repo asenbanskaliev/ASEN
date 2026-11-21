@@ -586,17 +586,19 @@ La matriz completa y las pruebas por objetivo están en [el plan final](../../do
 
 **Nueva auditoría vinculante por código, líneas, pruebas y CI:** [Auditoría de las 18 funciones y CTX-0…6](../../docs/audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md). **Plan operativo detallado:** [Apartado 13, matriz y órdenes](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#13-auditoría-de-coherencia-contra-el-código-de-los-18-objetivos-actualización-vinculante).
 
-**Prioridad corregida:**
-1. **PRE-0 / arquitectura:** [Actions 44824200893](https://github.com/asenbanskaliev/ASEN/actions/runs/44824200893) y [CI 44824200603](https://github.com/asenbanskaliev/ASEN/actions/runs/44824200603) fallaron en SHA `daa250a80b58d80c48336ac017deaf8e68cc396c`. Auditoría de referencias externas de procedencia **por ruta exacta**; no desactivar ni ampliar exenciones generales.
-2. **PRE-1 / T06:** un test exige `if(!githubReview)` aunque la ruta actual usa `if(!githubReview&&!automaticReview)` y revisa consentimiento por separado. Comprobar comportamientos y escenarios negativos; solo después cambiar el test o el código mínimo.
-3. **G0:** verde **del nuevo SHA** en Phase 0, arquitectura y CI Linux/Windows/macOS. Un éxito de Release Gate aislado no compensa un fracaso de CI.
-4. **CTX-0:** puede comenzar **solo en modo diagnóstico y prueba sin red**, incluso durante PRE-0/PRE-1. CTX-1/2 no tocan contexto productivo hasta G0.
-5. **E1A/E1B → E2A/E2B → E3 → E4 → F**, conservando el orden propio y evitando ediciones simultáneas de `extensions/asen.ts`. CTX es transversal, no una segunda implantación de agentes.
+**Registro histórico del 20/11/2026 (NO es la prioridad vigente):** los cinco puntos siguientes documentan los fallos iniciales y su diagnóstico. PRE-0/PRE-1 y G0 quedaron corregidos, con CI, arquitectura y Release Gate correctos para el SHA de desarrollo `8b62891f2545f5053b065220154f03ddd8bdac29`. No volver a abrir esas reparaciones únicamente por esta relación histórica.
 
-**Correcciones de alcance:** 01–14 ya tienen piezas de código; 05 sigue exigiendo permiso verificable por Writer; 15 está bloqueado por CI; 16 cuenta con P16 **autenticada de lectura** pero sin comparación completa, 17 exige aceptación de procesos reales y 18 diferencia **versión mínima de Pi** de **matriz exacta de 1.2.0**. No se declara completo ningún objetivo por documentación, revisión textual o éxito de un subtrabajo.
+1. **PRE-0 / arquitectura (histórico):** [Actions 44824200893](https://github.com/asenbanskaliev/ASEN/actions/runs/44824200893) y [CI 44824200603](https://github.com/asenbanskaliev/ASEN/actions/runs/44824200603) fallaron en SHA `daa250a80b58d80c48336ac017deaf8e68cc396c`. Fue una incidencia de referencias externas por ruta exacta; el control restrictivo permanece.
+2. **PRE-1 / T06 (histórico):** la prueba antigua de `if(!githubReview)` no representaba la ruta `if(!githubReview&&!automaticReview)`; la corrección está integrada y su resultado anterior no sustituye un nuevo control del SHA.
+3. **G0 (histórico):** era necesario obtener CI, Phase 0 y Release Gate verdes en un mismo SHA. En el SHA `8b62891f` los tres son correctos; la rama que reciba nuevos commits requiere **nuevos** resultados exactos.
+4. **CTX-0 (histórico):** comenzó como diagnóstico sin red mientras faltaban esas reparaciones; no implica que cualquier ahorro de contexto haya sido demostrado.
+5. **Secuencia E1A/E1B → E2A/E2B → E3 → E4 → F:** sigue vigente, con CTX-2 en E1B y sin escrituras concurrentes de `extensions/asen.ts`.
 
-**Regla de coherencia:** cualquier apartado anterior que indique «listo para implantar» se interpreta a partir de ahora como **«listo para diagnóstico sin proveedor; no habilitado para cambios de producción hasta G0»**. Ante contradicción prevalecen el código del SHA inspeccionado, la auditoría por punto y este apartado 14.5. Ningún `SKIP` ni `UNKNOWN` equivale a `PASS`; `globalFull:false` hasta aceptación independiente de los 18 puntos.
+**Prioridad operativa vigente (21/11/2026):** comprobar el SHA y las reservas del [issue #63](https://github.com/asenbanskaliev/ASEN/issues/63); terminar E1B/CTX-2 con pruebas reales, después E2A/E2B y E3, más tarde E4/CTX-5 (CTX-4 solo opcional tras E2/E3) y F/CTX-6. La aceptación funcional de los 18 objetivos sigue pendiente y `globalFull:false`.
 
+**Correcciones de alcance (estado al 21/11/2026):** 01–14 ya tienen piezas de código; 05 sigue exigiendo permiso verificable por Writer; **15 tiene PRE-0/PRE-1 corregidos y CI verde en el SHA 8b62891f, pero conserva pruebas de consentimiento real y aceptación pendiente**; 16 cuenta con P16 **autenticada de lectura** pero sin comparación completa, 17 exige aceptación de procesos reales y 18 diferencia **versión mínima de Pi** de **matriz exacta de 1.2.0**. Los resultados verdes de un SHA no se heredan a otro. No se declara completo ningún objetivo por documentación, revisión textual o éxito de un subtrabajo.
+
+**Regla de coherencia:** las incidencias PRE-0/PRE-1 y G0 antiguas de este apartado 14.5 **son históricas y no tienen precedencia sobre el estado vigente** del encabezado del plan, la secuencia vinculante de la sección 13.3 y el código del SHA actual. «Listo para implantar» en cortes antiguos no autoriza cambios sin las puertas vigentes. Ningún `SKIP` ni `UNKNOWN` equivale a `PASS`; `globalFull:false` hasta aceptación independiente de los 18 puntos.
 ---
 
 ## 15. Delegación automática selectiva — incorporación auditada de los 12 puntos (21/11/2026)
@@ -635,3 +637,4 @@ El informe describe equivocadamente como ausentes varias funciones que ASEN **ya
 **Condiciones de cierre:** tests negativos con Pi auténtico (modos, consultas, conflictos, identidad, consentimiento, reinicio), dos Writers realmente solapados, recepción única, riesgo y revisión ejecutables, ensayo A/B comparable con coste observado o unknown, CI del SHA nuevo y auditoría independiente. Hasta entonces se mantienen **aceptación pendiente** y **globalFull:false**.
 
 **No confundir planes:** las cuatro megatandas DA-A…DA-D del documento asociado son agrupaciones de estas fases originales, no tareas nuevas paralelas. Toda reserva y modificación de código requiere consultar [#63](https://github.com/asenbanskaliev/ASEN/issues/63); la PR documental #76 y las PR de pruebas #77/#78 mantienen sus dueños y no se pisan.
+
