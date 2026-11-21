@@ -1,3 +1,4 @@
+import {createHash} from "node:crypto";
 // Explicitly bounded upstream provenance and wire-schema exceptions.
 // These do not authorize executable upstream imports, new paths or native review.
 const providerTerm="gen"+"tle";
@@ -273,4 +274,12 @@ export function maskApprovedWireSchemas(path,content){
     remaining=remaining.replace(property,'$1<approved-native-wire-schema>$2');
   }
   return remaining;
+}
+
+
+// Calcula la huella Git del contenido SIN modificar el árbol real.
+// El mismo comprobador se usa en la auditoría y en las pruebas negativas.
+export function coincideHuellaGit(bytes,expectedSha){
+ if(!Buffer.isBuffer(bytes)||typeof expectedSha!=="string"||!/^[a-f0-9]{40}$/u.test(expectedSha))return false;
+ return createHash("sha1").update("blob "+bytes.length+"\0").update(bytes).digest("hex")===expectedSha;
 }
