@@ -86,7 +86,7 @@ for(const path of paths){
  const expectedBenchmarkBlob=pinnedBenchmarkBlobs.get(path);
  if(expectedBenchmarkBlob){
   const bytes=readFileSync(new URL(`../${path.split("/").map(encodeURIComponent).join("/")}`,import.meta.url));
-  if(!coincideHuellaGit(bytes,expectedBenchmarkBlob))violations.push(path);
+  if(!coincideHuellaGit(bytes,expectedBenchmarkBlob,path,root))violations.push(path);
   continue;
  }
  if(pinnedParityPlanDocs.has(path)||isPinnedReferenceDocument(path))continue;
