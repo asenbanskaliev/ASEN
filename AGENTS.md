@@ -1,6 +1,8 @@
 # ASEN contributor guidance
 
-Start with the portable [remote continuation plan](docs/remote-continuation.md) and the canonical [capability completion ODD](odd/tasks/pi-capability-completion.md). The ODD log is the source of truth for current admission and blockers; do not infer completion from stale summaries or cached receipts.
+**Lectura mínima según la tarea:** para el flujo de agentes de la PR #61 y las fases CTX, empieza por el [índice ODD operativo](odd/tasks/INDEX.md). Abre solamente el plan, el código y las pruebas que necesite la tarea actual. No cargues por defecto todos los archivos de `odd/tasks/`, `docs/audit/` ni `odd/archive/`; consulta el histórico únicamente para comprobar una evidencia concreta.
+
+Para el trabajo general de capacidades de Pi, instalación o recuperación, utiliza cuando proceda el [plan de continuación remota](docs/remote-continuation.md) y el [ODD de capacidades](odd/tasks/pi-capability-completion.md). El registro ODD aplicable sigue siendo la referencia de decisiones y bloqueos, pero hay que contrastarlo con el código, el CI y el SHA actuales. No declares trabajo terminado a partir de resúmenes antiguos ni pruebas omitidas. Se mantienen todas las reglas de autorización, revisión y seguridad indicadas a continuación.
 
 - Explore and reuse existing implementation, tests, stores, and contracts before adding code.
 - Use proportional ODD: keep small work small, but record substantial or multi-step work against the canonical plan.
