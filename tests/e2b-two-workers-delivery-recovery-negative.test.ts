@@ -51,6 +51,23 @@ test("E2B dos Workers independientes: una entrega por resultado y reconocimiento
  assert.equal((await restarted.list(scope)).length,2);
 });
 
+test("E2B dos instancias compiten por el mismo aviso: solo una puede reclamarlo",async t=>{
+ const {file,primero,segundo}=await diario(t);
+ const ra=await primero.record(a);
+ const resultados=await Promise.all([
+  primero.claim(ra.eventId,scope),segundo.claim(ra.eventId,scope)
+ ]);
+ assert.deepEqual([...resultados].sort(),[false,true],
+  "Un mismo aviso no puede reclamarse dos veces aunque compitan dos instancias");
+ const restarted=new AgentNotificationJournal(file);
+ const rows=await restarted.list(scope);
+ assert.equal(rows.length,1);
+ assert.equal(rows[0]?.delivery,"attempted");
+ assert.equal(await restarted.claim(ra.eventId,scope),false);
+ assert.equal((await restarted.recoveryReview(scope))[0]?.disposition,
+  "TRANSPORT_UNCERTAIN_DO_NOT_REPLAY");
+});
+
 test("E2B caída después de reclamar A: reinicio no repite A y permite completar B",async t=>{
  const {file,primero,segundo}=await diario(t);
  const [ra,rb]=await Promise.all([primero.record(a),segundo.record(b)]);
