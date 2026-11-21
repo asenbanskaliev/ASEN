@@ -3,7 +3,7 @@ import {existsSync,readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {loadCheckedInMemoryParity,validateMemoryParity} from "./audit-memory-parity.mjs";
 import {additionalParityFixturePaths} from "./memory-parity/additional-slices.mjs";
-import {isPinnedReferenceDocument,maskApprovedReferenceTokens} from "./upstream-reference-policy.mjs";
+import {isPinnedReferenceDocument,maskApprovedReferenceTokens,coincideHuellaGit} from "./upstream-reference-policy.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const memoryManifestPath="registry/parity/memory-upstream-v3.json";
@@ -85,8 +85,8 @@ const violations=[];
 for(const path of paths){
  const expectedBenchmarkBlob=pinnedBenchmarkBlobs.get(path);
  if(expectedBenchmarkBlob){
-  const actual=execFileSync("git",["hash-object","--",path],{cwd:root,encoding:"utf8"}).trim();
-  if(actual!==expectedBenchmarkBlob)violations.push(path);
+  const bytes=readFileSync(new URL(`../${path.split("/").map(encodeURIComponent).join("/")}`,import.meta.url));
+  if(!coincideHuellaGit(bytes,expectedBenchmarkBlob))violations.push(path);
   continue;
  }
  if(pinnedParityPlanDocs.has(path)||isPinnedReferenceDocument(path))continue;
