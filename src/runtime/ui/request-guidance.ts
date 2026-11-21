@@ -26,8 +26,16 @@ Explain the result briefly in normal language: what will happen, any unresolved 
 export const ASEN_EXPLORATION_BUDGET_SECTION="asen_exploration_budget";
 export const ASEN_EXPLORATION_BUDGET_GUIDANCE="ASEN ha observado más de tres consultas de lectura o 40 KiB de salida en esta sesión y proyecto de Pi. Es una orientación, no una autorización de Writer, una aprobación del plan ni una prueba de que haga falta otro agente. Si todavía hace falta investigar y el perfil activo tiene un modelo Explorer configurado, llama una sola vez a asen_agent_start con budgetExplorer=true, un prompt breve, rutas y líneas; la herramienta comprobará sesión, presupuesto y modelo exacto del perfil, sin conceder escritura. Si no puede comprobarlo, informa y continúa de forma limitada. No dupliques trabajos, no repitas una tarea fallida ni deduzcas permisos de escritura por usar modelos de pago. Si ya existe información suficiente, continúa dentro del ámbito autorizado sin lanzar Explorer.";
 
+// El registro de una herramienta no demuestra que Pi la haya activado para este turno.
+export function hasActiveAsenRequestTools(selectedTools:readonly string[]|undefined):boolean{
+ return Array.isArray(selectedTools)&&
+  selectedTools.includes(ASEN_PLAN_REQUEST_TOOL)&&
+  selectedTools.includes("asen_agent_start");
+}
+
 export function addAsenRequestGuidance(options:{sections?:Record<string,string>},toolAvailable:boolean,explorationOverBudget=false):void{
  if(!options.sections)return;
+ delete options.sections[ASEN_REQUEST_GUIDANCE_SECTION];
  delete options.sections[ASEN_EXPLORATION_BUDGET_SECTION];
  if(!toolAvailable)return;
  options.sections[ASEN_REQUEST_GUIDANCE_SECTION]=ASEN_REQUEST_GUIDANCE;
