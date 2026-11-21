@@ -25,7 +25,8 @@
 
 ## Otros planes ODD que siguen activos en su propio ámbito
 
-- [Capacidades de Pi](pi-capability-completion.md) y [continuación general](../../docs/remote-continuation.md): entrada general de desarrollo citada desde la raíz.
+- [Capacidades de Pi — documento dañado](pi-capability-completion.md): perdió parte de su historial y contiene caracteres corruptos. **No usarlo como única fuente de tareas ni de estados.** Ver [auditoría de recuperación, apartado F1](../archive/2026-11/INDEX-inventario-2026-11-14.md) y [última versión intacta anterior a la truncación](https://github.com/asenbanskaliev/ASEN/blob/a3977fe553a00cf0e3b76cc566d4093358da166b/odd/tasks/pi-capability-completion.md), solo para consulta histórica. La decisión documentada fue **no reconstruir** el archivo sin nueva autorización.
+- [Continuación general](../../docs/remote-continuation.md): incluye traspasos antiguos; contrastar código, pruebas y SHA actuales antes de seguir cualquier prioridad.
 - Planes de memoria, instalación, seguridad o tareas específicas conservan sus requisitos; no declarar completados por aparecer en el índice.
 
 **Regla para no sobrecargar contexto:** empieza por este índice y abre solo el plan relacionado con la tarea. No cargues todos los archivos de `odd/tasks/`, `docs/audit/` ni `odd/archive/` automáticamente.
