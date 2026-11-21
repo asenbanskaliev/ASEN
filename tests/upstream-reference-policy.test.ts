@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {isPinnedReferenceDocument,maskApprovedWireSchemas} from "../scripts/upstream-reference-policy.mjs";
+import {readFileSync} from "node:fs";
+import {isPinnedReferenceDocument,maskApprovedWireSchemas,coincideHuellaGit} from "../scripts/upstream-reference-policy.mjs";
 
 const wire="gen"+"tle-ai";
 const source="src/review/native-rdd-control.ts";
@@ -81,4 +82,25 @@ test("only three exact native schema-property strings are masked in the owned im
   }
  }
  assert.equal(marker.test(maskApprovedWireSchemas("src/review/other.ts",'const x={schema:"'+wire+'.review-mode/v1"};')),true);
+});
+
+test("PRE-0 rechaza cambiar un byte de cada archivo P16 protegido",()=>{
+ // Son los mismos dos blobs que la auditoría de arquitectura compara.
+ const files=[
+  [".github/workflows/asen-p16-comparacion-real.yml","78c829c5ab1f626cf9c09887c9b76893e7aaecdb"],
+  ["scripts/p16-comparacion-real.mjs","82b2885600f9dcf41ea7c02685d3aac5e9db7ee9"]
+ ] as const;
+ for(const [path,expected] of files){
+  const original=readFileSync(path);
+  assert.equal(coincideHuellaGit(original,expected),true,path+" debe conservar la huella esperada");
+  for(const index of [0,Math.floor(original.length/2),original.length-1]){
+   const changed=Buffer.from(original);
+   changed[index]=changed[index]!^1;
+   assert.equal(coincideHuellaGit(changed,expected),false,path+" debe bloquear byte "+index);
+  }
+  assert.equal(coincideHuellaGit(Buffer.concat([original,Buffer.from("\n")]),expected),false,
+   path+" debe bloquear bytes añadidos");
+ }
+ assert.equal(coincideHuellaGit(Buffer.from(""),"0".repeat(40)),false);
+ assert.equal(coincideHuellaGit(Buffer.from("datos"),"malformado"),false);
 });
