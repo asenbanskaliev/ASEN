@@ -31,7 +31,8 @@ test("T06 E2B: tras reiniciar, un intento incierto no se repite con otro lote o 
  const reiniciado=new ParentSupervisorClaimJournal(file);
  await assert.rejects(()=>reiniciado.claim({
   source,batchId:"lote-1",children:children.map((c,i)=>({
-   ...c,childTodoId:"nuevo-hijo-"+i,childProjectId:resolve(file,"otro-"+i)
+   ...c,childTodoId:"nuevo-hijo-"+i,childSessionId:"nueva-sesion-"+i,
+   childProjectId:resolve(file,"otro-"+i)
   }))
  }),/previously claimed/u);
  await assert.rejects(()=>reiniciado.claim({
