@@ -315,12 +315,12 @@ for(const drift of ["abort","session","cwd","manager","epoch"])test(`create guar
  f.queue.push(...createChoices());const select=f.ctx.ui.select;
  let waiting!:()=>void;const saved=new Promise<void>(r=>{waiting=r;});
  f.ctx.ui.select=async(...args:any[])=>{const choice=await select(...args);if(choice==="Save profile")waiting();return choice;};
- let settled=false;const saving=f.run("asen-profiles").finally(()=>{settled=true;});await saved;
+ let settled=false;const saving=assert.rejects(f.run("asen-profiles").finally(()=>{settled=true;}),/cancelled|changed/);await saved;
  await new Promise(r=>setTimeout(r,40));assert.equal(settled,false,"save must wait behind the store lock");
  if(drift==="abort")abort.abort();if(drift==="session")f.setId("other");if(drift==="cwd")f.ctx.cwd=f.home;
  if(drift==="manager")f.ctx.sessionManager={getSessionId:()=>"session-a"};if(drift==="epoch")await f.emit("session_shutdown");
  release();await holder;
- await assert.rejects(saving,/cancelled|changed/);assert.equal(await readFile(f.file,"utf8"),bytes);assert.equal(f.notices.length,count);
+ await saving;assert.equal(await readFile(f.file,"utf8"),bytes);assert.equal(f.notices.length,count);
 });
 
 test("create suppresses stale publication after persistence; saved bytes cannot be rolled back",async t=>{
