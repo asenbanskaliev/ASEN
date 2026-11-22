@@ -64,7 +64,7 @@ export function parseT06NativeReviewReceipt(
   "type" in row&&row.type==="message_end"&&"message" in row&&
   typeof row.message==="object"&&row.message!==null&&
   "role" in row.message&&row.message.role==="assistant");
- if(messages.length===0)throw new Error("T06 independent review returned no assistant message");
+ if(messages.length===0)throw new Error("T06 independent Pi review returned no assistant message");
  // Pi puede producir un message_end fallido seguido de otro correcto si su
  // mecanismo de recuperación repite el intento. Los mensajes anteriores
  // SOLO se ignoran si stopReason confirma explícitamente "error".

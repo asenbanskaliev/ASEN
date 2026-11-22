@@ -52,7 +52,7 @@ test("T06 clasifica fallos de recibo por mensajes internos seguros, no por salid
  const cases=[
   ["T06 independent reviewer did not return strict JSON","pi-receipt-invalid-json"],
   ["T06 independent Pi review stream is invalid","pi-receipt-invalid-json"],
-  ["T06 independent review requires exactly one final assistant verdict","pi-receipt-missing-assistant"],
+  ["T06 independent review requires exactly one final assistant verdict","pi-receipt-unfinished"],
   ["T06 independent reviewer inspected wrong files or SHA","pi-receipt-wrong-files"],
   ["T06 independent reviewer returned malformed verdict","pi-receipt-invalid-schema"],
   ["T06 independent reviewer returned unsupported content","pi-receipt-unsupported-content"]
@@ -81,7 +81,7 @@ test("T06 diferencia finales recortados, errores terminales y duplicados sin exp
   ["T06 independent review ended with assistant error","pi-receipt-terminal-error"],
   ["T06 independent review has multiple completed assistant verdicts","pi-receipt-multiple-verdicts"],
   ["T06 independent review did not finish successfully","pi-receipt-unfinished"],
-  ["T06 independent review returned no assistant message","pi-receipt-missing-assistant"]
+  ["T06 independent Pi review returned no assistant message","pi-receipt-missing-assistant"]
  ] as const;
  for(const [message,category] of cases)
   assert.equal(classifyT06ReviewReceiptError(new Error(message)),category);
