@@ -316,15 +316,15 @@ La columna «faltante» es la **brecha mínima**, no una solicitud para reimplan
 
 | Etapa | Condiciones que no se deben saltar | Decisión |
 | --- | --- | --- |
-| **CTX-0 · Medir** | Separar texto ensamblado, texto remitido y tokens/caché facturados. Medir padre **e hijos**; datos sintéticos sin secretos | Empezar en **solo lectura y pruebas offline**, aunque se investigue G0 |
-| **CTX-1 · Herramientas** | Verificar `systemPromptOptions.selectedTools` en Pi 1.2.0 real. Ausencia de herramientas **no** implica ausencia de plan o reglas de seguridad | Parche tras PRE/G0, con fallback conservador |
+| **CTX-0 · Medir** | Separar texto ensamblado, texto remitido y tokens/caché facturados. Medir padre **e hijos**; datos sintéticos sin secretos | **HISTÓRICO:** diagnóstico sintético integrado; ahorro real todavía sin acreditar |
+| **CTX-1 · Herramientas** | Verificar `systemPromptOptions.selectedTools` en Pi 1.2.0 real. Ausencia de herramientas **no** implica ausencia de plan o reglas de seguridad | **HISTÓRICO:** selección integrada en SHA `8b62891f`; mantener respaldo seguro y aceptación funcional pendiente |
 | **CTX-2 · Modular** | Tabla **regla → guardia de código → momento de carga**; si guardia no demostrada, conservar regla esencial siempre | Parche mínimo después de CTX-1 |
 | **CTX-3 · Duplicados** | Memoria 4096 B y plan 2048 B ya limitados. Catálogo Pi no prueba lectura del cuerpo `SKILL.md` | `NO_APLICAR` si no se demuestra redundancia |
 | **CTX-4 · Herramientas ocultas** | API pública Pi y herramientas accesibles con mismos permisos | **POSPONER** por defecto |
 | **CTX-5 · A/B** | Primero ASEN antes/después, por parejas; referencia externa separada con extensiones completas. Coste desconocido = `unknown` | Solo con autorización, límites y G0–G4 |
 | **CTX-6 · Activación** | Calidad/seguridad sin regresión, revisión independiente, CI de SHA exacto, reversión sin migración | **NO ACTIVAR** mientras haya FAIL crítico |
 
-**Secuencia vinculante (prevalece sobre cualquier resumen operativo):** `PRE-0 + PRE-1 (investigación paralela; integración separada) → G0 → CTX-0/1 offline → CTX-1 y CTX-2 cambios seriados durante E1B, antes de cerrar E2/E3 → CTX-3 solo si hay prueba → E2/E3 cerrados según sus puertas → CTX-4 opcional durante E4 → CTX-5 → CTX-6/F`.
+**Secuencia vinculante (prevalece sobre cualquier resumen operativo):** **YA INTEGRADO EN EL SHA `8b62891f`**: PRE-0/PRE-1, G0 de ese SHA y CTX-0/CTX-1 sintéticos/de selección, sin repetirlos. **PENDIENTE**: CTX-2 durante E1B, antes de cerrar E2/E3 → CTX-3 solo si hay duplicación demostrada → E2/E3 con sus puertas reales → CTX-4 opcional durante E4 → CTX-5/E4 → CTX-6/F. Cada nuevo SHA requiere su propio CI y G0; no trasladar resultados del SHA histórico.
 
 Las fases funcionales E1A/E1B/E2A/E2B/E3 conservan el orden del rector. **No** editar `extensions/asen.ts` a la vez para E1 y CTX; si coinciden, primero resolver el control de funcionalidad y después la modificación de texto, con pruebas en cada commit.
 
@@ -332,7 +332,7 @@ Las fases funcionales E1A/E1B/E2A/E2B/E3 conservan el orden del rector. **No** e
 
 Añadir a los 15 escenarios S01–S15 ya descritos **12 negativos N01–N12** de la [auditoría detallada](audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md#7-pruebas-negativas-adicionales-que-faltaba-distinguir). En particular: plan/cancelación sin herramientas, modo completo, lote sin consentimiento por hijo, reporte con arrays malformados, T06 combinando modos, Pi 1.5 sin matriz y reinicio con Writer incierto.
 
-**Auditoría de existencia de archivos:** `tests/context-guidance-assembly.test.ts` **todavía no existe** y requiere una unidad acotada, sin duplicar pruebas ya presentes. La prueba negativa de dos rondas **ya existe** en `tests/dual-rejudgment-two-rounds-negative.test.ts`; no crear otra. El resto de rutas mencionadas en la auditoría se comprobó en el árbol del SHA inspeccionado. No presentar pruebas pendientes como verdes ni una prueba negativa como aceptación completa con dos jueces reales.
+**Auditoría de existencia de archivos (corte histórico y actualización):** `tests/context-guidance-assembly.test.ts` no existía en el corte original, pero ya está añadido en PR #78, pendiente de admisión; no volver a crearlo. La prueba negativa de dos rondas ya existe en `tests/dual-rejudgment-two-rounds-negative.test.ts`; no duplicarla. La existencia de un test no acredita por sí sola dos jueces Pi reales ni aceptación E4/F.
 
 ### 13.5 Dictamen histórico del 20/11 y estado corregido el 21/11
 
