@@ -69,6 +69,16 @@ export interface ParentSupervisorInput{
      writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean|undefined>;
 }
 const same=(a:string,b:string)=>sameWorkspaceIdentityPath(a,b);
+/** Un único enlace exacto puede sostener la autorización. La identidad
+ * completa se compara sin transferir ni generar permisos. */
+export function enlacePiHijoIntacto(
+ enlaces:readonly ParallelChildSessionLink[],batchId:string,sourceTodoId:string,
+ huellaAutorizada:string
+):boolean{
+ const candidatos=enlaces.filter(l=>l.batchId===batchId&&l.sourceTodoId===sourceTodoId);
+ return candidatos.length===1&&JSON.stringify(candidatos[0])===huellaAutorizada;
+}
+
 /** El consentimiento se liga a la tarea ODD completa, no solo al modelo y al ámbito.
  * Incluye instrucción, revisiones y autorizaciones. No es una prueba de aceptación. */
 function childTodoSnapshot(todo:SourceTodoRow):string{
@@ -292,12 +302,8 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     currentBatch=batches.find(b=>b.id===unit.batchId),
     sourceTask=currentBatch?.tasks.find(t=>t.taskId===unit.sourceTodoId);
    const linksNow=await input.sessionJournal.listSource(input.source);
-   const owners=linksNow.filter(l=>l.batchId===unit.batchId&&
-    l.sourceTodoId===unit.sourceTodoId);
-   // Comparar el enlace completo, incluidos solicitud, revisión, HEAD,
-   // sesión y ausencia de autoridad. No basta con coincidir en la ruta.
-   const enlaceIntacto=owners.length===1&&
-    JSON.stringify(owners[0])===enlaceAutorizado;
+   const enlaceIntacto=enlacePiHijoIntacto(
+    linksNow,unit.batchId,unit.sourceTodoId,enlaceAutorizado);
    const currentSource=(await input.loadTodos(input.source)).find(t=>t.taskId===unit.sourceTodoId);
    const claims=await input.claimJournal.listSource(input.source,linksNow);
    const childRows=await input.loadTodos(child),
