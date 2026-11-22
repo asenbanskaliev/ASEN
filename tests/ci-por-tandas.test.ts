@@ -15,22 +15,24 @@ test("Cada cambio abre una CI rápida sin modelos ni secretos",()=>{
  assert.match(rapido,/ASEN_EXPECTED_SHA/u);
  assert.doesNotMatch(rapido,/secrets\.|NVIDIA_API_KEY|npm test|npm run release:check/u);
 });
-test("La CI completa no se dispara por cada commit ni una etiqueta ajena",()=>{
- assert.match(completo,/types: \[ready_for_review, labeled\]/u);
- assert.doesNotMatch(completo,/types: \[opened, synchronize, reopened/u);
+test("La CI completa verifica cada cambio listo sin cancelar por etiquetas ajenas",()=>{
+ assert.match(completo,/types: \[opened, synchronize, reopened, ready_for_review, labeled\]/u);
+ assert.match(completo,/github\.event\.pull_request\.draft == false/u);
+ assert.match(completo,/github\.event\.label\.name != 'validacion-completa' && github\.run_id \|\| 'validation'/u);
  for(const job of ["agentes-t02-t05-t06","test","architecture","pi-support-matrix"]){
   const start=completo.indexOf("\n  "+job+":");
   assert.ok(start>=0,"Falta trabajo "+job);
   const block=completo.slice(start,start+460);
   assert.match(block,/if: >-/u,"Falta control de cierre "+job);
   assert.match(block,/validacion-completa/u,"Falta etiqueta explícita "+job);
-  assert.match(block,/ready_for_review/u,"Falta cierre por tanda "+job);
+  assert.match(block,/github\.event\.pull_request\.draft == false/u,"Falta cierre por tanda "+job);
  }
  assert.match(completo,/always\(\) && \(github\.event_name == 'push'/u);
  assert.match(completo,/branches: \[main\]/u);
 });
 test("La entrega completa conserva las tres plataformas y el SHA exacto",()=>{
- assert.match(entrega,/types: \[ready_for_review, labeled\]/u);
+ assert.match(entrega,/types: \[opened, synchronize, reopened, ready_for_review, labeled\]/u);
+ assert.match(entrega,/github\.event\.pull_request\.draft == false/u);
  assert.match(entrega,/github\.event\.label\.name == 'validacion-completa'/u);
  assert.match(entrega,/github\.event_name == 'push'/u);
  assert.match(entrega,/ubuntu-24\.04, windows-latest, macos-latest/u);
