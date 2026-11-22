@@ -105,7 +105,7 @@ Estados diferenciados: **CÓDIGO**, **PRUEBA UNITARIA**, **EJECUTOR SIMULADO**, 
 | 2 unidades independientes pero pequeñas o sin beneficio suficiente de delegación | Resolver directamente o en serie; no lanzar dos Workers solo por independencia |
 | Dos tareas con archivo/ámbito solapado | No admitir lanzamiento concurrente; mantener una cola segura |
 | Perfil organic → full en mitad del turno | Modo anterior hasta nuevo turno, no relajación de escritura pendiente |
-| Full-delegation con herramienta write/edit/bash | Bloqueo del padre; hijo requiere ámbito/SHA y aprobación propios |
+| Delegación completa: lectura con una herramienta autorizada y, por separado, intentos del padre con `write`, `edit` y `bash` | La lectura autorizada funciona; se deniegan `write`, `edit` y toda llamada del padre a `bash`, incluso si solo intenta leer. El hijo requiere ámbito, SHA y aprobación propios. |
 | Denegación, falta de interfaz humana o cancelación de una unidad | La unidad afectada no inicia nuevas escrituras ni repite el consentimiento; otras unidades ya autorizadas mantienen sus cambios y solo continúan si son independientes y seguras |
 | Permiso de lote sin soporte Pi verificable | No inventar concesiones: seguir confirmación individual o BLOCKED |
 | Git HEAD, tarea, proyecto o sesión modificados | No despachar Writer ni reutilizar autorización del contexto anterior |
@@ -125,7 +125,7 @@ Estados diferenciados: **CÓDIGO**, **PRUEBA UNITARIA**, **EJECUTOR SIMULADO**, 
 | Control | Resultado documental de este corte | Condición posterior |
 | --- | --- | --- |
 | A. Cobertura | Los 12 puntos de la investigación están presentes y mapeados a los 18 originales | Ninguna fila puede cerrarse sin evidencia por punto |
-| B. Seguridad | Rechazado copiar tokens, permisos heredados, API Pi inventada, shell del padre en full, merge automático | Pruebas negativas ejecutadas en anfitrión real |
+| B. Seguridad | No se copian tokens ni se heredan permisos; no se inventan API de Pi ni se fusiona automáticamente. En delegación completa, el padre usa herramientas autorizadas de solo lectura, sin acceso a `bash`. | Pruebas negativas y una lectura autorizada como control positivo en Pi real. |
 | C. No duplicación | Se reutilizan ODD, Todo, dispatcher, supervisor, worktrees, explorer, journal, Verifier y CTX | Diff futuro mínimo; no segundo motor de agentes |
 | D. Orden | E1B/CTX-2 → E2A/E2B → E3 → E4/CTX-4 opcional/CTX-5 → F/CTX-6 | Respetar PR #77/#78, #63 y reservas |
 | E. Evidencia | Se distingue código de simulación, replay y modelo real; coste unknown permitido | Registrar SHA exacto y verificación completa por caso |
