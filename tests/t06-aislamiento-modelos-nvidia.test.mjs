@@ -8,6 +8,10 @@ test("T06 limita configuración NVIDIA a dos revisores, sin claves ni sustitucio
  const root=mkdtempSync(join(tmpdir(),"asen-t06-revision-pi-"));
  t.after(()=>rmSync(root,{recursive:true,force:true}));
  const file=configuracionT06Nvidia();
+ assert.deepEqual(file.providers.nvidia.models,[{
+  id:"nvidia/nemotron-3-super-120b-a12b",api:"openai-completions",
+  reasoning:false,maxTokens:1200
+ }]);
  const ids=Object.keys(file.providers.nvidia.modelOverrides);
  assert.deepEqual(ids,["nvidia/nemotron-3-super-120b-a12b","nvidia/nemotron-3.5-super-vl-120b-a12b"]);
  for(const id of ids){
