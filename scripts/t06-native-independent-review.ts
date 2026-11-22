@@ -10,12 +10,14 @@ import {parseT06NativeReviewReceipt,observeT06ReviewStream} from "../src/runtime
 import {requireLiveT06GithubReviewerApprovals} from "../src/runtime/agents/t06-github-reviewer-approvals.js";
 import {requireLiveT06ReviewReplay} from "../src/runtime/agents/t06-review-replay.js";
 import {classifyT06ReviewerFailure,classifyT06ReviewReceiptError,type T06ReviewerFailureCategory} from "../src/runtime/agents/t06-review-failure-diagnostic.js";
+import type {admitT06VerifiedSuperReview} from "../src/runtime/agents/t06-verified-review-reuse.js";
 
 const files=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
 const modelPattern=/^nvidia\/[A-Za-z0-9][A-Za-z0-9_./:@-]{2,190}$/u;
 const sha=(value:string)=>createHash("sha256").update(value).digest("hex");
 export async function runT06NativeIndependentReviews(
- roots:readonly string[],policyRoot:string,writerModel:string
+ roots:readonly string[],policyRoot:string,writerModel:string,
+ reusedSecond?:ReturnType<typeof admitT06VerifiedSuperReview>
 ){
  const requested=[process.env.ASEN_T06_REVIEW_MODEL_A,process.env.ASEN_T06_REVIEW_MODEL_B];
  if(requested.every(x=>!x))
@@ -40,6 +42,14 @@ export async function runT06NativeIndependentReviews(
   return {path,sha256:sha(code),code};
  });
  const expected=Object.fromEntries(evidence.map(x=>[x.path,x.sha256]));
+ if(reusedSecond&&(
+  !automaticReview||requested[1]!==reusedSecond.requestedModel||
+  reusedSecond.observedModel!==requested[1]||
+  reusedSecond.reusedFromRunId!=="45048377977"||
+  reusedSecond.writerAuthority!==false||reusedSecond.acceptance!=="not-accepted"||
+  reusedSecond.verdict!=="pass"||reusedSecond.findingCount!==0||
+  !files.every((path,i)=>reusedSecond.reviewedSha256[i]===expected[path])
+ ))throw Error("T06: revisión histórica sin validación suficiente");
  if(!githubReview&&!automaticReview){
   const reader=createInterface({input:process.stdin,output:process.stdout});
   try{
@@ -64,6 +74,8 @@ export async function runT06NativeIndependentReviews(
  const attempts:{processObserved:boolean;observedModel:string;failureCategory:T06ReviewerFailureCategory;rejectedParameter:string;httpStatus:number|null;streamEvidence:ReturnType<typeof observeT06ReviewStream>}[]=
   requested.map(()=>({processObserved:false,observedModel:"unknown",failureCategory:"not-classified",rejectedParameter:"unknown",httpStatus:null,streamEvidence:observeT06ReviewStream("")}));
  const results=await Promise.allSettled(requested.map(async(requestedModel,index)=>{
+  // Super VL ya emitió PASS real del mismo código: no volver a consumirlo.
+  if(index===1&&reusedSecond)return reusedSecond;
   const sessionId="t06-independent-"+randomUUID();
   const taskId="t06-reviewer-"+randomUUID();
   let pid=0,observedModel="unknown";

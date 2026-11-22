@@ -11,6 +11,7 @@ import {verifyT06IndependentReviewInputs,t06ReviewHashes} from
  "../src/runtime/agents/t06-independent-review-admission.js";
 import {consultarCatalogoNvidia} from "./catalogo-nvidia.mjs";
 import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js";
+import {admitT06VerifiedSuperReview} from "../src/runtime/agents/t06-verified-review-reuse.js";
 
 const names=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
 const models=["nvidia/nemotron-3.5-bolt-e4b","nvidia/nemotron-3.5-super-vl-120b-a12b"] as const;
@@ -52,8 +53,11 @@ async function main():Promise<void>{
  assert.ok(models.every(x=>available.modelos.includes(x)),
   "Los dos revisores no figuran en el catálogo NVIDIA");
  assert.equal(autorizarT06RevisionAutomatica(process.env),true);
+ // El informe se descarga por ID de run fijo y se valida ANTES de gastar en Bolt.
+ const previous=data(process.env.ASEN_T06_PREVIOUS_PASS??"",10_000);
+ const reusedSuper=admitT06VerifiedSuperReview(previous,t06ReviewHashes(files));
  const result=await runT06NativeIndependentReviews([codeRoot,codeRoot],root,
-  "nvidia/nemotron-3.5-lightning-30b-a3b");
+  "nvidia/nemotron-3.5-lightning-30b-a3b",reusedSuper);
  const validated=result.status==="PASS_TWO_PI_REVIEWS_NOT_T10";
  const report={
   schema:"asen.t06.autorrevision-real/v1",sourceSha:T06_REVISION_FUENTE,

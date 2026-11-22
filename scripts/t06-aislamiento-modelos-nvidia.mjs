@@ -14,7 +14,13 @@ export function configuracionT06Nvidia(){
  for(const id of modelos){
   overrides[id]={reasoning:false,maxTokens:1200,
    compat:{supportsReasoningEffort:false,
-    maxTokensField:"max_tokens",supportsUsageInStreaming:false}};
+    maxTokensField:"max_tokens",supportsUsageInStreaming:false},
+   // NVIDIA distingue el ID visible en el catálogo del ID de la pasarela.
+   // Solo Bolt utiliza el alias documentado y desactiva razonamiento en el servidor.
+   ...(id==="nvidia/nemotron-3.5-bolt-e4b"?{
+    samplingParams:{model:"stg/nvidia/nemotron-3.5-bolt-e4b",
+     chat_template_kwargs:{enable_thinking:false}}
+   }:{})};
  }
  return {providers:{nvidia:{modelOverrides:overrides}}};
 }
