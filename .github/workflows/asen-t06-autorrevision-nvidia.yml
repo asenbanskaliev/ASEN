@@ -2,7 +2,8 @@ name: T06 dos revisores NVIDIA reales sin aprobaciones de entorno
 # Disparo único autorizado 2026-11-22: solo revisión real T06, sin repetir Writers.
 # Única autorización por cambio exacto del propietario; nunca en PR.
 # Segunda prueba: modelos verificados con GET oficial al catálogo NVIDIA.
-# Cuarta prueba: compatibilidad de modelos fijados, sin razón ni reintentos.
+# Siguiente prueba: Bolt usa el ID stg/ de la pasarela; Super VL PASS se valida y reutiliza.
+# Nunca repetir Super VL ni Writers si los informes previos auténticos coinciden.
 # Ajuste de compatibilidad: Pi 1.5.2 y razonamiento desactivado en ambos jueces.
 on:
   push:
@@ -52,7 +53,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ASEN_T06_EXPECTED_SHA"
           npm ci --ignore-scripts --no-audit --no-fund
           npm run typecheck
-          node --import tsx --test tests/t06-auto-review-authority.test.ts tests/t06-independent-review-admission.test.ts tests/t06-native-review-receipt.test.ts tests/t06-aislamiento-modelos-nvidia.test.mjs
+          node --import tsx --test tests/t06-auto-review-authority.test.ts tests/t06-independent-review-admission.test.ts tests/t06-native-review-receipt.test.ts tests/t06-aislamiento-modelos-nvidia.test.mjs tests/t06-verified-review-reuse.test.ts
           node --import tsx --input-type=module -e "import {autorizarT06RevisionAutomatica} from './src/runtime/agents/t06-auto-review-authority.ts';if(!autorizarT06RevisionAutomatica(process.env))process.exit(1)"
           test -z "$(git status --porcelain=v1)"
   revisar:
@@ -105,10 +106,18 @@ jobs:
           name: asen-t06-17-casos-replay-5d8ef7d8c05f693b1dfd4d9dcbb147cbc11ab1fd-44794317489
           path: ${{ runner.temp }}/asen-t06-pruebas
           github-token: ${{ github.token }}
+      - name: Recuperar el PASS real anterior de Super VL (sin repetir llamada)
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
+        with:
+          run-id: 45048377977
+          name: asen-t06-dos-revisores-auto-540aa036fae5d60776645b83be806be8d821d02b-45048377977
+          path: ${{ runner.temp }}/asen-t06-previo
+          github-token: ${{ github.token }}
       - name: Consultar catálogo y solicitar dos dictámenes reales, sin herramientas
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_T06_PREVIOUS_PASS: ${{ runner.temp }}/asen-t06-previo/t06-opiniones-reales.json
           ASEN_T06_REVIEW_CODE_DIR: ${{ runner.temp }}/asen-t06-fuentes
           ASEN_T06_REVIEW_BEHAVIOR_DIR: ${{ runner.temp }}/asen-t06-pruebas
           ASEN_T06_REVIEW_REPORT_DIR: ${{ runner.temp }}/asen-t06-opiniones
