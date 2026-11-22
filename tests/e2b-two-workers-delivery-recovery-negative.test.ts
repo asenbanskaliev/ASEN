@@ -132,16 +132,34 @@ test("E2B cancelar A mientras espera el bloqueo real no afecta al reconocimiento
  const released=new Promise<void>(resolve=>{unlock=resolve;});
  const owner=withExclusiveFileLock(file,async()=>{locked();await released;});
  const controller=new AbortController();
+ let abortedChecks=0,retryObserved!:()=>void;
+ const contention=new Promise<void>(resolve=>{retryObserved=resolve;});
+ // #change comprueba la señal antes de preparar el archivo; el bloqueo
+ // vuelve a comprobarla al intentar entrar y en su espera tras EEXIST.
+ // La tercera lectura prueba que se ha alcanzado la espera, no solo que
+ // ha transcurrido un plazo mientras seguía preparando el archivo.
+ const signal=new Proxy(controller.signal,{
+  get(target,key){
+   if(key==="aborted"){
+    if(++abortedChecks===3)retryObserved();
+    return target.aborted;
+   }
+   const value=Reflect.get(target,key,target);
+   return typeof value==="function"?value.bind(target):value;
+  },
+ });
  try{
   await acquired;
-  const pending=primero.acknowledge(ra.eventId,scope,a.id,"completed",controller.signal);
-  let settled=false;
-  void pending.then(()=>{settled=true;},()=>{settled=true;});
-  await new Promise(resolve=>setTimeout(resolve,60));
-  assert.equal(settled,false,"El aviso A debe seguir esperando el bloqueo real");
+  const pending=primero.acknowledge(ra.eventId,scope,a.id,"completed",signal);
+  void pending.catch(()=>{});
+  let watchdog:ReturnType<typeof setTimeout>|undefined;
+  const fallback=new Promise<boolean>(resolve=>{watchdog=setTimeout(()=>resolve(false),4000);});
+  const reached=await Promise.race([contention.then(()=>true),fallback]);
+  if(watchdog)clearTimeout(watchdog);
+  assert.equal(reached,true,"El reconocimiento de A debe haber llegado a la espera del bloqueo");
   controller.abort();
   await assert.rejects(pending,(error:unknown)=>error instanceof Error&&error.name==="AbortError");
- }finally{unlock();await owner;}
+ }finally{controller.abort();unlock();await owner;}
  assert.equal(await readFile(file,"utf8"),before,"La cancelación no puede modificar el diario");
  const restarted=new AgentNotificationJournal(file);
  assert.equal((await restarted.list(scope)).find(row=>row.agentId===a.id)?.delivery,"enqueued");
