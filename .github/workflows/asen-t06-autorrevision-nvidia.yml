@@ -120,6 +120,15 @@ jobs:
           name: asen-t06-dos-revisores-auto-540aa036fae5d60776645b83be806be8d821d02b-45048377977
           path: ${{ runner.temp }}/asen-t06-previo
           github-token: ${{ github.token }}
+      - name: Registrar modelos disponibles en NVIDIA sin generar texto
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          timeout 50s node scripts/t06-model-catalog-readonly.mjs
       - name: Consultar catálogo y pedir un dictamen nuevo sin herramientas
         shell: bash
         env:
