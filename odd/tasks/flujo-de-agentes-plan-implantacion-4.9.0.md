@@ -576,11 +576,11 @@ La matriz completa y las pruebas por objetivo están en [el plan final](../../do
 - [Comandos de pruebas sin proveedor y 15 escenarios](../../docs/plan-final-opt-contexto-y-agentes-2026-11-20.md#10-pruebas-listas-para-ejecutar-y-registro-de-evidencia).
 - [Auditoría de cobertura IA-01…IA-18 y riesgos sin cerrar](../../docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md#7-auditoría-de-preparación-quirúrgica-aplicada-al-plan-20112026).
 
-**Primera tanda única:** CTX-0 + pruebas negativas de CTX-1 **sin proveedor**. Si Pi 1.2.0 no confirma `selectedTools`, no aplicar el parche de herramientas: registrar `CAPABILITY_BLOCKED` y mantener la guía anterior. La prueba nueva propuesta `tests/context-guidance-assembly.test.ts` aún **no existe**; se creará solo al iniciar CTX-0.
+**Primera tanda única (registro histórico del 20/11; YA REALIZADA):** CTX-0 y las pruebas negativas de CTX-1 sin proveedor se incorporaron previamente a la rama de desarrollo. Si Pi 1.2.0 no confirma `selectedTools`, se conserva la guía anterior y se registra `CAPABILITY_BLOCKED`. `tests/context-guidance-assembly.test.ts` ya está propuesto y probado en la PR #78, pendiente de integración; no repetir CTX-0/CTX-1 ni volver a crear esa prueba.
 
-**Tandas siguientes, siempre condicionadas:** B = CTX-1/2 secuenciales; C = CTX-3 únicamente con duplicados probados y CTX-4 pospuesto por defecto; D = CTX-5/6 con autorización de presupuesto, A/B comparable, revisión independiente, CI exacto y reversión. Si una etapa no aporta mejora neta o falla seguridad, `NO_APLICAR` o bloqueo, sin reescribir el motor.
+**Tandas siguientes (orden operativo, no repetir las anteriores):** B = CTX-2/E1B, preservando permisos y reglas; C = CTX-3 solo si hay duplicados comprobados; D = CTX-4 opcional en E4 y CTX-5/6 tras E2/E3, con presupuesto autorizado, comparación A/B, revisión independiente, CI exacto y reversión. Si no aporta mejora neta o falla seguridad, `NO_APLICAR` o bloqueo, sin reescribir el motor.
 
-**Estado comprobado al preparar estos documentos:** plan final y auditoría guardados en PR #61; sin cambios de producción; sin proveedores reales; sin pruebas de implementación y sin CI de aceptación demostrado. **No** declarar `globalFull:true` ni fusionar.
+**Estado histórico de preparación (20/11/2026):** el plan y la auditoría estaban disponibles, sin demostración de ahorro, aceptación integral ni proveedores reales en esta unidad documental. Para el estado vigente consultar el encabezado, la sección 14.5 y CI del SHA exacto; no volver a ejecutar la primera tanda ni declarar `globalFull:true` por documentación.
 
 ### 14.5 Auditar antes de implementar — actualización de los 18 puntos
 
@@ -637,4 +637,5 @@ El informe describe equivocadamente como ausentes varias funciones que ASEN **ya
 **Condiciones de cierre:** tests negativos con Pi auténtico (modos, consultas, conflictos, identidad, consentimiento, reinicio), dos Writers realmente solapados, recepción única, riesgo y revisión ejecutables, ensayo A/B comparable con coste observado o unknown, CI del SHA nuevo y auditoría independiente. Hasta entonces se mantienen **aceptación pendiente** y **globalFull:false**.
 
 **No confundir planes:** las cuatro megatandas DA-A…DA-D del documento asociado son agrupaciones de estas fases originales, no tareas nuevas paralelas. Toda reserva y modificación de código requiere consultar [#63](https://github.com/asenbanskaliev/ASEN/issues/63); la PR documental #76 y las PR de pruebas #77/#78 mantienen sus dueños y no se pisan.
+
 
