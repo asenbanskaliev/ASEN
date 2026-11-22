@@ -38,7 +38,9 @@ for(const mode of modes){
    if(selected.plan||selected.agent){
     assert.ok(guide,`Falta la guía requerida para ${selection.name}`);
     assert.match(guide,/permis|permission|consent|confirm|autoriza|approval|write/iu);
-    assert.doesNotMatch(guide,/automatically grant write|auto-merge approved/iu);
+    assert.match(guide,/Never treat a plan, route, inferred fact, or tool result as permission|Planning does not grant permission to write|never infer write permissions|no concede permiso de escritura/iu,
+     "Cada guía debe negar expresamente que la planificación o la delegación concedan escritura");
+    assert.doesNotMatch(guide,/planning grants permission to write|la planificación concede permiso de escritura|automatically grant write|auto-merge approved/iu);
    }else assert.equal(guide,undefined,"No debe aparecer guía sin herramientas activas");
    if(selected.agent){
     const budget=sections[ASEN_EXPLORATION_BUDGET_SECTION];
