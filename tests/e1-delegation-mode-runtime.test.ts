@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {mkdtemp,rm} from "node:fs/promises";
+import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
 import {readSessionProfile,canonicalProfilePartition} from "../src/runtime/lifecycle/session-profile-binding.js";
-import {writeProfilesFile,readProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
+import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
 import {ASEN_PROFILES_SCHEMA,resolveRuntimeDelegationMode} from "../src/runtime/lifecycle/profiles.js";
 
 test("E1B: el perfil capturado y la política real bloquean la escritura directa del padre",async t=>{
@@ -33,10 +33,12 @@ test("E1B: el perfil capturado y la política real bloquean la escritura directa
   finally{await rm(home,{recursive:true,force:true,maxRetries:10,retryDelay:100});}
  });
  for(const h of events.get("session_start")??[])await h({reason:"new"},ctx);
+ const projectId=path.normalize(await realpath(ctx.cwd));
+ const partition=await canonicalProfilePartition(profilesFile);
  const policy=createPrimaryToolPolicyHandler({getDelegationMode:async()=>{
-  const captured=await readSessionProfile(await canonicalProfilePartition(profilesFile),{sessionId:session,projectId:home});
-  const file=captured?.file??await readProfilesFile(profilesFile);
-  return resolveRuntimeDelegationMode({global:file}).mode;
+  const captured=await readSessionProfile(partition,{sessionId:session,projectId});
+  assert.ok(captured,"La sesión debe conservar el perfil capturado con la ruta canónica");
+  return resolveRuntimeDelegationMode({global:captured.file}).mode;
  }});
  const attempt=()=>policy({type:"tool_call",toolCallId:"write-parent",toolName:"write",
   input:{path:"src/a.ts",content:"cambio"}},ctx);
