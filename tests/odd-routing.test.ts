@@ -46,6 +46,28 @@ test("issues every route with deterministic precedence", () => {
   assert.equal(route({ scope: { kind: "known", expectedPaths: ["a", "b", "c", "d"] }, writes: [] }).route, "direct");
 });
 
+test("E1: delega por unidades sustanciales independientes, no por número de archivos",()=>{
+ const units=[
+  {id:"api",objective:"Implementar contrato de API",estimatedMinutes:45,dependsOn:[]},
+  {id:"ui",objective:"Implementar vista independiente",estimatedMinutes:40,dependsOn:[]}
+ ];
+ assert.equal(route({taskUnits:units}).route,"orchestrate");
+ assert.deepEqual(route({taskUnits:units}).reasons,["independent-substantial-task-units"]);
+ assert.equal(route({taskUnits:units.map(u=>({...u,estimatedMinutes:5}))}).route,"direct");
+ assert.equal(route({taskUnits:[units[0]!,{...units[1]!,dependsOn:["api"]}]}).route,"direct");
+ assert.equal(route({scope:{kind:"known",expectedPaths:Array.from({length:20},(_,i)=>`f${i}`)},writes:[]}).route,"direct");
+ const decision=route({taskUnits:units});
+ assert.equal(decision.requiresSingleWriter,true);
+ assert.equal(JSON.stringify(decision).includes("permission"),false);
+});
+test("E1: rechaza unidades falsas, dependencias rotas y datos no declarados",()=>{
+ const valid={id:"a",objective:"Trabajo acotado",estimatedMinutes:40,dependsOn:[]};
+ for(const taskUnits of [
+  [valid,valid],[{...valid,dependsOn:["b"]}],[{...valid,dependsOn:["a"]}],
+  [{...valid,estimatedMinutes:-1}],[{...valid,objective:""}],
+  [{...valid,extra:true}],Array.from({length:33},(_,i)=>({...valid,id:String(i)}))
+ ])assert.throws(()=>deriveOddFacts(request({taskUnits:taskUnits as OddRoutingRequest["taskUnits"]})));
+});
 test("routes by uncertainty, actual risk, and explicit independent review", () => {
   assert.equal(route({ session: { estimatedMinutes: 59, continuation: false } }).route, "direct");
   assert.equal(route({ session: { estimatedMinutes: 600, continuation: false } }).route, "direct");
