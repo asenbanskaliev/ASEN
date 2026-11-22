@@ -18,6 +18,6 @@ export function autorizarT06RevisionAutomatica(e:NodeJS.ProcessEnv):boolean{
   e.ASEN_T06_SOURCE_SHA===T06_REVISION_FUENTE&&
   e.ASEN_T06_SOURCE_RUN_ID===T06_REVISION_RUN&&
   e.ASEN_T06_BEHAVIOR_RUN_ID===T06_PRUEBAS_RUN&&
-  e.ASEN_T06_REVIEW_MODEL_A==="nvidia/nemotron-3.5-bolt-e4b"&&
+  e.ASEN_T06_REVIEW_MODEL_A==="nvidia/nemotron-3-super-120b-a12b"&&
   e.ASEN_T06_REVIEW_MODEL_B==="nvidia/nemotron-3.5-super-vl-120b-a12b";
 }
