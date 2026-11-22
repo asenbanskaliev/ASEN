@@ -55,6 +55,7 @@ jobs:
           npm ci --ignore-scripts --no-audit --no-fund
           npm run typecheck
           node --import tsx --test tests/t06-auto-review-authority.test.ts tests/t06-independent-review-admission.test.ts tests/t06-native-review-receipt.test.ts tests/t06-aislamiento-modelos-nvidia.test.mjs tests/t06-verified-review-reuse.test.ts
+          node --test tests/t06-catalogo-revision-reutilizada.test.mjs
           node --import tsx --input-type=module -e "import {autorizarT06RevisionAutomatica} from './src/runtime/agents/t06-auto-review-authority.ts';if(!autorizarT06RevisionAutomatica(process.env))process.exit(1)"
           test -z "$(git status --porcelain=v1)"
   revisar:
