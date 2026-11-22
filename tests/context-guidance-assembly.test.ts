@@ -31,14 +31,16 @@ for(const mode of modes){
     "review":"Revisión humana y aceptación independientes.",
    };
    const untouched={...sections};
-   addAsenRequestGuidance({sections},activeAsenRequestTools(selection.tools),true);
+   const selected=activeAsenRequestTools(selection.tools);
+   addAsenRequestGuidance({sections},selected,true);
    for(const [key,value] of Object.entries(untouched))assert.equal(sections[key],value);
    const guide=sections[ASEN_REQUEST_GUIDANCE_SECTION];
-   if(guide){
+   if(selected.plan||selected.agent){
+    assert.ok(guide,`Falta la guía requerida para ${selection.name}`);
     assert.match(guide,/permis|permission|consent|confirm|autoriza|approval|write/iu);
     assert.doesNotMatch(guide,/automatically grant write|auto-merge approved/iu);
-   }
-   if(!activeAsenRequestTools(selection.tools).agent)
+   }else assert.equal(guide,undefined,"No debe aparecer guía sin herramientas activas");
+   if(!selected.agent)
     assert.equal(sections[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
    // El modo no se transmite a la API actual: esta prueba no atribuye
    // protección del padre full-delegation a la guía textual.
