@@ -109,7 +109,7 @@ test("T09 solo lee el informe guardado y no sustituye el resultado del Writer",(
 
 test("T11: cambios visuales de PR no ejecutan NVIDIA sin evento humano etiquetado",()=>{
  const ci=load(".github/workflows/ci.yml");
- assert.match(ci,/^  pull_request:\s*\n    types: \[ready_for_review, labeled\]/mu);
+ assert.match(ci,/^  pull_request:\s*\n    types: \[opened, synchronize, reopened, ready_for_review, labeled\]/mu);
  const first=ci.slice(ci.indexOf("\n  t06-nvidia-free-api:"),ci.indexOf("\n  t06-nvidia-pi-native:"));
  const second=ci.slice(ci.indexOf("\n  t06-nvidia-pi-native:"));
  for(const job of [first,second]){
