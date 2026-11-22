@@ -36,8 +36,9 @@ export function observeT06ReviewStream(output:unknown):Readonly<{
    const message=record.message as {role?:unknown;stopReason?:unknown;content?:unknown};
    if(message.role!=="assistant")continue;
    assistantMessages++;
-   finalReason=["stop","error","length","toolUse"].includes(String(message.stopReason))?
-    message.stopReason as typeof finalReason:"unknown";
+   const reason=message.stopReason;
+   finalReason=reason==="stop"||reason==="error"||reason==="length"||reason==="toolUse"?
+    reason:"unknown";
    if(Array.isArray(message.content))
     for(const block of message.content)
      if(block&&typeof block==="object"&&!Array.isArray(block)&&

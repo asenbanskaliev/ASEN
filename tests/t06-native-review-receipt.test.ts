@@ -145,3 +145,14 @@ test("T06 cuenta solo eventos seguros, nunca texto de Pi ni secretos",()=>{
  assert.deepEqual(observeT06ReviewStream("{texto-inválido"),{
   assistantMessages:0,settledEvents:0,textBlocks:0,finalReason:"unknown"});
 });
+
+test("T06 no convierte listas u objetos en causas de cierre válidas",()=>{
+ for(const reason of [["stop"],["length"],{valor:"stop"},null,5]){
+  const event=JSON.stringify({type:"message_end",message:{
+   role:"assistant",stopReason:reason,content:[{type:"text",text:"información privada"}]
+  }});
+  const evidence=observeT06ReviewStream(event);
+  assert.equal(evidence.finalReason,"unknown");
+  assert.equal(JSON.stringify(evidence).includes("información privada"),false);
+ }
+});
