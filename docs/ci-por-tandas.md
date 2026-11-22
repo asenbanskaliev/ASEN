@@ -13,7 +13,8 @@ evidencias de una revisión anterior.
 
 ## Cuando la tanda está lista
 - Marcar la PR **Lista para revisión** dispara **CI completa** y
-  **Release Gate** en Linux, Windows y macOS.
+  **Release Gate** en Linux, Windows y macOS. Cada cambio posterior de una
+  PR ya lista también repite el cierre sobre su SHA nuevo, sin reutilizar el anterior.
 - También puede dispararse este cierre mediante la etiqueta ya existente
   `validacion-completa`, si está registrada en el repositorio.
 - El cierre se acredita solo si los trabajos correspondientes al **mismo SHA**
@@ -24,9 +25,11 @@ evidencias de una revisión anterior.
 
 ## Si hay más cambios después del cierre
 - No reutilizar los resultados del commit anterior.
-- Volver a poner la PR en borrador antes de retomar el trabajo.
-- Cerrar otra vez con **Lista para revisión** cuando termine la nueva tanda,
+- Para continuar desarrollando muchas correcciones, volver primero a **borrador**.
+- Si se modifica una PR ya lista, **CI completa se relanza para ese SHA**.
+- Volver a marcar la PR lista cuando termine la nueva tanda,
   o aplicar expresamente `validacion-completa` si esa etiqueta existe.
+- Las etiquetas ajenas a `validacion-completa` no cancelan una validación activa.
 - **No fusionar** mientras falte la CI completa del SHA nuevo.
 
 ## Seguridad y proveedores
