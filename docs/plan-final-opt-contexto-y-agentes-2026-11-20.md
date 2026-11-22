@@ -1,6 +1,6 @@
 # ASEN — Plan final de optimización del contexto y conservación del flujo de agentes
 
-> **Actualización 21/11/2026:** PRE-0/PRE-1 reparados e integrados con CI verde en `ae14e10d`. CTX-0 incorpora pruebas sintéticas en `508b31f5`, pero no mide tokens ni demuestra ahorro. CTX-1 verifica `selectedTools` mediante la [PR #66](https://github.com/asenbanskaliev/ASEN/pull/66); no cambiar las instrucciones activas hasta concluir pruebas SDK, CI y CodeRabbit. CTX-2…6 y aceptación real E4/F siguen pendientes. La declaración G0 bloqueado del 20/11 no representa el estado actual.
+> **Estado operativo comprobado 21/11/2026:** PRE-0/PRE-1, CTX-0 y el cambio CTX-1 de selección real de herramientas ya figuran integrados mediante PR auxiliares cerradas; no repetir #66/#71. La [PR matriz #61](https://github.com/asenbanskaliev/ASEN/pull/61) sigue en borrador, HEAD en este corte `8b62891f2545f5053b065220154f03ddd8bdac29`; [CI #44946902816](https://github.com/asenbanskaliev/ASEN/actions/runs/44946902816), arquitectura, Release Gate y Pi 1.2/1.5 han finalizado correctamente en ese SHA (Pi Free Smoke omitida, NO PASS); la aceptación funcional sigue pendiente. CTX-0 solo aporta pruebas sintéticas: **ningún ahorro de tokens o coste está demostrado**. Orden vinculante de la sección 13.3: **CTX-2 se integra con E1B antes del cierre de E2/E3**, sin editar `extensions/asen.ts` a la vez; CTX-3 solo con duplicados demostrados, y **CTX-4 opcional y CTX-5 durante E4, después de E2/E3**. CTX-6/F cierran la auditoría. Cada etapa debe aportar beneficio medible y conservar la seguridad. E1–E4/F y los 18 objetivos mantienen aceptación pendiente. El bloqueo G0 del corte del 20/11 es histórico, pero el SHA `8b62891f` con comprobaciones técnicas verdes tampoco supone **G0 formalmente aceptado** ni aceptación E4/F; cada SHA nuevo debe validar sus puertas. `globalFull:false`.
 
 **Corte histórico:** 20/11/2026 · **Versión:** 1.2 del plan consolidado y auditado · **Estado en aquel corte (superado para PRE-0/PRE-1):** DIAGNÓSTICO OFFLINE PERMITIDO; G0 BLOQUEADO POR CI; IMPLANTACIÓN PENDIENTE. **Estado vigente:** ver actualización del 21/11 y verificar el último SHA; las demás puertas siguen siendo obligatorias.
 **Rama/PR:** `feat/flujo-de-agentes-20261115` / [PR #61](https://github.com/asenbanskaliev/ASEN/pull/61). **Referencia de código auditada:** `a05424fec15ba5770b45695fefd126638c88b1a7`. No representa la versión futura del producto.
@@ -303,7 +303,7 @@ La columna «faltante» es la **brecha mínima**, no una solicitud para reimplan
 | **10** | `startup-orchestrator-model.ts` | Confirmar modelo **utilizado** y no cambiar sesiones reanudadas | Pi autenticado, identidad; E1A |
 | **11** | Seis riesgos en `odd-routing.ts` y evaluación en `review-assessment-policy.ts` | Trazar consumidor/guardia efectiva de `independentVerifier`; no equiparar sugerencia con verificación | Seis riesgos con negativas; E3 |
 | **12** | `ordinary-review-command.ts` y `review-acceptance.ts` | Demostrar candidato congelado, pausa/retorno, recibo y aceptación separada | Revisión integral; E3 |
-| **13** | `judgment-day.ts` y `dual-rejudgment.ts` | Diferencias entre jueces, Fix autorizado y dos rondas máximo; **prueba específica por crear** | Modelos distintos/negativas; E3 |
+| **13** | `judgment-day.ts` y `dual-rejudgment.ts` | Diferencias entre jueces, Fix autorizado y límite de dos rondas; prueba negativa ya presente en `tests/dual-rejudgment-two-rounds-negative.test.ts` | Pendiente demostrar jueces reales, discrepancias y Fix autorizado; E3 |
 | **14** | `natural-plan-tool.ts` y Clarifier en despachador | Respuesta normal, cancelación y recuperación **sin** inferir permisos | Clarifier real; E1B |
 | **15** | Controles Git/SHA/ámbito y worktrees | PRE-0/PRE-1 reparados después del corte inicial; **comprobar CI y arquitectura del SHA actual** antes de afirmar seguridad global | Phase 0 y CI 3 SO; E0/E2/F |
 | **16** | `agent-flow-ab-comparison.ts` y métricas P16 limitadas | A/B **ASEN previo/optimizado** y comparación externa completa separada; medición hijos/caché/coste | Pares comparables; E4 + CTX-5 |
@@ -316,15 +316,15 @@ La columna «faltante» es la **brecha mínima**, no una solicitud para reimplan
 
 | Etapa | Condiciones que no se deben saltar | Decisión |
 | --- | --- | --- |
-| **CTX-0 · Medir** | Separar texto ensamblado, texto remitido y tokens/caché facturados. Medir padre **e hijos**; datos sintéticos sin secretos | Empezar en **solo lectura y pruebas offline**, aunque se investigue G0 |
-| **CTX-1 · Herramientas** | Verificar `systemPromptOptions.selectedTools` en Pi 1.2.0 real. Ausencia de herramientas **no** implica ausencia de plan o reglas de seguridad | Parche tras PRE/G0, con fallback conservador |
+| **CTX-0 · Medir** | Separar texto ensamblado, texto remitido y tokens/caché facturados. Medir padre **e hijos**; datos sintéticos sin secretos | **HISTÓRICO:** diagnóstico sintético integrado; ahorro real todavía sin acreditar |
+| **CTX-1 · Herramientas** | Verificar `systemPromptOptions.selectedTools` en Pi 1.2.0 real. Ausencia de herramientas **no** implica ausencia de plan o reglas de seguridad | **HISTÓRICO:** selección integrada en SHA `8b62891f`; mantener respaldo seguro y aceptación funcional pendiente |
 | **CTX-2 · Modular** | Tabla **regla → guardia de código → momento de carga**; si guardia no demostrada, conservar regla esencial siempre | Parche mínimo después de CTX-1 |
 | **CTX-3 · Duplicados** | Memoria 4096 B y plan 2048 B ya limitados. Catálogo Pi no prueba lectura del cuerpo `SKILL.md` | `NO_APLICAR` si no se demuestra redundancia |
 | **CTX-4 · Herramientas ocultas** | API pública Pi y herramientas accesibles con mismos permisos | **POSPONER** por defecto |
 | **CTX-5 · A/B** | Primero ASEN antes/después, por parejas; referencia externa separada con extensiones completas. Coste desconocido = `unknown` | Solo con autorización, límites y G0–G4 |
 | **CTX-6 · Activación** | Calidad/seguridad sin regresión, revisión independiente, CI de SHA exacto, reversión sin migración | **NO ACTIVAR** mientras haya FAIL crítico |
 
-**Secuencia vinculante:** `PRE-0 + PRE-1 (investigación paralela; integración separada) → G0 → CTX-0/1 offline → CTX-1 y CTX-2 cambios seriados → CTX-3 solo si hay prueba → CTX-4 opcional → E2/E3 cerrados según sus puertas → CTX-5 → CTX-6/F`.
+**Secuencia vinculante (prevalece sobre cualquier resumen operativo):** **YA INTEGRADO EN EL SHA `8b62891f`**: PRE-0/PRE-1 y CTX-0/CTX-1 sintéticos/de selección, sin repetirlos. **G0 NO ESTÁ FORMALMENTE ACEPTADO:** CI, arquitectura y Release Gate fueron correctos solo para ese SHA; los controles y la aceptación del SHA receptor siguen pendientes. **PENDIENTE**: CTX-2 durante E1B, antes de cerrar E2/E3 → CTX-3 solo si hay duplicación demostrada → E2/E3 con sus puertas reales → CTX-4 opcional durante E4 → CTX-5/E4 → CTX-6/F. Cada nuevo SHA requiere su propio CI y G0; no trasladar resultados del SHA histórico.
 
 Las fases funcionales E1A/E1B/E2A/E2B/E3 conservan el orden del rector. **No** editar `extensions/asen.ts` a la vez para E1 y CTX; si coinciden, primero resolver el control de funcionalidad y después la modificación de texto, con pruebas en cada commit.
 
@@ -332,7 +332,7 @@ Las fases funcionales E1A/E1B/E2A/E2B/E3 conservan el orden del rector. **No** e
 
 Añadir a los 15 escenarios S01–S15 ya descritos **12 negativos N01–N12** de la [auditoría detallada](audit/auditoria-detallada-codigo-y-plan-18-ctx-2026-11-20.md#7-pruebas-negativas-adicionales-que-faltaba-distinguir). En particular: plan/cancelación sin herramientas, modo completo, lote sin consentimiento por hijo, reporte con arrays malformados, T06 combinando modos, Pi 1.5 sin matriz y reinicio con Writer incierto.
 
-**Auditoría de existencia de archivos:** `tests/context-guidance-assembly.test.ts` y la prueba específica de dos rondas **todavía no existen** y deben crearse en una unidad acotada. El resto de rutas mencionadas en la nueva auditoría se comprobó en el árbol del SHA inspeccionado. No presentar esas pruebas pendientes como verdes.
+**Auditoría de existencia de archivos (corte histórico y actualización):** `tests/context-guidance-assembly.test.ts` no existía en el corte original, pero ya está añadido en PR #78, pendiente de admisión; no volver a crearlo. La prueba negativa de dos rondas ya existe en `tests/dual-rejudgment-two-rounds-negative.test.ts`; no duplicarla. La existencia de un test no acredita por sí sola dos jueces Pi reales ni aceptación E4/F.
 
 ### 13.5 Dictamen histórico del 20/11 y estado corregido el 21/11
 
