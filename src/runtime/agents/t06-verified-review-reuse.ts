@@ -19,12 +19,14 @@ export function admitT06VerifiedSuperReview(value:unknown,hashes:Readonly<Record
   value.providerCatalogVerified!==true||value.behaviorVerified!==true||
   value.reviewedByTwoModels!==false||value.writerAuthorized!==false||
   value.accepted!==false||value.globalFull!==false)return deny();
+ const originalHashes=value.reviewedFileHashes;
  if(!Array.isArray(value.models)||value.models.length!==2||
   value.models[0]!==modelA||value.models[1]!==modelB||
-  !isRecord(value.reviewedFileHashes)||
-  !files.every(k=>value.reviewedFileHashes[k]===hashes[k]))return deny();
+  !isRecord(originalHashes)||
+  !files.every(k=>originalHashes[k]===hashes[k]))return deny();
  if(!Array.isArray(value.reviews)||value.reviews.length!==2)return deny();
  const [failed,passed]=value.reviews;
+ const passedHashes=isRecord(passed)?passed.reviewedSha256:undefined;
  if(!isRecord(failed)||!isRecord(passed)||
   failed.requestedModel!==modelA||
   failed.verdict!=="unknown"||
@@ -32,8 +34,8 @@ export function admitT06VerifiedSuperReview(value:unknown,hashes:Readonly<Record
   passed.piProcessObserved!==true||passed.verdict!=="pass"||
   passed.findingCount!==0||passed.writerAuthority!==false||
   passed.acceptance!=="not-accepted"||
-  !Array.isArray(passed.reviewedSha256)||passed.reviewedSha256.length!==2||
-  !files.every((k,i)=>passed.reviewedSha256[i]===hashes[k]))return deny();
+  !Array.isArray(passedHashes)||passedHashes.length!==2||
+  !files.every((k,i)=>passedHashes[i]===hashes[k]))return deny();
  // Solo se devuelve metadato acotado, jamás texto o respuestas del proveedor.
  return Object.freeze({
   requestedModel:modelB,observedModel:modelB,piProcessObserved:true,
