@@ -65,7 +65,10 @@ test("E1: rechaza unidades falsas, dependencias rotas y datos no declarados",()=
  for(const taskUnits of [
   [valid,valid],[{...valid,dependsOn:["b"]}],[{...valid,dependsOn:["a"]}],
   [{...valid,estimatedMinutes:-1}],[{...valid,objective:""}],
-  [{...valid,extra:true}],Array.from({length:33},(_,i)=>({...valid,id:String(i)}))
+  [{...valid,extra:true}],
+  [{...valid,id:"a",dependsOn:["b"]},{...valid,id:"b",dependsOn:["a"]}],
+  [{...valid,id:"a",dependsOn:["b"]},{...valid,id:"b",dependsOn:["c"]},{...valid,id:"c",dependsOn:["a"]}],
+  Array.from({length:33},(_,i)=>({...valid,id:String(i)}))
  ])assert.throws(()=>deriveOddFacts(request({taskUnits:taskUnits as NonNullable<OddRoutingRequest["taskUnits"]>})));
 });
 test("routes by uncertainty, actual risk, and explicit independent review", () => {

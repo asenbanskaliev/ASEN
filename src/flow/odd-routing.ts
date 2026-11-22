@@ -158,6 +158,19 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   const ids=new Set(taskUnits.map(unit=>unit.id));
   if(taskUnits.some(unit=>unit.dependsOn.some(dep=>dep===unit.id||!ids.has(dep))))
     throw new Error("task units have invalid dependencies");
+  // Rechazar ciclos indirectos: un plan con A→B→A nunca puede ejecutarse.
+  // El límite de 32 unidades acota también el recorrido de dependencias.
+  const pendientes=new Set<string>(),visitadas=new Set<string>();
+  const dependencias=new Map(taskUnits.map(unidad=>[unidad.id,unidad.dependsOn]));
+  const visitar=(id:string):void=>{
+    if(pendientes.has(id))throw new Error("task units contain cyclic dependencies");
+    if(visitadas.has(id))return;
+    pendientes.add(id);
+    for(const dependencia of dependencias.get(id)??[])visitar(dependencia);
+    pendientes.delete(id);
+    visitadas.add(id);
+  };
+  for(const unidad of taskUnits)visitar(unidad.id);
   // Se cuentan unidades de trabajo, nunca rutas ni cantidad de archivos.
   // La concurrencia solo es una recomendación; el planificador mantiene permisos y DAG.
   const independentUnits=taskUnits.filter(unit=>unit.estimatedMinutes>=30&&
