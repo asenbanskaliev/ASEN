@@ -7,20 +7,14 @@ import {mkdirSync,writeFileSync,existsSync} from "node:fs";
 import {join,isAbsolute} from "node:path";
 import {pathToFileURL} from "node:url";
 
-const modelos=["nvidia/nemotron-3.5-bolt-e4b",
+const modelos=["nvidia/nemotron-3-super-120b-a12b",
  "nvidia/nemotron-3.5-super-vl-120b-a12b"];
 export function configuracionT06Nvidia(){
  const overrides={};
  for(const id of modelos){
   overrides[id]={reasoning:false,maxTokens:1200,
    compat:{supportsReasoningEffort:false,
-    maxTokensField:"max_tokens",supportsUsageInStreaming:false},
-   // NVIDIA distingue el ID visible en el catálogo del ID de la pasarela.
-   // Solo Bolt utiliza el alias documentado y desactiva razonamiento en el servidor.
-   ...(id==="nvidia/nemotron-3.5-bolt-e4b"?{
-    samplingParams:{model:"stg/nvidia/nemotron-3.5-bolt-e4b",
-     chat_template_kwargs:{enable_thinking:false}}
-   }:{})};
+    maxTokensField:"max_tokens",supportsUsageInStreaming:false}};
  }
  return {providers:{nvidia:{modelOverrides:overrides}}};
 }
