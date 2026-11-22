@@ -551,7 +551,7 @@ Decidir por **estado fiable de la sesión, capacidades del host, tipo de operaci
 | **CTX-5 — comparación** | OPT-06 | E4: ASEN anterior/optimizado comparables; Gentle completo en ensayo separado, con agentes reales | G5: calidad, tokens, caché, tiempo, coste real o `unknown` |
 | **CTX-6 — revisión y retorno** | OPT-07 | F: revisión independiente, CI exacto, activación gradual y vuelta atrás solo de CTX | G6: sin regresiones graves ni fusión automática |
 
-**Orden:** CTX-0 → CTX-1 → CTX-2 → CTX-3 (si la medición lo justifica) → cierre de E2/E3 → CTX-4 (estudio opcional en E4) → CTX-5 → CTX-6. Se admite una primera comparación sin red tras CTX-2 para decidir si CTX-3 aporta valor. Nunca hacer escrituras concurrentes sobre `extensions/asen.ts` mientras E1A/E1B/E2B lo modifiquen.
+**Orden vigente:** **CTX-0 y CTX-1 ya integrados** en el SHA de desarrollo `8b62891f`; no repetir esas tandas. Lo pendiente es CTX-2/E1B → CTX-3 solo con redundancia demostrada → cierre de E2/E3 según pruebas reales → CTX-4 opcional durante E4 → CTX-5/E4 → CTX-6/F. Se permite comparar sin red tras CTX-2 para decidir CTX-3. La CI del SHA nuevo debe validarse de nuevo. Nunca editar `extensions/asen.ts` en paralelo con E1A/E1B/E2B.
 
 ### 14.2 Correcciones vinculantes a la investigación
 
