@@ -256,6 +256,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   // Recheck ONLY this candidate: do not retarget or replan another unit.
   const child:TodoContext={sessionId:unit.childSessionId,projectId:unit.childProjectId};
   let expectedChildTodo:SourceTodoRow|undefined;
+  let enlaceAutorizado:string;
   try{
   const enlacesIniciales=(await input.sessionJournal.listSource(input.source)).filter(l=>
    l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId);
@@ -266,7 +267,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
      link.authority!=="none"||link.autoDispatch!==false||link.autoMerge!==false)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": El enlace Pi hijo cambió o está duplicado; revisar antes de ejecutar"]);
-  const enlaceAutorizado=JSON.stringify(link);
+  enlaceAutorizado=JSON.stringify(link);
 
   const [rows,agents,links]=await Promise.all([
    input.loadTodos(child),input.loadAgents(child),input.loadTaskAgentLinks(child)
