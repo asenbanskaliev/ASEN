@@ -4,6 +4,7 @@ import {mkdtemp,readFile,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
+import {withExclusiveFileLock} from "../src/io/exclusive-file-lock.js";
 
 /**
  * E2B: dos Workers comparten un padre, pero no un resultado ni un permiso.
@@ -115,4 +116,36 @@ test("E2B cancelar el reconocimiento de A no bloquea B ni concede reenvío",asyn
   ()=>restarted.record({...a,state:"cancelled"}),/Conflicting terminal outcome/
  );
  assert.equal((await restarted.list(scope)).length,2);
+});
+
+
+test("E2B cancelar A mientras espera el bloqueo real no afecta al reconocimiento de B",{timeout:10000},async t=>{
+ const {file,primero,segundo}=await diario(t);
+ const [ra,rb]=await Promise.all([primero.record(a),segundo.record(b)]);
+ await primero.claim(ra.eventId,scope);
+ await primero.markEnqueued(ra.eventId,scope);
+ await segundo.claim(rb.eventId,scope);
+ await segundo.markEnqueued(rb.eventId,scope);
+ const before=await readFile(file,"utf8");
+ let locked!:()=>void,unlock!:()=>void;
+ const acquired=new Promise<void>(resolve=>{locked=resolve;});
+ const released=new Promise<void>(resolve=>{unlock=resolve;});
+ const owner=withExclusiveFileLock(file,async()=>{locked();await released;});
+ const controller=new AbortController();
+ try{
+  await acquired;
+  const pending=primero.acknowledge(ra.eventId,scope,a.id,"completed",controller.signal);
+  let settled=false;
+  void pending.then(()=>{settled=true;},()=>{settled=true;});
+  await new Promise(resolve=>setTimeout(resolve,60));
+  assert.equal(settled,false,"El aviso A debe seguir esperando el bloqueo real");
+  controller.abort();
+  await assert.rejects(pending,(error:unknown)=>error instanceof Error&&error.name==="AbortError");
+ }finally{unlock();await owner;}
+ assert.equal(await readFile(file,"utf8"),before,"La cancelación no puede modificar el diario");
+ const restarted=new AgentNotificationJournal(file);
+ assert.equal((await restarted.list(scope)).find(row=>row.agentId===a.id)?.delivery,"enqueued");
+ assert.equal(await restarted.claim(ra.eventId,scope),false,"Nunca reenviar A por haber cancelado el acuse");
+ assert.equal(await restarted.acknowledge(rb.eventId,scope,b.id,"failed"),true);
+ assert.equal((await restarted.list(scope)).find(row=>row.agentId===b.id)?.delivery,"acknowledged");
 });
