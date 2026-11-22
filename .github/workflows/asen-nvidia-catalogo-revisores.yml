@@ -1,5 +1,6 @@
 name: Consultar catálogo NVIDIA para revisar T06
 # Se consultan identificadores públicos; cero llamadas de inferencia.
+# Diagnóstico T06 22/11: distinguir el nuevo modelo del Super VL ya validado.
 on:
   push:
     branches:
