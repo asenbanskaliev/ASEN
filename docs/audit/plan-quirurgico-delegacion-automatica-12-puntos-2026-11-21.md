@@ -102,7 +102,8 @@ Estados diferenciados: **CÓDIGO**, **PRUEBA UNITARIA**, **EJECUTOR SIMULADO**, 
 | Cambio claro que toca varios archivos | No delegar solo por número de archivos |
 | Cuarta lectura relevante o más de 40 KiB | Solo una recomendación/Explorer si aporta valor, sin escritor ni doble ejecución |
 | 2 unidades completas independientes, cada una de trabajo suficiente, con modelos/capacidad y permisos exactos disponibles, beneficio razonable frente al coste y 1 dependiente | Dos Workers autorizados pueden solaparse en ámbitos separados; la tercera espera a sus dependencias |
-| 2 unidades independientes pero pequeñas o sin beneficio suficiente de delegación | Resolver directamente o en serie; no lanzar dos Workers solo por independencia |\n| Dos tareas con archivo/ámbito solapado | No admitir lanzamiento concurrente; mantener una cola segura |
+| 2 unidades independientes pero pequeñas o sin beneficio suficiente de delegación | Resolver directamente o en serie; no lanzar dos Workers solo por independencia |
+| Dos tareas con archivo/ámbito solapado | No admitir lanzamiento concurrente; mantener una cola segura |
 | Perfil organic → full en mitad del turno | Modo anterior hasta nuevo turno, no relajación de escritura pendiente |
 | Full-delegation con herramienta write/edit/bash | Bloqueo del padre; hijo requiere ámbito/SHA y aprobación propios |
 | Denegación, falta de interfaz humana o cancelación de una unidad | La unidad afectada no inicia nuevas escrituras ni repite el consentimiento; otras unidades ya autorizadas mantienen sus cambios y solo continúan si son independientes y seguras |
