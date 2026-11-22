@@ -136,12 +136,12 @@ test("E2B cancelar A mientras espera el bloqueo real no afecta al reconocimiento
  const contention=new Promise<void>(resolve=>{retryObserved=resolve;});
  // #change comprueba la señal antes de preparar el archivo; el bloqueo
  // vuelve a comprobarla al intentar entrar y en su espera tras EEXIST.
- // La tercera lectura prueba que se ha alcanzado la espera, no solo que
- // ha transcurrido un plazo mientras seguía preparando el archivo.
+ // La cuarta lectura pertenece a abortableDelay tras constatar EEXIST:
+ // prueba la espera real, no un plazo transcurrido preparando el archivo.
  const signal=new Proxy(controller.signal,{
   get(target,key){
    if(key==="aborted"){
-    if(++abortedChecks===3)retryObserved();
+    if(++abortedChecks===4)retryObserved();
     return target.aborted;
    }
    const value=Reflect.get(target,key,target);
