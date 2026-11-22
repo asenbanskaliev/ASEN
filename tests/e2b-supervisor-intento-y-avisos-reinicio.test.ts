@@ -58,6 +58,14 @@ test("T2 E2B: lote reclamado, aviso A incierto y aviso B independiente sobrevive
  await assert.rejects(()=>reloadedSupervisor.claim({
   source:f.source,batchId:"lote-e2b",children:f.children
  }),/previously claimed/u);
+ const nuevosHijos=f.children.map((child,i)=>({
+  ...child,sourceTodoId:"nueva-tarea-"+i,childTodoId:"nuevo-todo-"+i,
+  childSessionId:"nueva-sesion-"+i,childProjectId:join(f.dir,"nuevo-worktree-"+i)
+ }));
+ await assert.rejects(()=>reloadedSupervisor.claim({
+  source:f.source,batchId:"lote-e2b",children:nuevosHijos
+ }),/previously claimed/u,
+ "El mismo lote debe bloquearse incluso con todos los hijos y ámbitos nuevos");
  const saved=await reloadedSupervisor.listSource(f.source);
  assert.equal(saved.length,1);
  assert.equal(saved[0]?.grantsAuthority,false);
@@ -72,10 +80,26 @@ test("T2 E2B: otra sesión o proyecto no hereda el lote ni los avisos",async t=>
  const journal=new AgentNotificationJournal(f.notices);
  await journal.record({...f.source,id:"agente-a",state:"completed"});
 
- const other={sessionId:"pi-otro",projectId:join(f.dir,"otro-proyecto")};
- assert.deepEqual(await new ParentSupervisorClaimJournal(f.intents).listSource(other),[]);
- assert.deepEqual(await new AgentNotificationJournal(f.notices).list(other),[]);
+ const scopes=[
+  {sessionId:f.source.sessionId,projectId:join(f.dir,"otro-proyecto")},
+  {sessionId:"pi-otro",projectId:f.source.projectId},
+  {sessionId:"pi-otro",projectId:join(f.dir,"otro-proyecto")}
+ ];
+ for(const other of scopes){
+  assert.deepEqual(await new ParentSupervisorClaimJournal(f.intents).listSource(other),[],
+   "La sesión y el proyecto deben coincidir de forma independiente");
+  assert.deepEqual(await new AgentNotificationJournal(f.notices).list(other),[],
+   "Un aviso no puede aparecer en otro ámbito");
+ }
  await assert.rejects(()=>new ParentSupervisorClaimJournal(f.intents).claim({
-  source:other,batchId:"lote-distinto",children:f.children
+  source:scopes[2]!,batchId:"lote-distinto",children:f.children
  }),/previously claimed/u);
+ const newProjects=f.children.map((child,i)=>({
+  ...child,sourceTodoId:"tarea-nueva-"+i,childTodoId:"hijo-nuevo-"+i,
+  childProjectId:join(f.dir,"worktree-fresco-"+i)
+ }));
+ await assert.rejects(()=>new ParentSupervisorClaimJournal(f.intents).claim({
+  source:scopes[2]!,batchId:"lote-sesiones-reutilizadas",children:newProjects
+ }),/previously claimed/u,
+ "La identidad de cada sesión hija sigue siendo exclusiva aunque cambien proyectos y lote");
 });
