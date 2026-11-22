@@ -14,7 +14,10 @@ export function configuracionT06Nvidia(){
  for(const id of modelos){
   overrides[id]={reasoning:false,maxTokens:1200,
    compat:{supportsReasoningEffort:false,
-    maxTokensField:"max_tokens",supportsUsageInStreaming:false}};
+    maxTokensField:"max_tokens",supportsUsageInStreaming:false},
+   ...(id==="nvidia/nemotron-3-super-120b-a12b"?{
+    samplingParams:{reasoning_effort:"none"}
+   }:{})};
  }
  // Registrar explícitamente el modelo nuevo: el catálogo incluido en Pi
  // puede ir por detrás del catálogo real NVIDIA. La API se verifica antes.
