@@ -61,7 +61,7 @@ try{
   CI:"true",NO_COLOR:"1"
  };
  child=spawn("pi",[
-  "--model",modelo,"--mode","json","--no-tools","--no-extensions",
+  "--model",modelo,"--mode","text","--no-tools","--no-extensions",
   "--no-session","--thinking","off","-p","Responde OK"
  ],{env,stdio:["ignore","pipe","pipe"]});
  let outputBytes=0;
@@ -81,7 +81,7 @@ try{
  assert.equal(captured.stream,true,"Pi no envió el flujo esperado");
  assert.ok(Array.isArray(captured.messages)&&captured.messages.length>0);
  assert.equal("chat_template_kwargs" in captured,false,"Se envían parámetros antiguos de Bolt");
- assert.equal("reasoning_effort" in captured,false,"Se habilitó razonamiento inesperado");
+ assert.equal(captured.reasoning_effort,"none","El razonamiento NVIDIA no está desactivado");
  assert.equal("max_completion_tokens" in captured,false,"El límite usa un campo incompatible");
  assert.equal("stream_options" in captured,false,"La compatibilidad NVIDIA no se aplicó");
  assert.equal(result.code,0,"Pi recibió respuesta simulada pero no terminó correctamente");
