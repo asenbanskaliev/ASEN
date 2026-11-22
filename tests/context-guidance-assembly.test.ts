@@ -40,8 +40,11 @@ for(const mode of modes){
     assert.match(guide,/permis|permission|consent|confirm|autoriza|approval|write/iu);
     assert.doesNotMatch(guide,/automatically grant write|auto-merge approved/iu);
    }else assert.equal(guide,undefined,"No debe aparecer guía sin herramientas activas");
-   if(!selected.agent)
-    assert.equal(sections[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
+   if(selected.agent){
+    const budget=sections[ASEN_EXPLORATION_BUDGET_SECTION];
+    assert.ok(budget,`Falta aviso Explorer cuando está activo en ${selection.name}`);
+    assert.match(budget,/Explorer|lectura|40 KiB/iu);
+   }else assert.equal(sections[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
    // El modo no se transmite a la API actual: esta prueba no atribuye
    // protección del padre full-delegation a la guía textual.
    assert.equal(mode==="organic"||mode==="full-delegation",true);
@@ -57,12 +60,14 @@ test("CTX-2: cambio reversible no contamina otra sesión ni conserva guía obsol
  const original=a[ASEN_REQUEST_GUIDANCE_SECTION];
  assert.ok(original);
  addAsenRequestGuidance({sections:b},activeAsenRequestTools(["asen_agent_start"]),false);
+ assert.equal(b[ASEN_EXPLORATION_BUDGET_SECTION],undefined);
  const bSnapshot={...b};
  addAsenRequestGuidance({sections:a},activeAsenRequestTools([]),false);
  assert.deepEqual({...a},{identity_session:"A",policy:"sin escritura heredada"});
  assert.deepEqual(b,bSnapshot);
  addAsenRequestGuidance({sections:a},activeAsenRequestTools(full),true);
  assert.equal(a[ASEN_REQUEST_GUIDANCE_SECTION],original);
+ assert.ok(a[ASEN_EXPLORATION_BUDGET_SECTION],"Al restaurar A debe volver el aviso de Explorer");
  assert.equal(a.identity_session,"A");
 });
 
