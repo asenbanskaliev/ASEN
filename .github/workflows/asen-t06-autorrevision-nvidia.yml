@@ -1,4 +1,5 @@
 name: T06 dos revisores NVIDIA reales sin aprobaciones de entorno
+# Segundo disparo autorizado 2026-11-22: solo Bolt; Super VL validado desde run 45048377977.
 # Disparo único autorizado 2026-11-22: solo revisión real T06, sin repetir Writers.
 # Única autorización por cambio exacto del propietario; nunca en PR.
 # Segunda prueba: modelos verificados con GET oficial al catálogo NVIDIA.
