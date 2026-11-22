@@ -1,21 +1,21 @@
 name: CI
 on:
-  # Cierre integral solo al poner el PR listo o pedir validación completa.
+  # Cierre integral solo para PR listas y SHA vigente; cambios en borrador usan CI rápida.
   # Cada commit recibe CI rápida en otro flujo; un cambio posterior necesita
   # un nuevo cierre exact-SHA, nunca hereda aprobaciones del anterior.
   pull_request:
-    types: [ready_for_review, labeled]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   push:
     branches: [main]
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}-${{ github.event.action == 'labeled' && github.event.label.name != 'validacion-completa' && github.run_id || 'validation' }}
   cancel-in-progress: true
 jobs:
   agentes-t02-t05-t06:
     if: >-
-      github.event_name == 'push' || github.event.action == 'ready_for_review' || (github.event.action == 'labeled' && github.event.label.name == 'validacion-completa')
+      github.event_name == 'push' || (github.event.pull_request.draft == false && (github.event.action != 'labeled' || github.event.label.name == 'validacion-completa'))
     name: Megatanda T02–T10 y T11 (pruebas integradas sin modelos)
     runs-on: ubuntu-24.04
     timeout-minutes: 14
@@ -116,7 +116,7 @@ jobs:
             tests/flujo-agentes-nvidia-workflow.test.ts
   test:
     if: >-
-      github.event_name == 'push' || github.event.action == 'ready_for_review' || (github.event.action == 'labeled' && github.event.label.name == 'validacion-completa')
+      github.event_name == 'push' || (github.event.pull_request.draft == false && (github.event.action != 'labeled' || github.event.label.name == 'validacion-completa'))
     name: test (${{ matrix.os }} shard ${{ matrix.shard }})
     strategy:
       fail-fast: false
@@ -214,7 +214,7 @@ jobs:
     name: test-shard-coverage
     needs: test
     if: >-
-      always() && (github.event_name == 'push' || github.event.action == 'ready_for_review' || (github.event.action == 'labeled' && github.event.label.name == 'validacion-completa'))
+      always() && (github.event_name == 'push' || (github.event.pull_request.draft == false && (github.event.action != 'labeled' || github.event.label.name == 'validacion-completa')))
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -425,7 +425,7 @@ jobs:
           retention-days: 30
   architecture:
     if: >-
-      github.event_name == 'push' || github.event.action == 'ready_for_review' || (github.event.action == 'labeled' && github.event.label.name == 'validacion-completa')
+      github.event_name == 'push' || (github.event.pull_request.draft == false && (github.event.action != 'labeled' || github.event.label.name == 'validacion-completa'))
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -440,7 +440,7 @@ jobs:
         run: node scripts/audit-upstream-boundary.mjs
   pi-support-matrix:
     if: >-
-      github.event_name == 'push' || github.event.action == 'ready_for_review' || (github.event.action == 'labeled' && github.event.label.name == 'validacion-completa')
+      github.event_name == 'push' || (github.event.pull_request.draft == false && (github.event.action != 'labeled' || github.event.label.name == 'validacion-completa'))
     strategy:
       fail-fast: false
       matrix:
