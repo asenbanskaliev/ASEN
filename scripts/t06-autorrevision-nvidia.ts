@@ -10,6 +10,7 @@ import {autorizarT06RevisionAutomatica,T06_REVISION_FUENTE,T06_REVISION_RUN,T06_
 import {verifyT06IndependentReviewInputs,t06ReviewHashes} from
  "../src/runtime/agents/t06-independent-review-admission.js";
 import {consultarCatalogoNvidia} from "./catalogo-nvidia.mjs";
+import {validarCatalogoRevisionReutilizada} from "./t06-catalogo-revision-reutilizada.mjs";
 import {runT06NativeIndependentReviews} from "./t06-native-independent-review.js";
 import {admitT06VerifiedSuperReview} from "../src/runtime/agents/t06-verified-review-reuse.js";
 
@@ -47,15 +48,13 @@ async function main():Promise<void>{
  });
  assert.equal(admission.allowed,true,admission.reason);
  assert.equal(admission.globalFull,false);
- // El catálogo autentica la existencia antes de cualquier petición de generación.
- const available=await consultarCatalogoNvidia({clave:process.env.NVIDIA_API_KEY});
- assert.equal(available.completo,true,"Catálogo NVIDIA no verificado");
- assert.ok(models.every(x=>available.modelos.includes(x)),
-  "Los dos revisores no figuran en el catálogo NVIDIA");
- assert.equal(autorizarT06RevisionAutomatica(process.env),true);
- // El informe se descarga por ID de ejecución fijo y se valida ANTES de gastar en el modelo nuevo.
+ // Validar primero el PASS real reutilizado; no repite llamadas al segundo revisor.
  const previous=data(process.env.ASEN_T06_PREVIOUS_PASS??"",10_000);
  const reusedSuper=admitT06VerifiedSuperReview(previous,t06ReviewHashes(files));
+ // GET autenticado sin generación: solo el modelo NUEVO debe estar disponible.
+ const available=await consultarCatalogoNvidia({clave:process.env.NVIDIA_API_KEY});
+ validarCatalogoRevisionReutilizada(available,reusedSuper);
+ assert.equal(autorizarT06RevisionAutomatica(process.env),true);
  const result=await runT06NativeIndependentReviews([codeRoot,codeRoot],root,
   "nvidia/nemotron-3.5-lightning-30b-a3b",reusedSuper);
  const validated=result.status==="PASS_TWO_PI_REVIEWS_NOT_T10";
