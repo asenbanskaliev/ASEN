@@ -54,7 +54,7 @@ El informe aporta una dirección acertada —delegar solo cuando aporta valor—
 
 1. La sesión Pi captura perfil, modo, herramientas realmente activas, identidad de sesión/proyecto, restricciones y modelo configurado. La política del anfitrión prevalece sobre cualquier frase de la IA.
 2. Clasificar en ruta **directa**, **pregunta focalizada**, **investigación**, **plan por unidades**, **incidencia** o **verificación** con motivo trazable. La ruta no es permiso; estimaciones, número de archivos, extensión de la respuesta o tiempo no crean un Writer.
-3. Una petición sencilla, clara y segura sigue directa, incluso si cambia varios archivos. Investigación adicional usa máximo tres lecturas/40 KiB observados antes de valorar un Explorer; que el aviso se active no obliga a delegar cuando ya se sabe la respuesta.
+3. Una petición sencilla, clara y segura de solo lectura puede seguir la ruta directa en ambos modos. Si requiere escritura, la ruta directa corresponde únicamente a `organic` y conserva sus permisos; en `full-delegation` se requiere un Writer autorizado o la escritura queda bloqueada. Investigación adicional usa máximo tres lecturas/40 KiB observados antes de valorar un Explorer; que el aviso se active no obliga a delegar cuando ya se sabe la respuesta.
 4. En modo completo la IA principal solo lee/coordina y siempre manda las escrituras a un Writer con ámbito exacto. El perfil cambia entre turnos y no a mitad de una llamada pendiente. Los hijos no heredan automáticamente permiso de padre.
 5. Contrato deseado de decisión registrable: ID del trabajo + sesión/proyecto + versión de plan + hechos observados + motivo + unidades propuestas + riesgos + capacidades disponibles. **Sin token de escritura ni secreto**, validación de los mismos hechos antes del despacho.
 6. CTX-2 (guía modular) solo después de pruebas negativas de seguridad y herramientas seleccionadas; mantener versión anterior reversible. La PR #78 cubre tests propuestos, NO demuestra la nueva composición productiva.
@@ -98,7 +98,9 @@ Estados diferenciados: **CÓDIGO**, **PRUEBA UNITARIA**, **EJECUTOR SIMULADO**, 
 
 | Escenario | Resultado esperado (sin asumir PASS) |
 | --- | --- |
-| Consulta breve o errata con riesgos controlados | Ruta directa, cero hijos, pruebas del cambio si corresponde |
+| Consulta breve de solo lectura, en ambos modos | Ruta directa, cero hijos |
+| Errata con riesgos controlados en `organic` | Ruta directa, cero hijos, con los permisos y las pruebas que correspondan |
+| La misma errata en `full-delegation` | El padre no escribe: se requiere un Writer autorizado; sin él, no hay escritura ni lanzamiento |
 | Cambio claro que toca varios archivos | No delegar solo por número de archivos |
 | Cuarta lectura relevante o más de 40 KiB | Solo una recomendación/Explorer si aporta valor, sin escritor ni doble ejecución |
 | 2 unidades completas independientes, cada una de trabajo suficiente, con modelos/capacidad y permisos exactos disponibles, beneficio razonable frente al coste y 1 dependiente | Dos Workers autorizados pueden solaparse en ámbitos separados; la tercera espera a sus dependencias |
