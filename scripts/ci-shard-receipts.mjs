@@ -8,7 +8,7 @@ import {resolveTestShard} from "./run-tests.mjs";
 
 export const CI_SHARD_LAYOUT=Object.freeze([
  Object.freeze({os:"ubuntu-24.04",platform:"linux",count:1}),
- Object.freeze({os:"windows-latest",platform:"win32",count:3}),
+ Object.freeze({os:"windows-latest",platform:"win32",count:4}),
  Object.freeze({os:"macos-latest",platform:"darwin",count:2}),
 ]);
 
@@ -41,7 +41,7 @@ export function createShardReceipt({os,sha,index,count,files}){
 export function verifyShardReceipts({receipts,files,sha}){
  requireSha(sha);
  const expectedTotal=CI_SHARD_LAYOUT.reduce((sum,config)=>sum+config.count,0);
- assert.equal(receipts.length,expectedTotal,"exactly six CI shard receipts required");
+ assert.equal(receipts.length,expectedTotal,"exactly seven CI shard receipts required");
  for(const config of CI_SHARD_LAYOUT){
   const seen=new Set();
   for(let index=0;index<config.count;index++){
@@ -84,10 +84,10 @@ async function cli(){
   const names=(await readdir(dir)).sort();
   const expectedNames=CI_SHARD_LAYOUT.flatMap(config=>
    Array.from({length:config.count},(_,index)=>config.os+"-"+index+".json")).sort();
-  assert.deepEqual(names,expectedNames,"six exact CI shard receipt files required");
+  assert.deepEqual(names,expectedNames,"seven exact CI shard receipt files required");
   const receipts=await Promise.all(names.map(async name=>JSON.parse(await readFile(join(dir,name),"utf8"))));
   verifyShardReceipts({receipts,files,sha});
-  console.log("CI_SHARD_COVERAGE_PASS "+sha+" six shards; full suite on Ubuntu, Windows and macOS");
+  console.log("CI_SHARD_COVERAGE_PASS "+sha+" seven shards; full suite on Ubuntu, Windows and macOS");
  }
 }
 
