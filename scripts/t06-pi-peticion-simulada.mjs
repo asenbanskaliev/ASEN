@@ -64,9 +64,13 @@ try{
   "--model",modelo,"--mode","text","--no-tools","--no-extensions",
   "--no-session","--thinking","off","-p","Responde OK"
  ],{env,stdio:["ignore","pipe","pipe"]});
- let outputBytes=0;
+ let outputBytes=0,stdout="";
  for(const channel of [child.stdout,child.stderr]){
-  channel.on("data",chunk=>{outputBytes+=chunk.length;if(outputBytes>85_000)child.kill("SIGKILL");});
+  channel.on("data",chunk=>{
+   outputBytes+=chunk.length;
+   if(outputBytes>85_000){child.kill("SIGKILL");return;}
+   if(channel===child.stdout)stdout+=chunk.toString("utf8");
+  });
  }
  const timer=setTimeout(()=>{timedOut=true;child.kill("SIGKILL");},45_000);
  let result;
@@ -85,6 +89,7 @@ try{
  assert.equal("max_completion_tokens" in captured,false,"El límite usa un campo incompatible");
  assert.equal("stream_options" in captured,false,"La compatibilidad NVIDIA no se aplicó");
  assert.equal(result.code,0,"Pi recibió respuesta simulada pero no terminó correctamente");
+ assert.match(stdout,/\bOK\b/u,"Pi no procesó la respuesta simulada");
  process.stdout.write(JSON.stringify({
   resultado:"SIMULACION_PI_CORRECTA",modelo,peticiones:requests,
   parametros:Object.keys(captured).sort(),nvidiaReal:false,globalFull:false
