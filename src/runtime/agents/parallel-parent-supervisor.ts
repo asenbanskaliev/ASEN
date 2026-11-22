@@ -247,9 +247,16 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   const child:TodoContext={sessionId:unit.childSessionId,projectId:unit.childProjectId};
   let expectedChildTodo:SourceTodoRow|undefined;
   try{
-  const link=(await input.sessionJournal.listSource(input.source)).find(l=>
-   l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId&&
-   l.childSessionId===unit.childSessionId&&same(l.childProjectId,unit.childProjectId));
+  const enlacesIniciales=(await input.sessionJournal.listSource(input.source)).filter(l=>
+   l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId);
+  const link=enlacesIniciales.length===1?enlacesIniciales[0]:undefined;
+  // Un enlace duplicado o alterado nunca debe heredar la autorización previa.
+  if(!link||link.childSessionId!==unit.childSessionId||
+     !same(link.childProjectId,unit.childProjectId)||
+     link.authority!=="none"||link.autoDispatch!==false||link.autoMerge!==false)
+   return nonAuthorizing("partial-needs-review",initial.batchId,started,
+    [unit.sourceTodoId+": El enlace Pi hijo cambió o está duplicado; revisar antes de ejecutar"]);
+  const enlaceAutorizado=JSON.stringify(link);
 
   const [rows,agents,links]=await Promise.all([
    input.loadTodos(child),input.loadAgents(child),input.loadTaskAgentLinks(child)
@@ -286,8 +293,11 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     sourceTask=currentBatch?.tasks.find(t=>t.taskId===unit.sourceTodoId);
    const linksNow=await input.sessionJournal.listSource(input.source);
    const owners=linksNow.filter(l=>l.batchId===unit.batchId&&
-    l.sourceTodoId===unit.sourceTodoId&&l.childSessionId===unit.childSessionId&&
-    same(l.childProjectId,unit.childProjectId));
+    l.sourceTodoId===unit.sourceTodoId);
+   // Comparar el enlace completo, incluidos solicitud, revisión, HEAD,
+   // sesión y ausencia de autoridad. No basta con coincidir en la ruta.
+   const enlaceIntacto=owners.length===1&&
+    JSON.stringify(owners[0])===enlaceAutorizado;
    const currentSource=(await input.loadTodos(input.source)).find(t=>t.taskId===unit.sourceTodoId);
    const claims=await input.claimJournal.listSource(input.source,linksNow);
    const childRows=await input.loadTodos(child),
@@ -307,7 +317,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     childTodo?.plan?.writerAuthorizationBasis!==currentSource.plan.writerAuthorizationBasis||
     sourceTask.writeSurfaces.length!==unit.writeSurfaces.length||
     sourceTask.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i])||
-    owners.length!==1||
+    !enlaceIntacto||
     claims.filter(claim=>claim.batchId===unit.batchId&&
      claim.sourceTodoId===unit.sourceTodoId&&
      claim.childSessionId===unit.childSessionId).length!==1||
