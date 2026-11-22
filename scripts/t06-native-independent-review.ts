@@ -74,6 +74,15 @@ export async function runT06NativeIndependentReviews(
    requireChildModelBeforePrompt:true,
    timeoutMs:180_000,maxOutputBytes:85_000,maxStreamBytes:512_000,
    onProcessStart:processId=>{pid=processId;attempts[index]!.processObserved=true;},
+   onNativeReviewEvent:event=>{
+    const previous=attempts[index]!.streamEvidence;
+    attempts[index]!.streamEvidence=Object.freeze({
+     assistantMessages:Math.min(32,previous.assistantMessages+(event.type==="assistant_end"?1:0)),
+     settledEvents:Math.min(32,previous.settledEvents+(event.type==="agent_settled"?1:0)),
+     textBlocks:Math.min(64,previous.textBlocks+(event.type==="assistant_end"?event.textBlocks:0)),
+     finalReason:event.type==="assistant_end"?event.stopReason:previous.finalReason
+    });
+   },
    onInvalidRequest:facts=>{attempts[index]!.rejectedParameter=facts.rejectedParameter;
     attempts[index]!.httpStatus=facts.httpStatus;}
   });
@@ -106,7 +115,7 @@ export async function runT06NativeIndependentReviews(
   ].join("\n");
   const result=await runner.run({id:taskId,role:"reviewer",repository:roots[index]!,
    isolationKey:sessionId,prompt,model:requestedModel!,thinking:"off"});
-  attempts[index]!.streamEvidence=observeT06ReviewStream(result.output);
+  // El evento Pi ya quedó observado antes de sustituir la salida de error.
   if(!result.ok){
    attempts[index]!.failureCategory=classifyT06ReviewerFailure(result.output);
    throw Error("T06: Pi no devolvió un resultado verificable");

@@ -88,3 +88,11 @@ test("T06 diferencia finales recortados, errores terminales y duplicados sin exp
  const confidential="T06 independent review was truncated NVIDIA_API_KEY=secreta";
  assert.equal(classifyT06ReviewReceiptError(new Error(confidential)), "pi-receipt-unclassified");
 });
+
+test("T06 registra eventos por el canal seguro antes del fallo de Pi",()=>{
+ const source=readFileSync(new URL("../scripts/t06-native-independent-review.ts",import.meta.url),"utf8");
+ assert.match(source,/onNativeReviewEvent:event=>/u);
+ assert.match(source,/assistantMessages:Math\.min\(32,previous\.assistantMessages/u);
+ assert.match(source,/finalReason:event\.type==="assistant_end"\?event\.stopReason/u);
+ assert.doesNotMatch(source,/observeT06ReviewStream\(result\.output\)/u);
+});

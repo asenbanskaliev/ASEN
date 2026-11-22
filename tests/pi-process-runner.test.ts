@@ -822,3 +822,35 @@ test("T06 rechaza one-shot en agente de lectura sin lanzar una operación Writer
  assert.match(result.output,/one-shot.*Worker/u);
 });
 
+
+test("T06 conserva eventos sanitizados aunque Pi reemplace la salida al fallar",async t=>{
+ const privateData="NVIDIA_API_KEY=clave-que-jamas-debe-guardarse";
+ const scenario=[
+  'let input="";process.stdin.on("data",chunk=>input+=chunk);',
+  'process.stdin.on("end",()=>{',
+  'const req=JSON.parse(input.trim());',
+  'console.log(JSON.stringify({type:"response",id:req.id,command:"prompt",success:true}));',
+  'console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"error",content:[{type:"text",text:'+JSON.stringify(privateData)+'}]}}));',
+  'console.log(JSON.stringify({type:"agent_settled"}));',
+  'process.exitCode=1;',
+  '});'
+ ].join("\n");
+ const {d,p}=await fixture(scenario);
+ t.after(()=>rm(d,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const safeEvents:Array<{type:string;stopReason?:string;textBlocks?:number}>=[];
+ const request={id:"t06-observacion-fallida",role:"reviewer" as const,prompt:"revisar",repository:d};
+ const failed=await runner(p,{noTools:true,timeoutMs:5_000,
+  onNativeReviewEvent:event=>safeEvents.push(event)}).run(request);
+ assert.equal(failed.ok,false);
+ assert.match(failed.output,/pi process exited with code 1/u);
+ assert.deepEqual(safeEvents,[
+  {type:"assistant_end",stopReason:"error",textBlocks:1},
+  {type:"agent_settled"}
+ ]);
+ assert.doesNotMatch(failed.output,/NVIDIA_API_KEY|clave-que-jamas/u);
+ assert.doesNotMatch(JSON.stringify(safeEvents),/NVIDIA_API_KEY|clave-que-jamas/u);
+ const outside:Array<unknown>=[];
+ await runner(p,{noTools:false,timeoutMs:5_000,
+  onNativeReviewEvent:event=>outside.push(event)}).run({...request,id:"t06-sin-restriccion-de-lectura"});
+ assert.deepEqual(outside,[],"No se anuncia un revisor sin modo noTools");
+});
