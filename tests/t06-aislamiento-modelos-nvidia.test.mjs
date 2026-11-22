@@ -21,7 +21,7 @@ test("T06 limita configuración NVIDIA a dos revisores, sin claves ni sustitucio
   assert.equal(entry.compat.supportsReasoningEffort,false);
  }
  const nuevo=file.providers.nvidia.modelOverrides["nvidia/nemotron-3-super-120b-a12b"];
- assert.equal("samplingParams" in nuevo,false);
+ assert.deepEqual(nuevo.samplingParams,{reasoning_effort:"none"});
  assert.equal("nvidia/nemotron-3.5-bolt-e4b" in file.providers.nvidia.modelOverrides,false);
  assert.equal("samplingParams" in file.providers.nvidia.modelOverrides["nvidia/nemotron-3.5-super-vl-120b-a12b"],false);
  assert.doesNotMatch(JSON.stringify(file),/nvapi|API_KEY|sk-/u);
