@@ -16,7 +16,13 @@ export function configuracionT06Nvidia(){
    compat:{supportsReasoningEffort:false,
     maxTokensField:"max_tokens",supportsUsageInStreaming:false}};
  }
- return {providers:{nvidia:{modelOverrides:overrides}}};
+ // Registrar explícitamente el modelo nuevo: el catálogo incluido en Pi
+ // puede ir por detrás del catálogo real NVIDIA. La API se verifica antes.
+ return {providers:{nvidia:{
+  models:[{id:"nvidia/nemotron-3-super-120b-a12b",
+   api:"openai-completions",reasoning:false,maxTokens:1200}],
+  modelOverrides:overrides
+ }}};
 }
 export function guardarCompatibilidadT06(dir){
  assert.ok(typeof dir==="string"&&isAbsolute(dir),"Directorio Pi no absoluto");
