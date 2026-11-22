@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-review-receipt.js";
+import {parseT06NativeReviewReceipt,observeT06ReviewStream} from "../src/runtime/agents/t06-native-review-receipt.js";
 
 const shaA="a".repeat(64),shaB="b".repeat(64);
 const sha={"t06-writer-a.mjs":shaA,"t06-writer-b.mjs":shaB};
@@ -116,4 +116,32 @@ test("T06 nunca acepta herramientas, razonamiento ilegible ni respuestas vacías
  ]){
   assert.throws(()=>parseT06NativeReviewReceipt(candidate(blocks),sha),/T06 independent/u);
  }
+});
+
+test("T06 separa la respuesta cortada, el error terminal y dos finales independientes",()=>{
+ const end=(reason:string)=>JSON.stringify({type:"message_end",message:{
+  role:"assistant",stopReason:reason,content:[{type:"text",text:JSON.stringify(good)}]
+ }});
+ assert.throws(()=>parseT06NativeReviewReceipt(end("length"),sha),/truncated/u);
+ assert.throws(()=>parseT06NativeReviewReceipt(end("error"),sha),/assistant error/u);
+ assert.throws(()=>parseT06NativeReviewReceipt(end("stop")+"\n"+end("stop"),sha),
+  /multiple completed/u);
+ assert.throws(()=>parseT06NativeReviewReceipt(JSON.stringify({type:"agent_settled"}),sha),
+  /no assistant message/u);
+});
+
+test("T06 cuenta solo eventos seguros, nunca texto de Pi ni secretos",()=>{
+ const secret="clave-proveedor-privada";
+ const streamValue=[
+  JSON.stringify({type:"message_end",message:{role:"assistant",
+   stopReason:"length",content:[{type:"thinking",thinking:secret},
+    {type:"text",text:secret}]}}),
+  JSON.stringify({type:"agent_settled",data:{secret}})
+ ].join("\n");
+ const seen=observeT06ReviewStream(streamValue);
+ assert.deepEqual(seen,{assistantMessages:1,settledEvents:1,textBlocks:1,
+  finalReason:"length"});
+ assert.equal(JSON.stringify(seen).includes(secret),false);
+ assert.deepEqual(observeT06ReviewStream("{texto-inválido"),{
+  assistantMessages:0,settledEvents:0,textBlocks:0,finalReason:"unknown"});
 });

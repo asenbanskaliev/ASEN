@@ -74,3 +74,17 @@ test("T06 solicita huellas SHA reales y no usa valores de ejemplo ambiguos",()=>
  assert.doesNotMatch(source,/'\{"verdict":"pass\|fail"/u);
  assert.match(source,/no significa aprobar su contenido/u);
 });
+
+test("T06 diferencia finales recortados, errores terminales y duplicados sin exponer texto",()=>{
+ const cases=[
+  ["T06 independent review was truncated","pi-receipt-truncated"],
+  ["T06 independent review ended with assistant error","pi-receipt-terminal-error"],
+  ["T06 independent review has multiple completed assistant verdicts","pi-receipt-multiple-verdicts"],
+  ["T06 independent review did not finish successfully","pi-receipt-unfinished"],
+  ["T06 independent review returned no assistant message","pi-receipt-missing-assistant"]
+ ] as const;
+ for(const [message,category] of cases)
+  assert.equal(classifyT06ReviewReceiptError(new Error(message)),category);
+ const confidential="T06 independent review was truncated NVIDIA_API_KEY=secreta";
+ assert.equal(classifyT06ReviewReceiptError(new Error(confidential)), "pi-receipt-unclassified");
+});

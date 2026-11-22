@@ -14,6 +14,39 @@ const safeText=(value:unknown,max=500):value is string=>
  value===value.trim()&&!/[\u0000-\u001f\u007f-\u009f]/u.test(value);
 const sha=/^[a-f0-9]{64}$/u;
 const expectedPaths=["t06-writer-a.mjs","t06-writer-b.mjs"] as const;
+/** Evidencia acotada de eventos Pi; jamás conserva el texto del proveedor. */
+export function observeT06ReviewStream(output:unknown):Readonly<{
+ assistantMessages:number;settledEvents:number;textBlocks:number;
+ finalReason:"stop"|"error"|"length"|"toolUse"|"unknown";
+}>{
+ let assistantMessages=0,settledEvents=0,textBlocks=0;
+ let finalReason:"stop"|"error"|"length"|"toolUse"|"unknown"="unknown";
+ const empty=()=>Object.freeze({assistantMessages:0,settledEvents:0,textBlocks:0,
+  finalReason:"unknown" as const});
+ if(typeof output!=="string"||output.length>512_000)return empty();
+ try{
+  for(const line of output.split(/\r?\n/u)){
+   if(!line.trim())continue;
+   const value:unknown=JSON.parse(line);
+   if(!value||typeof value!=="object"||Array.isArray(value))continue;
+   const record=value as {type?:unknown;message?:unknown};
+   if(record.type==="agent_settled")settledEvents++;
+   if(record.type!=="message_end"||!record.message||
+    typeof record.message!=="object"||Array.isArray(record.message))continue;
+   const message=record.message as {role?:unknown;stopReason?:unknown;content?:unknown};
+   if(message.role!=="assistant")continue;
+   assistantMessages++;
+   finalReason=["stop","error","length","toolUse"].includes(String(message.stopReason))?
+    message.stopReason as typeof finalReason:"unknown";
+   if(Array.isArray(message.content))
+    for(const block of message.content)
+     if(block&&typeof block==="object"&&!Array.isArray(block)&&
+      (block as {type?:unknown}).type==="text")textBlocks++;
+  }
+ }catch{return empty();}
+ return Object.freeze({assistantMessages:Math.min(assistantMessages,32),
+  settledEvents:Math.min(settledEvents,32),textBlocks:Math.min(textBlocks,64),finalReason});
+}
 export function parseT06NativeReviewReceipt(
  output:unknown,expectedSha:Readonly<Record<string,string>>
 ):T06NativeReviewReceipt{
@@ -31,7 +64,7 @@ export function parseT06NativeReviewReceipt(
   "type" in row&&row.type==="message_end"&&"message" in row&&
   typeof row.message==="object"&&row.message!==null&&
   "role" in row.message&&row.message.role==="assistant");
- if(messages.length===0)throw new Error("T06 independent review requires exactly one final assistant verdict");
+ if(messages.length===0)throw new Error("T06 independent review returned no assistant message");
  // Pi puede producir un message_end fallido seguido de otro correcto si su
  // mecanismo de recuperación repite el intento. Los mensajes anteriores
  // SOLO se ignoran si stopReason confirma explícitamente "error".
@@ -43,16 +76,20 @@ export function parseT06NativeReviewReceipt(
    "stopReason" in assistant&&assistant.stopReason==="error";
  };
  if(prior.some(row=>!isFailedAttempt(row)))
-  throw new Error("T06 independent review requires exactly one final assistant verdict");
+  throw new Error("T06 independent review has multiple completed assistant verdicts");
  const finalEntry=messages.at(-1);
  if(!finalEntry||typeof finalEntry!=="object"||!("message" in finalEntry))
   throw new Error("T06 independent Pi review returned no assistant message");
  const message=finalEntry.message;
  if(!message||typeof message!=="object")
   throw new Error("T06 independent Pi review returned no assistant message");
+ if("stopReason" in message&&message.stopReason==="length")
+  throw new Error("T06 independent review was truncated");
+ if("stopReason" in message&&message.stopReason==="error")
+  throw new Error("T06 independent review ended with assistant error");
  if("stopReason" in message&&message.stopReason!=="stop"||
   prior.length>0&&(!("stopReason" in message)||message.stopReason!=="stop"))
-  throw new Error("T06 independent review requires exactly one final assistant verdict");
+  throw new Error("T06 independent review did not finish successfully");
  if(!("content" in message)||!Array.isArray(message.content))
   throw new Error("T06 independent Pi review returned no assistant message");
  const contents=message.content;

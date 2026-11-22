@@ -6,7 +6,7 @@ import {join} from "node:path";
 import {createInterface} from "node:readline/promises";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
 import {autorizarT06RevisionAutomatica} from "../src/runtime/agents/t06-auto-review-authority.js";
-import {parseT06NativeReviewReceipt} from "../src/runtime/agents/t06-native-review-receipt.js";
+import {parseT06NativeReviewReceipt,observeT06ReviewStream} from "../src/runtime/agents/t06-native-review-receipt.js";
 import {requireLiveT06GithubReviewerApprovals} from "../src/runtime/agents/t06-github-reviewer-approvals.js";
 import {requireLiveT06ReviewReplay} from "../src/runtime/agents/t06-review-replay.js";
 import {classifyT06ReviewerFailure,classifyT06ReviewReceiptError,type T06ReviewerFailureCategory} from "../src/runtime/agents/t06-review-failure-diagnostic.js";
@@ -61,8 +61,8 @@ export async function runT06NativeIndependentReviews(
  // si Pi llegó a arrancar. Conservar SOLO categorías y hechos observados.
  if(automaticReview&&!autorizarT06RevisionAutomatica(process.env))
   throw Error("T06: perdió la autorización de revisión antes del proveedor");
- const attempts:{processObserved:boolean;observedModel:string;failureCategory:T06ReviewerFailureCategory;rejectedParameter:string;httpStatus:number|null}[]=
-  requested.map(()=>({processObserved:false,observedModel:"unknown",failureCategory:"not-classified",rejectedParameter:"unknown",httpStatus:null}));
+ const attempts:{processObserved:boolean;observedModel:string;failureCategory:T06ReviewerFailureCategory;rejectedParameter:string;httpStatus:number|null;streamEvidence:ReturnType<typeof observeT06ReviewStream>}[]=
+  requested.map(()=>({processObserved:false,observedModel:"unknown",failureCategory:"not-classified",rejectedParameter:"unknown",httpStatus:null,streamEvidence:observeT06ReviewStream("")}));
  const results=await Promise.allSettled(requested.map(async(requestedModel,index)=>{
   const sessionId="t06-independent-"+randomUUID();
   const taskId="t06-reviewer-"+randomUUID();
@@ -106,6 +106,7 @@ export async function runT06NativeIndependentReviews(
   ].join("\n");
   const result=await runner.run({id:taskId,role:"reviewer",repository:roots[index]!,
    isolationKey:sessionId,prompt,model:requestedModel!,thinking:"off"});
+  attempts[index]!.streamEvidence=observeT06ReviewStream(result.output);
   if(!result.ok){
    attempts[index]!.failureCategory=classifyT06ReviewerFailure(result.output);
    throw Error("T06: Pi no devolvió un resultado verificable");
@@ -138,6 +139,7 @@ export async function runT06NativeIndependentReviews(
   piProcessObserved:attempts[i]!.processObserved,
   failureCategory:attempts[i]!.failureCategory,
   rejectedParameter:attempts[i]!.rejectedParameter,httpStatus:attempts[i]!.httpStatus,
+  streamEvidence:attempts[i]!.streamEvidence,
   verdict:"unknown",findingCount:null,
   writerAuthority:false as const,acceptance:"not-accepted" as const
  });
