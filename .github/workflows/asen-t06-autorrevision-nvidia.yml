@@ -1,9 +1,9 @@
 name: T06 dos revisores NVIDIA reales sin aprobaciones de entorno
-# Segundo disparo autorizado 2026-11-22: solo Bolt; Super VL validado desde run 45048377977.
+# Sustitución de Bolt por Nemotron 3 Super: validar primero en local, sin llamadas de pago.
 # Disparo único autorizado 2026-11-22: solo revisión real T06, sin repetir Writers.
 # Única autorización por cambio exacto del propietario; nunca en PR.
 # Segunda prueba: modelos verificados con GET oficial al catálogo NVIDIA.
-# Siguiente prueba: Bolt usa el ID stg/ de la pasarela; Super VL PASS se valida y reutiliza.
+# El modelo nuevo usa su ID oficial sin alias stg/. Se reutiliza Super VL con el informe verificado.
 # Nunca repetir Super VL ni Writers si los informes previos auténticos coinciden.
 # Ajuste de compatibilidad: Pi 1.5.2 y razonamiento desactivado en ambos jueces.
 on:
@@ -37,7 +37,7 @@ jobs:
       ASEN_T06_SOURCE_SHA: 5bd752374f2db630a9d2ab0887e1025134a4e13f
       ASEN_T06_SOURCE_RUN_ID: "44792916571"
       ASEN_T06_BEHAVIOR_RUN_ID: "44794317489"
-      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3.5-bolt-e4b
+      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3-super-120b-a12b
       ASEN_T06_REVIEW_MODEL_B: nvidia/nemotron-3.5-super-vl-120b-a12b
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -70,7 +70,7 @@ jobs:
       ASEN_T06_SOURCE_SHA: 5bd752374f2db630a9d2ab0887e1025134a4e13f
       ASEN_T06_SOURCE_RUN_ID: "44792916571"
       ASEN_T06_BEHAVIOR_RUN_ID: "44794317489"
-      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3.5-bolt-e4b
+      ASEN_T06_REVIEW_MODEL_A: nvidia/nemotron-3-super-120b-a12b
       ASEN_T06_REVIEW_MODEL_B: nvidia/nemotron-3.5-super-vl-120b-a12b
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "24"
-      - name: Instalar Pi 1.2 y bloquear reintentos antes de obtener credenciales
+      - name: Instalar Pi 1.5.2 y bloquear reintentos antes de obtener credenciales
         shell: bash
         env:
           PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-revision-pi
@@ -93,6 +93,11 @@ jobs:
           mkdir -p "$PI_CODING_AGENT_DIR"
           node scripts/t12-pi-retry-settings.mjs
           node scripts/t06-aislamiento-modelos-nvidia.mjs
+      - name: Verificar petición de Pi contra servidor local, sin NVIDIA
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 75s node scripts/t06-pi-peticion-simulada.mjs
       - name: Recuperar solo las fuentes del ensayo real anterior
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v7.0.0
         with:
@@ -114,7 +119,7 @@ jobs:
           name: asen-t06-dos-revisores-auto-540aa036fae5d60776645b83be806be8d821d02b-45048377977
           path: ${{ runner.temp }}/asen-t06-previo
           github-token: ${{ github.token }}
-      - name: Consultar catálogo y solicitar dos dictámenes reales, sin herramientas
+      - name: Consultar catálogo y pedir un dictamen nuevo sin herramientas
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
