@@ -66,7 +66,7 @@ El informe aporta una dirección acertada —delegar solo cuando aporta valor—
 3. El almacén Todo y el despachador actuales son autoridad única. El preparador genera varias entradas con identidad estable y aristas; el supervisor obtiene de ese almacén unidades preparadas, sin fabricar un segundo plan ni reclamaciones duplicadas.
 4. El planificador puede **proponer** rutas de escritura y preparar carpetas Git; no puede otorgar autoridad. El host revalida sesión, proyecto, SHA, árbol, ámbito, modelo, dependencia y confirmación antes de lanzar. Salir ante cambio de Git sin borrar trabajo ajeno.
 5. Paralelismo inicial **máximo dos** Writes si están autorizados e independientes; ninguna superposición de rutas, ni directorios compartidos sin control. Los worktrees separan escrituras físicas, pero **no** prueban independencia semántica ni autorizan integración automática.
-6. El permiso de lote es objetivo de comodidad, no hecho logrado: un objeto validado por el host puede conceder autorizaciones hijas **distintas, cerradas, de un solo uso**, ligadas a los mismos hechos. Si Pi no ofrece mecanismo comprobable, conservar aprobación individual. **Nunca copiar el token del padre, nunca heredar YOLO a un hijo, nunca usar texto como firma**.
+6. El permiso de lote es objetivo de comodidad, no hecho logrado: un objeto validado por el host puede conceder autorizaciones hijas **distintas, cerradas, de un solo uso**, ligadas a los mismos hechos. Si Pi no ofrece mecanismo comprobable, conservar aprobación individual. **Nunca copiar el token del padre, nunca heredar YOLO a un hijo, nunca usar texto como firma**. La denegación o cancelación bloquea únicamente nuevas escrituras de esa unidad; no borra ni invalida cambios ya autorizados de otras unidades independientes. Si hay dependencia o riesgo compartido, pausar las demás para inspección sin revertir trabajo ajeno.
 7. La ejecución por defecto no crea commits finales, push, merge, despliegue ni aprobación de revisión. Si el usuario autoriza estos pasos en otro contrato, esa decisión sigue siendo separada.
 
 ### 3.3 Resultados, revisión y contexto (puntos 09–11)
@@ -101,11 +101,11 @@ Estados diferenciados: **CÓDIGO**, **PRUEBA UNITARIA**, **EJECUTOR SIMULADO**, 
 | Consulta breve o errata con riesgos controlados | Ruta directa, cero hijos, pruebas del cambio si corresponde |
 | Cambio claro que toca varios archivos | No delegar solo por número de archivos |
 | Cuarta lectura relevante o más de 40 KiB | Solo una recomendación/Explorer si aporta valor, sin escritor ni doble ejecución |
-| 2 unidades completas sin dependencia + 1 dependiente | Dos Workers con permisos y solape real, tercera espera |
-| Dos tareas con archivo/ámbito solapado | No admitir lanzamiento concurrente; mantener una cola segura |
+| 2 unidades completas independientes, cada una de trabajo suficiente, con modelos/capacidad y permisos exactos disponibles, beneficio razonable frente al coste y 1 dependiente | Dos Workers autorizados pueden solaparse en ámbitos separados; la tercera espera a sus dependencias |
+| 2 unidades independientes pero pequeñas o sin beneficio suficiente de delegación | Resolver directamente o en serie; no lanzar dos Workers solo por independencia |\n| Dos tareas con archivo/ámbito solapado | No admitir lanzamiento concurrente; mantener una cola segura |
 | Perfil organic → full en mitad del turno | Modo anterior hasta nuevo turno, no relajación de escritura pendiente |
 | Full-delegation con herramienta write/edit/bash | Bloqueo del padre; hijo requiere ámbito/SHA y aprobación propios |
-| Denegación, falta de interfaz humana, cancelación | Cero escritura y ninguna repetición de consentimiento por temporizador |
+| Denegación, falta de interfaz humana o cancelación de una unidad | La unidad afectada no inicia nuevas escrituras ni repite el consentimiento; otras unidades ya autorizadas mantienen sus cambios y solo continúan si son independientes y seguras |
 | Permiso de lote sin soporte Pi verificable | No inventar concesiones: seguir confirmación individual o BLOCKED |
 | Git HEAD, tarea, proyecto o sesión modificados | No despachar Writer ni reutilizar autorización del contexto anterior |
 | Dos avisos iguales, padre ocupado o reinicio | Reconocimiento durable una sola vez; mensaje íntegro solo al destino correcto |
