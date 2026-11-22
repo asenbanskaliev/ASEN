@@ -52,7 +52,7 @@ test("T06 clasifica fallos de recibo por mensajes internos seguros, no por salid
  const cases=[
   ["T06 independent reviewer did not return strict JSON","pi-receipt-invalid-json"],
   ["T06 independent Pi review stream is invalid","pi-receipt-invalid-json"],
-  ["T06 independent review requires exactly one final assistant verdict","pi-receipt-missing-assistant"],
+  ["T06 independent review requires exactly one final assistant verdict","pi-receipt-unfinished"],
   ["T06 independent reviewer inspected wrong files or SHA","pi-receipt-wrong-files"],
   ["T06 independent reviewer returned malformed verdict","pi-receipt-invalid-schema"],
   ["T06 independent reviewer returned unsupported content","pi-receipt-unsupported-content"]
@@ -73,4 +73,26 @@ test("T06 solicita huellas SHA reales y no usa valores de ejemplo ambiguos",()=>
  assert.doesNotMatch(source,/"sha256":"HASH"/u);
  assert.doesNotMatch(source,/'\{"verdict":"pass\|fail"/u);
  assert.match(source,/no significa aprobar su contenido/u);
+});
+
+test("T06 diferencia finales recortados, errores terminales y duplicados sin exponer texto",()=>{
+ const cases=[
+  ["T06 independent review was truncated","pi-receipt-truncated"],
+  ["T06 independent review ended with assistant error","pi-receipt-terminal-error"],
+  ["T06 independent review has multiple completed assistant verdicts","pi-receipt-multiple-verdicts"],
+  ["T06 independent review did not finish successfully","pi-receipt-unfinished"],
+  ["T06 independent Pi review returned no assistant message","pi-receipt-missing-assistant"]
+ ] as const;
+ for(const [message,category] of cases)
+  assert.equal(classifyT06ReviewReceiptError(new Error(message)),category);
+ const confidential="T06 independent review was truncated NVIDIA_API_KEY=secreta";
+ assert.equal(classifyT06ReviewReceiptError(new Error(confidential)), "pi-receipt-unclassified");
+});
+
+test("T06 registra eventos por el canal seguro antes del fallo de Pi",()=>{
+ const source=readFileSync(new URL("../scripts/t06-native-independent-review.ts",import.meta.url),"utf8");
+ assert.match(source,/onNativeReviewEvent:event=>/u);
+ assert.match(source,/assistantMessages:Math\.min\(32,previous\.assistantMessages/u);
+ assert.match(source,/finalReason:event\.type==="assistant_end"\?event\.stopReason/u);
+ assert.doesNotMatch(source,/observeT06ReviewStream\(result\.output\)/u);
 });

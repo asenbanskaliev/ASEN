@@ -12,7 +12,9 @@ export type T06ReviewerFailureCategory=
  |"pi-provider-unavailable"|"pi-provider-invalid-request"|"pi-provider-other"
  |"pi-receipt-invalid-json"|"pi-receipt-missing-assistant"
  |"pi-receipt-wrong-files"|"pi-receipt-invalid-schema"
- |"pi-receipt-unsupported-content"|"pi-receipt-unclassified";
+ |"pi-receipt-unsupported-content"|"pi-receipt-truncated"
+ |"pi-receipt-multiple-verdicts"|"pi-receipt-terminal-error"
+ |"pi-receipt-unfinished"|"pi-receipt-unclassified";
 export function classifyT06ReviewerFailure(output:unknown):T06ReviewerFailureCategory{
  if(typeof output!=="string")return "pi-unclassified";
  // Errores terminales ya clasificados por el runner; nunca se copia el texto.
@@ -55,7 +57,11 @@ export function classifyT06ReviewReceiptError(error:unknown):T06ReviewerFailureC
  const fixed:Record<string,T06ReviewerFailureCategory>={
   "T06 independent reviewer did not return strict JSON":"pi-receipt-invalid-json",
   "T06 independent Pi review stream is invalid":"pi-receipt-invalid-json",
-  "T06 independent review requires exactly one final assistant verdict":"pi-receipt-missing-assistant",
+  "T06 independent review requires exactly one final assistant verdict":"pi-receipt-unfinished",
+  "T06 independent review has multiple completed assistant verdicts":"pi-receipt-multiple-verdicts",
+  "T06 independent review was truncated":"pi-receipt-truncated",
+  "T06 independent review ended with assistant error":"pi-receipt-terminal-error",
+  "T06 independent review did not finish successfully":"pi-receipt-unfinished",
   "T06 independent Pi review returned no assistant message":"pi-receipt-missing-assistant",
   "T06 independent reviewer inspected wrong files or SHA":"pi-receipt-wrong-files",
   "T06 independent reviewer omitted a candidate file":"pi-receipt-wrong-files",

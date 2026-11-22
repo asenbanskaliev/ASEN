@@ -15,6 +15,10 @@ import {classifyAssistantError,getProcessModelFallbackCooldown,pickFallbackModel
 import {applyToolOverlay,loadToolOverlays} from "./tool-overlay.js";
 import {summarizePiInvalidRequest,type PiInvalidRequestFacts} from "../runtime/agents/pi-provider-request-diagnostic.js";
 
+/** Eventos Pi de revisión sin texto, archivos, prompts ni credenciales. */
+export type PiNativeReviewEvent=
+ |Readonly<{type:"assistant_end";stopReason:"stop"|"error"|"length"|"toolUse"|"unknown";textBlocks:number}>
+ |Readonly<{type:"agent_settled"}>;
 export interface PiProcessOptions{
  command?:string;
  rpcArgs?:string[];
@@ -55,6 +59,8 @@ export interface PiProcessOptions{
  /** Optional bounded native streaming witness. Never supplies model text or
   * authority; cancellation from a listener uses the existing AbortSignal. */
  onAssistantTextDelta?:(event:Readonly<{pid:number;requestId:string;observedCharacters:number}>)=>void;
+ /** Observador sin autoridad: recibe eventos sanitizados antes de terminar Pi. */
+ onNativeReviewEvent?:(event:PiNativeReviewEvent)=>void;
  /** Emitted only after this child accepts a configured model switch. */
  onModelFallback?:AgentFallbackListener;
 }
@@ -507,6 +513,32 @@ export class PiProcessRunner implements AgentRunner{
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
      const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
+     // La salida final de Pi puede reemplazarse por un error. Conservar antes
+     // SOLO hechos enumerados y contadores; jamás el mensaje ni su contenido.
+     if(policyLoaded&&this.options.noTools&&this.options.onNativeReviewEvent){
+      if(type==="agent_settled"){
+       try{this.options.onNativeReviewEvent(Object.freeze({type:"agent_settled"}));}
+       catch{/* Observadores no pueden alterar la ejecución. */}
+      }else if(type==="message_end"){
+       const message=(record as {message?:unknown}).message;
+       if(message&&typeof message==="object"&&!Array.isArray(message)){
+        const assistant=message as {role?:unknown;stopReason?:unknown;content?:unknown};
+        if(assistant.role==="assistant"){
+         const reason=assistant.stopReason;
+         const stopReason=reason==="stop"||reason==="error"||reason==="length"||reason==="toolUse"?
+          reason:"unknown";
+         let textBlocks=0;
+         if(Array.isArray(assistant.content))for(const block of assistant.content){
+          if(block&&typeof block==="object"&&!Array.isArray(block)&&
+           (block as {type?:unknown}).type==="text"&&++textBlocks>=64)break;
+         }
+         try{this.options.onNativeReviewEvent(
+          Object.freeze({type:"assistant_end",stopReason,textBlocks}));}
+         catch{/* Los observadores tampoco conceden permisos. */}
+        }
+       }
+      }
+     }
      if(type==="response"&&typeof response.id==="string"){
       const pending=pendingRpc.get(response.id);if(pending){
        if(response.id===continuationPromptId)continuationAcked=response.success===true;
