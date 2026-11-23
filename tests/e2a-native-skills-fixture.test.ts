@@ -35,3 +35,20 @@ test("E2A: Git conserva el espacio inicial de estado antes de extraer el nombre"
  assert.deepEqual(changed,["a.txt"]);
  assert.notDeepEqual(output.trim().split(/\r?\n/u).filter(Boolean).map(row=>row.slice(3)),["a.txt"]);
 });
+
+test("E2A: la prueba de gasto se limita a un lanzamiento, sin aprobaciones de entorno",()=>{
+ const workflow=readFileSync(".github/workflows/asen-e2a-nvidia-dos-writers.yml","utf8");
+ const trial=readFileSync("scripts/e2a-nvidia-dual-writer-trial.ts","utf8");
+ assert.match(workflow,/github\.actor == 'asenbanskaliev'/u);
+ assert.match(workflow,/github\.run_attempt == 1/u);
+ assert.match(workflow,/github\.event\.head_commit\.message == 'ci\(asen\): autorizar E2A controlado sin aprobaciones 20261123'/u);
+ assert.match(workflow,/^permissions:\s*\n  contents: read\n  actions: read/mu);
+ assert.match(workflow,/GET.*actions\/runs|api\.github\.com\/repos\/.*actions\/runs/u);
+ assert.match(workflow,/node scripts\/t12-pi-retry-settings\.mjs/u);
+ assert.doesNotMatch(workflow,/environment:|workflow_dispatch:|\.\/\.github\/workflows\/t06-github-approved-writers/u);
+ assert.match(trial,/createT06ReadOnlyGitFixture\(/u);
+ assert.match(trial,/oneShotWritePath:path/u);
+ assert.match(trial,/exactWriteReceipt:\{path,fileSha256:hash\(content\)\}/u);
+ assert.match(trial,/autoMerge:false,globalFull:false/u);
+ assert.match(trial,/const contents=paths\.map\(\(_,i\)=>"ASEN-E2A-"/u);
+});
