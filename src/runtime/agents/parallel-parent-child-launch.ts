@@ -11,6 +11,7 @@ import {preparePrivateFile} from "../../io/private-file.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import {assertPreparedParallelWorktree,type ParallelWorktreeAllocation} from "./parallel-worktrees.js";
 import type {ParallelChildSessionJournal} from "./parallel-todo-session-links.js";
+import type {ParallelTodoWorktreeJournal} from "./parallel-todo-journal.js";
 import type {TodoContext} from "../lifecycle/todo-store.js";
 
 const schema="asen.parallel-child-opening/v1" as const;
@@ -103,7 +104,7 @@ export async function openVerifiedPiChildSessions(input:{
   input.allocations.length<2||input.allocations.length>4)
   throw new Error("Un lote Pi necesita identidad y 2-4 árboles exactos");
  await host.validateParent();
- const owners=[];
+ const owners:Array<NonNullable<Awaited<ReturnType<ParallelTodoWorktreeJournal["findPreparedWorktree"]>>>>=[];
  for(const allocation of input.allocations){
   assertPreparedParallelWorktree(allocation);
   const owner=await input.sessions.sourceJournal.findPreparedWorktree(allocation.root);
