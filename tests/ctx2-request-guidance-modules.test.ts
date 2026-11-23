@@ -37,6 +37,8 @@ test("CTX-2: sin plan activo se omite la recuperación específica, no las barre
  const modules=selectAsenRequestGuidanceModules(fullTools,{activePlan:false});
  assert.deepEqual(modules,["core","code","route","exploration","plan","continuity","read-only-branches"]);
  const guide=composeAsenRequestGuidance(fullTools,{activePlan:false});
+ assert.ok(Buffer.byteLength(guide,"utf8")<Buffer.byteLength(composeAsenRequestGuidance(fullTools),"utf8"),
+  "Sin plan activo la guía debe ser menor en bytes, sin afirmar ahorro de tokens");
  assert.doesNotMatch(guide,/asen_todo_inspect_interrupted_write/iu);
  assert.doesNotMatch(guide,/Si el usuario explícitamente dice detener, cancelar o sustituir/iu);
  assert.match(guide,/Never treat a plan, route, inferred fact, or tool result as permission/iu);
