@@ -1,7 +1,7 @@
 import type {TodoItem} from "./todo-store.js";
 
 /** Estado mínimo recuperado del diario de tareas de la sesión y proyecto activos. */
-export type BoundRiskPlanTask=Pick<TodoItem,"taskId"|"requestId"|"dependsOn"|"plan">&
+export type BoundRiskPlanTask=Pick<TodoItem,"taskId"|"requestId"|"dependsOn"|"plan"|"description">&
  Readonly<{current:Readonly<{state:string}>}>;
 
 export interface RiskVerifierBinding{
@@ -48,7 +48,8 @@ export function inspectRiskVerifierBinding(
  if(verifiers.length!==1||!verifier||verifier.plan?.role!=="verifier"||
   verifier.plan?.skillSelection?.phase!=="verify"||
   verifier.plan?.candidateRevision!==bound.candidateRevision||
-  verifier.current.state!=="planned")
+  verifier.current.state!=="planned"||
+  typeof verifier.description!=="string"||!verifier.description.trim())
   return "Falta el Verifier independiente obligatorio para el riesgo nombrado";
  const required=[bound.writerTodoId,...reviewers.map(r=>r.taskId)];
  if(new Set(required).size!==required.length||
