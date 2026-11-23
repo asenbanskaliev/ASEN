@@ -1,0 +1,60 @@
+name: E2A historial verificable sin proveedores
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/workflows/asen-e2a-historial-sin-modelos.yml
+      - .github/workflows/asen-e2a-nvidia-dos-writers.yml
+      - scripts/e2a-nvidia-dual-writer-trial.ts
+      - tests/e2a-native-skills-fixture.test.ts
+permissions:
+  contents: read
+  actions: read
+jobs:
+  auditar:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event.pull_request.number == 96 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/e2a-nvidia-dos-writers-20261123'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Comprobar historial E2A sin secretos ni proveedores
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ASEN_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          const repo=process.env.GITHUB_REPOSITORY;
+          const head=process.env.ASEN_HEAD_SHA;
+          if(repo!=="asenbanskaliev/ASEN"||!(/^[0-9a-f]{40}$/u).test(head))
+            throw Error("Identidad del candidato inválida");
+          const url="https://api.github.com/repos/"+repo+
+            "/actions/runs?branch=feat%2Fe2a-nvidia-dos-writers-20261123&event=push&per_page=100";
+          const response=await fetch(url,{headers:{
+            Accept:"application/vnd.github+json",
+            Authorization:"Bearer "+process.env.GITHUB_TOKEN,
+            "X-GitHub-Api-Version":"2022-11-28",
+            "User-Agent":"ASEN-E2A-historial-solo-lectura"
+          },signal:AbortSignal.timeout(15000)});
+          if(!response.ok)throw Error("Historial GitHub no disponible: "+response.status);
+          const data=await response.json();
+          if(!Array.isArray(data.workflow_runs)||!Number.isInteger(data.total_count)||data.total_count>100)
+            throw Error("Historial incompleto: no afirmar uso único");
+          const trials=data.workflow_runs.filter(run=>
+            run.name==="E2A NVIDIA dos escritores Pi, ensayo único"&&
+            run.event==="push"&&run.head_branch==="feat/e2a-nvidia-dos-writers-20261123");
+          const authorized=trials.filter(run=>
+            run.head_commit?.message==="ci(asen): autorizar E2A controlado sin aprobaciones 20261123");
+          const report={candidateSha:head,totalTrials:trials.length,
+            authorizedAttempts:authorized.length,providerCostVerified:false,
+            trialAccepted:false,globalFull:false,
+            executions:trials.slice(0,20).map(run=>({
+              id:run.id,sha:run.head_sha,status:run.status,conclusion:run.conclusion,
+              authorizedMessage:authorized.some(item=>item.id===run.id)
+            }))};
+          console.log(JSON.stringify(report,null,2));
+          NODE
