@@ -152,7 +152,15 @@ test("E3: no autorizar Writer con Verifier sin instrucción",()=>{
  const verifier=rows.find(row=>row.plan?.role==="verifier");
  assert.ok(verifier);
  for(const description of [undefined,"","   "]){
-  const altered=rows.map(row=>row===verifier?{...row,description}:row);
+  const altered=rows.map(row=>{
+   if(row!==verifier)return row;
+   if(description===undefined){
+    const withoutDescription={...row};
+    delete withoutDescription.description;
+    return withoutDescription;
+   }
+   return {...row,description};
+  });
   assert.match(inspectRiskVerifierBinding(altered,scope)??"",
    /Verifier independiente obligatorio/u);
  }
