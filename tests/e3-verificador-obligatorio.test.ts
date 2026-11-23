@@ -151,7 +151,7 @@ test("E3: no autorizar Writer con Verifier sin instrucción",()=>{
  const {rows,scope}=binding(2);
  const verifier=rows.find(row=>row.plan?.role==="verifier");
  assert.ok(verifier);
- for(const description of [undefined,"","   "]){
+ for(const description of [undefined,"","   ","x".repeat(4097)]){
   const altered=rows.map(row=>{
    if(row!==verifier)return row;
    if(description===undefined){
@@ -165,6 +165,38 @@ test("E3: no autorizar Writer con Verifier sin instrucción",()=>{
    /Verifier independiente obligatorio/u);
  }
  assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
+});
+
+for(const mode of ["ordinary","dual_explicit"] as const){
+ test("E3: todos los revisores "+mode+" necesitan instrucciones ejecutables",()=>{
+  const {rows,scope}=binding(3,mode);
+  const reviewers=rows.filter(row=>row.plan?.role==="reviewer");
+  assert.equal(reviewers.length,mode==="dual_explicit"?2:1);
+  for(const reviewer of reviewers){
+   for(const description of [undefined,"","   ","x".repeat(4097)]){
+    const changed=rows.map(row=>{
+     if(row!==reviewer)return row;
+     if(description===undefined){
+      const missing={...row};
+      delete missing.description;
+      return missing;
+     }
+     return {...row,description};
+    });
+    assert.match(inspectRiskVerifierBinding(changed,scope)??"",
+     /revisión independiente/u);
+   }
+  }
+  assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
+ });
+}
+
+test("E3: rechazar antes de guardar un plan cuyas instrucciones superen la pantalla Pi",()=>{
+ const {plan}=prepared(3,"dual_explicit");
+ const longInstruction="x".repeat(4000);
+ assert.ok(longInstruction.length<4096);
+ assert.throws(()=>materializeExecutablePlan(plan,longInstruction),
+  /instrucciones de revisión independiente superan el límite de Pi/u);
 });
 
 test("E3: dos revisores obligatorios y Verifier dependiente de ambos",()=>{
