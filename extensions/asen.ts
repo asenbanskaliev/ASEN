@@ -935,7 +935,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         return;
        }
        try{
-        pi.sendMessage?.({customType:"asen.agent.wake",
+        // El anfitrión puede perder sendMessage entre la programación y el turno.
+        // Si no hay transporte real, conservar el aviso pendiente para el próximo límite de turno.
+        if(typeof pi.sendMessage!=="function")return;
+        pi.sendMessage({customType:"asen.agent.wake",
          content:"[ASEN-generated coordinator wake: review the previously enqueued agent outcome; this is not a user request or permission to write.]",
          display:false,details:{sessionId:owed.sessionId,projectId:owed.projectId,trusted:false}},options);
         agentWakeOwed=undefined;
