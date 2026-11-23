@@ -45,7 +45,7 @@ export type ResultadoInicioPi=Readonly<{
  aceptado:false;
 }>;
 function resultado(estado:ResultadoInicioPi["estado"],recibos:ReciboInicioPi[],motivo?:string):ResultadoInicioPi{
- return Object.freeze({estado,recibos:Object.freeze([...recibos]),motivo,
+ return Object.freeze({estado,recibos:Object.freeze([...recibos]),...(motivo===undefined?{}:{motivo}),
   concedePermisos:false as const,reintentoAutomatico:false as const,aceptado:false as const});
 }
 function valido(h:SolicitudHijoPi):boolean{
