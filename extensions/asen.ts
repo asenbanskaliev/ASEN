@@ -1133,7 +1133,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{await flushPendingAgentNotices?.(ctx);}
    catch{try{ctx.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}catch (error) { void error; }}
    const pending=agentWakeOwed,owner=agentDeliveryContext,active=agentDeliveryIdentity;
-   if(settled&&pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId)
+   // Si el transporte volvió durante una compactación o fin de turno y el
+   // padre está libre, recuperar únicamente el despertar pendiente (no el resultado).
+   if(pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId&&
+      (settled||agentTerminalWakeOptions(owner,pending,agentParentRunActive)!==undefined))
     scheduleAgentWakeAtBoundary?.();
   };
   pi.on?.("agent_settled",async(event,ctx)=>{
