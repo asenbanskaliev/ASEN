@@ -22,7 +22,7 @@ jobs:
       github.event_name == 'push' &&
       github.actor == 'asenbanskaliev' &&
       github.run_attempt == 1 &&
-      github.event.head_commit.message == 'ci(asen): ejecutar Writer NVIDIA real 20261123'
+      github.event.head_commit.message == 'ci(asen): ensayo final Writers y recuperación NVIDIA 20261123'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     env:
@@ -34,7 +34,7 @@ jobs:
           ASEN_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
-          test "$ASEN_COMMIT_MESSAGE" = "ci(asen): ejecutar Writer NVIDIA real 20261123"
+          test "$ASEN_COMMIT_MESSAGE" = "ci(asen): ensayo final Writers y recuperación NVIDIA 20261123"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
@@ -83,7 +83,7 @@ jobs:
       github.event_name == 'push' &&
       github.actor == 'asenbanskaliev' &&
       github.run_attempt == 1 &&
-      github.event.head_commit.message == 'ci(asen): repetir recuperación NVIDIA tras confirmación 20261123'
+      github.event.head_commit.message == 'ci(asen): ensayo final Writers y recuperación NVIDIA 20261123'
     runs-on: ubuntu-24.04
     timeout-minutes: 28
     env:
@@ -95,7 +95,7 @@ jobs:
           ASEN_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
-          test "$ASEN_COMMIT_MESSAGE" = "ci(asen): repetir recuperación NVIDIA tras confirmación 20261123"
+          test "$ASEN_COMMIT_MESSAGE" = "ci(asen): ensayo final Writers y recuperación NVIDIA 20261123"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
