@@ -956,14 +956,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     scheduleAgentWakeAtBoundary=()=>{const owed=agentWakeOwed,owner=agentDeliveryContext;
      if(owed&&owner)requestAgentWake(owner,owed);
     };
+    // El reintento diferido nunca puede volver a programarse a sí mismo.
+    // Otro límite real del ciclo de vida podrá intentar entregar el aviso pendiente.
+    let heldNoticeRetryInProgress=false;
     const retryHeldNoticeAtCommandBoundary=(context:CommandContext):void=>{
-     // Un comando de Pi puede presentar isIdle=false sin tener un turno de modelo
-     // activo. Reintentar una sola vez tras devolver el control al anfitrión permite
-     // entregar el aviso sin convertir un estado ocupado en una autorización de turno.
-     if(agentParentRunActive||heldNoticeBoundaryTimer||!flushPendingAgentNotices)return;
+     if(agentParentRunActive||heldNoticeBoundaryTimer||heldNoticeRetryInProgress||!flushPendingAgentNotices)return;
      heldNoticeBoundaryTimer=setTimeout(()=>{
       heldNoticeBoundaryTimer=undefined;
-      void flushPendingAgentNotices?.(context);
+      const flush=flushPendingAgentNotices;
+      if(!flush)return;
+      heldNoticeRetryInProgress=true;
+      void flush(context).catch(()=>{
+       try{context.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}
+       catch{/* Un fallo del aviso no puede detener Pi ni autorizar escrituras. */}
+      }).finally(()=>{heldNoticeRetryInProgress=false;});
      },100);
     };
     const sendAgentNotice=async(record:PublicAgentRecord,context:CommandContext,wake:boolean):Promise<boolean>=>{
