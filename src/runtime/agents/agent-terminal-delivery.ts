@@ -91,6 +91,7 @@ export function agentTerminalContinuationMessage(input:{
   (bounded.length>1200?bounded.slice(0,1200).join("")+"… [truncated; consult durable task for full evidence]":cleaned)
    ||"No trustworthy output summary was persisted; inspect the durable task at a real orchestration decision boundary.";
  return [
+  // El identificador explícito evita que el padre tenga que deducir la tarea.
   `ASEN background agent ${displayLabel(input.role)} (${displayLabel(input.id)}) ended: ${displayLabel(input.state)}.`,
   `Inspect the exact durable task with asen_agent_status using this task id: ${displayLabel(input.id)}.`,
   ...(typeof input.eventId==="string"&&/^asen:agent:[0-9a-f]{64}:terminal$/u.test(input.eventId)
