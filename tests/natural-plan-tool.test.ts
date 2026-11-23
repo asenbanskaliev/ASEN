@@ -4,7 +4,7 @@ import {mkdtemp,rm} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {registerAsenPlanRequestTool,ASEN_PLAN_REQUEST_TOOL} from "../src/runtime/lifecycle/natural-plan-tool.js";
-import {controlledInstructionPlanCommand} from "../src/runtime/lifecycle/route-command.js";
+import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/lifecycle/route-command.js";
 import {addAsenRequestGuidance,ASEN_REQUEST_GUIDANCE_SECTION} from "../src/runtime/ui/request-guidance.js";
 import {createAsenExtension} from "../extensions/asen.js";
 import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
@@ -34,6 +34,60 @@ test("natural-plan tool generates internal identity and hides machine fields fro
  assert.match(visible,/archivos propuestos: src\/form\.ts/u);assert.match(visible,/No se ha iniciado ningún trabajo/u);
  assert.doesNotMatch(visible,/private-task-id|task-generated-by-asen|\{"/u);
  assert.equal(result.details.task,"private-task-id");
+});
+
+test("la entrada natural conecta unidades funcionales independientes con la ruta ODD",async()=>{
+ const units=[
+  {id:"api",objective:"Implementar contrato del formulario",estimatedMinutes:45,dependsOn:[]},
+  {id:"ui",objective:"Implementar vista independiente del formulario",estimatedMinutes:40,dependsOn:[]},
+ ];
+ let tool:any,received="";
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  received=args;return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units");
+ const actual=await tool.execute("call",{...request(),taskUnits:units},undefined,undefined,{cwd:"/repo"});
+ const issued=JSON.parse(received);
+ assert.equal(tool.parameters.required.includes("taskUnits"),false);
+ assert.deepEqual(tool.parameters.properties.taskUnits.items.required,["id","objective","estimatedMinutes","dependsOn"]);
+ assert.deepEqual(issued.taskUnits,units);
+ assert.equal(actual.details.route,"orchestrate");
+ assert.deepEqual(actual.details.reasons,["independent-substantial-task-units"]);
+ assert.equal(actual.details.requiresIsolatedChild,true);
+ assert.deepEqual(actual.details.execution,{started:false,authorized:false});
+ const {instruction,...previewFacts}=request();
+ const preview=routePreviewCommand(JSON.stringify({...previewFacts,taskIdentity:"natural-units-preview",taskUnits:units}),"/repo");
+ assert.match(preview,/route: orchestrate/u);
+ assert.match(preview,/independent-substantial-task-units/u);
+});
+
+test("la entrada natural rechaza unidades mal formadas sin preparar una ruta",async()=>{
+ let tool:any,calls=0;
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  calls++;return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units-invalid");
+ const malformed={id:"api",objective:"Implementar contrato del formulario",estimatedMinutes:45,dependsOn:["missing"]};
+ await assert.rejects(()=>tool.execute("call",{...request(),taskUnits:[malformed]},undefined,undefined,{cwd:"/repo"}),/invalid dependencies/u);
+ assert.equal(calls,1);
+ await assert.rejects(()=>tool.execute("call",{...request(),taskUnits:[],extra:true},undefined,undefined,{cwd:"/repo"}),/incomplete/u);
+ assert.equal(calls,1);
+});
+
+test("la entrada natural conserva unidades válidas que superan el límite anterior",async()=>{
+ const units=Array.from({length:32},(_,index)=>({
+  id:"unidad-"+index,objective:"x".repeat(500),estimatedMinutes:30,dependsOn:[],
+ }));
+ const facts={...request(),taskUnits:units};
+ const {instruction,...previewFacts}=facts;
+ const previewInput=JSON.stringify({...previewFacts,taskIdentity:"natural-units-max"});
+ assert.ok(previewInput.length>16_384);
+ const preview=routePreviewCommand(previewInput,"/repo");
+ assert.match(preview,/route: orchestrate/u);
+ let tool:any;
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units-max");
+ const actual=await tool.execute("call",facts,undefined,undefined,{cwd:"/repo"});
+ assert.equal(actual.details.route,"orchestrate");
 });
 
 test("registered natural intake preserves controlled command routing and instructions",async t=>{

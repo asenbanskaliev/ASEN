@@ -18,9 +18,17 @@ const testing={oneOf:[
 ]};
 const review={type:"object",additionalProperties:false,required:["kind","estimatedMinutes"],properties:{kind:{type:"string",enum:["none","ordinary","dual_explicit"]},estimatedMinutes:{type:"integer",minimum:0,maximum:100000}}};
 const unresolvedDecisions={type:"array",maxItems:64,items:{type:"string",minLength:1,maxLength:2048}};
+const taskUnits={type:"array",maxItems:32,items:{type:"object",additionalProperties:false,required:["id","objective","estimatedMinutes","dependsOn"],properties:{
+ id:{type:"string",minLength:1,maxLength:100},objective:{type:"string",minLength:1,maxLength:500},
+ estimatedMinutes:{type:"integer",minimum:0,maximum:100000},
+ dependsOn:{type:"array",maxItems:32,items:{type:"string",minLength:1,maxLength:100}}
+}}};
 
+function exactPlanKeys(value:unknown):readonly string[]{
+ return [...planKeys,...(Object.hasOwn(value??{},"namedRisks")?["namedRisks"]:[]),...(Object.hasOwn(value??{},"taskUnits")?["taskUnits"]:[])];
+}
 function assertExactRequest(value:unknown):asserts value is Record<(typeof planKeys)[number],unknown>{
- const keys=Object.hasOwn(value??{},"namedRisks")?[...planKeys,"namedRisks"]:planKeys;
+ const keys=exactPlanKeys(value);
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype||Object.keys(value).length!==keys.length||keys.some(key=>!Object.hasOwn(value,key)))throw new Error("ASEN plan request is incomplete; inspect the project and resolve material uncertainty before planning.");
 }
 
@@ -57,9 +65,9 @@ export function registerAsenPlanRequestTool(
 ):void{
  pi.registerTool?.({
   name:ASEN_PLAN_REQUEST_TOOL,label:"Prepare ASEN task plan",
-  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Bounded requests stay in chat; material clarifications are asked there without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs fresh exact Pi approval. Review and independent verification are included only when present in the issued plan; completion requires explicit user acceptance after reviewing available results.",
+  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Cuando haya unidades funcionales sustanciales realmente independientes, incluye su objetivo, estimación y dependencias en taskUnits; no infieras independencia por la cantidad de archivos. Bounded requests stay in chat; material clarifications are asked there without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs fresh exact Pi approval. Review and independent verification are included only when present in the issued plan; completion requires explicit user acceptance after reviewing available results.",
   executionMode:"sequential",
-  parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,namedRisks,session,testing,review,unresolvedDecisions}},
+  parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,namedRisks,session,testing,review,unresolvedDecisions,taskUnits}},
   execute:async(_callId,params,_signal,_update,context)=>{
    assertExactRequest(params);
    const id=taskIdentity();if(!id||id.trim()!==id)throw new Error("ASEN could not create an internal task identity.");
