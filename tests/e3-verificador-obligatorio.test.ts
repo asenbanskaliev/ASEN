@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../src/flow/odd-routing.js";
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {materializeExecutablePlan} from "../src/orchestration/executable-plan.js";
+import {inspectRiskVerifierBinding,type BoundRiskPlanTask} from "../src/runtime/lifecycle/plan-risk-verifier-binding.js";
 
 const project="asen/e3-proyecto";
 const revision="a".repeat(40);
@@ -87,4 +88,59 @@ test("E3: una verificación sin Writer sigue permitida como tarea de lectura",()
  const executable=materializeExecutablePlan(plan,instruction);
  assert.equal(executable.tasks.filter(t=>t.role==="worker").length,0);
  assert.equal(executable.tasks.filter(t=>t.role==="verifier").length,1);
+});
+
+function binding(item:number,review:"none"|"ordinary"|"dual_explicit"="none"){
+ const {plan}=prepared(item,review);
+ const graph=materializeExecutablePlan(plan,instruction,"{}");
+ const rows:BoundRiskPlanTask[]=graph.tasks.map(task=>({
+  taskId:"todo:"+task.id,requestId:"asen-plan:"+task.id,
+  dependsOn:task.dependsOn.map(dep=>"todo:"+dep),
+  plan:{role:task.role,skillPaths:[...task.skillPaths],
+   ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),
+   ...(task.candidate?{candidate:task.candidate}:{}),
+   ...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{})},
+  current:{state:"planned"}
+ }));
+ const worker=rows.find(row=>row.plan?.role==="worker");
+ assert.ok(worker);
+ return {rows,scope:{taskIdentity:graph.taskId,writerTodoId:worker.taskId,
+  candidateRevision:revision,reviewerCount:review==="dual_explicit"?2:review==="ordinary"?1:0}};
+}
+for(const item of [1,2,3,4,5,6]){
+ test("E3: el ejecutor verifica la vinculación guardada del riesgo "+item,()=>{
+  const {rows,scope}=binding(item);
+  assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
+  const without=rows.filter(row=>row.plan?.role!=="verifier");
+  assert.match(inspectRiskVerifierBinding(without,scope)??"",/Verifier independiente obligatorio/u);
+ });
+}
+test("E3: un Verifier duplicado, omitido o ya consumido impide pedir permiso Writer",()=>{
+ const {rows,scope}=binding(2);
+ const verifier=rows.find(row=>row.plan?.role==="verifier");
+ assert.ok(verifier);
+ assert.match(inspectRiskVerifierBinding([...rows,{...verifier,taskId:"otro-verifier"}],scope)??"",/Verifier independiente obligatorio/u);
+ assert.match(inspectRiskVerifierBinding(rows.map(row=>row===verifier?
+  {...row,current:{state:"done"}}:row),scope)??"",/Verifier independiente obligatorio/u);
+ assert.match(inspectRiskVerifierBinding(rows.map(row=>row===verifier?
+  {...row,plan:{...row.plan!,candidateRevision:"b".repeat(40)}}:row),scope)??"",/Verifier independiente obligatorio/u);
+});
+
+test("E3: dos revisores obligatorios y Verifier dependiente de ambos",()=>{
+ const {rows,scope}=binding(3,"dual_explicit");
+ assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
+ const second=rows.find(row=>row.requestId?.endsWith(":reviewer:2"));
+ const verifier=rows.find(row=>row.plan?.role==="verifier");
+ assert.ok(second&&verifier);
+ assert.match(inspectRiskVerifierBinding(rows.filter(row=>row!==second),scope)??"",/revisión independiente/u);
+ assert.match(inspectRiskVerifierBinding(rows.map(row=>row===verifier?
+  {...row,dependsOn:[scope.writerTodoId]}:row),scope)??"",/no depende exactamente/u);
+ assert.match(inspectRiskVerifierBinding(rows.map(row=>row===second?
+  {...row,plan:{...row.plan!,candidateRevision:"c".repeat(40)}}:row),scope)??"",/revisión independiente/u);
+});
+
+test("E3: no se admite reutilizar la identidad de un Writer de otro plan",()=>{
+ const {rows,scope}=binding(6);
+ assert.match(inspectRiskVerifierBinding(rows,{...scope,writerTodoId:"otro-todo"})??"",/Writer del plan guardado/u);
+ assert.match(inspectRiskVerifierBinding(rows,{...scope,candidateRevision:"no-valid"})??"",/Identidad del plan independiente inválida/u);
 });
