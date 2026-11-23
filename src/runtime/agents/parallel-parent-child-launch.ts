@@ -125,6 +125,16 @@ export async function openVerifiedPiChildSessions(input:{
    throw new Error("La reserva ODD del hijo Pi no coincide con el árbol preparado");
   owners.push(owner);
  }
+ // Un lote parcial consumiría el intento para siempre dejando otros hijos sin sesión.
+ const reservations=await input.sessions.sourceJournal.list(input.source);
+ const prepared=reservations.filter(entry=>entry.id===input.batchId&&entry.state==="prepared");
+ if(prepared.length!==1||prepared[0]!.tasks.length!==owners.length||
+  prepared[0]!.tasks.some(task=>!owners.some(owner=>
+   owner.taskId===task.taskId&&
+   sameWorkspaceIdentityPath(owner.worktreeRoot,task.worktreeRoot)&&
+   task.writeSurfaces.length===owner.writeSurfaces.length&&
+   task.writeSurfaces.every((path,index)=>path===owner.writeSurfaces[index]))))
+  throw new Error("Lote Pi incompleto: abrir todas las tareas preparadas antes de consumir el intento");
  const head=owners[0]!.sourceHead;
  if(owners.some(o=>o.sourceHead!==head)||
   owners.some((o,i)=>owners.slice(0,i).some(previous=>

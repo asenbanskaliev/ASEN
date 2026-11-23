@@ -73,7 +73,7 @@ test("E2A: un adaptador de host inventado no puede abrir árboles falsos",async 
 });
 
 /** Usa dos worktrees Git reales. Solo el adaptador Pi es simulado: jamás acredita proveedor ni Writer. */
-async function genuineFixture(t:TestContext){
+async function genuineFixture(t:TestContext,count:2|3=2){
  const source=fixture(t),parent=fixture(t),privateRoot=fixture(t);
  const localGitNames=new Set(execFileSync("git",["rev-parse","--local-env-vars"],
   {encoding:"utf8"}).trim().split(/\r?\n/u).filter(Boolean).map(name=>name.toUpperCase()));
@@ -83,11 +83,13 @@ async function genuineFixture(t:TestContext){
  git("init","-q");git("config","user.name","Prueba ASEN");
  git("config","user.email","prueba@example.invalid");
  writeFileSync(join(source.root,"a.txt"),"a\\n");writeFileSync(join(source.root,"b.txt"),"b\\n");
- git("add","a.txt","b.txt");git("commit","-qm","inicio");
+ if(count===3)writeFileSync(join(source.root,"c.txt"),"c\\n");
+ git("add","a.txt","b.txt",...(count===3?["c.txt"]:[]));git("commit","-qm","inicio");
  const head=git("rev-parse","HEAD"),batchId=newParallelTodoWorktreeBatchId();
  const identity={sessionId:"pi-padre-e2a",projectId:source.root};
  const units=[{taskId:"todo-a",writeSurfaces:["a.txt"]},
-  {taskId:"todo-b",writeSurfaces:["b.txt"]}];
+  {taskId:"todo-b",writeSurfaces:["b.txt"]},
+  ...(count===3?[{taskId:"todo-c",writeSurfaces:["c.txt"]}]:[])];
  const journal=new ParallelTodoWorktreeJournal(join(privateRoot.root,"worktrees.json"));
  await journal.reserve({identity,id:batchId,head,parentDir:parent.root,bindings:units.map(x=>({
   taskId:x.taskId,requestId:"asen-plan:"+x.taskId+":worker",taskRevision:1,
@@ -184,4 +186,16 @@ test("E2A: callbacks de Pi conservan la identidad y los datos del anfitrión",as
  assert.equal(outcome.status,"attached-needs-worker-permission");
  assert.equal(outcome.attached.length,2);
  assert.ok(host.seen>=8);
+});
+
+test("E2A: un lote incompleto no consume autorización ni abre ninguna sesión",async t=>{
+ const f=await genuineFixture(t,3);let attempts=0;
+ const host={validateParent:async()=>{},
+  openChildSession:async o=>{attempts++;return {sessionId:"sin-permiso",projectId:o.projectId};},
+  inspectChildSession:async()=>true,confirmAttachment:async()=>true};
+ await assert.rejects(()=>openVerifiedPiChildSessions({...f,
+  allocations:f.allocations.slice(0,2),host}),/Lote Pi incompleto/u);
+ assert.equal(attempts,0);
+ assert.deepEqual(await f.attempts.inspect(),[]);
+ assert.deepEqual(await f.sessions.listSource(f.source),[]);
 });
