@@ -72,6 +72,24 @@ test("la entrada natural rechaza unidades mal formadas sin preparar una ruta",as
  assert.equal(calls,1);
 });
 
+test("la entrada natural conserva unidades válidas que superan el límite anterior",async()=>{
+ const units=Array.from({length:32},(_,index)=>({
+  id:"unidad-"+index,objective:"x".repeat(500),estimatedMinutes:30,dependsOn:[],
+ }));
+ const facts={...request(),taskUnits:units};
+ const {instruction,...previewFacts}=facts;
+ const previewInput=JSON.stringify({...previewFacts,taskIdentity:"natural-units-max"});
+ assert.ok(previewInput.length>16_384);
+ const preview=routePreviewCommand(previewInput,"/repo");
+ assert.match(preview,/route: orchestrate/u);
+ let tool:any;
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units-max");
+ const actual=await tool.execute("call",facts,undefined,undefined,{cwd:"/repo"});
+ assert.equal(actual.details.route,"orchestrate");
+});
+
 test("registered natural intake preserves controlled command routing and instructions",async t=>{
  const cases=[
   {name:"direct primary",taskIdentity:"parity-direct",route:"direct",taskRoles:["primary"],delegatedRoles:[],facts:{...request(),instruction:"Inspect the bounded form behavior without changing it",writes:[],testing:{kind:"n_a",reason:"Read-only inspection"}}},
