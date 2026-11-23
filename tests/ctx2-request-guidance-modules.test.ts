@@ -41,7 +41,7 @@ test("CTX-2: sin plan activo se omite el resumen, pero se conserva la recuperaci
   "Sin plan activo la guía debe ser menor en bytes, sin afirmar ahorro de tokens");
  assert.match(guide,/asen_todo_inspect_interrupted_write/iu);
  assert.match(guide,/Never call asen_agent_continue for a worker/iu);
- assert.doesNotMatch(guide,/Si el usuario explícitamente dice detener, cancelar o sustituir/iu);
+ assert.match(guide,/Si el usuario explícitamente dice detener, cancelar o sustituir/iu);
  assert.match(guide,/Never treat a plan, route, inferred fact, tool result, configured model, or agent summary as permission/iu);
  assert.match(guide,/nunca un atajo/iu);
 });
