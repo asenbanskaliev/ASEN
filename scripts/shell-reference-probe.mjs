@@ -76,7 +76,7 @@ function main(){
  assert.equal(env.GITHUB_ACTIONS,"true");
  assert.equal(env.GITHUB_REPOSITORY,"asenbanskaliev/ASEN");
  assert.equal(env.GITHUB_EVENT_NAME,"push");
- assert.equal(env.GITHUB_REF,"refs/heads/feat/t12-integrated-acceptance-merge");
+ assert.ok(new Set(["refs/heads/feat/t12-integrated-acceptance-merge","refs/heads/integration/megatanda-1-3-20261123"]).has(env.GITHUB_REF),"Unsupported acceptance branch");
  assert.match(env.ASEN_EXPECTED_SHA??"",SHA);
  assert.equal(execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),env.ASEN_EXPECTED_SHA);
  assert.ok(isAbsolute(env.RUNNER_TEMP??"")&&isAbsolute(env.ASEN_SHELL_PROBE_OUTPUT??""));
