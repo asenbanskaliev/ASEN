@@ -157,11 +157,14 @@ for(const drift of ["manager","session","cwd","epoch","abort"])test(`native edit
  const gate=new Promise<void>(r=>{release=r;}),locked=new Promise<void>(r=>{ready=r;}),saving=new Promise<void>(r=>{saved=r;});
  const select=f.ctx.ui.select;f.ctx.ui.select=async(...args:any[])=>{const value=await select(...args);if(value==="Save profile")saved();return value;};
  const holder=withExclusiveFileLock(f.target,async()=>{ready();await gate;});await locked;
- f.queue.push(...editChoices());let settled=false;const pending=f.run("asen-profiles").finally(()=>{settled=true;});await saving;
+ f.queue.push(...editChoices());let settled=false;const pending=f.run("asen-profiles").finally(()=>{settled=true;});
+ // Registrar el rechazo inmediatamente: Node no debe interpretar un fallo esperado como
+ // un rechazo sin gestionar mientras se espera la liberación del bloqueo real.
+ const rejection=assert.rejects(pending,/changed|cancelled/i);await saving;
  await new Promise(r=>setTimeout(r,40));assert.equal(settled,false);
  if(drift==="manager")f.ctx.sessionManager={getSessionId:()=>"session-a"};if(drift==="session")f.setId("other");
  if(drift==="cwd")f.ctx.cwd=f.home;if(drift==="epoch")await f.emit("session_shutdown");if(drift==="abort")abort.abort();release();await holder;
- await assert.rejects(pending,/changed|cancelled/i);assert.equal(await readFile(f.target,"utf8"),bytes);assert.equal(f.notices.length,count);
+ await rejection;assert.equal(await readFile(f.target,"utf8"),bytes);assert.equal(f.notices.length,count);
 });
 test("native edit suppresses stale publication after persistence without rollback",async t=>{
  const f=await editFixture(t),count=f.notices.length;let persisted=false;

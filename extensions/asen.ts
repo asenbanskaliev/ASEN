@@ -909,9 +909,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     /** One event-driven wake per idle completion burst. The content is already
      * enqueued and cannot be replayed just because a wake fails. */
     const requestAgentWake=(context:CommandContext,scope:{sessionId:string;projectId:string}):void=>{
-     if(!pi.sendMessage||agentDeliveryContext!==context||agentDeliveryIdentity?.sessionId!==scope.sessionId||
+     if(agentDeliveryContext!==context||agentDeliveryIdentity?.sessionId!==scope.sessionId||
         agentDeliveryIdentity.projectId!==scope.projectId)return;
+     // Conservar la deuda incluso si el transporte Pi falta al programar el despertar.
      agentWakeOwed={...scope};
+     if(typeof pi.sendMessage!=="function")return;
      if(agentWakeTimer)return;
      agentWakeTimer=setTimeout(()=>{
       agentWakeTimer=undefined;
@@ -935,7 +937,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         return;
        }
        try{
-        pi.sendMessage?.({customType:"asen.agent.wake",
+        // El anfitrión puede perder sendMessage entre la programación y el turno.
+        // Si no hay transporte real, conservar el aviso pendiente para el próximo límite de turno.
+        if(typeof pi.sendMessage!=="function")return;
+        pi.sendMessage({customType:"asen.agent.wake",
          content:"[ASEN-generated coordinator wake: review the previously enqueued agent outcome; this is not a user request or permission to write.]",
          display:false,details:{sessionId:owed.sessionId,projectId:owed.projectId,trusted:false}},options);
         agentWakeOwed=undefined;
@@ -1128,7 +1133,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{await flushPendingAgentNotices?.(ctx);}
    catch{try{ctx.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}catch (error) { void error; }}
    const pending=agentWakeOwed,owner=agentDeliveryContext,active=agentDeliveryIdentity;
-   if(settled&&pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId)
+   // Si el transporte volvió durante una compactación o fin de turno y el
+   // padre está libre, recuperar únicamente el despertar pendiente (no el resultado).
+   if(pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId&&
+      (settled||agentTerminalWakeOptions(owner,pending,agentParentRunActive)!==undefined))
     scheduleAgentWakeAtBoundary?.();
   };
   pi.on?.("agent_settled",async(event,ctx)=>{
