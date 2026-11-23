@@ -38,7 +38,7 @@ jobs:
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           npm ci --ignore-scripts --no-audit --no-fund
           npm run typecheck
-          node --import tsx --test tests/t06-live-consent.test.ts
+          node --import tsx --test tests/t06-live-consent.test.ts tests/e2a-native-skills-fixture.test.ts
       - name: Comprobar versión nativa Pi
         shell: bash
         run: |

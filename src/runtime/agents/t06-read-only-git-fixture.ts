@@ -1,9 +1,9 @@
 /** T06: Git worktrees desechables para comprobar dos sesiones Pi de lectura.
  * No utiliza credenciales, código privado, autorizaciones Writer ni el Git del proyecto. */
 import {execFileSync} from "node:child_process";
-import {existsSync,mkdirSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {copyFileSync,existsSync,lstatSync,mkdirSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join,resolve} from "node:path";
+import {dirname,isAbsolute,join,resolve} from "node:path";
 import {isolatedGitEnvironment} from "./git-isolated-environment.js";
 
 function git(root:string,...args:string[]):string{
@@ -26,7 +26,12 @@ export interface T06ReadOnlyGitFixture{
  cleanup:()=>void;
 }
 /** Los dos proyectos son worktrees del mismo repositorio sintético, nunca del checkout real. */
-export function createT06ReadOnlyGitFixture():T06ReadOnlyGitFixture{
+export function createT06ReadOnlyGitFixture(options:Readonly<{skillRoot?:string;skillPaths?:readonly string[]}>={}):T06ReadOnlyGitFixture{
+ const skills=options.skillPaths??[];
+ if(skills.length>16||skills.length!==new Set(skills).size||
+   skills.some(p=>!/^skills\/asen-[a-z-]+\/SKILL\.md$/u.test(p))||
+   (skills.length>0&&(!options.skillRoot||!isAbsolute(options.skillRoot))))
+  throw new Error("T06 requires a bounded trusted set of Pi-native skill files");
  const base=resolve(mkdtempSync(join(tmpdir(),"asen-t06-git-readonly-")));
  const sourceRoot=join(base,"origen");
  const children=[join(base,"hijo-a"),join(base,"hijo-b")] as const;
@@ -41,7 +46,16 @@ export function createT06ReadOnlyGitFixture():T06ReadOnlyGitFixture{
   git(sourceRoot,"config","core.hooksPath",emptyHooks);
   writeFileSync(join(sourceRoot,"a.txt"),"contenido A original\n");
   writeFileSync(join(sourceRoot,"b.txt"),"contenido B original\n");
-  git(sourceRoot,"add","a.txt","b.txt");
+  // Copiar solo las skills canónicas seleccionadas antes del commit sintético.
+  // Sin ellas Pi no las carga en el hijo y bloquea la selección del modelo.
+  for(const skill of skills){
+   const original=resolve(options.skillRoot!,skill),stat=lstatSync(original);
+   if(stat.isSymbolicLink()||!stat.isFile())throw new Error("Skill de origen no es un archivo regular");
+   const target=join(sourceRoot,skill);
+   mkdirSync(dirname(target),{recursive:true,mode:0o700});
+   copyFileSync(original,target);
+  }
+  git(sourceRoot,"add","a.txt","b.txt",...skills);
   git(sourceRoot,"commit","-qm","base de prueba desechable");
   const head=git(sourceRoot,"rev-parse","HEAD");
   for(const child of children)git(sourceRoot,"worktree","add","--detach","--quiet",child,head);

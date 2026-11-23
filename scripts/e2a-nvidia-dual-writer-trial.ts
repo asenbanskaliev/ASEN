@@ -27,7 +27,9 @@ if(!process.env.NVIDIA_API_KEY||!reportFile||!expectedSha||
  execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8"}).trim()!==expectedSha)
  throw new Error("E2A bloqueado: proveedor, SHA o archivo de recibo ausente");
 const hash=(data:string)=>createHash("sha256").update(data).digest("hex");
-const fixture=createT06ReadOnlyGitFixture();
+// La selección Pi-native exige que las skills estén dentro de cada worktree.
+const selectedSkills=selectSkills({phase:"apply",codeChange:true,risk:"high"}).map(x=>x.path);
+const fixture=createT06ReadOnlyGitFixture({skillRoot:root,skillPaths:selectedSkills});
 // Cada Writer consume su propio archivo privado de atribución antes de escribir.
 mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
 const observations=[0,1].map(()=>({pid:0,start:0,end:0,model:"unknown",
@@ -111,10 +113,20 @@ try{
   const changed=git(w.project,"status","--porcelain=v1","--untracked-files=all")
    .split(/\r?\n/u).filter(Boolean).map(x=>x.slice(3));
   const scopeExact=changed.length===1&&changed[0]===w.path;
+  const reason=out.status==="rejected"?"DESPACHO_EXCEPCION":
+   out.value.ok===true?"RESPUESTA_NO_VERIFICADA":
+   /pi native Skill paths do not match|skill path error/u.test(out.value.output)?"SKILLS_NO_CARGADAS":
+   /Pi child model selection was not confirmed/u.test(out.value.output)?"MODELO_NO_CONFIRMADO":
+   /pi ASEN policy extension was not/u.test(out.value.output)?"AUTORIDAD_PI_NO_CARGADA":
+   /pi assistant failed:/u.test(out.value.output)?"PROVEEDOR_DEVOLVIO_ERROR":
+   /timed out/u.test(out.value.output)?"TIEMPO_AGOTADO":
+   /pi process exited/u.test(out.value.output)?"PI_SALIO_SIN_RESPUESTA":
+   "ERROR_ACOTADO_NO_CLASIFICADO";
   const checked=out.status==="fulfilled"&&out.value.ok===true&&exact&&
    scopeExact&&o.model===model&&o.pid>0&&o.end>o.start&&
    o.writeStarts===1&&o.writeEnds===1&&o.writeErrors===0;
-  report.results.push({taskId:w.id,verified:checked,pidObserved:o.pid>0,
+  report.results.push({taskId:w.id,verified:checked,reason:checked?null:reason,
+   pidObserved:o.pid>0,
    modelObserved:o.model,oneNativeWrite:o.writeStarts===1&&o.writeEnds===1,
    exactBytes:exact,exactScope:scopeExact,
    fileHash:exact?hash(w.content):null});
