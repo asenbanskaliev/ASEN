@@ -11,6 +11,7 @@ import {selectSkills,type SkillSelectionContext} from "../../skills/registry.js"
 import type {SessionTodoStore,TodoContext,TodoItem} from "./todo-store.js";
 import type {TaskAgentLinkStore} from "../agents/task-agent-link-store.js";
 import {TodoLaunchConflictError,TrustedTaskAgentBinder} from "../agents/trusted-task-agent-binder.js";
+import {inspectRiskVerifierBinding} from "./plan-risk-verifier-binding.js";
 
 const readOnlyRoles=["clarifier","explorer","reviewer","verifier"] as const;
 type ReadOnlyRole=typeof readOnlyRoles[number];
@@ -88,6 +89,17 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(!worker?.skillContext||!worker.skillPaths||!worker.writeSurfaces||worker.writeSurfaces.length!==exactSurfaces.length||worker.writeSurfaces.some((surface,index)=>surface!==exactSurfaces[index]))return {reason:"The current ODD plan does not produce the exact persisted worker scope."};
  const expectedPaths=selectSkills(metadata.skillSelection).map(skill=>skill.path);
  if(expectedPaths.length!==metadata.skillPaths.length||expectedPaths.some((value,index)=>value!==metadata.skillPaths[index])||worker.skillPaths.length!==metadata.skillPaths.length||worker.skillPaths.some((value,index)=>value!==metadata.skillPaths[index])||!sameSkillSelection(metadata.skillSelection,worker.skillContext))return {reason:"The saved worker skill selection changed; rebuild the plan before dispatch."};
+ // E3: no pedir consentimiento Writer cuando el plan persistido ha perdido
+ // su Verifier obligatorio o alguno de los revisores ligados al mismo candidato.
+ // El visto bueno del modelo no sustituye esta comprobación del diario real.
+ if(decision.verification==="independent"){
+  const missing=inspectRiskVerifierBinding(await input.todos.list(identity),{
+   taskIdentity:facts.taskIdentity,writerTodoId:task.taskId,
+   candidateRevision:candidateBound.revision,
+   reviewerCount:plan.agents.filter(agent=>agent.role==="reviewer").length
+  });
+  if(missing)return {reason:missing};
+ }
  const expectedInstruction=`Perform only the authorized, scoped work for: ${instruction}`;
  if(task.description!==expectedInstruction||task.description.length>MAX_VISIBLE_PLAN_INSTRUCTION)return {reason:"The complete original worker instruction must match and fit in the Pi authorization dialog; split or rebuild the task."};
  const expectedExplorer=plan.agents.some(agent=>agent.role==="explorer"),dependencies=task.dependsOn??[];
