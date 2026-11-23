@@ -28,6 +28,8 @@ if(!process.env.NVIDIA_API_KEY||!reportFile||!expectedSha||
  throw new Error("E2A bloqueado: proveedor, SHA o archivo de recibo ausente");
 const hash=(data:string)=>createHash("sha256").update(data).digest("hex");
 const fixture=createT06ReadOnlyGitFixture();
+// Cada Writer consume su propio archivo privado de atribución antes de escribir.
+mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
 const observations=[0,1].map(()=>({pid:0,start:0,end:0,model:"unknown",
  writeStarts:0,writeEnds:0,writeErrors:0}));
 const paths=["a.txt","b.txt"] as const;
@@ -72,6 +74,7 @@ const workers=fixture.children.map((project,i)=>{
  const runner=new PiProcessRunner({
   command:"pi",policyRoot:root,providerCredential:"NVIDIA_API_KEY",
   requireChildModelBeforePrompt:true,oneShotWritePath:path,
+  attributionFile:join(dirname(resolve(reportFile)),id+"-attribution.json"),
   exactWriteReceipt:{path,fileSha256:hash(content)},
   timeoutMs:110_000,maxOutputBytes:60_000,maxStreamBytes:240_000,
   onProcessStart:pid=>{observed.pid=pid;observed.start=performance.now();},
