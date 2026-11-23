@@ -56,6 +56,42 @@ test("a clear multi-file change stays in the primary session",()=>{
  assert.equal(executable.tasks[0]?.role,"primary");assert.equal(executable.tasks[0]?.status,"ready");
 });
 
+test("E1B: la ruta directa conserva los modos de perfil y el modelo del Writer sin autorización implícita",()=>{
+ const change={paths:["src/a.ts"],writes:[{path:"src/a.ts",changeKind:"behavior" as const}]};
+ const profile=(mode:"organic"|"full-delegation")=>({global:{schema:ASEN_PROFILES_SCHEMA,active:"activo",profiles:[{
+  name:"activo",mode,routes:{worker:{model:"cloud/modelo-configurado",thinking:"high" as const}},
+ }]}});
+ const normalDecision=issueOddDecision({taskId:"e1b-organic",repository:"r",...change});
+ const normal=buildOrchestrationPlan({taskId:"e1b-organic",repository:"r",prompt:"Modificar función",candidate,
+  writeSurfaces:["src/a.ts"],runtimeProfiles:profile("organic")},normalDecision);
+ assert.equal(normalDecision.route,"direct");
+ assert.deepEqual(normal.agents,[],"El modo normal no crea un Worker por una tarea pequeña");
+ const fullDecision=issueOddDecision({taskId:"e1b-full",repository:"r",...change});
+ const full=buildOrchestrationPlan({taskId:"e1b-full",repository:"r",prompt:"Modificar función",candidate,
+  writeSurfaces:["src/a.ts"],runtimeProfiles:profile("full-delegation")},fullDecision);
+ assert.equal(fullDecision.route,"direct");
+ assert.deepEqual(full.agents.map(agent=>agent.role),["worker"]);
+ const worker=full.agents[0]!;
+ assert.equal(worker.model,"cloud/modelo-configurado");
+ assert.equal(worker.thinking,"high");
+ assert.deepEqual(worker.writeSurfaces,["src/a.ts"]);
+ assert.equal(Object.hasOwn(worker,"writerAdmission"),false);
+ assert.equal(Object.hasOwn(worker,"runnerWriteReceiver"),false);
+ for(const invalid of [
+  {taskId:"e1b-no-candidate",writeSurfaces:["src/a.ts"]},
+  {taskId:"e1b-no-scope",candidate,writeSurfaces:[]},
+  {taskId:"e1b-other-scope",candidate,writeSurfaces:["src/other.ts"]},
+ ]){
+  const decision=issueOddDecision({taskId:invalid.taskId,repository:"r",...change});
+  assert.throws(()=>buildOrchestrationPlan({repository:"r",prompt:"Modificar función",runtimeProfiles:profile("full-delegation"),...invalid},decision),
+   /Full delegation requires an exact candidate and unchanged Writer scope/);
+ }
+ const reading=issueOddDecision({taskId:"e1b-full-read",repository:"r",paths:["src/a.ts"],writes:[]});
+ assert.deepEqual(buildOrchestrationPlan({taskId:"e1b-full-read",repository:"r",prompt:"Leer función",
+  runtimeProfiles:profile("full-delegation")},reading).agents,[],
+  "La lectura no exige crear un Writer");
+});
+
 test("time and ordinary review do not trigger delegation",()=>{
  const long=buildOrchestrationPlan({taskId:"long-only",repository:"r",prompt:"p",candidate},issueOddDecision({taskId:"long-only",repository:"r",estimatedMinutes:90}));
  assert.deepEqual(long.agents.map(agent=>agent.role),[]);
