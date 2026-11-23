@@ -52,3 +52,26 @@ La infraestructura de paralelismo y aislamiento tiene evidencia real previa. La 
 ## Próximo paso seguro
 
 Revalidar E2B sobre el SHA vigente con una ejecución que demuestre interrupción, entrega única, padre ocupado y ausencia de repetición de una escritura incierta. Hasta entonces no se cierra la aceptación funcional.
+
+## Comprobación E2B y E3 del código integrado
+
+Se ejecutaron las pruebas focalizadas de continuidad, entrega única, recuperación negativa y Verifier:
+
+`tests/e2b-despertar-y-entrega-unica.test.ts`  
+`tests/parallel-parent-supervisor-recovery-negative.test.ts`  
+`tests/megatanda-b-continuation.test.ts`  
+`tests/e3-verificador-obligatorio.test.ts`
+
+Resultado: **46 correctas, 0 fallidas y 0 omitidas**.
+
+Estas pruebas confirman:
+
+- la deuda de despertar se conserva si Pi no puede recibirla;
+- un padre ocupado no inicia otra conversación;
+- una entrega incierta no se repite después de reiniciar;
+- dos supervisores no pueden reclamar el mismo lote;
+- los seis riesgos nombrados exigen un Verifier;
+- las revisiones y verificaciones deben usar el mismo candidato;
+- se rechazan contratos alterados, duplicados o incompletos.
+
+La prueba sigue siendo local y controlada. No sustituye una ejecución real de procesos Pi interrumpidos sobre el SHA final ni la aceptación independiente del flujo completo.
