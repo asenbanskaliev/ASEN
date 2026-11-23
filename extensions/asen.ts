@@ -964,7 +964,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      heldNoticeBoundaryTimer=setTimeout(()=>{
       heldNoticeBoundaryTimer=undefined;
       void flushPendingAgentNotices?.(context);
-     },0);
+     },100);
     };
     const sendAgentNotice=async(record:PublicAgentRecord,context:CommandContext,wake:boolean):Promise<boolean>=>{
      const scope={sessionId:record.sessionId,projectId:record.projectId};
