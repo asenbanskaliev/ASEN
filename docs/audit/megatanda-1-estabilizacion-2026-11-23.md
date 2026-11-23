@@ -3,7 +3,7 @@
 **Fecha:** 23/11/2026  
 **Rama de trabajo:** `work/megatanda-1-20261123`  
 **Base funcional:** `feat/flujo-de-agentes-20261115`  
-**SHA de la tanda:** `a91929ff4e1ed1789dcd451886fff6a51d1842e8`  
+**SHA de la tanda:** `d582c940087cc82fa684b3a50880f682ce0becd3`
 **Estado global:** `globalFull:false`
 
 ## Alcance
@@ -47,15 +47,15 @@ La base queda estable a nivel de compilación, pruebas locales y controles rápi
 
 ## GitHub Actions sobre el SHA final
 
-**SHA comprobado:** `0c76761c08d2df877b9ba1fd85baaca486624363`
+**SHA comprobado:** `d582c940087cc82fa684b3a50880f682ce0becd3`
 
 | Flujo | Resultado | Evidencia |
 | --- | --- | --- |
-| CI rápida | Correcta | Ejecución `45231130567`, trabajo `137890638355` |
-| Phase 0 Architecture | Correcta | Ejecución `45231130543`, trabajo `137890637829` |
-| CI amplia | Omitida por las condiciones del flujo | Ejecución `45231130518` |
-| Release Gate | Omitida por las condiciones del flujo | Ejecución `45231130601` |
-| Pi Free Smoke | Omitida por las condiciones del flujo | Ejecución `45231130645` |
+| CI rápida | Correcta | Ejecución `45231395407` |
+| Phase 0 Architecture | Correcta | Ejecución `45231395665` |
+| CI amplia | Omitida por las condiciones del flujo | Ejecución `45231395419` |
+| Release Gate | Omitida por las condiciones del flujo | Ejecución `45231395774` |
+| Pi Free Smoke | Omitida por las condiciones del flujo | Ejecución `45231395494` |
 
 Las ejecuciones omitidas no se consideran superadas. No se modifica esta clasificación hasta disponer de una ejecución válida de cada flujo exigido.
 
