@@ -111,11 +111,11 @@ test("Pi prompt guidance removes user-authored ODD JSON and explains safe automa
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/exact one-run Pi approval/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Group related unresolved decisions into that same message/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/does not need another confirmation dialog/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/continúa.*reanuda.*¿qué queda?/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/continúa.*reanuda.*qué queda/iu);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Do not ask the user to run slash commands or copy task IDs/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/explicitly says to stop, cancel, or replace work/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Preserve completed work and unrelated plans/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Do not treat an unrelated new request as cancellation/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/explícitamente dice detener, cancelar o sustituir trabajo/iu);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Conserva trabajo terminado y planes no relacionados/iu);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/No trates una petición nueva no relacionada como cancelación/iu);
  const disabled:{sections:Record<string,string>}={sections:{existing:"preserved"}};addAsenRequestGuidance(disabled,false);assert.deepEqual(disabled,{sections:{existing:"preserved"}});
 });
 
@@ -147,7 +147,7 @@ test("ASEN anuncia el planificador sin sugerir agentes no disponibles",async()=>
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Never ask the user to write JSON/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_plan_request/u);
  assert.doesNotMatch(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_agent_start|asen_todo_inspect_interrupted_write/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/does not grant permission to write/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/la planificación no concede permiso de escritura/iu);
 });
 
 test("natural-language plan request persists the real planner output without authorizing a write",async()=>{
