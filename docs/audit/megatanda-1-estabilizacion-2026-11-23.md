@@ -43,7 +43,21 @@ Las 31 pruebas omitidas no se cuentan como superadas. Corresponden a comportamie
 
 ## Estado de la tanda
 
-La base queda estable a nivel de compilación y pruebas locales. El SHA está preparado para comprobaciones exactas de GitHub Actions, arquitectura y Release Gate.
+La base queda estable a nivel de compilación, pruebas locales y controles rápidos remotos.
+
+## GitHub Actions sobre el SHA final
+
+**SHA comprobado:** `0c76761c08d2df877b9ba1fd85baaca486624363`
+
+| Flujo | Resultado | Evidencia |
+| --- | --- | --- |
+| CI rápida | Correcta | Ejecución `45231130567`, trabajo `137890638355` |
+| Phase 0 Architecture | Correcta | Ejecución `45231130543`, trabajo `137890637829` |
+| CI amplia | Omitida por las condiciones del flujo | Ejecución `45231130518` |
+| Release Gate | Omitida por las condiciones del flujo | Ejecución `45231130601` |
+| Pi Free Smoke | Omitida por las condiciones del flujo | Ejecución `45231130645` |
+
+Las ejecuciones omitidas no se consideran superadas. No se modifica esta clasificación hasta disponer de una ejecución válida de cada flujo exigido.
 
 Esta tanda no demuestra todavía:
 
@@ -54,3 +68,4 @@ Esta tanda no demuestra todavía:
 - cierre individual de los 18 objetivos y 12 puntos adicionales.
 
 Por tanto, los objetivos y puntos mantienen estado **PARCIAL** hasta disponer de esas evidencias.
+
