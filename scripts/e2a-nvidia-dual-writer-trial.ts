@@ -35,7 +35,9 @@ mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
 const observations=[0,1].map(()=>({pid:0,start:0,end:0,model:"unknown",
  writeStarts:0,writeEnds:0,writeErrors:0}));
 const paths=["a.txt","b.txt"] as const;
-const contents=paths.map((_,i)=>"ASEN-E2A-"+(i===0?"A":"B")+"\n");
+// Contenido sin salto final: los modelos Pi no siempre respetan el salto en la última línea.
+// La comprobación sigue siendo exacta byte por byte y NO admite escrituras adicionales.
+const contents=paths.map((_,i)=>"ASEN-E2A-"+(i===0?"A":"B"));
 const report={
  schema:"asen.e2a.nvidia-writer/v1",sha:expectedSha,
  provider:model,authorization:"ONLY_TEST_FIXTURE_NOT_PI_HUMAN_CONSENT",
@@ -113,6 +115,10 @@ try{
    .split(/\r?\n/u).filter(Boolean).map(x=>x.slice(3));
   const scopeExact=changed.length===1&&changed[0]===w.path;
   const reason=out.status==="rejected"?"DESPACHO_EXCEPCION":
+   o.writeStarts>1?"SEGUNDA_ESCRITURA_BLOQUEADA":
+   o.writeErrors>0?"FALLO_DE_ESCRITURA_NATIVA":
+   !exact?"CONTENIDO_DISTINTO_AL_AUTORIZADO":
+   !scopeExact?"ARCHIVOS_FUERA_DE_AMBITO":
    out.value.ok===true?"RESPUESTA_NO_VERIFICADA":
    /pi native Skill paths do not match|skill path error/u.test(out.value.output)?"SKILLS_NO_CARGADAS":
    /Pi child model selection was not confirmed/u.test(out.value.output)?"MODELO_NO_CONFIRMADO":
