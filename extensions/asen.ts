@@ -1238,7 +1238,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),rows=await (await todoStorePromise).list(identity);
      if(context.sessionManager===manager&&manager?.getSessionId?.()===identity.sessionId&&context.cwd===cwd){
       const current=await sessionIdentity(context);
-      if(current.sessionId===identity.sessionId&&current.projectId===identity.projectId){const planContext=formatActivePlanContext(rows);if(planContext)options.sections.asen_active_plan=planContext;}
+      if(current.sessionId===identity.sessionId&&current.projectId===identity.projectId){
+       const planContext=formatActivePlanContext(rows);
+       // Con identidad comprobada se puede retirar solo el módulo de plan inactivo.
+       addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,{activePlan:Boolean(planContext)});
+       if(planContext)options.sections.asen_active_plan=planContext;
+      }
      }
     }catch{/* Task context is read-only and optional; identity or storage failures never block the user's turn. */}
    }
