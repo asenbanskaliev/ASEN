@@ -199,3 +199,11 @@ test("E2A: un lote incompleto no consume autorización ni abre ninguna sesión",
  assert.deepEqual(await f.attempts.inspect(),[]);
  assert.deepEqual(await f.sessions.listSource(f.source),[]);
 });
+
+test("E2A: bloqueo abandonado requiere conciliación, no se recicla automáticamente",async t=>{
+ const f=fixture(t),lock=f.file+".pi-once.lock";
+ writeFileSync(lock,"intento anterior sin resultado comprobado");
+ await assert.rejects(()=>f.journal.claim(intent(f.root)),/Bloqueo Pi existente/u);
+ assert.equal(readFileSync(lock,"utf8"),"intento anterior sin resultado comprobado");
+ assert.deepEqual(await f.journal.inspect(),[]);
+});

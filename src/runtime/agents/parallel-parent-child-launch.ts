@@ -3,10 +3,9 @@
  * ofrece creación y comprobación de sesiones, la operación queda bloqueada.
  * Antes del primer efecto se registra un intento único que jamás se repite.
  */
-import {open,readFile} from "node:fs/promises";
+import {open,readFile,rm} from "node:fs/promises";
 import {dirname,isAbsolute} from "node:path";
 import {atomicWriteText} from "../../io/atomic-write.js";
-import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../../io/private-file.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import {assertPreparedParallelWorktree,type ParallelWorktreeAllocation} from "./parallel-worktrees.js";
@@ -59,19 +58,30 @@ export class PiChildOpeningJournal{
  async claim(intent:Intent):Promise<void>{
   parse(JSON.stringify({schema,records:[intent]}));
   await preparePrivateFile(this.file,true);
-  await withExclusiveFileLock(this.file,async()=>{
+  // Este diario de intentos no recupera automáticamente bloqueos abandonados.
+  // Una carrera de recuperación no debe liberar el bloqueo de otro proceso.
+  const lock=this.file+".pi-once.lock";
+  let handle:Awaited<ReturnType<typeof open>>;
+  try{handle=await open(lock,"wx",0o600);}
+  catch{throw new Error("Bloqueo Pi existente: conciliar intento anterior antes de abrir sesiones");}
+  try{
+   await handle.writeFile(JSON.stringify({owner:process.pid,claimedAt:new Date().toISOString()}));
+   await handle.sync();
    const exists=await preparePrivateFile(this.file);
    const state=exists?parse(await readFile(this.file,"utf8")):{schema,records:[]} as FileState;
    if(state.records.length>=128)throw new Error("Diario de intentos Pi lleno");
    const next=parse(JSON.stringify({schema,records:[...state.records,intent]}));
    await atomicWriteText(this.file,JSON.stringify(next)+"\n");
-   // En POSIX, sincronizar también la entrada de directorio tras el renombrado.
-   // Cualquier error bloquea la apertura antes de lanzar un Pi.
+   // Confirmar la nueva entrada de directorio antes de crear cualquier Pi.
    if(process.platform!=="win32"){
     const directory=await open(dirname(this.file),"r");
     try{await directory.sync();}finally{await directory.close();}
    }
-  });
+  }finally{
+   await handle.close();
+   // Solo quien obtuvo wx elimina su bloqueo. Tras una caída queda retenido.
+   await rm(lock,{force:true});
+  }
  }
  async inspect():Promise<readonly Intent[]>{
   if(!await preparePrivateFile(this.file))return [];
