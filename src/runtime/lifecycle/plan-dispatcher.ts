@@ -19,6 +19,13 @@ const phaseFor:Readonly<Partial<Record<ReadOnlyRole,SkillSelectionContext["phase
 const basisKeys=["instruction","taskIdentity","intent","scope","writes","riskOperations","session","testing","review","unresolvedDecisions"] as const;
 const skillSelectionKeys=["behaviorChange","codeChange","defect","filesTouched","phase","risk","verification","selectionProfile"] as const;
 const exact=(value:unknown,keys:readonly string[]):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
+/** Verifica claves de la base original; deriveOddFacts valida después sus valores y dependencias. */
+export function hasExactWorkerAuthorizationBasis(value:unknown):value is Record<string,unknown>&{instruction:string}{
+ const keys=[...basisKeys,...(Object.hasOwn(value??{},"namedRisks")?["namedRisks"]:[]),
+  ...(Object.hasOwn(value??{},"taskUnits")?["taskUnits"]:[])];
+ return exact(value,keys)&&typeof value.instruction==="string"&&!!value.instruction.trim()&&
+  value.instruction===value.instruction.trim();
+}
 function sameSkillSelection(left:SkillSelectionContext,right:SkillSelectionContext):boolean{
  return skillSelectionKeys.every(key=>left[key]===right[key]);
 }
@@ -47,7 +54,7 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(!metadata||metadata.role!=="worker"||!metadata.skillSelection||metadata.skillSelection.phase!=="apply"||!basisText||!candidate||!surfaces?.length)return {reason:"The worker plan lacks a persisted candidate, exact file scope or original ODD authorization facts; rebuild the plan in a Git project."};
  if(candidate.repository!==identity.projectId)return {reason:"The persisted worker candidate belongs to another project; rebuild the plan."};
  let parsed:unknown;try{parsed=JSON.parse(basisText);}catch{return {reason:"The worker ODD authorization facts are malformed; rebuild the plan."};}
- if(!exact(parsed,Object.hasOwn(parsed??{},"namedRisks")?[...basisKeys,"namedRisks"]:basisKeys)||typeof parsed.instruction!=="string"||!parsed.instruction.trim()||parsed.instruction!==parsed.instruction.trim())return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
+ if(!hasExactWorkerAuthorizationBasis(parsed))return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
  const {instruction,...rawFacts}=parsed;
  let facts:ReturnType<typeof deriveOddFacts>,revision:string;
  try{

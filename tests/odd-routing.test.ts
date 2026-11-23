@@ -60,6 +60,26 @@ test("E1: delega por unidades sustanciales independientes, no por número de arc
  assert.equal(decision.requiresSingleWriter,true);
  assert.equal(JSON.stringify(decision).includes("permission"),false);
 });
+test("E1B: dos raíces independientes se pueden planificar aunque haya sucesoras dependientes",()=>{
+ const roots=[
+  {id:"api",objective:"Implementar contrato de API",estimatedMinutes:45,dependsOn:[]},
+  {id:"ui",objective:"Implementar vista independiente",estimatedMinutes:40,dependsOn:[]},
+ ];
+ const dependent={id:"integracion",objective:"Integrar la API tras probarla",estimatedMinutes:30,dependsOn:["api"]};
+ const facts=deriveOddFacts(request({taskUnits:[...roots,dependent]}));
+ assert.equal(facts.independentUnits,2);
+ const decision=planOddRoute(facts);
+ assert.equal(decision.route,"orchestrate");
+ assert.deepEqual(decision.reasons,["independent-substantial-task-units"]);
+ // Si solo hay una raíz preparada, debe respetarse la dependencia y no recomendar paralelo.
+ assert.equal(route({taskUnits:[roots[0]!,dependent]}).route,"direct");
+ // Las decisiones pendientes y el riesgo alto prevalecen; nunca se eluden por tener dos raíces.
+ assert.equal(route({taskUnits:[...roots,dependent],unresolvedDecisions:["Confirmar alcance"]}).route,"plan");
+ assert.equal(route({taskUnits:[...roots,dependent],riskOperations:["security_boundary"]}).route,"plan");
+ // El dictamen no concede autorización ni crea agentes por sí mismo.
+ assert.equal(JSON.stringify(decision).includes("permission"),false);
+});
+
 test("E1: rechaza unidades falsas, dependencias rotas y datos no declarados",()=>{
  const valid={id:"a",objective:"Trabajo acotado",estimatedMinutes:40,dependsOn:[]};
  for(const taskUnits of [
