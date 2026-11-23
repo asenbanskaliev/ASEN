@@ -54,6 +54,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Prueba real padre-hijo habilitada en la rama de integración.
   offline-static-validation:
     if: github.repository == 'asenbanskaliev/ASEN'
     name: Provider-free static and ASEN validation
