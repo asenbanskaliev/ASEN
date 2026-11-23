@@ -1,6 +1,6 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
-import {mkdtempSync,readFileSync,rmSync,writeFileSync} from "node:fs";
+import {mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {execFileSync} from "node:child_process";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
@@ -15,7 +15,7 @@ const intent=(root:string)=>({
  expectedHead:sha,roots:[join(root,"hijo-a"),join(root,"hijo-b")],state:"claimed-not-verified" as const
 });
 function fixture(t:TestContext){
- const root=resolve(mkdtempSync(join(tmpdir(),"asen-pi-hijos-")));
+ const root=resolve(realpathSync(mkdtempSync(join(tmpdir(),"asen-pi-hijos-"))));
  t.after(()=>rmSync(root,{recursive:true,force:true}));
  return {root,file:join(root,"intentos.json"),journal:new PiChildOpeningJournal(join(root,"intentos.json"))};
 }
@@ -141,4 +141,47 @@ test("E2A: si el anfitrión no acredita una sesión, no abre la segunda y conser
  assert.equal(created,1);assert.equal(result.attached.length,0);
  assert.equal((await f.attempts.inspect()).length,1);
  assert.deepEqual(await f.sessions.listSource(f.source),[]);
+});
+
+test("E2A: diario alterado con SHA no textual se rechaza sin convertir datos",async t=>{
+ const f=fixture(t);await f.journal.claim(intent(f.root));
+ const value=JSON.parse(readFileSync(f.file,"utf8"));
+ value.records[0].expectedHead=[sha];
+ writeFileSync(f.file,JSON.stringify(value));
+ await assert.rejects(()=>f.journal.inspect(),/Intento Pi alterado/u);
+ await assert.rejects(()=>f.journal.claim({...intent(f.root),batchId:"otro-lote",
+  roots:[join(f.root,"x"),join(f.root,"y")]}),/Intento Pi alterado/u);
+});
+test("E2A: pérdida de una sesión durante el enlace bloquea el lote sin repetirlo",async t=>{
+ const f=await genuineFixture(t);let checks=0,created=0;
+ const host={validateParent:async()=>{},openChildSession:async(request:{projectId:string})=>{
+  created++;return {sessionId:"pi-real-ficticia",projectId:request.projectId};
+ },inspectChildSession:async()=>++checks===1,confirmAttachment:async()=>true};
+ const result=await openVerifiedPiChildSessions({...f,host});
+ assert.equal(result.status,"partial-needs-review");
+ assert.equal(created,1);assert.equal(result.writerStarted,false);
+ assert.equal((await f.attempts.inspect()).length,1);
+ assert.deepEqual(await f.sessions.listSource(f.source),[]);
+ await assert.rejects(()=>openVerifiedPiChildSessions({...f,host}),/duplicado/iu);
+});
+test("E2A: callbacks de Pi conservan la identidad y los datos del anfitrión",async t=>{
+ const f=await genuineFixture(t);
+ const host={
+  ownerToken:"pi-host-autenticado",seen:0,
+  async validateParent(){assert.equal(this.ownerToken,"pi-host-autenticado");},
+  async openChildSession(request:{sourceTodoId:string;projectId:string}){
+   assert.equal(this.ownerToken,"pi-host-autenticado");
+   return {sessionId:"pi-"+request.sourceTodoId,projectId:request.projectId};
+  },
+  async inspectChildSession(){
+   assert.equal(this.ownerToken,"pi-host-autenticado");this.seen++;return true;
+  },
+  async confirmAttachment(){
+   assert.equal(this.ownerToken,"pi-host-autenticado");return true;
+  }
+ };
+ const outcome=await openVerifiedPiChildSessions({...f,host});
+ assert.equal(outcome.status,"attached-needs-worker-permission");
+ assert.equal(outcome.attached.length,2);
+ assert.ok(host.seen>=8);
 });

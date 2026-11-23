@@ -3,8 +3,8 @@
  * ofrece creación y comprobación de sesiones, la operación queda bloqueada.
  * Antes del primer efecto se registra un intento único que jamás se repite.
  */
-import {readFile} from "node:fs/promises";
-import {isAbsolute} from "node:path";
+import {open,readFile} from "node:fs/promises";
+import {dirname,isAbsolute} from "node:path";
 import {atomicWriteText} from "../../io/atomic-write.js";
 import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../../io/private-file.js";
@@ -32,7 +32,8 @@ function parse(raw:string):FileState{
  const records:Intent[]=[];
  for(const record of value.records){
   if(!exact(record,["sourceSessionId","sourceProjectId","batchId","expectedHead","roots","state"])||
-   !id(record.sourceSessionId)||!id(record.batchId)||!sha.test(String(record.expectedHead))||
+   !id(record.sourceSessionId)||!id(record.batchId)||
+   typeof record.expectedHead!=="string"||!sha.test(record.expectedHead)||
    !id(record.sourceProjectId)||!isAbsolute(record.sourceProjectId as string)||
    !Array.isArray(record.roots)||record.roots.length<2||record.roots.length>4||
    record.roots.some((root:unknown)=>!id(root)||!isAbsolute(root))||
@@ -64,6 +65,12 @@ export class PiChildOpeningJournal{
    if(state.records.length>=128)throw new Error("Diario de intentos Pi lleno");
    const next=parse(JSON.stringify({schema,records:[...state.records,intent]}));
    await atomicWriteText(this.file,JSON.stringify(next)+"\n");
+   // En POSIX, sincronizar también la entrada de directorio tras el renombrado.
+   // Cualquier error bloquea la apertura antes de lanzar un Pi.
+   if(process.platform!=="win32"){
+    const directory=await open(dirname(this.file),"r");
+    try{await directory.sync();}finally{await directory.close();}
+   }
   });
  }
  async inspect():Promise<readonly Intent[]>{
@@ -143,8 +150,13 @@ export async function openVerifiedPiChildSessions(input:{
    seenSessions.add(session.sessionId);
    await host.validateParent();
    const link=await input.sessions.attach({childSessionId:session.sessionId,
-    childProjectId:session.projectId,confirm:host.confirmAttachment,
-    validateSession:host.validateParent});
+    childProjectId:session.projectId,
+    confirm:owner=>host.confirmAttachment!(owner),
+    validateSession:async()=>{
+     await host.validateParent!();
+     if(await host.inspectChildSession!(session)!==true)
+      throw new Error("Sesión Pi hija no verificable durante el enlace");
+    }});
    if(link.status!=="attached"||link.link?.sourceTodoId!==owner.taskId||
     link.link.childSessionId!==session.sessionId)
     throw new Error("El enlace Pi fue rechazado o cambió");
