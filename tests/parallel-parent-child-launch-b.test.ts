@@ -191,7 +191,7 @@ test("E2A: callbacks de Pi conservan la identidad y los datos del anfitrión",as
 test("E2A: un lote incompleto no consume autorización ni abre ninguna sesión",async t=>{
  const f=await genuineFixture(t,3);let attempts=0;
  const host={validateParent:async()=>{},
-  openChildSession:async o=>{attempts++;return {sessionId:"sin-permiso",projectId:o.projectId};},
+  openChildSession:async (o:{projectId:string})=>{attempts++;return {sessionId:"sin-permiso",projectId:o.projectId};},
   inspectChildSession:async()=>true,confirmAttachment:async()=>true};
  await assert.rejects(()=>openVerifiedPiChildSessions({...f,
   allocations:f.allocations.slice(0,2),host}),/Lote Pi incompleto/u);
