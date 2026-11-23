@@ -199,6 +199,23 @@ test("E3: rechazar antes de guardar un plan cuyas instrucciones superen la panta
   /instrucciones de revisión independiente superan el límite de Pi/u);
 });
 
+for(const mode of ["ordinary","dual_explicit"] as const){
+ test("E3: las rutas de habilidades de Reviewer y Verifier deben ser exactas en "+mode,()=>{
+  const {rows,scope}=binding(3,mode);
+  const required=rows.filter(row=>row.plan?.role==="reviewer"||row.plan?.role==="verifier");
+  assert.equal(required.length,mode==="dual_explicit"?3:2);
+  for(const target of required){
+   assert.ok(target.plan);
+   const mutated=rows.map(row=>row===target?{
+    ...row,plan:{...row.plan!,skillPaths:[...row.plan!.skillPaths,"skills/ruta-ajena/SKILL.md"]}
+   }:row);
+   assert.match(inspectRiskVerifierBinding(mutated,scope)??"",
+    /revisión independiente|Verifier independiente obligatorio/u);
+  }
+  assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
+ });
+}
+
 test("E3: dos revisores obligatorios y Verifier dependiente de ambos",()=>{
  const {rows,scope}=binding(3,"dual_explicit");
  assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
