@@ -27,6 +27,23 @@ test("E2B: despertar sin transporte mantiene la deuda y nunca simula entrega",()
  assert.doesNotMatch(code,/pi\.sendMessage\?\.\(/u);
 });
 
+test("E2B: fin de turno y compactación recuperan el despertar, no el resultado",()=>{
+ const source=readFileSync("extensions/asen.ts","utf8");
+ const start=source.indexOf("const flushAgentBoundary=");
+ const end=source.indexOf('pi.on?.("agent_settled"',start);
+ assert.ok(start>0&&end>start);
+ const boundary=source.slice(start,end);
+ assert.match(boundary,/agentTerminalWakeOptions\(owner,pending,agentParentRunActive\)!==undefined/u);
+ assert.match(boundary,/scheduleAgentWakeAtBoundary\?\.\(\)/u);
+ for(const event of ["turn_end","session_compact","session_compact_failed"]){
+  const marker='pi.on?.("'+event+'"';
+  const startEvent=source.indexOf(marker,end);
+  assert.ok(startEvent>end);
+  assert.ok(source.slice(startEvent,startEvent+145).includes("flushAgentBoundary"),
+   "Falta recuperación segura de "+event);
+ }
+});
+
 test("E2B: con padre ocupado no lanza otra conversación ni pierde el aviso",()=>{
  const scope={sessionId:"sesion-e2b",projectId:"/proyecto"};
  const state={mode:"tui",hasUI:true,sessionManager:{getSessionId:()=>scope.sessionId},isIdle:()=>false};
