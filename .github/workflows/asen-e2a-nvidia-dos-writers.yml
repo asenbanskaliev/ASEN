@@ -22,8 +22,6 @@ jobs:
     timeout-minutes: 9
     env:
       ASEN_EXPECTED_SHA: ${{ github.sha }}
-      PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-e2a-pi-config
-      ASEN_E2A_NVIDIA_REPORT: ${{ runner.temp }}/asen-e2a-writers/receipt.json
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
         with:
@@ -51,6 +49,8 @@ jobs:
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-e2a-pi-config
+          ASEN_E2A_NVIDIA_REPORT: ${{ runner.temp }}/asen-e2a-writers/receipt.json
         run: |
           set -euo pipefail
           test -n "$NVIDIA_API_KEY" || { echo "::error::Falta la clave NVIDIA"; exit 1; }
