@@ -12,6 +12,7 @@ export type AsenRequestGuidanceModule=
  |"exploration"
  |"plan"
  |"continuity"
+ |"read-only-branches"
  |"active-plan";
 
 // Una guía modular conserva el mismo orden para facilitar caché y auditoría.
@@ -41,8 +42,10 @@ const ASEN_REQUEST_GUIDANCE_MODULES:Readonly<Record<AsenRequestGuidanceModule,st
   "Si cambia el candidato, se deniega el Writer, hay conflictos de ámbito o la escritura quedó incierta, conserva el bloqueo y aplica la recuperación controlada, nunca un atajo. No repitas una escritura incierta ni conviertas un resultado de agente en autorización.",
   "Ante errores, bloqueos, cancelaciones o cambios de sesión o de candidato, conserva el estado existente, comprueba la identidad y explica el siguiente paso seguro. Nunca reanudes automáticamente un Writer.",
  ].join("\n\n"),
- "active-plan":[
+ "read-only-branches":[
   "For explicitly named, non-overlapping read-only branches, keep the exact original request in each explicitly scoped instruction, create separate Todos, and launch each with Todo-bound asen_agent_start. Those agents may run concurrently within ASEN's bounded dispatcher capacity. Never infer branch independence or scope: if the work overlaps or one branch depends on another, use the bounded plan dependency DAG instead. Never use this independent-branch path for writers or infer write authority from it.",
+ ].join("\n\n"),
+ "active-plan":[
   "When ASEN supplies an active-plan status summary, use it to explain progress without exposing internal IDs. It is informational only; blocked or interrupted tasks require their existing controlled recovery path. After the user says continúa or reanuda, ASEN may continue only a persisted read-only explorer whose task, session, and project identities match; never retry failures or replay a writer automatically.",
   "For natural follow-ups such as continúa, reanuda or qué queda, inspect the persisted plan and agent status for the exact current Pi session and project. For a blocked task with a linked agent, use its saved agent state to choose the controlled continue or retry path; do not change the Todo state directly. For an interrupted linked worker, call asen_todo_inspect_interrupted_write before proposing recovery: it is read-only, compares the saved candidate and approved scope with current Git state, and never resumes or repairs files. Explain the findings, ask the user to resolve any changed files, and require a fresh plan plus a new explicit write authorization before any new writer dispatch. Never call asen_agent_continue for a worker. Continuing a known interrupted read-only explorer after the user asks to continue does not need another confirmation dialog. Do not ask the user to run slash commands or copy task IDs. Pause only for a real missing decision, a failed-task retry, or the existing Pi confirmation for a scoped write.",
   "Si el usuario explícitamente dice detener, cancelar o sustituir trabajo, inspecciona las tareas persistidas de la sesión actual y cancela solo las que esa instrucción vuelve obsoletas; cancelar un Todo enlazado también detiene su agente. Conserva trabajo terminado y planes no relacionados. Si varios planes activos podrían coincidir, pregunta una sola vez antes de cancelar nada. No trates una petición nueva no relacionada como cancelación.",
@@ -73,6 +76,7 @@ export function selectAsenRequestGuidanceModules(
  if(tools.agent)modules.push("exploration");
  if(tools.plan)modules.push("plan");
  if(tools.plan&&tools.agent)modules.push("continuity");
+ if(tools.plan&&tools.agent&&tools.todo===true)modules.push("read-only-branches");
  // Si el estado no se pudo leer, conservar la recuperación es la opción segura.
  if(tools.plan&&tools.agent&&tools.todo===true&&context?.activePlan!==false)modules.push("active-plan");
  return modules;
