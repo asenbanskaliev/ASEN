@@ -92,6 +92,7 @@ export function agentTerminalContinuationMessage(input:{
    ||"No trustworthy output summary was persisted; inspect the durable task at a real orchestration decision boundary.";
  return [
   `ASEN background agent ${displayLabel(input.role)} (${displayLabel(input.id)}) ended: ${displayLabel(input.state)}.`,
+  `Inspect the exact durable task with asen_agent_status using this task id: ${displayLabel(input.id)}.`,
   ...(typeof input.eventId==="string"&&/^asen:agent:[0-9a-f]{64}:terminal$/u.test(input.eventId)
    ?[`Durable notice event ID: ${input.eventId}`,
       "After inspecting the actual durable result, call asen_agent_ack with that eventId to record only a coordinator action. Do not acknowledge only from this summary."] : []),
