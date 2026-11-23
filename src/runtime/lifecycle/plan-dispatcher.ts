@@ -41,7 +41,7 @@ function readerContractsFromPlan(
  return graph.tasks.filter(task=>task.role==="reviewer"||task.role==="verifier").map(task=>{
   if(!task.skillSelection)throw new Error("El lector independiente no tiene habilidades ODD válidas");
   return {requestId:`asen-plan:${task.id}`,role:task.role as "reviewer"|"verifier",
-   skillSelection:task.skillSelection,skillPaths:[...task.skillPaths]};
+   instruction:task.instruction,skillSelection:task.skillSelection,skillPaths:[...task.skillPaths]};
  });
 }
 

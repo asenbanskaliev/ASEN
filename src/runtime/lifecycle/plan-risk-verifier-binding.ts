@@ -8,6 +8,7 @@ export type BoundRiskPlanTask=Pick<TodoItem,"taskId"|"requestId"|"dependsOn"|"pl
 export interface RiskReaderContract{
  readonly requestId:string;
  readonly role:"reviewer"|"verifier";
+ readonly instruction:string;
  readonly skillSelection:SkillSelectionContext;
  readonly skillPaths:readonly string[];
 }
@@ -35,6 +36,7 @@ export function exactRiskReaderContract(
 ):boolean{
  const plan=task.plan;
  if(task.requestId!==expected.requestId||plan?.role!==expected.role||
+    !instructionReady(expected.instruction)||task.description!==expected.instruction||
     !plan.skillSelection||!Array.isArray(plan.skillPaths))return false;
  // No basta que selección y rutas sean coherentes entre sí: deben ser
  // idénticas a las que produjo nuevamente el plan ODD del candidato.
