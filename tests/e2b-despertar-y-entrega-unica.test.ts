@@ -14,11 +14,16 @@ test("E2B: despertar sin transporte mantiene la deuda y nunca simula entrega",()
  const end=source.indexOf("scheduleAgentWakeAtBoundary=",start);
  assert.ok(start>0&&end>start,"Debe existir el control de despertador Pi");
  const code=source.slice(start,end);
- const guard=code.indexOf('if(typeof pi.sendMessage!=="function")return;');
+ const debt=code.indexOf("agentWakeOwed={...scope};");
+ const initialGuard=code.indexOf('if(typeof pi.sendMessage!=="function")return;');
+ const timer=code.indexOf("if(agentWakeTimer)return;");
+ const finalGuard=code.indexOf('if(typeof pi.sendMessage!=="function")return;',initialGuard+1);
  const send=code.indexOf('pi.sendMessage({customType:"asen.agent.wake"');
  const clear=code.lastIndexOf("agentWakeOwed=undefined;");
- assert.ok(guard>=0&&send>guard&&clear>send,
-  "Sin transporte Pi no debe borrarse el despertar pendiente");
+ assert.ok(debt>=0&&initialGuard>debt&&timer>initialGuard,
+  "Si el transporte falta antes del temporizador, la deuda queda guardada");
+ assert.ok(finalGuard>timer&&send>finalGuard&&clear>send,
+  "Si el transporte desaparece antes del envío, no se borra la deuda");
  assert.doesNotMatch(code,/pi\.sendMessage\?\.\(/u);
 });
 
