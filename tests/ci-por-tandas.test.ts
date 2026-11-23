@@ -43,8 +43,9 @@ test("Una etiqueta ajena no convierte controles obligatorios en OMITIDOS",()=>{
  for(const trabajo of trabajos){
   const inicio=completo.indexOf("\n  "+trabajo+":");
   assert.ok(inicio>=0,"No existe "+trabajo);
-  const fin=completo.indexOf("\n  ",inicio+4);
-  const cabecera=completo.slice(inicio,fin<0?undefined:fin).split("\n    steps:")[0];
+  const resto=completo.slice(inicio+4);
+  const siguiente=resto.search(/\n  [a-z][a-z0-9-]*:/u);
+  const cabecera=completo.slice(inicio,siguiente<0?undefined:inicio+4+siguiente).split("\n    steps:")[0];
   assert.match(cabecera,/github\.event\.action == \x27labeled\x27/u,trabajo+" debe ejecutarse para cualquier etiqueta");
   assert.doesNotMatch(cabecera,/github\.event\.label\.name == \x27validacion-completa\x27/u,trabajo+" no debe filtrar etiquetas");
  }
