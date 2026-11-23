@@ -41,3 +41,25 @@ test("E2B: rechaza variantes ajenas y no declara éxito sin eventos",()=>{
  assert.equal(result.modelOutputSaved,false);
  assert.equal(result.credentialsSaved,false);
 });
+
+test("E2B: los eventos falsos nunca se convierten en observaciones verificadas",()=>{
+ const token="MODELO_PRIVADO_NO_REGISTRAR";
+ const events=[
+  {kind:"status_inspected",agentId:token},
+  {kind:"status_inspected",untrustedBody:token},
+  {kind:"unknown_event",token},
+  {kind:"acknowledged",details:{token}},
+ ];
+ const report=summarizeRealChildParentFailure({
+  candidateSha:sha,model:"beam:cloud",route:"busy",events,
+  error:new Error("La prueba no ha completado su aceptación"),
+  journalObserved:false,
+ });
+ assert.equal(report.status,"FAIL_OR_INCOMPLETE");
+ assert.equal(report.counts.status_inspected,2);
+ assert.equal(report.counts.acknowledged,1);
+ assert.equal(Object.hasOwn(report.counts,"unknown_event"),false);
+ assert.equal(report.autoRetry,false);
+ assert.equal(report.globalFull,false);
+ assert.doesNotMatch(JSON.stringify(report),new RegExp(token));
+});
