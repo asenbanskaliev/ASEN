@@ -1,4 +1,4 @@
-name: Prueba de arranque para pruebas reales
+name: Prueba real Writer NVIDIA
 
 on:
   push:
@@ -9,16 +9,65 @@ on:
 
 permissions:
   contents: read
+  actions: read
+
+concurrency:
+  group: pruebas-reales-writer-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  prueba-arranque:
+  writers-nvidia:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.actor == 'asenbanskaliev' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci(asen): ejecutar prueba real writers 20261123'
     runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      ASEN_E2A_NVIDIA_REPORT: ${{ runner.temp }}/asen-e2a-writers/receipt.json
+      PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-e2a-pi-config
     steps:
-      - name: Comprobar autorización exacta
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+      - name: Comprobar autorización y código
         shell: bash
         env:
           ASEN_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           set -euo pipefail
-          test "$ASEN_COMMIT_MESSAGE" = "ci(asen): validar arranque pruebas reales 20261123"
-          echo "Arranque de GitHub Actions confirmado para el SHA $GITHUB_SHA"
+          test "$ASEN_COMMIT_MESSAGE" = "ci(asen): ejecutar prueba real writers 20261123"
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          test -n "$NVIDIA_API_KEY"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+      - name: Preparar Pi 1.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          test "$(pi --version | tr -d '\r')" = "1.2.0"
+      - name: Ejecutar dos Writers NVIDIA reales en paralelo
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node scripts/t12-pi-retry-settings.mjs
+          timeout 360s tsx scripts/e2a-nvidia-dual-writer-trial.ts
+      - name: Guardar recibo de Writers
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: prueba-real-writers-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-e2a-writers/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
