@@ -18,25 +18,40 @@ test("Cada cambio abre una CI rápida sin modelos ni secretos",()=>{
 test("La CI completa verifica cada cambio listo sin cancelar por etiquetas ajenas",()=>{
  assert.match(completo,/types: \[opened, synchronize, reopened, ready_for_review, labeled\]/u);
  assert.match(completo,/github\.event\.pull_request\.draft == false/u);
- assert.match(completo,/github\.event\.label\.name != 'validacion-completa' && github\.run_id \|\| 'validation'/u);
+ assert.match(completo,/github\.event\.action == 'labeled' \|\| github\.event\.pull_request\.draft == false/u);
  for(const job of ["agentes-t02-t05-t06","test","architecture","pi-support-matrix"]){
   const start=completo.indexOf("\n  "+job+":");
   assert.ok(start>=0,"Falta trabajo "+job);
   const block=completo.slice(start,start+460);
   assert.match(block,/if: >-/u,"Falta control de cierre "+job);
-  assert.match(block,/validacion-completa/u,"Falta etiqueta explícita "+job);
+  assert.match(block,/github\.event\.action == 'labeled'/u,"Una etiqueta ajena no puede omitir la prueba "+job);
   assert.match(block,/github\.event\.pull_request\.draft == false/u,"Falta cierre por tanda "+job);
  }
- assert.match(completo,/always\(\) && \(github\.event_name == 'push'/u);
+ assert.match(completo,/always\(\) && \(github\.event_name == 'push' \|\| github\.event\.action == 'labeled'/u);
  assert.match(completo,/branches: \[main\]/u);
 });
 test("La entrega completa conserva las tres plataformas y el SHA exacto",()=>{
  assert.match(entrega,/types: \[opened, synchronize, reopened, ready_for_review, labeled\]/u);
  assert.match(entrega,/github\.event\.pull_request\.draft == false/u);
- assert.match(entrega,/github\.event\.label\.name == 'validacion-completa'/u);
+ assert.match(entrega,/github\.event\.action == 'labeled' \|\| github\.event\.pull_request\.draft == false/u);
  assert.match(entrega,/github\.event_name == 'push'/u);
  assert.match(entrega,/ubuntu-24\.04, windows-latest, macos-latest/u);
  assert.match(entrega,/ASEN_EXPECTED_SHA/u);
+});
+test("Una etiqueta ajena no convierte controles obligatorios en OMITIDOS",()=>{
+ const trabajos=["agentes-t02-t05-t06","test","test-shard-coverage","architecture","pi-support-matrix"];
+ for(const trabajo of trabajos){
+  const inicio=completo.indexOf("\n  "+trabajo+":");
+  assert.ok(inicio>=0,"No existe "+trabajo);
+  const resto=completo.slice(inicio+4);
+  const siguiente=resto.search(/\n  [a-z][a-z0-9-]*:/u);
+  const cabecera=completo.slice(inicio,siguiente<0?undefined:inicio+4+siguiente).split("\n    steps:")[0]??"";
+  assert.match(cabecera,/github\.event\.action == \x27labeled\x27/u,trabajo+" debe ejecutarse para cualquier etiqueta");
+  assert.doesNotMatch(cabecera,/github\.event\.label\.name == \x27validacion-completa\x27/u,trabajo+" no debe filtrar etiquetas");
+ }
+ const paquete=entrega.split("\n  package:")[1]?.split("\n    strategy:")[0]??"";
+ assert.match(paquete,/github\.event\.action == \x27labeled\x27/u);
+ assert.doesNotMatch(paquete,/github\.event\.label\.name/u);
 });
 test("Cuatro Windows y dos macOS conservan cobertura exacta de siete recibos",()=>{
  for(let n=0;n<4;n++)assert.ok(completo.includes(
