@@ -18,7 +18,7 @@ const {provider,model,apiKey,credential,extension}=resolveEco07Provider(process.
 let piPackage;
 try{piPackage=JSON.parse(await readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));}
 catch{throw new Error("ECO-07 installed Pi package metadata is unavailable or malformed");}
-assert.equal(piPackage.version,"1.1.0","ECO-07 provider run must use Pi 1.1.0");
+assert.equal(piPackage.version,"1.2.0","ECO-07 provider run must use the supported Pi 1.2.0 runtime");
 
 const evidenceDir=path.join(repository,"eco07-pi-evidence");
 await mkdir(evidenceDir,{recursive:true});
