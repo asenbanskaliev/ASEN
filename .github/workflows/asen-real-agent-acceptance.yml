@@ -54,6 +54,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Reintento diferido del aviso Pi para el disparo real padre-hijo.
   # Prueba real padre-hijo habilitada en la rama de integración.
   offline-static-validation:
     if: github.repository == 'asenbanskaliev/ASEN'
