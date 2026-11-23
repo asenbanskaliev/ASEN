@@ -4,6 +4,7 @@ import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../src/flow/od
 import {buildOrchestrationPlan} from "../src/orchestration/orchestrator.js";
 import {materializeExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {inspectRiskVerifierBinding,type BoundRiskPlanTask} from "../src/runtime/lifecycle/plan-risk-verifier-binding.js";
+import {selectSkills} from "../src/skills/registry.js";
 
 const project="asen/e3-proyecto";
 const revision="a".repeat(40);
@@ -125,8 +126,14 @@ function binding(item:number,review:"none"|"ordinary"|"dual_explicit"="none"){
  }));
  const worker=rows.find(row=>row.plan?.role==="worker");
  assert.ok(worker);
+ const readers=graph.tasks.filter(task=>task.role==="reviewer"||task.role==="verifier").map(task=>{
+  assert.ok(task.skillSelection);
+  return {requestId:"asen-plan:"+task.id,role:task.role as "reviewer"|"verifier",
+   skillSelection:task.skillSelection,skillPaths:[...task.skillPaths]};
+ });
  return {rows,scope:{taskIdentity:graph.taskId,writerTodoId:worker.taskId,
-  candidateRevision:revision,reviewerCount:review==="dual_explicit"?2:review==="ordinary"?1:0}};
+  candidateRevision:revision,reviewerCount:review==="dual_explicit"?2:review==="ordinary"?1:0,
+  readers}};
 }
 for(const item of [1,2,3,4,5,6]){
  test("E3: el ejecutor verifica la vinculación guardada del riesgo "+item,()=>{
@@ -211,6 +218,26 @@ for(const mode of ["ordinary","dual_explicit"] as const){
    }:row);
    assert.match(inspectRiskVerifierBinding(mutated,scope)??"",
     /revisión independiente|Verifier independiente obligatorio/u);
+  }
+  assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
+ });
+}
+
+for(const mode of ["ordinary","dual_explicit"] as const){
+ test("E3: un lector con selección y rutas cambiadas a la vez queda bloqueado: "+mode,()=>{
+  const {rows,scope}=binding(3,mode);
+  const readers=rows.filter(row=>row.plan?.role==="reviewer"||row.plan?.role==="verifier");
+  for(const reader of readers){
+   assert.ok(reader.plan?.skillSelection);
+   const selection={...reader.plan.skillSelection,
+    risk:"low" as const,codeChange:false,behaviorChange:false,verification:false};
+   const skillPaths=selectSkills(selection).map(skill=>skill.path);
+   const changed=rows.map(row=>row===reader?
+    {...row,plan:{...row.plan!,skillSelection:selection,skillPaths}}:row);
+   assert.match(inspectRiskVerifierBinding(changed,scope)??"",
+    /revisión independiente|Verifier independiente obligatorio/u);
+   // La coherencia interna no basta: los contratos originales siguen intactos.
+   assert.equal(scope.readers.length,mode==="dual_explicit"?3:2);
   }
   assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
  });
