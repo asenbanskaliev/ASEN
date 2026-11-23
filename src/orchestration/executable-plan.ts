@@ -44,6 +44,12 @@ function selectionOf(context:IssuedSkillContext|undefined):SkillSelectionContext
 export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:string,writerAuthorizationBasis?:string):ExecutablePlan{
  const decision=plan.decision,taskId=decision.taskIdentity;
  if(!taskId||!decision.repositoryIdentity||typeof instruction!=="string"||!instruction.trim()||instruction!==instruction.trim()||instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("Executable plan identity or instruction is invalid");
+ // El criterio de verificación ODD es una condición ejecutable, no un mero aviso.
+ // Un cambio con riesgo nombrado no puede convertirse en un plan sin Verifier.
+ const hasWriter=plan.agents.some(agent=>agent.role==="worker");
+ const independentRequired=decision.verification==="independent"&&hasWriter;
+ if(independentRequired&&plan.agents.filter(agent=>agent.role==="verifier").length!==1)
+  throw new Error("El cambio de riesgo independiente exige exactamente un Verifier");
  const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
  const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting",model?:string,thinking?:AgentRequest["thinking"],suffix?:string)=>{
   const id=`${taskId}:${role}${suffix??""}`;
@@ -76,6 +82,18 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
     else ids.set(role,id);
    }
   }
+ }
+ // El Verifier debe quedar detrás del Writer y de todos los revisores previstos.
+ // Así una futura alteración del plan no puede omitir silenciosamente la revisión.
+ if(independentRequired){
+  const writers=tasks.filter(task=>task.role==="worker");
+  const verifiers=tasks.filter(task=>task.role==="verifier");
+  const reviewers=tasks.filter(task=>task.role==="reviewer");
+  if(writers.length!==1||verifiers.length!==1||
+    !verifiers[0]!.dependsOn.includes(writers[0]!.id)||
+    reviewers.some(reviewer=>!verifiers[0]!.dependsOn.includes(reviewer.id))||
+    (writers[0]!.candidate&&verifiers[0]!.candidateRevision!==writers[0]!.candidate!.revision))
+   throw new Error("El Verifier independiente debe esperar al Writer y la revisión del mismo candidato");
  }
  const byId=new Map(tasks.map(item=>[item.id,item]));
  if(byId.size!==tasks.length||tasks.some(item=>item.dependsOn.some(id=>!byId.has(id)||id===item.id)))throw new Error("Executable plan contains invalid task dependencies");
