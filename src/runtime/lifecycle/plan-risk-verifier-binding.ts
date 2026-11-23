@@ -1,15 +1,23 @@
 import type {TodoItem} from "./todo-store.js";
-import {selectSkills} from "../../skills/registry.js";
+import {selectSkills,type SkillSelectionContext} from "../../skills/registry.js";
 
 /** Estado mínimo recuperado del diario de tareas de la sesión y proyecto activos. */
 export type BoundRiskPlanTask=Pick<TodoItem,"taskId"|"requestId"|"dependsOn"|"plan"|"description">&
  Readonly<{current:Readonly<{state:string}>}>;
+
+export interface RiskReaderContract{
+ readonly requestId:string;
+ readonly role:"reviewer"|"verifier";
+ readonly skillSelection:SkillSelectionContext;
+ readonly skillPaths:readonly string[];
+}
 
 export interface RiskVerifierBinding{
  readonly taskIdentity:string;
  readonly writerTodoId:string;
  readonly candidateRevision:string;
  readonly reviewerCount:number;
+ readonly readers:readonly RiskReaderContract[];
 }
 
 // El límite debe coincidir con el tamaño aceptado por el despacho Pi.
@@ -20,12 +28,25 @@ function instructionReady(value:string|undefined):boolean{
 }
 // El registro de habilidades puede cambiar desde la planificación. Comprobar
 // las rutas completas, en el mismo orden, antes de permitir escrituras.
-function exactSkillPaths(plan:BoundRiskPlanTask["plan"]):boolean{
- if(!plan?.skillSelection||!Array.isArray(plan.skillPaths))return false;
+const selectionFields=["phase","selectionProfile","risk","defect","codeChange",
+ "behaviorChange","filesTouched","verification"] as const;
+export function exactRiskReaderContract(
+ task:BoundRiskPlanTask,expected:RiskReaderContract
+):boolean{
+ const plan=task.plan;
+ if(task.requestId!==expected.requestId||plan?.role!==expected.role||
+    !plan.skillSelection||!Array.isArray(plan.skillPaths))return false;
+ // No basta que selección y rutas sean coherentes entre sí: deben ser
+ // idénticas a las que produjo nuevamente el plan ODD del candidato.
+ if(!selectionFields.every(key=>plan.skillSelection![key]===expected.skillSelection[key]))
+  return false;
+ if(plan.skillPaths.length!==expected.skillPaths.length||
+    plan.skillPaths.some((value,index)=>value!==expected.skillPaths[index]))
+  return false;
  try{
-  const expected=selectSkills(plan.skillSelection).map(skill=>skill.path);
-  return expected.length===plan.skillPaths.length&&
-   expected.every((path,index)=>path===plan.skillPaths[index]);
+  const canonical=selectSkills(plan.skillSelection).map(skill=>skill.path);
+  return canonical.length===expected.skillPaths.length&&
+   canonical.every((value,index)=>value===expected.skillPaths[index]);
  }catch{return false;}
 }
 
@@ -38,11 +59,19 @@ export function inspectRiskVerifierBinding(
 ):string|undefined{
  if(!bound.taskIdentity||!bound.writerTodoId||
   !/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(bound.candidateRevision)||
-  !Number.isInteger(bound.reviewerCount)||bound.reviewerCount<0||bound.reviewerCount>2)
+  !Number.isInteger(bound.reviewerCount)||bound.reviewerCount<0||bound.reviewerCount>2||
+  !Array.isArray(bound.readers)||bound.readers.length!==bound.reviewerCount+1)
   return "Identidad del plan independiente inválida: no se inicia Writer";
 
  const byRequest=(suffix:string)=>tasks.filter(t=>
   t.requestId===`asen-plan:${bound.taskIdentity}:${suffix}`);
+ const expectedReader=(suffix:string,role:"reviewer"|"verifier"):RiskReaderContract|undefined=>{
+  const requestId=`asen-plan:${bound.taskIdentity}:${suffix}`;
+  const match=bound.readers.filter(reader=>reader.requestId===requestId&&reader.role===role);
+  return match.length===1?match[0]:undefined;
+ };
+ if(new Set(bound.readers.map(reader=>reader.requestId)).size!==bound.readers.length)
+  return "Contratos de lectores independientes duplicados";
  const writers=byRequest("worker");
  if(writers.length!==1||writers[0]!.taskId!==bound.writerTodoId||
   writers[0]!.plan?.role!=="worker"||
@@ -52,25 +81,26 @@ export function inspectRiskVerifierBinding(
 
  const reviewers:BoundRiskPlanTask[]=[];
  for(let i=0;i<bound.reviewerCount;i++){
-  const matches=byRequest(i===0?"reviewer":`reviewer:${i+1}`);
-  if(matches.length!==1||matches[0]!.plan?.role!=="reviewer"||
+  const suffix=i===0?"reviewer":`reviewer:${i+1}`;
+  const matches=byRequest(suffix),expected=expectedReader(suffix,"reviewer");
+  if(!expected||matches.length!==1||matches[0]!.plan?.role!=="reviewer"||
     matches[0]!.plan?.skillSelection?.phase!=="adversarial-review"||
     matches[0]!.current.state!=="planned"||
     matches[0]!.plan?.candidateRevision!==bound.candidateRevision||
     !instructionReady(matches[0]!.description)||
-    !exactSkillPaths(matches[0]!.plan)||
+    !exactRiskReaderContract(matches[0]!,expected)||
     JSON.stringify(matches[0]!.dependsOn??[])!==JSON.stringify([bound.writerTodoId]))
    return "La revisión independiente falta o cambió de candidato, rol o dependencia";
   reviewers.push(matches[0]!);
  }
  const verifiers=byRequest("verifier");
- const verifier=verifiers[0];
- if(verifiers.length!==1||!verifier||verifier.plan?.role!=="verifier"||
+ const verifier=verifiers[0],verifierExpected=expectedReader("verifier","verifier");
+ if(!verifierExpected||verifiers.length!==1||!verifier||verifier.plan?.role!=="verifier"||
   verifier.plan?.skillSelection?.phase!=="verify"||
   verifier.plan?.candidateRevision!==bound.candidateRevision||
   verifier.current.state!=="planned"||
   !instructionReady(verifier.description)||
-  !exactSkillPaths(verifier.plan))
+  !exactRiskReaderContract(verifier,verifierExpected))
   return "Falta el Verifier independiente obligatorio para el riesgo nombrado";
  const required=[bound.writerTodoId,...reviewers.map(r=>r.taskId)];
  if(new Set(required).size!==required.length||
