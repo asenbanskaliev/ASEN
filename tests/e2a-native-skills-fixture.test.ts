@@ -28,3 +28,10 @@ test("E2A: no se admiten rutas de skills externas ni duplicadas",()=>{
  for(const paths of [["../archivo"],["skills/asen-apply/SKILL.md","skills/asen-apply/SKILL.md"],[".git/config"]])
   assert.throws(()=>createT06ReadOnlyGitFixture({skillRoot:process.cwd(),skillPaths:paths}),/bounded trusted set/);
 });
+
+test("E2A: Git conserva el espacio inicial de estado antes de extraer el nombre",()=>{
+ const output=" M a.txt\n";
+ const changed=output.split(/\r?\n/u).filter(Boolean).map(row=>row.slice(3));
+ assert.deepEqual(changed,["a.txt"]);
+ assert.notDeepEqual(output.trim().split(/\r?\n/u).filter(Boolean).map(row=>row.slice(3)),["a.txt"]);
+});

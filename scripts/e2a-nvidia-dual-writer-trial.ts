@@ -35,8 +35,7 @@ mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
 const observations=[0,1].map(()=>({pid:0,start:0,end:0,model:"unknown",
  writeStarts:0,writeEnds:0,writeErrors:0}));
 const paths=["a.txt","b.txt"] as const;
-const contents=paths.map((_,i)=>"ASEN PRUEBA E2A ESCRITOR "+(i===0?"A":"B")+
- "\nSHA: "+expectedSha+"\nSIN ACEPTACION DE PRODUCCION\n");
+const contents=paths.map((_,i)=>"ASEN-E2A-"+(i===0?"A":"B")+"\n");
 const report={
  schema:"asen.e2a.nvidia-writer/v1",sha:expectedSha,
  provider:model,authorization:"ONLY_TEST_FIXTURE_NOT_PI_HUMAN_CONSENT",
@@ -105,7 +104,7 @@ try{
  const settled=await Promise.allSettled(workers.map(w=>w.dispatcher.dispatch(w.request)));
  const git=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args],{
   encoding:"utf8",stdio:["ignore","pipe","ignore"],env:isolatedGitEnvironment()
- }).trim();
+ });
  for(let i=0;i<workers.length;i++){
   const w=workers[i]!,o=observations[i]!,out=settled[i]!;
   const exact=existsSync(join(w.project,w.path))&&
@@ -126,6 +125,8 @@ try{
    scopeExact&&o.model===model&&o.pid>0&&o.end>o.start&&
    o.writeStarts===1&&o.writeEnds===1&&o.writeErrors===0;
   report.results.push({taskId:w.id,verified:checked,reason:checked?null:reason,
+   nativeWriteErrors:o.writeErrors,changedPaths:changed,
+   observedSha256:existsSync(join(w.project,w.path))?hash(readFileSync(join(w.project,w.path),"utf8")):null,
    pidObserved:o.pid>0,
    modelObserved:o.model,oneNativeWrite:o.writeStarts===1&&o.writeEnds===1,
    exactBytes:exact,exactScope:scopeExact,

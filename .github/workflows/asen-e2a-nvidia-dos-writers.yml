@@ -46,6 +46,7 @@ jobs:
           npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
           pi --version
       # Reintento único tras bloqueo anterior SIN procesos Pi (recibo 45150347851).
+      # Una única prueba tras corregir la lectura Git y exigir diagnóstico de errores de escritura.
       - name: Ejecutar dos Writers NVIDIA una única vez sobre archivos sintéticos
         shell: bash
         env:
