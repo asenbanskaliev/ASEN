@@ -21,9 +21,6 @@ jobs:
     timeout-minutes: 18
     env:
       ASEN_EXPECTED_SHA: ${{ github.sha }}
-      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
-      ASEN_E2A_NVIDIA_REPORT: ${{ runner.temp }}/asen-e2a-writers/receipt.json
-      PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-e2a-pi-config
     steps:
       - name: Comprobar autorización exacta
         shell: bash
@@ -55,6 +52,10 @@ jobs:
           test "$(pi --version | tr -d '\r')" = "1.2.0"
       - name: Ejecutar dos Writers NVIDIA reales en paralelo
         shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_E2A_NVIDIA_REPORT: ${{ runner.temp }}/asen-e2a-writers/receipt.json
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-e2a-pi-config
         run: |
           set -euo pipefail
           test -n "$NVIDIA_API_KEY"
