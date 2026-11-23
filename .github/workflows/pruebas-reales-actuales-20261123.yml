@@ -16,11 +16,7 @@ concurrency:
 
 jobs:
   writers-nvidia:
-    if: >-
-      github.repository == 'asenbanskaliev/ASEN' &&
-      github.actor == 'asenbanskaliev' &&
-      github.event_name == 'push' &&
-      github.run_attempt == 1
+    if: github.repository == 'asenbanskaliev/ASEN'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     env:
@@ -70,12 +66,7 @@ jobs:
           retention-days: 30
 
   recuperacion-nvidia:
-    if: >-
-      github.repository == 'asenbanskaliev/ASEN' &&
-      github.actor == 'asenbanskaliev' &&
-      github.event_name == 'push' &&
-      github.run_attempt == 1 &&
-      github.event.head_commit.message == 'ci(asen): ejecutar pruebas reales actuales 20261123'
+    if: github.repository == 'asenbanskaliev/ASEN'
     runs-on: ubuntu-24.04
     timeout-minutes: 28
     env:
