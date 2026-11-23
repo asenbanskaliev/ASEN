@@ -1235,10 +1235,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }
     if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}
     if(todoStorePromise)try{
-     const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),rows=await (await todoStorePromise).list(identity);
+     const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),store=await todoStorePromise,rows=await store.list(identity);
      if(context.sessionManager===manager&&manager?.getSessionId?.()===identity.sessionId&&context.cwd===cwd){
       const current=await sessionIdentity(context);
-      if(current.sessionId===identity.sessionId&&current.projectId===identity.projectId){const planContext=formatActivePlanContext(rows);if(planContext)options.sections.asen_active_plan=planContext;}
+      if(current.sessionId===identity.sessionId&&current.projectId===identity.projectId){
+       const planContext=formatActivePlanContext(rows);
+       // Un almacén en cuarentena no demuestra ausencia de plan: conservar guía de recuperación.
+       if(planContext||!store.diagnostics()?.quarantined)
+        addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,{activePlan:Boolean(planContext)});
+       if(planContext)options.sections.asen_active_plan=planContext;
+      }
      }
     }catch{/* Task context is read-only and optional; identity or storage failures never block the user's turn. */}
    }
