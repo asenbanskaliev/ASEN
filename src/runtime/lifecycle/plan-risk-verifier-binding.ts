@@ -11,6 +11,13 @@ export interface RiskVerifierBinding{
  readonly reviewerCount:number;
 }
 
+// El límite debe coincidir con el tamaño aceptado por el despacho Pi.
+// No se permite iniciar un Writer si los lectores posteriores no pueden ejecutarse.
+const MAX_VISIBLE_PLAN_INSTRUCTION=4096;
+function instructionReady(value:string|undefined):boolean{
+ return typeof value==="string"&&value.trim().length>0&&value.length<=MAX_VISIBLE_PLAN_INSTRUCTION;
+}
+
 /** El aviso de riesgo ODD no basta: el plan guardado debe contener el Verifier.
  * No inicia modelos, concede autorizaciones ni declara resultados aceptados.
  * Si alguien borra o altera una tarea del diario, la escritura NO puede arrancar.
@@ -39,6 +46,7 @@ export function inspectRiskVerifierBinding(
     matches[0]!.plan?.skillSelection?.phase!=="adversarial-review"||
     matches[0]!.current.state!=="planned"||
     matches[0]!.plan?.candidateRevision!==bound.candidateRevision||
+    !instructionReady(matches[0]!.description)||
     JSON.stringify(matches[0]!.dependsOn??[])!==JSON.stringify([bound.writerTodoId]))
    return "La revisión independiente falta o cambió de candidato, rol o dependencia";
   reviewers.push(matches[0]!);
@@ -49,7 +57,7 @@ export function inspectRiskVerifierBinding(
   verifier.plan?.skillSelection?.phase!=="verify"||
   verifier.plan?.candidateRevision!==bound.candidateRevision||
   verifier.current.state!=="planned"||
-  typeof verifier.description!=="string"||!verifier.description.trim())
+  !instructionReady(verifier.description))
   return "Falta el Verifier independiente obligatorio para el riesgo nombrado";
  const required=[bound.writerTodoId,...reviewers.map(r=>r.taskId)];
  if(new Set(required).size!==required.length||
