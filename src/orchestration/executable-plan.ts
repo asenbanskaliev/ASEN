@@ -100,6 +100,11 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
    }
   }
  }
+ // El despacho Pi no admite instrucciones de más de 4096 caracteres.
+ // No guardar un plan de riesgo cuyo Reviewer o Verifier ya sabemos que no podrá arrancar.
+ if(independentRequired&&tasks.some(task=>
+  (task.role==="reviewer"||task.role==="verifier")&&task.instruction.length>4096))
+  throw new Error("Las instrucciones de revisión independiente superan el límite de Pi; dividir el plan antes de guardarlo");
  // El Verifier debe quedar detrás del Writer y de todos los revisores previstos.
  // Así una futura alteración del plan no puede omitir silenciosamente la revisión.
  if(independentRequired){
