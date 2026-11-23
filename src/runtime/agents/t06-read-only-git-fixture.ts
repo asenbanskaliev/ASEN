@@ -3,7 +3,7 @@
 import {execFileSync} from "node:child_process";
 import {copyFileSync,existsSync,lstatSync,mkdirSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {dirname,isAbsolute,join,resolve} from "node:path";
+import {dirname,isAbsolute,join,relative,resolve,sep} from "node:path";
 import {isolatedGitEnvironment} from "./git-isolated-environment.js";
 
 function git(root:string,...args:string[]):string{
@@ -46,14 +46,18 @@ export function createT06ReadOnlyGitFixture(options:Readonly<{skillRoot?:string;
   git(sourceRoot,"config","core.hooksPath",emptyHooks);
   writeFileSync(join(sourceRoot,"a.txt"),"contenido A original\n");
   writeFileSync(join(sourceRoot,"b.txt"),"contenido B original\n");
-  // Copiar solo las skills canónicas seleccionadas antes del commit sintético.
-  // Sin ellas Pi no las carga en el hijo y bloquea la selección del modelo.
+  // Copiar solo skills canónicas, sin atravesar enlaces a carpetas exteriores.
+  // La comprobación final del archivo no basta si un directorio antecesor es simbólico.
+  const trustedRoot=skills.length?realpathSync(options.skillRoot!):undefined;
   for(const skill of skills){
    const original=resolve(options.skillRoot!,skill),stat=lstatSync(original);
    if(stat.isSymbolicLink()||!stat.isFile())throw new Error("Skill de origen no es un archivo regular");
+   const canonical=realpathSync(original),subpath=relative(trustedRoot!,canonical);
+   if(!subpath||subpath===".."||subpath.startsWith(".."+sep)||isAbsolute(subpath))
+    throw new Error("Skill fuera de la raíz canónica autorizada");
    const target=join(sourceRoot,skill);
    mkdirSync(dirname(target),{recursive:true,mode:0o700});
-   copyFileSync(original,target);
+   copyFileSync(canonical,target);
   }
   git(sourceRoot,"add","a.txt","b.txt",...skills);
   git(sourceRoot,"commit","-qm","base de prueba desechable");
