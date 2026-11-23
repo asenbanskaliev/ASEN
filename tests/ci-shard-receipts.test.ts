@@ -7,7 +7,7 @@ import {discoverTestFiles,planTestRuns} from "../scripts/test-plan.mjs";
 
 const sha="a".repeat(40);
 
-test("F8 six exact-SHA shard receipts cover all test files on all three systems",async()=>{
+test("F8 seven exact-SHA shard receipts cover all test files on all three systems",async()=>{
  const files=await discoverTestFiles(process.cwd());
  const receipts=CI_SHARD_LAYOUT.flatMap(({os,count}:{os:string;count:number})=>
   Array.from({length:count},(_,index)=>createShardReceipt({os,sha,index,count,files})));
@@ -22,7 +22,7 @@ test("F8 six exact-SHA shard receipts cover all test files on all three systems"
  ]){
   assert.throws(()=>verifyShardReceipts({receipts:altered,files,sha}));
  }
- assert.throws(()=>createShardReceipt({os:"windows-latest",sha,index:3,count:3,files}));
+ assert.throws(()=>createShardReceipt({os:"windows-latest",sha,index:4,count:4,files}));
  assert.throws(()=>createShardReceipt({os:"windows-latest",sha,index:0,count:1,files}));
 });
 
