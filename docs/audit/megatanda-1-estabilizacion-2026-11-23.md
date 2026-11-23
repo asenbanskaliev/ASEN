@@ -49,7 +49,7 @@ Esta tanda no demuestra todavía:
 
 - dos Writers auténticos con modelos NVIDIA y escrituras solapadas;
 - aceptación humana y revisión independiente del flujo completo;
-- comparación A/B real con Gentle Shell;
+- comparación A/B real con la referencia externa;
 - validación completa Windows, Linux y macOS sobre este SHA;
 - cierre individual de los 18 objetivos y 12 puntos adicionales.
 
