@@ -76,7 +76,7 @@ test("E2A: un adaptador de host inventado no puede abrir árboles falsos",async 
 async function genuineFixture(t:TestContext){
  const source=fixture(t),parent=fixture(t),privateRoot=fixture(t);
  const localGitNames=new Set(execFileSync("git",["rev-parse","--local-env-vars"],
-  {encoding:"utf8"}).trim().split(/\\r?\\n/u).filter(Boolean).map(name=>name.toUpperCase()));
+  {encoding:"utf8"}).trim().split(/\r?\n/u).filter(Boolean).map(name=>name.toUpperCase()));
  const env=Object.fromEntries(Object.entries(process.env).filter(([name])=>!localGitNames.has(name.toUpperCase())));
  const git=(...args:string[])=>execFileSync("git",["-C",source.root,...args],
   {encoding:"utf8",env,stdio:["ignore","pipe","pipe"]}).trim();
