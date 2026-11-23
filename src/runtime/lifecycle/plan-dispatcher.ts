@@ -11,7 +11,7 @@ import {selectSkills,type SkillSelectionContext} from "../../skills/registry.js"
 import type {SessionTodoStore,TodoContext,TodoItem} from "./todo-store.js";
 import type {TaskAgentLinkStore} from "../agents/task-agent-link-store.js";
 import {TodoLaunchConflictError,TrustedTaskAgentBinder} from "../agents/trusted-task-agent-binder.js";
-import {inspectRiskVerifierBinding} from "./plan-risk-verifier-binding.js";
+import {inspectRiskVerifierBinding,type RiskVerifierBinding} from "./plan-risk-verifier-binding.js";
 
 const readOnlyRoles=["clarifier","explorer","reviewer","verifier"] as const;
 type ReadOnlyRole=typeof readOnlyRoles[number];
@@ -50,7 +50,7 @@ function currentRevision(repository:string):string{
  try{return execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
  catch(error){const revision=error&&typeof error==="object"&&"status" in error&&error.status===0&&"stdout" in error?String(error.stdout).trim():"";if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(revision))throw error;return revision;}
 }
-async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,input:Pick<DispatchInput,"todos"|"agents"|"links"|"runtimeProfiles">):Promise<{candidate:Candidate;writeSurfaces:string[];instruction:string;taskIdentity:string;routeEvidence:NonNullable<ReturnType<typeof buildOrchestrationPlan>["routeEvidence"]>;workerSelection:SkillSelectionContext;admission:object}|{reason:string}>{
+async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,input:Pick<DispatchInput,"todos"|"agents"|"links"|"runtimeProfiles">):Promise<{candidate:Candidate;writeSurfaces:string[];instruction:string;taskIdentity:string;routeEvidence:NonNullable<ReturnType<typeof buildOrchestrationPlan>["routeEvidence"]>;workerSelection:SkillSelectionContext;admission:object;riskVerifier?:RiskVerifierBinding}|{reason:string}>{
  const metadata=task.plan,basisText=metadata?.writerAuthorizationBasis,candidate=metadata?.candidate,surfaces=metadata?.writeSurfaces;
  if(!metadata||metadata.role!=="worker"||!metadata.skillSelection||metadata.skillSelection.phase!=="apply"||!basisText||!candidate||!surfaces?.length)return {reason:"The worker plan lacks a persisted candidate, exact file scope or original ODD authorization facts; rebuild the plan in a Git project."};
  if(candidate.repository!==identity.projectId)return {reason:"The persisted worker candidate belongs to another project; rebuild the plan."};
@@ -92,12 +92,13 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  // E3: no pedir consentimiento Writer cuando el plan persistido ha perdido
  // su Verifier obligatorio o alguno de los revisores ligados al mismo candidato.
  // El visto bueno del modelo no sustituye esta comprobación del diario real.
- if(decision.verification==="independent"){
-  const missing=inspectRiskVerifierBinding(await input.todos.list(identity),{
-   taskIdentity:facts.taskIdentity,writerTodoId:task.taskId,
-   candidateRevision:candidateBound.revision,
-   reviewerCount:plan.agents.filter(agent=>agent.role==="reviewer").length
-  });
+ const riskVerifier:RiskVerifierBinding|undefined=decision.verification==="independent"?{
+  taskIdentity:facts.taskIdentity,writerTodoId:task.taskId,
+  candidateRevision:candidateBound.revision,
+  reviewerCount:plan.agents.filter(agent=>agent.role==="reviewer").length
+ }:undefined;
+ if(riskVerifier){
+  const missing=inspectRiskVerifierBinding(await input.todos.list(identity),riskVerifier);
   if(missing)return {reason:missing};
  }
  const expectedInstruction=`Perform only the authorized, scoped work for: ${instruction}`;
@@ -123,7 +124,8 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(applicability.outcome!=="organic")return {reason:`The controlled worker requires an organic, bounded lifecycle; applicability is ${applicability.outcome}.`};
  if(!plan.routeEvidence)return {reason:"The writer route lacks candidate-bound ODD evidence."};
  const admission=issueOrganicWriterAdmission(applicability,exactSurfaces);
- return {candidate:candidateBound,writeSurfaces:exactSurfaces,instruction:authorizedInstruction,taskIdentity:facts.taskIdentity,routeEvidence:plan.routeEvidence,workerSelection:metadata.skillSelection,admission};
+ return {candidate:candidateBound,writeSurfaces:exactSurfaces,instruction:authorizedInstruction,taskIdentity:facts.taskIdentity,routeEvidence:plan.routeEvidence,workerSelection:metadata.skillSelection,admission,
+  ...(riskVerifier?{riskVerifier}:{})};
 }
 
 /** Dispatches one dependency-ready plan task. Writes require a fresh exact candidate, ODD scope, and one-use user approval. */
@@ -182,6 +184,11 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   let head:string;try{head=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The project stopped being a readable Git candidate; no writer was launched."};}
   if(head!==prepared.candidate.revision)return {status:"blocked",reason:"The project changed while awaiting authorization; rebuild the plan against the current candidate."};
   await input.validateIdentity();
+  // Entre la petición y la respuesta del usuario también puede cambiar el plan.
+  if(prepared.riskVerifier){
+   const missing=inspectRiskVerifierBinding(await input.todos.list(input.identity),prepared.riskVerifier);
+   if(missing)return {status:"blocked",reason:missing};
+  }
   if(task.plan.fixSource){
    try{
     const observed=inspectStoredFixSourceTree(input.identity.projectId,
@@ -195,6 +202,12 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
    const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
     const validateLaunch=async()=>{
      await input.validateIdentity();
+     // La comprobación vuelve a ejecutarse bajo el bloqueo de lanzamiento
+     // para que no se retire el Verifier justo antes de iniciar Pi.
+     if(prepared.riskVerifier){
+      const missing=inspectRiskVerifierBinding(await input.todos.list(input.identity),prepared.riskVerifier);
+      if(missing)throw new Error(missing);
+     }
      if(task.plan?.fixSource){
       const current=inspectStoredFixSourceTree(input.identity.projectId,
        prepared.writeSurfaces,task.plan.fixSource.treeIdentity);
