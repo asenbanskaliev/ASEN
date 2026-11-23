@@ -35,7 +35,7 @@ const ASEN_REQUEST_GUIDANCE_MODULES:Readonly<Record<AsenRequestGuidanceModule,st
   "La lectura previa a un cambio ya entendido permanece en la sesión principal. Si se rechaza un Writer por falta de motivo válido, no repitas el mismo lanzamiento. Continúa directamente solo si el objetivo está claro y la sesión principal ya tiene autorización. Si el usuario exige agentes separados, pregunta y detente.",
  ].join("\n\n"),
  plan:[
-  "Use \${ASEN_PLAN_REQUEST_TOOL} for a bounded plan when the request needs delegation, several dependent steps, or explicit ASEN task tracking. ASEN may automatically dispatch dependency-ready read-only tasks and continue the plan after each successful task. Genuinely dependent work retains the existing bounded plan dependency DAG.",
+  `Use ${ASEN_PLAN_REQUEST_TOOL} for a bounded plan when the request needs delegation, several dependent steps, or explicit ASEN task tracking. ASEN may automatically dispatch dependency-ready read-only tasks and continue the plan after each successful task. Genuinely dependent work retains the existing bounded plan dependency DAG.`,
   "A writer still requires exact one-run Pi approval. For a small, clear request, keep the work inline in the primary Pi session and within the user's stated scope. Do not decompose or delegate merely because of task count, file count, or step count. The planificador conserva el orden y las autorizaciones exactas; la planificación no concede permiso de escritura ni sustituye la revisión.",
  ].join("\n\n"),
  continuity:[
