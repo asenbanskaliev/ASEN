@@ -109,7 +109,7 @@ function startPi(label){
       }
       if(value.type==="extension_ui_request"&&value.method==="confirm"){
         const titleText=String(value.title??"");const message=String(value.message??"");
-        if(titleText!=="Resume blocked ASEN task?"||!message.includes(title)||!message.includes("explicit review is required")){
+        if(titleText!=="Resume blocked ASEN task?"||!message.includes(title)||!message.includes("explicit review required")){
           void controller.stop("SIGKILL");continue;
         }
         // This is the affirmative test-user response to ASEN's explicit resume dialog; no release authority is requested or granted.
