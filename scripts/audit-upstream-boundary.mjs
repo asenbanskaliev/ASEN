@@ -61,6 +61,9 @@ const pinnedParityPlanDocs=new Set([
  "odd/evidence/"+"gen"+"tle-shell-v4.8.0-delta-reconciliation.md",
  "odd/tasks/asen-startup-and-conversation-view.md",
  "odd/tasks/asen-command-registry-and-review-receipts.md",
+ // Matriz canónica de aceptación de los 18 objetivos y 12 puntos: documento
+ // de auditoría, sin importación por el código de ejecución.
+ "odd/tasks/flujo-agentes-18-objetivos-12-puntos-aceptacion-20261123.md",
  // INDEX.md only enumerates parity-document filenames already pinned above; a
  // catalog of references is not itself an upstream dependency.
  "odd/archive/2026-11/INDEX-inventario-2026-11-14.md",
