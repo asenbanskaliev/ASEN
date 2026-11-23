@@ -26,7 +26,10 @@ test("CTX-2: la composición completa conserva núcleo, ruta, Explorer y recuper
  assert.match(guide,/Delega Writers solo para unidades suficientemente grandes e independientes/iu);
  assert.match(guide,/un único Explorer de solo lectura/iu);
  assert.match(guide,/Use asen_plan_request/iu);
+ assert.match(guide,/Do not decompose or delegate merely because of task count/iu);
+ assert.match(guide,/Mantén los controles existentes para riesgos altos/iu);
  assert.match(guide,/nunca un atajo/iu);
+ assert.match(guide,/what needs approval/iu);
  assert.match(guide,/asen_todo_inspect_interrupted_write/iu);
 });
 
