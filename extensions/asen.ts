@@ -247,6 +247,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let explorerBudget:Readonly<{sessionId:string;projectId:string;telemetry:ExplorerBudgetTelemetry}>|undefined;
   let agentParentRunActive=false,agentWakeOwed:{sessionId:string;projectId:string}|undefined;
   let agentWakeTimer:ReturnType<typeof setTimeout>|undefined;
+  let heldNoticeBoundaryTimer:ReturnType<typeof setTimeout>|undefined;
   let flushPendingAgentNotices:((ctx:CommandContext)=>Promise<void>)|undefined;
   let scheduleAgentWakeAtBoundary:(()=>void)|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
@@ -866,6 +867,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    } catch {/* Best effort only; never interrupt Pi startup. */}
    validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
+   if(heldNoticeBoundaryTimer){clearTimeout(heldNoticeBoundaryTimer);heldNoticeBoundaryTimer=undefined;}
    if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
    publishT11Chrome(ctx);
    if(ctx.sessionManager?.getSessionId?.()){
@@ -954,6 +956,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     scheduleAgentWakeAtBoundary=()=>{const owed=agentWakeOwed,owner=agentDeliveryContext;
      if(owed&&owner)requestAgentWake(owner,owed);
     };
+    const retryHeldNoticeAtCommandBoundary=(context:CommandContext):void=>{
+     // Un comando de Pi puede presentar isIdle=false sin tener un turno de modelo
+     // activo. Reintentar una sola vez tras devolver el control al anfitrión permite
+     // entregar el aviso sin convertir un estado ocupado en una autorización de turno.
+     if(agentParentRunActive||heldNoticeBoundaryTimer||!flushPendingAgentNotices)return;
+     heldNoticeBoundaryTimer=setTimeout(()=>{
+      heldNoticeBoundaryTimer=undefined;
+      void flushPendingAgentNotices?.(context);
+     },0);
+    };
     const sendAgentNotice=async(record:PublicAgentRecord,context:CommandContext,wake:boolean):Promise<boolean>=>{
      const scope={sessionId:record.sessionId,projectId:record.projectId};
      if(!pi.sendMessage||context.sessionManager?.getSessionId?.()!==scope.sessionId)return false;
@@ -970,7 +982,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      // Compaction (hold) and headless/RPC (headless) both retain pending.
      // A headless Pi host must NEVER mark an undelivered event as enqueued.
      const route=agentParentRoute(context,scope,agentParentRunActive);
-     if(route!=="run"&&route!=="idle")return false;
+     if(route!=="run"&&route!=="idle"){
+      if(route==="hold")retryHeldNoticeAtCommandBoundary(context);
+      return false;
+     }
      // A route can change across the journal I/O and identity checks.
      // Never claim a notice using a stale Pi parent TUI state.
      if(!await matches()||agentParentRoute(context,scope,agentParentRunActive)!==route)return false;
