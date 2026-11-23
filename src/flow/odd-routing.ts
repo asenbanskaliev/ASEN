@@ -173,8 +173,10 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   for(const unidad of taskUnits)visitar(unidad.id);
   // Se cuentan unidades de trabajo, nunca rutas ni cantidad de archivos.
   // La concurrencia solo es una recomendación; el planificador mantiene permisos y DAG.
-  const independentUnits=taskUnits.filter(unit=>unit.estimatedMinutes>=30&&
-    unit.dependsOn.length===0&&!taskUnits.some(other=>other.dependsOn.includes(unit.id))).length;
+  // Las unidades raíz pueden empezar juntas aunque otra unidad dependa después de una de ellas.
+  // La dependencia bloquea a la sucesora, no a sus predecesoras independientes.
+  // Esta cifra solo recomienda orquestar; nunca concede lanzamiento ni escritura.
+  const independentUnits=taskUnits.filter(unit=>unit.estimatedMinutes>=30&&unit.dependsOn.length===0).length;
   const high = operations.length > 0 || writes.some(write => write.changeKind === "security");
   const unknown = scope.kind === "unknown" || unresolvedDecisions.length > 0;
   const filesTouched = scope.kind === "known" ? scope.expectedPaths.length : 0;
