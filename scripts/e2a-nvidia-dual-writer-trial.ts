@@ -43,7 +43,8 @@ const report={
  provider:model,authorization:"ONLY_TEST_FIXTURE_NOT_PI_HUMAN_CONSENT",
  costVerified:false,autoRetry:false,autoMerge:false,globalFull:false,
  results:[] as Array<Record<string,unknown>>,parallel:false,
- isolation:false,sourceClean:false,status:"BLOCKED"
+ isolation:false,sourceClean:false,status:"BLOCKED",
+ failureCode:null as null|"POST_DISPATCH_EXCEPTION"|"INCOMPLETE_WORKER_PROCESS"|"CLEANUP_FAILED"
 };
 const workers=fixture.children.map((project,i)=>{
  const path=paths[i]!,content=contents[i]!;
@@ -155,15 +156,26 @@ try{
  report.status=report.parallel&&report.isolation&&report.sourceClean&&
   report.results.every(x=>x.verified===true)?"PASS_NATIVE_WRITERS_TEST_ONLY":"BLOCKED";
 }catch{
+ // Código fijo: no registrar errores del proveedor, prompts, rutas ni datos privados.
  report.status="BLOCKED";
+ report.failureCode="POST_DISPATCH_EXCEPTION";
 }finally{
+ const complete=observations.every(o=>o.pid>0&&o.end>o.start);
+ if(!complete){
+  report.status="BLOCKED";
+  report.failureCode??="INCOMPLETE_WORKER_PROCESS";
+ }else{
+  try{fixture.cleanup();}catch{
+   report.status="BLOCKED";
+   report.failureCode="CLEANUP_FAILED";
+  }
+ }
+ // Persistir el resultado definitivo, incluida cualquier incertidumbre de limpieza.
  const output=resolve(reportFile);
  mkdirSync(dirname(output),{recursive:true,mode:0o700});
  writeFileSync(output,JSON.stringify(report,null,2)+"\n",{
   encoding:"utf8",mode:0o600,flag:"wx"
  });
- if(observations.every(o=>o.pid>0&&o.end>o.start))fixture.cleanup();
- else report.status="BLOCKED";
 }
 process.stdout.write(JSON.stringify({status:report.status,parallel:report.parallel,
  writersVerified:report.results.filter(x=>x.verified===true).length})+"\n");
