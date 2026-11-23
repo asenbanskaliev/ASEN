@@ -10,7 +10,7 @@ import {existsSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeF
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
-import {gradeRealChildParentConsumption} from "./t12-real-child-parent-grade.mjs";
+import {gradeRealChildParentConsumption,summarizeRealChildParentFailure} from "./t12-real-child-parent-grade.mjs";
 
 const repo=fileURLToPath(new URL("../",import.meta.url));
 const expected=process.env.ASEN_EXPECTED_SHA,model=process.env.ASEN_SELECTED_MODEL;
@@ -89,7 +89,23 @@ try{
  console.log((busy?"T12_REAL_PI_BUSY_PARENT_CHILD_CONSUMPTION_PASS ":"T12_REAL_PI_PARENT_CHILD_CONSUMPTION_PASS ")+
   JSON.stringify({status:result.status,verifiedParentToolActions:2,globalFull:false}));
 }catch(error){
- console.error("T12_REAL_PI_PARENT_CHILD_CONSUMPTION_FAIL",error instanceof Error?error.message:"Unknown error");
+ // Aunque falle la aceptación, conservar una evidencia NO sensible del límite real.
+ // No convertir ausencia de recibos o llamadas al modelo en un resultado correcto.
+ const journalFile=join(privateHome,".asen","agent-notices.json");
+ let observed=[];
+ if(existsSync(trace))try{
+  const traceData=JSON.parse(readFileSync(trace,"utf8"));
+  if(Array.isArray(traceData.events))observed=traceData.events.slice(0,500);
+ }catch{/* Una traza dañada nunca concede autoridad. */}
+ const report=summarizeRealChildParentFailure({
+  candidateSha:expected,model,route:busy?"busy":"idle",events:observed,
+  error,journalObserved:existsSync(journalFile),
+ });
+ try{
+  mkdirSync(join(repo,"asen-acceptance-evidence"),{recursive:true});
+  if(!existsSync(output))writeFileSync(output,JSON.stringify(report,null,2)+"\n",{flag:"wx",mode:0o600});
+ }catch{/* El error de conservación no altera el resultado fallido. */}
+ console.error("T12_REAL_PI_PARENT_CHILD_CONSUMPTION_FAIL",report.failureCode);
  if(child)try{child.kill();}catch{}
  process.exitCode=1;
 }finally{

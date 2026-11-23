@@ -49,3 +49,35 @@ export function gradeRealChildParentConsumption(input){
   independentReferenceParity:false,globalFull:false,
  });
 }
+
+/** Registro mínimo tras una prueba fallida. Nunca almacena texto del proveedor,
+ * instrucciones, argumentos de herramientas, claves ni salidas de procesos. */
+export function summarizeRealChildParentFailure(input){
+ const {candidateSha,model,route,events,error,journalObserved}=input??{};
+ assert.match(candidateSha??"",/^[a-f0-9]{40}$/u);
+ assert.ok(model==="beam"||model==="beam:cloud","Modelo de diagnóstico no autorizado");
+ assert.ok(route==="idle"||route==="busy","Ruta de diagnóstico desconocida");
+ assert.ok(Array.isArray(events)&&events.length<=500,"Registro de eventos sin límite");
+ const allowed=[
+  "parent_turn_start","parent_turn_end","child_pi_requested","child_pi_started",
+  "child_pi_selected","child_pi_finished","result_enqueued","idle_wake",
+  "status_inspected","acknowledged","busy_tool_started","busy_tool_finished",
+  "model_turn_budget_exceeded","child_pi_tool_attempted",
+ ];
+ const counts=Object.fromEntries(allowed.map(kind=>[kind,
+  events.filter(event=>event&&typeof event==="object"&&event.kind===kind).length]));
+ const message=error instanceof Error?error.message:"";
+ const failureCode=message.includes("status_inspected must be observed exactly once")?
+  "PARENT_STATUS_NOT_OBSERVED":
+  message.includes("acknowledged must be observed exactly once")?
+  "PARENT_ACK_NOT_OBSERVED":
+  message.includes("Native Pi TUI parent did not terminate normally")?
+  "PARENT_TERMINAL_FAILURE":"OTHER_FAILURE";
+ return Object.freeze({
+  schema:"asen-real-pi-parent-child-diagnostic/v1",
+  status:"FAIL_OR_INCOMPLETE",candidateSha,route,provider:"ollama-cloud",model,
+  failureCode,counts,journalObserved:journalObserved===true,
+  modelOutputSaved:false,credentialsSaved:false,writerAuthorized:false,
+  autoRetry:false,globalFull:false,
+ });
+}
