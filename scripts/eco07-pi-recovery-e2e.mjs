@@ -200,7 +200,7 @@ try{
   await second.send("get_commands");
   let recovered=await currentItem();
   assert.deepEqual(recovered.events.map(event=>event.state),["planned","running","blocked"],"Pi restart must preserve history and block interrupted work");
-  assert.match(recovered.events.at(-1).reason,/explicit review is required/u);
+  assert.match(recovered.events.at(-1).reason,/explicit review required/u);
   await record("task-recovered",{taskId:recovered.taskId,sessionId,projectId:repository,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))});
 
   phase="identity-isolation";
