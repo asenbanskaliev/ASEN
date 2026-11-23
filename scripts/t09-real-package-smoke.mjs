@@ -119,7 +119,9 @@ try{
   let upgraded;
   // The signed Windows packed release rechecks each copied file and directory.
   // Preserve a finite process timeout without killing the 60-second copy stage.
-  const upgradeProcessDeadlineMs=process.platform==="win32"?150_000:75_000;
+  // macOS puede tardar más en completar la copia HTTPS del paquete firmado.
+  // Mantener un límite finito sin cortar una ejecución válida.
+  const upgradeProcessDeadlineMs=process.platform==="win32"||process.platform==="darwin"?150_000:75_000;
   try{upgraded=await reportAsync(["managed","upgrade","--source-url",releaseServer.url,"--trust-anchor",trustAnchor,"--yes"],upgradeProcessDeadlineMs);}
   catch(error){error.message+=`\nloopback requests=${JSON.stringify(releaseServer.requests)}\nTLS/server errors=${JSON.stringify(releaseServer.serverErrors)}`;throw error;}
   assert.deepEqual(releaseServer.requests.map(request=>request.path),["asen-manifest.json","asen-manifest.sig.json",...JSON.parse(await readFile(nextManifest,"utf8")).files.map(file=>file.sourcePath)]);
