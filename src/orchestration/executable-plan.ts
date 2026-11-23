@@ -59,6 +59,13 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
      writerAgent.candidate?.repository!==verifierAgent.candidate?.repository||
      writerAgent.candidate?.revision!==verifierAgent.candidate?.revision)
    throw new Error("El Verifier independiente debe revisar el mismo candidato");
+  // Comprobar la identidad completa de todos los revisores antes de guardar
+  // únicamente su revisión; una versión o repositorio diferente no es válido.
+  if(plan.agents.filter(agent=>agent.role==="reviewer").some(reviewer=>
+   reviewer.candidate?.id!==writerAgent.candidate?.id||
+   reviewer.candidate?.repository!==writerAgent.candidate?.repository||
+   reviewer.candidate?.revision!==writerAgent.candidate?.revision))
+   throw new Error("El Reviewer independiente debe revisar el mismo candidato");
  }
  const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
  const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting",model?:string,thinking?:AgentRequest["thinking"],suffix?:string)=>{
