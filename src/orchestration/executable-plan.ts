@@ -48,8 +48,18 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
  // Un cambio con riesgo nombrado no puede convertirse en un plan sin Verifier.
  const hasWriter=plan.agents.some(agent=>agent.role==="worker");
  const independentRequired=decision.verification==="independent"&&hasWriter;
- if(independentRequired&&plan.agents.filter(agent=>agent.role==="verifier").length!==1)
-  throw new Error("El cambio de riesgo independiente exige exactamente un Verifier");
+ if(independentRequired){
+  const writerAgent=plan.agents.find(agent=>agent.role==="worker")!;
+  const verifiers=plan.agents.filter(agent=>agent.role==="verifier");
+  if(verifiers.length!==1)
+   throw new Error("El cambio de riesgo independiente exige exactamente un Verifier");
+  const verifierAgent=verifiers[0]!;
+  // La identidad original no depende de que el plan ya haya emitido permisos Writer.
+  if(writerAgent.candidate?.id!==verifierAgent.candidate?.id||
+     writerAgent.candidate?.repository!==verifierAgent.candidate?.repository||
+     writerAgent.candidate?.revision!==verifierAgent.candidate?.revision)
+   throw new Error("El Verifier independiente debe revisar el mismo candidato");
+ }
  const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
  const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting",model?:string,thinking?:AgentRequest["thinking"],suffix?:string)=>{
   const id=`${taskId}:${role}${suffix??""}`;
