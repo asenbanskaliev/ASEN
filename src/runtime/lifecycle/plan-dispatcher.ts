@@ -59,10 +59,8 @@ function expectedReaderFromPersistedOdd(
   request.endsWith(":reviewer:2")?":reviewer:2":":reviewer";
  if(!request.endsWith(suffix))throw new Error("La identidad del lector no coincide con su función");
  const prefix=request.slice(0,-suffix.length),writers=rows.filter(row=>row.requestId===prefix+":worker");
- if(writers.length!==1){
-  if(role==="verifier"&&writers.length===0)return undefined; // Verificación pura, sin Writer
-  throw new Error("El lector no tiene un Writer ODD único y verificable");
- }
+ if(writers.length===0)return undefined; // Revisión/verificación exclusivamente de lectura, sin Writer
+ if(writers.length!==1)throw new Error("El lector no tiene un Writer ODD único y verificable");
  const writer=writers[0]!,candidate=writer.plan?.candidate,basis=writer.plan?.writerAuthorizationBasis;
  if(!candidate||!basis||!writer.plan?.writeSurfaces?.length||
     candidate.repository!==identity.projectId)throw new Error("El contrato ODD original del Writer no está disponible");
