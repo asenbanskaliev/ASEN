@@ -144,3 +144,13 @@ test("E3: no se admite reutilizar la identidad de un Writer de otro plan",()=>{
  assert.match(inspectRiskVerifierBinding(rows,{...scope,writerTodoId:"otro-todo"})??"",/Writer del plan guardado/u);
  assert.match(inspectRiskVerifierBinding(rows,{...scope,candidateRevision:"no-valid"})??"",/Identidad del plan independiente inválida/u);
 });
+
+test("E3: revalidar bajo el bloqueo tras reclamar Writer no exige que siga planned",()=>{
+ const {rows,scope}=binding(1);
+ const worker=rows.find(row=>row.taskId===scope.writerTodoId);
+ assert.ok(worker);
+ assert.equal(inspectRiskVerifierBinding(rows.map(row=>row===worker?
+  {...row,current:{state:"running"}}:row),scope),undefined);
+ assert.match(inspectRiskVerifierBinding(rows.map(row=>row===worker?
+  {...row,current:{state:"blocked"}}:row),scope)??"",/Writer del plan guardado/u);
+});
