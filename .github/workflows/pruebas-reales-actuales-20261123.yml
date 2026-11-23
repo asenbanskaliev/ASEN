@@ -21,7 +21,6 @@ jobs:
       github.actor == 'asenbanskaliev' &&
       github.event_name == 'push' &&
       github.run_attempt == 1 &&
-      github.event.head_commit.message == 'ci(asen): ejecutar pruebas reales actuales 20261123'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     env:
@@ -30,6 +29,13 @@ jobs:
       ASEN_E2A_NVIDIA_REPORT: ${{ runner.temp }}/asen-e2a-writers/receipt.json
       PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-e2a-pi-config
     steps:
+      - name: Comprobar autorización exacta antes de gastar
+        shell: bash
+        env:
+          ASEN_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          test "$ASEN_COMMIT_MESSAGE" = "ci(asen): ejecutar pruebas reales actuales 20261123"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
@@ -78,6 +84,13 @@ jobs:
       ASEN_ECO07_PROVIDER: nvidia
       ASEN_ECO07_MODEL: nvidia/nemotron-3.5-lightning-30b-a3b
     steps:
+      - name: Comprobar autorización exacta antes de gastar
+        shell: bash
+        env:
+          ASEN_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          set -euo pipefail
+          test "$ASEN_COMMIT_MESSAGE" = "ci(asen): ejecutar pruebas reales actuales 20261123"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
