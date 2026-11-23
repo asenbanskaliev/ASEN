@@ -36,6 +36,38 @@ test("natural-plan tool generates internal identity and hides machine fields fro
  assert.equal(result.details.task,"private-task-id");
 });
 
+test("natural-plan tool connects independent functional units to the ODD route",async()=>{
+ const units=[
+  {id:"api",objective:"Implement form contract",estimatedMinutes:45,dependsOn:[]},
+  {id:"ui",objective:"Implement independent form view",estimatedMinutes:40,dependsOn:[]},
+ ];
+ let tool:any,received="";
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  received=args;return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units");
+ const actual=await tool.execute("call",{...request(),taskUnits:units},undefined,undefined,{cwd:"/repo"});
+ const issued=JSON.parse(received);
+ assert.equal(tool.parameters.required.includes("taskUnits"),false);
+ assert.deepEqual(tool.parameters.properties.taskUnits.items.required,["id","objective","estimatedMinutes","dependsOn"]);
+ assert.deepEqual(issued.taskUnits,units);
+ assert.equal(actual.details.route,"orchestrate");
+ assert.deepEqual(actual.details.reasons,["independent-substantial-task-units"]);
+ assert.equal(actual.details.requiresIsolatedChild,true);
+ assert.deepEqual(actual.details.execution,{started:false,authorized:false});
+});
+
+test("natural-plan tool rejects malformed units without preparing a route",async()=>{
+ let tool:any,calls=0;
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  calls++;return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units-invalid");
+ const malformed={id:"api",objective:"Implement form contract",estimatedMinutes:45,dependsOn:["missing"]};
+ await assert.rejects(()=>tool.execute("call",{...request(),taskUnits:[malformed]},undefined,undefined,{cwd:"/repo"}),/invalid dependencies/u);
+ assert.equal(calls,1);
+ await assert.rejects(()=>tool.execute("call",{...request(),taskUnits:[],extra:true},undefined,undefined,{cwd:"/repo"}),/incomplete/u);
+ assert.equal(calls,1);
+});
+
 test("registered natural intake preserves controlled command routing and instructions",async t=>{
  const cases=[
   {name:"direct primary",taskIdentity:"parity-direct",route:"direct",taskRoles:["primary"],delegatedRoles:[],facts:{...request(),instruction:"Inspect the bounded form behavior without changing it",writes:[],testing:{kind:"n_a",reason:"Read-only inspection"}}},
