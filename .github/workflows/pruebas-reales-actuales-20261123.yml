@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/pruebas-reales-20261123
+      - integration/megatanda-1-3-20261123
     paths:
       - .github/workflows/pruebas-reales-actuales-20261123.yml
 
