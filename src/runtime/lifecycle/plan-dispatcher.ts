@@ -20,7 +20,7 @@ const basisKeys=["instruction","taskIdentity","intent","scope","writes","riskOpe
 const skillSelectionKeys=["behaviorChange","codeChange","defect","filesTouched","phase","risk","verification","selectionProfile"] as const;
 const exact=(value:unknown,keys:readonly string[]):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value)&&Object.getPrototypeOf(value)===Object.prototype&&Object.keys(value).length===keys.length&&keys.every(key=>Object.hasOwn(value,key));
 /** Verifica claves de la base original; deriveOddFacts valida después sus valores y dependencias. */
-export function hasExactWorkerAuthorizationBasis(value:unknown):value is Record<string,unknown>{
+export function hasExactWorkerAuthorizationBasis(value:unknown):value is Record<string,unknown>&{instruction:string}{
  const keys=[...basisKeys,...(Object.hasOwn(value??{},"namedRisks")?["namedRisks"]:[]),
   ...(Object.hasOwn(value??{},"taskUnits")?["taskUnits"]:[])];
  return exact(value,keys)&&typeof value.instruction==="string"&&!!value.instruction.trim()&&
