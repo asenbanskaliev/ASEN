@@ -36,10 +36,10 @@ test("natural-plan tool generates internal identity and hides machine fields fro
  assert.equal(result.details.task,"private-task-id");
 });
 
-test("natural-plan tool connects independent functional units to the ODD route",async()=>{
+test("la entrada natural conecta unidades funcionales independientes con la ruta ODD",async()=>{
  const units=[
-  {id:"api",objective:"Implement form contract",estimatedMinutes:45,dependsOn:[]},
-  {id:"ui",objective:"Implement independent form view",estimatedMinutes:40,dependsOn:[]},
+  {id:"api",objective:"Implementar contrato del formulario",estimatedMinutes:45,dependsOn:[]},
+  {id:"ui",objective:"Implementar vista independiente del formulario",estimatedMinutes:40,dependsOn:[]},
  ];
  let tool:any,received="";
  registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
@@ -60,12 +60,12 @@ test("natural-plan tool connects independent functional units to the ODD route",
  assert.match(preview,/independent-substantial-task-units/u);
 });
 
-test("natural-plan tool rejects malformed units without preparing a route",async()=>{
+test("la entrada natural rechaza unidades mal formadas sin preparar una ruta",async()=>{
  let tool:any,calls=0;
  registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
   calls++;return controlledInstructionPlanCommand(args,"/repo");
  },()=>"natural-units-invalid");
- const malformed={id:"api",objective:"Implement form contract",estimatedMinutes:45,dependsOn:["missing"]};
+ const malformed={id:"api",objective:"Implementar contrato del formulario",estimatedMinutes:45,dependsOn:["missing"]};
  await assert.rejects(()=>tool.execute("call",{...request(),taskUnits:[malformed]},undefined,undefined,{cwd:"/repo"}),/invalid dependencies/u);
  assert.equal(calls,1);
  await assert.rejects(()=>tool.execute("call",{...request(),taskUnits:[],extra:true},undefined,undefined,{cwd:"/repo"}),/incomplete/u);
