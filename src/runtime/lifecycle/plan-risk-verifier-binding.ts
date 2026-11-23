@@ -27,7 +27,8 @@ export function inspectRiskVerifierBinding(
   t.requestId===`asen-plan:${bound.taskIdentity}:${suffix}`);
  const writers=byRequest("worker");
  if(writers.length!==1||writers[0]!.taskId!==bound.writerTodoId||
-  writers[0]!.plan?.role!=="worker"||writers[0]!.current.state!=="planned"||
+  writers[0]!.plan?.role!=="worker"||
+  !["planned","running"].includes(writers[0]!.current.state)||
   writers[0]!.plan?.candidate?.revision!==bound.candidateRevision)
   return "La unidad Writer del plan guardado no coincide con la candidatura original";
 
