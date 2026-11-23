@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {existsSync,readFileSync} from "node:fs";
+import {existsSync,mkdirSync,mkdtempSync,readFileSync,rmSync,symlinkSync,writeFileSync} from "node:fs";
 import {resolve,join} from "node:path";
+import {tmpdir} from "node:os";
 import {createT06ReadOnlyGitFixture} from "../src/runtime/agents/t06-read-only-git-fixture.js";
 import {selectSkills} from "../src/skills/registry.js";
 
@@ -29,6 +30,29 @@ test("E2A: no se admiten rutas de skills externas ni duplicadas",()=>{
   assert.throws(()=>createT06ReadOnlyGitFixture({skillRoot:process.cwd(),skillPaths:paths}),/bounded trusted set/);
 });
 
+test("E2A: no copiar skills a través de directorios enlazados fuera del proyecto",t=>{
+ const root=mkdtempSync(join(tmpdir(),"asen-e2a-escape-"));
+ t.after(()=>rmSync(root,{recursive:true,force:true}));
+ const trusted=join(root,"confiable"),foreign=join(root,"externo");
+ mkdirSync(join(trusted,"skills"),{recursive:true});
+ mkdirSync(foreign,{recursive:true});
+ writeFileSync(join(foreign,"SKILL.md"),"Este contenido no pertenece al proyecto");
+ try{
+  symlinkSync(foreign,join(trusted,"skills","asen-trampa"),
+   process.platform==="win32"?"junction":"dir");
+ }catch(error){
+  if(error instanceof Error&&"code" in error&&
+   ["EPERM","EACCES","ENOTSUP"].includes(String(error.code))){
+   t.skip("Sistema de archivos sin autorización para enlaces simbólicos");
+   return;
+  }
+  throw error;
+ }
+ assert.throws(()=>createT06ReadOnlyGitFixture({
+  skillRoot:trusted,skillPaths:["skills/asen-trampa/SKILL.md"]
+ }),/raíz canónica autorizada/u);
+});
+
 test("E2A: Git conserva el espacio inicial de estado antes de extraer el nombre",()=>{
  const output=" M a.txt\n";
  const changed=output.split(/\r?\n/u).filter(Boolean).map(row=>row.slice(3));
@@ -54,6 +78,7 @@ test("E2A: la prueba de gasto se limita a un lanzamiento, sin aprobaciones de en
  assert.match(trial,/o\.toolErrors>0\?"HERRAMIENTA_PI_FALLIDA_O_DENEGADA"/u);
  assert.match(trial,/o\.toolErrors===0/u);
  assert.match(trial,/nativeToolErrors:o\.toolErrors/u);
+ assert.match(trial,/failureCode:"POST_DISPATCH_EXCEPTION"|failureCode="POST_DISPATCH_EXCEPTION"/u);
  assert.match(trial,/!accepted\?/u);
  assert.match(trial,/const contents=paths\.map\(\(_,i\)=>"ASEN-E2A-"/u);
 });
