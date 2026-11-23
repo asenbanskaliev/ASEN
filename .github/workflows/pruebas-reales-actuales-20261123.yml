@@ -103,15 +103,15 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: "22.19.0"
-      - name: Instalar Pi 1.1 y validar el SHA
+      - name: Instalar Pi 1.2 y validar el SHA
         shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           npm ci --ignore-scripts --no-audit --no-fund
-          npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund @earendil-works/pi-coding-agent@1.1.0
-          test "$(node -p 'require("./node_modules/@earendil-works/pi-coding-agent/package.json").version')" = "1.1.0"
+          npm install --ignore-scripts --no-save --package-lock=false --no-audit --no-fund @earendil-works/pi-coding-agent@1.2.0
+          test "$(node -p 'require("./node_modules/@earendil-works/pi-coding-agent/package.json").version')" = "1.2.0"
       - name: Ejecutar interrupción y recuperación NVIDIA real
         shell: bash
         env:
