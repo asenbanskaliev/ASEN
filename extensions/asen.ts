@@ -909,9 +909,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     /** One event-driven wake per idle completion burst. The content is already
      * enqueued and cannot be replayed just because a wake fails. */
     const requestAgentWake=(context:CommandContext,scope:{sessionId:string;projectId:string}):void=>{
-     if(!pi.sendMessage||agentDeliveryContext!==context||agentDeliveryIdentity?.sessionId!==scope.sessionId||
+     if(agentDeliveryContext!==context||agentDeliveryIdentity?.sessionId!==scope.sessionId||
         agentDeliveryIdentity.projectId!==scope.projectId)return;
+     // Conservar la deuda incluso si el transporte Pi falta al programar el despertar.
      agentWakeOwed={...scope};
+     if(typeof pi.sendMessage!=="function")return;
      if(agentWakeTimer)return;
      agentWakeTimer=setTimeout(()=>{
       agentWakeTimer=undefined;
