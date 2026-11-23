@@ -69,6 +69,16 @@ export interface ParentSupervisorInput{
      writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean|undefined>;
 }
 const same=(a:string,b:string)=>sameWorkspaceIdentityPath(a,b);
+/** Un único enlace exacto puede sostener la autorización. La identidad
+ * completa se compara sin transferir ni generar permisos. */
+export function enlacePiHijoIntacto(
+ enlaces:readonly ParallelChildSessionLink[],batchId:string,sourceTodoId:string,
+ huellaAutorizada:string
+):boolean{
+ const candidatos=enlaces.filter(l=>l.batchId===batchId&&l.sourceTodoId===sourceTodoId);
+ return candidatos.length===1&&JSON.stringify(candidatos[0])===huellaAutorizada;
+}
+
 /** El consentimiento se liga a la tarea ODD completa, no solo al modelo y al ámbito.
  * Incluye instrucción, revisiones y autorizaciones. No es una prueba de aceptación. */
 function childTodoSnapshot(todo:SourceTodoRow):string{
@@ -246,10 +256,18 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   // Recheck ONLY this candidate: do not retarget or replan another unit.
   const child:TodoContext={sessionId:unit.childSessionId,projectId:unit.childProjectId};
   let expectedChildTodo:SourceTodoRow|undefined;
+  let enlaceAutorizado:string;
   try{
-  const link=(await input.sessionJournal.listSource(input.source)).find(l=>
-   l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId&&
-   l.childSessionId===unit.childSessionId&&same(l.childProjectId,unit.childProjectId));
+  const enlacesIniciales=(await input.sessionJournal.listSource(input.source)).filter(l=>
+   l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId);
+  const link=enlacesIniciales.length===1?enlacesIniciales[0]:undefined;
+  // Un enlace duplicado o alterado nunca debe heredar la autorización previa.
+  if(!link||link.childSessionId!==unit.childSessionId||
+     !same(link.childProjectId,unit.childProjectId)||
+     link.authority!=="none"||link.autoDispatch!==false||link.autoMerge!==false)
+   return nonAuthorizing("partial-needs-review",initial.batchId,started,
+    [unit.sourceTodoId+": El enlace Pi hijo cambió o está duplicado; revisar antes de ejecutar"]);
+  enlaceAutorizado=JSON.stringify(link);
 
   const [rows,agents,links]=await Promise.all([
    input.loadTodos(child),input.loadAgents(child),input.loadTaskAgentLinks(child)
@@ -285,9 +303,8 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     currentBatch=batches.find(b=>b.id===unit.batchId),
     sourceTask=currentBatch?.tasks.find(t=>t.taskId===unit.sourceTodoId);
    const linksNow=await input.sessionJournal.listSource(input.source);
-   const owners=linksNow.filter(l=>l.batchId===unit.batchId&&
-    l.sourceTodoId===unit.sourceTodoId&&l.childSessionId===unit.childSessionId&&
-    same(l.childProjectId,unit.childProjectId));
+   const enlaceIntacto=enlacePiHijoIntacto(
+    linksNow,unit.batchId,unit.sourceTodoId,enlaceAutorizado);
    const currentSource=(await input.loadTodos(input.source)).find(t=>t.taskId===unit.sourceTodoId);
    const claims=await input.claimJournal.listSource(input.source,linksNow);
    const childRows=await input.loadTodos(child),
@@ -307,7 +324,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     childTodo?.plan?.writerAuthorizationBasis!==currentSource.plan.writerAuthorizationBasis||
     sourceTask.writeSurfaces.length!==unit.writeSurfaces.length||
     sourceTask.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i])||
-    owners.length!==1||
+    !enlaceIntacto||
     claims.filter(claim=>claim.batchId===unit.batchId&&
      claim.sourceTodoId===unit.sourceTodoId&&
      claim.childSessionId===unit.childSessionId).length!==1||
