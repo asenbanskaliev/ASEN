@@ -1,0 +1,66 @@
+name: E2A NVIDIA dos escritores Pi, ensayo único
+on:
+  push:
+    branches:
+      - feat/e2a-nvidia-dos-writers-20261123
+    paths:
+      - .github/workflows/asen-e2a-nvidia-dos-writers.yml
+permissions:
+  contents: read
+concurrency:
+  group: e2a-nvidia-una-vez-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  ensayo:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.actor == 'asenbanskaliev' &&
+      github.run_attempt == 1 &&
+      github.event.head_commit.message == 'ci(asen): prueba única de dos Writers NVIDIA autorizada'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.sha }}
+      PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-e2a-pi-config
+      ASEN_E2A_NVIDIA_REPORT: ${{ runner.temp }}/asen-e2a-writers/receipt.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Validar código y SHA antes de consumir NVIDIA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node --import tsx --test tests/t06-live-consent.test.ts
+      - name: Comprobar versión nativa Pi
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          pi --version
+      - name: Ejecutar dos Writers NVIDIA una única vez sobre archivos sintéticos
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY" || { echo "::error::Falta la clave NVIDIA"; exit 1; }
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          timeout 300s tsx scripts/e2a-nvidia-dual-writer-trial.ts
+      - name: Guardar recibo mínimo sin credenciales
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: e2a-nvidia-dos-writers-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-e2a-writers/receipt.json
+          if-no-files-found: warn
+          retention-days: 14
