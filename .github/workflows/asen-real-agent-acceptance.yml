@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - feat/t12-integrated-acceptance-merge
+      - integration/megatanda-1-3-20261123
     paths:
       - .github/workflows/asen-real-agent-acceptance.yml
       - package.json
@@ -444,7 +445,8 @@ jobs:
     needs: offline-static-validation
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
-      github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' &&
+      (github.ref == 'refs/heads/feat/t12-integrated-acceptance-merge' ||
+      github.ref == 'refs/heads/integration/megatanda-1-3-20261123') &&
       github.run_attempt == 1 &&
       github.event_name == 'push' &&
       (github.event.head_commit.message == 'ci: one-time Pi parent Beam proof' ||
