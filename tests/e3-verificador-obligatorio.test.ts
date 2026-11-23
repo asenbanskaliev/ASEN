@@ -79,6 +79,26 @@ test("E3: el Verifier de otro candidato no sirve para el cambio autorizado",()=>
   /mismo candidato/u);
 });
 
+for(const kind of ["ordinary","dual_explicit"] as const){
+ test("E3: la revisión "+kind+" rechaza candidatos ajenos antes de guardar el plan",()=>{
+  const {plan}=prepared(4,kind);
+  const reviewers=plan.agents.filter(agent=>agent.role==="reviewer");
+  assert.equal(reviewers.length,kind==="dual_explicit"?2:1);
+  for(const target of reviewers){
+   for(const change of [
+    {revision:"b".repeat(40)},
+    {id:"otro-candidato"},
+    {repository:"otro/repositorio"}
+   ]){
+    const modified=plan.agents.map(agent=>agent===target
+     ?{...agent,candidate:{...candidate,...change}}:agent);
+    assert.throws(()=>materializeExecutablePlan({...plan,agents:modified},instruction),
+     /Reviewer independiente debe revisar el mismo candidato/u);
+   }
+  }
+ });
+}
+
 test("E3: una verificación sin Writer sigue permitida como tarea de lectura",()=>{
  const req:OddRoutingRequest={...request(1),taskIdentity:"E3-solo-verificacion",
   intent:"verification",writes:[],namedRisks:[],review:{kind:"none",estimatedMinutes:0}};
@@ -95,6 +115,7 @@ function binding(item:number,review:"none"|"ordinary"|"dual_explicit"="none"){
  const graph=materializeExecutablePlan(plan,instruction,"{}");
  const rows:BoundRiskPlanTask[]=graph.tasks.map(task=>({
   taskId:"todo:"+task.id,requestId:"asen-plan:"+task.id,
+  description:task.instruction,
   dependsOn:task.dependsOn.map(dep=>"todo:"+dep),
   plan:{role:task.role,skillPaths:[...task.skillPaths],
    ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),
@@ -124,6 +145,18 @@ test("E3: un Verifier duplicado, omitido o ya consumido impide pedir permiso Wri
   {...row,current:{state:"done"}}:row),scope)??"",/Verifier independiente obligatorio/u);
  assert.match(inspectRiskVerifierBinding(rows.map(row=>row===verifier?
   {...row,plan:{...row.plan!,candidateRevision:"b".repeat(40)}}:row),scope)??"",/Verifier independiente obligatorio/u);
+});
+
+test("E3: no autorizar Writer con Verifier sin instrucción",()=>{
+ const {rows,scope}=binding(2);
+ const verifier=rows.find(row=>row.plan?.role==="verifier");
+ assert.ok(verifier);
+ for(const description of [undefined,"","   "]){
+  const altered=rows.map(row=>row===verifier?{...row,description}:row);
+  assert.match(inspectRiskVerifierBinding(altered,scope)??"",
+   /Verifier independiente obligatorio/u);
+ }
+ assert.equal(inspectRiskVerifierBinding(rows,scope),undefined);
 });
 
 test("E3: dos revisores obligatorios y Verifier dependiente de ambos",()=>{
