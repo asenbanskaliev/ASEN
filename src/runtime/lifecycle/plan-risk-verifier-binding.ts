@@ -1,4 +1,5 @@
 import type {TodoItem} from "./todo-store.js";
+import {selectSkills} from "../../skills/registry.js";
 
 /** Estado mínimo recuperado del diario de tareas de la sesión y proyecto activos. */
 export type BoundRiskPlanTask=Pick<TodoItem,"taskId"|"requestId"|"dependsOn"|"plan"|"description">&
@@ -16,6 +17,16 @@ export interface RiskVerifierBinding{
 const MAX_VISIBLE_PLAN_INSTRUCTION=4096;
 function instructionReady(value:string|undefined):boolean{
  return typeof value==="string"&&value.trim().length>0&&value.length<=MAX_VISIBLE_PLAN_INSTRUCTION;
+}
+// El registro de habilidades puede cambiar desde la planificación. Comprobar
+// las rutas completas, en el mismo orden, antes de permitir escrituras.
+function exactSkillPaths(plan:BoundRiskPlanTask["plan"]):boolean{
+ if(!plan?.skillSelection||!Array.isArray(plan.skillPaths))return false;
+ try{
+  const expected=selectSkills(plan.skillSelection).map(skill=>skill.path);
+  return expected.length===plan.skillPaths.length&&
+   expected.every((path,index)=>path===plan.skillPaths[index]);
+ }catch{return false;}
 }
 
 /** El aviso de riesgo ODD no basta: el plan guardado debe contener el Verifier.
@@ -47,6 +58,7 @@ export function inspectRiskVerifierBinding(
     matches[0]!.current.state!=="planned"||
     matches[0]!.plan?.candidateRevision!==bound.candidateRevision||
     !instructionReady(matches[0]!.description)||
+    !exactSkillPaths(matches[0]!.plan)||
     JSON.stringify(matches[0]!.dependsOn??[])!==JSON.stringify([bound.writerTodoId]))
    return "La revisión independiente falta o cambió de candidato, rol o dependencia";
   reviewers.push(matches[0]!);
@@ -57,7 +69,8 @@ export function inspectRiskVerifierBinding(
   verifier.plan?.skillSelection?.phase!=="verify"||
   verifier.plan?.candidateRevision!==bound.candidateRevision||
   verifier.current.state!=="planned"||
-  !instructionReady(verifier.description))
+  !instructionReady(verifier.description)||
+  !exactSkillPaths(verifier.plan))
   return "Falta el Verifier independiente obligatorio para el riesgo nombrado";
  const required=[bound.writerTodoId,...reviewers.map(r=>r.taskId)];
  if(new Set(required).size!==required.length||
