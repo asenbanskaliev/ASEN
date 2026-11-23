@@ -105,7 +105,7 @@ try{
   mkdirSync(join(repo,"asen-acceptance-evidence"),{recursive:true});
   if(!existsSync(output))writeFileSync(output,JSON.stringify(report,null,2)+"\n",{flag:"wx",mode:0o600});
  }catch{/* El error de conservación no altera el resultado fallido. */}
- console.error("T12_REAL_PI_PARENT_CHILD_CONSUMPTION_FAIL",report.failureCode);
+ console.error("T12_REAL_PI_PARENT_CHILD_CONSUMPTION_FAIL",JSON.stringify({code:report.failureCode,counts:report.counts,journalObserved:report.journalObserved}));
  if(child)try{child.kill();}catch{}
  process.exitCode=1;
 }finally{
