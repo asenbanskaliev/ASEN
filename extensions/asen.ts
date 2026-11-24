@@ -35,7 +35,7 @@ import {readProfilesFile,mutateProfilesFile} from "../src/runtime/lifecycle/prof
 import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallbacksFile,setProfileFallbackChain,renameProfileFallbacks,removeProfileFallbacks,writeProfileFallbacksFile,MAX_PROFILE_FALLBACK_CHAIN_LENGTH} from "../src/runtime/lifecycle/profile-fallback-store.js";
 import {createParentModelFallback,type ParentCatalogModel} from "../src/runtime/lifecycle/parent-model-fallback.js";
 import {formatModelFallbackFailureNotice,formatModelFallbackNotice} from "../src/runtime/lifecycle/model-fallback-notice.js";
-import {globalRuntimeRoutingFacts,resolveRuntimeRoute,resolveRuntimeDelegationMode,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking,type DelegationMode} from "../src/runtime/lifecycle/profiles.js";
+import {globalRuntimeRoutingFacts,resolveRuntimeRoute,resolveRuntimeDelegationMode,withCapturedDelegationMode,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking,type DelegationMode} from "../src/runtime/lifecycle/profiles.js";
 import {AGENT_PROFILE_TARGETS,isAgentProfileTarget,resolveAgentProfileTarget} from "../src/runtime/lifecycle/agent-profile-targets.js";
 import {canonicalProfilePartition,captureSessionProfile,readSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/lifecycle/session-profile-binding.js";
 import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/lifecycle/persona.js";
@@ -344,6 +344,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const hasProject=!!project&&(project.active!==undefined||project.profiles.length>0);
    if(chosen.source==="explicit-session") return hasProject?{session:chosen.file,project}:{session:chosen.file};
    return hasProject?{project,global:chosen.file}:{global:chosen.file};
+  };
+  const parentProfileLayer=async(ctx:CommandContext,identity:ProfileSessionIdentity):Promise<ProfileLayer>=>{
+   const mode=await dependencies.resolveParentDelegationMode?.(ctx);
+   const layers=await profileLayer(identity);
+   const current=await sessionIdentity(ctx);
+   if(ctx.signal?.aborted||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+    throw new Error("Profile owner changed");
+   return mode===undefined?layers:withCapturedDelegationMode(layers,mode);
   };
   // A missing file differs from a failed read; never turn a malformed file into defaults.
   const projectProfiles=async(projectId:string):Promise<{project?:RuntimeProfilesFile;projectState:LoadedProfileInspection["projectState"]}>=>{
@@ -654,7 +662,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // Un agente interrumpido no se relanza; solo el código de recuperación lo inspecciona.
     const enCurso=(await agents.list(identity)).filter(agent=>agent.state==="queued"||agent.state==="running").length;
     if(enCurso>=2)return {started:false,authorized:false,reason:"Ya existen dos agentes activos; las tareas restantes conservan su estado y se revisarán al recibir un resultado."};
-    const activeProfiles=await profileLayer(identity);
+    const activeProfiles=await parentProfileLayer(ctx,identity);
     const verifiedConfiguredModel=(role:string,ref:string):boolean=>{
      if(resolveRuntimeRoute(activeProfiles,role).choice?.model!==ref)return false;
      const slash=ref.indexOf("/");
@@ -1250,7 +1258,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        current.sessionId===budget.sessionId&&current.projectId===budget.projectId;
      }catch{/* Una identidad cambiada nunca expone el presupuesto de otra sesión. */}
     }
-    addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget);
+    let turnDelegationMode:DelegationMode|undefined;
     delete options.sections.asen_delegation_mode;
     try{
      const owner=await sessionIdentity(ctx as CommandContext);
@@ -1260,11 +1268,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const current=await sessionIdentity(ctx as CommandContext);
      if(current.sessionId!==owner.sessionId||current.projectId!==owner.projectId)
       throw new Error("Profile owner changed");
+     turnDelegationMode=mode;
      if(mode==="full-delegation")
       options.sections.asen_delegation_mode="Modo delegación completa: el padre solo investiga, prepara, coordina y verifica. Nunca edita archivos ni ejecuta comandos de terminal. Envía cambios mediante el planificador y agentes Writer con autorización comprobable; si no hay Writer autorizado, informa del bloqueo sin escribir.";
     }catch{
      options.sections.asen_delegation_mode="No se pudo verificar el modo del perfil; no supongas permiso adicional para escribir ni delegar.";
     }
+    const modeGuidance=turnDelegationMode?{delegationMode:turnDelegationMode}:{};
+    addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,modeGuidance);
     if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}
     if(todoStorePromise)try{
      const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),store=await todoStorePromise,rows=await store.list(identity);
@@ -1274,7 +1285,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        const planContext=formatActivePlanContext(rows);
        // Un almacén en cuarentena no demuestra ausencia de plan: conservar guía de recuperación.
        if(planContext||!store.diagnostics()?.quarantined)
-        addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,{activePlan:Boolean(planContext)});
+        addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,{...modeGuidance,activePlan:Boolean(planContext)});
        if(planContext)options.sections.asen_active_plan=planContext;
       }
      }
@@ -1552,7 +1563,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const validateContext=()=>{if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed or was cancelled before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
    let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
-   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await profileLayer({sessionId,projectId:project}))) as typeof output;}
+   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await (deferChildLaunch?profileLayer({sessionId,projectId:project}):parentProfileLayer(ctx,{sessionId,projectId:project})))) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(output.executablePlan.route==="direct"&&!output.executablePlan.tasks.some(task=>task.role==="worker")){
