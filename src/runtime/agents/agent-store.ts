@@ -1,3 +1,4 @@
+import {validNativeWriterCompletion,type NativeWriterCompletion} from "./native-writer-completion.js";
 import {createHmac,randomBytes,randomUUID,timingSafeEqual} from "node:crypto";
 import {open,readFile,rename} from "node:fs/promises";
 import {snapshotAgentModelFallback,type AgentModelFallback,type AgentRequest,type AgentResult} from "../../agents/dispatcher.js";
@@ -14,7 +15,7 @@ const SCHEMA="asen.agents/v1" as const,MAX_RECORDS=2000,MAX_EVENTS=20000,MAX_PRO
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted){const error=new Error("Agent task cancelled");error.name="AbortError";throw error;}}
 type AgentRole=AgentRequest["role"];
 export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;ownerProcessId?:number;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;continuationOf?:string;dedupeKey?:string; }
-export interface AgentExecutionReceipt{ id:string;ok:true;output:string;sha256:string; }
+export interface AgentExecutionReceipt{ id:string;ok:true;output:string;sha256:string;nativeCompletion?:NativeWriterCompletion; }
 export interface AgentStateEvent{ id:string;revision:number;state:PublicAgentRecord["state"];at:string;summary?:string; }
 export interface AgentStoreEntry{ record:PublicAgentRecord;request:AgentTaskSpec;events:AgentStateEvent[];result?:AgentExecutionReceipt; }
 export interface AgentStoreFile{schema:typeof SCHEMA;revision:number;entries:AgentStoreEntry[];}
@@ -79,7 +80,7 @@ function specValue(v:unknown):v is AgentTaskSpec{
 function processIsAlive(pid:number):boolean{
  try{process.kill(pid,0);return true;}catch(error){return !!error&&typeof error==="object"&&"code" in error&&(error as NodeJS.ErrnoException).code==="EPERM";}
 }
-function receiptDigest(key:Buffer,entry:AgentStoreEntry,output:string):string{return createHmac("sha256",key).update(JSON.stringify([entry.record.id,entry.record.owner,entry.record.sessionId,entry.record.projectId,entry.request,output])).digest("hex");}
+function receiptDigest(key:Buffer,entry:AgentStoreEntry,output:string,nativeCompletion?:NativeWriterCompletion):string{return createHmac("sha256",key).update(JSON.stringify([entry.record.id,entry.record.owner,entry.record.sessionId,entry.record.projectId,entry.request,output,...(nativeCompletion?[nativeCompletion]:[])])).digest("hex");}
 function validAgentHistory(events:AgentStateEvent[],record:PublicAgentRecord):boolean{
  for(let i=0;i<events.length;i++){const current=events[i]!;if(current.revision!==i+1||current.id!==record.id||typeof current.at!=="string"||!Number.isFinite(Date.parse(current.at)))return false;if(i===0){if(current.state!=="queued"||current.at!==record.createdAt)return false;}else{const previous=events[i-1]!;if(!AGENT_TRANSITIONS[previous.state]?.includes(current.state)||Date.parse(current.at)<Date.parse(previous.at))return false;if(previous.state==="completed"&&(current.state!=="interrupted"||current.summary!=="Unverified completion after restart; explicit review is required"))return false;}}
  const last=events.at(-1);return !!last&&last.state===record.state&&last.at===record.updatedAt&&last.summary===record.summary;
@@ -95,7 +96,7 @@ function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false
  if(Object.hasOwn(r,"pendingQuestion")!==(durable.state==="waiting")||question!==undefined&&(durable.state!=="waiting"||!pendingQuestionValue(question)||question.askedAt>Date.parse(durable.updatedAt)))return false;
  if(x.events.some((event,i)=>!exact(event,["id","revision","state","at",...(Object.hasOwn(event,"summary")?["summary"]:[])])||event.id!==r.id||event.revision!==i+1||!PERSISTED_STATES.includes(event.state)||typeof event.at!=="string"||!Number.isFinite(Date.parse(event.at))||(event.summary!==undefined&&(typeof event.summary!=="string"||event.summary.length>MAX_OUTPUT))))return false;
  if(!validAgentHistory(x.events,r))return false;
- if(x.result!==undefined){const result=x.result,shape=!!receiptKey&&exact(result,["id","ok","output","sha256"])&&result.id===r.id&&result.ok===true&&typeof result.output==="string"&&result.output.length<=MAX_OUTPUT&&typeof result.sha256==="string"&&/^[a-f0-9]{64}$/u.test(result.sha256);let authenticated=false;if(shape){const expected=Buffer.from(receiptDigest(receiptKey!,x,result.output),"hex"),actual=Buffer.from(result.sha256,"hex");authenticated=actual.length===expected.length&&timingSafeEqual(actual,expected);}if(!authenticated&&!(allowUnverifiedCompletion&&r.state==="completed"))return false;}
+ if(x.result!==undefined){const result=x.result,shape=!!receiptKey&&exact(result,["id","ok","output","sha256",...(Object.hasOwn(result,"nativeCompletion")?["nativeCompletion"]:[])])&&(!Object.hasOwn(result,"nativeCompletion")||r.role==="worker"&&/^unit-[a-f0-9]{40}:worker$/u.test(r.id)&&validNativeWriterCompletion(result.nativeCompletion))&&result.id===r.id&&result.ok===true&&typeof result.output==="string"&&result.output.length<=MAX_OUTPUT&&typeof result.sha256==="string"&&/^[a-f0-9]{64}$/u.test(result.sha256);let authenticated=false;if(shape){const expected=Buffer.from(receiptDigest(receiptKey!,x,result.output,result.nativeCompletion),"hex"),actual=Buffer.from(result.sha256,"hex");authenticated=actual.length===expected.length&&timingSafeEqual(actual,expected);}if(!authenticated&&!(allowUnverifiedCompletion&&r.state==="completed"))return false;}
  if(allowUnverifiedCompletion&&r.state==="completed"&&x.events.at(-1)?.state==="completed")return true;
  return x.result===undefined?r.state!=="completed":r.state==="completed"&&x.events.at(-1)?.state==="completed";
 }
@@ -211,7 +212,7 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  async running(id:string,at=this.now()):Promise<void>{await this.#move(id,"running",undefined,at);}
  async completed(id:string,result:AgentResult,at=this.now()):Promise<void>{
   let completed:PublicAgentRecord|undefined;
-  await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");completed=completeAgentRecord(entry.record,result,this,at);entry.record=completed;entry.result={id,ok:true,output:result.output,sha256:receiptDigest(this.#receiptKey,entry,result.output)};entry.events.push(event(completed,entry.events.length+1));});
+  await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");completed=completeAgentRecord(entry.record,result,this,at);entry.record=completed;entry.result={id,ok:true,output:result.output,...(result.nativeCompletion?{nativeCompletion:result.nativeCompletion}:{}),sha256:receiptDigest(this.#receiptKey,entry,result.output,result.nativeCompletion)};entry.events.push(event(completed,entry.events.length+1));});
   if(completed)this.#records.set(id,structuredClone(completed));
  }
  async failed(id:string,summary?:string,at=this.now()):Promise<void>{await this.#move(id,"failed",summary,at);}
