@@ -34,6 +34,8 @@ import {normalizeT06PiChildSelection} from "../src/runtime/agents/t06-pi-receipt
 import {selectSkills} from "../src/skills/registry.js";
 import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
 
+// El ensayo nunca debe heredar la selección de otro repositorio o índice.
+for(const name of Object.keys(process.env))if(name.startsWith("GIT_"))delete process.env[name];
 const root=resolve(process.env.GITHUB_WORKSPACE??process.cwd()),expected=process.env.ASEN_EXPECTED_SHA;
 const reportFile=process.env.ASEN_NATIVE_JUDGMENT_REPORT,model="nvidia/nemotron-3.5-lightning-30b-a3b";
 if(!process.env.NVIDIA_API_KEY||!reportFile||!expected||!(/^[a-f0-9]{40}$/u.test(expected))||
@@ -43,13 +45,14 @@ if(!process.env.NVIDIA_API_KEY||!reportFile||!expected||!(/^[a-f0-9]{40}$/u.test
  throw Error("E2A integral: SHA, proveedor o recibo no autorizado");
 const base=realpathSync(mkdtempSync(join(tmpdir(),"asen-native-partition-")));
 const project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
-const git=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args],{
- encoding:"utf8",stdio:["ignore","pipe","ignore"],env:isolatedGitEnvironment(),timeout:10000}).trim();
+const rawGit=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args],{
+ encoding:"utf8",stdio:["ignore","pipe","ignore"],env:isolatedGitEnvironment(),timeout:10000});
+const git=(cwd:string,...args:string[])=>rawGit(cwd,...args).trim();
 const hash=(s:string)=>createHash("sha256").update(s).digest("hex");
 // Defecto deliberado en la especificación de A, no un resultado inventado del modelo.
 const values:Record<string,string>={"a.txt":"ASEN-NATIVE-LOT-A","b.txt":"ASEN-NATIVE-LOT-B"};
 const corrected="ASEN-NATIVE-CORRECT-A";
-const requirements="Exact acceptance requirements: a.txt must contain only ASEN-NATIVE-CORRECT-A (no newline); b.txt must contain only ASEN-NATIVE-LOT-B; c.txt must stay original. If a.txt differs, report fail with an exact a.txt finding. No other changes are required. Assess the real candidate bytes, not the author claims.";
+const requirements="Exact acceptance requirements: a.txt must contain only ASEN-NATIVE-CORRECT-A (no newline); b.txt must contain only ASEN-NATIVE-LOT-B; c.txt must stay original. If a.txt differs, report fail with an exact a.txt finding whose description quotes both actual and expected tokens verbatim. No other changes are required. Assess the real candidate bytes, not the author claims.";
 let fixOwner:{sessionId:string;projectId:string}|undefined;
 
 const obs=new Map<string,{pid:number;start:number;end:number;model:string;writeStarts:number;writeEnds:number;errors:number}>();
@@ -59,7 +62,7 @@ const report={schema:"asen.e3.native-judgment-fix/v1",sha:expected,model,
  status:"BLOCKED",stage:"fixture",nativeSessions:0,started:0,writeBatchConfirmations:0,parallel:false,sourceClean:false,
  dependentBlocked:false,receipts:0,integrationCandidate:false,judgeModels:[] as string[],firstVerdicts:[] as string[],
  secondVerdicts:[] as string[],judgeCalls:0,fixPlanSaved:false,fixStarted:false,fixModelObserved:"unknown",fixExact:false,
- signedTests:false,finalTree:"unknown",workers:[] as Record<string,unknown>[]};
+ signedTests:false,finalTree:"unknown",catalogNvidia:[] as string[],workers:[] as Record<string,unknown>[]};
 let runtime:AgentRuntime|undefined;
 let childOwners:Array<{sessionId:string;projectId:string;sourceTodoId:string;childTodoId:string;sessionFile:string}>=[];
 const terminalWork:Promise<unknown>[]=[];
@@ -77,11 +80,20 @@ try{
  git(project,"add",".");git(project,"commit","-qm","base sintetica");const head=git(project,"rev-parse","HEAD");
  writeFileSync(join(privateDir,"profiles.json"),JSON.stringify({schema:"asen.runtime-profiles/v1",active:"nvidia",profiles:[{name:"nvidia",mode:"full-delegation",routes:{worker:{model,thinking:"minimal"}}}]}),{mode:0o600});
  // Pi SDK real, sin cargar extensiones ni iniciar inferencia para buscar modelos.
- const nativeRegistry=new ModelRegistry(await ModelRuntime.create({authPath:join(privateDir,"auth.json"),modelsPath:null,allowModelNetwork:false}));
- const key=(m:{provider:string;id:string})=>m.id.startsWith(m.provider+"/")?m.id:m.provider+"/"+m.id;
+ // Pi 1.2 necesita actualizar el catálogo de modelos dinámicos NVIDIA.
+ // Es una consulta de catálogo, no una inferencia ni una alternativa de pago.
+ const nativeRegistry=new ModelRegistry(await ModelRuntime.create({authPath:join(privateDir,"auth.json"),
+  modelsPath:join(privateDir,"models.json"),allowModelNetwork:true,modelRefreshTimeoutMs:30000}));
+
+ const key=(m:{provider:string;id:string})=>m.provider+"/"+m.id;
  const allowed=["qwen/qwen3.5-397b-a17b","qwen/qwen3-next-80b-a3b-instruct","deepseek-ai/deepseek-v3.2","deepseek-ai/deepseek-v3.1","meta/llama-3.3-70b-instruct","nvidia/llama-3.3-nemotron-super-49b-v1.5","nvidia/nemotron-3-super-120b-a12b","moonshotai/kimi-k2.5"];
- const possible=nativeRegistry.getAvailable().filter(m=>m.provider==="nvidia"&&key(m)!==model&&nativeRegistry.hasConfiguredAuth(m));
- const selected=allowed.flatMap(id=>possible.filter(m=>m.id===id)).filter((m,i,all)=>all.findIndex(x=>key(x)===key(m))===i).slice(0,2);
+ const authorId=model.slice("nvidia/".length);
+ const possible=nativeRegistry.getAvailable().filter(m=>m.provider==="nvidia"&&
+  m.id!==authorId&&m.id!=="nvidia/"+authorId&&nativeRegistry.hasConfiguredAuth(m)&&
+  typeof m.api==="string"&&m.api!=="virtual");
+ const selected=allowed.flatMap(id=>possible.filter(m=>m.id===id||m.id==="nvidia/"+id))
+  .filter((m,i,all)=>all.findIndex(x=>x.id.replace(/^nvidia\//u,"")===m.id.replace(/^nvidia\//u,""))===i).slice(0,2);
+ report.catalogNvidia=possible.map(m=>m.id).slice(0,100);
  report.stage="judge-catalog";
  assert.equal(selected.length,2,"No hay dos jueces NVIDIA distintos permitidos");
  const [judgeA,judgeB]=selected;
@@ -207,7 +219,7 @@ try{
  const batch=(await sourceJournal.list(identity)).at(-1)!;
  const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
  assert.deepEqual(candidate.paths,["a.txt","b.txt"]);
- for(const path of candidate.paths)assert.equal(git(project,"show",candidate.commit+":"+path),values[path]);
+ for(const path of candidate.paths)assert.equal(rawGit(project,"show",candidate.commit+":"+path),values[path]);
  assert.equal(git(project,"rev-parse","HEAD"),head);
  const evidence=readFrozenIntegrationReviewEvidence(candidate,identity.sessionId,"pi-model:ensayo/lector",base);
  assert.equal(evidence.candidate.treeIdentity,candidate.tree);
@@ -228,6 +240,11 @@ try{
  report.firstVerdicts=initial.report.judges.map(j=>j.verdict);
  assert.equal(initial.status,"findings-require-review");
  assert.deepEqual(report.firstVerdicts,["fail","fail"]);
+ for(const judge of initial.report.judges){
+  assert.ok(initial.report.findings.some(row=>row.judge===judge.judge&&row.finding.path==="a.txt"&&
+   row.finding.description.includes("ASEN-NATIVE-LOT-A")&&row.finding.description.includes(corrected)),
+   "Cada juez debe identificar los bytes actuales y los requeridos");
+ }
  assert.ok("fixProposalId" in initial&&initial.fixProposalId);
  assert.deepEqual(initial.fix.paths,["a.txt"]);
  // Solo en el repositorio sintético de esta prueba se materializa el árbol
@@ -277,6 +294,11 @@ try{
  try{
   const after=readWorkspaceReviewEvidence(workspace);
   assert.notEqual(after.candidate.treeIdentity,candidate.tree);
+  assert.deepEqual(after.repositoryState.unexpectedUntracked,[]);
+  assert.deepEqual(after.repositoryState.intendedUntracked,[]);
+  assert.deepEqual(git(project,"diff-tree","-r","--no-commit-id","--name-only","--no-renames",candidate.tree,after.candidate.treeIdentity).split("\n"),["a.txt"]);
+  const mode=(tree:string)=>git(project,"ls-tree",tree,"--","a.txt").split(" ")[0];
+  assert.equal(mode(after.candidate.treeIdentity),mode(candidate.tree));
   report.finalTree=after.candidate.treeIdentity;
   report.stage="judgment-after-fix";
   const second=await runJudgmentDay({registry,author:{provider:"nvidia",id:model.slice(7)},judgeA:judgeA!,judgeB:judgeB!,evidence:after,requirements,
@@ -284,14 +306,18 @@ try{
   report.secondVerdicts=second.judges.map(j=>j.verdict);
   assert.equal(second.status,"analysis-complete");assert.deepEqual(report.secondVerdicts,["pass","pass"]);assert.equal(report.judgeCalls,4);
   const fixedCommit=execFileSync("git",["-C",project,"-c","commit.gpgSign=false","commit-tree",after.candidate.treeIdentity,"-p",head,"-m","Candidato sintético corregido"],{encoding:"utf8",env:isolatedGitEnvironment()}).trim();
-  assert.equal(git(project,"show",fixedCommit+":a.txt"),corrected);
-  assert.equal(git(project,"show",fixedCommit+":b.txt"),values["b.txt"]);
-  assert.equal(git(project,"show",fixedCommit+":c.txt"),"original");
+  assert.equal(rawGit(project,"show",fixedCommit+":a.txt"),corrected);
+  assert.equal(rawGit(project,"show",fixedCommit+":b.txt"),values["b.txt"]);
+  assert.equal(rawGit(project,"show",fixedCommit+":c.txt"),"original");
   const receiptDir=join(privateDir,"receipts");
   await writeReviewReceipt(receiptDir,createReviewReceiptSigned({commitSha:fixedCommit,treeSha:after.candidate.treeIdentity,
    oddTask:"odd/tasks/continuacion-local-flujo-de-agentes.md",testSuite:{total:3,passed:3,failed:0,durationMs:0,runner:"Git exact fixture assertions"},verdict:"PASSED"},await loadReceiptSigningKey(receiptDir)));
   const receipt=await new ReceiptVerifierService(receiptDir).readReceiptState(fixedCommit);
-  assert.equal(receipt.status,"valid");report.signedTests=true;
+  assert.equal(receipt.status,"valid");
+  if(receipt.status!=="valid")throw Error("Recibo no válido");
+  mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
+  writeFileSync(join(dirname(resolve(reportFile)),"signed-test-receipt.json"),JSON.stringify(receipt.receipt,null,2)+"\n",{flag:"wx",mode:0o600});
+  report.signedTests=true;
   assert.equal(git(project,"rev-parse","HEAD"),head);
  }finally{closeWorkspaceReview(workspace);}
  report.stage="accepted-test-only";
@@ -307,5 +333,5 @@ try{
  mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
  writeFileSync(resolve(reportFile),JSON.stringify(report,null,2)+"\n",{encoding:"utf8",flag:"wx",mode:0o600});
 }
-process.stdout.write(JSON.stringify({status:report.status,stage:report.stage,nativeSessions:report.nativeSessions,started:report.started,parallel:report.parallel,receipts:report.receipts,judgeModels:report.judgeModels,judgeCalls:report.judgeCalls,firstVerdicts:report.firstVerdicts,fixStarted:report.fixStarted,fixExact:report.fixExact,secondVerdicts:report.secondVerdicts,signedTests:report.signedTests})+"\n");
+process.stdout.write(JSON.stringify({status:report.status,stage:report.stage,nativeSessions:report.nativeSessions,started:report.started,parallel:report.parallel,receipts:report.receipts,catalogNvidia:report.catalogNvidia,judgeModels:report.judgeModels,judgeCalls:report.judgeCalls,firstVerdicts:report.firstVerdicts,fixStarted:report.fixStarted,fixExact:report.fixExact,secondVerdicts:report.secondVerdicts,signedTests:report.signedTests})+"\n");
 if(report.status!=="PASS_REAL_NVIDIA_JUDGMENT_FIX_TEST_ONLY")process.exitCode=1;
