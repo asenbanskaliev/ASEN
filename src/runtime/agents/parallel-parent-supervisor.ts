@@ -44,7 +44,10 @@ export type ParentSupervisorPreview=Readonly<{
 export type ParentSupervisorResult=Readonly<{
  status:"started"|"partial-needs-review"|"blocked"|"declined";
  batchId:string;
+ /** Identidades admitidas por el despachador; no acreditan el inicio de Pi. */
  started:readonly Readonly<{sourceTodoId:string;childTodoId:string;agentId:string}>[];
+ dispatchAdmissions:readonly Readonly<{sourceTodoId:string;childTodoId:string;agentId:string}>[];
+ nativeExecutionObserved:false;
  blockers:readonly string[];
  grantsAuthority:false;autoRetry:false;autoMerge:false;
  acceptance:"not-accepted";
@@ -112,7 +115,7 @@ function sameAuthorizedChildTodo(before:SourceTodoRow|undefined,after:SourceTodo
 }
 function nonAuthorizing(status:ParentSupervisorResult["status"],batchId:string,
  started:ParentSupervisorResult["started"],blockers:ParentSupervisorResult["blockers"]):ParentSupervisorResult{
- return Object.freeze({status,batchId,started:Object.freeze([...started]),
+ return Object.freeze({status,batchId,started:Object.freeze([...started]),dispatchAdmissions:Object.freeze([...started]),nativeExecutionObserved:false as const,
   blockers:Object.freeze([...blockers]),grantsAuthority:false as const,
   autoRetry:false as const,autoMerge:false as const,acceptance:"not-accepted" as const});
 }
