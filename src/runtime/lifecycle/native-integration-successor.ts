@@ -60,7 +60,7 @@ export async function persistNativePartitionSuccessor(input:{
    dependsOn:task.role==="worker"?rootRows.map(row=>row.requestId!):task.dependsOn.map(id=>"asen-plan:"+id),
    description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,
     ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.model?{model:task.model}:{}),
-    ...(task.thinking?{thinking:task.thinking}:{}),...(task.candidate?{candidate:task.candidate}:{}),
+    ...(task.thinking?{thinking:task.thinking}:{}),...(task.role==="worker"&&task.candidate?{candidate:task.candidate}:{}),
     ...(task.role==="reviewer"||task.role==="verifier"?{candidateRevision:candidate.commit}:{}),
     ...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),
     ...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{})}});
