@@ -311,23 +311,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
   const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,requirePartitionModelBeforePrompt:true,...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
-  // Observación de modelos de unidades nativas durante toda la vida del runner,
-  // separada de la suscripción de notificaciones del padre activo.
-  const nativeWriterModels=new Map<string,string[]>();
-  const writerWitnessKey=(sessionId:string,projectId:string,agentId:string)=>JSON.stringify([sessionId,projectId,agentId]);
-  const observedModels=(sessionId:string,projectId:string,agentId:string)=>nativeWriterModels.get(writerWitnessKey(sessionId,projectId,agentId))?.slice();
-  if(composedAgentRunner instanceof PiProcessRunner){
-   composedAgentRunner.subscribeChildSelection(event=>{
-    if(!/^unit-[a-f0-9]{40}:worker$/u.test(event.taskId)||!event.model||nativeWriterModels.size>=512)return;
-    const key=writerWitnessKey(event.sessionId,event.projectId,event.taskId);
-    const model=event.model.id.startsWith(event.model.provider+"/")?event.model.id:event.model.provider+"/"+event.model.id;
-    if(!nativeWriterModels.has(key))nativeWriterModels.set(key,[model]);
-   });
-   composedAgentRunner.subscribeModelFallback(event=>{
-    const key=writerWitnessKey(event.sessionId,event.projectId,event.taskId),models=nativeWriterModels.get(key);
-    if(models&&!models.includes(event.to)){if(models.length>=9)nativeWriterModels.delete(key);else models.push(event.to);}
-   });
-  }
+  // El transporte Pi registra los modelos en el resultado autenticado del
+  // Writer. Mantener un observador de selección para la comprobación previa.
+  if(composedAgentRunner instanceof PiProcessRunner)composedAgentRunner.subscribeChildSelection(()=>{});
   const environmentAgentLimit = (()=>{const raw=process.env.ASEN_MAX_AGENTS;if(typeof raw!=="string"||!raw.trim())return undefined;const value=Number(raw);return Number.isSafeInteger(value)&&value>0?value:undefined;})();
  const agentRuntimePromise=suppliedAgentRuntime??(composedAgentRunner?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:composedAgentRunner,...((dependencies.agentMaxConcurrency??environmentAgentLimit)!==undefined?{maxConcurrency:(dependencies.agentMaxConcurrency??environmentAgentLimit)!}:{})}):undefined);
   const getAgentRuntime=async()=>{if(!agentRuntimePromise)throw new Error("ASEN agent runtime is unavailable");return agentRuntimePromise;};
@@ -1081,11 +1067,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
          current.sessionManager?.getSessionId?.()!==active.sessionId){
        // Los Writers de sesiones Pi nativas pertenecen a su propio diario,
        // no al contexto del padre. Registrar su fin incluso tras cambiar de sesión.
-       if(todoStorePromise&&taskAgentLinks&&record.role==="worker"){
+       try{await agentNoticeJournal.record(record);}catch{/* El recibo de lote no depende del aviso. */}
+       try{if(todoStorePromise&&taskAgentLinks&&record.role==="worker"){
         const sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
         const observed=await reconcileNativeChildTerminal({record,todos:await todoStorePromise,agents:runtime,links:taskAgentLinks,
          sourceJournal,sessionJournal:new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal),
-         claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),observedModels,
+         claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),
          observations:new ParallelWorkerObservationJournal(path.join(home(),".asen","parallel-worker-observations.json"))});
         const parent=agentDeliveryContext,owner=agentDeliveryIdentity;
         if(observed&&parent&&owner&&owner.sessionId===observed.source.sessionId&&owner.projectId===observed.source.projectId){
@@ -1095,8 +1082,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
           await refreshTodoWidget(parent);
          }
         }
+       }}catch{
+        const parent=agentDeliveryContext,owner=agentDeliveryIdentity;
+        if(parent&&owner)try{
+         const sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
+         const childOwners=await new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal).listChild({sessionId:record.sessionId,projectId:record.projectId});
+         if(agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&childOwners.some(link=>link.sourceSessionId===owner.sessionId&&link.sourceProjectId===owner.projectId))
+          parent.ui.notify("No se pudo registrar un resultado del lote. Se conserva el resultado del agente; no se repetirá.","warning");
+        }catch{/* La notificación no cambia el estado duradero. */}
        }
-       try{await agentNoticeJournal.record(record);}catch{/* La observación del hijo no depende del aviso. */}
        return;
       }
       await agentNoticeJournal.record(record);
@@ -1169,12 +1163,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       const claims=new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json"));
       const observations=new ParallelWorkerObservationJournal(path.join(home(),".asen","parallel-worker-observations.json"));
       const children=(await sessionJournal.listSource(identity)).filter(link=>!!link.nativeSessionFile);
-      for(const child of children){
+      const failedBatches=new Set<string>();
+      for(const child of children)try{
        const records=await runtime.list({sessionId:child.childSessionId,projectId:child.childProjectId});
        for(const record of records.filter(row=>row.role==="worker"&&["completed","failed","cancelled","interrupted"].includes(row.state))){
-        await reconcileNativeChildTerminal({record,todos,agents:runtime,links:taskAgentLinks,sourceJournal,sessionJournal,claims,observations,observedModels});
+        await reconcileNativeChildTerminal({record,todos,agents:runtime,links:taskAgentLinks,sourceJournal,sessionJournal,claims,observations});
        }
-      }
+      }catch{failedBatches.add(child.batchId);}
+      if(failedBatches.size)ctx.ui.notify("Lotes pendientes de inspección: "+[...failedBatches].join(", "),"warning");
      }
     }catch{ctx.ui.notify("No se pudieron recuperar todos los recibos de hijos. No se han repetido agentes.","warning");}
     try{
