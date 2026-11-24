@@ -4,7 +4,7 @@ import {openReviewSession,bindReviewSessionWorkspaceSource,type ReviewSession,as
 import {captureWorkspaceReviewProjection,diffWorkspaceReviewProjection,isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection,type WorkspaceReviewProjectionRequest,type WorkspaceCorrectionConstraint} from "./workspace-review-projection.js";
 export {WorkspaceReviewScopeError} from "./workspace-review-projection.js";
 import {isProxy} from "node:util/types";
-import type {ReviewLens,ReviewRiskInput} from "./review-risk.js";
+import {planReviewRisk,type ReviewLens,type ReviewRiskInput} from "./review-risk.js";
 import {lstatSync,realpathSync} from "node:fs";
 import {isAbsolute,relative,sep} from "node:path";
 import {readReviewViewFile} from "./review-view.js";
@@ -142,7 +142,7 @@ export function closeWorkspaceReview(value:unknown):void{
 
 /** Evidencia genuina de dos árboles inmutables del lote. No se inventa un
  * índice de trabajo ni se modifican el checkout o la rama para revisar. */
-export function readFrozenIntegrationReviewEvidence(candidate:NativeIntegrationCandidate,sessionId:string,reviewerId:string,viewParent:string):WorkspaceReviewEvidence{
+export function readFrozenIntegrationReviewEvidence(candidate:NativeIntegrationCandidate,sessionId:string,reviewerId:string,_viewParent:string):WorkspaceReviewEvidence{
  if(!isIssuedNativeIntegrationCandidate(candidate)||!sessionId||!reviewerId)
   throw new Error("Frozen integration review requires a genuine candidate and owner");
  const inspected=readNativeIntegrationDiff(candidate);
@@ -150,10 +150,11 @@ export function readFrozenIntegrationReviewEvidence(candidate:NativeIntegrationC
  const baseline=inspectCandidateGitTree({repositoryRoot:candidate.repository,treeIdentity:inspected.baseTree});
  const after=new Map(manifest.entries.map(entry=>[entry.path,entry]));
  const before=new Map(baseline.entries.map(entry=>[entry.path,entry]));
- const session=openReviewSession(candidate.repository,manifest,viewParent,{
+ // El manifiesto ya contiene blobs verificados. No materializar enlaces o
+ // submódulos sin cambios en la vista del juez.
+ const risk=planReviewRisk({
   riskId:"native-partition-integration",reason:"Revisar los resultados combinados de Writers independientes",severity:"high",lenses:["risk","resilience","reliability"]
  });
- try{
   const modifiedFiles=Object.freeze(candidate.paths.map(path=>{
    const current=after.get(path),previous=before.get(path);
    if(!current&&!previous||current&&current.kind!=="regular"||previous&&previous.kind!=="regular")
@@ -162,14 +163,15 @@ export function readFrozenIntegrationReviewEvidence(candidate:NativeIntegrationC
     mode:(current??previous)!.mode,objectId:current?.objectId??null,contentSha256:current?.contentSha256??null});
   }));
   const candidateFiles=Object.freeze(modifiedFiles.filter(entry=>entry.change!=="deleted").map(entry=>{
-   assertReviewSessionOpen(session);
-   const bytes=readReviewViewFile(session.view,entry.path);
+   const blob=after.get(entry.path);
+   if(blob?.kind!=="regular"||typeof blob.bytesBase64!=="string")throw Error("Frozen regular blob missing");
+   const bytes=Buffer.from(blob.bytesBase64,"base64");
    if(!entry.contentSha256||createHash("sha256").update(bytes).digest("hex")!==entry.contentSha256)
     throw new Error("Frozen integrated review bytes changed");
    try{return Object.freeze({path:entry.path,encoding:"utf8" as const,content:new TextDecoder("utf-8",{fatal:true}).decode(bytes)});}
    catch{return Object.freeze({path:entry.path,encoding:"base64" as const,content:bytes.toString("base64")});}
   }));
-  assertReviewSessionOpen(session);readNativeIntegrationDiff(candidate);
+  readNativeIntegrationDiff(candidate);
   const requestId=createHash("sha256").update(JSON.stringify([randomUUID(),sessionId,reviewerId,candidate.commit,candidate.tree])).digest("hex");
   const evidence:WorkspaceReviewEvidence=Object.freeze({
    schemaVersion:1,requestId,sessionId,reviewerId,
@@ -177,9 +179,8 @@ export function readFrozenIntegrationReviewEvidence(candidate:NativeIntegrationC
    repositoryState:Object.freeze({baseCommit:candidate.baseCommit,baseTree:inspected.baseTree,candidateTree:candidate.tree,
     indexIdentity:"not-applicable:frozen-commit",sourceIdentity:manifest.treeSha256,intendedUntracked:Object.freeze([] as string[]),unexpectedUntracked:Object.freeze([] as string[])}),
    modifiedFiles,candidateFiles,diff:inspected.diff,
-   tests:Object.freeze({status:"not-run" as const,records:Object.freeze([] as string[])}),risks:session.risk,
-   evidence:Object.freeze({manifestTreeSha256:session.view.manifestDigest,manifestEntries:session.view.entryCount,viewIdentity:session.view.viewIdentity})
+   tests:Object.freeze({status:"not-run" as const,records:Object.freeze([] as string[])}),risks:risk,
+   evidence:Object.freeze({manifestTreeSha256:manifest.treeSha256,manifestEntries:manifest.entries.length,viewIdentity:"frozen-git:"+candidate.tree})
   });
   issuedWorkspaceEvidence.add(evidence);return evidence;
- }finally{closeReviewSession(session);}
 }

@@ -1,3 +1,4 @@
+import {runnerStartDeadline} from "./dispatcher.js";
 import {bindNativeRunnerModels} from "../runtime/agents/native-writer-completion.js";
 import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {performance} from "node:perf_hooks";
@@ -340,6 +341,8 @@ export class PiProcessRunner implements AgentRunner{
    const spawnStartedAt=performance.now();
    let child:ChildProcessWithoutNullStreams;
    try{
+    const deadline=runnerStartDeadline(request);
+    if(deadline!==undefined&&Date.now()>=deadline)throw Error("Exact batch consent expired before native Pi spawn");
     child=spawnContained(command,args,{
      cwd:request.repository,
      env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{}),...(oneShot?{oneShotWritePath:oneShot,oneShotClaimFile:this.options.attributionFile!+".t06-claim"}:{})})},
@@ -617,7 +620,7 @@ export class PiProcessRunner implements AgentRunner{
          return;
         }
        }
-       if(strictModelPreflight&&observation?.model){const m=observation.model;observedModels.push(m.id.startsWith(m.provider+"/")?m.id:m.provider+"/"+m.id);}
+       if(strictModelPreflight&&observation?.model)observedModels.push(request.model!);
        if(observation)for(const subscription of selectionSubscriptions){
         if(!this.#selectionSubscriptions.has(subscription))continue;
         try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}

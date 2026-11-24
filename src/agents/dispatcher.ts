@@ -31,6 +31,9 @@ export function consumeValidatedAgentResult(value:unknown,lifecycle:unknown,id:s
 }
 
 // Only successful Dispatcher gates register receivers; public admission consumption cannot mint one.
+// El plazo se vincula al objeto que el Dispatcher entrega al runner, no a texto del agente.
+const runnerStartDeadlines=new WeakMap<object,number>();
+export function runnerStartDeadline(request:AgentRequest):number|undefined{return runnerStartDeadlines.get(request);}
 const runnerReceivers=new WeakMap<object,{request:AgentRequest;used:boolean}>();
 export function consumeRunnerWriteReceiver(receiver:unknown,request:AgentRequest):boolean{
  const r=typeof receiver==="object"&&receiver!==null?runnerReceivers.get(receiver):undefined;
@@ -154,6 +157,7 @@ export class Dispatcher {
    if(request.writeSurfaces){assertActiveWriterSnapshot(request);writerLease=acquireActiveWriterLease(request);writerLease?.verify();}
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
    if(startBefore!==undefined&&(!Number.isSafeInteger(startBefore)||Date.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");
+   if(startBefore!==undefined)runnerStartDeadlines.set(runnerRequest,startBefore);
    const result=await this.runner.run(runnerRequest,controller.signal);
    if(!result||result.id!==request.id||typeof result.ok!=="boolean"||typeof result.output!=="string")throw new Error("Agent runner returned an invalid or mismatched result");
    if(request.writeSurfaces){assertActiveWriterSnapshotOutcome(request);writerLease?.verify();}

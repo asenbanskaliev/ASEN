@@ -35,8 +35,9 @@ if(!process.env.NVIDIA_API_KEY||!reportFile||!expected||!(/^[a-f0-9]{40}$/u.test
  throw Error("E2A integral: SHA, proveedor o recibo no autorizado");
 const base=realpathSync(mkdtempSync(join(tmpdir(),"asen-native-partition-")));
 const project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
-const git=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args],{
- encoding:"utf8",stdio:["ignore","pipe","ignore"],env:isolatedGitEnvironment(),timeout:10000}).trim();
+const rawGit=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args],{
+ encoding:"utf8",stdio:["ignore","pipe","ignore"],env:isolatedGitEnvironment(),timeout:10000});
+const git=(cwd:string,...args:string[])=>rawGit(cwd,...args).trim();
 const hash=(s:string)=>createHash("sha256").update(s).digest("hex");
 const values:Record<string,string>={"a.txt":"ASEN-NATIVE-LOT-A","b.txt":"ASEN-NATIVE-LOT-B"};
 const obs=new Map<string,{pid:number;start:number;end:number;model:string;writeStarts:number;writeEnds:number;errors:number}>();
@@ -168,7 +169,7 @@ try{
  const batch=(await sourceJournal.list(identity)).at(-1)!;
  const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
  assert.deepEqual(candidate.paths,["a.txt","b.txt"]);
- for(const path of candidate.paths)assert.equal(git(project,"show",candidate.commit+":"+path),values[path]);
+ for(const path of candidate.paths)assert.equal(rawGit(project,"show",candidate.commit+":"+path),values[path]);
  assert.equal(git(project,"rev-parse","HEAD"),head);
  const evidence=readFrozenIntegrationReviewEvidence(candidate,identity.sessionId,"pi-model:ensayo/lector",base);
  assert.equal(evidence.candidate.treeIdentity,candidate.tree);

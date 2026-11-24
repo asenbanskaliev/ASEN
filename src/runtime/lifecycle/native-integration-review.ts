@@ -26,12 +26,14 @@ export async function reviewNativeIntegratedCandidate(input:{
  const blocked=(reason:string)=>Object.freeze({status:"blocked" as const,reason,acceptance:"not-accepted" as const,autoMerge:false as const});
  if(!isIssuedNativeIntegrationCandidate(candidate)||!candidate.authorModelsObserved?.length)
   return blocked("No hay modelos autores observados por Pi para acreditar independencia de los jueces.");
- const authors=new Set(candidate.authorModelsObserved),key=(m:PiReviewerModel)=>m.provider+"/"+(m.id.startsWith(m.provider+"/")?m.id.slice(m.provider.length+1):m.id);
+ const authors=new Set(candidate.authorModelsObserved),key=(m:PiReviewerModel)=>m.provider+"/"+m.id;
+ // Excluir también la representación abreviada del mismo modelo de Pi.
+ const isAuthor=(m:PiReviewerModel)=>authors.has(key(m))||authors.has(m.provider+"/"+(m.id.startsWith(m.provider+"/")?m.id.slice(m.provider.length+1):m.id))||authors.has(m.provider+"/"+key(m));
  const filtered:PiReviewRegistry={
-  getAvailable:()=>registry.getAvailable().filter(model=>!authors.has(key(model))),
-  hasConfiguredAuth:model=>!authors.has(key(model))&&registry.hasConfiguredAuth(model),
+  getAvailable:()=>registry.getAvailable().filter(model=>!isAuthor(model)),
+  hasConfiguredAuth:model=>!isAuthor(model)&&registry.hasConfiguredAuth(model),
   streamSimple:(model,context,options)=>{
-   if(authors.has(key(model)))throw new Error("A Writer model cannot judge its integrated result");
+   if(isAuthor(model))throw new Error("A Writer model cannot judge its integrated result");
    return registry.streamSimple(model,context,options);
   }
  };

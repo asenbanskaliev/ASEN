@@ -88,7 +88,7 @@ export async function prepareNativePartitionChildren(input:{
    const native=await createNativeChildPlanningSession(item.record.worktreeRoot,input.sessionDir,item.instruction);
    await validateExact();
    const attached=await sessionJournal.attach({childSessionId:native.sessionId,childProjectId:native.projectId,
-    nativeSessionFile:native.sessionFile,validateSession:async()=>{await validateExact();await assertNativeChildPlanningSession(native);},
+    nativeSessionFile:native.sessionFile,validateSession:async()=>{await validateExact();await assertNativeChildPlanningSession(native,item.instruction);},
     confirm:async owner=>owner.sourceTodoId===item.record.taskId&&owner.sourceHead===initial.batch.sourceHead&&
      sameWorkspaceIdentityPath(owner.worktreeRoot,native.projectId)&&sameWorkspaceIdentityPath(owner.sourceProjectId,source.projectId)&&
      JSON.stringify(owner.writeSurfaces)===JSON.stringify(item.record.writeSurfaces)});
@@ -101,12 +101,12 @@ export async function prepareNativePartitionChildren(input:{
     task.writerAuthorizationBasis!==item.basis||task.instruction!==item.row.description||
     JSON.stringify(task.writeSurfaces)!==JSON.stringify(item.record.writeSurfaces))
     throw new Error("El plan hijo no conserva la unidad original.");
-   await validateExact();await assertNativeChildPlanningSession(native);
+   await validateExact();await assertNativeChildPlanningSession(native,item.instruction);
    await claimJournal.claim(attached.link);
    const draft:TodoPlanDraft={title:task.title,requestId:"asen-plan:"+task.id,dependsOn:[],description:task.instruction,
     plan:{role:"worker",skillPaths:[...task.skillPaths],priority:task.priority,
-     ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.model?{model:task.model}:{}),
-     ...(task.thinking?{thinking:task.thinking}:{}),candidate:task.candidate,
+     ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(item.row.plan!.model?{model:item.row.plan!.model}:task.model?{model:task.model}:{}),
+     ...(item.row.plan!.thinking?{thinking:item.row.plan!.thinking}:task.thinking?{thinking:task.thinking}:{}),candidate:task.candidate,
      writeSurfaces:[...task.writeSurfaces],writerAuthorizationBasis:task.writerAuthorizationBasis}};
    const [saved]=await todos.addPlan([draft],native,undefined,input.validateParent);
    if(!saved)throw new Error("No se guardó la unidad hija.");

@@ -1690,8 +1690,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         stage="supervisedLaunch";
         const launched=await worktreeCommands.supervisePartition(ctx,preparation.batchId) as {status?:string;started?:unknown[]};
         output.supervisedLaunch=launched;
-        const executionState=launched.started?.length?true:launched.status==="partial-needs-review"?"unknown":false;
-        output.execution={started:executionState,authorized:executionState,
+        const executionState=launched.started?.length||launched.status==="partial-needs-review"?"unknown":false;
+        output.execution={started:executionState,authorized:launched.started?.length?true:executionState,
          reason:launched.status??"unknown"};
         validateContext();
        }

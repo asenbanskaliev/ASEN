@@ -56,7 +56,7 @@ function userSummary(value:unknown):string{
    child?.status==="partial-needs-review"?"La preparación de hijos quedó parcial; no se repite automáticamente.":
    child?.status==="declined"?"Se rechazó preparar las sesiones hijas.":"Las sesiones hijas todavía no están preparadas.";
   const launchMessage=launch?.status==="started"&&launch.started?.length===2?
-   "Se han iniciado los dos Writers con un permiso de lote exacto. Falta comprobar sus resultados.":
+   "El despachador ha admitido los dos Writers con permiso exacto. Pueden estar en cola; todavía no se ha acreditado el inicio de ambos procesos Pi.":
    launch?.status==="partial-needs-review"||plan.execution?.started==="unknown"?
    "Hay un resultado parcial o incierto de lanzamiento; revisar los registros antes de continuar.":
    launch?.status==="declined"?"Se rechazó el permiso de escritura del lote. No se iniciaron Writers.":

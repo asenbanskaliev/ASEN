@@ -1,3 +1,4 @@
+import {retainNativeGitObject} from "./native-git-evidence-ref.js";
 /** Evidencia del resultado nativo, capturada antes de liberar el permiso
  * exclusivo del Writer. El recibo autenticado de AgentStore la conserva. */
 import {execFileSync} from "node:child_process";
@@ -42,6 +43,7 @@ export function captureNativeWriterCompletion(request:AgentRequest,result:object
  if(!paths.length||paths.some(p=>!request.writeSurfaces!.includes(p)))return;
  const entries=projection.entries.filter(entry=>paths.includes(entry.path));
  if(entries.length!==paths.length||entries.some(entry=>!["100644","100755"].includes(entry.mode)||entry.change==="gitlink"))return;
+ retainNativeGitObject(root,"worker-tree",projection.candidateTree);
  const evidence={baseCommit:base,candidateTree:projection.candidateTree,paths,authorModelsObserved:observedModels.get(result)??[]};
  return validNativeWriterCompletion(evidence)?Object.freeze({...evidence,paths:Object.freeze(paths),authorModelsObserved:Object.freeze([...evidence.authorModelsObserved])}):undefined;
 }
