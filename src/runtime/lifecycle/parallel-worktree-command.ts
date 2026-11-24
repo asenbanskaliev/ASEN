@@ -14,6 +14,7 @@ import {inspectParallelBatchWorkerOutcomes} from "../agents/parallel-batch-coord
 import {launchParentApprovedWorkers,type ParentSupervisorReadyWorker} from "../agents/parallel-parent-supervisor.js";
 import {ParentSupervisorClaimJournal} from "../agents/parallel-parent-supervisor-claims.js";
 import {attributeParallelChildWorker} from "../agents/parallel-worker-attribution.js";
+import {buildNativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
 import {controlledInstructionPlanCommand} from "./route-command.js";
@@ -21,7 +22,7 @@ import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | attach-plan | plan-todo | supervise | collect | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | attach-plan | plan-todo | supervise | collect | integration | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;
  sessionManager?:{getSessionId?:()=>string};
@@ -69,7 +70,7 @@ export function registerParallelWorktreeCommand(
  const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
 
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
@@ -165,6 +166,33 @@ export function registerParallelWorktreeCommand(
     ctx.ui.notify(JSON.stringify(result,null,2),
      result.status==="started"?"info":"warning");
     return result;
+   }
+   if(action==="integration"){
+    if(!id||!ctx.cwd||!options?.journalFile||!options.sessionLinksFile||!options.observationFile)
+     return {status:"unavailable",reason:"No existe una sesión propietaria y sus diarios de lote."};
+    const source=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
+    const identity={sessionId:id,projectId:source};
+    const validate=()=>{
+     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+      realpathSync(path.resolve(ctx.cwd))!==source)throw new Error("La sesión del lote cambió.");
+    };
+    const sourceJournal=new ParallelTodoWorktreeJournal(options.journalFile);
+    const sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal);
+    const observations=new ParallelWorkerObservationJournal(options.observationFile);
+    try{
+     const batch=(await sourceJournal.list(identity)).at(-1);
+     validate();
+     if(!batch)throw new Error("No existe lote ODD.");
+     const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
+     validate();
+     const result={status:"candidate-prepared",candidate,
+      next:"Revisar el candidato exacto, ejecutar pruebas firmadas y obtener aprobación antes de integrar; las sucesoras siguen bloqueadas."};
+     ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
+    }catch(error){
+     validate();
+     const result={status:"blocked",reason:error instanceof Error?error.message:"No se pudo construir el candidato exacto.",autoMerge:false};
+     ctx.ui.notify(result.reason,"warning");return result;
+    }
    }
    if(action==="collect"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||
