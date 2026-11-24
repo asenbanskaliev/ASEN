@@ -23,7 +23,7 @@ import type {TodoContext} from "./todo-store.js";
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
 const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | attach-plan | plan-todo | supervise | collect | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
- cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
+ cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;
  sessionManager?:{getSessionId?:()=>string};
  ui:{notify:(message:string,kind:"info"|"error"|"warning")=>void;
   editor?:(title:string,prefill?:string)=>Promise<string|undefined>;
