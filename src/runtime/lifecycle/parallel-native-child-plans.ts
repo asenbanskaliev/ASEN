@@ -9,7 +9,7 @@ import {ParallelChildPlanClaimJournal} from "../agents/parallel-child-plan-claim
 import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change-inspection.js";
 import {createNativeChildPlanningSession,assertNativeChildPlanningSession} from "../agents/pi-native-child-session.js";
 import {materializePartitionRoot,parsePartitionUnitBasis} from "./odd-unit-plan.js";
-import type {ProfileLayer} from "./profiles.js";
+import {resolveRuntimeRoute,type ProfileLayer} from "./profiles.js";
 import type {SessionTodoStore,TodoContext,TodoPlanDraft} from "./todo-store.js";
 
 type PreparedChild={sourceTodoId:string;childTodoId:string;sessionId:string;projectId:string;sessionFile:string};
@@ -63,9 +63,16 @@ export async function prepareNativePartitionChildren(input:{
   if((await sessionJournal.listSource(source)).some(link=>link.batchId===batchId))
    return result("blocked","Ya existen sesiones asociadas al lote; revisar antes de repetir.");
  }catch{return result("blocked","El lote no es una partición ODD intacta y preparada.");}
- const summary=["Crear dos sesiones nativas de planificación Pi (sin modelo ni permisos Writer).",
+ // Fijar la ruta de cada raíz antes de reservar o crear sesiones. Si el
+ // plan no tenía modelo, el perfil activo del padre debe indicarlo ahora.
+ let parentRoute:ReturnType<typeof resolveRuntimeRoute>["choice"];
+ try{parentRoute=resolveRuntimeRoute(await input.childProfiles(source),"worker").choice;}catch{return result("blocked","No se pudo comprobar el modelo Writer configurado.");}
+ const routes=initial.selected.map(item=>({model:item.row.plan!.model??parentRoute?.model,thinking:item.row.plan!.thinking??parentRoute?.thinking}));
+ if(routes.some(route=>!route.model||!/^[-a-zA-Z0-9._]+\/.+$/u.test(route.model)))
+  return result("blocked","Configurar un modelo Writer explícito antes de preparar las sesiones; después se puede reanudar el mismo lote.");
+ const summary=["Crear dos sesiones nativas de planificación Pi (sin llamar a modelos ni permisos Writer).",
   "Lote: "+batchId,"SHA: "+initial.batch.sourceHead,
-  ...initial.selected.map(item=>item.record.worktreeRoot+" · "+item.row.description+" · "+item.record.writeSurfaces.join(", ")),
+  ...initial.selected.map((item,index)=>item.record.worktreeRoot+" · "+item.row.description+" · "+item.record.writeSurfaces.join(", ")+" · modelo: "+routes[index]!.model),
   "Se guardará el mensaje de delegación y la tarea ODD de cada sesión. No se ejecutarán instrucciones, credenciales ni escrituras del agente."].join("\n");
  if(await input.confirm(summary)!==true)return result("declined");
  const exact=JSON.stringify(initial);
@@ -83,7 +90,8 @@ export async function prepareNativePartitionChildren(input:{
   try{await claim.writeFile(JSON.stringify({batchId,source,head:initial.batch.sourceHead}));await claim.sync();}
   finally{await claim.close();}
  }catch{return result("blocked","No se pudo reservar una preparación nueva; no repetir automáticamente.");}
- for(const item of initial.selected){
+ for(const [index,item] of initial.selected.entries()){
+  const route=routes[index]!;
   let stage="validación";
   try{
    await validateExact();
@@ -111,8 +119,8 @@ export async function prepareNativePartitionChildren(input:{
    await claimJournal.claim(attached.link);
    const draft:TodoPlanDraft={title:task.title,requestId:"asen-plan:"+task.id,dependsOn:[],description:task.instruction,
     plan:{role:"worker",skillPaths:[...task.skillPaths],priority:task.priority,
-     ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(item.row.plan!.model?{model:item.row.plan!.model}:task.model?{model:task.model}:{}),
-     ...(item.row.plan!.thinking?{thinking:item.row.plan!.thinking}:task.thinking?{thinking:task.thinking}:{}),candidate:task.candidate,
+     ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),model:route.model!,
+     ...(route.thinking?{thinking:route.thinking}:{}),candidate:task.candidate,
      writeSurfaces:[...task.writeSurfaces],writerAuthorizationBasis:task.writerAuthorizationBasis}};
    const [saved]=await todos.addPlan([draft],native,undefined,input.validateParent);
    if(!saved)throw new Error("No se guardó la unidad hija.");

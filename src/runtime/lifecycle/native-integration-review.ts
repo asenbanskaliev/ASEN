@@ -2,9 +2,9 @@
  * Writer ni confundir el informe de modelos con pruebas o aceptación. */
 import {tmpdir} from "node:os";
 import {execFileSync} from "node:child_process";
-import {mkdtempSync,rmSync,realpathSync} from "node:fs";
+import {mkdtempSync,rmSync,realpathSync,lstatSync,openSync,closeSync,readSync,writeFileSync,fsyncSync,constants} from "node:fs";
 import {join} from "node:path";
-import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
+import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import {readFrozenIntegrationReviewEvidence} from "../../review/workspace-review-session.js";
 import {runJudgmentDay,isIssuedJudgmentDayReport,type JudgmentDayReport} from "../../review/judgment-day.js";
 import {availableIndependentPiReviewers,type PiReviewRegistry,type PiReviewerModel} from "../../review/pi-model-reviewer.js";
@@ -104,10 +104,30 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
  validate:()=>Promise<void>;confirm:(summary:string)=>Promise<boolean>;
 }):Promise<AcceptedNativeIntegration|undefined>{
  const {candidate}=input;
+ const eol=checkoutEolSettings(candidate.repository).args;
  const git=(args:readonly string[],hooks?:string)=>execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false",
-  "-c","submodule.recurse=false","-c","commit.gpgSign=false",...(hooks?["-c","core.hooksPath="+hooks]:[]),
+  "-c","submodule.recurse=false","-c","commit.gpgSign=false",...eol,...(hooks?["-c","core.hooksPath="+hooks]:[]),
   "-C",candidate.repository,...args],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:20000,maxBuffer:1000000,windowsHide:true});
  const head=()=>git(["rev-parse","HEAD"]).trim();
+ const marker=join(git(["rev-parse","--absolute-git-dir"]).trim(),"asen-integration-"+candidate.batchId+".json");
+ const markerText=(branch:string)=>JSON.stringify([branch,candidate.batchId,candidate.baseCommit,candidate.commit,candidate.tree,input.sessionId]);
+ const readMarker=()=>{
+  const first=lstatSync(marker,{throwIfNoEntry:false});if(!first)return undefined;
+  if(!first.isFile()||first.isSymbolicLink()||first.size>4096)throw Error("Registro de integración inseguro");
+  const fd=openSync(marker,process.platform==="win32"?constants.O_RDONLY:constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+  try{
+   const bytes=Buffer.alloc(4097),size=readSync(fd,bytes,0,bytes.length,0);
+   const last=lstatSync(marker);
+   if(size!==first.size||last.dev!==first.dev||last.ino!==first.ino||last.isSymbolicLink())throw Error("Registro de integración cambiado");
+   return new TextDecoder("utf-8",{fatal:true}).decode(bytes.subarray(0,size));
+  }finally{closeSync(fd);}
+ };
+ const ensureMarker=(branch:string)=>{
+  const expected=markerText(branch),existing=readMarker();
+  if(existing!==undefined){if(existing!==expected)throw Error("Registro de integración pertenece a otro candidato");return;}
+  const fd=openSync(marker,"wx",0o600);
+  try{writeFileSync(fd,expected);fsyncSync(fd);}finally{closeSync(fd);}
+ };
  const inspect=()=>{
   if(realpathSync(git(["rev-parse","--show-toplevel"]).trim())!==realpathSync(candidate.repository))
    throw new Error("La integración requiere el proyecto original.");
@@ -119,13 +139,21 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
    const config=git(["config","--get-regexp","^(filter\\.|merge\\..*\\.driver$|diff\\..*\\.command$)"]);
    if(config.trim())throw new Error("Configuración Git externa no admitida para integrar.");
   }catch(error){if((error as {status?:number})?.status!==1)throw error;}
-  if(git(["status","--porcelain=v1","--untracked-files=all"]).length)throw new Error("La integración requiere el proyecto original limpio.");
-  return {branch,head:head()};
+  const current=head(),pending=readMarker();
+  if(pending!==undefined&&pending!==markerText(branch))throw Error("Registro de integración pertenece a otra rama o candidato");
+  const dirty=git(["status","--porcelain=v1","--untracked-files=all"]).length>0;
+  const prepared=dirty&&current===candidate.baseCommit&&pending===markerText(branch)&&
+   git(["write-tree"]).trim()===candidate.tree&&
+   !git(["diff","--name-only","--no-ext-diff","--no-textconv"]).trim()&&
+   !git(["ls-files","--others","--exclude-standard","-z"]).length;
+  if(dirty&&!prepared)throw new Error("La integración requiere el proyecto original limpio o una preparación exacta registrada.");
+  return {branch,head:current,prepared};
  };
  await input.validate();const evidence=await verifyNativeIntegrationAcceptance(input),initial=inspect();
  if(await input.confirm(["Integrar localmente el candidato verificado "+candidate.commit,
   "Rama: "+initial.branch,"Árbol: "+candidate.tree,"Archivos: "+candidate.paths.join(", "),
   "Dos jueces PASS; pruebas firmadas: "+evidence.tests,
+  ...(initial.prepared?["Reanudar una transición registrada con el índice y archivos exactos."]:[]),
   "Sin push, sin main/master, sin reintentos ni permiso Writer heredado."].join("\n"))!==true)return undefined;
  await input.validate();await verifyNativeIntegrationAcceptance(input);await input.validate();
  if(JSON.stringify(inspect())!==JSON.stringify(initial))throw new Error("La rama o candidato cambió durante la aprobación.");
@@ -139,7 +167,8 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
    if(untracked.some(path=>candidate.paths.some(changed=>path===changed||path.startsWith(changed+"/")||changed.startsWith(path+"/"))))
     throw Error("Hay archivos locales que colisionan con el candidato.");
    if(JSON.stringify(inspect())!==JSON.stringify(initial))throw Error("La rama autorizada cambió antes de preparar los archivos.");
-   git(["read-tree","-m","-u",candidate.baseCommit,candidate.commit],hooks);
+   ensureMarker(initial.branch);
+   if(!initial.prepared)git(["read-tree","-m","-u",candidate.baseCommit,candidate.commit],hooks);
    // La preparación del índice no concede permiso para otra rama. Si hay
    // concurrencia, detenerse y conservar el estado para inspección manual.
    if(git(["symbolic-ref","HEAD"],hooks).trim()!==initial.branch||
@@ -157,6 +186,7 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
  const final=inspect();
  if(final.branch!==initial.branch||final.head!==candidate.commit||git(["rev-parse","HEAD^{tree}"]).trim()!==candidate.tree)
   throw new Error("Integración incierta; no activar sucesoras.");
+ if(readMarker()===markerText(final.branch))rmSync(marker);
  const accepted=Object.freeze({status:"integrated" as const,batchId:candidate.batchId,commit:candidate.commit,tree:candidate.tree,
   sessionId:input.sessionId,repository:candidate.repository,tests:evidence.tests,remotePush:false as const,writerAuthority:false as const});
  acceptedIntegrations.set(accepted,integrationKey(candidate,input.sessionId));return accepted;

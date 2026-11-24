@@ -1,5 +1,5 @@
 import {execFileSync} from "node:child_process";
-import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
+import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
 import type {ReviewReceiptState} from "../../evidence/receipt-verifier.js";
 import type {TaskAgentLinkStore} from "../agents/task-agent-link-store.js";
@@ -68,7 +68,7 @@ function candidateAtCleanHead(repository:string):{commit:string;tree:string}{
  if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(sha))throw new Error("Review acceptance requires a real Git commit");
  const tree=execFileSync("git",["rev-parse","--verify","HEAD^{tree}"],options).trim();
  if(!/^[0-9a-f]{40}$/u.test(tree))throw new Error("Review acceptance requires a real Git tree");
- const changes=execFileSync("git",["status","--porcelain=v1","--untracked-files=all"],options);
+ const changes=execFileSync("git",["-c","core.fsmonitor=false",...checkoutEolSettings(repository).args,"status","--porcelain=v1","--untracked-files=all"],options);
  if(changes.length)throw new Error(dirtyWorktreeDetail(changes));
  return {commit:sha,tree};
 }

@@ -211,6 +211,15 @@ const terminalErrors:unknown[]=[];
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("rev-parse","refs/heads/prueba-integracion"),candidate.baseCommit);
    git("switch","prueba-integracion");
+   const lock=join(project,".git","refs","heads","prueba-integracion.lock");
+   await writeFile(lock,"bloqueo de prueba",{flag:"wx"});
+   try{await assert.rejects(()=>acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>true}));}
+   finally{await rm(lock,{force:true});}
+   assert.equal(git("rev-parse","HEAD"),candidate.baseCommit);
+   assert.equal(git("write-tree"),candidate.tree);
+   await writeFile(join(project,"a.txt"),"edición ajena");
+   await assert.rejects(()=>acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>true}),/limpio/u);
+   await writeFile(join(project,"a.txt"),"resultado");
    const accepted=await acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>true});
    assert.ok(accepted);assert.equal(git("rev-parse","HEAD"),candidate.commit);
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);

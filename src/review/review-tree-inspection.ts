@@ -269,7 +269,7 @@ export function inspectCandidateGitTree(input:unknown):CandidateGitTreeManifest{
 /** Inspección acotada a blobs de rutas exactas. Verifica el árbol raíz,
  * las rutas y objetos de directorio como en la inspección completa. */
 export function inspectSelectedCandidateGitTree(input:unknown,paths:readonly string[]):CandidateGitTreeManifest{
- if(!Array.isArray(paths)||paths.length<1||paths.length>256)throw Error("Invalid selected tree paths");
+ if(!Array.isArray(paths)||paths.length<1||paths.length>512)throw Error("Invalid selected tree paths");
  const selected=validatePortableReviewPaths([...paths]);
  if(selected.length!==paths.length||new Set(paths).size!==paths.length)throw Error("Invalid selected tree paths");
  return inspectTree(input,new Set(selected));

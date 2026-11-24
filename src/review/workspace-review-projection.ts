@@ -1,3 +1,4 @@
+import {checkoutEolSettings} from "../runtime/agents/git-isolated-environment.js";
 import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {
@@ -319,9 +320,7 @@ export function assertWorkspaceProjectionRepository(value:unknown):void{
  * bytes de la revisión ordinaria. Los archivos binarios y atributos especiales
  * se mantienen crudos; las discrepancias quedan bloqueadas por el ámbito. */
 function normalizeNativeGitText(root:string,candidate:Map<string,SourceEntry>):void{
-  let autocrlf="";
-  try{autocrlf=gitText(root,["config","--get","core.autocrlf"]).toLowerCase();}
-  catch(error){if((error as {status?:number})?.status!==1)throw error;}
+  const {autocrlf}=checkoutEolSettings(root);
   const eol=records(runGit(root,["ls-files","--eol","-z"]));
   for(const record of eol){
     const line=decoder.decode(record),tab=line.indexOf("\t");
