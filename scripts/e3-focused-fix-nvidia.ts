@@ -49,6 +49,22 @@ const project=join(temp,"repo"),home=join(temp,"home"),privateDir=join(home,".as
 const model="nvidia/nemotron-3.5-lightning-30b-a3b",wrong="ASEN-NATIVE-LOT-A",correct="ASEN-NATIVE-CORRECT-A";
 const testPath="reproduction.test.mjs";
 const requirements="The reproduction test is an intentional failing test to preserve unchanged. Review only the exact requirement: a.txt must contain ASEN-NATIVE-CORRECT-A with no newline. If it differs, fail and quote both observed and expected tokens verbatim in an a.txt finding. If exact, pass with no findings. Tests are verified separately; do not treat the not-run evidence field as a defect. Return the required JSON object only.";
+// Los IDs físicos pueden contener la familia del modelo además del proveedor.
+function judgeIdentityForms(descriptor:Pick<PiReviewerModel,"provider"|"id">):readonly string[]{
+ const qualified=descriptor.id.startsWith(descriptor.provider+"/")?descriptor.id:descriptor.provider+"/"+descriptor.id;
+ return [...new Set([descriptor.id,qualified,descriptor.provider+"/"+descriptor.id,qualified.slice(descriptor.provider.length+1)])];
+}
+function matchesJudgeIdentity(descriptor:Pick<PiReviewerModel,"provider"|"id">,provider:string,observed:string):boolean{
+ return provider===descriptor.provider&&judgeIdentityForms(descriptor).includes(observed);
+}
+// Controles deterministas antes de cualquier llamada real.
+for(const id of ["nvidia/nemotron-3-ultra-550b-a55b","openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash"]){
+ const descriptor={provider:"nvidia",id};
+ assert.ok(matchesJudgeIdentity(descriptor,"nvidia",id));
+ assert.ok(matchesJudgeIdentity(descriptor,"nvidia","nvidia/"+id));
+ assert.equal(matchesJudgeIdentity(descriptor,"otro",id),false);
+ assert.equal(matchesJudgeIdentity(descriptor,"nvidia",id+"-otro"),false);
+}
 const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],judgeCalls:0,judgeDiagnostics:[] as {model:string;result:string;providerMatches?:boolean;modelMatches?:boolean;responseMatches?:boolean;responseModel?:string;contentKinds?:string[]}[],failureCategory:"none",firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
 let agents:AgentRuntime|undefined,owner:{sessionId:string;projectId:string}|undefined;
 try{
@@ -106,9 +122,9 @@ try{
   // Nemotron frente a los modelos que el proveedor rechazó en el intento previo.
   // Ultra ya completó la revisión real; el segundo juez usa otra familia
   // física del catálogo autenticado, sin repetir el modelo que dio error.
-  const approved=["nvidia/nemotron-3-ultra-550b-a55b","openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash"];
+  const approved=["nvidia/nemotron-3-ultra-550b-a55b","deepseek-ai/deepseek-v4.1-flash","openai/gpt-oss-20b"];
   const selected=approved.flatMap(id=>available.filter(m=>m.id===id)).slice(0,2);
-  assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>normalizeT06PiChildSelection(m,model)!==model));
+  assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>!matchesJudgeIdentity(m,"nvidia",model)));
   [judgeA,judgeB]=[selected[0]!,selected[1]!];
   registry={getAvailable:()=>selected,hasConfiguredAuth:m=>selected.some(x=>key(x)===key(m)),async *streamSimple(m,ctx,options){
    const descriptor=selected.find(x=>key(x)===key(m));if(!descriptor||++report.judgeCalls>4)throw Error("Límite de cuatro revisiones");
@@ -129,10 +145,10 @@ try{
        /timeout|timed.out|network|fetch|connection/i.test(message)?"network":
        "provider-error";
      }else if(event.type==="done"){
-      const selectedModel=descriptor.id.startsWith(descriptor.provider+"/")?descriptor.id:descriptor.provider+"/"+descriptor.id;
-      const acceptedResponse=[descriptor.id,selectedModel,key(descriptor),selectedModel.slice(descriptor.provider.length+1),"private/"+selectedModel];
+      const forms=judgeIdentityForms(descriptor);
+      const acceptedResponse=[...forms,...forms.map(identity=>"private/"+identity)];
       const providerMatches=event.message.provider===descriptor.provider,
-       modelMatches=normalizeT06PiChildSelection({provider:event.message.provider,id:event.message.model},selectedModel)===selectedModel,
+       modelMatches=matchesJudgeIdentity(descriptor,event.message.provider,event.message.model),
        responseMatches=event.message.responseModel===undefined||acceptedResponse.includes(event.message.responseModel);
       if(!providerMatches||!modelMatches||!responseMatches){
        const observed=event.message.responseModel;
