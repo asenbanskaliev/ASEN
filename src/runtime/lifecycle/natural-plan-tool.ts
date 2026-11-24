@@ -50,11 +50,23 @@ function userSummary(value:unknown):string{
    prepared?.status==="declined"?"Se ha rechazado la preparación de carpetas; no se ha iniciado ningún Writer.":
    prepared?.status==="blocked"||prepared?.status==="blocked-needs-review"?"La preparación está bloqueada. "+(prepared.reason??"Revisar el lote antes de continuar."):
    "La preparación de carpetas requiere una sesión Pi interactiva.";
+  const child=(value as {childPreparation?:{status?:string}}).childPreparation;
+  const launch=(value as {supervisedLaunch?:{status?:string;started?:unknown[]}}).supervisedLaunch;
+  const childMessage=child?.status==="prepared"?"Las sesiones Pi hijas nativas y sus tareas están guardadas.":
+   child?.status==="partial-needs-review"?"La preparación de hijos quedó parcial; no se repite automáticamente.":
+   child?.status==="declined"?"Se rechazó preparar las sesiones hijas.":"Las sesiones hijas todavía no están preparadas.";
+  const launchMessage=launch?.status==="started"&&launch.started?.length===2?
+   "Se han iniciado los dos Writers con un permiso de lote exacto. Falta comprobar sus resultados.":
+   launch?.status==="partial-needs-review"||plan.execution?.started==="unknown"?
+   "Hay un resultado parcial o incierto de lanzamiento; revisar los registros antes de continuar.":
+   launch?.status==="declined"?"Se rechazó el permiso de escritura del lote. No se iniciaron Writers.":
+   "No consta un lanzamiento autorizado de Writers.";
   return ["ASEN ha dividido el trabajo en unidades ODD con ámbitos separados.",
    ...graph.map(task=>`${task.title??"Unidad"} — ${task.dependsOn?.length?"espera la integración de sus dependencias":"preparable en una carpeta Git aislada"} — archivos: ${task.writeSurfaces?.join(", ")??""}`),
    plan.persistence?.status==="saved"?"Las tareas están guardadas.":"La división aún no se ha guardado.",
    preparation,
-   "No se ha autorizado ningún Writer. Faltan las sesiones Pi hijas reales y su supervisión; las unidades dependientes requieren integrar los cambios y preparar un candidato nuevo."].join("\n");
+   childMessage,launchMessage,
+   "Las unidades dependientes requieren integrar los cambios y preparar un candidato nuevo."].join("\n");
  }
  const tasks=Array.isArray(plan.executablePlan?.tasks)?plan.executablePlan!.tasks as Array<{role?:unknown;title?:unknown;status?:unknown;dependsOn?:unknown;writeSurfaces?:unknown}>:[];
  const routeLabel:Record<string,string>={direct:"trabajo acotado en la sesión actual",plan:"aclaración pendiente",orchestrate:"trabajo coordinado",incident:"atención de incidencia",verify:"verificación independiente"};
