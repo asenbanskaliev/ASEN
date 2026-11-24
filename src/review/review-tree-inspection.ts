@@ -264,6 +264,17 @@ function freezeEntry(entry:CandidateGitTreeEntry):CandidateGitTreeEntry{return O
  * it creates no review view, grants no authority, and never traverses gitlinks.
  */
 export function inspectCandidateGitTree(input:unknown):CandidateGitTreeManifest{
+ return inspectTree(input);
+}
+/** Inspección acotada a blobs de rutas exactas. Verifica el árbol raíz,
+ * las rutas y objetos de directorio como en la inspección completa. */
+export function inspectSelectedCandidateGitTree(input:unknown,paths:readonly string[]):CandidateGitTreeManifest{
+ if(!Array.isArray(paths)||paths.length<1||paths.length>256)throw Error("Invalid selected tree paths");
+ const selected=validatePortableReviewPaths([...paths]);
+ if(selected.length!==paths.length||new Set(paths).size!==paths.length)throw Error("Invalid selected tree paths");
+ return inspectTree(input,new Set(selected));
+}
+function inspectTree(input:unknown,selected?:ReadonlySet<string>):CandidateGitTreeManifest{
  const request=exactRequest(input);
  const deadline={expiresAt:monotonicMilliseconds()+operationLimit};
  if(!isAbsolute(request.repositoryRoot))throw new Error("Repository root must be canonical");
@@ -306,6 +317,7 @@ export function inspectCandidateGitTree(input:unknown):CandidateGitTreeManifest{
     if(retained>aggregateLimit)throw new Error("Candidate tree exceeds aggregate inspection bounds");
     continue;
    }
+   if(selected&&!selected.has(item.path))continue;
    if(item.type==="commit"){
     if(item.mode!=="160000")throw new Error("Git tree contains an unsupported commit entry");
     entries.push(freezeEntry({path:item.path,kind:"gitlink",mode:"160000",objectId:item.objectId,size:null,contentSha256:null,bytesBase64:null}));

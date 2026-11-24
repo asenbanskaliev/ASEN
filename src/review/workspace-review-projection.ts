@@ -417,8 +417,13 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
   }
 
   if(nativeGitText)normalizeNativeGitText(root,candidate);
+  // Git calcula el ID de un blob sin filtros sobre su cabecera y bytes.
+  // Evita crear un proceso Git por archivo; las escrituras de blobs
+  // modificados siguen comprobándose contra Git más abajo.
+  const objectFormat=gitText(root,["rev-parse","--show-object-format"]);
+  if(objectFormat!=="sha1"&&objectFormat!=="sha256")throw Error("Unsupported Git object format");
   for (const source of candidate.values()) if (source.bytes) {
-    source.objectId = gitText(root, ["hash-object", "--no-filters", "--stdin"], source.bytes);
+    source.objectId = createHash(objectFormat).update("blob "+source.bytes.length+"\0").update(source.bytes).digest("hex");
   }
   const scope = [...new Set([...baseEntries.keys(), ...candidate.keys()])].sort();
   const entries: WorkspaceReviewEntry[] = [];
