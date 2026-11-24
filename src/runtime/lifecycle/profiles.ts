@@ -39,3 +39,18 @@ export function upsertProfile(file:RuntimeProfilesFile,profile:RuntimeProfile):R
 export function serializeRuntimeProfiles(file:RuntimeProfilesFile):string{const checked=parseRuntimeProfiles(JSON.stringify(file));if(!checked)throw new Error("Invalid profiles file");return JSON.stringify(checked,null,2)+"\n";}
 export function removeProfile(file:RuntimeProfilesFile,name:string):RuntimeProfilesFile{if(file.active===name)throw new Error("Cannot remove active profile");if(!file.profiles.some(p=>p.name===name))throw new Error("Profile does not exist");return {...file,profiles:file.profiles.filter(p=>p.name!==name).map(p=>structuredClone(p))};}
 export function renameProfile(file:RuntimeProfilesFile,from:string,to:string):RuntimeProfilesFile{if(!NAME.test(to))throw new Error("Invalid profile");if(file.profiles.some(p=>p.name===to))throw new Error("Profile already exists");const current=file.profiles.find(p=>p.name===from);if(!current)throw new Error("Profile does not exist");return {...file,...(file.active===from?{active:to}:file.active!==undefined?{active:file.active}:{}),profiles:file.profiles.map(p=>p.name===from?{...structuredClone(p),name:to}:structuredClone(p))};}
+
+/** Conserva la decisión del turno sin cambiar los modelos o el origen de sus rutas.
+ * No modifica los perfiles guardados ni concede permiso de escritura.
+ */
+export function withCapturedDelegationMode(layers:ProfileLayer,mode:DelegationMode):ProfileLayer{
+ if(mode!=="organic"&&mode!=="full-delegation")throw new Error("Invalid captured delegation mode");
+ for(const source of ["session","project","global"] as const){
+  const file=layers[source],active=selected(file);
+  if(file&&active)return {...layers,[source]:{...file,profiles:file.profiles.map(p=>p===active?{...p,mode}:p)}};
+ }
+ if(mode==="organic")return layers;
+ // Si se eliminó la configuración durante el turno, no relajar el modo.
+ // La capa sin rutas no sustituye ningún modelo configurado.
+ return {...layers,session:{schema:ASEN_PROFILES_SCHEMA,active:"captured-mode",profiles:[{name:"captured-mode",mode,routes:{}}]}};
+}
