@@ -1,0 +1,83 @@
+/** Dos jueces Pi auténticos sobre el árbol combinado, sin entregar código al
+ * Writer ni confundir el informe de modelos con pruebas o aceptación. */
+import {tmpdir} from "node:os";
+import {readFrozenIntegrationReviewEvidence} from "../../review/workspace-review-session.js";
+import {runJudgmentDay,isIssuedJudgmentDayReport,type JudgmentDayReport} from "../../review/judgment-day.js";
+import {availableIndependentPiReviewers,type PiReviewRegistry,type PiReviewerModel} from "../../review/pi-model-reviewer.js";
+import {proposeJudgmentFixHandoff} from "../../review/odd-agent-review-flow.js";
+import type {JudgmentFixProposalJournal} from "../../review/judgment-fix-proposal-journal.js";
+import type {RouteChoice} from "./profiles.js";
+import type {ReviewReceiptReader} from "./review-acceptance.js";
+import {isIssuedNativeIntegrationCandidate,readNativeIntegrationDiff,type NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
+
+export async function reviewNativeIntegratedCandidate(input:{
+ candidate:NativeIntegrationCandidate;sessionId:string;registry:PiReviewRegistry;
+ judgeA:RouteChoice|undefined;judgeB:RouteChoice|undefined;fixProfile?:RouteChoice;
+ fixJournal:JudgmentFixProposalJournal;requirements:string;validate:()=>Promise<void>;
+ confirm:(summary:string)=>Promise<boolean>;signal?:AbortSignal;
+}){
+ const {candidate,registry,sessionId}=input;
+ const blocked=(reason:string)=>Object.freeze({status:"blocked" as const,reason,acceptance:"not-accepted" as const,autoMerge:false as const});
+ if(!isIssuedNativeIntegrationCandidate(candidate)||!candidate.authorModelsObserved?.length)
+  return blocked("No hay modelos autores observados por Pi para acreditar independencia de los jueces.");
+ const authors=new Set(candidate.authorModelsObserved),key=(m:PiReviewerModel)=>m.provider+"/"+(m.id.startsWith(m.provider+"/")?m.id.slice(m.provider.length+1):m.id);
+ const filtered:PiReviewRegistry={
+  getAvailable:()=>registry.getAvailable().filter(model=>!authors.has(key(model))),
+  hasConfiguredAuth:model=>!authors.has(key(model))&&registry.hasConfiguredAuth(model),
+  streamSimple:(model,context,options)=>{
+   if(authors.has(key(model)))throw new Error("A Writer model cannot judge its integrated result");
+   return registry.streamSimple(model,context,options);
+  }
+ };
+ const [provider,...parts]=candidate.authorModelsObserved[0]!.split("/");
+ const author={provider:provider!,id:parts.join("/")};
+ const available=availableIndependentPiReviewers(filtered,author);
+ const a=available.find(model=>key(model)===input.judgeA?.model),b=available.find(model=>key(model)===input.judgeB?.model);
+ if(!a||!b||key(a)===key(b)||input.judgeA?.thinking!==undefined||input.judgeB?.thinking!==undefined)
+  return blocked("Configura dos modelos juez autenticados, distintos entre sí y de todos los Writers observados. Este transporte no aplica esfuerzo por llamada.");
+ const validate=async()=>{
+  if(input.signal?.aborted)throw new Error("Revisión cancelada");
+  await input.validate();readNativeIntegrationDiff(candidate);
+ };
+ await validate();
+ const evidence=readFrozenIntegrationReviewEvidence(candidate,sessionId,"pi-model:"+key(a),tmpdir());
+ await validate();
+ if(await input.confirm(["Candidato exacto: "+candidate.commit,"Árbol: "+candidate.tree,
+  "Archivos: "+candidate.paths.join(", "),"Autores observados: "+[...authors].join(", "),
+  "Juez A: "+key(a),"Juez B: "+key(b),"Dos llamadas de lectura; coste no verificado. No se escribe ni integra código."].join("\n"))!==true)
+  return Object.freeze({status:"declined" as const,acceptance:"not-accepted" as const,autoMerge:false as const});
+ await validate();
+ const report=await runJudgmentDay({registry:filtered,author,judgeA:a,judgeB:b,evidence,
+  requirements:input.requirements,...(input.signal?{signal:input.signal}:{}),validateBeforeJudge:validate});
+ await validate();
+ const fix=proposeJudgmentFixHandoff({report,evidence,...(input.fixProfile?{fixProfile:input.fixProfile}:{})});
+ let fixProposalId:string|undefined;
+ if((fix.status==="fix-planning-required"||fix.status==="manual-triage-required")&&fix.paths.every(path=>candidate.paths.includes(path))){
+  const saved=await input.fixJournal.record(fix);fixProposalId=saved.id;
+ }
+ await validate();
+ return Object.freeze({status:report.status,candidateCommit:candidate.commit,candidateTree:candidate.tree,report,fix,
+  ...(fixProposalId?{fixProposalId}:{}),acceptance:"not-accepted" as const,autoMerge:false as const});
+}
+
+/** No se activa una sucesora ni se admite una integración con un resumen del
+ * modelo. Se exigen dos veredictos genuinos, mismo árbol y recibo firmado. */
+export async function verifyNativeIntegrationAcceptance(input:{
+ candidate:NativeIntegrationCandidate;report:JudgmentDayReport;receipts:ReviewReceiptReader;sessionId:string;
+}):Promise<Readonly<{status:"verified-awaiting-integration-consent";commit:string;tree:string;tests:number;writerAuthority:false;autoMerge:false}>>{
+ const {candidate,report}=input;
+ if(!isIssuedNativeIntegrationCandidate(candidate)||!isIssuedJudgmentDayReport(report)||
+  report.sessionId!==input.sessionId||report.candidateRevision!==candidate.tree||
+  report.candidateTreeIdentity!==candidate.tree||report.status!=="analysis-complete"||
+  report.judges.length!==2||new Set(report.judges.map(judge=>judge.reviewerId)).size!==2||
+  report.judges.some(judge=>judge.verdict!=="pass")||report.findings.length)
+  throw new Error("Two genuine passing independent judges on the exact integrated tree are required");
+ readNativeIntegrationDiff(candidate);
+ const state=await input.receipts.readReceiptState(candidate.commit);
+ if(state.status!=="valid"||state.receipt.verdict!=="PASSED"||state.receipt.treeSha!==candidate.tree||
+  state.receipt.testSuite.total<1||state.receipt.testSuite.passed!==state.receipt.testSuite.total||
+  state.receipt.testSuite.failed!==0)
+  throw new Error("Authenticated passing test receipt of the exact integration candidate is required");
+ return Object.freeze({status:"verified-awaiting-integration-consent",commit:candidate.commit,tree:candidate.tree,
+  tests:state.receipt.testSuite.total,writerAuthority:false,autoMerge:false});
+}
