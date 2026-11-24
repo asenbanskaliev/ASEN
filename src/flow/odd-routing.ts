@@ -16,6 +16,8 @@ export interface OddTaskUnit {
   readonly objective:string;
   readonly estimatedMinutes:number;
   readonly dependsOn:readonly string[];
+  /** Rutas exactas de escritura de esta unidad; no constituyen permisos. */
+  readonly writePaths?:readonly string[];
 }
 export interface OddRoutingRequest {
   readonly taskUnits?:readonly OddTaskUnit[];
@@ -53,6 +55,7 @@ const reviewKinds = ["none", "ordinary", "dual_explicit"] as const;
 const nonTrivialKinds = new Set<OddChangeKind>(["behavior", "schema", "security", "configuration", "migration"]);
 const issuedFacts = new WeakSet<object>();
 const plannedFacts = new WeakSet<object>();
+const partitionUnitFacts = new WeakSet<object>();
 const issuedDecisions = new WeakSet<object>();
 const claimedDecisions = new WeakSet<object>();
 const decisionFacts = new WeakMap<object, OddDerivedFacts>();
@@ -147,14 +150,36 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   const review = Object.freeze({ kind: member(reviewInput.kind, reviewKinds, "review kind"), estimatedMinutes: count(reviewInput.estimatedMinutes, "review estimate") });
   const unresolvedDecisions = Object.freeze(uniqueStrings(input.unresolvedDecisions, "unresolved decisions"));
   const taskUnits=Object.freeze((withUnits?array(input.taskUnits,"task units"):[]).map(item=>{
-    const raw=record(item,["id","objective","estimatedMinutes","dependsOn"],"task unit");
+    const scoped=typeof item==="object"&&item!==null&&Object.hasOwn(item,"writePaths");
+    const raw=record(item,["id","objective","estimatedMinutes","dependsOn",...(scoped?["writePaths"]:[])],"task unit");
     const id=text(raw.id,"task unit id"),objective=text(raw.objective,"task unit objective");
     if(id.length>100||objective.length>500)throw new Error("task unit text is too long");
     return Object.freeze({id,objective,estimatedMinutes:count(raw.estimatedMinutes,"task unit estimate"),
-      dependsOn:Object.freeze(uniqueStrings(raw.dependsOn,"task unit dependencies"))});
+      dependsOn:Object.freeze(uniqueStrings(raw.dependsOn,"task unit dependencies")),
+      ...(scoped?{writePaths:Object.freeze(uniqueStrings(raw.writePaths,"task unit write paths",path))}:{})});
   }));
   if(taskUnits.length>32||new Set(taskUnits.map(unit=>unit.id)).size!==taskUnits.length)
     throw new Error("task units are duplicated or exceed the limit");
+  // Una partición escrita debe cubrir cada ruta propuesta exactamente una vez.
+  // Se rechaza la mezcla de unidades con y sin ámbito: nunca repartir por suposición.
+  const scopedCount=taskUnits.filter(unit=>unit.writePaths!==undefined).length;
+  if(scopedCount){
+    if(scopedCount!==taskUnits.length||scope.kind!=="known"||!writes.length||writes.length>256)
+      throw new Error("task unit write partition requires complete known write scopes");
+    const assigned=new Set<string>(),normalized:string[]=[];
+    for(const unit of taskUnits){
+      if(!unit.writePaths?.length)throw new Error("task unit write partition requires a non-empty scope per unit");
+      for(const item of unit.writePaths){
+        if(item.length>1024||!writePaths.includes(item)||assigned.has(item)||/[\p{Cc}\p{Cf}*?\[\]]/u.test(item))
+          throw new Error("task unit write partition has an invalid or repeated write path");
+        const key=item.toLowerCase();
+        if(normalized.some(previous=>previous===key||previous.startsWith(key+"/")||key.startsWith(previous+"/")))
+          throw new Error("task unit write partition has overlapping write paths");
+        assigned.add(item);normalized.push(key);
+      }
+    }
+    if(assigned.size!==writePaths.length)throw new Error("task unit write partition does not cover all writes");
+  }
   const ids=new Set(taskUnits.map(unit=>unit.id));
   if(taskUnits.some(unit=>unit.dependsOn.some(dep=>dep===unit.id||!ids.has(dep))))
     throw new Error("task units have invalid dependencies");
@@ -204,6 +229,64 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   return facts;
 }
 
+/** Descripción inmutable de la división ODD validada. Las raíces solo tienen
+ * dependencias resueltas en el grafo; aún necesitan admisión y permisos.
+ * No convierte la propuesta en un plan ejecutable ni genera agentes.
+ */
+export function describeOddUnitPartition(facts:OddDerivedFacts):Readonly<{
+ units:readonly OddTaskUnit[];dependencyRoots:readonly string[];topologicalOrder:readonly string[];
+ execution:"not_started";authorization:"not_granted";status:"proposal-only";
+}>|undefined{
+ if(!issuedFacts.has(facts))throw new Error("ODD facts were not issued here");
+ if(!facts.taskUnits.length||facts.taskUnits.some(unit=>!unit.writePaths))return undefined;
+ const byId=new Map(facts.taskUnits.map(unit=>[unit.id,unit]));
+ const seen=new Set<string>(),order:string[]=[];
+ const visit=(id:string)=>{
+  if(seen.has(id))return;
+  for(const dep of byId.get(id)!.dependsOn)visit(dep);
+  seen.add(id);order.push(id);
+ };
+ for(const unit of facts.taskUnits)visit(unit.id);
+ return Object.freeze({
+  units:facts.taskUnits,dependencyRoots:Object.freeze(facts.taskUnits.filter(unit=>!unit.dependsOn.length).map(unit=>unit.id)),
+  topologicalOrder:Object.freeze(order),execution:"not_started",authorization:"not_granted",status:"proposal-only"
+ });
+}
+
+/** Solo divide implementaciones acotadas que no pierdan controles de riesgo.
+ * Los casos con revisión, incidentes, dudas o riesgos nombrados conservan
+ * su plan original; no se degradan a unidades aparentemente más seguras.
+ */
+export function canMaterializeOddPartition(facts:OddDerivedFacts):boolean{
+ if(!issuedFacts.has(facts))throw new Error("ODD facts were not issued here");
+ return facts.intent==="implementation"&&facts.scope.kind==="known"&&
+  (facts.risk==="low"||facts.risk==="medium")&&!facts.namedRisks.length&&
+  !facts.riskOperations.length&&!facts.unresolvedDecisions.length&&
+  facts.review.kind==="none"&&facts.testing.kind==="required"&&
+  facts.taskUnits.length>=2&&facts.taskUnits.every(unit=>!!unit.writePaths?.length)&&
+  facts.independentUnits===2&&facts.taskUnits.filter(unit=>!unit.dependsOn.length).length===2;
+}
+
+/** Deriva una candidatura de unidad a partir de la partición original validada.
+ * No es un permiso: el despachador sigue exigiendo candidato, ámbito y Pi.
+ */
+export function deriveOddPartitionUnitFacts(parent:OddDerivedFacts,unitId:string):OddDerivedFacts{
+ if(!canMaterializeOddPartition(parent))throw new Error("ODD partition is not eligible for scoped unit planning");
+ const unit=parent.taskUnits.find(value=>value.id===unitId);
+ if(!unit?.writePaths)throw new Error("ODD partition unit does not exist");
+ const taskIdentity="unit-"+createHash("sha256").update(JSON.stringify([parent.taskIdentity,unit.id])).digest("hex").slice(0,40);
+ const facts=deriveOddFacts({
+  taskIdentity,repositoryIdentity:parent.repositoryIdentity,intent:parent.intent,
+  scope:{kind:"known",expectedPaths:[...unit.writePaths]},
+  writes:parent.writes.filter(write=>unit.writePaths!.includes(write.path)),
+  riskOperations:parent.riskOperations,namedRisks:parent.namedRisks,
+  session:{estimatedMinutes:unit.estimatedMinutes,continuation:parent.session.continuation},
+  testing:parent.testing,review:parent.review,unresolvedDecisions:parent.unresolvedDecisions,
+ });
+ partitionUnitFacts.add(facts);
+ return facts;
+}
+
 /** Consumes genuine facts on the first planning attempt and issues no execution authority. */
 export function planOddRoute(facts: OddDerivedFacts): OddRouteDecision {
   if (typeof facts !== "object" || facts === null || !issuedFacts.has(facts)) throw new Error("ODD facts were not issued here");
@@ -220,6 +303,7 @@ export function planOddRoute(facts: OddDerivedFacts): OddRouteDecision {
     route="orchestrate"; reasons=["independent-substantial-task-units"];
   }
   else if (needsIndependent) { route = "orchestrate"; reasons = facts.namedRisks.map(item=>`named-risk-${item.item}`); }
+  else if (partitionUnitFacts.has(facts)) { route="orchestrate"; reasons=["partition-scoped-unit"]; }
   else { route = "direct"; reasons = ["bounded-work-with-controlled-risk"]; }
   const payload = { taskIdentity: facts.taskIdentity, repositoryIdentity: facts.repositoryIdentity, route, risk: facts.risk, verification: needsIndependent?"independent" as const:verificationLevel(facts.risk), reasons, requiresSingleWriter: route === "orchestrate" || route === "incident", requiresIsolatedChild: route === "orchestrate" || route === "incident" || route === "verify" };
   const decision = Object.freeze({ decisionId: createHash("sha256").update(JSON.stringify(payload)).digest("hex"), ...payload, reasons: Object.freeze(reasons) });

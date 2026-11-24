@@ -130,3 +130,60 @@ test("Megatanda B: preparación automática evita dependencias y reservas de otr
  assert.equal(f.git("worktree","list","--porcelain"),initial);
  assert.equal((await journal.list(owner)).length,1);
 });
+
+
+test("La preparación interna solo propone las dos raíces del plan recién guardado",async t=>{
+ const f=fixture(t),root=realpathSync(f.root),head=f.git("rev-parse","HEAD");
+ type SourceTodoRow=import("../src/runtime/agents/parallel-todo-bindings.js").SourceTodoRow;
+ const worker=(taskId:string,scope:string,dependsOn:string[]=[]):SourceTodoRow=>{
+  const current={taskId,sessionId:"session-1",projectId:root,revision:1,state:"planned",at:"2026-11-24T00:00:00.000Z"};
+  return {taskId,title:taskId,requestId:"asen-plan:"+taskId+":worker",description:"Ensayo",
+   current,events:[current],dependsOn,plan:{role:"worker",skillPaths:[],
+    skillSelection:{phase:"apply"},candidate:{id:taskId,repository:root,revision:head,createdAt:current.at},
+    writeSurfaces:[scope],writerAuthorizationBasis:'{"instruction":"Ensayo"}'}} as unknown as SourceTodoRow;
+ };
+ const older=worker("other-plan","other.txt"),a=worker("root-a","a.txt"),b=worker("root-b","b.txt"),
+  c=worker("successor","c.txt",["root-a","root-b"]);
+ const rows=[older,c,a,b];
+ const initial=f.git("worktree","list","--porcelain");
+ const registered=registerParallelWorktreeCommand(()=>{},{journalFile:join(f.parent,"exact-reservations.json"),loadTodos:async()=>rows});
+ f.setConfirm(false);
+ const denied=await registered.preparePartition(f.ctx,["root-a","root-b"]);
+ assert.deepEqual(denied,{status:"declined",grantsAuthority:false});
+ assert.equal(f.calls.length,1);
+ assert.match(f.calls[0]!.message,/root-a: a.txt/u);
+ assert.match(f.calls[0]!.message,/root-b: b.txt/u);
+ assert.doesNotMatch(f.calls[0]!.message,/other-plan:|successor:/u);
+ for(const ids of [["root-a","missing"],["root-a","root-a"],["root-a","successor"]]){
+  const result=await registered.preparePartition(f.ctx,ids) as {status:string};
+  assert.equal(result.status,"blocked");
+ }
+ assert.equal(f.calls.length,1);
+ assert.equal(f.git("worktree","list","--porcelain"),initial);
+});
+
+
+test("Preparación exacta confirmada crea únicamente las dos carpetas de su plan y no repite reservas",async t=>{
+ const f=fixture(t),root=realpathSync(f.root),head=f.git("rev-parse","HEAD"),parent=resolve(root+"-worktrees");
+ t.after(()=>rmSync(parent,{recursive:true,force:true}));
+ type SourceTodoRow=import("../src/runtime/agents/parallel-todo-bindings.js").SourceTodoRow;
+ const row=(taskId:string,scope:string):SourceTodoRow=>{
+  const current={taskId,sessionId:"session-1",projectId:root,revision:1,state:"planned",at:"2026-11-24T00:00:00.000Z"};
+  return {taskId,title:taskId,requestId:"asen-plan:"+taskId+":worker",description:"Ensayo",
+   current,events:[current],plan:{role:"worker",skillPaths:[],
+    skillSelection:{phase:"apply"},candidate:{id:taskId,repository:root,revision:head,createdAt:current.at},
+    writeSurfaces:[scope],writerAuthorizationBasis:'{"instruction":"Ensayo"}'}} as unknown as SourceTodoRow;
+ };
+ const rows=[row("unrelated","other.txt"),row("a","a.txt"),row("b","b.txt")];
+ const registered=registerParallelWorktreeCommand(()=>{},{journalFile:join(f.parent,"exact-journal.json"),loadTodos:async()=>rows});
+ const result=await registered.preparePartition(f.ctx,["a","b"]) as {status:string;worktrees:{taskId:string;root:string;head:string}[];grantsAuthority:boolean;autoMerge:boolean};
+ assert.equal(result.status,"prepared");
+ assert.deepEqual(result.worktrees.map(worktree=>worktree.taskId),["a","b"]);
+ assert.equal(result.grantsAuthority,false);
+ assert.equal(result.autoMerge,false);
+ for(const tree of result.worktrees){assert.equal(tree.head,head);assert.ok(existsSync(tree.root));}
+ assert.equal(f.calls.length,1);
+ const repeated=await registered.preparePartition(f.ctx,["a","b"]) as {status:string};
+ assert.equal(repeated.status,"blocked");
+ assert.equal(f.calls.length,1);
+});

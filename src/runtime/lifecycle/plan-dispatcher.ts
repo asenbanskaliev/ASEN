@@ -1,6 +1,7 @@
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
 import {resolveRuntimeDelegationMode,type ProfileLayer} from "./profiles.js";
+import {isPartitionUnitBasis,parsePartitionUnitBasis} from "./odd-unit-plan.js";
 import type {Candidate} from "../../core/types.js";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../../flow/odd-routing.js";
 import {inspectStoredFixSourceTree} from "../../review/judgment-fix-odd-preflight.js";
@@ -101,18 +102,27 @@ function currentRevision(repository:string):string{
  try{return execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
  catch(error){const revision=error&&typeof error==="object"&&"status" in error&&error.status===0&&"stdout" in error?String(error.stdout).trim():"";if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(revision))throw error;return revision;}
 }
-async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,input:Pick<DispatchInput,"todos"|"agents"|"links"|"runtimeProfiles">):Promise<{candidate:Candidate;writeSurfaces:string[];instruction:string;taskIdentity:string;routeEvidence:NonNullable<ReturnType<typeof buildOrchestrationPlan>["routeEvidence"]>;workerSelection:SkillSelectionContext;admission:object;riskVerifier?:RiskVerifierBinding}|{reason:string}>{
+async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,input:Pick<DispatchInput,"todos"|"agents"|"links"|"runtimeProfiles"|"expectedTodoId">):Promise<{candidate:Candidate;writeSurfaces:string[];instruction:string;taskIdentity:string;routeEvidence:NonNullable<ReturnType<typeof buildOrchestrationPlan>["routeEvidence"]>;workerSelection:SkillSelectionContext;admission:object;riskVerifier?:RiskVerifierBinding}|{reason:string}>{
  const metadata=task.plan,basisText=metadata?.writerAuthorizationBasis,candidate=metadata?.candidate,surfaces=metadata?.writeSurfaces;
  if(!metadata||metadata.role!=="worker"||!metadata.skillSelection||metadata.skillSelection.phase!=="apply"||!basisText||!candidate||!surfaces?.length)return {reason:"The worker plan lacks a persisted candidate, exact file scope or original ODD authorization facts; rebuild the plan in a Git project."};
  if(candidate.repository!==identity.projectId)return {reason:"The persisted worker candidate belongs to another project; rebuild the plan."};
  let parsed:unknown;try{parsed=JSON.parse(basisText);}catch{return {reason:"The worker ODD authorization facts are malformed; rebuild the plan."};}
- if(!hasExactWorkerAuthorizationBasis(parsed))return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
- const {instruction,...rawFacts}=parsed;
- let facts:ReturnType<typeof deriveOddFacts>,revision:string;
+ let facts:ReturnType<typeof deriveOddFacts>,revision:string,instruction:string;
  try{
-  // SAFETY: exact basis-key validation reconstructs the persisted ODD request before domain validation.
-  facts=deriveOddFacts({...rawFacts,repositoryIdentity:identity.projectId} as unknown as OddRoutingRequest);revision=currentRevision(identity.projectId);
- }catch{return {reason:"The current project is not a readable Git candidate; no writer was launched."};}
+  revision=currentRevision(identity.projectId);
+  if(isPartitionUnitBasis(parsed)){
+   const unit=parsePartitionUnitBasis(parsed,identity.projectId,revision);
+   if(unit.unit.dependsOn.length)return {reason:"La unidad dependiente requiere integrar sus predecesoras y un plan nuevo sobre el candidato resultante."};
+   if(input.expectedTodoId!==task.taskId)return {reason:"Esta unidad ODD necesita un worktree y el supervisor padre con autorización individual; no se inicia directamente."};
+   facts=unit.facts;instruction=unit.instruction;
+  }else{
+   if(!hasExactWorkerAuthorizationBasis(parsed))return {reason:"The worker ODD authorization facts are incomplete; rebuild the plan."};
+   const {instruction:original,...rawFacts}=parsed;
+   instruction=original;
+   // La base completa vuelve a validarse antes de emitir admisión.
+   facts=deriveOddFacts({...rawFacts,repositoryIdentity:identity.projectId} as unknown as OddRoutingRequest);
+  }
+ }catch{return {reason:"The current project or ODD basis is not a readable Git candidate; no writer was launched."};}
  if(revision!==candidate.revision)return {reason:"The project changed after planning; rebuild the plan against the current candidate before authorizing writes."};
  if(facts.taskIdentity!==task.requestId?.slice("asen-plan:".length,-":worker".length)||facts.scope.kind!=="known"||!facts.writes.length)return {reason:"The persisted worker does not match a bounded original write request."};
  const originalScope=facts.scope;

@@ -21,7 +21,8 @@ const unresolvedDecisions={type:"array",maxItems:64,items:{type:"string",minLeng
 const taskUnits={type:"array",maxItems:32,items:{type:"object",additionalProperties:false,required:["id","objective","estimatedMinutes","dependsOn"],properties:{
  id:{type:"string",minLength:1,maxLength:100},objective:{type:"string",minLength:1,maxLength:500},
  estimatedMinutes:{type:"integer",minimum:0,maximum:100000},
- dependsOn:{type:"array",maxItems:32,items:{type:"string",minLength:1,maxLength:100}}
+ dependsOn:{type:"array",maxItems:32,items:{type:"string",minLength:1,maxLength:100}},
+ writePaths:{type:"array",minItems:1,maxItems:256,items:{type:"string",minLength:1,maxLength:1024}}
 }}};
 
 function exactPlanKeys(value:unknown):readonly string[]{
@@ -42,6 +43,19 @@ function userSummary(value:unknown):string{
  if(plan.status==="needs-verified-facts")return "ASEN needs more information before it can prepare a safe plan. I will ask only about decisions that cannot be inferred from the request or project.";
  if((value as {inlineClarification?:unknown}).inlineClarification===true)return plan.risk==="high"?"La petición cruza un límite de riesgo alto. No inicies tareas ni escribas; explica brevemente en lenguaje normal qué control falta y espera la siguiente instrucción, sin pedir comandos ni datos internos.":"Falta una decisión importante. Haz un único mensaje breve en esta conversación; agrupa en él las decisiones relacionadas que necesiten respuesta y no preguntes por datos que puedas deducir del proyecto. Cuando responda, vuelve a evaluar la petición. No guardes una tarea pendiente ni pidas comandos, JSON o IDs.";
  if((value as {inlineContinuation?:unknown}).inlineContinuation===true)return "La petición es acotada: continúa en esta misma conversación de Pi. No guardes una tarea Todo, no pidas al usuario ejecutar comandos ni detalles internos de planificación. No se lanzó ningún agente.";
+ if((value as {partitionExecution?:unknown}).partitionExecution==="supervised-worktrees-required"){
+  const graph=Array.isArray(plan.executablePlan?.tasks)?plan.executablePlan!.tasks as Array<{title?:string;dependsOn?:unknown[];writeSurfaces?:string[]}>:[];
+  const prepared=(value as {worktreePreparation?:{status?:string;reason?:string}}).worktreePreparation;
+  const preparation=prepared?.status==="prepared"?"Las dos carpetas Git aisladas ya están preparadas.":
+   prepared?.status==="declined"?"Se ha rechazado la preparación de carpetas; no se ha iniciado ningún Writer.":
+   prepared?.status==="blocked"||prepared?.status==="blocked-needs-review"?"La preparación está bloqueada. "+(prepared.reason??"Revisar el lote antes de continuar."):
+   "La preparación de carpetas requiere una sesión Pi interactiva.";
+  return ["ASEN ha dividido el trabajo en unidades ODD con ámbitos separados.",
+   ...graph.map(task=>`${task.title??"Unidad"} — ${task.dependsOn?.length?"espera la integración de sus dependencias":"preparable en una carpeta Git aislada"} — archivos: ${task.writeSurfaces?.join(", ")??""}`),
+   plan.persistence?.status==="saved"?"Las tareas están guardadas.":"La división aún no se ha guardado.",
+   preparation,
+   "No se ha autorizado ningún Writer. Faltan las sesiones Pi hijas reales y su supervisión; las unidades dependientes requieren integrar los cambios y preparar un candidato nuevo."].join("\n");
+ }
  const tasks=Array.isArray(plan.executablePlan?.tasks)?plan.executablePlan!.tasks as Array<{role?:unknown;title?:unknown;status?:unknown;dependsOn?:unknown;writeSurfaces?:unknown}>:[];
  const routeLabel:Record<string,string>={direct:"trabajo acotado en la sesión actual",plan:"aclaración pendiente",orchestrate:"trabajo coordinado",incident:"atención de incidencia",verify:"verificación independiente"};
  const riskLabel:Record<string,string>={low:"riesgo bajo",medium:"riesgo medio",high:"riesgo alto",unknown:"riesgo por determinar"};
@@ -66,7 +80,7 @@ export function registerAsenPlanRequestTool(
 ):void{
  pi.registerTool?.({
   name:ASEN_PLAN_REQUEST_TOOL,label:"Prepare ASEN task plan",
-  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Cuando haya unidades funcionales sustanciales realmente independientes, incluye su objetivo, estimación y dependencias en taskUnits; no infieras independencia por la cantidad de archivos. Bounded requests stay in chat only when the active mode permits direct work; full delegation routes every proposed write through a scoped Writer. Material clarifications are asked in chat without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs fresh exact Pi approval. Review and independent verification are included only when present in the issued plan; completion requires explicit user acceptance after reviewing available results.",
+  description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Cuando haya unidades funcionales sustanciales realmente independientes, incluye su objetivo, estimación y dependencias en taskUnits; no infieras independencia por la cantidad de archivos. Si conoces las rutas exactas de escritura de todas las unidades, añade writePaths en cada unidad, incluyendo sus pruebas y documentación, sin solapes ni omisiones. La partición se materializa cuando sus controles lo permiten. Bounded requests stay in chat only when the active mode permits direct work; full delegation routes every proposed write through a scoped Writer. Material clarifications are asked in chat without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs fresh exact Pi approval. Review and independent verification are included only when present in the issued plan; completion requires explicit user acceptance after reviewing available results.",
   executionMode:"sequential",
   parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,namedRisks,session,testing,review,unresolvedDecisions,taskUnits}},
   execute:async(_callId,params,_signal,_update,context)=>{

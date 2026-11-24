@@ -1597,6 +1597,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     await refreshTodoWidget(ctx);
     return JSON.stringify(output,null,2);
    }
+   if(output.partitionExecution==="supervised-worktrees-required"){
+    // Solo las raíces de ESTE plan recién guardado, no las primeras tareas
+    // pendientes de toda la sesión. El diálogo Git no autoriza un Writer.
+    const roots=ordered.filter(task=>task.role==="worker"&&!task.dependsOn.length);
+    const ids=roots.map(task=>todoIds.get(task.id));
+    const available=dependencies.autoAdvancePlans!==false&&!!agentRuntimePromise&&!!taskAgentLinks&&
+     ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.confirm==="function"&&ids.length===2&&ids.every((id):id is string=>!!id);
+    if(available){
+     validateContext();
+     try{
+      output.worktreePreparation=await worktreeCommands.preparePartition(ctx,ids as string[]);
+      validateContext();
+     }catch(error){
+      validateContext();
+      output.worktreePreparation={status:"blocked-needs-review",reason:safeErrorMessage(error),autoRetry:false};
+     }
+    }else output.worktreePreparation={status:"unavailable",reason:"La preparación requiere Pi interactivo y el supervisor disponible."};
+    output.execution={started:false,authorized:false,reason:"Las unidades deben ejecutarse en sus worktrees mediante el supervisor."};
+    output.notice="Se guardaron las unidades ODD. La preparación Git no inicia sesiones ni concede permisos Writer; no se despachan las raíces en el padre.";
+    await refreshTodoWidget(ctx);
+    return JSON.stringify(output,null,2);
+   }
    const execution=await advancePlan(ctx);
    output.execution=execution;
    output.notice=execution.started?(execution.authorized?"The plan was saved and the exact scoped writer was started after Pi approval. Independent review and verification will continue automatically.":"The plan was saved and its first dependency-ready read-only task started automatically. A writer still requires exact Pi approval; completion requires a passing independent verifier."): `The plan was saved, but no task started: ${execution.reason??"automatic dispatch did not report a runnable task"} Explain the next step in ordinary language. Do not ask the user to inspect Todo state or run commands.`;
@@ -2412,7 +2434,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  registerParallelWorktreeCommand(register,{
+  const worktreeCommands=registerParallelWorktreeCommand(register,{
    journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
    sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
    planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
