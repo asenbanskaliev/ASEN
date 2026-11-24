@@ -27,7 +27,8 @@ import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environ
 const root=resolve(process.env.GITHUB_WORKSPACE??process.cwd()),expected=process.env.ASEN_EXPECTED_SHA;
 const reportFile=process.env.ASEN_NATIVE_PARTITION_REPORT,model="nvidia/nemotron-3.5-lightning-30b-a3b";
 if(!process.env.NVIDIA_API_KEY||!reportFile||!expected||!(/^[a-f0-9]{40}$/u.test(expected))||
- execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8"}).trim()!==expected)
+ realpathSync(execFileSync("git",["rev-parse","--show-toplevel"],{cwd:root,encoding:"utf8",env:isolatedGitEnvironment()}).trim())!==realpathSync(root)||
+ execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8",env:isolatedGitEnvironment()}).trim()!==expected)
  throw Error("E2A integral: SHA, proveedor o recibo no autorizado");
 const base=realpathSync(mkdtempSync(join(tmpdir(),"asen-native-partition-")));
 const project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
@@ -146,11 +147,11 @@ try{
   const records=await agents.list(child),record=records[0],o=record?obs.get(record.id):undefined;
   const row=(await todos.list(child))[0],path=row?.plan?.writeSurfaces?.[0],value=path?values[path]:undefined;
   const exact=!!path&&!!value&&readFileSync(join(child.projectId,path),"utf8")===value;
-  const changes=git(child.projectId,"status","--porcelain=v1","--untracked-files=all").split(/\r?\n/u).filter(Boolean).map(line=>line.slice(3));
+  const changes=execFileSync("git",["-C",child.projectId,"status","--porcelain=v1","--untracked-files=all"],{encoding:"utf8",env:isolatedGitEnvironment()}).split(/\r?\n/u).filter(Boolean).map(line=>line.slice(3));
   const scoped=changes.length===1&&changes[0]===path;
   const verified=record?.state==="completed"&&row?.current.state==="succeeded"&&exact&&scoped&&o?.model===model&&o.pid>0&&o.end>o.start&&o.writeStarts===1&&o.writeEnds===1&&o.errors===0;
   report.workers.push({verified:!!verified,agentState:record?.state??"missing",todoState:row?.current.state??"missing",
-   nativeModel:o?.model??"unknown",exactBytes:exact,exactScope:scoped,oneWrite:o?.writeStarts===1&&o?.writeEnds===1});
+   nativeModel:o?.model??"unknown",changedPaths:changes,exactBytes:exact,exactScope:scoped,oneWrite:o?.writeStarts===1&&o?.writeEnds===1});
  }
  const intervals=[...obs.values()];
  report.parallel=intervals.length===2&&new Set(intervals.map(o=>o.pid)).size===2&&intervals.every(o=>o.pid>0&&o.end>o.start)&&Math.max(...intervals.map(o=>o.start))<Math.min(...intervals.map(o=>o.end));
