@@ -58,7 +58,7 @@ function matchesJudgeIdentity(descriptor:Pick<PiReviewerModel,"provider"|"id">,p
  return provider===descriptor.provider&&judgeIdentityForms(descriptor).includes(observed);
 }
 // Controles deterministas antes de cualquier llamada real.
-for(const id of ["nvidia/nemotron-3-ultra-550b-a55b","openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash"]){
+for(const id of ["nvidia/nemotron-3-ultra-550b-a55b","nvidia/nemotron-3.5-super-vl-120b-a12b","nvidia/nemotron-3-super-120b-a12b","openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash"]){
  const descriptor={provider:"nvidia",id};
  assert.ok(matchesJudgeIdentity(descriptor,"nvidia",id));
  assert.ok(matchesJudgeIdentity(descriptor,"nvidia","nvidia/"+id));
@@ -120,9 +120,9 @@ try{
   // Dos modelos de texto NVIDIA disponibles en el catálogo autenticado y
   // distintos del autor. Se priorizan los endpoints actuales de la familia
   // Nemotron frente a los modelos que el proveedor rechazó en el intento previo.
-  // Ultra ya completó la revisión real; el segundo juez usa otra familia
-  // física del catálogo autenticado, sin repetir el modelo que dio error.
-  const approved=["nvidia/nemotron-3-ultra-550b-a55b","deepseek-ai/deepseek-v4.1-flash","openai/gpt-oss-20b"];
+  // Ultra ya respondió. Seleccionar otro modelo físico actual de Nemotron
+  // si está en el catálogo autenticado, sin repetir los dos endpoints fallidos.
+  const approved=["nvidia/nemotron-3-ultra-550b-a55b","nvidia/nemotron-3.5-super-vl-120b-a12b","nvidia/nemotron-3-super-120b-a12b"];
   const selected=approved.flatMap(id=>{
    const matches=available.filter(m=>m.id===id);
    return matches.length===1?matches:[];

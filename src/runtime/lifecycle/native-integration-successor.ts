@@ -1,6 +1,6 @@
 import {createHash} from "node:crypto";
 import {execFileSync} from "node:child_process";
-import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
+import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import type {NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
 import {isAcceptedNativeIntegration,type AcceptedNativeIntegration} from "./native-integration-review.js";
 import {parsePartitionUnitBasis} from "./odd-unit-plan.js";
@@ -19,7 +19,7 @@ export async function persistNativePartitionSuccessor(input:{
   throw new Error("La sucesora requiere la integración auténtica de su lote.");
  const assertCurrent=async()=>{
   await input.validate();await input.verify();await input.validate();
-  const git=(...args:string[])=>execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-C",identity.projectId,...args],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:5000,windowsHide:true});
+  const git=(...args:string[])=>execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false",...checkoutEolSettings(identity.projectId).args,"-C",identity.projectId,...args],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:5000,windowsHide:true});
   try{
    if(git("config","--get-regexp","^(filter\\.|merge\\..*\\.driver$|diff\\..*\\.command$)").trim())throw Error("Configuración Git externa no admitida para continuar.");
   }catch(error){if((error as {status?:number})?.status!==1)throw error;}

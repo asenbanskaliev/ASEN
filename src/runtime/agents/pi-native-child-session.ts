@@ -1,5 +1,6 @@
 import {SessionManager} from "@earendil-works/pi-coding-agent";
-import {lstat,realpath} from "node:fs/promises";
+import {lstat,realpath,open} from "node:fs/promises";
+import {constants} from "node:fs";
 import path from "node:path";
 import {preparePrivateFile} from "../../io/private-file.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
@@ -37,12 +38,37 @@ export async function assertNativeChildPlanningSession(session:NativeChildPlanni
  if(info.isSymbolicLink()||!info.isFile()||info.size>256*1024)
   throw new Error("Native Pi planning session is not a bounded regular file");
  if(!await preparePrivateFile(session.sessionFile))throw new Error("Native Pi planning session is missing");
- const manager=SessionManager.open(session.sessionFile);
- if(manager.getSessionId()!==session.sessionId||
-  !sameWorkspaceIdentityPath(await realpath(manager.getCwd()),await realpath(session.projectId)))
+ // Leer y validar la misma instantánea acotada del JSONL nativo de Pi 1.2.
+ // No reabrir mediante una API que podría leer un archivo ampliado o sustituido.
+ const fd=await open(session.sessionFile,process.platform==="win32"?constants.O_RDONLY:
+  constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+ let bytes:Buffer;
+ try{
+  const before=await fd.stat();
+  if(!before.isFile()||before.dev!==info.dev||before.ino!==info.ino||before.size>256*1024)
+   throw Error("Native Pi planning session changed before reading");
+  bytes=Buffer.alloc(before.size);
+  let offset=0;
+  while(offset<bytes.length){
+   const {bytesRead}=await fd.read(bytes,offset,bytes.length-offset,offset);
+   if(!bytesRead)throw Error("Native Pi planning session truncated");
+   offset+=bytesRead;
+  }
+  if((await fd.read(Buffer.alloc(1),0,1,bytes.length)).bytesRead)throw Error("Native Pi planning session grew");
+  const after=await fd.stat(),named=await lstat(session.sessionFile);
+  if(after.size!==before.size||after.mtimeMs!==before.mtimeMs||after.ctimeMs!==before.ctimeMs||
+   named.isSymbolicLink()||named.dev!==before.dev||named.ino!==before.ino||named.size!==before.size)
+   throw Error("Native Pi planning session changed while reading");
+ }finally{await fd.close();}
+ const entries=new TextDecoder("utf-8",{fatal:true}).decode(bytes).split("\n").filter(line=>line.trim()).map(line=>JSON.parse(line));
+ const header=entries[0];
+ if(header?.type!=="session"||header.version!==3||header.id!==session.sessionId||
+  typeof header.cwd!=="string"||!path.isAbsolute(header.cwd)||
+  entries.slice(1).some(entry=>!entry||typeof entry!=="object"||entry.type==="session")||
+  !sameWorkspaceIdentityPath(await realpath(header.cwd),await realpath(session.projectId)))
   throw new Error("Native Pi planning session identity or project changed");
- const message=manager.getEntries().find(entry=>entry.type==="message"&&entry.message.role==="user");
- const content=message?.type==="message"&&"content" in message.message?message.message.content:undefined;
+ const message=entries.find(entry=>entry?.type==="message"&&entry.message?.role==="user");
+ const content=message?.message?.content;
  if(typeof content!=="string"||!content||
   (expectedInstruction!==undefined&&content!==expectedInstruction))
   throw new Error("Native Pi delegated instruction is missing or changed");

@@ -1,4 +1,4 @@
-import {captureNativeWriterCompletion,type NativeWriterCompletion} from "../runtime/agents/native-writer-completion.js";
+import {captureNativeWriterBaseline,captureNativeWriterCompletionAsync,type NativeWriterCompletion} from "../runtime/agents/native-writer-completion.js";
 import {types} from "node:util";
 import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
@@ -96,7 +96,7 @@ export class Dispatcher {
  }
  /** Cancel a queued or running task. The runner receives the abort signal and must stop its owned work. */
  cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||!sameWorkspaceIdentityPath(control.projectId,projectId)||control.controller.signal.aborted)return false;control.controller.abort();return true;}
- async dispatch(request:AgentRequest,startBefore?:number):Promise<AgentResult>{
+ async dispatch(request:AgentRequest,startBefore?:number,validateStart?:()=>Promise<void>):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
   let runnerRequest:AgentRequest,writerLease:{verify:()=>void;release:()=>void}|undefined;
   try{
@@ -122,6 +122,8 @@ export class Dispatcher {
   try{
    await this.#acquire(controller.signal);acquired=true;
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before execution");
+   if(validateStart)await validateStart();
+   if(controller.signal.aborted)throw new Error("Agent dispatch cancelled after validation");
    const starting=this.lifecycle?.running(request.id);if(isPromise(starting))await starting;lifecycleRunning=true;
    if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
    if(request.skillContext||request.skillPaths){
@@ -156,6 +158,9 @@ export class Dispatcher {
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    if(request.writeSurfaces){assertActiveWriterSnapshot(request);writerLease=acquireActiveWriterLease(request);writerLease?.verify();}
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
+   const nativeBaseline=await captureNativeWriterBaseline(request);
+   writerLease?.verify();
+   if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before Writer execution");
    if(startBefore!==undefined&&(!Number.isFinite(startBefore)||performance.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");
    if(startBefore!==undefined)runnerStartDeadlines.set(runnerRequest,startBefore);
    const result=await this.runner.run(runnerRequest,controller.signal);
@@ -164,7 +169,7 @@ export class Dispatcher {
    // Ignorar evidencia arbitraria del runner. Capturar los bytes propios antes de soltar el lease.
    const {nativeCompletion:_untrusted,...resultFields}=result;
    let nativeCompletion:NativeWriterCompletion|undefined;
-   if(result.ok&&!controller.signal.aborted)try{nativeCompletion=captureNativeWriterCompletion(request,result);}catch{/* Resultado sin árbol admisible: no integrar. */}
+   if(result.ok&&!controller.signal.aborted)try{nativeCompletion=await captureNativeWriterCompletionAsync(request,result,nativeBaseline,controller.signal);}catch{/* Resultado sin árbol admisible: no integrar. */}
    writerLease?.verify();
    const acceptedResult=Object.freeze({...resultFields,...(nativeCompletion?{nativeCompletion}:{})});validatedRunnerResults.set(acceptedResult,{lifecycle:this.lifecycle,id:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,consumed:false});
    if(controller.signal.aborted){const pending=this.lifecycle?.cancelled(request.id,result.output);if(isPromise(pending))await pending;terminalState=true;lifecycleRunning=false;return {id:request.id,ok:false,output:"Cancellation requested; completion was not accepted"};}
