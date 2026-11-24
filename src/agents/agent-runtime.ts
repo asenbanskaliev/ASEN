@@ -56,11 +56,11 @@ export class AgentRuntime{
    for(const listener of this.#terminalListeners)try{listener(structuredClone(entry.record));}catch{/* The durable result remains queryable. */}
   }catch{/* A failed storage read must never produce a success notification. */}
  }
- #dispatch(request:AgentRequest,signal?:AbortSignal):void{
+  #dispatch(request:AgentRequest,signal?:AbortSignal,startBefore?:number):void{
   const sessionId=request.isolationKey??"default",projectId=request.repository,owner=Object.freeze({sessionId,projectId,projectKey:workspaceIdentityPathKey(projectId)});
   const onAbort=()=>{this.dispatcher.cancel(request.id,sessionId,projectId);};
   signal?.addEventListener("abort",onAbort,{once:true});this.#fallbackOwners.set(request.id,owner);
-  const execution=this.dispatcher.dispatch(request);this.#executions.set(request.id,execution);
+  const execution=this.dispatcher.dispatch(request,startBefore);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);if(this.#fallbackOwners.get(request.id)===owner)this.#fallbackOwners.delete(request.id);});
  }
  async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
@@ -99,7 +99,7 @@ export class AgentRuntime{
   return request.id;
  }
  /** Starts one user-approved worker bound to an exact persisted plan, candidate and file scope. */
- async startControlledWorker(input:{taskIdentity:string;prompt:string;session:AgentSessionIdentity;candidate:Candidate;writeSurfaces:readonly string[];skillSelection:SkillSelectionContext;writerAdmission:object;routeEvidence:OrchestrationRouteEvidence;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;onPrepared:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startControlledWorker(input:{startBefore?:number;taskIdentity:string;prompt:string;session:AgentSessionIdentity;candidate:Candidate;writeSurfaces:readonly string[];skillSelection:SkillSelectionContext;writerAdmission:object;routeEvidence:OrchestrationRouteEvidence;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;onPrepared:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.taskIdentity||!input.prompt||input.prompt!==input.prompt.trim()||input.prompt.length>32_000||!input.session.sessionId||!input.session.projectId)throw new Error("A controlled worker requires an exact task, prompt, session and project");
   if(input.candidate.repository!==input.session.projectId||input.skillSelection.phase!=="apply"||!Array.isArray(input.writeSurfaces)||!input.writeSurfaces.length||input.writeSurfaces.length>256||input.writeSurfaces.some(surface=>typeof surface!=="string"||!surface))throw new Error("A controlled worker requires the exact candidate, apply phase and bounded write scope");
   const id=`${input.taskIdentity}:worker`,candidate=structuredClone(input.candidate),writeSurfaces=[...input.writeSurfaces],modelFallback=snapshotAgentModelFallback(input.modelFallback);
@@ -117,7 +117,7 @@ export class AgentRuntime{
    this.evidence.add(input.candidate,{id:`plan-scope:${request.id}`,kind:"scope",status:"pass",summary:`User approved only these write surfaces: ${scope}`,createdAt:authorizedAt});
    this.evidence.add(input.candidate,{id:`plan-rollback:${request.id}`,kind:"rollback",status:"pass",summary:"On failure, stop; do not commit or merge; leave the scoped changes for review.",createdAt:authorizedAt});
   };
-  const dispatch=()=>{if(!enqueued)throw new Error("Controlled worker must be durably enqueued before dispatch");if(dispatched)throw new Error("Controlled worker may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Worker cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal);dispatched=true;};
+  const dispatch=()=>{if(!enqueued)throw new Error("Controlled worker must be durably enqueued before dispatch");if(dispatched)throw new Error("Controlled worker may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Worker cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal,input.startBefore);dispatched=true;};
   try{
    await input.onPrepared(request.id,enqueue,dispatch);
    if(!enqueued||!dispatched)throw new Error("Trusted Todo binding did not durably enqueue and start the worker");
