@@ -63,7 +63,7 @@ export function registerParallelWorktreeCommand(
   launchChildWorker?:(unit:ParentSupervisorReadyWorker,confirm:(task:Readonly<{
    id:string;title:string;role:string;instruction:string;
    writeSurfaces?:readonly string[];candidateRevision?:string
-  }>)=>Promise<boolean>,validateParent:()=>Promise<void>)=>Promise<
+  }>)=>Promise<boolean>,validateParent:()=>Promise<void>,startBefore?:number)=>Promise<
    {status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>}
 ):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[])=>Promise<unknown>;
  supervisePartition:(ctx:WorktreeContext,batchId:string)=>Promise<unknown>}>{
@@ -165,7 +165,7 @@ export function registerParallelWorktreeCommand(
       // Escape devuelve undefined. Solo una selección explícita puede denegar.
       return selected===approvedLabel?true:selected===declinedLabel?false:undefined;
      },
-     launchChild:(unit,confirm,validateExact)=>options.launchChildWorker!(unit,confirm,validateExact)
+     launchChild:(unit,confirm,validateExact,startBefore)=>options.launchChildWorker!(unit,confirm,validateExact,startBefore)
     });
     ctx.ui.notify(JSON.stringify(result,null,2),
      result.status==="started"?"info":"warning");
