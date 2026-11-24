@@ -91,7 +91,7 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 }
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;
  /** Solo el coordinador interno puede reservar una plaza de lectura.
   * Nunca es permiso para iniciar un Writer ni eludir las selecciones hijas. */
  readOnlyWave?:boolean;
@@ -285,7 +285,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   }
   const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
   try{
-   const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
+   const agentId=await input.agents.startControlledWorker({...(input.startBefore!==undefined?{startBefore:input.startBefore}:{}),taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
     const validateLaunch=async()=>{
      await input.validateIdentity();
      // La comprobación vuelve a ejecutarse bajo el bloqueo de lanzamiento
