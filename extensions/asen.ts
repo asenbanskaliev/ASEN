@@ -350,7 +350,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const layers=await profileLayer(identity);
    const current=await sessionIdentity(ctx);
    if(ctx.signal?.aborted||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
-    throw new Error("Profile owner changed");
+    throw new Error("Pi session or project changed or was cancelled before plan persistence");
    return mode===undefined?layers:withCapturedDelegationMode(layers,mode);
   };
   // A missing file differs from a failed read; never turn a malformed file into defaults.
