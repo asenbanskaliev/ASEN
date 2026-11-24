@@ -29,7 +29,7 @@ export async function persistNativePartitionSuccessor(input:{
  const roots=candidate.sourceTodoIds.map(id=>rows.find(row=>row.taskId===id));
  if(roots.length!==2||roots.some(row=>!row||row.current.state!=="planned"||row.plan?.candidate?.revision!==candidate.baseCommit||
   !row.requestId||!row.plan.writerAuthorizationBasis||!row.description))throw new Error("Las raíces originales cambiaron.");
- const matches=rows.filter(row=>row.current.state==="planned"&&row.dependsOn?.length===2&&
+ const matches=rows.filter(row=>row.current.state==="planned"&&row.plan?.candidate?.revision===candidate.baseCommit&&!!row.plan.writerAuthorizationBasis&&row.dependsOn?.length===2&&
   candidate.sourceTodoIds.every(id=>row.dependsOn!.includes(id)));
  if(matches.length!==1)return Object.freeze({status:"blocked" as const,reason:"Esta continuación admite una única sucesora que dependa exactamente de las dos raíces."});
  const old=matches[0]!,basis=old.plan?.writerAuthorizationBasis;

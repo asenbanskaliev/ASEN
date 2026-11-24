@@ -17,10 +17,12 @@ import type {ParallelWorkerObservationJournal} from "./parallel-worker-observati
 const oid=/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u;
 const equal=(a:readonly string[],b:readonly string[])=>JSON.stringify([...a].sort())===JSON.stringify([...b].sort());
 function git(root:string,args:readonly string[],input?:Buffer,index?:string,identity?:NodeJS.ProcessEnv):Buffer{
- return execFileSync("git",["--no-replace-objects","--no-pager","-c","core.fsmonitor=false",
+ const hooks=mkdtempSync(join(tmpdir(),"asen-compose-hooks-"));
+ try{return execFileSync("git",["--no-replace-objects","--no-pager","-c","core.fsmonitor=false","-c","core.hooksPath="+hooks,
   "-c","diff.external=","-c","commit.gpgSign=false","-c","gc.auto=0","-c","maintenance.auto=false","-C",root,...args],{
   env:{...isolatedGitEnvironment(identity),...(index?{GIT_INDEX_FILE:index}:{})},input,
-  stdio:[input===undefined?"ignore":"pipe","pipe","pipe"],timeout:15000,maxBuffer:16*1024*1024,windowsHide:true});
+  stdio:[input===undefined?"ignore":"pipe","pipe","pipe"],timeout:15000,maxBuffer:16*1024*1024,windowsHide:true});}
+ finally{rmSync(hooks,{recursive:true,force:true});}
 }
 const txt=(root:string,args:readonly string[],index?:string)=>git(root,args,undefined,index).toString("utf8").trim();
 const records=(data:Buffer)=>new TextDecoder("utf-8",{fatal:true}).decode(data).split("\0").filter(Boolean);
