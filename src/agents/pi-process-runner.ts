@@ -454,7 +454,7 @@ export class PiProcessRunner implements AgentRunner{
       rpcFailure=`rpc timeout after ${budget}ms (${String(payload.type)})`;
       settle({success:false,error:rpcFailure});
      },budget);
-     void writeLine(JSON.stringify({id,...payload})+"\n");
+     void writeLine(JSON.stringify({id,...payload})+"\n",payload.type==="prompt");
     });
    };
    const publishFallback=(change:Omit<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">)=>{

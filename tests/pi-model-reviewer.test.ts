@@ -122,13 +122,14 @@ test("T03 rechaza modelos Pi falsificados, controles y duplicados antes de ofrec
   {provider:"nvidia",id:""},
   {provider:"nvidia",id:"model\u0000evil"}
  ];
- const entries=[author,valid,{...valid},...malformed];
+ const unique={provider:"nvidia",id:"modelo-unico"};
+ const entries=[author,valid,{...valid},unique,...malformed];
  const eligible=availableIndependentPiReviewers({
   getAvailable:()=>entries,
   hasConfiguredAuth:()=>true,
   streamSimple:()=>{throw new Error("No se debe ejecutar ninguna llamada");}
  },author);
- assert.deepEqual(eligible,[valid]);
+ assert.deepEqual(eligible,[unique]);
  assert.equal(Object.isFrozen(eligible),true);
  assert.equal(Object.isFrozen(eligible[0]!),true);
  assert.deepEqual(availableIndependentPiReviewers({

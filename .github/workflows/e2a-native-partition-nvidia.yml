@@ -10,10 +10,6 @@ permissions:
   contents: read
   actions: read
 
-concurrency:
-  group: e2a-native-partition-one-shot
-  cancel-in-progress: false
-
 jobs:
   ensayo-real:
     if: >-
@@ -22,6 +18,9 @@ jobs:
       github.event.pull_request.head.ref == 'integration/megatanda-b-consolidada-20261124' &&
       github.actor == 'asenbanskaliev' &&
       github.run_attempt == 1
+    concurrency:
+      group: e2a-native-partition-one-shot
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     env:

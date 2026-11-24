@@ -22,7 +22,7 @@ import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | attach-plan | plan-todo | supervise | collect | integration | integration-review | integration-continue | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | prepare-native <lote> | attach | attach-plan | plan-todo | supervise | collect | integration | integration-review | integration-continue | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;
  sessionManager?:{getSessionId?:()=>string};
@@ -54,6 +54,7 @@ export function registerParallelWorktreeCommand(
  options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;observationFile?:string;supervisorClaimsFile?:string;
   reviewIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
   continueIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
+  prepareNativeChildren?:(batchId:string,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
   planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
   childProfiles?:(identity:TodoContext)=>Promise<ProfileLayer>;
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
@@ -72,12 +73,27 @@ export function registerParallelWorktreeCommand(
  const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
 
    const raw=args?.trim()??"";
-   const integrationMatch=/^(integration(?:-review|-continue)?)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
+   const integrationMatch=/^(integration(?:-review|-continue)?|prepare-native)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
    const action=integrationMatch?.[1]??raw;
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-review"&&action!=="integration-continue"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare-native"&&action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-review"&&action!=="integration-continue"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
+   if(action==="prepare-native"){
+    const batchId=integrationMatch?.[2];
+    if(!id||!batchId||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||!options?.prepareNativeChildren){
+     const result={status:"unavailable",reason:"Indicar el lote exacto en /asen-worktrees prepare-native <lote> desde su sesión Pi original."};
+     ctx.ui.notify(result.reason,"warning");return result;
+    }
+    const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
+    const validate=()=>{
+     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||realpathSync(path.resolve(ctx.cwd))!==root)
+      throw Error("La sesión o el proyecto cambió; revisar el lote.");
+    };
+    validate();
+    const result=await options.prepareNativeChildren(batchId,ctx,validate);
+    validate();ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
+   }
    if(action==="attach-plan"){
     // Se usa la sesión Pi que realmente está abierta en el worktree.
     // Vinculación y reconstrucción siguen siendo pasos no autorizantes.

@@ -54,7 +54,7 @@ function userSummary(value:unknown):string{
   const launch=(value as {supervisedLaunch?:{status?:string;started?:unknown[];reason?:string;reasons?:string[]}}).supervisedLaunch;
   const childMessage=child?.status==="prepared"?"Las sesiones Pi hijas nativas y sus tareas están guardadas.":
    child?.status==="partial-needs-review"?"La preparación de hijos quedó parcial; no se repite automáticamente. "+(child.reason??""):
-   child?.status==="blocked"?"Preparación de hijos bloqueada. "+(child.reason??"Inspeccionar el lote."):
+   child?.status==="blocked"||child?.status==="blocked-needs-review"?"Preparación de hijos bloqueada. "+(child.reason??"Inspeccionar el lote.")+ " No repetir automáticamente.":
    child?.status==="declined"?"Se rechazó preparar las sesiones hijas.":"Las sesiones hijas todavía no están preparadas.";
   const launchMessage=launch?.status==="started"&&launch.started?.length===2?
    "El despachador ha admitido los dos Writers con permiso exacto. Pueden estar en cola; todavía no se ha acreditado el inicio de ambos procesos Pi.":
