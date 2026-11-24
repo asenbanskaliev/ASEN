@@ -216,6 +216,46 @@ export class SessionTodoStore{
    data.items.push(...newItems);result=drafts.map(draft=>structuredClone(byRequest.get(draft.requestId)!));return newItems.length>0;
   },signal);return result;
  }
+ /** Cierra exclusivamente las filas proxy de un lote ya integrado y verificado.
+  * El nuevo plan debe existir y depender de las dos raíces; así un fallo previo
+  * no libera la sucesora. No se registra ningún lanzamiento de agente padre. */
+ async acceptIntegratedPartition(input:{context:TodoContext;roots:readonly (TodoItem&{current:TaskEvent})[];
+  superseded:TodoItem&{current:TaskEvent};replacementRequestId:string;commit:string;
+  verify:()=>Promise<void>;signal?:AbortSignal}):Promise<void>{
+  const {context,roots,superseded,commit}=input;
+  if(roots.length!==2||new Set(roots.map(row=>row.taskId)).size!==2||
+   !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(commit)||
+   !identity(input.replacementRequestId)||superseded.dependsOn?.length!==2||
+   roots.some(root=>!superseded.dependsOn?.includes(root.taskId)||root.dependsOn?.length||
+    root.current.state!=="planned"||root.plan?.role!=="worker"||!root.plan.writerAuthorizationBasis)||
+   superseded.current.state!=="planned"||superseded.plan?.role!=="worker")
+   throw new Error("Invalid exact integrated partition replacement");
+  await this.#mutate(context,async data=>{
+   const expected=[...roots,superseded];
+   const items=expected.map(row=>{
+    const item=data.items.find(value=>value.taskId===row.taskId);
+    const original=structuredClone(row);delete (original as {current?:TaskEvent}).current;
+    if(!item||JSON.stringify(item)!==JSON.stringify(original)||
+     row.current.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(row.current.projectId,context.projectId))
+     throw new Error("Source partition changed during integration acceptance");
+    return item;
+   });
+   const replacement=data.items.find(row=>row.requestId===input.replacementRequestId);
+   if(!replacement||replacement.plan?.role!=="worker"||replacement.plan.candidate?.revision!==commit||
+    replayTask(replacement.events)?.state!=="planned"||
+    replacement.dependsOn?.length!==2||roots.some(root=>!replacement.dependsOn?.includes(root.taskId)))
+    throw new Error("Fresh dependent plan has not been persisted with exact predecessors");
+   await input.verify();
+   const at=this.now();
+   for(const item of items.slice(0,2)){
+    const previous=replayTask(item.events)!;
+    const running=applyTaskEvent(previous,{...previous,revision:previous.revision+1,state:"running",at,reason:"Verifying accepted child integration "+commit});
+    item.events.push(running,applyTaskEvent(running,{...running,revision:running.revision+1,state:"done",at,reason:"Child results integrated and verified at "+commit}));
+   }
+   const old=items[2]!,previous=replayTask(old.events)!;
+   old.events.push(applyTaskEvent(previous,{...previous,revision:previous.revision+1,state:"cancelled",at,reason:"Superseded by a new candidate-bound ODD plan"}));
+  },input.signal);
+ }
  async update(taskId:string,context:TodoContext,expectedRevision:number,state:TaskState,reason?:string,signal?:AbortSignal,validateContext?:()=>void):Promise<TodoItem>{
   if(!identity(taskId)||!identity(context.sessionId)||!identity(context.projectId)||!Number.isSafeInteger(expectedRevision)||expectedRevision<1)throw new Error("Invalid ASEN Todo update");let updated:TodoItem|undefined;
   await this.#mutate(context,data=>{validateContext?.();const item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));if(!item)throw new Error("Todo task is unavailable to this session or project");const current=replayTask(item.events);if(!current||current.revision!==expectedRevision)throw new Error("Todo revision conflict");if(state==="running")for(const dependency of item.dependsOn??[]){const prerequisite=data.items.find(candidate=>candidate.taskId===dependency&&candidate.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(candidate.events.at(-1)!.projectId,context.projectId)),prerequisiteState=prerequisite&&replayTask(prerequisite.events);if(prerequisiteState?.state!=="succeeded"&&prerequisiteState?.state!=="done")throw new Error("Todo dependencies must be verified done or have a successful execution awaiting review before this task can run");}const event:TaskEvent={taskId,sessionId:context.sessionId,projectId:current.projectId,revision:expectedRevision+1,state,at:this.now(),...(reason?{reason}:{})};const next=applyTaskEvent(current,event);item.events.push(next);updated=structuredClone(item);},signal);return updated!;
