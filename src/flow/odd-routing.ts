@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Risk } from "../core/types.js";
 import { verificationLevel } from "./risk.js";
+import { validatePortableReviewPaths } from "../review/review-tree-paths.js";
 
 export type OddIntent = "implementation" | "analysis" | "incident" | "verification" | "defect";
 export type OddChangeKind = "behavior" | "schema" | "security" | "configuration" | "migration" | "documentation" | "format" | "generated";
@@ -261,6 +262,8 @@ export function describeOddUnitPartition(facts:OddDerivedFacts):Readonly<{
  */
 export function canMaterializeOddPartition(facts:OddDerivedFacts):boolean{
  if(!issuedFacts.has(facts))throw new Error("ODD facts were not issued here");
+ // Comprobar las mismas reglas de portabilidad que usa el candidato integrado.
+ try{validatePortableReviewPaths(facts.taskUnits.flatMap(unit=>[...(unit.writePaths??[])]));}catch{return false;}
  return facts.intent==="implementation"&&facts.scope.kind==="known"&&
   (facts.risk==="low"||facts.risk==="medium")&&!facts.namedRisks.length&&
   !facts.riskOperations.length&&!facts.unresolvedDecisions.length&&

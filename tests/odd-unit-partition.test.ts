@@ -129,6 +129,16 @@ test("Las rutas incompatibles con worktrees conservan el plan ordinario",()=>{
  }
 });
 
+test("Las carpetas con grafías incompatibles conservan el plan ordinario",()=>{
+ const candidate={id:"candidate",repository:repo,revision:"a".repeat(40),createdAt:"2026-11-24T00:00:00.000Z"};
+ const taskUnits=units.map(unit=>({...unit,writePaths:unit.writePaths!.map(p=>p==="src/api.ts"?"src/Foo/api.ts":p==="src/ui.ts"?"src/foo/ui.ts":p)}));
+ const all=taskUnits.flatMap(unit=>unit.writePaths);
+ const {repositoryIdentity,...facts}=request({taskUnits,scope:{kind:"known",expectedPaths:all},writes:all.map(path=>({path,changeKind:"behavior"}))});
+ const result=JSON.parse(controlledInstructionPlanCommand(JSON.stringify({instruction:"Completar tres unidades",...facts}),repo,candidate));
+ assert.equal(result.partitionExecution,undefined);
+ assert.equal(result.executablePlan.tasks.filter((task:{role:string})=>task.role==="worker").length,1);
+});
+
 test("La división no elimina revisiones ni controles de riesgo existentes",()=>{
  const candidate={id:"candidate",repository:repo,revision:"a".repeat(40),createdAt:"2026-11-24T00:00:00.000Z"};
  const {repositoryIdentity,...facts}=request();

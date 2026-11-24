@@ -1071,14 +1071,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        try{await agentNoticeJournal.record(record);}catch{/* El recibo de lote no depende del aviso. */}
        try{if(todoStorePromise&&taskAgentLinks&&record.role==="worker"){
         const sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
+        const sessionJournal=new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal);
+        const observations=new ParallelWorkerObservationJournal(path.join(home(),".asen","parallel-worker-observations.json"));
         const observed=await reconcileNativeChildTerminal({record,todos:await todoStorePromise,agents:runtime,links:taskAgentLinks,
-         sourceJournal,sessionJournal:new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal),
-         claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),
-         observations:new ParallelWorkerObservationJournal(path.join(home(),".asen","parallel-worker-observations.json"))});
+         sourceJournal,sessionJournal,
+         claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),observations});
         const parent=agentDeliveryContext,owner=agentDeliveryIdentity;
         if(observed&&parent&&owner&&owner.sessionId===observed.source.sessionId&&owner.projectId===observed.source.projectId){
          const live=await sessionIdentity(parent);
-         if(agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&live.sessionId===owner.sessionId&&live.projectId===owner.projectId){
+         const latest=(await observations.listSource(observed.source,await sessionJournal.listSource(observed.source))).filter(row=>row.batchId===observed.batchId);
+         if(latest.length===observed.observed&&agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&live.sessionId===owner.sessionId&&live.projectId===owner.projectId&&parent.sessionManager?.getSessionId?.()===owner.sessionId){
           parent.ui.notify(`ASEN: ${observed.partial?"lote Writer parcial":"lote Writer terminado"}. ${observed.observed}/${observed.expected} recibos guardados. ${observed.completed} completados y ${observed.failed} con incidencias. ${observed.partial?"No integrar ni repetir automáticamente.":"Pendiente revisión e integración."}${observed.planningFileMissing?" El archivo de planificación de un hijo no está disponible.":""}`,observed.partial||observed.failed||observed.planningFileMissing?"warning":"info");
           await refreshTodoWidget(parent);
          }
@@ -2526,6 +2528,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   }});
   const integrationReports=new Map<string,JudgmentDayReport>();
   const worktreeCommands=registerParallelWorktreeCommand(register,{
+   prepareNativeChildren:async(batchId,context,validate)=>{
+    const ctx=context as CommandContext;validate();
+    if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
+    const source=await sessionIdentity(ctx),sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
+    validate();return prepareNativePartitionChildren({source,batchId,sourceJournal,
+     sessionJournal:new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal),
+     claimJournal:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),
+     sessionDir:path.join(home(),".asen","native-child-sessions"),todos:await todoStorePromise,
+     childProfiles:profileLayer,validateParent:validate,
+     confirm:summary=>ctx.ui.confirm!("Preparar sesiones hijas Pi sin iniciar modelos?",summary)});
+   },
    reviewIntegratedCandidate:async(candidate,context,validate)=>{
     const ctx=context as CommandContext;validate();
     const identity=await sessionIdentity(ctx),layers=await profileLayer(identity);

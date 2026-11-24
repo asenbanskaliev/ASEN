@@ -94,17 +94,21 @@ const reviewModelId=/^[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u;
 /** El catálogo Pi puede contener entradas malformadas o duplicadas. Ninguna
  * ruta ni control de interfaz debe aceptar identidades con controles o vacíos. */
 export function availableIndependentPiReviewers(registry:PiReviewRegistry,author:PiReviewerModel|undefined):readonly PiReviewerModel[]{
- const seen=new Set<string>();
- const available=registry.getAvailable().filter(model=>{
+ const catalog=registry.getAvailable(),counts=new Map<string,number>();
+ for(const model of catalog){
+  if(!model||typeof model.provider!=="string"||typeof model.id!=="string")continue;
+  const key=JSON.stringify([model.provider,model.id]);
+  counts.set(key,(counts.get(key)??0)+1);
+ }
+ const available=catalog.filter(model=>{
   if(!model||isVirtualReviewModel(model)||typeof model.provider!=="string"||typeof model.id!=="string"||
    !reviewProvider.test(model.provider)||!reviewModelId.test(model.id)||
    model.id.split("/").some(part=>!part||part==="."||part==="..")||
    model.id!==model.id.normalize("NFC")||
    author?.provider===model.provider&&author.id===model.id)
    return false;
-  const key=model.provider+"/"+model.id;
-  if(seen.has(key)||!registry.hasConfiguredAuth(model))return false;
-  seen.add(key);
+  const key=JSON.stringify([model.provider,model.id]);
+  if(counts.get(key)!==1||!registry.hasConfiguredAuth(model))return false;
   return true;
  });
  return Object.freeze(available.map(model=>Object.freeze({provider:model.provider,id:model.id})));

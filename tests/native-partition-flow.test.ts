@@ -26,7 +26,7 @@ import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {readFrozenIntegrationReviewEvidence} from "../src/review/workspace-review-session.js";
 import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-native-child-terminal.js";
 
-for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
+for(const mode of ["approved","declined","changed","child-declined"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
  const base=await realpath(await mkdtemp(join(tmpdir(),"asen-native-odd-"))),project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:isolatedGitEnvironment()}).trim();
  let launched=0,partialObserved=false;
@@ -81,14 +81,15 @@ const terminalErrors:unknown[]=[];
   const parent=SessionManager.create(project,join(base,"parent-sessions"));
   parent.appendMessage({role:"user",content:"Prueba local sin modelos",timestamp:Date.now()});
   const identity={sessionId:parent.getSessionId(),projectId:project};
-  const tools=new Map<string,any>(),dialogs:string[]=[];
+  const tools=new Map<string,any>(),commands=new Map<string,any>(),dialogs:string[]=[];
   createAsenExtension({homeDir:()=>home,agentRuntimeFactory:async()=>agents,todoStoreFactory:async()=>todos,
    enableWorkspaceRuntime:false,enableMemoryRuntime:false,enableTodoRuntime:false,deferSessionStart:true})({
-   registerCommand(){},registerTool(tool){tools.set(tool.name,tool);},on(){}
+   registerCommand(name,command){commands.set(name,command);},registerTool(tool){tools.set(tool.name,tool);},on(){}
   });
   const context={cwd:project,mode:"tui",hasUI:true,sessionManager:parent,isIdle:()=>true,ui:{
    notify(){},confirm:async(title:string,message:string)=>{
     dialogs.push(title);
+    if(mode==="child-declined"&&title==="Preparar sesiones hijas Pi sin iniciar modelos?"&&dialogs.length===2)return false;
     if(title==="Autorizar las dos escrituras ODD exactas de este lote?"){
      assert.match(message,/a\.txt/u);assert.match(message,/b\.txt/u);
      assert.match(message,/Instrucción íntegra/u);assert.match(message,/Caduca en cinco minutos/u);
@@ -114,6 +115,18 @@ const terminalErrors:unknown[]=[];
   const detail=result.details;
   assert.equal(detail.persistence.status,"saved");
   assert.equal(detail.worktreePreparation.status,"prepared");
+  if(mode==="child-declined"){
+   assert.equal(detail.childPreparation.status,"declined");
+   assert.equal(launched,0);
+   assert.equal((await sessionJournal.listSource(identity)).length,0);
+   const batch=detail.worktreePreparation.batchId;
+   const resumed=await commands.get("asen-worktrees").handler("prepare-native "+batch,context);
+   assert.equal(resumed.status,"prepared");assert.equal(resumed.children.length,2);
+   assert.equal(launched,0);
+   const replay=await commands.get("asen-worktrees").handler("prepare-native "+batch,context);
+   assert.equal(replay.status,"blocked");assert.equal(launched,0);
+   return;
+  }
   assert.equal(detail.childPreparation.status,"prepared");
   const children=detail.childPreparation.children as Array<{sessionId:string;projectId:string;sessionFile:string;childTodoId:string}>;
   assert.equal(children.length,2);
