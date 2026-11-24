@@ -154,6 +154,7 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
     const raw=record(item,["id","objective","estimatedMinutes","dependsOn",...(scoped?["writePaths"]:[])],"task unit");
     const id=text(raw.id,"task unit id"),objective=text(raw.objective,"task unit objective");
     if(id.length>100||objective.length>500)throw new Error("task unit text is too long");
+    if(scoped&&(!Array.isArray(raw.writePaths)||raw.writePaths.length>256))throw new Error("task unit write partition exceeds the limit");
     return Object.freeze({id,objective,estimatedMinutes:count(raw.estimatedMinutes,"task unit estimate"),
       dependsOn:Object.freeze(uniqueStrings(raw.dependsOn,"task unit dependencies")),
       ...(scoped?{writePaths:Object.freeze(uniqueStrings(raw.writePaths,"task unit write paths",path))}:{})});
