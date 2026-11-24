@@ -101,10 +101,10 @@ try{
  if(real){
   const native=new ModelRegistry(await ModelRuntime.create({authPath:join(privateDir,"auth.json"),modelsPath:join(privateDir,"models.json"),allowModelNetwork:true,modelRefreshTimeoutMs:30000}));
   const available=native.getAvailable().filter(m=>m.provider==="nvidia"&&native.hasConfiguredAuth(m)&&typeof m.api==="string"&&!["virtual","pi-virtual"].includes(String(m.api)));
-  // Modelos de texto de familias distintas, observados en el catálogo
-  // autenticado. Gemma falló en la primera revisión del intento anterior;
-  // no se conoce todavía el motivo exacto.
-  const approved=["nvidia/llama-3.1-nemotron-70b-instruct","mistralai/mistral-7b-instruct-v0.3","meta/llama-3.2-11b-vision-instruct"];
+  // Dos modelos de texto NVIDIA disponibles en el catálogo autenticado y
+  // distintos del autor. Se priorizan los endpoints actuales de la familia
+  // Nemotron frente a los modelos que el proveedor rechazó en el intento previo.
+  const approved=["nvidia/nemotron-3.5-super-vl-120b-a12b","nvidia/nemotron-3-ultra-550b-a55b","nvidia/llama-3.1-nemotron-70b-instruct"];
   const selected=approved.flatMap(id=>available.filter(m=>m.id===id)).slice(0,2);
   assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>key(m)!==model));
   [judgeA,judgeB]=[selected[0]!,selected[1]!];
