@@ -128,7 +128,7 @@ try{
        "provider-error";
      }else if(event.type==="done"){
       const selectedModel=descriptor.id.startsWith(descriptor.provider+"/")?descriptor.id:descriptor.provider+"/"+descriptor.id;
-      const acceptedResponse=[descriptor.id,selectedModel,selectedModel.slice(descriptor.provider.length+1)];
+      const acceptedResponse=[descriptor.id,selectedModel,key(descriptor),selectedModel.slice(descriptor.provider.length+1)];
       const providerMatches=event.message.provider===descriptor.provider,
        modelMatches=normalizeT06PiChildSelection({provider:event.message.provider,id:event.message.model},selectedModel)===selectedModel,
        responseMatches=event.message.responseModel===undefined||acceptedResponse.includes(event.message.responseModel);
