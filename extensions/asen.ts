@@ -2580,7 +2580,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    planChildTodo:async(input,context)=>preparePlan(input,context as CommandContext,false,true),
    childProfiles:async identity=>profileLayer(identity),
    ...(agentRuntimePromise&&todoStorePromise&&taskAgentLinks?{
-    launchChildWorker:async(unit,confirm,validateParent)=>{
+    launchChildWorker:async(unit,confirm,validateParent,startBefore)=>{
      await validateParent();
      const identity={sessionId:unit.childSessionId,projectId:unit.childProjectId};
      const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
@@ -2588,7 +2588,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      // The parent controls confirmation, not the child agent identity or scope.
      const result=await dispatchNextPlanTask({
       todos,agents,links:taskAgentLinks,identity,
-      expectedTodoId:unit.childTodoId,
+      expectedTodoId:unit.childTodoId,...(startBefore!==undefined?{startBefore}:{}),
       runtimeProfiles:await profileLayer(identity),
       validateIdentity:async()=>{
        await validateParent();
