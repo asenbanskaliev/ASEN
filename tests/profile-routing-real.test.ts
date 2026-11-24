@@ -5,7 +5,7 @@ import {tmpdir} from "node:os";
 import path from "node:path";
 import {createAsenExtension} from "../extensions/asen.js";
 import {writeProfilesFile} from "../src/runtime/lifecycle/profile-store.js";
-import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile} from "../src/runtime/lifecycle/profiles.js";
+import {ASEN_PROFILES_SCHEMA,type RuntimeProfilesFile,type DelegationMode} from "../src/runtime/lifecycle/profiles.js";
 
 async function layer(dir:string,name:string,model:string,thinking:"off"|"minimal"|"low"|"medium"|"high"="low"):Promise<void>{
  await mkdir(path.join(dir,".asen"),{recursive:true});
@@ -74,4 +74,39 @@ test("missing profiles preserve Pi's active default model without an explicit ro
  assert.ok(finished,"Default-model agent must reach a durable terminal state before fixture cleanup");
  const status=await tools.get("asen_agent_status").execute("missing-status",{},new AbortController().signal,()=>{},ctx);
  assert.equal(status.details.length,1,"Agent dispatched with Pi's active model should be visible in session status");
+});
+
+test("E1B: la guía del padre y el guardia conservan el mismo modo hasta el siguiente turno",async t=>{
+ const home=await mkdtemp(path.join(tmpdir(),"asen-modo-coherente-home-"));
+ const project=await realpath(await mkdtemp(path.join(tmpdir(),"asen-modo-coherente-project-")));
+ const events=new Map<string,Function[]>();
+ const pi={registerCommand:()=>{},registerTool:()=>{},on:(n:string,h:Function)=>events.set(n,[...(events.get(n)??[]),h]),getCommands:()=>[],getAllTools:()=>[]};
+ const ctx={cwd:project,hasUI:false,sessionManager:{getSessionId:()=>"modo-coherente"},ui:{notify:()=>{}}};
+ const {DelegationTurnLatch}=await import("../src/runtime/lifecycle/delegation-turn-latch.js");
+ const {createPrimaryToolPolicyHandler}=await import("../src/security/primary-tool-policy.js");
+ const latch=new DelegationTurnLatch();
+ let selected:DelegationMode="full-delegation";
+ let loads=0;
+ const resolveMode=()=>latch.mode({sessionId:"modo-coherente",projectId:project},async()=>{loads++;return selected;},async()=>{});
+ const guard=createPrimaryToolPolicyHandler({getDelegationMode:resolveMode,modeEpoch:()=>latch.epoch});
+ const profileFile=path.join(home,".asen","profiles.json");
+ await writeProfilesFile(profileFile,profile("global","global/model"));
+ createAsenExtension({homeDir:()=>home,profilesFile:profileFile,resolveParentDelegationMode:resolveMode,enableAgentRuntime:false,enableTodoRuntime:false,enableMemoryRuntime:false,enableWorkspaceRuntime:false})(pi as any);
+ t.after(async()=>{try{for(const h of events.get("session_shutdown")??[])await h({},ctx);}finally{await rm(home,{recursive:true,force:true,maxRetries:6,retryDelay:100});await rm(project,{recursive:true,force:true,maxRetries:6,retryDelay:100});}});
+ for(const h of events.get("session_start")??[])await h({},ctx);
+ const sections:Record<string,string>={};
+ const prepare=async()=>{for(const h of events.get("before_agent_start")??[])await h({prompt:"Modificar archivo de ensayo",systemPromptOptions:{sections}},ctx);};
+ const call=(toolName:string,input:Record<string,unknown>)=>guard({type:"tool_call",toolName,toolCallId:toolName,input} as any,ctx as any);
+ await prepare();
+ assert.match(sections.asen_delegation_mode??"",/Modo delegación completa/u);
+ selected="organic";
+ assert.equal((await call("write",{path:"ensayo.txt",content:"prueba"}))?.block,true);
+ assert.equal((await call("bash",{command:"echo prueba"}))?.block,true);
+ assert.equal(await call("read",{path:"ensayo.txt"}),undefined);
+ assert.equal(loads,1,"La primera herramienta debe reutilizar la decisión anunciada");
+ latch.nextTurn();
+ await prepare();
+ assert.equal(sections.asen_delegation_mode,undefined);
+ assert.equal(await call("write",{path:"ensayo.txt",content:"prueba"}),undefined);
+ assert.equal(loads,2);
 });

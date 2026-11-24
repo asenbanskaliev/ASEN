@@ -158,7 +158,7 @@ async function runOne({source,project,home,probe,extension,binary,candidateSha,r
 async function main(){
  assert.equal(process.env.GITHUB_ACTIONS,"true");
  assert.equal(process.env.GITHUB_REPOSITORY,"asenbanskaliev/ASEN");
- assert.equal(process.env.GITHUB_REF,"refs/heads/feat/t12-integrated-acceptance-merge");
+ assert.ok(new Set(["refs/heads/feat/t12-integrated-acceptance-merge","refs/heads/integration/megatanda-1-3-20261123"]).has(process.env.GITHUB_REF),"Unsupported acceptance branch");
  assert.equal(process.env.GITHUB_EVENT_NAME,"push");
  const sha=process.env.ASEN_EXPECTED_SHA;
  assert.match(sha??"",SHA);

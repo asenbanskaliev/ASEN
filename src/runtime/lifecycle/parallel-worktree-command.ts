@@ -2,7 +2,7 @@ import {execFileSync} from "node:child_process";
 import {existsSync,mkdirSync,realpathSync,rmdirSync} from "node:fs";
 import path from "node:path";
 import {prepareParallelWorkerWorktrees,type ParallelWorkerUnit} from "../agents/parallel-worktrees.js";
-import {bindParallelSourceTodos,sameSourceTodoBindings,type SourceTodoRow} from "../agents/parallel-todo-bindings.js";
+import {bindParallelSourceTodos,selectReadyParallelSourcePair,sameSourceTodoBindings,type SourceTodoRow} from "../agents/parallel-todo-bindings.js";
 import {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId} from "../agents/parallel-todo-journal.js";
 import {ParallelChildSessionJournal} from "../agents/parallel-todo-session-links.js";
 import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change-inspection.js";
@@ -446,9 +446,18 @@ export function registerParallelWorktreeCommand(
     ctx.ui.notify(blocked.reason,"warning");return blocked;
    }
 
+   const proposed=planned.map(todo=>({taskId:todo.taskId,writeSurfaces:todo.plan!.writeSurfaces!}));
+   const excluded=linked?await journal!.blockedSourceTodoIds(owner,proposed):undefined;
+   checkIdentity();
+   const compatible=linked?selectReadyParallelSourcePair({identity:owner,expectedHead:head,rows:currentTodos,
+    ...(excluded?{excludedTaskIds:excluded}:{})}):[];
+   if(automatic&&compatible.length!==2){
+    const blocked={status:"blocked" as const,reason:"No hay dos Writers listos, sin dependencias pendientes ni ámbitos solapados o reservados; no se crean carpetas ni se solicitan permisos."};
+    ctx.ui.notify(blocked.reason,"warning");return blocked;
+   }
    const sample={
     parentDir:path.join(path.dirname(root),path.basename(root)+"-worktrees"),
-    units:linked?planned.slice(0,2).map(todo=>({taskId:todo.taskId,writeSurfaces:todo.plan!.writeSurfaces!})):
+    units:linked?(compatible.length===2?compatible:proposed.slice(0,2)):
      [{taskId:"backend",writeSurfaces:["src/backend"]},{taskId:"frontend",writeSurfaces:["src/frontend"]}]
    };
    // Dos tareas ODD y ámbitos persistidos: no se permite ampliar rutas por el editor.

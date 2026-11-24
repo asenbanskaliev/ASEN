@@ -7,10 +7,12 @@ import {inspectStoredFixSourceTree} from "../../review/judgment-fix-odd-prefligh
 import {decideLifecycleApplicability} from "../../lifecycle/applicability.js";
 import {issueOrganicWriterAdmission} from "../../lifecycle/skill-lifecycle.js";
 import {buildOrchestrationPlan} from "../../orchestration/orchestrator.js";
+import {materializeExecutablePlan} from "../../orchestration/executable-plan.js";
 import {selectSkills,type SkillSelectionContext} from "../../skills/registry.js";
 import type {SessionTodoStore,TodoContext,TodoItem} from "./todo-store.js";
 import type {TaskAgentLinkStore} from "../agents/task-agent-link-store.js";
 import {TodoLaunchConflictError,TrustedTaskAgentBinder} from "../agents/trusted-task-agent-binder.js";
+import {inspectRiskVerifierBinding,exactRiskReaderContract,type RiskVerifierBinding,type RiskReaderContract} from "./plan-risk-verifier-binding.js";
 
 const readOnlyRoles=["clarifier","explorer","reviewer","verifier"] as const;
 type ReadOnlyRole=typeof readOnlyRoles[number];
@@ -28,6 +30,56 @@ export function hasExactWorkerAuthorizationBasis(value:unknown):value is Record<
 }
 function sameSkillSelection(left:SkillSelectionContext,right:SkillSelectionContext):boolean{
  return skillSelectionKeys.every(key=>left[key]===right[key]);
+}
+
+/** Rebuild the exact reader contracts from the claimed ODD plan, not from
+ * each persisted row. This is read-only and grants no capability to the Writer. */
+function readerContractsFromPlan(
+ plan:ReturnType<typeof buildOrchestrationPlan>,instruction:string,basis:string
+):readonly RiskReaderContract[]{
+ const graph=materializeExecutablePlan(plan,instruction,basis);
+ return graph.tasks.filter(task=>task.role==="reviewer"||task.role==="verifier").map(task=>{
+  if(!task.skillSelection)throw new Error("El lector independiente no tiene habilidades ODD válidas");
+  return {requestId:`asen-plan:${task.id}`,role:task.role as "reviewer"|"verifier",
+   instruction:task.instruction,skillSelection:task.skillSelection,skillPaths:[...task.skillPaths]};
+ });
+}
+
+/** Reconstruct the read-only worker-linked contract at the moment a Reviewer
+ * or Verifier starts. A changed selection and changed paths must not collude
+ * to reduce the originally required ODD checks after a Writer completed. */
+function expectedReaderFromPersistedOdd(
+ task:TodoItem,rows:readonly TodoItem[],identity:AgentSessionIdentity,
+ profiles:ProfileLayer|undefined
+):RiskReaderContract|undefined{
+ const request=task.requestId,role=task.plan?.role;
+ if(!request||!request.startsWith("asen-plan:")||
+    (role!=="reviewer"&&role!=="verifier"))return undefined;
+ const suffix=role==="verifier"?":verifier":
+  request.endsWith(":reviewer:2")?":reviewer:2":":reviewer";
+ if(!request.endsWith(suffix))throw new Error("La identidad del lector no coincide con su función");
+ const prefix=request.slice(0,-suffix.length),writers=rows.filter(row=>row.requestId===prefix+":worker");
+ if(writers.length===0)return undefined; // Revisión/verificación exclusivamente de lectura, sin Writer
+ if(writers.length!==1)throw new Error("El lector no tiene un Writer ODD único y verificable");
+ const writer=writers[0]!,candidate=writer.plan?.candidate,basis=writer.plan?.writerAuthorizationBasis;
+ if(!candidate||!basis||!writer.plan?.writeSurfaces?.length||
+    candidate.repository!==identity.projectId)throw new Error("El contrato ODD original del Writer no está disponible");
+ const parsed:unknown=JSON.parse(basis);
+ if(!hasExactWorkerAuthorizationBasis(parsed))throw new Error("Base ODD original inválida");
+ const {instruction,...rawFacts}=parsed;
+ const facts=deriveOddFacts({...rawFacts,repositoryIdentity:identity.projectId} as unknown as OddRoutingRequest);
+ if(prefix!==`asen-plan:${facts.taskIdentity}`)throw new Error("El lector no pertenece al ODD original");
+ const decision=planOddRoute(facts);
+ if(decision.verification!=="independent")return undefined;
+ const plan=buildOrchestrationPlan({taskId:facts.taskIdentity,repository:identity.projectId,
+  prompt:instruction,candidate,writeSurfaces:[...writer.plan.writeSurfaces],
+  ...(writer.plan.skillSelection?.selectionProfile?
+   {selectionProfile:writer.plan.skillSelection.selectionProfile}:{}),
+  ...(profiles?{runtimeProfiles:profiles}:{})},decision);
+ const readers=readerContractsFromPlan(plan,instruction,basis);
+ const expected=readers.filter(contract=>contract.requestId===request&&contract.role===role);
+ if(expected.length!==1)throw new Error("El ODD original no prevé ese lector independiente");
+ return expected[0]!;
 }
 
 /** Fail closed if any persisted task field changed while the user reviewed the authorization. */
@@ -49,7 +101,7 @@ function currentRevision(repository:string):string{
  try{return execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
  catch(error){const revision=error&&typeof error==="object"&&"status" in error&&error.status===0&&"stdout" in error?String(error.stdout).trim():"";if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(revision))throw error;return revision;}
 }
-async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,input:Pick<DispatchInput,"todos"|"agents"|"links"|"runtimeProfiles">):Promise<{candidate:Candidate;writeSurfaces:string[];instruction:string;taskIdentity:string;routeEvidence:NonNullable<ReturnType<typeof buildOrchestrationPlan>["routeEvidence"]>;workerSelection:SkillSelectionContext;admission:object}|{reason:string}>{
+async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,input:Pick<DispatchInput,"todos"|"agents"|"links"|"runtimeProfiles">):Promise<{candidate:Candidate;writeSurfaces:string[];instruction:string;taskIdentity:string;routeEvidence:NonNullable<ReturnType<typeof buildOrchestrationPlan>["routeEvidence"]>;workerSelection:SkillSelectionContext;admission:object;riskVerifier?:RiskVerifierBinding}|{reason:string}>{
  const metadata=task.plan,basisText=metadata?.writerAuthorizationBasis,candidate=metadata?.candidate,surfaces=metadata?.writeSurfaces;
  if(!metadata||metadata.role!=="worker"||!metadata.skillSelection||metadata.skillSelection.phase!=="apply"||!basisText||!candidate||!surfaces?.length)return {reason:"The worker plan lacks a persisted candidate, exact file scope or original ODD authorization facts; rebuild the plan in a Git project."};
  if(candidate.repository!==identity.projectId)return {reason:"The persisted worker candidate belongs to another project; rebuild the plan."};
@@ -88,6 +140,22 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(!worker?.skillContext||!worker.skillPaths||!worker.writeSurfaces||worker.writeSurfaces.length!==exactSurfaces.length||worker.writeSurfaces.some((surface,index)=>surface!==exactSurfaces[index]))return {reason:"The current ODD plan does not produce the exact persisted worker scope."};
  const expectedPaths=selectSkills(metadata.skillSelection).map(skill=>skill.path);
  if(expectedPaths.length!==metadata.skillPaths.length||expectedPaths.some((value,index)=>value!==metadata.skillPaths[index])||worker.skillPaths.length!==metadata.skillPaths.length||worker.skillPaths.some((value,index)=>value!==metadata.skillPaths[index])||!sameSkillSelection(metadata.skillSelection,worker.skillContext))return {reason:"The saved worker skill selection changed; rebuild the plan before dispatch."};
+ // E3: no pedir consentimiento Writer cuando el plan persistido ha perdido
+ // su Verifier obligatorio o alguno de los revisores ligados al mismo candidato.
+ // El visto bueno del modelo no sustituye esta comprobación del diario real.
+ let riskVerifier:RiskVerifierBinding|undefined;
+ if(decision.verification==="independent")try{
+  riskVerifier={
+   taskIdentity:facts.taskIdentity,writerTodoId:task.taskId,
+   candidateRevision:candidateBound.revision,
+   reviewerCount:plan.agents.filter(agent=>agent.role==="reviewer").length,
+   readers:readerContractsFromPlan(plan,instruction,basisText)
+  };
+ }catch{return {reason:"El plan ODD independiente no produce lectores válidos"};}
+ if(riskVerifier){
+  const missing=inspectRiskVerifierBinding(await input.todos.list(identity),riskVerifier);
+  if(missing)return {reason:missing};
+ }
  const expectedInstruction=`Perform only the authorized, scoped work for: ${instruction}`;
  if(task.description!==expectedInstruction||task.description.length>MAX_VISIBLE_PLAN_INSTRUCTION)return {reason:"The complete original worker instruction must match and fit in the Pi authorization dialog; split or rebuild the task."};
  const expectedExplorer=plan.agents.some(agent=>agent.role==="explorer"),dependencies=task.dependsOn??[];
@@ -111,7 +179,8 @@ async function workerAuthorization(task:TodoItem,identity:AgentSessionIdentity,i
  if(applicability.outcome!=="organic")return {reason:`The controlled worker requires an organic, bounded lifecycle; applicability is ${applicability.outcome}.`};
  if(!plan.routeEvidence)return {reason:"The writer route lacks candidate-bound ODD evidence."};
  const admission=issueOrganicWriterAdmission(applicability,exactSurfaces);
- return {candidate:candidateBound,writeSurfaces:exactSurfaces,instruction:authorizedInstruction,taskIdentity:facts.taskIdentity,routeEvidence:plan.routeEvidence,workerSelection:metadata.skillSelection,admission};
+ return {candidate:candidateBound,writeSurfaces:exactSurfaces,instruction:authorizedInstruction,taskIdentity:facts.taskIdentity,routeEvidence:plan.routeEvidence,workerSelection:metadata.skillSelection,admission,
+  ...(riskVerifier?{riskVerifier}:{})};
 }
 
 /** Dispatches one dependency-ready plan task. Writes require a fresh exact candidate, ODD scope, and one-use user approval. */
@@ -170,6 +239,11 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   let head:string;try{head=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The project stopped being a readable Git candidate; no writer was launched."};}
   if(head!==prepared.candidate.revision)return {status:"blocked",reason:"The project changed while awaiting authorization; rebuild the plan against the current candidate."};
   await input.validateIdentity();
+  // Entre la petición y la respuesta del usuario también puede cambiar el plan.
+  if(prepared.riskVerifier){
+   const missing=inspectRiskVerifierBinding(await input.todos.list(input.identity),prepared.riskVerifier);
+   if(missing)return {status:"blocked",reason:missing};
+  }
   if(task.plan.fixSource){
    try{
     const observed=inspectStoredFixSourceTree(input.identity.projectId,
@@ -183,6 +257,12 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
    const agentId=await input.agents.startControlledWorker({taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
     const validateLaunch=async()=>{
      await input.validateIdentity();
+     // La comprobación vuelve a ejecutarse bajo el bloqueo de lanzamiento
+     // para que no se retire el Verifier justo antes de iniciar Pi.
+     if(prepared.riskVerifier){
+      const missing=inspectRiskVerifierBinding(await input.todos.list(input.identity),prepared.riskVerifier);
+      if(missing)throw new Error(missing);
+     }
      if(task.plan?.fixSource){
       const current=inspectStoredFixSourceTree(input.identity.projectId,
        prepared.writeSurfaces,task.plan.fixSource.treeIdentity);
@@ -200,8 +280,18 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  }
 
  const readRole=role as ReadOnlyRole,selection=task.plan.skillSelection;
+ const validateReaderContract=async()=>{
+  if(readRole!=="reviewer"&&readRole!=="verifier")return;
+  const latest=await input.todos.list(context);
+  const current=latest.find(row=>row.taskId===task.taskId);
+  if(!current)throw new Error("El lector independiente ya no existe");
+  const expected=expectedReaderFromPersistedOdd(current,latest,input.identity,input.runtimeProfiles);
+  if(expected&&!exactRiskReaderContract(current,expected))
+   throw new Error("El contrato del lector cambió respecto al ODD original");
+ };
  const validateReadOnlyLaunch=async()=>{
   await input.validateIdentity();
+  await validateReaderContract();
   if(independence&&(!task.plan?.model||!independence.verifiedConfiguredModel(readRole,task.plan.model)))
    throw new Error("Independent continuation lost its exact configured profile model before dispatch");
  };
@@ -214,6 +304,8 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   if(currentPaths.length!==task.plan.skillPaths.length||currentPaths.some((value,index)=>value!==task.plan!.skillPaths[index]))return {status:"blocked",reason:"The persisted skill registry selection changed; rebuild the plan before dispatch."};
  }
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed after planning; rebuild the exploration against the current candidate."};}
+ try{await validateReaderContract();}
+ catch{return {status:"blocked",reason:"La selección de herramientas del lector ya no coincide con el ODD original"};}
  const approved=input.autoApproveReadOnly===true||await input.confirm({id:task.taskId,title:task.title,role,instruction:task.description});
  if(approved!==true)return {status:"blocked",reason:"Pi user declined dispatch; the plan was not changed."};
  await validateReadOnlyLaunch();

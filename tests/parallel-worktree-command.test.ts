@@ -1,7 +1,7 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {existsSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {existsSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
@@ -89,4 +89,44 @@ test("T06 stale session and malformed request fail closed before consent",async 
  await assert.rejects(()=>f.run("prepare"),/exactly parentDir and units/u);
  assert.equal(f.calls.length,0);
  assert.equal(f.git("worktree","list","--porcelain"),initial);
+});
+
+
+test("Megatanda B: preparación automática evita dependencias y reservas de otra sesión antes del diálogo",async t=>{
+ const f=fixture(t),root=realpathSync(f.root),head=f.git("rev-parse","HEAD");
+ const {ParallelTodoWorktreeJournal,newParallelTodoWorktreeBatchId}=await import("../src/runtime/agents/parallel-todo-journal.js");
+ const {bindParallelSourceTodos}=await import("../src/runtime/agents/parallel-todo-bindings.js");
+ type SourceTodoRow=import("../src/runtime/agents/parallel-todo-bindings.js").SourceTodoRow;
+ const journalFile=join(f.parent,"reservations.json");
+ const journal=new ParallelTodoWorktreeJournal(journalFile);
+ const worker=(taskId:string,scope:string,sessionId="session-1",dependsOn:string[]=[]):SourceTodoRow=>{
+  const current={taskId,sessionId,projectId:root,revision:1,state:"planned",at:"2026-11-24T00:00:00.000Z"};
+  return {taskId,title:taskId,requestId:"asen-plan:"+taskId+":worker",description:"Ensayo",
+   current,events:[current],dependsOn,plan:{role:"worker",skillPaths:[],
+    skillSelection:{phase:"apply"},candidate:{id:taskId,repository:root,revision:head,createdAt:current.at},
+    writeSurfaces:[scope],writerAuthorizationBasis:'{"instruction":"Ensayo"}'}} as unknown as SourceTodoRow;
+ };
+ const reserved=[worker("old-a","SRC/API","session-other"),worker("old-b","old.txt","session-other")];
+ const owner={sessionId:"session-other",projectId:root};
+ await journal.reserve({identity:owner,id:newParallelTodoWorktreeBatchId(),head,parentDir:f.parent,
+  bindings:bindParallelSourceTodos({identity:owner,expectedHead:head,rows:reserved,
+   units:reserved.map(row=>({taskId:row.taskId,writeSurfaces:row.plan!.writeSurfaces!}))})});
+ const a=worker("todo-a","src/api/file.ts"),b=worker("todo-b","b.txt"),c=worker("todo-c","c.txt");
+ const d=worker("todo-d","d.txt","session-1",["todo-b","todo-c"]);
+ let rows=[a,d,b,c];
+ const initial=f.git("worktree","list","--porcelain");
+ let run!:(args:string,ctx:any)=>Promise<unknown>;
+ registerParallelWorktreeCommand((_name,command)=>{run=command.handler;},{journalFile,loadTodos:async()=>rows});
+ f.setConfirm(false);
+ assert.deepEqual(await run("prepare-auto",f.ctx),{status:"declined",grantsAuthority:false});
+ assert.equal(f.calls.length,1);
+ assert.match(f.calls[0]!.message,/todo-b: b.txt/u);
+ assert.match(f.calls[0]!.message,/todo-c: c.txt/u);
+ assert.doesNotMatch(f.calls[0]!.message,/todo-a:|todo-d:|old-a|session-other/u);
+ rows=[a,d,b];
+ const blocked=await run("prepare-auto",f.ctx) as {status:string};
+ assert.equal(blocked.status,"blocked");
+ assert.equal(f.calls.length,1,"No se pide permiso para una pareja imposible");
+ assert.equal(f.git("worktree","list","--porcelain"),initial);
+ assert.equal((await journal.list(owner)).length,1);
 });

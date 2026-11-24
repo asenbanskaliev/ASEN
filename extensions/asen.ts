@@ -35,7 +35,7 @@ import {readProfilesFile,mutateProfilesFile} from "../src/runtime/lifecycle/prof
 import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallbacksFile,setProfileFallbackChain,renameProfileFallbacks,removeProfileFallbacks,writeProfileFallbacksFile,MAX_PROFILE_FALLBACK_CHAIN_LENGTH} from "../src/runtime/lifecycle/profile-fallback-store.js";
 import {createParentModelFallback,type ParentCatalogModel} from "../src/runtime/lifecycle/parent-model-fallback.js";
 import {formatModelFallbackFailureNotice,formatModelFallbackNotice} from "../src/runtime/lifecycle/model-fallback-notice.js";
-import {globalRuntimeRoutingFacts,resolveRuntimeRoute,resolveRuntimeDelegationMode,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/lifecycle/profiles.js";
+import {globalRuntimeRoutingFacts,resolveRuntimeRoute,resolveRuntimeDelegationMode,withCapturedDelegationMode,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking,type DelegationMode} from "../src/runtime/lifecycle/profiles.js";
 import {AGENT_PROFILE_TARGETS,isAgentProfileTarget,resolveAgentProfileTarget} from "../src/runtime/lifecycle/agent-profile-targets.js";
 import {canonicalProfilePartition,captureSessionProfile,readSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/lifecycle/session-profile-binding.js";
 import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/lifecycle/persona.js";
@@ -123,7 +123,7 @@ const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
-export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];autoPermissionStatus?:()=>{calls:number;totalTokens:number;totalCost:number;pending:boolean};homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;profileFallbacksFile?:string;profileFallbacksReader?:typeof readProfileFallbacksFile;fallbackClock?:()=>number;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string;nativeRdd?:NativeRddOptions}
+export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;resolveParentDelegationMode?:(ctx:Pick<CommandContext,"cwd"|"sessionManager"|"signal">)=>Promise<DelegationMode>;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];autoPermissionStatus?:()=>{calls:number;totalTokens:number;totalCost:number;pending:boolean};homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;profileFallbacksFile?:string;profileFallbacksReader?:typeof readProfileFallbacksFile;fallbackClock?:()=>number;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string;nativeRdd?:NativeRddOptions}
 export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext,event?:{reason?:unknown}):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
@@ -247,6 +247,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let explorerBudget:Readonly<{sessionId:string;projectId:string;telemetry:ExplorerBudgetTelemetry}>|undefined;
   let agentParentRunActive=false,agentWakeOwed:{sessionId:string;projectId:string}|undefined;
   let agentWakeTimer:ReturnType<typeof setTimeout>|undefined;
+  let heldNoticeBoundaryTimer:ReturnType<typeof setTimeout>|undefined;
   let flushPendingAgentNotices:((ctx:CommandContext)=>Promise<void>)|undefined;
   let scheduleAgentWakeAtBoundary:(()=>void)|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
@@ -343,6 +344,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const hasProject=!!project&&(project.active!==undefined||project.profiles.length>0);
    if(chosen.source==="explicit-session") return hasProject?{session:chosen.file,project}:{session:chosen.file};
    return hasProject?{project,global:chosen.file}:{global:chosen.file};
+  };
+  const parentProfileLayer=async(ctx:CommandContext,identity:ProfileSessionIdentity):Promise<ProfileLayer>=>{
+   const mode=await dependencies.resolveParentDelegationMode?.(ctx);
+   const layers=await profileLayer(identity);
+   const current=await sessionIdentity(ctx);
+   if(ctx.signal?.aborted||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+    throw new Error("Pi session or project changed or was cancelled before plan persistence");
+   return mode===undefined?layers:withCapturedDelegationMode(layers,mode);
   };
   // A missing file differs from a failed read; never turn a malformed file into defaults.
   const projectProfiles=async(projectId:string):Promise<{project?:RuntimeProfilesFile;projectState:LoadedProfileInspection["projectState"]}>=>{
@@ -653,7 +662,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // Un agente interrumpido no se relanza; solo el código de recuperación lo inspecciona.
     const enCurso=(await agents.list(identity)).filter(agent=>agent.state==="queued"||agent.state==="running").length;
     if(enCurso>=2)return {started:false,authorized:false,reason:"Ya existen dos agentes activos; las tareas restantes conservan su estado y se revisarán al recibir un resultado."};
-    const activeProfiles=await profileLayer(identity);
+    const activeProfiles=await parentProfileLayer(ctx,identity);
     const verifiedConfiguredModel=(role:string,ref:string):boolean=>{
      if(resolveRuntimeRoute(activeProfiles,role).choice?.model!==ref)return false;
      const slash=ref.indexOf("/");
@@ -866,6 +875,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    } catch {/* Best effort only; never interrupt Pi startup. */}
    validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
+   if(heldNoticeBoundaryTimer){clearTimeout(heldNoticeBoundaryTimer);heldNoticeBoundaryTimer=undefined;}
    if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
    publishT11Chrome(ctx);
    if(ctx.sessionManager?.getSessionId?.()){
@@ -954,6 +964,22 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     scheduleAgentWakeAtBoundary=()=>{const owed=agentWakeOwed,owner=agentDeliveryContext;
      if(owed&&owner)requestAgentWake(owner,owed);
     };
+    // El reintento diferido nunca puede volver a programarse a sí mismo.
+    // Otro límite real del ciclo de vida podrá intentar entregar el aviso pendiente.
+    let heldNoticeRetryInProgress=false;
+    const retryHeldNoticeAtCommandBoundary=(context:CommandContext):void=>{
+     if(agentParentRunActive||heldNoticeBoundaryTimer||heldNoticeRetryInProgress||!flushPendingAgentNotices)return;
+     heldNoticeBoundaryTimer=setTimeout(()=>{
+      heldNoticeBoundaryTimer=undefined;
+      const flush=flushPendingAgentNotices;
+      if(!flush)return;
+      heldNoticeRetryInProgress=true;
+      void flush(context).catch(()=>{
+       try{context.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}
+       catch{/* Un fallo del aviso no puede detener Pi ni autorizar escrituras. */}
+      }).finally(()=>{heldNoticeRetryInProgress=false;});
+     },100);
+    };
     const sendAgentNotice=async(record:PublicAgentRecord,context:CommandContext,wake:boolean):Promise<boolean>=>{
      const scope={sessionId:record.sessionId,projectId:record.projectId};
      if(!pi.sendMessage||context.sessionManager?.getSessionId?.()!==scope.sessionId)return false;
@@ -970,7 +996,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      // Compaction (hold) and headless/RPC (headless) both retain pending.
      // A headless Pi host must NEVER mark an undelivered event as enqueued.
      const route=agentParentRoute(context,scope,agentParentRunActive);
-     if(route!=="run"&&route!=="idle")return false;
+     if(route!=="run"&&route!=="idle"){
+      if(route==="hold")retryHeldNoticeAtCommandBoundary(context);
+      return false;
+     }
      // A route can change across the journal I/O and identity checks.
      // Never claim a notice using a stale Pi parent TUI state.
      if(!await matches()||agentParentRoute(context,scope,agentParentRunActive)!==route)return false;
@@ -1229,18 +1258,24 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        current.sessionId===budget.sessionId&&current.projectId===budget.projectId;
      }catch{/* Una identidad cambiada nunca expone el presupuesto de otra sesión. */}
     }
-    addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget);
+    let turnDelegationMode:DelegationMode|undefined;
     delete options.sections.asen_delegation_mode;
     try{
-     const owner=await sessionIdentity(ctx as CommandContext),layers=await profileLayer(owner);
+     const owner=await sessionIdentity(ctx as CommandContext);
+     const mode=dependencies.resolveParentDelegationMode
+      ?await dependencies.resolveParentDelegationMode(ctx as CommandContext)
+      :resolveRuntimeDelegationMode(await profileLayer(owner)).mode;
      const current=await sessionIdentity(ctx as CommandContext);
      if(current.sessionId!==owner.sessionId||current.projectId!==owner.projectId)
       throw new Error("Profile owner changed");
-     if(resolveRuntimeDelegationMode(layers).mode==="full-delegation")
+     turnDelegationMode=mode;
+     if(mode==="full-delegation")
       options.sections.asen_delegation_mode="Modo delegación completa: el padre solo investiga, prepara, coordina y verifica. Nunca edita archivos ni ejecuta comandos de terminal. Envía cambios mediante el planificador y agentes Writer con autorización comprobable; si no hay Writer autorizado, informa del bloqueo sin escribir.";
     }catch{
      options.sections.asen_delegation_mode="No se pudo verificar el modo del perfil; no supongas permiso adicional para escribir ni delegar.";
     }
+    const modeGuidance=turnDelegationMode?{delegationMode:turnDelegationMode}:{};
+    addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,modeGuidance);
     if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}
     if(todoStorePromise)try{
      const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),store=await todoStorePromise,rows=await store.list(identity);
@@ -1250,7 +1285,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        const planContext=formatActivePlanContext(rows);
        // Un almacén en cuarentena no demuestra ausencia de plan: conservar guía de recuperación.
        if(planContext||!store.diagnostics()?.quarantined)
-        addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,{activePlan:Boolean(planContext)});
+        addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,{...modeGuidance,activePlan:Boolean(planContext)});
        if(planContext)options.sections.asen_active_plan=planContext;
       }
      }
@@ -1528,7 +1563,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const validateContext=()=>{if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed or was cancelled before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
    let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
-   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await profileLayer({sessionId,projectId:project}))) as typeof output;}
+   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await (deferChildLaunch?profileLayer({sessionId,projectId:project}):parentProfileLayer(ctx,{sessionId,projectId:project})))) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(output.executablePlan.route==="direct"&&!output.executablePlan.tasks.some(task=>task.role==="worker")){
@@ -2515,10 +2550,9 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  const autoPermission=new AsenAutoPermissionReviewer(()=>pi.getAllTools?.()??[]);
  const autoReview=dependencies.autoPermissionReview??autoPermission.review.bind(autoPermission);
  const delegationTurn=new DelegationTurnLatch();
- pi.on("input",(event,ctx)=>{delegationTurn.nextTurn();autoPermission.capture(event,ctx);});
- pi.on("tool_call",createPrimaryToolPolicyHandler({
-  getMode:ctx=>permissionSession.mode(ctx),
-  getDelegationMode:async ctx=>{
+ // La guía y el guardia deben compartir la misma captura del turno, incluso
+ // si el perfil del proyecto cambia antes de la primera herramienta.
+ const resolveParentDelegationMode:NonNullable<AsenExtensionDependencies["resolveParentDelegationMode"]>=async ctx=>{
    const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd;
    if(!sessionId||!cwd)throw new Error("No active Pi session for delegation authority");
    const projectId=await canonical(cwd);
@@ -2536,7 +2570,11 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
     const layers:ProfileLayer=captured?.source==="explicit-session"?{session:global,project}:{global,project};
     return resolveRuntimeDelegationMode(layers).mode;
    },verify);
-  },
+ };
+ pi.on("input",(event,ctx)=>{delegationTurn.nextTurn();autoPermission.capture(event,ctx);});
+ pi.on("tool_call",createPrimaryToolPolicyHandler({
+  getMode:ctx=>permissionSession.mode(ctx),
+  getDelegationMode:resolveParentDelegationMode,
   modeEpoch:()=>`${permissionSession.epoch}:${delegationTurn.epoch}`,
   reviewAuto:autoReview,
   protectedStateDirs:[path.join(dependencies.homeDir?.() ?? homedir(),".asen")],
@@ -2554,7 +2592,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
    validatePiExecutionContext(ctx);
    // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
    validatePiRegistrationCollisions(pi,commandNames,toolNames);
-   const facade=createAsenExtension({...dependencies,permissionSession,autoPermissionReview:autoReview,
+   const facade=createAsenExtension({...dependencies,permissionSession,resolveParentDelegationMode,autoPermissionReview:autoReview,
     autoPermissionStatus:()=>autoPermission.status(),backgroundExecutor,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
     on:(event,handler)=>pi.on(event as any,(...args:any[])=>{
      if(token!==generation||!registrationsReady)return undefined;

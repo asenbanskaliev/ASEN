@@ -90,3 +90,22 @@ test("E2B: confirmación de aviso único sin convertirla en permiso de escribir"
  assert.equal(review[0]?.writerAuthorized,false);
  assert.equal(review[0]?.modelConsumedProven,false);
 });
+
+
+test("E2B: el reintento diferido nunca puede crear un bucle y contiene fallos de lectura",()=>{
+ const code=readFileSync("extensions/asen.ts","utf8");
+ const start=code.indexOf("let heldNoticeRetryInProgress=false;");
+ const end=code.indexOf("const sendAgentNotice=",start);
+ assert.ok(start>0&&end>start,"Debe existir el reintento único acotado");
+ const retry=code.slice(start,end);
+ assert.match(retry,/agentParentRunActive\|\|heldNoticeBoundaryTimer\|\|heldNoticeRetryInProgress\|\|!flushPendingAgentNotices/u);
+ assert.match(retry,/heldNoticeRetryInProgress=true/u);
+ assert.match(retry,/void flush\(context\)\.catch\(/u);
+ assert.match(retry,/\.finally\(\(\)=>\{heldNoticeRetryInProgress=false;\}\)/u);
+ assert.match(retry,/ASEN no pudo entregar los avisos pendientes/u);
+ const sendStart=code.indexOf("const sendAgentNotice=",end);
+ const flushStart=code.indexOf("flushPendingAgentNotices=async",sendStart);
+ assert.ok(flushStart>sendStart);
+ assert.match(code.slice(sendStart,flushStart),/if\(route==="hold"\)retryHeldNoticeAtCommandBoundary\(context\)/u);
+ assert.doesNotMatch(retry,/setInterval|while\s*\(/u);
+});

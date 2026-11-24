@@ -44,6 +44,29 @@ function selectionOf(context:IssuedSkillContext|undefined):SkillSelectionContext
 export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:string,writerAuthorizationBasis?:string):ExecutablePlan{
  const decision=plan.decision,taskId=decision.taskIdentity;
  if(!taskId||!decision.repositoryIdentity||typeof instruction!=="string"||!instruction.trim()||instruction!==instruction.trim()||instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(instruction))throw new Error("Executable plan identity or instruction is invalid");
+ // El criterio de verificación ODD es una condición ejecutable, no un mero aviso.
+ // Un cambio con riesgo nombrado no puede convertirse en un plan sin Verifier.
+ const hasWriter=plan.agents.some(agent=>agent.role==="worker");
+ const independentRequired=decision.verification==="independent"&&hasWriter;
+ if(independentRequired){
+  const writerAgent=plan.agents.find(agent=>agent.role==="worker")!;
+  const verifiers=plan.agents.filter(agent=>agent.role==="verifier");
+  if(verifiers.length!==1)
+   throw new Error("El cambio de riesgo independiente exige exactamente un Verifier");
+  const verifierAgent=verifiers[0]!;
+  // La identidad original no depende de que el plan ya haya emitido permisos Writer.
+  if(writerAgent.candidate?.id!==verifierAgent.candidate?.id||
+     writerAgent.candidate?.repository!==verifierAgent.candidate?.repository||
+     writerAgent.candidate?.revision!==verifierAgent.candidate?.revision)
+   throw new Error("El Verifier independiente debe revisar el mismo candidato");
+  // Comprobar la identidad completa de todos los revisores antes de guardar
+  // únicamente su revisión; una versión o repositorio diferente no es válido.
+  if(plan.agents.filter(agent=>agent.role==="reviewer").some(reviewer=>
+   reviewer.candidate?.id!==writerAgent.candidate?.id||
+   reviewer.candidate?.repository!==writerAgent.candidate?.repository||
+   reviewer.candidate?.revision!==writerAgent.candidate?.revision))
+   throw new Error("El Reviewer independiente debe revisar el mismo candidato");
+ }
  const tasks:PlannedTask[]=[],priority:Readonly<Record<PlannedTaskRole,number>>={clarifier:1,primary:1,explorer:1,worker:2,reviewer:3,verifier:4};
  const add=(role:PlannedTaskRole,title:string,text:string,dependsOn:string[],skills:readonly string[],skillPaths:readonly string[]=[],skillSelection?:SkillSelectionContext,status:PlannedTask["status"]="waiting",model?:string,thinking?:AgentRequest["thinking"],suffix?:string)=>{
   const id=`${taskId}:${role}${suffix??""}`;
@@ -76,6 +99,23 @@ export function materializeExecutablePlan(plan:OrchestrationPlan,instruction:str
     else ids.set(role,id);
    }
   }
+ }
+ // El despacho Pi no admite instrucciones de más de 4096 caracteres.
+ // No guardar un plan de riesgo cuyo Reviewer o Verifier ya sabemos que no podrá arrancar.
+ if(independentRequired&&tasks.some(task=>
+  (task.role==="reviewer"||task.role==="verifier")&&task.instruction.length>4096))
+  throw new Error("Las instrucciones de revisión independiente superan el límite de Pi; dividir el plan antes de guardarlo");
+ // El Verifier debe quedar detrás del Writer y de todos los revisores previstos.
+ // Así una futura alteración del plan no puede omitir silenciosamente la revisión.
+ if(independentRequired){
+  const writers=tasks.filter(task=>task.role==="worker");
+  const verifiers=tasks.filter(task=>task.role==="verifier");
+  const reviewers=tasks.filter(task=>task.role==="reviewer");
+  if(writers.length!==1||verifiers.length!==1||
+    !verifiers[0]!.dependsOn.includes(writers[0]!.id)||
+    reviewers.some(reviewer=>!verifiers[0]!.dependsOn.includes(reviewer.id))||
+    (writers[0]!.candidate&&verifiers[0]!.candidateRevision!==writers[0]!.candidate!.revision))
+   throw new Error("El Verifier independiente debe esperar al Writer y la revisión del mismo candidato");
  }
  const byId=new Map(tasks.map(item=>[item.id,item]));
  if(byId.size!==tasks.length||tasks.some(item=>item.dependsOn.some(id=>!byId.has(id)||id===item.id)))throw new Error("Executable plan contains invalid task dependencies");
