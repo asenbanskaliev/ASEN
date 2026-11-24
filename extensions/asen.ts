@@ -65,6 +65,8 @@ import {prepareNativePartitionChildren} from "../src/runtime/lifecycle/parallel-
 import {ParallelTodoWorktreeJournal} from "../src/runtime/agents/parallel-todo-journal.js";
 import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
 import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
+import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
+import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-native-child-terminal.js";
 import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/agents/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
@@ -1055,7 +1057,26 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       await agentNoticeJournal.record(record);
       const current=agentDeliveryContext,active=agentDeliveryIdentity;
       if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||
-         current.sessionManager?.getSessionId?.()!==active.sessionId)return;
+         current.sessionManager?.getSessionId?.()!==active.sessionId){
+       // Los Writers de sesiones Pi nativas pertenecen a su propio diario,
+       // no al contexto del padre. Registrar su fin incluso tras cambiar de sesión.
+       if(todoStorePromise&&taskAgentLinks&&record.role==="worker"){
+        const sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
+        const observed=await reconcileNativeChildTerminal({record,todos:await todoStorePromise,agents:runtime,links:taskAgentLinks,
+         sourceJournal,sessionJournal:new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal),
+         claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),
+         observations:new ParallelWorkerObservationJournal(path.join(home(),".asen","parallel-worker-observations.json"))});
+        const parent=agentDeliveryContext,owner=agentDeliveryIdentity;
+        if(observed&&parent&&owner&&owner.sessionId===observed.source.sessionId&&owner.projectId===observed.source.projectId){
+         const live=await sessionIdentity(parent);
+         if(agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&live.sessionId===owner.sessionId&&live.projectId===owner.projectId){
+          parent.ui.notify(`ASEN: lote Writer terminado. ${observed.completed} completados y ${observed.failed} con incidencias. Resultados guardados; pendiente revisión e integración.`,observed.failed?"warning":"info");
+          await refreshTodoWidget(parent);
+         }
+        }
+       }
+       return;
+      }
       const labels:Record<string,string>={primary:"la tarea",explorer:"la exploración",worker:"el cambio",reviewer:"la revisión",verifier:"la verificación",clarifier:"la aclaración"};
       const completed=record.state==="completed",failed=record.state==="failed";
       const notifyTerminal=async(wake=true,quiet=false)=>{
