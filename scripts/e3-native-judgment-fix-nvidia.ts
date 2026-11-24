@@ -86,7 +86,9 @@ try{
   modelsPath:join(privateDir,"models.json"),allowModelNetwork:true,modelRefreshTimeoutMs:30000}));
 
  const key=(m:{provider:string;id:string})=>m.provider+"/"+m.id;
- const allowed=["qwen/qwen3.5-397b-a17b","qwen/qwen3-next-80b-a3b-instruct","deepseek-ai/deepseek-v3.2","deepseek-ai/deepseek-v3.1","meta/llama-3.3-70b-instruct","nvidia/llama-3.3-nemotron-super-49b-v1.5","nvidia/nemotron-3-super-120b-a12b","moonshotai/kimi-k2.5"];
+ // IDs observados en el catálogo autenticado del intento anterior (sin inferencia).
+ // Preferir modelos de texto sencillos y distintos para una comprobación acotada.
+ const allowed=["google/gemma-3-12b-it","meta/llama-3.2-11b-vision-instruct","mistralai/mistral-7b-instruct-v0.3","google/gemma-3-4b-it","nvidia/llama-3.1-nemotron-70b-instruct"];
  const authorId=model.slice("nvidia/".length);
  const possible=nativeRegistry.getAvailable().filter(m=>m.provider==="nvidia"&&
   m.id!==authorId&&m.id!=="nvidia/"+authorId&&nativeRegistry.hasConfiguredAuth(m)&&
