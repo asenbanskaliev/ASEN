@@ -1,4 +1,5 @@
 import {execFileSync} from "node:child_process";
+import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
 import type {ReviewReceiptState} from "../../evidence/receipt-verifier.js";
 import type {TaskAgentLinkStore} from "../agents/task-agent-link-store.js";
@@ -61,7 +62,7 @@ function dirtyWorktreeDetail(porcelain:string):string{
  return `Review acceptance requires a clean worktree and index; dirty paths: ${display}${porcelain.split(/\r?\n/u).filter(Boolean).length>paths.length?" (additional paths omitted)":""}`;
 }
 function candidateAtCleanHead(repository:string):{commit:string;tree:string}{
- const options={cwd:repository,encoding:"utf8" as const,windowsHide:true,timeout:5000,
+ const options={cwd:repository,encoding:"utf8" as const,windowsHide:true,timeout:15000,env:isolatedGitEnvironment(),
   maxBuffer:16_384,stdio:["ignore","pipe","ignore"] as ["ignore","pipe","ignore"]};
  const sha=execFileSync("git",["rev-parse","--verify","HEAD"],options).trim();
  if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(sha))throw new Error("Review acceptance requires a real Git commit");
