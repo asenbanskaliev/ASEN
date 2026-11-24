@@ -120,10 +120,10 @@ try{
   const native=new ModelRegistry(await ModelRuntime.create({authPath:join(privateDir,"auth.json"),modelsPath:join(privateDir,"models.json"),allowModelNetwork:true,modelRefreshTimeoutMs:30000}));
   const available=native.getAvailable().filter(m=>m.provider==="nvidia"&&native.hasConfiguredAuth(m)&&typeof m.api==="string"&&!["virtual","pi-virtual"].includes(String(m.api)));
   // El catálogo efectivo, no una lista supuesta de modelos, determina la
-  // selección. Se excluyen las tres rutas fallidas y el autor. Identidades
+  // selección. Se excluyen las cuatro rutas fallidas y el autor. Identidades
   // ambiguas (incluidas variantes con prefijo NVIDIA redundante) no se usan.
   const physical=(id:string)=>id.replace(/^(?:nvidia\/)+/u,"").toLowerCase();
-  const excluded=new Set(["openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash","nemotron-3.5-super-vl-120b-a12b",physical(model)]);
+  const excluded=new Set(["openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash","nemotron-3.5-super-vl-120b-a12b","google/gemma-3-12b-it",physical(model)]);
   const isText=(id:string)=>/^[A-Za-z0-9][A-Za-z0-9._/-]{0,190}$/u.test(id)&&
    !/(?:embed|rerank|retriev|guard|safety|vision|(?:^|[-/])vl(?:[-/]|$)|audio|speech|image|video|ocr|diffusion|reward|moderation|classifier|asr|tts)/iu.test(id)&&
    /(?:nemotron|llama|mistral|mixtral|qwen|gemma|kimi|glm|gpt-oss|deepseek|command|minimax|phi|granite|dbrx|falcon|yi-)/iu.test(id);
@@ -132,9 +132,12 @@ try{
   report.catalogModels=[...new Set(available.map(m=>m.id).filter(id=>/^[A-Za-z0-9][A-Za-z0-9._/-]{0,190}$/u.test(id)))].sort().slice(0,150);
   const eligible=available.filter(m=>isText(m.id)&&counts.get(physical(m.id))===1&&!excluded.has(physical(m.id))&&
    !matchesJudgeIdentity(m,"nvidia",model)&&(!("input" in m)||!Array.isArray(m.input)||m.input.includes("text")));
-  const priority=["nemotron-3-ultra-550b-a55b","openai/gpt-oss-120b","nemotron-3-super-120b-a12b","qwen/qwen3.5-397b-a17b","qwen/qwen3-next-80b-a3b-instruct","meta/llama-3.3-70b-instruct","moonshotai/kimi-k2.5"];
-  const rank=(id:string)=>{const i=priority.indexOf(physical(id));return i<0?priority.length:i;};
-  const selected=eligible.sort((a,b)=>rank(a.id)-rank(b.id)||a.id.localeCompare(b.id)).slice(0,2);
+  // Recibo del ensayo 45483532066: Kimi K2.6 figura en el catálogo real;
+  // Gemma 3 12B devolvió model-unavailable. Probar primero la nueva ruta
+  // para no consumir Ultra otra vez si el nuevo proveedor la rechaza.
+  // Si falta una ruta, cerrar sin llamadas en vez de elegir otra a ciegas.
+  const planned=["moonshotai/kimi-k2.6","nemotron-3-ultra-550b-a55b"];
+  const selected=planned.flatMap(id=>eligible.filter(m=>physical(m.id)===id));
   // No probar varios modelos hasta conseguir el veredicto deseado: elegir
   // exactamente dos y conservar la pareja para ambas revisiones.
   assert.equal(selected.length,2,"Catálogo NVIDIA sin dos jueces físicos elegibles");
