@@ -104,7 +104,7 @@ try{
   // Dos modelos de texto NVIDIA disponibles en el catálogo autenticado y
   // distintos del autor. Se priorizan los endpoints actuales de la familia
   // Nemotron frente a los modelos que el proveedor rechazó en el intento previo.
-  const approved=["nvidia/nemotron-3.5-super-vl-120b-a12b","nvidia/nemotron-3-ultra-550b-a55b","nvidia/llama-3.1-nemotron-70b-instruct"];
+  const approved=["nvidia/nemotron-3.5-super-120b-a12b","nvidia/nemotron-3-ultra-550b-a55b","nvidia/llama-3.1-nemotron-70b-instruct"];
   const selected=approved.flatMap(id=>available.filter(m=>m.id===id)).slice(0,2);
   assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>key(m)!==model));
   [judgeA,judgeB]=[selected[0]!,selected[1]!];
@@ -128,7 +128,7 @@ try{
        "provider-error";
      }else if(event.type==="done"){
       const selectedModel=descriptor.id.startsWith(descriptor.provider+"/")?descriptor.id:descriptor.provider+"/"+descriptor.id;
-      const acceptedResponse=[descriptor.id,selectedModel,key(descriptor),selectedModel.slice(descriptor.provider.length+1)];
+      const acceptedResponse=[descriptor.id,selectedModel,key(descriptor),selectedModel.slice(descriptor.provider.length+1),"private/"+selectedModel];
       const providerMatches=event.message.provider===descriptor.provider,
        modelMatches=normalizeT06PiChildSelection({provider:event.message.provider,id:event.message.model},selectedModel)===selectedModel,
        responseMatches=event.message.responseModel===undefined||acceptedResponse.includes(event.message.responseModel);
