@@ -1,3 +1,4 @@
+import {retainNativeGitObject} from "./native-git-evidence-ref.js";
 /** Composición de resultados ODD por objetos Git inmutables. El candidato no
  * modifica el checkout, el índice real, la rama ni los permisos de Writer. */
 import {execFileSync} from "node:child_process";
@@ -99,6 +100,7 @@ export async function buildNativeIntegrationCandidate(input:NativeIntegrationInp
    GIT_AUTHOR_DATE:date,GIT_COMMITTER_DATE:date
   }).toString("utf8").trim();
   if(!oid.test(commit)||txt(root,["rev-parse",commit+"^{tree}"])!==tree)throw new Error("Combined candidate commit could not be verified");
+  retainNativeGitObject(root,"integration",commit);
   const candidate=Object.freeze({batchId,repository:root,baseCommit:batch.sourceHead,tree,commit,
    paths:Object.freeze([...allPaths].sort()),sourceTodoIds:Object.freeze(batch.tasks.map(task=>task.taskId)),
    ...(receipts.every(row=>row.authorModelsObserved?.length)?{authorModelsObserved:Object.freeze([...new Set(receipts.flatMap(row=>row.authorModelsObserved??[]))].sort())}:{}),
