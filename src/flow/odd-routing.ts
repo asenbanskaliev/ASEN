@@ -172,6 +172,7 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
       for(const item of unit.writePaths){
         if(item.length>1024||!writePaths.includes(item)||assigned.has(item)||/[\p{Cc}\p{Cf}*?\[\]]/u.test(item))
           throw new Error("task unit write partition has an invalid or repeated write path");
+        if(item.split("/").some(part=>/[. ]$/u.test(part)))throw new Error("task unit write partition has a non-portable path");
         const key=item.toLowerCase();
         if(normalized.some(previous=>previous===key||previous.startsWith(key+"/")||key.startsWith(previous+"/")))
           throw new Error("task unit write partition has overlapping write paths");
