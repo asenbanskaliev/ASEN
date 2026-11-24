@@ -15,6 +15,8 @@ import {ParallelTodoWorktreeJournal} from "../src/runtime/agents/parallel-todo-j
 import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
 import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
+import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
+import {readFrozenIntegrationReviewEvidence} from "../src/review/workspace-review-session.js";
 import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-native-child-terminal.js";
 
 for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
@@ -103,6 +105,18 @@ const terminalErrors:unknown[]=[];
    assert.equal(terminalErrors.length,0);
    assert.equal(launched,2);
    assert.equal((await observations.listSource(identity,await sessionJournal.listSource(identity))).length,2);
+   const batch=(await sourceJournal.list(identity)).at(-1)!;
+   const input={identity,batchId:batch.id,sourceJournal,sessionJournal,observations};
+   const candidate=await buildNativeIntegrationCandidate(input);
+   assert.deepEqual(candidate.paths,["a.txt","b.txt"]);
+   assert.equal(git("show",candidate.commit+":a.txt"),"resultado");
+   assert.equal(git("show",candidate.commit+":b.txt"),"resultado");
+   assert.equal(git("show",candidate.commit+":c.txt"),"original");
+   assert.equal((await buildNativeIntegrationCandidate(input)).commit,candidate.commit);
+   assert.equal(git("rev-parse","HEAD"),candidate.baseCommit);
+   const evidence=readFrozenIntegrationReviewEvidence(candidate,identity.sessionId,"pi-model:prueba/revisor",base);
+   assert.equal(evidence.candidate.treeIdentity,candidate.tree);
+   assert.deepEqual(evidence.modifiedFiles.map(file=>file.path).sort(),["a.txt","b.txt"]);
    for(const child of children)assert.equal((await todos.list(child))[0]?.current.state,"succeeded");
   }else{
    assert.equal(launched,0);
