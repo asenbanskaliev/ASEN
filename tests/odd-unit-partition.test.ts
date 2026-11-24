@@ -71,3 +71,59 @@ test("La entrada natural devuelve la división validada y mantiene el plan ejecu
  assert.equal(approval.status,"needs-scope-approval");
  assert.deepEqual(approval.execution,{started:false,authorized:false});
 });
+
+test("La partición con candidato real materializa dos raíces Writer y una sucesora",()=>{
+ const {repositoryIdentity,...facts}=request();
+ const candidate={id:"candidate",repository:repo,revision:"a".repeat(40),createdAt:"2026-11-24T00:00:00.000Z"};
+ const input={instruction:"Completar API, interfaz e integración",...facts};
+ const result=JSON.parse(controlledInstructionPlanCommand(JSON.stringify(input),repo,candidate));
+ assert.equal(result.partitionExecution,"supervised-worktrees-required");
+ assert.equal(result.requiresSingleWriter,false);
+ assert.deepEqual(result.requiredAgentRoles,["worker","worker","worker"]);
+ const tasks=result.executablePlan.tasks;
+ assert.equal(tasks.length,3);
+ const integration=tasks[0],api=tasks[1],ui=tasks[2];
+ assert.deepEqual(integration.dependsOn,[api.id,ui.id]);
+ assert.equal(integration.status,"waiting");
+ assert.deepEqual(api.dependsOn,[]);
+ assert.deepEqual(ui.dependsOn,[]);
+ assert.equal(api.status,"ready");
+ assert.equal(ui.status,"ready");
+ assert.deepEqual(api.writeSurfaces,["src/api.ts","tests/api.test.ts"]);
+ assert.deepEqual(ui.writeSurfaces,["src/ui.ts","tests/ui.test.ts"]);
+ assert.equal(new Set(tasks.map((task:{id:string})=>task.id)).size,3);
+ assert.deepEqual(result.executablePlan.topologicalOrder,[api.id,ui.id,integration.id]);
+ assert.deepEqual(result.execution,{started:false,authorized:false});
+ for(const task of tasks){
+  const basis=JSON.parse(task.writerAuthorizationBasis);
+  assert.deepEqual(basis.partitionOrigin,input);
+  assert.equal(basis.sourceRevision,candidate.revision);
+  assert.equal(task.authorization,"required_before_dispatch");
+ }
+ const childRoot="/repo-child",child={...candidate,repository:childRoot,id:"child-candidate"};
+ const reconstructed=JSON.parse(controlledInstructionPlanCommand(api.writerAuthorizationBasis,childRoot,child));
+ assert.equal(reconstructed.executablePlan.tasks.length,1);
+ const restored=reconstructed.executablePlan.tasks[0];
+ assert.equal(restored.id,api.id);
+ assert.equal(restored.instruction,api.instruction);
+ assert.equal(restored.writerAuthorizationBasis,api.writerAuthorizationBasis);
+ assert.deepEqual(restored.writeSurfaces,api.writeSurfaces);
+ assert.equal(restored.candidate.repository,childRoot);
+ assert.throws(()=>controlledInstructionPlanCommand(integration.writerAuthorizationBasis,childRoot,child),/dependent unit requires/u);
+ assert.throws(()=>controlledInstructionPlanCommand(api.writerAuthorizationBasis,childRoot,{...child,revision:"b".repeat(40)}),/stale/u);
+ const changed=JSON.parse(api.writerAuthorizationBasis);
+ changed.instruction="Otra instrucción";
+ assert.throws(()=>controlledInstructionPlanCommand(JSON.stringify(changed),childRoot,child),/identity or instruction changed/u);
+});
+
+test("La división no elimina revisiones ni controles de riesgo existentes",()=>{
+ const candidate={id:"candidate",repository:repo,revision:"a".repeat(40),createdAt:"2026-11-24T00:00:00.000Z"};
+ const {repositoryIdentity,...facts}=request();
+ for(const changes of [{review:{kind:"dual_explicit",estimatedMinutes:15}},{namedRisks:[{item:4,reason:"Concurrencia"}]}]){
+  const result=JSON.parse(controlledInstructionPlanCommand(JSON.stringify({instruction:"Completar tres unidades",...facts,...changes}),repo,candidate));
+  assert.equal(result.partitionExecution,undefined);
+  assert.equal(result.executablePlan.tasks.filter((task:{role:string})=>task.role==="worker").length,1);
+  assert.ok(result.executablePlan.tasks.some((task:{role:string})=>["reviewer","verifier"].includes(task.role)));
+  assert.equal(result.execution.authorized,false);
+ }
+});
