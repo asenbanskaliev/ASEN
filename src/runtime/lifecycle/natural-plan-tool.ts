@@ -45,10 +45,16 @@ function userSummary(value:unknown):string{
  if((value as {inlineContinuation?:unknown}).inlineContinuation===true)return "La petición es acotada: continúa en esta misma conversación de Pi. No guardes una tarea Todo, no pidas al usuario ejecutar comandos ni detalles internos de planificación. No se lanzó ningún agente.";
  if((value as {partitionExecution?:unknown}).partitionExecution==="supervised-worktrees-required"){
   const graph=Array.isArray(plan.executablePlan?.tasks)?plan.executablePlan!.tasks as Array<{title?:string;dependsOn?:unknown[];writeSurfaces?:string[]}>:[];
+  const prepared=(value as {worktreePreparation?:{status?:string;reason?:string}}).worktreePreparation;
+  const preparation=prepared?.status==="prepared"?"Las dos carpetas Git aisladas ya están preparadas.":
+   prepared?.status==="declined"?"Se ha rechazado la preparación de carpetas; no se ha iniciado ningún Writer.":
+   prepared?.status==="blocked"||prepared?.status==="blocked-needs-review"?"La preparación está bloqueada. "+(prepared.reason??"Revisar el lote antes de continuar."):
+   "La preparación de carpetas requiere una sesión Pi interactiva.";
   return ["ASEN ha dividido el trabajo en unidades ODD con ámbitos separados.",
    ...graph.map(task=>`${task.title??"Unidad"} — ${task.dependsOn?.length?"espera la integración de sus dependencias":"preparable en una carpeta Git aislada"} — archivos: ${task.writeSurfaces?.join(", ")??""}`),
    plan.persistence?.status==="saved"?"Las tareas están guardadas.":"La división aún no se ha guardado.",
-   "No se ha autorizado ningún Writer. Los dos primeros necesitan preparación y supervisión de sus sesiones hijas; las unidades dependientes requieren integrar los cambios y preparar un candidato nuevo."].join("\n");
+   preparation,
+   "No se ha autorizado ningún Writer. Faltan las sesiones Pi hijas reales y su supervisión; las unidades dependientes requieren integrar los cambios y preparar un candidato nuevo."].join("\n");
  }
  const tasks=Array.isArray(plan.executablePlan?.tasks)?plan.executablePlan!.tasks as Array<{role?:unknown;title?:unknown;status?:unknown;dependsOn?:unknown;writeSurfaces?:unknown}>:[];
  const routeLabel:Record<string,string>={direct:"trabajo acotado en la sesión actual",plan:"aclaración pendiente",orchestrate:"trabajo coordinado",incident:"atención de incidencia",verify:"verificación independiente"};
