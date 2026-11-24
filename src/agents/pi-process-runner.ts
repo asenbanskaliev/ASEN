@@ -1,3 +1,4 @@
+import {bindNativeRunnerModels} from "../runtime/agents/native-writer-completion.js";
 import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {performance} from "node:perf_hooks";
 import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
@@ -376,6 +377,7 @@ export class PiProcessRunner implements AgentRunner{
    const pendingRpc=new Map<string,{resolve:(response:Record<string,unknown>)=>void}>();
    const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
    let selectionRequested=false,selectionResponded=false;
+   const observedModels:string[]=[];
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
    let timer:ReturnType<typeof setTimeout>|undefined;
 
@@ -386,6 +388,7 @@ export class PiProcessRunner implements AgentRunner{
     signal?.removeEventListener("abort",onAbort);
     for(const pending of pendingRpc.values())pending.resolve({success:false,error:"task finished"});pendingRpc.clear();
     rmSync(policyDirectory,{recursive:true,force:true});
+    if(result.ok&&strictModelPreflight)bindNativeRunnerModels(result,observedModels);
     resolve(result);
    };
    const stop=(result:AgentResult)=>{
@@ -448,6 +451,7 @@ export class PiProcessRunner implements AgentRunner{
     });
    };
    const publishFallback=(change:Omit<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">)=>{
+    if(strictModelPreflight&&observedModels.length&&!observedModels.includes(change.to))observedModels.push(change.to);
     if(!fallbackOwner)return;const observation=Object.freeze({...fallbackOwner,...change});
     try{this.options.onModelFallback?.(observation);}catch{/* Observers cannot affect child execution. */}
     for(const subscription of fallbackSubscriptions){if(!this.#fallbackSubscriptions.has(subscription))continue;try{subscription.listener(observation);}catch{/* Observers cannot affect child execution. */}}
@@ -613,6 +617,7 @@ export class PiProcessRunner implements AgentRunner{
          return;
         }
        }
+       if(strictModelPreflight&&observation?.model){const m=observation.model;observedModels.push(m.id.startsWith(m.provider+"/")?m.id:m.provider+"/"+m.id);}
        if(observation)for(const subscription of selectionSubscriptions){
         if(!this.#selectionSubscriptions.has(subscription))continue;
         try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}
