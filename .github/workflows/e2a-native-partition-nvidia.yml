@@ -78,6 +78,8 @@ jobs:
           test -n "$NVIDIA_API_KEY"
           mkdir -p "$PI_CODING_AGENT_DIR"
           node scripts/t12-pi-retry-settings.mjs
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test -z "$(git -c core.fsmonitor=false status --porcelain=v1 --untracked-files=all)"
           timeout 360s tsx scripts/e2a-native-partition-nvidia.ts
       - name: Guardar recibo sin credenciales ni datos del proveedor
         if: always() && steps.marker.outputs.approved == 'true'
