@@ -16,6 +16,8 @@ export interface OddTaskUnit {
   readonly objective:string;
   readonly estimatedMinutes:number;
   readonly dependsOn:readonly string[];
+  /** Rutas exactas de escritura de esta unidad; no constituyen permisos. */
+  readonly writePaths?:readonly string[];
 }
 export interface OddRoutingRequest {
   readonly taskUnits?:readonly OddTaskUnit[];
@@ -147,14 +149,36 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   const review = Object.freeze({ kind: member(reviewInput.kind, reviewKinds, "review kind"), estimatedMinutes: count(reviewInput.estimatedMinutes, "review estimate") });
   const unresolvedDecisions = Object.freeze(uniqueStrings(input.unresolvedDecisions, "unresolved decisions"));
   const taskUnits=Object.freeze((withUnits?array(input.taskUnits,"task units"):[]).map(item=>{
-    const raw=record(item,["id","objective","estimatedMinutes","dependsOn"],"task unit");
+    const scoped=typeof item==="object"&&item!==null&&Object.hasOwn(item,"writePaths");
+    const raw=record(item,["id","objective","estimatedMinutes","dependsOn",...(scoped?["writePaths"]:[])],"task unit");
     const id=text(raw.id,"task unit id"),objective=text(raw.objective,"task unit objective");
     if(id.length>100||objective.length>500)throw new Error("task unit text is too long");
     return Object.freeze({id,objective,estimatedMinutes:count(raw.estimatedMinutes,"task unit estimate"),
-      dependsOn:Object.freeze(uniqueStrings(raw.dependsOn,"task unit dependencies"))});
+      dependsOn:Object.freeze(uniqueStrings(raw.dependsOn,"task unit dependencies")),
+      ...(scoped?{writePaths:Object.freeze(uniqueStrings(raw.writePaths,"task unit write paths",path))}:{})});
   }));
   if(taskUnits.length>32||new Set(taskUnits.map(unit=>unit.id)).size!==taskUnits.length)
     throw new Error("task units are duplicated or exceed the limit");
+  // Una partición escrita debe cubrir cada ruta propuesta exactamente una vez.
+  // Se rechaza la mezcla de unidades con y sin ámbito: nunca repartir por suposición.
+  const scopedCount=taskUnits.filter(unit=>unit.writePaths!==undefined).length;
+  if(scopedCount){
+    if(scopedCount!==taskUnits.length||scope.kind!=="known"||!writes.length)
+      throw new Error("task unit write partition requires complete known write scopes");
+    const assigned=new Set<string>(),normalized:string[]=[];
+    for(const unit of taskUnits){
+      if(!unit.writePaths?.length)throw new Error("task unit write partition requires a non-empty scope per unit");
+      for(const item of unit.writePaths){
+        if(!writePaths.includes(item)||assigned.has(item)||/[\p{Cc}\p{Cf}*?\[\]]/u.test(item))
+          throw new Error("task unit write partition has an invalid or repeated write path");
+        const key=item.toLowerCase();
+        if(normalized.some(previous=>previous===key||previous.startsWith(key+"/")||key.startsWith(previous+"/")))
+          throw new Error("task unit write partition has overlapping write paths");
+        assigned.add(item);normalized.push(key);
+      }
+    }
+    if(assigned.size!==writePaths.length)throw new Error("task unit write partition does not cover all writes");
+  }
   const ids=new Set(taskUnits.map(unit=>unit.id));
   if(taskUnits.some(unit=>unit.dependsOn.some(dep=>dep===unit.id||!ids.has(dep))))
     throw new Error("task units have invalid dependencies");
