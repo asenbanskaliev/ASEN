@@ -84,6 +84,7 @@ jobs:
           test -n "$NVIDIA_API_KEY"
           mkdir -p "$PI_CODING_AGENT_DIR"
           node scripts/t12-pi-retry-settings.mjs
+          printf '%s\n' '{"remove":["read","edit"]}' > "$PI_CODING_AGENT_DIR/tools.json"
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           test -z "$(git -c core.fsmonitor=false status --porcelain=v1 --untracked-files=all)"
           timeout 540s tsx scripts/e3-focused-fix-nvidia.ts --real
