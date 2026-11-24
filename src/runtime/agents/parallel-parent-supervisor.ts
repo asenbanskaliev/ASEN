@@ -68,7 +68,7 @@ export interface ParentSupervisorInput{
  readonly launchChild:(worker:ParentSupervisorReadyWorker,
    confirm:(task:Readonly<{id:string;title:string;role:string;instruction:string;
      writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean>,
-   validateExact:()=>Promise<void>
+   validateExact:()=>Promise<void>,startBefore?:number
  )=>Promise<{status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>;
  readonly confirmWorker:(worker:ParentSupervisorReadyWorker,
    task:Readonly<{id:string;title:string;role:string;instruction:string;
@@ -392,7 +392,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     explicitlyDeclined=decision===false;
     await validateExact();
     return wasApproved;
-   },validateExact);
+   },validateExact,input.exactBatchConsent===true?consentExpiresAt:undefined);
    // El lanzamiento ya pudo comenzar: registrar su identidad ANTES de cualquier
    // comprobación asíncrona posterior del padre para no ocultar un Worker real.
    if(outcome.status==="dispatched"&&outcome.role==="worker"&&
