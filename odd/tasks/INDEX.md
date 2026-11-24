@@ -1,6 +1,6 @@
 # ASEN — Índice ODD operativo
 
-**Actualizado:** 21/11/2026. **Ámbito:** flujo de agentes de la PR #61. No sustituye los planes generales de Pi, seguridad o instalación.
+**Actualizado:** 24/11/2026. **Ámbito:** flujo de agentes de la PR #61. No sustituye los planes generales de Pi, seguridad o instalación.
 
 ## Lectura mínima antes de trabajar
 
@@ -10,7 +10,14 @@
 4. [Ejecución PR #61](pr61-18-puntos-megatandas-a-e.md): tareas activas y registro por fases.
 5. [Coordinación en GitHub #63](https://github.com/asenbanskaliev/ASEN/issues/63): reservas, responsables, resultados, revisiones y SHA exactos.
 
-## Corte comprobado · 21/11/2026
+6. [Refuerzo quirúrgico P01–P06](flujo-agentes-refuerzo-quirurgico-ab-20261124.md): ejecución B0/B+/C1/C2/C3, criterios de aceptación, dependencias, archivos y límites.
+7. [Matriz canónica 18+12](flujo-agentes-18-objetivos-12-puntos-aceptacion-20261123.md): evidencia vigente y pendientes sin duplicar requisitos.
+
+## Corte comprobado · 24/11/2026
+
+- #103 integrada en #61; #115 y #116 con ensayos E2A/E3 reales limitados superados, integración pendiente en el corte. Consultar el subplan P01–P06 y verificar GitHub en directo; no reabrir fases ni crear tareas duplicadas por documentación histórica. globalFull:false.
+
+## Corte histórico · 21/11/2026
 
 - **PRE-0/PRE-1:** corregidos e incorporados mediante [PR #64](https://github.com/asenbanskaliev/ASEN/pull/64). Se validó el CI exacto y la revisión externa antes de incorporar.
 - **CTX-0:** pruebas sintéticas integradas mediante [PR #65](https://github.com/asenbanskaliev/ASEN/pull/65). No suponen ahorro de tokens real demostrado.

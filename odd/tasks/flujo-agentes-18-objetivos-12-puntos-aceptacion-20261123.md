@@ -1,6 +1,6 @@
 # ASEN — Matriz de aceptación canónica: 18 objetivos y 12 puntos
 
-**Corte:** 23/11/2026. **Base de integración:** `56ad1d0388322ad7edb6355cf6942ac5f1a75217`.  
+**Corte original:** 23/11/2026. **Actualización de evidencias:** 24/11/2026; las pruebas de B pertenecen a ramas aún no integradas en el corte. **Base de integración:** `56ad1d0388322ad7edb6355cf6942ac5f1a75217`.  
 **Rama receptora:** `integration/megatanda-1-3-20261123`. **Estado global:** `globalFull:false`.
 
 Esta matriz emplea **los nombres y números originales** del [estado rector de 18 objetivos](./flujo-de-agentes-estado-18-objetivos.md) y del [informe de 12 puntos](../../docs/audit/plan-quirurgico-delegacion-automatica-12-puntos-2026-11-21.md). Los 12 puntos complementan los 18; **no son doce nuevos proyectos ni comprobaciones de administración de PR**.
@@ -57,8 +57,15 @@ Un ensayo real aislado acredita solo el comportamiento ensayado. Una CI correcta
 - **Comparativa Gentle Shell:** hay infraestructura C01, pero falta la batería A/B reproducible con igualdad de condiciones, métricas y revisión externa.
 - **Compatibilidad:** ejecutar los **3 sistemas × 4 modos** del plan, diferenciando resultados reales de simulaciones y omisiones.
 
+## Actualización de evidencia · 24/11/2026
+
+- A: #103 integrada; CI [45367463194](https://github.com/asenbanskaliev/ASEN/actions/runs/45367463194) correcta, CodeRabbit 0 abiertos. La referencia 56ad1d0 anterior es histórica.
+- B: #115 SHA 7354dded1545e4a95e404f51ec16aaaf56a23177, [E2A real 45467138376](https://github.com/asenbanskaliev/ASEN/actions/runs/45467138376) y [CI 45467138204](https://github.com/asenbanskaliev/ASEN/actions/runs/45467138204) correctos: dos sesiones nativas, Writers solapados, dos recibos, candidato conjunto y dependencia bloqueada. Refuerza objetivos 04,05,07,08 y adicionales 03,05,06,07,09; no acredita decisión autónoma ni sucesora real.
+- B: #116 SHA 0fa0231e67f9c50dee07a17823f6ea98fd7dd53c, [E3 real 45491178357](https://github.com/asenbanskaliev/ASEN/actions/runs/45491178357) correcto sobre fixture separada: Nano Omni + Ultra, Fix Lightning, segunda revisión y recibo firmado. Refuerza objetivos 11–13 y adicional 10; falta candidato E2A→E3 único y consentimiento real. CI definitiva en curso al corte; no inferir resultado ni integración.
+- Refuerzos y criterios de actualización: [P01–P06](flujo-agentes-refuerzo-quirurgico-ab-20261124.md). Estados de aceptación conservadores; no elevar una fila completa por una evidencia limitada. Verificar SHA y artefactos actuales antes de admitir.
+
 ## Cierre
 
 Solo marcar `globalFull:true` cuando las treinta filas tengan evidencia positiva adecuada a sus criterios, y exista un recorrido auténtico completo desde Pi, con revisión independiente, CI y Release Gate sobre el **mismo SHA final**. Sin aprobación humana de integración no se fusiona en `main`.
 
-**Próxima prioridad:** CI y revisión de #103 → E2B padre-hijo íntegro → dos revisores reales y Fix autorizado → A/B y sistemas → auditoría final.
+**Próxima prioridad:** cerrar B0 sobre los SHA exactos → B+ (identidad e independencia) → C1 (recuperación) → C2 (recorrido integral, requisitos E1/CTX-2 pendientes incluidos) → C3 (paralelismo condicionado) → E4/F, A/B, sistemas y auditoría final. P06 transversal.
