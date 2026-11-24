@@ -1079,7 +1079,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         if(observed&&parent&&owner&&owner.sessionId===observed.source.sessionId&&owner.projectId===observed.source.projectId){
          const live=await sessionIdentity(parent);
          if(agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&live.sessionId===owner.sessionId&&live.projectId===owner.projectId){
-          parent.ui.notify(`ASEN: lote Writer terminado. ${observed.completed} completados y ${observed.failed} con incidencias. Resultados guardados; pendiente revisión e integración.${observed.planningFileMissing?" El archivo de planificación de un hijo no está disponible.":""}`,observed.failed||observed.planningFileMissing?"warning":"info");
+          parent.ui.notify(`ASEN: ${observed.partial?"lote Writer parcial":"lote Writer terminado"}. ${observed.observed}/${observed.expected} recibos guardados. ${observed.completed} completados y ${observed.failed} con incidencias. ${observed.partial?"No integrar ni repetir automáticamente.":"Pendiente revisión e integración."}${observed.planningFileMissing?" El archivo de planificación de un hijo no está disponible.":""}`,observed.partial||observed.failed||observed.planningFileMissing?"warning":"info");
           await refreshTodoWidget(parent);
          }
         }

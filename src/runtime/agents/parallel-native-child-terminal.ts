@@ -16,7 +16,7 @@ export async function reconcileNativeChildTerminal(input:{
  record:PublicAgentRecord;todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;
  sourceJournal:ParallelTodoWorktreeJournal;sessionJournal:ParallelChildSessionJournal;
  claims:ParallelChildPlanClaimJournal;observations:ParallelWorkerObservationJournal;
-}):Promise<Readonly<{source:TodoContext;batchId:string;completed:number;failed:number;planningFileMissing:boolean;acceptance:"not-accepted"}>|undefined>{
+}):Promise<Readonly<{source:TodoContext;batchId:string;completed:number;failed:number;planningFileMissing:boolean;partial:boolean;observed:number;expected:number;acceptance:"not-accepted"}>|undefined>{
  const {record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}=input;
  if(record.role!=="worker"||!["completed","failed","interrupted","cancelled"].includes(record.state))return;
  const child={sessionId:record.sessionId,projectId:record.projectId};
@@ -33,7 +33,10 @@ export async function reconcileNativeChildTerminal(input:{
  await new TaskAgentTodoReconciler(todos,agents,links).reconcile(child);
  const source={sessionId:link.sourceSessionId,projectId:link.sourceProjectId};
  const owners=await sessionJournal.listSource(source);
- if((await observations.listSource(source,owners)).some(item=>item.batchId===link.batchId))return;
+ const batch=(await sourceJournal.list(source)).find(row=>row.id===link.batchId);
+ if(!batch||batch.state!=="prepared")return;
+ const existing=(await observations.listSource(source,owners)).filter(item=>item.batchId===link.batchId);
+ if(existing.length===batch.tasks.length)return;
  // Reconciliar también al otro hijo terminal antes de guardar un recibo.
  for(const owner of owners.filter(row=>row.batchId===link.batchId)){
   const identity={sessionId:owner.childSessionId,projectId:owner.childProjectId};
@@ -43,24 +46,41 @@ export async function reconcileNativeChildTerminal(input:{
  const preview=await inspectParallelBatchWorkerOutcomes({identity:source,sourceJournal,sessionJournal,planClaims:claims,
   batchId:link.batchId,loadTodos:identity=>todos.list(identity),loadAgents:identity=>agents.list(identity),
   loadTaskAgentLinks:identity=>links.list(identity)});
- if(preview.status!=="ready-to-record"||preview.workers.some(({worker})=>!["succeeded","done","blocked","cancelled"].includes(worker.childTodoState)))return;
+ // Guardar cada terminal atribuible aun si otro hijo nunca fue lanzado.
+ // El candidato integrado sigue exigiendo TODOS los recibos auténticos.
+ const pending=preview.workers.filter(({worker})=>["succeeded","done","blocked","cancelled"].includes(worker.childTodoState)&&!existing.some(row=>row.sourceTodoId===worker.sourceTodoId));
+ if(!pending.length)return;
  try{
-  const candidates=await Promise.all(preview.workers.map(async unit=>{
-   if(unit.worker.agentState!=="completed"||unit.worker.childTodoState!=="succeeded"||unit.changes.status!=="scoped-changes")return unit;
+  const candidates=await Promise.all(pending.map(async unit=>{
+   if(unit.worker.agentState!=="completed"||unit.worker.childTodoState!=="succeeded")return unit;
    const owned={sessionId:unit.link.childSessionId,projectId:unit.link.childProjectId};
    const result=await agents.query(unit.worker.agentId,owned),completion=result?.nativeCompletion;
    if(result?.record.state!=="completed"||result.record.updatedAt!==unit.worker.agentUpdatedAt||
-    !completion||completion.baseCommit!==unit.link.sourceHead||
-    JSON.stringify([...completion.paths].sort())!==JSON.stringify([...unit.changes.changedPaths].sort()))return unit;
+    !completion||completion.baseCommit!==unit.link.sourceHead)return unit;
+   const task=batch.tasks.find(row=>row.taskId===unit.link.sourceTodoId);
+   if(!task||completion.paths.some(path=>!task.writeSurfaces.includes(path)))return unit;
    return {...unit,nativeCompletion:completion};
   }));
-  const saved=await observations.recordBatch(candidates);
-  return Object.freeze({source,batchId:link.batchId,completed:saved.filter(row=>row.agentState==="completed").length,
-   failed:saved.filter(row=>row.agentState!=="completed").length,planningFileMissing,acceptance:"not-accepted"});
+  const saved=[];
+  for(const candidate of candidates){
+   try{saved.push(await observations.record(candidate));}
+   catch(error){
+    // Otro terminal o una recuperación puede haber registrado esta unidad.
+    // Solo admitir la misma identidad; jamás sustituir un recibo anterior.
+    const prior=(await observations.listSource(source,owners)).find(row=>row.batchId===link.batchId&&row.sourceTodoId===candidate.link.sourceTodoId);
+    if(!prior||prior.agentId!==candidate.worker.agentId||prior.agentUpdatedAt!==candidate.worker.agentUpdatedAt||
+      prior.candidateTree!==("nativeCompletion" in candidate?candidate.nativeCompletion?.candidateTree:undefined))throw error;
+   }
+  }
+  if(!saved.length)return;
+  const total=(await observations.listSource(source,owners)).filter(row=>row.batchId===link.batchId);
+  return Object.freeze({source,batchId:link.batchId,completed:total.filter(row=>row.agentState==="completed").length,
+   failed:total.filter(row=>row.agentState!=="completed").length,planningFileMissing,
+   partial:total.length!==batch.tasks.length,observed:total.length,expected:batch.tasks.length,acceptance:"not-accepted"});
  }catch(error){
   // Dos terminales pueden competir: el diario se escribe en una transacción.
   // Solo quien realmente lo guardó puede anunciar el nuevo resultado.
-  if((await observations.listSource(source,owners)).filter(row=>row.batchId===link.batchId).length===preview.workers.length)return;
+  if((await observations.listSource(source,owners)).filter(row=>row.batchId===link.batchId).length===batch.tasks.length)return;
   throw error;
  }
 }

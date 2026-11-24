@@ -29,7 +29,9 @@ import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-nativ
 for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
  const base=await realpath(await mkdtemp(join(tmpdir(),"asen-native-odd-"))),project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:isolatedGitEnvironment()}).trim();
- let launched=0;
+ let launched=0,partialObserved=false;
+ let releaseSibling:()=>void=()=>{};
+ const siblingGate=new Promise<void>(resolve=>{releaseSibling=resolve;});
  const terminalWork:Promise<unknown>[]=[];
 const terminalErrors:unknown[]=[];
  try{
@@ -47,6 +49,11 @@ const terminalErrors:unknown[]=[];
    launched++;
    assert.equal(request.role,"worker");assert.equal(request.writeSurfaces?.length,1);
    assert.ok(["a.txt","b.txt"].includes(request.writeSurfaces![0]!));
+   if(mode==="approved"&&request.writeSurfaces![0]==="b.txt"){
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    try{await Promise.race([siblingGate,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("No se guardó el recibo parcial de A")),15000);})]);}
+    finally{if(timer)clearTimeout(timer);}
+   }
    // Simulación explícita: el agente no es un proceso Pi ni evidencia de proveedor.
    await writeFile(join(request.repository,request.writeSurfaces![0]!),"resultado");
    const result={id:request.id,ok:true,output:"Resultado simulado y acotado; comprobación real pendiente"};
@@ -59,7 +66,18 @@ const terminalErrors:unknown[]=[];
   const sessionJournal=new ParallelChildSessionJournal(join(privateDir,"parallel-worktree-sessions.json"),sourceJournal);
   const claims=new ParallelChildPlanClaimJournal(join(privateDir,"parallel-child-plan-claims.json"));
   const observations=new ParallelWorkerObservationJournal(join(privateDir,"parallel-worker-observations.json"));
-  agents.subscribeTerminal(record=>{terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}).catch(error=>{terminalErrors.push(error);}));});
+  agents.subscribeTerminal(record=>{terminalWork.push((async()=>{
+   const owned={sessionId:record.sessionId,projectId:record.projectId};
+   const row=(await todos.list(owned)).find(item=>item.plan?.role==="worker");
+   const first=mode==="approved"&&record.state==="completed"&&row?.plan?.writeSurfaces?.[0]==="a.txt";
+   try{
+    // El resultado ya quedó firmado en AgentStore. Restaurar el archivo
+    // antes de recoger el recibo no debe sustituir ese árbol inmutable.
+    if(first)await writeFile(join(record.projectId,"a.txt"),"original");
+    const receipt=await reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations});
+    if(first){assert.ok(receipt?.partial);assert.equal(receipt.observed,1);partialObserved=true;}
+   }finally{if(first)releaseSibling();}
+  })().catch(error=>{terminalErrors.push(error);releaseSibling();}));});
   const parent=SessionManager.create(project,join(base,"parent-sessions"));
   parent.appendMessage({role:"user",content:"Prueba local sin modelos",timestamp:Date.now()});
   const identity={sessionId:parent.getSessionId(),projectId:project};
@@ -117,7 +135,10 @@ const terminalErrors:unknown[]=[];
    await Promise.all(terminalWork);
    assert.equal(terminalErrors.length,0);
    assert.equal(launched,2);
-   assert.equal((await observations.listSource(identity,await sessionJournal.listSource(identity))).length,2);
+   const durable=await observations.listSource(identity,await sessionJournal.listSource(identity));
+   assert.equal(durable.length,2);assert.equal(partialObserved,true);
+   const first=durable.find(row=>row.changedPaths.includes("a.txt"));
+   assert.ok(first?.candidateTree);assert.equal(first.currentWorktree?.status,"clean");
    const batch=(await sourceJournal.list(identity)).at(-1)!;
    const input={identity,batchId:batch.id,sourceJournal,sessionJournal,observations};
    const candidate=await buildNativeIntegrationCandidate(input);

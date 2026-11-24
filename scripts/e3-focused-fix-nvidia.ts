@@ -49,7 +49,7 @@ const project=join(temp,"repo"),home=join(temp,"home"),privateDir=join(home,".as
 const model="nvidia/nemotron-3.5-lightning-30b-a3b",wrong="ASEN-NATIVE-LOT-A",correct="ASEN-NATIVE-CORRECT-A";
 const testPath="reproduction.test.mjs";
 const requirements="The reproduction test is an intentional failing test to preserve unchanged. Review only the exact requirement: a.txt must contain ASEN-NATIVE-CORRECT-A with no newline. If it differs, fail and quote both observed and expected tokens verbatim in an a.txt finding. If exact, pass with no findings. Tests are verified separately; do not treat the not-run evidence field as a defect. Return the required JSON object only.";
-const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],judgeCalls:0,judgeDiagnostics:[] as {model:string;result:string;providerMatches?:boolean;modelMatches?:boolean;responseMatches?:boolean;responseModel?:string}[],failureCategory:"none",firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
+const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],judgeCalls:0,judgeDiagnostics:[] as {model:string;result:string;providerMatches?:boolean;modelMatches?:boolean;responseMatches?:boolean;responseModel?:string;contentKinds?:string[]}[],failureCategory:"none",firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
 let agents:AgentRuntime|undefined,owner:{sessionId:string;projectId:string}|undefined;
 try{
  mkdirSync(project);mkdirSync(privateDir,{recursive:true,mode:0o700});
@@ -137,6 +137,7 @@ try{
        Object.assign(diagnostic,{providerMatches,modelMatches,responseMatches,...(typeof observed==="string"&&/^[A-Za-z0-9._/-]{1,256}$/u.test(observed)?{responseModel:observed}:{})});
        diagnostic.result="model-identity-mismatch";throw Error("Identidad física del juez no coincide");
       }
+      Object.assign(diagnostic,{contentKinds:[...new Set(event.message.content.map(part=>["text","thinking","toolCall"].includes(part.type)?part.type:"unknown"))]});
       diagnostic.result=event.reason==="stop"?"stop":event.reason==="length"?"length":event.reason==="toolUse"?"tool-use":"deferred";
      }
      yield event as unknown as import("../src/review/pi-model-reviewer.js").PiReviewEvent;
