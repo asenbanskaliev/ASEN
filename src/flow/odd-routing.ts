@@ -163,13 +163,13 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   // Se rechaza la mezcla de unidades con y sin ámbito: nunca repartir por suposición.
   const scopedCount=taskUnits.filter(unit=>unit.writePaths!==undefined).length;
   if(scopedCount){
-    if(scopedCount!==taskUnits.length||scope.kind!=="known"||!writes.length)
+    if(scopedCount!==taskUnits.length||scope.kind!=="known"||!writes.length||writes.length>256)
       throw new Error("task unit write partition requires complete known write scopes");
     const assigned=new Set<string>(),normalized:string[]=[];
     for(const unit of taskUnits){
       if(!unit.writePaths?.length)throw new Error("task unit write partition requires a non-empty scope per unit");
       for(const item of unit.writePaths){
-        if(!writePaths.includes(item)||assigned.has(item)||/[\p{Cc}\p{Cf}*?\[\]]/u.test(item))
+        if(item.length>1024||!writePaths.includes(item)||assigned.has(item)||/[\p{Cc}\p{Cf}*?\[\]]/u.test(item))
           throw new Error("task unit write partition has an invalid or repeated write path");
         const key=item.toLowerCase();
         if(normalized.some(previous=>previous===key||previous.startsWith(key+"/")||key.startsWith(previous+"/")))
@@ -226,6 +226,30 @@ export function deriveOddFacts(value: OddRoutingRequest): OddDerivedFacts {
   });
   issuedFacts.add(facts);
   return facts;
+}
+
+/** Descripción inmutable de la división ODD validada. Las raíces solo tienen
+ * dependencias resueltas en el grafo; aún necesitan admisión y permisos.
+ * No convierte la propuesta en un plan ejecutable ni genera agentes.
+ */
+export function describeOddUnitPartition(facts:OddDerivedFacts):Readonly<{
+ units:readonly OddTaskUnit[];dependencyRoots:readonly string[];topologicalOrder:readonly string[];
+ execution:"not_started";authorization:"not_granted";status:"proposal-only";
+}>|undefined{
+ if(!issuedFacts.has(facts))throw new Error("ODD facts were not issued here");
+ if(!facts.taskUnits.length||facts.taskUnits.some(unit=>!unit.writePaths))return undefined;
+ const byId=new Map(facts.taskUnits.map(unit=>[unit.id,unit]));
+ const seen=new Set<string>(),order:string[]=[];
+ const visit=(id:string)=>{
+  if(seen.has(id))return;
+  for(const dep of byId.get(id)!.dependsOn)visit(dep);
+  seen.add(id);order.push(id);
+ };
+ for(const unit of facts.taskUnits)visit(unit.id);
+ return Object.freeze({
+  units:facts.taskUnits,dependencyRoots:Object.freeze(facts.taskUnits.filter(unit=>!unit.dependsOn.length).map(unit=>unit.id)),
+  topologicalOrder:Object.freeze(order),execution:"not_started",authorization:"not_granted",status:"proposal-only"
+ });
 }
 
 /** Consumes genuine facts on the first planning attempt and issues no execution authority. */
