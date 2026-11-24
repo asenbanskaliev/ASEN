@@ -2,12 +2,13 @@ name: E2A lote ODD nativo real NVIDIA
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize]
     branches:
       - integration/megatanda-1-3-20261123
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: e2a-native-partition-one-shot
@@ -33,10 +34,20 @@ jobs:
       - name: Confirmar marcador de ensayo único
         id: marker
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASEN_WORKFLOW_RUN: ${{ github.run_id }}
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
-          if test "$(git log -1 --format=%s)" = 'ci(asen): ensayo integral ODD NVIDIA 20261124'; then
+          if test "$(git log -1 --format=%s)" = 'ci(asen): ensayo integral ODD NVIDIA corregido 20261124'; then
+            # Una ejecución anterior del mismo SHA consume el intento, incluso
+            # si se canceló antes del proveedor. No se reintenta por reapertura.
+            previous=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/workflows/e2a-native-partition-nvidia.yml/runs?head_sha=$ASEN_EXPECTED_SHA&per_page=100" --jq ".workflow_runs[] | select(.id < $ASEN_WORKFLOW_RUN) | .id")
+            if test -n "$previous"; then
+              echo "approved=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
             echo "approved=true" >> "$GITHUB_OUTPUT"
           else
             echo "approved=false" >> "$GITHUB_OUTPUT"
