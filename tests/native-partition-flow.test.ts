@@ -21,6 +21,7 @@ for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+
  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
  let launched=0;
  const terminalWork:Promise<unknown>[]=[];
+const terminalErrors:unknown[]=[];
  try{
   await mkdir(project);await mkdir(privateDir,{recursive:true,mode:0o700});
   git("init","-q");git("config","user.name","ASEN prueba");git("config","user.email","test@example.invalid");
@@ -42,7 +43,7 @@ for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+
   const sessionJournal=new ParallelChildSessionJournal(join(privateDir,"parallel-worktree-sessions.json"),sourceJournal);
   const claims=new ParallelChildPlanClaimJournal(join(privateDir,"parallel-child-plan-claims.json"));
   const observations=new ParallelWorkerObservationJournal(join(privateDir,"parallel-worker-observations.json"));
-  agents.subscribeTerminal(record=>{terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}));});
+  agents.subscribeTerminal(record=>{terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}).catch(error=>{terminalErrors.push(error);}));});
   const parent=SessionManager.create(project,join(base,"parent-sessions"));
   parent.appendMessage({role:"user",content:"Prueba local sin modelos",timestamp:Date.now()});
   const identity={sessionId:parent.getSessionId(),projectId:project};
@@ -94,10 +95,11 @@ for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+
    assert.equal(detail.supervisedLaunch.started.length,2);
    for(let i=0;i<200;i++){
     const states=(await Promise.all(children.map(child=>agents.list(child)))).flat();
-    if(states.length===2&&states.every(state=>state.state==="completed"||state.state==="failed"))break;
+    if(terminalWork.length===2&&states.length===2&&states.every(state=>state.state==="completed"||state.state==="failed"))break;
     await new Promise(resolve=>setTimeout(resolve,20));
    }
    await Promise.all(terminalWork);
+   assert.equal(terminalErrors.length,0);
    assert.equal(launched,2);
    assert.equal((await observations.listSource(identity,await sessionJournal.listSource(identity))).length,2);
    for(const child of children)assert.equal((await todos.list(child))[0]?.current.state,"succeeded");
