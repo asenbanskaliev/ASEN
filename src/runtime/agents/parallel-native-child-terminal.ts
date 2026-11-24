@@ -9,9 +9,6 @@ import {ParallelChildPlanClaimJournal} from "./parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "./parallel-worker-observation-journal.js";
 import {inspectParallelBatchWorkerOutcomes} from "./parallel-batch-coordinator.js";
 import {assertNativeChildPlanningSession} from "./pi-native-child-session.js";
-import {captureWorkspaceReviewProjection} from "../../review/workspace-review-projection.js";
-import {execFileSync} from "node:child_process";
-import {isolatedGitEnvironment} from "./git-isolated-environment.js";
 
 /** Recoge una finalización real de un hijo nativo aunque el padre tenga otra
  * tarea activa. El recibo de lote es único y nunca supone aceptación ni merge. */
@@ -19,7 +16,6 @@ export async function reconcileNativeChildTerminal(input:{
  record:PublicAgentRecord;todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;
  sourceJournal:ParallelTodoWorktreeJournal;sessionJournal:ParallelChildSessionJournal;
  claims:ParallelChildPlanClaimJournal;observations:ParallelWorkerObservationJournal;
- observedModels?:(sessionId:string,projectId:string,agentId:string)=>readonly string[]|undefined;
 }):Promise<Readonly<{source:TodoContext;batchId:string;completed:number;failed:number;planningFileMissing:boolean;acceptance:"not-accepted"}>|undefined>{
  const {record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}=input;
  if(record.role!=="worker"||!["completed","failed","interrupted","cancelled"].includes(record.state))return;
@@ -49,18 +45,15 @@ export async function reconcileNativeChildTerminal(input:{
   loadTaskAgentLinks:identity=>links.list(identity)});
  if(preview.status!=="ready-to-record"||preview.workers.some(({worker})=>!["succeeded","done","blocked","cancelled"].includes(worker.childTodoState)))return;
  try{
-  const candidates=preview.workers.map(unit=>{
+  const candidates=await Promise.all(preview.workers.map(async unit=>{
    if(unit.worker.agentState!=="completed"||unit.worker.childTodoState!=="succeeded"||unit.changes.status!=="scoped-changes")return unit;
-   try{
-    const untracked=execFileSync("git",["-C",unit.link.childProjectId,"ls-files","--others","-z"],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:5000,maxBuffer:100000}).split("\0").filter(Boolean);
-    const projection=captureWorkspaceReviewProjection({repositoryRoot:unit.link.childProjectId,intendedUntracked:untracked},unit.changes.changedPaths);
-    if(projection.baseCommit!==unit.link.sourceHead||projection.unexpectedUntracked.length||
-     JSON.stringify(projection.entries.map(entry=>entry.path).sort())!==JSON.stringify([...unit.changes.changedPaths].sort())||
-     projection.entries.some(entry=>!["100644","100755"].includes(entry.mode)||entry.change==="gitlink"))return unit;
-    const models=input.observedModels?.(unit.link.childSessionId,unit.link.childProjectId,unit.worker.agentId);
-    return {...unit,projection,...(models?.length?{authorModelsObserved:models}:{})};
-   }catch{return unit;} // Conservar el resultado aunque no sea integrable.
-  });
+   const owned={sessionId:unit.link.childSessionId,projectId:unit.link.childProjectId};
+   const result=await agents.query(unit.worker.agentId,owned),completion=result?.nativeCompletion;
+   if(result?.record.state!=="completed"||result.record.updatedAt!==unit.worker.agentUpdatedAt||
+    !completion||completion.baseCommit!==unit.link.sourceHead||
+    JSON.stringify([...completion.paths].sort())!==JSON.stringify([...unit.changes.changedPaths].sort()))return unit;
+   return {...unit,nativeCompletion:completion};
+  }));
   const saved=await observations.recordBatch(candidates);
   return Object.freeze({source,batchId:link.batchId,completed:saved.filter(row=>row.agentState==="completed").length,
    failed:saved.filter(row=>row.agentState!=="completed").length,planningFileMissing,acceptance:"not-accepted"});
