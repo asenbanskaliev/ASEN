@@ -19,6 +19,7 @@ export async function reconcileNativeChildTerminal(input:{
  record:PublicAgentRecord;todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;
  sourceJournal:ParallelTodoWorktreeJournal;sessionJournal:ParallelChildSessionJournal;
  claims:ParallelChildPlanClaimJournal;observations:ParallelWorkerObservationJournal;
+ observedModels?:(sessionId:string,projectId:string,agentId:string)=>readonly string[]|undefined;
 }):Promise<Readonly<{source:TodoContext;batchId:string;completed:number;failed:number;planningFileMissing:boolean;acceptance:"not-accepted"}>|undefined>{
  const {record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}=input;
  if(record.role!=="worker"||!["completed","failed","interrupted","cancelled"].includes(record.state))return;
@@ -56,7 +57,8 @@ export async function reconcileNativeChildTerminal(input:{
     if(projection.baseCommit!==unit.link.sourceHead||projection.unexpectedUntracked.length||
      JSON.stringify(projection.entries.map(entry=>entry.path).sort())!==JSON.stringify([...unit.changes.changedPaths].sort())||
      projection.entries.some(entry=>!["100644","100755"].includes(entry.mode)||entry.change==="gitlink"))return unit;
-    return {...unit,projection};
+    const models=input.observedModels?.(unit.link.childSessionId,unit.link.childProjectId,unit.worker.agentId);
+    return {...unit,projection,...(models?.length?{authorModelsObserved:models}:{})};
    }catch{return unit;} // Conservar el resultado aunque no sea integrable.
   });
   const saved=await observations.recordBatch(candidates);
