@@ -1,5 +1,5 @@
 import {createHash,randomUUID} from "node:crypto";
-import {inspectCandidateGitTree,type CandidateGitTreeManifest} from "./review-tree-inspection.js";
+import {inspectCandidateGitTree,inspectSelectedCandidateGitTree,type CandidateGitTreeManifest} from "./review-tree-inspection.js";
 import {openReviewSession,bindReviewSessionWorkspaceSource,type ReviewSession,assertReviewSessionOpen,closeReviewSession} from "./review-session.js";
 import {captureWorkspaceReviewProjection,diffWorkspaceReviewProjection,isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection,type WorkspaceReviewProjectionRequest,type WorkspaceCorrectionConstraint} from "./workspace-review-projection.js";
 export {WorkspaceReviewScopeError} from "./workspace-review-projection.js";
@@ -146,8 +146,8 @@ export function readFrozenIntegrationReviewEvidence(candidate:NativeIntegrationC
  if(!isIssuedNativeIntegrationCandidate(candidate)||!sessionId||!reviewerId)
   throw new Error("Frozen integration review requires a genuine candidate and owner");
  const inspected=readNativeIntegrationDiff(candidate);
- const manifest=inspectCandidateGitTree({repositoryRoot:candidate.repository,treeIdentity:candidate.tree});
- const baseline=inspectCandidateGitTree({repositoryRoot:candidate.repository,treeIdentity:inspected.baseTree});
+ const manifest=inspectSelectedCandidateGitTree({repositoryRoot:candidate.repository,treeIdentity:candidate.tree},candidate.paths);
+ const baseline=inspectSelectedCandidateGitTree({repositoryRoot:candidate.repository,treeIdentity:inspected.baseTree},candidate.paths);
  const after=new Map(manifest.entries.map(entry=>[entry.path,entry]));
  const before=new Map(baseline.entries.map(entry=>[entry.path,entry]));
  // El manifiesto ya contiene blobs verificados. No materializar enlaces o

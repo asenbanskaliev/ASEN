@@ -342,7 +342,7 @@ export class PiProcessRunner implements AgentRunner{
    let child:ChildProcessWithoutNullStreams;
    try{
     const deadline=runnerStartDeadline(request);
-    if(deadline!==undefined&&Date.now()>=deadline)throw Error("Exact batch consent expired before native Pi spawn");
+    if(deadline!==undefined&&performance.now()>=deadline)throw Error("Exact batch consent expired before native Pi spawn");
     child=spawnContained(command,args,{
      cwd:request.repository,
      env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{}),...(oneShot?{oneShotWritePath:oneShot,oneShotClaimFile:this.options.attributionFile!+".t06-claim"}:{})})},
@@ -418,11 +418,15 @@ export class PiProcessRunner implements AgentRunner{
    const disarmPhase=()=>{if(timer)clearTimeout(timer);timer=undefined;};
    // One serialized writer keeps RPC order and honors stdin backpressure.
    let writeChain:Promise<void>=Promise.resolve();
-   const writeLine=(line:string):Promise<void>=>{
+   const writeLine=(line:string,startsTurn=false):Promise<void>=>{
     // Comprobar de nuevo al despachar: la cancelación puede llegar cuando
     // el comando ya está en cola, incluso tras confirmar get_state.
     const next=writeChain.then(()=>{
      if(!alive())return;
+     const deadline=runnerStartDeadline(request);
+     if(startsTurn&&deadline!==undefined&&performance.now()>=deadline){
+      stop({id:request.id,ok:false,output:"Exact batch consent expired before Pi prompt"});return;
+     }
      return writeStdinLine(child.stdin,line);
     }).catch(()=>{/* stdin errors stop the run through the stdin error handler */});
     writeChain=next;
@@ -630,7 +634,7 @@ export class PiProcessRunner implements AgentRunner{
         // Esa cancelación no debe permitir una llamada al proveedor.
         if(!alive())return;
         armPhase("turn");
-        void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+        void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n",true);
        }
       }
       continue; // Raw state is never part of the retained execution output.
@@ -693,7 +697,7 @@ export class PiProcessRunner implements AgentRunner{
      if(selectionOwner&&selectionSubscriptions.length&&!selectionRequested){selectionRequested=true;void writeLine(JSON.stringify({id:selectionId,type:"get_state"})+"\n");}
      if(!strictModelPreflight){
       armPhase("turn");
-      void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+      void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n",true);
      }
     }
     if(Buffer.byteLength(buffer)>maxRecord){overflow=true;stop({id:request.id,ok:false,output:`pi RPC record exceeded ${maxRecord} bytes`});}

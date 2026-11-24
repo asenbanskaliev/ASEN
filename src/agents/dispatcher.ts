@@ -156,7 +156,7 @@ export class Dispatcher {
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    if(request.writeSurfaces){assertActiveWriterSnapshot(request);writerLease=acquireActiveWriterLease(request);writerLease?.verify();}
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
-   if(startBefore!==undefined&&(!Number.isSafeInteger(startBefore)||Date.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");
+   if(startBefore!==undefined&&(!Number.isFinite(startBefore)||performance.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");
    if(startBefore!==undefined)runnerStartDeadlines.set(runnerRequest,startBefore);
    const result=await this.runner.run(runnerRequest,controller.signal);
    if(!result||result.id!==request.id||typeof result.ok!=="boolean"||typeof result.output!=="string")throw new Error("Agent runner returned an invalid or mismatched result");

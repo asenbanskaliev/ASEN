@@ -247,7 +247,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
  const declinedIndependent:string[]=[];
  if(initial.status!=="ready")return nonAuthorizing("blocked",initial.batchId,started,initial.blockers);
  if(await input.confirmBatch(initial)!==true)return nonAuthorizing("declined",initial.batchId,started,[]);
- const consentExpiresAt=Date.now()+5*60_000;
+ const consentExpiresAt=performance.now()+5*60_000;
  await input.validateParent();
  const fresh=await prepare(input);
  if(JSON.stringify(fresh)!==JSON.stringify(initial))
@@ -323,7 +323,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   // user consent, including while TrustedTaskAgentBinder performs its CAS.
   const validateExact=async()=>{
    await input.validateParent();
-   if(input.exactBatchConsent===true&&Date.now()>consentExpiresAt)throw new Error("Exact batch consent expired");
+   if(input.exactBatchConsent===true&&performance.now()>=consentExpiresAt)throw new Error("Exact batch consent expired");
    const batches=await input.sourceJournal.list(input.source),
     currentBatch=batches.find(b=>b.id===unit.batchId),
     sourceTask=currentBatch?.tasks.find(t=>t.taskId===unit.sourceTodoId);
@@ -366,7 +366,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     !currentGit.headMatchesBase)
     throw new Error("Child Pi provenance changed after parent Worker authorization; no new launch");
    await input.validateParent();
-   if(input.exactBatchConsent===true&&Date.now()>consentExpiresAt)throw new Error("Exact batch consent expired");
+   if(input.exactBatchConsent===true&&performance.now()>=consentExpiresAt)throw new Error("Exact batch consent expired");
   };
   try{await validateExact();}
   catch{

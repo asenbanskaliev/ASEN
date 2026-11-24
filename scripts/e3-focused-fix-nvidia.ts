@@ -104,9 +104,11 @@ try{
   // Dos modelos de texto NVIDIA disponibles en el catálogo autenticado y
   // distintos del autor. Se priorizan los endpoints actuales de la familia
   // Nemotron frente a los modelos que el proveedor rechazó en el intento previo.
-  const approved=["nvidia/nemotron-3.5-super-120b-a12b","nvidia/nemotron-3-ultra-550b-a55b","nvidia/llama-3.1-nemotron-70b-instruct"];
+  // Ultra ya completó la revisión real; el segundo juez usa otra familia
+  // física del catálogo autenticado, sin repetir el modelo que dio error.
+  const approved=["nvidia/nemotron-3-ultra-550b-a55b","openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash"];
   const selected=approved.flatMap(id=>available.filter(m=>m.id===id)).slice(0,2);
-  assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>key(m)!==model));
+  assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>normalizeT06PiChildSelection(m,model)!==model));
   [judgeA,judgeB]=[selected[0]!,selected[1]!];
   registry={getAvailable:()=>selected,hasConfiguredAuth:m=>selected.some(x=>key(x)===key(m)),async *streamSimple(m,ctx,options){
    const descriptor=selected.find(x=>key(x)===key(m));if(!descriptor||++report.judgeCalls>4)throw Error("Límite de cuatro revisiones");
