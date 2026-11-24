@@ -16,6 +16,13 @@ import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-s
 import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
 import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
+import {bindNativeRunnerModels} from "../src/runtime/agents/native-writer-completion.js";
+import {reviewNativeIntegratedCandidate,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
+import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
+import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
+import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
+import {createReviewReceiptSigned,loadReceiptSigningKey,writeReviewReceipt} from "../src/evidence/review-receipt.js";
+import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {readFrozenIntegrationReviewEvidence} from "../src/review/workspace-review-session.js";
 import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-native-child-terminal.js";
 
@@ -27,7 +34,7 @@ for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+
 const terminalErrors:unknown[]=[];
  try{
   await mkdir(project);await mkdir(privateDir,{recursive:true,mode:0o700});
-  git("init","-q");git("config","user.name","ASEN prueba");git("config","user.email","test@example.invalid");
+  git("init","-q","-b","prueba-integracion");git("config","user.name","ASEN prueba");git("config","user.email","test@example.invalid");
   for(const name of ["a.txt","b.txt","c.txt"])await writeFile(join(project,name),"original");
   git("add",".");git("commit","-qm","base");
   await writeFile(join(privateDir,"profiles.json"),JSON.stringify({schema:"asen.runtime-profiles/v1",active:"ensayo",profiles:[{name:"ensayo",mode:"full-delegation",routes:{worker:{model:"nvidia/modelo-simulado"}}}]}));
@@ -38,7 +45,9 @@ const terminalErrors:unknown[]=[];
    assert.ok(["a.txt","b.txt"].includes(request.writeSurfaces![0]!));
    // Simulación explícita: el agente no es un proceso Pi ni evidencia de proveedor.
    await writeFile(join(request.repository,request.writeSurfaces![0]!),"resultado");
-   return {id:request.id,ok:true,output:"Resultado simulado y acotado; comprobación real pendiente"};
+   const result={id:request.id,ok:true,output:"Resultado simulado y acotado; comprobación real pendiente"};
+   // Solo prueba del mecanismo de persistencia; no es evidencia de uso NVIDIA.
+   bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);return result;
   }};
   const agents=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:2});
   const links=new TaskAgentLinkStore(join(privateDir,"task-agent-links.json"));
@@ -117,7 +126,18 @@ const terminalErrors:unknown[]=[];
    const evidence=readFrozenIntegrationReviewEvidence(candidate,identity.sessionId,"pi-model:prueba/revisor",base);
    assert.equal(evidence.candidate.treeIdentity,candidate.tree);
    assert.deepEqual(evidence.modifiedFiles.map(file=>file.path).sort(),["a.txt","b.txt"]);
-   for(const child of children)assert.equal((await todos.list(child))[0]?.current.state,"succeeded");
+   for(const child of children){
+    assert.equal((await todos.list(child))[0]?.current.state,"succeeded");
+    const records=await agents.list(child);
+    const completion=(await agents.query(records[0]!.id,child))?.nativeCompletion;
+    assert.ok(completion?.candidateTree);assert.deepEqual(completion.authorModelsObserved,["nvidia/modelo-simulado"]);
+   }
+   const reopened=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:2});
+   for(const child of children){const record=(await reopened.list(child))[0]!;assert.deepEqual((await reopened.query(record.id,child))?.nativeCompletion?.authorModelsObserved,["nvidia/modelo-simulado"]);}
+   // Una edición posterior al fin de A nunca sustituye el objeto autenticado.
+   await writeFile(join(children[0]!.projectId,(await todos.list(children[0]!))[0]!.plan!.writeSurfaces![0]!),"edición posterior");
+   assert.equal((await buildNativeIntegrationCandidate(input)).commit,candidate.commit);
+   assert.deepEqual(candidate.authorModelsObserved,["nvidia/modelo-simulado"]);
   }else{
    assert.equal(launched,0);
    assert.ok(["declined","blocked"].includes(detail.supervisedLaunch?.status));
@@ -129,5 +149,35 @@ const terminalErrors:unknown[]=[];
   assert.equal(await readFile(join(project,"a.txt"),"utf8"),"original");
   assert.equal(await readFile(join(project,"b.txt"),"utf8"),"original");
   assert.equal(git("status","--porcelain"),"");
+  if(mode==="approved"){
+   const batch=(await sourceJournal.list(identity)).at(-1)!;
+   const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
+   // Jueces simulados: ejercicio de contratos, no prueba independiente real.
+   let judgeCalls=0;
+   const registry:PiReviewRegistry={getAvailable:()=>[{provider:"nvidia",id:"modelo-simulado"},{provider:"prueba",id:"juez-a"},{provider:"prueba",id:"juez-b"}],
+    hasConfiguredAuth:()=>true,async *streamSimple(){judgeCalls++;yield {type:"done",reason:"stop",message:{content:[{type:"text",text:JSON.stringify({verdict:"pass",summary:"Resultado de prueba sintética",findings:[]})}]}};}};
+   const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
+    judgeA:{model:"prueba/juez-a"},judgeB:{model:"prueba/juez-b"},fixJournal:new JudgmentFixProposalJournal(join(privateDir,"fixes.json")),
+    requirements:"A y B deben contener resultado; C se conserva.",validate:async()=>{},confirm:async()=>true});
+   assert.equal(result.status,"analysis-complete");assert.equal(judgeCalls,2);
+   if(!("report" in result)||!result.report)assert.fail("Informe de dos jueces ausente");
+   const receiptsDir=join(privateDir,"receipts"),receipts=new ReceiptVerifierService(receiptsDir);
+   const proof={candidate,report:result.report,receipts,sessionId:identity.sessionId};
+   await assert.rejects(()=>verifyNativeIntegrationAcceptance(proof),/receipt/u);
+   // Las aserciones de los objetos Git anteriores son verificaciones reales
+   // de este repositorio sintético, firmadas únicamente dentro de la prueba.
+   await writeReviewReceipt(receiptsDir,createReviewReceiptSigned({commitSha:candidate.commit,treeSha:candidate.tree,
+    oddTask:"odd/tasks/continuacion-local-flujo-de-agentes.md",testSuite:{total:3,passed:3,failed:0,durationMs:0,runner:"node:test fixture"},
+    verdict:"PASSED"},await loadReceiptSigningKey(receiptsDir)));
+   const accepted=await acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>true});
+   assert.ok(accepted);assert.equal(git("rev-parse","HEAD"),candidate.commit);
+   const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{},
+    validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(proof);}});
+   assert.equal(successor.status,"successor-ready");
+   const finalRows=await todos.list(identity);
+   assert.equal(finalRows.filter(row=>candidate.sourceTodoIds.includes(row.taskId)&&row.current.state==="done").length,2);
+   assert.equal(finalRows.find(row=>row.taskId===rows.find(item=>item.dependsOn?.length===2)!.taskId)?.current.state,"cancelled");
+   assert.equal(finalRows.find(row=>row.requestId?.startsWith("asen-plan:continuation-")&&row.plan?.role==="worker")?.plan?.candidate?.revision,candidate.commit);
+  }
  }finally{await Promise.allSettled(terminalWork);await rm(base,{recursive:true,force:true});}
 });
