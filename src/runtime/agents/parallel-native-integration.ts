@@ -27,6 +27,7 @@ const changed=(root:string,base:string,tree:string)=>records(git(root,["diff-tre
 export interface NativeIntegrationCandidate{
  readonly batchId:string;readonly repository:string;readonly baseCommit:string;readonly tree:string;readonly commit:string;
  readonly paths:readonly string[];readonly sourceTodoIds:readonly string[];
+ readonly authorModelsObserved?:readonly string[];
  readonly acceptance:"not-accepted";readonly review:"required";readonly verification:"required";readonly autoMerge:false;readonly writerAuthority:false;
 }
 const issuedCandidates=new WeakSet<object>();
@@ -100,6 +101,7 @@ export async function buildNativeIntegrationCandidate(input:NativeIntegrationInp
   if(!oid.test(commit)||txt(root,["rev-parse",commit+"^{tree}"])!==tree)throw new Error("Combined candidate commit could not be verified");
   const candidate=Object.freeze({batchId,repository:root,baseCommit:batch.sourceHead,tree,commit,
    paths:Object.freeze([...allPaths].sort()),sourceTodoIds:Object.freeze(batch.tasks.map(task=>task.taskId)),
+   ...(receipts.every(row=>row.authorModelsObserved?.length)?{authorModelsObserved:Object.freeze([...new Set(receipts.flatMap(row=>row.authorModelsObserved??[]))].sort())}:{}),
    acceptance:"not-accepted" as const,review:"required" as const,verification:"required" as const,autoMerge:false as const,writerAuthority:false as const});
   issuedCandidates.add(candidate);return candidate;
  }finally{rmSync(scratch,{recursive:true,force:true});}
