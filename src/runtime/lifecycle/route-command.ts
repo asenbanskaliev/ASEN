@@ -1,5 +1,5 @@
 import path from "node:path";
-import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../../flow/odd-routing.js";
+import {deriveOddFacts,describeOddUnitPartition,planOddRoute,type OddRoutingRequest} from "../../flow/odd-routing.js";
 import {buildOrchestrationPlan} from "../../orchestration/orchestrator.js";
 import {materializeExecutablePlan} from "../../orchestration/executable-plan.js";
 import type {Candidate} from "../../core/types.js";
@@ -72,6 +72,7 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
  const writerAuthorizationBasis=candidate&&writeSurfaces.length?JSON.stringify({instruction,...factsInput}):undefined;
  const executablePlan=materializeExecutablePlan(plan,instruction,writerAuthorizationBasis);
  const sensitive=facts.riskOperations.length>0;
+ const unitPartition=describeOddUnitPartition(facts);
  return JSON.stringify({
   task:decision.taskIdentity,
   route:decision.route,
@@ -82,6 +83,7 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
   selectedSkills:plan.skills,
   delegatedAgents:plan.agents.map(agent=>({id:agent.id,role:agent.role,phase:agent.expectedPhase??null,skillPaths:agent.skillPaths??[],model:agent.model??null,thinking:agent.thinking??null})),
   executablePlan,
+  ...(unitPartition?{unitPartition}:{}),
   requiresSingleWriter:decision.requiresSingleWriter,
   requiresIsolatedChild:decision.requiresIsolatedChild,
   sensitiveOperationsPresent:sensitive,
