@@ -1,3 +1,4 @@
+import {captureNativeWriterCompletion,type NativeWriterCompletion} from "../runtime/agents/native-writer-completion.js";
 import {types} from "node:util";
 import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
@@ -17,7 +18,7 @@ export interface AgentFallbackObservation{readonly taskId:string;readonly sessio
 export type AgentFallbackListener=(observation:AgentFallbackObservation)=>void;
 export interface AgentRequest { id:string; role:"clarifier"|"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:Thinking; modelFallback?:AgentModelFallback; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; owner?:{kind:"user"|"agent"|"system";id:string};parentId?:string; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
-export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; }
+export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; nativeCompletion?:NativeWriterCompletion; }
 export interface AgentRunner { run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>; subscribeModelFallback?(listener:AgentFallbackListener):()=>void; }
 const validatedRunnerResults=new WeakMap<object,{lifecycle:AgentLifecycleSink|undefined;id:string;sessionId:string;projectId:string;consumed:boolean}>();
 function isPromise(value:void|Promise<void>):value is Promise<void>{return !!value&&typeof value==="object"&&"then" in value&&typeof value.then==="function";}
@@ -155,7 +156,12 @@ export class Dispatcher {
    const result=await this.runner.run(runnerRequest,controller.signal);
    if(!result||result.id!==request.id||typeof result.ok!=="boolean"||typeof result.output!=="string")throw new Error("Agent runner returned an invalid or mismatched result");
    if(request.writeSurfaces){assertActiveWriterSnapshotOutcome(request);writerLease?.verify();}
-   const acceptedResult=Object.freeze({...result});validatedRunnerResults.set(acceptedResult,{lifecycle:this.lifecycle,id:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,consumed:false});
+   // Ignorar evidencia arbitraria del runner. Capturar los bytes propios antes de soltar el lease.
+   const {nativeCompletion:_untrusted,...resultFields}=result;
+   let nativeCompletion:NativeWriterCompletion|undefined;
+   if(result.ok&&!controller.signal.aborted)try{nativeCompletion=captureNativeWriterCompletion(request,result);}catch{/* Resultado sin árbol admisible: no integrar. */}
+   writerLease?.verify();
+   const acceptedResult=Object.freeze({...resultFields,...(nativeCompletion?{nativeCompletion}:{})});validatedRunnerResults.set(acceptedResult,{lifecycle:this.lifecycle,id:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,consumed:false});
    if(controller.signal.aborted){const pending=this.lifecycle?.cancelled(request.id,result.output);if(isPromise(pending))await pending;terminalState=true;lifecycleRunning=false;return {id:request.id,ok:false,output:"Cancellation requested; completion was not accepted"};}
    const terminal=acceptedResult.ok?this.lifecycle?.completed(request.id,acceptedResult):this.lifecycle?.failed(request.id,acceptedResult.output);if(isPromise(terminal))await terminal;
    terminalState=true;lifecycleRunning=false;return acceptedResult;
