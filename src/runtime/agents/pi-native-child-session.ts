@@ -24,13 +24,13 @@ export async function createNativeChildPlanningSession(projectId:string,sessionD
  // Pi 1.2 persiste la sesión al registrar un mensaje del usuario.
  manager.appendMessage({role:"user",content:instruction,timestamp:Date.now()});
  const identity=Object.freeze({sessionId:id,projectId:root,sessionFile:file});
- await assertNativeChildPlanningSession(identity);
+ await assertNativeChildPlanningSession(identity,instruction);
  return identity;
 }
 /** La identidad procede del archivo real de Pi y se verifica al reabrirlo.
  * No acepta sesiones simuladas, enlaces, ni una carpeta de otro candidato.
  */
-export async function assertNativeChildPlanningSession(session:NativeChildPlanningSession):Promise<void>{
+export async function assertNativeChildPlanningSession(session:NativeChildPlanningSession,expectedInstruction?:string):Promise<void>{
  if(!path.isAbsolute(session.sessionFile)||!path.isAbsolute(session.projectId)||!session.sessionId)
   throw new Error("Invalid native Pi session identity");
  const info=await lstat(session.sessionFile);
@@ -41,4 +41,8 @@ export async function assertNativeChildPlanningSession(session:NativeChildPlanni
  if(manager.getSessionId()!==session.sessionId||
   !sameWorkspaceIdentityPath(await realpath(manager.getCwd()),await realpath(session.projectId)))
   throw new Error("Native Pi planning session identity or project changed");
+ const message=manager.getEntries().find(entry=>entry.type==="message"&&entry.message.role==="user");
+ if(!message||message.type!=="message"||typeof message.message.content!=="string"||!message.message.content||
+  (expectedInstruction!==undefined&&message.message.content!==expectedInstruction))
+  throw new Error("Native Pi delegated instruction is missing or changed");
 }
