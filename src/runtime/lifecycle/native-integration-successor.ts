@@ -18,8 +18,11 @@ export async function persistNativePartitionSuccessor(input:{
  if(!isAcceptedNativeIntegration(accepted,candidate,identity.sessionId)||identity.projectId!==candidate.repository)
   throw new Error("La sucesora requiere la integración auténtica de su lote.");
  const assertCurrent=async()=>{
-  await input.validate();await input.verify();
-  const git=(...args:string[])=>execFileSync("git",["-C",identity.projectId,...args],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:5000,windowsHide:true});
+  await input.validate();await input.verify();await input.validate();
+  const git=(...args:string[])=>execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-C",identity.projectId,...args],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:5000,windowsHide:true});
+  try{
+   if(git("config","--get-regexp","^(filter\\.|merge\\..*\\.driver$|diff\\..*\\.command$)").trim())throw Error("Configuración Git externa no admitida para continuar.");
+  }catch(error){if((error as {status?:number})?.status!==1)throw error;}
   if(git("rev-parse","HEAD").trim()!==candidate.commit||git("rev-parse","HEAD^{tree}").trim()!==candidate.tree||
    git("status","--porcelain=v1","--untracked-files=all").length)
    throw new Error("La integración ya no coincide con el candidato aceptado.");
@@ -56,11 +59,17 @@ export async function persistNativePartitionSuccessor(input:{
  const rootRows=roots.map(row=>row!);
  const drafts:TodoPlanDraft[]=rootRows.map(row=>({title:row.title,requestId:row.requestId!,dependsOn:[],description:row.description!,plan:row.plan!}));
  for(const task of graph.tasks){
+  // Una preparación previa puede haber guardado el plan antes de cerrar
+  // las raíces. Reutilizar sus rutas exactas, no el perfil modificado.
+  // addPlan sigue comprobando todos los restantes metadatos y dependencias.
+  const persisted=rows.find(row=>row.requestId==="asen-plan:"+task.id);
+  const model=persisted?persisted.plan?.model:task.model;
+  const thinking=persisted?persisted.plan?.thinking:task.thinking;
   drafts.push({title:task.title,requestId:"asen-plan:"+task.id,
    dependsOn:task.role==="worker"?rootRows.map(row=>row.requestId!):task.dependsOn.map(id=>"asen-plan:"+id),
    description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,
-    ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.model?{model:task.model}:{}),
-    ...(task.thinking?{thinking:task.thinking}:{}),...(task.role==="worker"&&task.candidate?{candidate:task.candidate}:{}),
+    ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(model?{model}:{}),
+    ...(thinking?{thinking}:{}),...(task.role==="worker"&&task.candidate?{candidate:task.candidate}:{}),
     ...(task.role==="reviewer"||task.role==="verifier"?{candidateRevision:candidate.commit}:{}),
     ...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),
     ...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{})}});

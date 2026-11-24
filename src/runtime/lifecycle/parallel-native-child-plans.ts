@@ -30,6 +30,7 @@ export async function prepareNativePartitionChildren(input:{
   Object.freeze({status,batchId:input.batchId,children:Object.freeze([...children]),...(reason?{reason}:{}),
    grantsAuthority:false,autoRetry:false,autoMerge:false});
  const {source,batchId,sourceJournal,sessionJournal,claimJournal,todos}=input;
+ if(!todos.supportsNativeChildProjects())return result("blocked","El diario Todo debe estar separado por proyecto antes de preparar sesiones hijas.");
  const inspect=async()=>{
   input.validateParent();
   const batch=(await sourceJournal.list(source)).find(row=>row.id===batchId);
@@ -83,16 +84,20 @@ export async function prepareNativePartitionChildren(input:{
   finally{await claim.close();}
  }catch{return result("blocked","No se pudo reservar una preparación nueva; no repetir automáticamente.");}
  for(const item of initial.selected){
+  let stage="validación";
   try{
    await validateExact();
+   stage="crear sesión";
    const native=await createNativeChildPlanningSession(item.record.worktreeRoot,input.sessionDir,item.instruction);
    await validateExact();
+   stage="asociar sesión";
    const attached=await sessionJournal.attach({childSessionId:native.sessionId,childProjectId:native.projectId,
     nativeSessionFile:native.sessionFile,validateSession:async()=>{await validateExact();await assertNativeChildPlanningSession(native,item.instruction);},
     confirm:async owner=>owner.sourceTodoId===item.record.taskId&&owner.sourceHead===initial.batch.sourceHead&&
      sameWorkspaceIdentityPath(owner.worktreeRoot,native.projectId)&&sameWorkspaceIdentityPath(owner.sourceProjectId,source.projectId)&&
      JSON.stringify(owner.writeSurfaces)===JSON.stringify(item.record.writeSurfaces)});
    if(attached.status!=="attached"||!attached.link)throw new Error("No se pudo asociar la sesión Pi nativa.");
+   stage="resolver perfil y plan";
    const profiles=await input.childProfiles(native);
    const candidate={...item.row.plan!.candidate!,repository:native.projectId};
    const {graph}=materializePartitionRoot(JSON.parse(item.basis),native.projectId,candidate,profiles);
@@ -102,6 +107,7 @@ export async function prepareNativePartitionChildren(input:{
     JSON.stringify(task.writeSurfaces)!==JSON.stringify(item.record.writeSurfaces))
     throw new Error("El plan hijo no conserva la unidad original.");
    await validateExact();await assertNativeChildPlanningSession(native,item.instruction);
+   stage="guardar tarea";
    await claimJournal.claim(attached.link);
    const draft:TodoPlanDraft={title:task.title,requestId:"asen-plan:"+task.id,dependsOn:[],description:task.instruction,
     plan:{role:"worker",skillPaths:[...task.skillPaths],priority:task.priority,
@@ -113,7 +119,7 @@ export async function prepareNativePartitionChildren(input:{
    children.push(Object.freeze({sourceTodoId:item.record.taskId,childTodoId:saved.taskId,...native}));
    await validateExact();
   }catch{
-   return result("partial-needs-review","Preparación interrumpida; conservar sesiones, vínculos y tareas existentes. No lanzar ni repetir automáticamente.");
+   return result("partial-needs-review","Unidad "+item.record.taskId+" · etapa: "+stage+". Preparación interrumpida; conservar sesiones, vínculos y tareas existentes. No lanzar ni repetir automáticamente.");
   }
  }
  return result("prepared");

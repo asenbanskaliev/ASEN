@@ -150,6 +150,8 @@ export class SessionTodoStore{
  }
  static async openProjectScoped(root:string,legacyFile:string,now:()=>string=()=>new Date().toISOString()):Promise<SessionTodoStore>{await migrateLegacyTodoFile(root,legacyFile);return new SessionTodoStore(root,now,undefined,true);}
  diagnostics(){return this.quarantined?{quarantined:this.quarantined}:undefined;}
+ /** Las sesiones hijas reutilizan IDs ODD en proyectos distintos. */
+ supportsNativeChildProjects():boolean{return this.projectScoped;}
  #file(context:TodoContext):string{return this.projectScoped?todoProjectStorageFile(this.path,context.projectId):this.path;}
  async #reconcileArchive(file:string):Promise<void>{
   const markerFile=`${file}.archive-pending.json`;await preparePrivateFile(markerFile,true);const rawMarker=await readIfPresent(markerFile);if(rawMarker===undefined)return;

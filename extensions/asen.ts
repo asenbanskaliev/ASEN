@@ -2534,7 +2534,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      typeof registry.hasConfiguredAuth!=="function"||typeof registry.streamSimple!=="function")
      return {status:"unavailable",reason:"Pi no ofrece un registro de jueces autenticados."};
     const rows=await (await todoStorePromise).list(identity);
-    const requirements=rows.filter(row=>candidate.sourceTodoIds.includes(row.taskId)).map(row=>row.description??row.title).join("\n").slice(0,8000);
+    const roots=candidate.sourceTodoIds.map(id=>rows.find(row=>row.taskId===id));
+    if(roots.some(row=>!row?.description))return {status:"blocked",reason:"Faltan instrucciones originales de las unidades integradas."};
+    const requirements=roots.map(row=>row!.description!).join("\n");
+    if(requirements.length>20000)return {status:"blocked",reason:"Las instrucciones completas superan el límite de revisión; no se enviará una versión recortada."};
     const fixProfile=resolveAgentProfileTarget(layers,"jd-fix-agent").choice;
     const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
      judgeA:resolveAgentProfileTarget(layers,"jd-judge-a").choice,

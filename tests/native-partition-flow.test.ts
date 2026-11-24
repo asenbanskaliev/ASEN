@@ -181,8 +181,16 @@ const terminalErrors:unknown[]=[];
    assert.ok(accepted);assert.equal(git("rev-parse","HEAD"),candidate.commit);
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("show",candidate.commit+":sin-cambios.txt"),"texto sin cambios\nsegunda línea");
-   const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{},
+   assert.equal(await readFile(join(project,"sin-cambios.txt"),"utf8"),"texto sin cambios\r\nsegunda línea\r\n");
+   // Fallo después de guardar el reemplazo pero antes de cerrar sus raíces.
+   let verifications=0;
+   await assert.rejects(()=>persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{},
+    validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(proof);if(++verifications===3)throw Error("interrupción simulada");}}),/interrupción simulada/u);
+   const savedBefore=(await todos.list(identity)).find(row=>row.requestId?.startsWith("asen-plan:continuation-")&&row.plan?.role==="worker");
+   assert.ok(savedBefore);
+   const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{global:{schema:"asen.runtime-profiles/v1",active:"cambiado",profiles:[{name:"cambiado",mode:"full-delegation",routes:{worker:{model:"nvidia/otro-modelo",thinking:"minimal"}}}]}},
     validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(proof);}});
+   if(successor.status==="successor-ready")assert.equal(successor.todoId,savedBefore.taskId);
    assert.equal(successor.status,"successor-ready");
    const finalRows=await todos.list(identity);
    assert.equal(finalRows.filter(row=>candidate.sourceTodoIds.includes(row.taskId)&&row.current.state==="done").length,2);
