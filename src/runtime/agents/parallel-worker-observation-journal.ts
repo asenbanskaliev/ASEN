@@ -56,6 +56,7 @@ export interface ParallelWorkerObservation{
  readonly worktreeChangeState:ParallelWorktreeChangeInspection["status"];
  readonly changedPaths:readonly string[];
  readonly candidateTree?:string;
+ readonly authorModelsObserved?:readonly string[];
  readonly recordedAt:string;
  readonly modelActual:"unknown";readonly modelConsumedProven:false;
  readonly acceptance:"not-accepted";readonly grantsAuthority:false;readonly autoRetry:false;readonly autoMerge:false;
@@ -74,7 +75,9 @@ function parse(raw:string):Journal{
  const seen=new Set<string>();
  for(const row of x.receipts){
   const withTree=!!row&&typeof row==="object"&&Object.hasOwn(row,"candidateTree");
-  if(!exact(row,[...keys,...(withTree?["candidateTree"]:[])])||
+  const withModels=!!row&&typeof row==="object"&&Object.hasOwn(row,"authorModelsObserved");
+  if(!exact(row,[...keys,...(withTree?["candidateTree"]:[]),...(withModels?["authorModelsObserved"]:[])])||
+   (withModels&&(!withTree||!validAuthorModels(row.authorModelsObserved)))||
    (withTree&&(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(String(row.candidateTree))||row.agentState!=="completed"||row.childTodoState!=="succeeded"||row.worktreeChangeState!=="scoped-changes"))||![
    row.batchId,row.sourceSessionId,row.sourceProjectId,row.sourceTodoId,
    row.childSessionId,row.childProjectId,row.childTodoId,row.agentId,row.childTodoState
@@ -103,12 +106,16 @@ async function load(file:string):Promise<Journal>{
  if(!await preparePrivateFile(file))return {schema:SCHEMA,revision:0,receipts:[]};
  return parse(await readFile(file,"utf8"));
 }
+function validAuthorModels(value:unknown):value is readonly string[]{
+ return Array.isArray(value)&&value.length>=1&&value.length<=9&&new Set(value).size===value.length&&value.every(model=>typeof model==="string"&&/^[a-z0-9][a-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u.test(model));
+}
 export interface ParallelWorkerObservationInput{
  readonly link:ParallelChildSessionLink;
  readonly worker:AttributedParallelWorker;
  readonly sourceTodoRevision:number;
  readonly changes:ParallelWorktreeChangeInspection;
  readonly projection?:WorkspaceReviewProjection;
+ readonly authorModelsObserved?:readonly string[];
 }
 function createObservationReceipt(input:ParallelWorkerObservationInput):ParallelWorkerObservation{
   const {link,worker,sourceTodoRevision,changes}=input;
@@ -136,6 +143,7 @@ function createObservationReceipt(input:ParallelWorkerObservationInput):Parallel
    agentUpdatedAt:worker.agentUpdatedAt,childTodoState:worker.childTodoState,
    worktreeChangeState:changes.status,changedPaths:[...changes.changedPaths],
    ...(projection?{candidateTree:projection.candidateTree}:{}),
+   ...(projection&&validAuthorModels(input.authorModelsObserved)?{authorModelsObserved:[...input.authorModelsObserved]}:{}),
    recordedAt:new Date().toISOString(),
    modelActual:"unknown",modelConsumedProven:false,acceptance:"not-accepted",
    grantsAuthority:false,autoRetry:false,autoMerge:false
