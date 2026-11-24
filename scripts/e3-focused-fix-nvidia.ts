@@ -71,6 +71,10 @@ try{
  mkdirSync(project);mkdirSync(privateDir,{recursive:true,mode:0o700});
  git(project,"init","-qb","ensayo-fix");git(project,"config","user.name","ASEN ensayo");git(project,"config","user.email","test@example.invalid");git(project,"config","core.autocrlf","false");
  const hooks=join(temp,"empty-hooks");mkdirSync(hooks);git(project,"config","core.hooksPath",hooks);
+ // El host sintético ofrece únicamente la herramienta que autoriza el ensayo.
+ // Los perfiles y herramientas de producción permanecen intactos.
+ mkdirSync(join(project,".pi","gentle-ai"),{recursive:true});
+ writeFileSync(join(project,".pi","gentle-ai","tools.json"),JSON.stringify({remove:["read","edit"]}));
  for(const name of ["a.txt","b.txt","c.txt"])writeFileSync(join(project,name),"original");
  writeFileSync(join(project,testPath),`import test from "node:test";test("negative control",()=>{});\n`);
  const skillPaths=new Set((["low","medium","high"] as const).flatMap(risk=>[false,true].flatMap(verification=>selectSkills({selectionProfile:"organic",phase:"apply",risk,defect:true,codeChange:false,behaviorChange:false,filesTouched:1,verification}).map(s=>s.path))));
@@ -206,7 +210,7 @@ try{
  const ctx={cwd:project,mode:"tui",hasUI:true,sessionManager:session,isIdle:()=>true,ui:{
   notify(){},confirm:async()=>true,editor:async(_title:string,seed:string)=>{
    const draft=JSON.parse(seed);assert.deepEqual(draft.scope.expectedPaths,["a.txt"]);
-   return JSON.stringify({...draft,instruction:"Use one native write tool call: path a.txt, content ASEN-NATIVE-CORRECT-A, no newline. Do not use edit, bash, or any other file. Stop immediately after the single successful write.",writes:[{path:"a.txt",changeKind:"documentation"}]});
+   return JSON.stringify({...draft,instruction:'Ejecuta una única llamada write con argumentos exactos {"path":"a.txt","content":"ASEN-NATIVE-CORRECT-A"}. No añadas caracteres ni salto final a content. No uses otras herramientas. Termina inmediatamente tras el resultado.',writes:[{path:"a.txt",changeKind:"documentation"}]});
   }
  }};
  await commands.get("asen-review").handler("fix-plan "+proposal.id+" save",ctx);

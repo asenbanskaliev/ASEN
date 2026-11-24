@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   actions: read
+  pull-requests: read
 
 jobs:
   ensayo-real:
@@ -62,7 +63,7 @@ jobs:
           set -euo pipefail
           npm ci --ignore-scripts --no-audit --no-fund
           npm run typecheck
-          node --import tsx --test tests/odd-unit-partition.test.ts tests/parallel-worktree-command.test.ts tests/native-partition-flow.test.ts
+          node --import tsx --test tests/dispatcher.test.ts tests/odd-unit-partition.test.ts tests/parallel-worktree-command.test.ts tests/native-partition-flow.test.ts
           npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
           test "$(pi --version | tr -d '\r')" = "1.2.0"
       - name: Ejecutar el recorrido integral de dos Writers NVIDIA
@@ -70,10 +71,14 @@ jobs:
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ASEN_PR_NUMBER: ${{ github.event.pull_request.number }}
           ASEN_NATIVE_PARTITION_REPORT: ${{ runner.temp }}/asen-native-partition/receipt.json
           PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-native-partition-pi
         run: |
           set -euo pipefail
+          test "$(gh api \"/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER\" --jq .head.sha)" = "$ASEN_EXPECTED_SHA"
+          unset GH_TOKEN
           test -n "$NVIDIA_API_KEY"
           mkdir -p "$PI_CODING_AGENT_DIR"
           node scripts/t12-pi-retry-settings.mjs

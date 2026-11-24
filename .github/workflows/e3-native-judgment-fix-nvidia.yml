@@ -65,7 +65,7 @@ jobs:
           npm run typecheck
           node_modules/.bin/tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck --types node scripts/e3-focused-fix-nvidia.ts
           ASEN_E3_FOCUSED_REPORT="$RUNNER_TEMP/e3-focused/offline.json" node --import tsx scripts/e3-focused-fix-nvidia.ts --offline
-          node --import tsx --test tests/odd-unit-partition.test.ts tests/parallel-worktree-command.test.ts tests/native-partition-flow.test.ts tests/pi-model-reviewer.test.ts
+          node --import tsx --test tests/dispatcher.test.ts tests/odd-unit-partition.test.ts tests/parallel-worktree-command.test.ts tests/native-partition-flow.test.ts tests/pi-model-reviewer.test.ts
           npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
           test "$(pi --version | tr -d '\r')" = "1.2.0"
       - name: Ejecutar dos jueces, Fix real y segunda revisión sobre defecto sintético
