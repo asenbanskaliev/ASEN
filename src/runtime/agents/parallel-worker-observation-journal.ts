@@ -10,6 +10,7 @@ import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import type {ParallelChildSessionLink} from "./parallel-todo-session-links.js";
 import type {AttributedParallelWorker} from "./parallel-worker-attribution.js";
 import type {ParallelWorktreeChangeInspection} from "./parallel-worktree-change-inspection.js";
+import {isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection} from "../../review/workspace-review-projection.js";
 
 const SCHEMA="asen.parallel-worker-observations/v1" as const;
 const allowed=new Set(["completed","failed","cancelled","interrupted"]);
@@ -54,6 +55,7 @@ export interface ParallelWorkerObservation{
  readonly agentUpdatedAt:string;readonly childTodoState:string;
  readonly worktreeChangeState:ParallelWorktreeChangeInspection["status"];
  readonly changedPaths:readonly string[];
+ readonly candidateTree?:string;
  readonly recordedAt:string;
  readonly modelActual:"unknown";readonly modelConsumedProven:false;
  readonly acceptance:"not-accepted";readonly grantsAuthority:false;readonly autoRetry:false;readonly autoMerge:false;
@@ -71,7 +73,9 @@ function parse(raw:string):Journal{
   throw new Error("Invalid parallel Worker observation journal");
  const seen=new Set<string>();
  for(const row of x.receipts){
-  if(!exact(row,keys)||![
+  const withTree=!!row&&typeof row==="object"&&Object.hasOwn(row,"candidateTree");
+  if(!exact(row,[...keys,...(withTree?["candidateTree"]:[])])||
+   (withTree&&(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(String(row.candidateTree))||row.agentState!=="completed"||row.childTodoState!=="succeeded"||row.worktreeChangeState!=="scoped-changes"))||![
    row.batchId,row.sourceSessionId,row.sourceProjectId,row.sourceTodoId,
    row.childSessionId,row.childProjectId,row.childTodoId,row.agentId,row.childTodoState
   ].every(safe)||!isAbsolute(row.sourceProjectId as string)||!isAbsolute(row.childProjectId as string)||
@@ -104,6 +108,7 @@ export interface ParallelWorkerObservationInput{
  readonly worker:AttributedParallelWorker;
  readonly sourceTodoRevision:number;
  readonly changes:ParallelWorktreeChangeInspection;
+ readonly projection?:WorkspaceReviewProjection;
 }
 function createObservationReceipt(input:ParallelWorkerObservationInput):ParallelWorkerObservation{
   const {link,worker,sourceTodoRevision,changes}=input;
@@ -114,6 +119,14 @@ function createObservationReceipt(input:ParallelWorkerObservationInput):Parallel
    !changes||changes.acceptance!=="not-accepted"||changes.autoMerge!==false||
    !validChanges(changes))
    throw new Error("Only a terminal exact native child Worker observation may be recorded");
+  const projection=input.projection;
+  if(projection&&(!isWorkspaceReviewProjectionGenuine(projection)||
+   !sameWorkspaceIdentityPath(projection.repositoryRoot,link.childProjectId)||
+   projection.baseCommit!==link.sourceHead||projection.unexpectedUntracked.length||
+   worker.agentState!=="completed"||worker.childTodoState!=="succeeded"||changes.status!=="scoped-changes"||
+   JSON.stringify(projection.entries.map(entry=>entry.path).sort())!==JSON.stringify([...changes.changedPaths].sort())||
+   projection.entries.some(entry=>!["100644","100755"].includes(entry.mode)||entry.change==="gitlink")))
+   throw new Error("Invalid native Worker immutable candidate projection");
   const receipt:ParallelWorkerObservation={
    batchId:link.batchId,sourceSessionId:link.sourceSessionId,sourceProjectId:link.sourceProjectId,
    sourceTodoId:link.sourceTodoId,sourceTodoRevision,
@@ -122,6 +135,7 @@ function createObservationReceipt(input:ParallelWorkerObservationInput):Parallel
    agentState:worker.agentState as ParallelWorkerObservation["agentState"],
    agentUpdatedAt:worker.agentUpdatedAt,childTodoState:worker.childTodoState,
    worktreeChangeState:changes.status,changedPaths:[...changes.changedPaths],
+   ...(projection?{candidateTree:projection.candidateTree}:{}),
    recordedAt:new Date().toISOString(),
    modelActual:"unknown",modelConsumedProven:false,acceptance:"not-accepted",
    grantsAuthority:false,autoRetry:false,autoMerge:false
