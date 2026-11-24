@@ -42,7 +42,8 @@ export async function assertNativeChildPlanningSession(session:NativeChildPlanni
   !sameWorkspaceIdentityPath(await realpath(manager.getCwd()),await realpath(session.projectId)))
   throw new Error("Native Pi planning session identity or project changed");
  const message=manager.getEntries().find(entry=>entry.type==="message"&&entry.message.role==="user");
- if(!message||message.type!=="message"||typeof message.message.content!=="string"||!message.message.content||
-  (expectedInstruction!==undefined&&message.message.content!==expectedInstruction))
+ const content=message?.type==="message"&&"content" in message.message?message.message.content:undefined;
+ if(typeof content!=="string"||!content||
+  (expectedInstruction!==undefined&&content!==expectedInstruction))
   throw new Error("Native Pi delegated instruction is missing or changed");
 }
