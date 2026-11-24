@@ -89,7 +89,7 @@ try{
  runtime=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:2});
  const agents=runtime;
  runtime.subscribeTerminal(record=>{
-  terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations,observedModels:id=>{const observed=obs.get(id)?.model;return observed&&observed!=="unknown"?[observed]:[];}}).catch(error=>{terminalErrors.push(error);}));
+  terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations,observedModels:(_session,_project,id)=>{const observed=obs.get(id)?.model;return observed&&observed!=="unknown"?[observed]:[];}}).catch(error=>{terminalErrors.push(error);}));
  });
  const parent=SessionManager.create(project,join(base,"parent-sessions"));
  parent.appendMessage({role:"user",content:"Ensayo integral de tres unidades sintéticas",timestamp:Date.now()});
