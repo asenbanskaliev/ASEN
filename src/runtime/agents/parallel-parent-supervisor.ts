@@ -3,6 +3,7 @@
  * planned with their own ODD, not names forged by this parent controller.
  * Only the existing trusted plan dispatcher may start a scoped Worker. */
 import {realpathSync} from "node:fs";
+import {createHash} from "node:crypto";
 import type {TodoContext} from "../lifecycle/todo-store.js";
 import type {SourceTodoRow} from "./parallel-todo-bindings.js";
 import type {PublicAgentRecord} from "./agent-lifecycle.js";
@@ -25,9 +26,11 @@ export interface ParentSupervisorReadyWorker{
  readonly baseRevision:string;
  readonly writeSurfaces:readonly string[];
  readonly model:string;
+ readonly instruction:string;
+ readonly sourceFingerprint:string;readonly childFingerprint:string;
  readonly modelActual:"unknown";readonly modelConsumedProven:false;
  readonly costVerified:false;
- readonly authorization:"fresh-per-worker-confirmation-required";
+ readonly authorization:"fresh-per-worker-confirmation-required"|"exact-batch-confirmation-required";
  readonly grantsAuthority:false;
 }
 export type ParentSupervisorPreview=Readonly<{
@@ -57,6 +60,8 @@ export interface ParentSupervisorInput{
  readonly loadTaskAgentLinks:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>;
  readonly validateParent:()=>Promise<void>;
  readonly confirmBatch:(ready:ParentSupervisorPreview)=>Promise<boolean>;
+ /** El host interactivo muestra todas las instrucciones exactas y los ámbitos antes de consentir. */
+ readonly exactBatchConsent?:boolean;
  /** Must call the existing plan dispatcher (not AgentRuntime directly), and
   * request new Pi UI approval for this exact child Worker before writing. */
  readonly launchChild:(worker:ParentSupervisorReadyWorker,
@@ -69,6 +74,7 @@ export interface ParentSupervisorInput{
      writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean|undefined>;
 }
 const same=(a:string,b:string)=>sameWorkspaceIdentityPath(a,b);
+const fingerprint=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 /** Un único enlace exacto puede sostener la autorización. La identidad
  * completa se compara sin transferir ni generar permisos. */
 export function enlacePiHijoIntacto(
@@ -202,9 +208,10 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    batchId:batch.id,sourceTodoId:task.taskId,childTodoId:next.taskId,
    childSessionId:link.childSessionId,childProjectId:canonical,
    baseRevision:batch.sourceHead,writeSurfaces:Object.freeze([...task.writeSurfaces]),
-   model:route.requested,modelActual:"unknown" as const,
+   model:route.requested,instruction:next.description,
+   sourceFingerprint:fingerprint(source),childFingerprint:fingerprint(next),modelActual:"unknown" as const,
    modelConsumedProven:false as const,costVerified:false as const,
-   authorization:"fresh-per-worker-confirmation-required" as const,grantsAuthority:false as const
+   authorization:input.exactBatchConsent?"exact-batch-confirmation-required" as const:"fresh-per-worker-confirmation-required" as const,grantsAuthority:false as const
   }));
  }
  await input.validateParent();
@@ -277,7 +284,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    sourceRoot:input.source.projectId,worktreeRoot:unit.childProjectId,
    baseRevision:unit.baseRevision,writeSurfaces:unit.writeSurfaces
   });
-  if(!link||!todo||todo.current.state!=="planned"||todo.plan?.role!=="worker"||
+  if(!link||!todo||fingerprint(todo)!==unit.childFingerprint||todo.current.state!=="planned"||todo.plan?.role!=="worker"||
    todo.plan.candidate?.revision!==unit.baseRevision||
    (todo.plan.model??"unknown")!==unit.model||
    !same(todo.plan.candidate.repository,unit.childProjectId)||
@@ -315,7 +322,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    });
    if(!currentBatch||currentBatch.state!=="prepared"||
     currentBatch.sourceHead!==unit.baseRevision||
-    !sourceTask||!currentSource||
+    !sourceTask||!currentSource||fingerprint(currentSource)!==unit.sourceFingerprint||
     sourceTask.taskRevision!==currentSource.current.revision||
     currentSource.current.state!=="planned"||
     sourceTask.requestId!==currentSource.requestId||
@@ -346,17 +353,21 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     unit.sourceTodoId+": Child Pi identity changed before consent; inspect durable child Todo/Agent records and do not retry"
    ]);
   }
-  let wasApproved=false,explicitlyDeclined=false;
+  let wasApproved=false,explicitlyDeclined=false,consentUsed=false;
   let outcome:Awaited<ReturnType<ParentSupervisorInput["launchChild"]>>;
   try{
    outcome=await input.launchChild(unit,async task=>{
     await input.validateParent();
-    if(task.id!==unit.childTodoId||task.role!=="worker"||
+    if(consentUsed||task.id!==unit.childTodoId||task.role!=="worker"||
+     (input.exactBatchConsent===true&&task.instruction!==unit.instruction)||
      task.candidateRevision!==unit.baseRevision||
      task.writeSurfaces?.length!==unit.writeSurfaces.length||
      task.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i]))
      return false;
-    const decision:unknown=await input.confirmWorker(unit,task);
+    // Un permiso individual se deriva como máximo una vez del diálogo exacto del lote.
+    await validateExact();
+    consentUsed=true;
+    const decision:unknown=input.exactBatchConsent===true?true:await input.confirmWorker(unit,task);
     wasApproved=decision===true;
     // Solo el booleano false equivale a rechazo humano expreso.
     // Cancelación, valores indefinidos y respuestas ambiguas detienen la tanda.
