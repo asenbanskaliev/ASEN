@@ -1,0 +1,78 @@
+name: E2A lote ODD nativo real NVIDIA
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - integration/megatanda-1-3-20261123
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2a-native-partition-one-shot
+  cancel-in-progress: false
+
+jobs:
+  ensayo-real:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'integration/megatanda-b-consolidada-20261124' &&
+      github.actor == 'asenbanskaliev' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Confirmar marcador de ensayo único
+        id: marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          if test "$(git log -1 --format=%s)" = 'ci(asen): ensayo integral ODD NVIDIA 20261124'; then
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        if: steps.marker.outputs.approved == 'true'
+        with:
+          node-version: "24"
+      - name: Comprobar código y permiso de lote sin modelos
+        if: steps.marker.outputs.approved == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node --import tsx --test tests/odd-unit-partition.test.ts tests/parallel-worktree-command.test.ts tests/native-partition-flow.test.ts
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          test "$(pi --version | tr -d '\r')" = "1.2.0"
+      - name: Ejecutar el recorrido integral de dos Writers NVIDIA
+        if: steps.marker.outputs.approved == 'true'
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_NATIVE_PARTITION_REPORT: ${{ runner.temp }}/asen-native-partition/receipt.json
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-native-partition-pi
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node scripts/t12-pi-retry-settings.mjs
+          timeout 360s tsx scripts/e2a-native-partition-nvidia.ts
+      - name: Guardar recibo sin credenciales ni datos del proveedor
+        if: always() && steps.marker.outputs.approved == 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: lote-nativo-nvidia-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-native-partition/receipt.json
+          if-no-files-found: warn
+          retention-days: 30
