@@ -44,7 +44,7 @@ const obs=new Map<string,{pid:number;start:number;end:number;model:string;writeS
 const dialogs:string[]=[];
 const report={schema:"asen.e2a.native-partition/v1",sha:expected,model,
  authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoRetry:false,autoMerge:false,costVerified:false,
- status:"BLOCKED",stage:"fixture",nativeSessions:0,started:0,writeBatchConfirmations:0,parallel:false,sourceClean:false,
+ status:"BLOCKED",stage:"fixture",nativeSessions:0,admitted:0,started:0,writeBatchConfirmations:0,parallel:false,sourceClean:false,
  dependentBlocked:false,receipts:0,integrationCandidate:false,workers:[] as Record<string,unknown>[]};
 let runtime:AgentRuntime|undefined;
 let childOwners:Array<{sessionId:string;projectId:string;sourceTodoId:string;childTodoId:string;sessionFile:string}>=[];
@@ -130,9 +130,9 @@ try{
   assert.equal(SessionManager.open(child.sessionFile).getSessionId(),child.sessionId);
  }
  report.stage="supervisor";
- report.started=details.supervisedLaunch?.started?.length??0;
+ report.admitted=details.supervisedLaunch?.started?.length??0;
  report.writeBatchConfirmations=dialogs.filter(t=>t==="Autorizar las dos escrituras ODD exactas de este lote?").length;
- assert.equal(report.started,2);
+ assert.equal(report.admitted,2);
  assert.equal(report.writeBatchConfirmations,1);
  assert.equal(dialogs.length,3);
  assert.equal(details.supervisedLaunch.status,"started");
@@ -158,13 +158,14 @@ try{
    nativeModel:o?.model??"unknown",changedPaths:changes,exactBytes:exact,exactScope:scoped,oneWrite:o?.writeStarts===1&&o?.writeEnds===1});
  }
  const intervals=[...obs.values()];
+ report.started=intervals.filter(o=>o.pid>0).length;
  report.parallel=intervals.length===2&&new Set(intervals.map(o=>o.pid)).size===2&&intervals.every(o=>o.pid>0&&o.end>o.start)&&Math.max(...intervals.map(o=>o.start))<Math.min(...intervals.map(o=>o.end));
  report.sourceClean=git(project,"rev-parse","HEAD")===head&&git(project,"status","--porcelain=v1","--untracked-files=all")==="";
  const rows=await todos.list(identity),dependent=rows.find(row=>row.dependsOn?.length===2);
  report.dependentBlocked=dependent?.current.state==="planned"&&(await agents.list(identity)).length===0;
  report.receipts=(await observations.listSource(identity,await sessionJournal.listSource(identity))).length;
  report.stage="acceptance";
- assert.equal(report.parallel,true);assert.equal(report.sourceClean,true);assert.equal(report.dependentBlocked,true);
+ assert.equal(report.started,2);assert.equal(report.parallel,true);assert.equal(report.sourceClean,true);assert.equal(report.dependentBlocked,true);
  assert.equal(report.receipts,2);assert.ok(report.workers.length===2&&report.workers.every(w=>w.verified===true));
  const batch=(await sourceJournal.list(identity)).at(-1)!;
  const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
@@ -181,9 +182,10 @@ try{
 }finally{
  for(const child of childOwners)await runtime?.cancelSession(child).catch(()=>{});
  await Promise.allSettled(terminalWork);
+ report.started=[...obs.values()].filter(o=>o.pid>0).length;
  try{rmSync(base,{recursive:true,force:true});}catch{report.status="BLOCKED";}
  mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
  writeFileSync(resolve(reportFile),JSON.stringify(report,null,2)+"\n",{encoding:"utf8",flag:"wx",mode:0o600});
 }
-process.stdout.write(JSON.stringify({status:report.status,stage:report.stage,nativeSessions:report.nativeSessions,started:report.started,parallel:report.parallel,receipts:report.receipts})+"\n");
+process.stdout.write(JSON.stringify({status:report.status,stage:report.stage,nativeSessions:report.nativeSessions,admitted:report.admitted,started:report.started,parallel:report.parallel,receipts:report.receipts})+"\n");
 if(report.status!=="PASS_REAL_NVIDIA_SCOPED_PARTITION_TEST_ONLY")process.exitCode=1;
