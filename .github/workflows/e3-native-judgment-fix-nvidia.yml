@@ -10,10 +10,6 @@ permissions:
   contents: read
   actions: read
 
-concurrency:
-  group: e3-native-judgment-fix-one-shot
-  cancel-in-progress: false
-
 jobs:
   ensayo-real:
     if: >-
@@ -22,6 +18,9 @@ jobs:
       github.event.pull_request.head.ref == 'feat/megatanda-b-jueces-fix-real-20261124' &&
       github.actor == 'asenbanskaliev' &&
       github.run_attempt == 1
+    concurrency:
+      group: e3-native-judgment-fix-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 22
     env:
@@ -40,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
-          if test "$(git log -1 --format=%s)" = 'ci(asen): ensayo real jueces y Fix NVIDIA 20261124'; then
+          if test "$(git log -1 --format=%s)" = 'ci(asen): ensayo corregido jueces y Fix NVIDIA 20261124'; then
             # Una ejecución anterior del mismo SHA consume el intento, incluso
             # si se canceló antes del proveedor. No se reintenta por reapertura.
             previous=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/workflows/e3-native-judgment-fix-nvidia.yml/runs?head_sha=$ASEN_EXPECTED_SHA&per_page=100" --jq ".workflow_runs[] | select(.id < $ASEN_WORKFLOW_RUN) | .id")
@@ -86,7 +85,9 @@ jobs:
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: jueces-fix-nvidia-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
-          path: ${{ runner.temp }}/asen-native-judgment-fix/receipt.json
+          path: |
+            ${{ runner.temp }}/asen-native-judgment-fix/receipt.json
+            ${{ runner.temp }}/asen-native-judgment-fix/signed-test-receipt.json
           if-no-files-found: warn
           retention-days: 30
 
