@@ -46,17 +46,6 @@ export default function parentProbe(pi:any):void{
        typeof eventId==="string"&&typeof agentId==="string"){
      busyNotice={eventId,agentId};
      busyResolve?.();
-    }else if(witnessMode==="idle"&&typeof eventId==="string"&&typeof agentId==="string"){
-     // El aviso terminal despierta al padre Pi real; no registra una recepción ficticia.
-     // La instrucción solo contiene identidades ya publicadas por el diario duradero.
-     record("idle_wake",{eventId,agentId});
-     pi.sendMessage({
-      customType:"asen.t12.acceptance_instruction",
-      content:"READ-ONLY acceptance follow-up: inspect agent "+agentId+
-       " using asen_agent_status. Only if it is completed, acknowledge event "+eventId+
-       " using asen_agent_ack. Do not edit files or call other tools.",
-      display:false,
-     },{triggerTurn:true,deliverAs:"steer"});
     }
    }else if(message.customType==="asen.agent.wake"){
     record("idle_wake",{options});
