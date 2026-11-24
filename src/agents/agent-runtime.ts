@@ -30,7 +30,7 @@ export class AgentRuntime{
  async list(identity:AgentSessionIdentity):Promise<readonly PublicAgentRecord[]>{return this.store.list(identity.sessionId,identity.projectId);}
  async query(id:string,identity:AgentSessionIdentity){
   const entry=await this.store.get(id,identity.sessionId,identity.projectId);
-  return entry?{record:entry.record,history:entry.events,spec:{...(entry.request.model===undefined?{}:{model:entry.request.model}),...(entry.request.thinking===undefined?{}:{thinking:entry.request.thinking}),...(entry.request.modelFallback===undefined?{}:{modelFallback:snapshotAgentModelFallback(entry.request.modelFallback)}),...(entry.request.continuationOf===undefined?{}:{continuationOf:entry.request.continuationOf})}}:null;
+  return entry?{record:entry.record,history:entry.events,...(entry.result?.nativeCompletion?{nativeCompletion:entry.result.nativeCompletion}:{}),spec:{...(entry.request.model===undefined?{}:{model:entry.request.model}),...(entry.request.thinking===undefined?{}:{thinking:entry.request.thinking}),...(entry.request.modelFallback===undefined?{}:{modelFallback:snapshotAgentModelFallback(entry.request.modelFallback)}),...(entry.request.continuationOf===undefined?{}:{continuationOf:entry.request.continuationOf})}}:null;
  }
  /** Observers receive only persisted terminal outcomes; notification failures cannot alter execution. */
  /** Full durable entry for read-only projections. It never mutates, replays or re-authorizes a task. */
