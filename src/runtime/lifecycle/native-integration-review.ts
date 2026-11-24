@@ -107,17 +107,17 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
   "-C",candidate.repository,...args],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:20000,maxBuffer:1000000,windowsHide:true});
  const head=()=>git(["rev-parse","HEAD"]).trim();
  const inspect=()=>{
-  if(realpathSync(git(["rev-parse","--show-toplevel"]).trim())!==realpathSync(candidate.repository)||
-   git(["status","--porcelain=v1","--untracked-files=all"]).length)
-   throw new Error("La integración requiere el proyecto original limpio.");
-  const branch=git(["symbolic-ref","--short","HEAD"]).trim();
-  if(!branch||["main","master"].includes(branch.toLowerCase()))throw new Error("Integración bloqueada en rama principal o sin rama.");
+  if(realpathSync(git(["rev-parse","--show-toplevel"]).trim())!==realpathSync(candidate.repository))
+   throw new Error("La integración requiere el proyecto original.");
+  const branch=git(["symbolic-ref","HEAD"]).trim();
+  if(!branch.startsWith("refs/heads/")||["refs/heads/main","refs/heads/master"].includes(branch.toLowerCase()))throw new Error("Integración bloqueada en rama principal o sin rama.");
   if(head()!==candidate.baseCommit&&head()!==candidate.commit)throw new Error("El HEAD original cambió.");
   // No ejecutar filtros o drivers externos configurados por el repositorio.
   try{
    const config=git(["config","--get-regexp","^(filter\\.|merge\\..*\\.driver$|diff\\..*\\.command$)"]);
    if(config.trim())throw new Error("Configuración Git externa no admitida para integrar.");
   }catch(error){if((error as {status?:number})?.status!==1)throw error;}
+  if(git(["status","--porcelain=v1","--untracked-files=all"]).length)throw new Error("La integración requiere el proyecto original limpio.");
   return {branch,head:head()};
  };
  await input.validate();const evidence=await verifyNativeIntegrationAcceptance(input),initial=inspect();
@@ -125,11 +125,11 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
   "Rama: "+initial.branch,"Árbol: "+candidate.tree,"Archivos: "+candidate.paths.join(", "),
   "Dos jueces PASS; pruebas firmadas: "+evidence.tests,
   "Sin push, sin main/master, sin reintentos ni permiso Writer heredado."].join("\n"))!==true)return undefined;
- await input.validate();await verifyNativeIntegrationAcceptance(input);
+ await input.validate();await verifyNativeIntegrationAcceptance(input);await input.validate();
  if(JSON.stringify(inspect())!==JSON.stringify(initial))throw new Error("La rama o candidato cambió durante la aprobación.");
  if(initial.head===candidate.baseCommit){
   const hooks=mkdtempSync(join(tmpdir(),"asen-integration-hooks-"));
-  try{git(["merge","--ff-only","--no-edit",candidate.commit],hooks);}
+  try{git(["merge","--ff-only","--no-edit","--no-overwrite-ignore",candidate.commit],hooks);}
   finally{rmSync(hooks,{recursive:true,force:true});}
  }
  await input.validate();
