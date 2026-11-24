@@ -1,6 +1,8 @@
 /** Referencias locales de conservación: no son ramas ni aprobaciones.
  * Los objetos quedan alcanzables durante revisión y reinicios. No se borran
- * automáticamente, ni se publican por Git. */
+ * automáticamente, y ASEN no los publica. Un git push --mirror o remoto
+ * configurado como espejo sí puede publicar refs/asen/*: excluirlas del
+ * espejo si deben permanecer locales. */
 import {execFileSync} from "node:child_process";
 import {mkdtempSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";

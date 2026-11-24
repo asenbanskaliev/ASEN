@@ -50,15 +50,17 @@ function userSummary(value:unknown):string{
    prepared?.status==="declined"?"Se ha rechazado la preparación de carpetas; no se ha iniciado ningún Writer.":
    prepared?.status==="blocked"||prepared?.status==="blocked-needs-review"?"La preparación está bloqueada. "+(prepared.reason??"Revisar el lote antes de continuar."):
    "La preparación de carpetas requiere una sesión Pi interactiva.";
-  const child=(value as {childPreparation?:{status?:string}}).childPreparation;
-  const launch=(value as {supervisedLaunch?:{status?:string;started?:unknown[]}}).supervisedLaunch;
+  const child=(value as {childPreparation?:{status?:string;reason?:string}}).childPreparation;
+  const launch=(value as {supervisedLaunch?:{status?:string;started?:unknown[];reason?:string;reasons?:string[]}}).supervisedLaunch;
   const childMessage=child?.status==="prepared"?"Las sesiones Pi hijas nativas y sus tareas están guardadas.":
-   child?.status==="partial-needs-review"?"La preparación de hijos quedó parcial; no se repite automáticamente.":
+   child?.status==="partial-needs-review"?"La preparación de hijos quedó parcial; no se repite automáticamente. "+(child.reason??""):
+   child?.status==="blocked"?"Preparación de hijos bloqueada. "+(child.reason??"Inspeccionar el lote."):
    child?.status==="declined"?"Se rechazó preparar las sesiones hijas.":"Las sesiones hijas todavía no están preparadas.";
   const launchMessage=launch?.status==="started"&&launch.started?.length===2?
    "El despachador ha admitido los dos Writers con permiso exacto. Pueden estar en cola; todavía no se ha acreditado el inicio de ambos procesos Pi.":
    launch?.status==="partial-needs-review"||plan.execution?.started==="unknown"?
-   "Hay un resultado parcial o incierto de lanzamiento; revisar los registros antes de continuar.":
+   "Hay un resultado parcial o incierto de lanzamiento; revisar los registros antes de continuar. "+(launch?.reason??launch?.reasons?.join("; ")??""):
+   launch?.status==="blocked"?"Supervisión bloqueada. "+(launch.reason??launch.reasons?.join("; ")??"Inspeccionar el lote."):
    launch?.status==="declined"?"Se rechazó el permiso de escritura del lote. No se iniciaron Writers.":
    "No consta un lanzamiento autorizado de Writers.";
   return ["ASEN ha dividido el trabajo en unidades ODD con ámbitos separados.",

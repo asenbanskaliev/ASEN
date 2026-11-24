@@ -49,7 +49,7 @@ const project=join(temp,"repo"),home=join(temp,"home"),privateDir=join(home,".as
 const model="nvidia/nemotron-3.5-lightning-30b-a3b",wrong="ASEN-NATIVE-LOT-A",correct="ASEN-NATIVE-CORRECT-A";
 const testPath="reproduction.test.mjs";
 const requirements="The reproduction test is an intentional failing test to preserve unchanged. Review only the exact requirement: a.txt must contain ASEN-NATIVE-CORRECT-A with no newline. If it differs, fail and quote both observed and expected tokens verbatim in an a.txt finding. If exact, pass with no findings. Tests are verified separately; do not treat the not-run evidence field as a defect. Return the required JSON object only.";
-const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],judgeCalls:0,firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
+const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],judgeCalls:0,judgeDiagnostics:[] as {model:string;result:string}[],failureCategory:"none",firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
 let agents:AgentRuntime|undefined,owner:{sessionId:string;projectId:string}|undefined;
 try{
  mkdirSync(project);mkdirSync(privateDir,{recursive:true,mode:0o700});
@@ -100,14 +100,42 @@ try{
  const key=(m:PiReviewerModel)=>m.provider+"/"+m.id;
  if(real){
   const native=new ModelRegistry(await ModelRuntime.create({authPath:join(privateDir,"auth.json"),modelsPath:join(privateDir,"models.json"),allowModelNetwork:true,modelRefreshTimeoutMs:30000}));
-  const available=native.getAvailable().filter(m=>m.provider==="nvidia"&&native.hasConfiguredAuth(m)&&typeof m.api==="string"&&String(m.api)!=="virtual");
-  const approved=["google/gemma-3-12b-it","meta/llama-3.2-11b-vision-instruct","mistralai/mistral-7b-instruct-v0.3","google/gemma-3-4b-it"];
+  const available=native.getAvailable().filter(m=>m.provider==="nvidia"&&native.hasConfiguredAuth(m)&&typeof m.api==="string"&&!["virtual","pi-virtual"].includes(String(m.api)));
+  // Modelos de texto de familias distintas, observados en el catálogo
+  // autenticado. Gemma falló en la primera revisión del intento anterior;
+  // no se conoce todavía el motivo exacto.
+  const approved=["nvidia/llama-3.1-nemotron-70b-instruct","mistralai/mistral-7b-instruct-v0.3","meta/llama-3.2-11b-vision-instruct"];
   const selected=approved.flatMap(id=>available.filter(m=>m.id===id)).slice(0,2);
   assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>key(m)!==model));
   [judgeA,judgeB]=[selected[0]!,selected[1]!];
-  registry={getAvailable:()=>selected,hasConfiguredAuth:m=>selected.some(x=>key(x)===key(m)),streamSimple:(m,ctx,options)=>{
+  registry={getAvailable:()=>selected,hasConfiguredAuth:m=>selected.some(x=>key(x)===key(m)),async *streamSimple(m,ctx,options){
    const descriptor=selected.find(x=>key(x)===key(m));if(!descriptor||++report.judgeCalls>4)throw Error("Límite de cuatro revisiones");
-   return native.streamSimple(descriptor,ctx as never,options as never) as unknown as ReturnType<PiReviewRegistry["streamSimple"]>;
+   const diagnostic={model:key(descriptor),result:"started"};report.judgeDiagnostics.push(diagnostic);
+   // El diagnóstico solo conserva categorías fijas; ni errorMessage, ni
+   // texto del modelo, ni cabeceras o credenciales llegan al artefacto.
+   try{
+    const stream=native.streamSimple(descriptor,ctx as never,{...options,maxRetries:0,reasoning:undefined} as never);
+    for await(const event of stream){
+     if(event.type==="error"){
+      const message=event.error?.errorMessage??"";
+      diagnostic.result=event.reason==="aborted"?"aborted":
+       /\b(?:401|403)\b|unauthorized|authentication|invalid api key/i.test(message)?"authentication":
+       /\b429\b|rate.limit|quota/i.test(message)?"rate-limit":
+       /\b404\b|model.not.found/i.test(message)?"model-unavailable":
+       /\b400\b|\b422\b|bad.request|unsupported/i.test(message)?"request-rejected":
+       /\b5\d\d\b|service.unavailable/i.test(message)?"provider-unavailable":
+       /timeout|timed.out|network|fetch|connection/i.test(message)?"network":
+       "provider-error";
+     }else if(event.type==="done"){
+      if(event.message.provider!==descriptor.provider||event.message.model!==descriptor.id||
+       event.message.responseModel!==undefined&&event.message.responseModel!==descriptor.id){
+       diagnostic.result="model-identity-mismatch";throw Error("Identidad física del juez no coincide");
+      }
+      diagnostic.result=event.reason==="stop"?"stop":event.reason==="length"?"length":event.reason==="toolUse"?"tool-use":"deferred";
+     }
+     yield event as unknown as import("../src/review/pi-model-reviewer.js").PiReviewEvent;
+    }
+   }catch(error){if(diagnostic.result==="started")diagnostic.result="transport-exception";throw error;}
   }};
  }else{
   judgeA={provider:"prueba",id:"juez-a"};judgeB={provider:"prueba",id:"juez-b"};
@@ -221,6 +249,16 @@ try{
  // El mensaje del proveedor podría contener secretos. En offline sí se
  // conserva el diagnóstico local para resolver errores antes de inferir.
  if(!real)process.stderr.write(String(error)+"\n");
+ // No registrar mensajes arbitrarios ni contenido de respuesta.
+ const message=error instanceof Error?error.message:"";
+ report.failureCategory=error instanceof SyntaxError?"invalid-json":
+  message==="Independent reviewer call failed"?"provider-error":
+  message==="Independent reviewer attempted non-text output"?"non-text-output":
+  message==="Independent reviewer did not complete a bounded answer"?"incomplete-answer":
+  message==="Independent reviewer returned no complete answer"?"missing-answer":
+  message==="Identidad física del juez no coincide"?"model-identity-mismatch":
+  message.startsWith("Independent review")||message.startsWith("Independent reviewer")||/^finding \d+ is invalid$/u.test(message)?"review-contract":
+  error instanceof assert.AssertionError?"assertion-failed":"other";
  report.status="BLOCKED";
 }finally{
  if(owner)await agents?.cancelSession(owner).catch(()=>{});

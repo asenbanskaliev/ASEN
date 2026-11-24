@@ -2,7 +2,6 @@ import {createHash,randomUUID} from "node:crypto";
 import type {AgentFallbackListener,AgentFallbackObservation,AgentModelFallback,AgentRequest,AgentRunner} from "./dispatcher.js";
 import {Dispatcher,snapshotAgentModelFallback} from "./dispatcher.js";
 import {EvidenceStore} from "../evidence/store.js";
-import type {RddDefectBinding} from "../defects/rdd-defect-binding.js";
 import type {Candidate} from "../core/types.js";
 import type {OrchestrationRouteEvidence} from "../orchestration/orchestrator.js";
 import {issueSkillContext} from "../skills/context.js";
@@ -124,11 +123,6 @@ export class AgentRuntime{
    if(!enqueued||!dispatched)throw new Error("Trusted Todo binding did not durably enqueue and start the worker");
   }catch(error){if(enqueued&&!dispatched)await this.store.cancelled(request.id,"Worker authorization or binding was cancelled before dispatch").catch(()=>{});throw error;}
   return request.id;
- }
- /** Entrega interna de una reproducción RDD genuina al almacén que el
-  * Dispatcher ya consulta. No crea tareas, permisos ni admite clones. */
- recordDefectIntake(candidate:Candidate,proof:RddDefectBinding):void{
-  this.evidence.addDefectIntake(candidate,proof);
  }
  async startExplorer(input:{prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{return this.startReadOnly({role:"explorer",...input},signal);}
  async cancel(id:string,identity:AgentSessionIdentity):Promise<boolean>{

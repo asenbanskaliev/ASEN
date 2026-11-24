@@ -658,7 +658,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   },async identity=>profileLayer(identity)):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const planAdvanceQueue=new PlanAdvanceQueue();
-  const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
+  const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string,expectedTodoId?:string):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
    if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false,reason:"Automatic plan dispatch is disabled."};
    if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false,reason:"The local plan dispatcher is unavailable."};
    const generation=parentBindingGeneration,manager=ctx.sessionManager;
@@ -684,6 +684,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      return !!model&&`${model.provider}/${model.id}`===ref;
     };
     const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,
+     ...(expectedTodoId?{expectedTodoId}:{}),
      ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
      runtimeProfiles:activeProfiles,validateIdentity:async()=>{
       if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
@@ -705,7 +706,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     let lecturasIniciadas=dispatched&&result.role!=="worker"?1:0;
     // Segunda unidad únicamente si la primera es de lectura y la siguiente
     // está lista por sus propias dependencias. El supervisor nunca adelanta un Writer.
-    if(lecturasIniciadas===1&&!independentBlockedTodoId&&!ctx.signal?.aborted)try{
+    if(lecturasIniciadas===1&&!independentBlockedTodoId&&!expectedTodoId&&!ctx.signal?.aborted)try{
      const activos=(await agents.list(identity)).filter(agent=>agent.state==="queued"||agent.state==="running").length;
      if(activos<2){
       const rows=await todos.list(identity),byId=new Map(rows.map(row=>[row.taskId,row]));
@@ -2562,8 +2563,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos:await todoStorePromise,
       profiles:await profileLayer(identity),validate:async()=>{validate();},
       verify:async()=>{await verifyNativeIntegrationAcceptance(proof);},...(ctx.signal?{signal:ctx.signal}:{})});
-     const execution=successor.status==="successor-ready"?await advancePlan(ctx):undefined;
-     return {status:successor.status,integration:accepted,successor,...(execution?{execution}:{})};
+     if(successor.status!=="successor-ready")return {status:successor.status,integration:accepted,successor};
+     try{
+      const execution=await advancePlan(ctx,undefined,successor.todoId);
+      return {status:successor.status,integration:accepted,successor,execution};
+     }catch(error){
+      return {status:successor.status,integration:accepted,successor,execution:{started:"unknown",reason:safeErrorMessage(error)}};
+     }
     }catch(error){
      return {status:"integrated-continuation-blocked",integration:accepted,reason:safeErrorMessage(error)};
     }

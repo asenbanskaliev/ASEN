@@ -137,3 +137,14 @@ test("T03 rechaza modelos Pi falsificados, controles y duplicados antes de ofrec
   streamSimple:()=>{throw new Error("Sin ejecución");}
  },author),[]);
 });
+
+
+test("Excluye modelos virtuales de Pi 1.2 sin llamar al transporte",async t=>{
+ const {workspace,evidence}=fixture(t);
+ const virtual={provider:"nvidia",id:"alias",api:"pi-virtual"};
+ let calls=0;
+ const models:PiReviewRegistry={getAvailable:()=>[virtual,reviewer],hasConfiguredAuth:()=>true,async *streamSimple(){calls++;}};
+ assert.deepEqual(availableIndependentPiReviewers(models,author),[reviewer]);
+ await assert.rejects(()=>runIndependentPiReview({registry:models,model:virtual,author,evidence,requirements:"Comprobar independencia"}),/unavailable/u);
+ assert.equal(calls,0);closeWorkspaceReview(workspace);
+});
