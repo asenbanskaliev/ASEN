@@ -127,3 +127,51 @@ test("La división no elimina revisiones ni controles de riesgo existentes",()=>
   assert.equal(result.execution.authorized,false);
  }
 });
+
+test("Pi guarda las tres unidades en el diario real y no despacha la raíz en la sesión padre",async()=>{
+ const {mkdtemp,mkdir,rm,realpath}=await import("node:fs/promises");
+ const {tmpdir}=await import("node:os");
+ const {join}=await import("node:path");
+ const {execFileSync}=await import("node:child_process");
+ const {SessionTodoStore}=await import("../src/runtime/lifecycle/todo-store.js");
+ const {createAsenExtension}=await import("../extensions/asen.js");
+ const {dispatchNextPlanTask}=await import("../src/runtime/lifecycle/plan-dispatcher.js");
+ const {bindParallelSourceTodos}=await import("../src/runtime/agents/parallel-todo-bindings.js");
+ const directory=await mkdtemp(join(tmpdir(),"asen-odd-partition-"));
+ try{
+  const root=join(directory,"repo"),home=join(directory,"home");
+  await mkdir(root);await mkdir(home);
+  const project=await realpath(root);
+  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+  git("init","-q");git("config","user.name","ASEN");git("config","user.email","test@example.invalid");git("commit","--allow-empty","-qm","base");
+  const head=git("rev-parse","HEAD");
+  const todos=await SessionTodoStore.open(join(home,"todos.json"));
+  const tools=new Map<string,any>();
+  const pi={registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);},on(){}};
+  createAsenExtension({homeDir:()=>home,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,todoStoreFactory:async()=>todos})(pi);
+  const identity={sessionId:"partition-parent",projectId:project};
+  const context={cwd:project,sessionManager:{getSessionId:()=>identity.sessionId},ui:{notify(){}}};
+  const {taskIdentity,repositoryIdentity,...facts}=request();
+  const result=await tools.get("asen_plan_request").execute("call",{instruction:"Completar tres unidades",...facts},undefined,undefined,context);
+  assert.equal(result.details.persistence.status,"saved");
+  assert.equal(result.details.execution.started,false);
+  assert.match(result.content[0].text,/Las tareas están guardadas/u);
+  const rows=await todos.list(identity);
+  assert.equal(rows.length,3);
+  assert.ok(rows.every(row=>row.current.state==="planned"&&row.plan?.role==="worker"));
+  const roots=rows.filter(row=>!(row.dependsOn?.length));
+  const successor=rows.find(row=>row.dependsOn?.length)!;
+  assert.equal(roots.length,2);
+  assert.deepEqual(successor.dependsOn,roots.map(row=>row.taskId));
+  assert.equal(bindParallelSourceTodos({identity,expectedHead:head,rows,units:roots.map(row=>({taskId:row.taskId,writeSurfaces:row.plan!.writeSurfaces!}))}).length,2);
+  let confirmations=0;
+  const denied=await dispatchNextPlanTask({todos,identity,
+   agents:{} as Parameters<typeof dispatchNextPlanTask>[0]["agents"],
+   links:{} as Parameters<typeof dispatchNextPlanTask>[0]["links"],
+   validateIdentity:async()=>{},confirm:async()=>{confirmations++;return true;}});
+  assert.equal(denied.status,"blocked");
+  if(denied.status==="blocked")assert.match(denied.reason,/supervisor padre/u);
+  assert.equal(confirmations,0);
+  assert.ok((await todos.list(identity)).every(row=>row.current.state==="planned"));
+ }finally{await rm(directory,{recursive:true,force:true});}
+});
