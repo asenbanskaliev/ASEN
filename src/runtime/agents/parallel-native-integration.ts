@@ -29,6 +29,10 @@ export interface NativeIntegrationCandidate{
  readonly paths:readonly string[];readonly sourceTodoIds:readonly string[];
  readonly acceptance:"not-accepted";readonly review:"required";readonly verification:"required";readonly autoMerge:false;readonly writerAuthority:false;
 }
+const issuedCandidates=new WeakSet<object>();
+export function isIssuedNativeIntegrationCandidate(value:unknown):value is NativeIntegrationCandidate{
+ return !!value&&typeof value==="object"&&issuedCandidates.has(value);
+}
 export interface NativeIntegrationInput{
  readonly identity:TodoContext;readonly batchId:string;
  readonly sourceJournal:ParallelTodoWorktreeJournal;readonly sessionJournal:ParallelChildSessionJournal;
@@ -94,8 +98,24 @@ export async function buildNativeIntegrationCandidate(input:NativeIntegrationInp
    GIT_AUTHOR_DATE:date,GIT_COMMITTER_DATE:date
   }).toString("utf8").trim();
   if(!oid.test(commit)||txt(root,["rev-parse",commit+"^{tree}"])!==tree)throw new Error("Combined candidate commit could not be verified");
-  return Object.freeze({batchId,repository:root,baseCommit:batch.sourceHead,tree,commit,
+  const candidate=Object.freeze({batchId,repository:root,baseCommit:batch.sourceHead,tree,commit,
    paths:Object.freeze([...allPaths].sort()),sourceTodoIds:Object.freeze(batch.tasks.map(task=>task.taskId)),
-   acceptance:"not-accepted",review:"required",verification:"required",autoMerge:false,writerAuthority:false});
+   acceptance:"not-accepted" as const,review:"required" as const,verification:"required" as const,autoMerge:false as const,writerAuthority:false as const});
+  issuedCandidates.add(candidate);return candidate;
  }finally{rmSync(scratch,{recursive:true,force:true});}
+}
+
+/** Lectura del candidato inmutable, nunca del texto devuelto por el Writer. */
+export function readNativeIntegrationDiff(candidate:NativeIntegrationCandidate):Readonly<{baseTree:string;diff:string;paths:readonly string[]}>{
+ if(!isIssuedNativeIntegrationCandidate(candidate))throw new Error("Native integration candidate was not issued here");
+ const root=candidate.repository;
+ if(txt(root,["rev-parse",candidate.commit+"^{tree}"])!==candidate.tree||
+  txt(root,["rev-parse",candidate.commit+"^"])!==candidate.baseCommit)
+  throw new Error("Integrated candidate object changed");
+ const baseTree=txt(root,["rev-parse",candidate.baseCommit+"^{tree}"]);
+ const paths=changed(root,baseTree,candidate.tree);
+ if(!equal(paths,candidate.paths))throw new Error("Integrated candidate scope changed");
+ const diff=new TextDecoder("utf-8",{fatal:true}).decode(git(root,["diff","--no-ext-diff","--no-textconv","--no-color","--no-renames","--binary","--full-index",baseTree,candidate.tree,"--"]));
+ if(Buffer.byteLength(diff)>1_000_000)throw new Error("Integrated diff exceeds the independent review limit");
+ return Object.freeze({baseTree,diff,paths:Object.freeze(paths)});
 }
