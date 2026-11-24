@@ -81,7 +81,9 @@ export function registerParallelWorktreeCommand(
     if(attached.status!=="attached")return attached;
     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||ctx.cwd!==cwd)
      throw new Error("Child Pi session changed after attachment; inspect the saved link");
-    return await handler("plan-todo",ctx);
+    const planned=await handler("plan-todo",ctx) as {status?:string};
+    if(planned.status==="declined"||planned.status==="cancelled")ctx.ui.notify("Vinculación guardada. Para continuar, usa /asen-worktrees plan-todo; no repitas attach.","info");
+    return planned;
    }
    if(action==="supervise"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||
