@@ -14,7 +14,7 @@ import {inspectParallelBatchWorkerOutcomes} from "../agents/parallel-batch-coord
 import {launchParentApprovedWorkers,type ParentSupervisorReadyWorker} from "../agents/parallel-parent-supervisor.js";
 import {ParentSupervisorClaimJournal} from "../agents/parallel-parent-supervisor-claims.js";
 import {attributeParallelChildWorker} from "../agents/parallel-worker-attribution.js";
-import {buildNativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
+import {buildNativeIntegrationCandidate,type NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
 import {controlledInstructionPlanCommand} from "./route-command.js";
@@ -22,7 +22,7 @@ import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | attach-plan | plan-todo | supervise | collect | integration | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | attach-plan | plan-todo | supervise | collect | integration | integration-review | integration-continue | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;
  sessionManager?:{getSessionId?:()=>string};
@@ -52,6 +52,8 @@ function readRequest(value:string):{parentDir:string;units:readonly ParallelWork
 export function registerParallelWorktreeCommand(
  register:(name:string,command:WorktreeCommand)=>void,
  options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;observationFile?:string;supervisorClaimsFile?:string;
+  reviewIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
+  continueIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
   planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
   childProfiles?:(identity:TodoContext)=>Promise<ProfileLayer>;
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
@@ -70,7 +72,7 @@ export function registerParallelWorktreeCommand(
  const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
 
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-review"&&action!=="integration-continue"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
@@ -167,7 +169,7 @@ export function registerParallelWorktreeCommand(
      result.status==="started"?"info":"warning");
     return result;
    }
-   if(action==="integration"){
+   if(action==="integration"||action==="integration-review"||action==="integration-continue"){
     if(!id||!ctx.cwd||!options?.journalFile||!options.sessionLinksFile||!options.observationFile)
      return {status:"unavailable",reason:"No existe una sesión propietaria y sus diarios de lote."};
     const source=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
@@ -185,6 +187,11 @@ export function registerParallelWorktreeCommand(
      if(!batch)throw new Error("No existe lote ODD.");
      const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
      validate();
+     if(action!=="integration"){
+      const run=action==="integration-review"?options.reviewIntegratedCandidate:options.continueIntegratedCandidate;
+      if(!run||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm)return {status:"unavailable",reason:"Se necesita la sesión Pi propietaria y confirmación interactiva."};
+      const result=await run(candidate,ctx,validate);validate();ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
+     }
      const result={status:"candidate-prepared",candidate,
       next:"Revisar el candidato exacto, ejecutar pruebas firmadas y obtener aprobación antes de integrar; las sucesoras siguen bloqueadas."};
      ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
