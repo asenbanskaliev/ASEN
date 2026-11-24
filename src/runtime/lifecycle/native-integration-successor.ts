@@ -3,9 +3,7 @@ import {execFileSync} from "node:child_process";
 import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import type {NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
 import {isAcceptedNativeIntegration,type AcceptedNativeIntegration} from "./native-integration-review.js";
-import {parsePartitionUnitBasis} from "./odd-unit-plan.js";
-import {controlledInstructionPlanCommand} from "./route-command.js";
-import type {ExecutablePlan} from "../../orchestration/executable-plan.js";
+import {parsePartitionUnitBasis,materializeIntegratedSuccessor} from "./odd-unit-plan.js";
 import type {ProfileLayer} from "./profiles.js";
 import type {SessionTodoStore,TodoContext,TodoPlanDraft} from "./todo-store.js";
 
@@ -39,19 +37,16 @@ export async function persistNativePartitionSuccessor(input:{
  if(!basis||old.plan?.candidate?.revision!==candidate.baseCommit)throw new Error("La sucesora original no conserva su base ODD.");
  const parsed=parsePartitionUnitBasis(JSON.parse(basis),identity.projectId,candidate.baseCommit);
  const predecessorUnits=roots.map(row=>parsePartitionUnitBasis(JSON.parse(row!.plan!.writerAuthorizationBasis!),identity.projectId,candidate.baseCommit));
- if(predecessorUnits.some(item=>item.parentFacts.taskIdentity!==parsed.parentFacts.taskIdentity||item.unit.dependsOn.length)||
+ if(predecessorUnits.some(item=>JSON.stringify(item.parentFacts)!==JSON.stringify(parsed.parentFacts)||item.unit.dependsOn.length)||
   JSON.stringify(predecessorUnits.map(item=>item.unit.id).sort())!==JSON.stringify([...parsed.unit.dependsOn].sort()))
   throw new Error("Los predecesores no pertenecen a la misma partición ODD.");
  const freshId="continuation-"+createHash("sha256").update(JSON.stringify([old.requestId,candidate.commit])).digest("hex").slice(0,40);
  const facts=parsed.facts;
- const fresh={instruction:parsed.instruction,taskIdentity:freshId,intent:facts.intent,scope:facts.scope,writes:facts.writes,
-  riskOperations:facts.riskOperations,namedRisks:facts.namedRisks,session:{...facts.session,continuation:true},
-  testing:facts.testing,review:{kind:"dual_explicit",estimatedMinutes:15},unresolvedDecisions:facts.unresolvedDecisions};
- const output=JSON.parse(controlledInstructionPlanCommand(JSON.stringify(fresh),identity.projectId,{
+ const graph=materializeIntegratedSuccessor(parsed,freshId,{
   id:"asen-"+candidate.commit.slice(0,12),repository:identity.projectId,revision:candidate.commit,
   createdAt:new Date(execFileSync("git",["-C",identity.projectId,"show","-s","--format=%cI",candidate.commit],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:5000}).trim()).toISOString()
- },input.profiles)) as {executablePlan:ExecutablePlan};
- const graph=output.executablePlan,workers=graph.tasks.filter(task=>task.role==="worker");
+ },input.profiles);
+ const workers=graph.tasks.filter(task=>task.role==="worker");
  if(workers.length!==1||!workers[0]?.writerAuthorizationBasis||!workers[0].candidate||
   JSON.stringify(workers[0].writeSurfaces)!==JSON.stringify(facts.writes.map(write=>write.path)))
   throw new Error("No existe un nuevo Writer exacto para la sucesora.");

@@ -1,4 +1,4 @@
-import {deriveOddFacts,deriveOddPartitionUnitFacts,canMaterializeOddPartition,planOddRoute,type OddDerivedFacts,type OddRoutingRequest} from "../../flow/odd-routing.js";
+import {deriveOddFacts,deriveOddPartitionUnitFacts,deriveOddContinuationFacts,canMaterializeOddPartition,planOddRoute,type OddDerivedFacts,type OddRoutingRequest} from "../../flow/odd-routing.js";
 import {buildOrchestrationPlan} from "../../orchestration/orchestrator.js";
 import {materializeExecutablePlan,type ExecutablePlan,type PlannedTask} from "../../orchestration/executable-plan.js";
 import type {Candidate} from "../../core/types.js";
@@ -83,4 +83,21 @@ export function materializePartitionRoot(value:unknown,repository:string,candida
  const basis=JSON.stringify(value);
  if(basis.length>16384)throw new Error("ODD partition unit basis exceeds the Todo storage limit");
  return unitPlan(parsed.facts,parsed.instruction,basis,candidate,profiles);
+}
+
+/** La política y el ámbito de la sucesora provienen de su unidad original,
+ * no de un requisito de revisión añadido para obligar a delegar. */
+export function integratedSuccessorBasis(parsed:ReturnType<typeof parsePartitionUnitBasis>,taskIdentity:string){
+ if(parsed.unit.dependsOn.length!==2)throw Error("La sucesora necesita sus dos raíces originales");
+ const facts=deriveOddContinuationFacts(parsed.facts,taskIdentity);
+ const basis=JSON.stringify({instruction:parsed.instruction,taskIdentity,intent:facts.intent,scope:facts.scope,writes:facts.writes,
+  riskOperations:facts.riskOperations,namedRisks:facts.namedRisks,session:facts.session,
+  testing:facts.testing,review:facts.review,unresolvedDecisions:facts.unresolvedDecisions});
+ if(basis.length>16384)throw Error("La base de la sucesora supera el límite Todo");
+ return {facts,basis};
+}
+export function materializeIntegratedSuccessor(parsed:ReturnType<typeof parsePartitionUnitBasis>,taskIdentity:string,candidate:Candidate,profiles:ProfileLayer){
+ if(candidate.repository!==parsed.facts.repositoryIdentity||!sha(candidate.revision))throw Error("Candidato de sucesora inválido");
+ const {facts,basis}=integratedSuccessorBasis(parsed,taskIdentity);
+ return unitPlan(facts,parsed.instruction,basis,candidate,profiles).graph;
 }

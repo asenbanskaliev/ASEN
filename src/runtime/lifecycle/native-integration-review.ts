@@ -161,7 +161,8 @@ export async function reviewNativePartitionWithTests(input:{
   "Candidato: "+candidate.commit,"Árbol: "+candidate.tree,"Pruebas conjuntas firmadas: "+initial.receipt.testSuite.total,
   "Comando/ejecutor registrado: "+initial.receipt.testSuite.runner,
   "Comprueba requisitos, cambios y unión de unidades. Si detectas un riesgo nuevo o defecto, rechaza y vuelve a planificar.",
-  "Instrucciones originales:",initial.policy.requirements,"Diferencias completas:",diff.diff,
+  "Instrucciones originales:",initial.policy.requirements,"Diferencias completas (texto escapado):",
+  JSON.stringify(diff.diff).replace(/[\p{Cf}\u2028\u2029]/gu,ch=>"\\u"+ch.charCodeAt(0).toString(16).padStart(4,"0")),
   "No se ejecutan modelos ni se otorga permiso de escritura o integración."].join("\n"))!==true)
   return Object.freeze({status:"declined" as const,acceptance:"not-accepted" as const,autoMerge:false as const});
  const latest=await inspect();

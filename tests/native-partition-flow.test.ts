@@ -242,11 +242,13 @@ const terminalErrors:unknown[]=[];
    // Fallo después de guardar el reemplazo pero antes de cerrar sus raíces.
    let verifications=0;
    await assert.rejects(()=>persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{},
-    validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(proof);if(++verifications===3)throw Error("interrupción simulada");}}),/interrupción simulada/u);
+    validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(jointProof);if(++verifications===3)throw Error("interrupción simulada");}}),/interrupción simulada/u);
    const savedBefore=(await todos.list(identity)).find(row=>row.requestId?.startsWith("asen-plan:continuation-")&&row.plan?.role==="worker");
    assert.ok(savedBefore);
+   assert.equal(JSON.parse(savedBefore.plan!.writerAuthorizationBasis!).review.kind,"none");
+   assert.equal((await todos.list(identity)).filter(row=>row.requestId?.startsWith("asen-plan:continuation-")).length,1);
    const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{global:{schema:"asen.runtime-profiles/v1",active:"cambiado",profiles:[{name:"cambiado",mode:"full-delegation",routes:{worker:{model:"nvidia/otro-modelo",thinking:"minimal"}}}]}},
-    validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(proof);}});
+    validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(jointProof);}});
    if(successor.status==="successor-ready")assert.equal(successor.todoId,savedBefore.taskId);
    assert.equal(successor.status,"successor-ready");
    const finalRows=await todos.list(identity);
