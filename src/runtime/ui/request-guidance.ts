@@ -1,10 +1,11 @@
 import {ASEN_PLAN_REQUEST_TOOL} from "../lifecycle/natural-plan-tool.js";
+import type {DelegationMode} from "../lifecycle/profiles.js";
 
 export const ASEN_REQUEST_GUIDANCE_SECTION="asen_request_handling";
 export const ASEN_EXPLORATION_BUDGET_SECTION="asen_exploration_budget";
 
 export type ActiveAsenRequestTools=Readonly<{plan:boolean;agent:boolean;todo?:boolean}>;
-export type AsenRequestGuidanceContext=Readonly<{activePlan?:boolean}>;
+export type AsenRequestGuidanceContext=Readonly<{activePlan?:boolean;delegationMode?:DelegationMode}>;
 export type AsenRequestGuidanceModule=
  |"core"
  |"code"
@@ -55,6 +56,12 @@ const ASEN_REQUEST_GUIDANCE_MODULES:Readonly<Record<AsenRequestGuidanceModule,st
  ].join("\n\n"),
 });
 
+// Estas variantes sustituyen, no duplican, la orientación contradictoria del modo normal.
+const FULL_DELEGATION_GUIDANCE:Partial<Record<AsenRequestGuidanceModule,string>>=Object.freeze({
+ route:"Distingue lectura y escritura antes de delegar. Resuelve directamente las consultas de solo lectura acotadas. Toda modificación, incluso pequeña, necesita un plan y un Writer con permiso exacto; el padre no edita ni ejecuta terminal. Describe las unidades funcionales independientes con objetivo, estimación y dependencias, sin deducir independencia del número de archivos. Mantén los controles para riesgos altos y aclaraciones.",
+ exploration:"Investiga directamente hasta tres consultas de lectura o 40 KiB acumulados. Si aún falta información relevante, utiliza un único Explorer de solo lectura con un resumen breve de archivos y líneas. No dupliques agentes ni conviertas el presupuesto en permiso de escritura. Si se rechaza el Writer, conserva el bloqueo y no vuelvas a intentarlo por otra vía; el padre nunca escribe. El modelo configurado no amplía permisos.",
+ plan:`Usa ${ASEN_PLAN_REQUEST_TOOL} para cualquier cambio, incluso acotado, o para trabajo con dependencias. Las consultas simples de solo lectura pueden quedarse en la conversación. El plan puede iniciar automáticamente las lecturas que estén listas. A writer still requires exact one-run Pi approval. No dividas tareas por cantidad de archivos ni uses el plan como permiso de escritura. Si no hay Writer autorizado o planificador disponible, informa del bloqueo.`,
+});
 export const ASEN_GUIDANCE_TODO_TOOLS=Object.freeze([
  "asen_todo_add","asen_todo_update","asen_todo_list","asen_todo_accept_result","asen_todo_inspect_interrupted_write",
 ] as const);
@@ -92,7 +99,9 @@ export function composeAsenRequestGuidance(
  context?:AsenRequestGuidanceContext,
 ):string{
  return selectAsenRequestGuidanceModules(tools,context)
-  .map(module=>ASEN_REQUEST_GUIDANCE_MODULES[module])
+  .map(module=>context?.delegationMode==="full-delegation"
+   ?FULL_DELEGATION_GUIDANCE[module]??ASEN_REQUEST_GUIDANCE_MODULES[module]
+   :ASEN_REQUEST_GUIDANCE_MODULES[module])
   .join("\n\n");
 }
 
