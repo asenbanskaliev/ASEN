@@ -65,7 +65,7 @@ for(const id of ["nvidia/nemotron-3-ultra-550b-a55b","nvidia/nemotron-3.5-super-
  assert.equal(matchesJudgeIdentity(descriptor,"otro",id),false);
  assert.equal(matchesJudgeIdentity(descriptor,"nvidia",id+"-otro"),false);
 }
-const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],judgeCalls:0,judgeDiagnostics:[] as {model:string;result:string;providerMatches?:boolean;modelMatches?:boolean;responseMatches?:boolean;responseModel?:string;contentKinds?:string[]}[],failureCategory:"none",firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
+const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],catalogModels:[] as string[],judgeCalls:0,judgeDiagnostics:[] as {model:string;result:string;providerMatches?:boolean;modelMatches?:boolean;responseMatches?:boolean;responseModel?:string;contentKinds?:string[]}[],failureCategory:"none",firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
 let agents:AgentRuntime|undefined,owner:{sessionId:string;projectId:string}|undefined;
 try{
  mkdirSync(project);mkdirSync(privateDir,{recursive:true,mode:0o700});
@@ -119,19 +119,27 @@ try{
  if(real){
   const native=new ModelRegistry(await ModelRuntime.create({authPath:join(privateDir,"auth.json"),modelsPath:join(privateDir,"models.json"),allowModelNetwork:true,modelRefreshTimeoutMs:30000}));
   const available=native.getAvailable().filter(m=>m.provider==="nvidia"&&native.hasConfiguredAuth(m)&&typeof m.api==="string"&&!["virtual","pi-virtual"].includes(String(m.api)));
-  // Dos modelos de texto NVIDIA disponibles en el catálogo autenticado y
-  // distintos del autor. Se priorizan los endpoints actuales de la familia
-  // Nemotron frente a los modelos que el proveedor rechazó en el intento previo.
-  // Ultra respondió en el ensayo anterior. No repetir los endpoints que
-  // fallaron (GPT-OSS 20B, DeepSeek Flash y Super VL). Seleccionar un modelo
-  // de texto distinto del autor y solo si consta en el catálogo autenticado.
-  // Una vez elegida la pareja, no cambiarla ni reintentar durante el juicio.
-  const approved=["nvidia/nemotron-3-ultra-550b-a55b","nvidia/nemotron-3-super-120b-a12b","qwen/qwen3.5-397b-a17b","qwen/qwen3-next-80b-a3b-instruct","moonshotai/kimi-k2.5"];
-  const selected=approved.flatMap(id=>{
-   const matches=available.filter(m=>m.id===id);
-   return matches.length===1?matches:[];
-  }).slice(0,2);
-  assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>!matchesJudgeIdentity(m,"nvidia",model)));
+  // El catálogo efectivo, no una lista supuesta de modelos, determina la
+  // selección. Se excluyen las tres rutas fallidas y el autor. Identidades
+  // ambiguas (incluidas variantes con prefijo NVIDIA redundante) no se usan.
+  const physical=(id:string)=>id.replace(/^(?:nvidia\/)+/u,"").toLowerCase();
+  const excluded=new Set(["openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash","nemotron-3.5-super-vl-120b-a12b",physical(model)]);
+  const isText=(id:string)=>/^[A-Za-z0-9][A-Za-z0-9._/-]{0,190}$/u.test(id)&&
+   !/(?:embed|rerank|retriev|guard|safety|vision|(?:^|[-/])vl(?:[-/]|$)|audio|speech|image|video|ocr|diffusion|reward|moderation|classifier|asr|tts)/iu.test(id)&&
+   /(?:nemotron|llama|mistral|mixtral|qwen|gemma|kimi|glm|gpt-oss|deepseek|command|minimax|phi|granite|dbrx|falcon|yi-)/iu.test(id);
+  const counts=new Map<string,number>();
+  for(const m of available){const id=physical(m.id);counts.set(id,(counts.get(id)??0)+1);}
+  report.catalogModels=[...new Set(available.map(m=>m.id).filter(id=>/^[A-Za-z0-9][A-Za-z0-9._/-]{0,190}$/u.test(id)))].sort().slice(0,150);
+  const eligible=available.filter(m=>isText(m.id)&&counts.get(physical(m.id))===1&&!excluded.has(physical(m.id))&&
+   !matchesJudgeIdentity(m,"nvidia",model)&&(!("input" in m)||!Array.isArray(m.input)||m.input.includes("text")));
+  const priority=["nemotron-3-ultra-550b-a55b","openai/gpt-oss-120b","nemotron-3-super-120b-a12b","qwen/qwen3.5-397b-a17b","qwen/qwen3-next-80b-a3b-instruct","meta/llama-3.3-70b-instruct","moonshotai/kimi-k2.5"];
+  const rank=(id:string)=>{const i=priority.indexOf(physical(id));return i<0?priority.length:i;};
+  const selected=eligible.sort((a,b)=>rank(a.id)-rank(b.id)||a.id.localeCompare(b.id)).slice(0,2);
+  // No probar varios modelos hasta conseguir el veredicto deseado: elegir
+  // exactamente dos y conservar la pareja para ambas revisiones.
+  assert.equal(selected.length,2,"Catálogo NVIDIA sin dos jueces físicos elegibles");
+  assert.notEqual(physical(selected[0]!.id),physical(selected[1]!.id));
+  assert.ok(selected.every(m=>!matchesJudgeIdentity(m,"nvidia",model)));
   [judgeA,judgeB]=[selected[0]!,selected[1]!];
   registry={getAvailable:()=>selected,hasConfiguredAuth:m=>selected.some(x=>key(x)===key(m)),async *streamSimple(m,ctx,options){
    const descriptor=selected.find(x=>key(x)===key(m));if(!descriptor||++report.judgeCalls>4)throw Error("Límite de cuatro revisiones");
