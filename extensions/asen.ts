@@ -1053,8 +1053,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     };
     if(!unsubscribeAgentDelivery)unsubscribeAgentDelivery=runtime.subscribeTerminal(record=>{
      const delivery=(async()=>{
-      // Preserve an evidence row even if the original session is no longer active.
-      await agentNoticeJournal.record(record);
+      // El diario de avisos no es requisito para conservar resultados de hijos.
+      // El resultado del agente ya es duradero; los avisos se gestionan después.
       const current=agentDeliveryContext,active=agentDeliveryIdentity;
       if(!current||!active||record.sessionId!==active.sessionId||record.projectId!==active.projectId||
          current.sessionManager?.getSessionId?.()!==active.sessionId){
@@ -1070,13 +1070,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         if(observed&&parent&&owner&&owner.sessionId===observed.source.sessionId&&owner.projectId===observed.source.projectId){
          const live=await sessionIdentity(parent);
          if(agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&live.sessionId===owner.sessionId&&live.projectId===owner.projectId){
-          parent.ui.notify(`ASEN: lote Writer terminado. ${observed.completed} completados y ${observed.failed} con incidencias. Resultados guardados; pendiente revisión e integración.`,observed.failed?"warning":"info");
+          parent.ui.notify(`ASEN: lote Writer terminado. ${observed.completed} completados y ${observed.failed} con incidencias. Resultados guardados; pendiente revisión e integración.${observed.planningFileMissing?" El archivo de planificación de un hijo no está disponible.":""}`,observed.failed||observed.planningFileMissing?"warning":"info");
           await refreshTodoWidget(parent);
          }
         }
        }
+       try{await agentNoticeJournal.record(record);}catch{/* La observación del hijo no depende del aviso. */}
        return;
       }
+      await agentNoticeJournal.record(record);
       const labels:Record<string,string>={primary:"la tarea",explorer:"la exploración",worker:"el cambio",reviewer:"la revisión",verifier:"la verificación",clarifier:"la aclaración"};
       const completed=record.state==="completed",failed=record.state==="failed";
       const notifyTerminal=async(wake=true,quiet=false)=>{
@@ -1137,6 +1139,23 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      agentDeliveryTasks.add(delivery);
      void delivery.finally(()=>agentDeliveryTasks.delete(delivery));
     });
+    // Recuperar lotes terminales durante cada arranque del padre. No relanzar
+    // agentes ni reenviar avisos inciertos; solo reconciliar pruebas duraderas.
+    try{
+     if(todos&&taskAgentLinks&&identity){
+      const sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
+      const sessionJournal=new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal);
+      const claims=new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json"));
+      const observations=new ParallelWorkerObservationJournal(path.join(home(),".asen","parallel-worker-observations.json"));
+      const children=(await sessionJournal.listSource(identity)).filter(link=>!!link.nativeSessionFile);
+      for(const child of children){
+       const records=await runtime.list({sessionId:child.childSessionId,projectId:child.childProjectId});
+       for(const record of records.filter(row=>row.role==="worker"&&["completed","failed","cancelled","interrupted"].includes(row.state))){
+        await reconcileNativeChildTerminal({record,todos,agents:runtime,links:taskAgentLinks,sourceJournal,sessionJournal,claims,observations});
+       }
+      }
+     }
+    }catch{ctx.ui.notify("No se pudieron recuperar todos los recibos de hijos. No se han repetido agentes.","warning");}
     try{
      // Only unattempted, verified terminal results may be enqueued on restart.
      const prior=await agentNoticeJournal.list(identity);
@@ -1654,7 +1673,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         stage="supervisedLaunch";
         const launched=await worktreeCommands.supervisePartition(ctx,preparation.batchId) as {status?:string;started?:unknown[]};
         output.supervisedLaunch=launched;
-        output.execution={started:!!launched.started?.length,authorized:!!launched.started?.length,
+        const executionState=launched.started?.length?true:launched.status==="partial-needs-review"?"unknown":false;
+        output.execution={started:executionState,authorized:executionState,
          reason:launched.status??"unknown"};
         validateContext();
        }
