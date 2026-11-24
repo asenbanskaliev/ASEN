@@ -12,6 +12,9 @@ import {proposeJudgmentFixHandoff} from "../../review/odd-agent-review-flow.js";
 import type {JudgmentFixProposalJournal} from "../../review/judgment-fix-proposal-journal.js";
 import type {RouteChoice} from "./profiles.js";
 import type {ReviewReceiptReader} from "./review-acceptance.js";
+import type {SessionTodoStore} from "./todo-store.js";
+import {parsePartitionUnitBasis} from "./odd-unit-plan.js";
+import {canMaterializeOddPartition} from "../../flow/odd-routing.js";
 import {isIssuedNativeIntegrationCandidate,readNativeIntegrationDiff,type NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
 
 const reportBindings=new WeakMap<object,string>();
@@ -71,12 +74,124 @@ export async function reviewNativeIntegratedCandidate(input:{
   ...(fixProposalId?{fixProposalId}:{}),acceptance:"not-accepted" as const,autoMerge:false as const});
 }
 
-/** No se activa una sucesora ni se admite una integración con un resumen del
- * modelo. Se exigen dos veredictos genuinos, mismo árbol y recibo firmado. */
+/** La modalidad sin jueces no depende del tamaño del catálogo. Solo se admite
+ * para una partición ODD genuina de riesgo bajo/medio, con pruebas obligatorias
+ * y sin revisión expresa ni riesgos nombrados. No hay dictamen independiente. */
+export type NativePartitionTestReport=Readonly<{
+ status:"joint-tests-reviewed";sessionId:string;candidateRevision:string;candidateTreeIdentity:string;
+ review:"human-readback-and-signed-tests";independentReview:false;modelCalls:0;
+ acceptance:"not-accepted";autoMerge:false;deliveryAuthority:false;
+}>;
+export type NativeIntegrationReviewReport=JudgmentDayReport|NativePartitionTestReport;
+const testReportBindings=new WeakMap<object,{key:string;fingerprint:string;receiptSignature:string;todos:Pick<SessionTodoStore,"list">}>();
+async function inspectPartitionPolicy(candidate:NativeIntegrationCandidate,sessionId:string,todos:Pick<SessionTodoStore,"list">){
+ if(!isIssuedNativeIntegrationCandidate(candidate)||!sessionId||candidate.sourceBindings?.length!==2)
+  throw Error("La revisión proporcional requiere las dos raíces originales acreditadas.");
+ const rows=await todos.list({sessionId,projectId:candidate.repository});
+ const bindings=candidate.sourceBindings;
+ const roots=bindings.map(binding=>{
+  const row=rows.find(item=>item.taskId===binding.taskId);
+  if(!row||row.current.state!=="planned"||row.current.revision!==binding.taskRevision||
+    row.current.sessionId!==sessionId||row.current.projectId!==candidate.repository||
+    row.requestId!==binding.requestId||row.plan?.role!=="worker"||
+    row.plan.candidate?.revision!==candidate.baseCommit||row.dependsOn?.length||
+    !row.plan.writerAuthorizationBasis||
+    JSON.stringify(row.plan.writeSurfaces)!==JSON.stringify(binding.writeSurfaces))
+   throw Error("La raíz ODD original cambió; no reducir la revisión.");
+  const basis=JSON.parse(row.plan.writerAuthorizationBasis);
+  const parsed=parsePartitionUnitBasis(basis,candidate.repository,candidate.baseCommit);
+  if(!canMaterializeOddPartition(parsed.parentFacts)||parsed.unit.dependsOn.length||
+    parsed.facts.review.kind!=="none"||parsed.facts.testing.kind!=="required"||
+    row.requestId!==`asen-plan:${parsed.facts.taskIdentity}:worker`||
+    row.description!=="Perform only the authorized, scoped work for: "+parsed.instruction||
+    JSON.stringify(parsed.facts.writes.map(write=>write.path))!==JSON.stringify(binding.writeSurfaces))
+   throw Error("La política ODD no autoriza una integración solo con pruebas.");
+  return {basis,parsed,row};
+ });
+ const first=roots[0]!,second=roots[1]!;
+ if(first.parsed.unit.id===second.parsed.unit.id||
+    JSON.stringify(first.basis.partitionOrigin)!==JSON.stringify(second.basis.partitionOrigin)||
+    !candidate.paths.every(path=>bindings.some(binding=>binding.writeSurfaces.includes(path))))
+  throw Error("Las raíces y el ámbito no pertenecen a la misma partición ODD.");
+ const successor=rows.filter(row=>row.current.state==="planned"&&row.plan?.role==="worker"&&
+  row.plan.candidate?.revision===candidate.baseCommit&&row.dependsOn?.length===2&&
+  candidate.sourceTodoIds.every(id=>row.dependsOn!.includes(id)));
+ if(successor.length!==1||!successor[0]?.plan?.writerAuthorizationBasis)
+  throw Error("No se conserva la dependencia ODD original.");
+ const next=JSON.parse(successor[0].plan.writerAuthorizationBasis);
+ const parsedNext=parsePartitionUnitBasis(next,candidate.repository,candidate.baseCommit);
+ if(JSON.stringify(next.partitionOrigin)!==JSON.stringify(first.basis.partitionOrigin)||
+   JSON.stringify([...parsedNext.unit.dependsOn].sort())!==JSON.stringify(roots.map(root=>root.parsed.unit.id).sort())||
+   successor[0].requestId!==`asen-plan:${parsedNext.facts.taskIdentity}:worker`||
+   successor[0].description!=="Perform only the authorized, scoped work for: "+parsedNext.instruction||
+   JSON.stringify(successor[0].plan.writeSurfaces)!==JSON.stringify(parsedNext.facts.writes.map(write=>write.path)))
+  throw Error("La sucesora no coincide con el plan original.");
+ return {fingerprint:JSON.stringify([...roots.map(root=>root.row),successor[0]]),risk:first.parsed.parentFacts.risk,
+  requirements:roots.map(root=>root.row.description!).join("\n")};
+}
+async function exactPassingReceipt(candidate:NativeIntegrationCandidate,receipts:ReviewReceiptReader){
+ readNativeIntegrationDiff(candidate);
+ const state=await receipts.readReceiptState(candidate.commit);
+ if(state.status!=="valid"||state.receipt.verdict!=="PASSED"||state.receipt.treeSha!==candidate.tree||
+  state.receipt.commitSha!==candidate.commit||!Number.isSafeInteger(state.receipt.testSuite.total)||
+  state.receipt.testSuite.total<1||state.receipt.testSuite.passed!==state.receipt.testSuite.total||
+  state.receipt.testSuite.failed!==0||!state.receipt.testSuite.runner?.trim())
+  throw new Error("Authenticated passing test receipt of the exact integration candidate is required");
+ return state.receipt;
+}
+export async function reviewNativePartitionWithTests(input:{
+ candidate:NativeIntegrationCandidate;sessionId:string;todos:Pick<SessionTodoStore,"list">;receipts:ReviewReceiptReader;
+ validate:()=>Promise<void>;confirm:(summary:string)=>Promise<boolean>;signal?:AbortSignal;
+}){
+ const {candidate,sessionId,todos,receipts}=input;
+ const inspect=async()=>{
+  if(input.signal?.aborted)throw Error("Revisión cancelada");
+  await input.validate();
+  const policy=await inspectPartitionPolicy(candidate,sessionId,todos);
+  const receipt=await exactPassingReceipt(candidate,receipts);
+  await input.validate();
+  if(input.signal?.aborted)throw Error("Revisión cancelada");
+  return {policy,receipt};
+ };
+ const initial=await inspect(),diff=readNativeIntegrationDiff(candidate);
+ // No truncar el diff para conseguir un consentimiento aparente.
+ if(diff.diff.length>24000||initial.policy.requirements.length>20000)
+  throw Error("La revisión proporcional excede el límite de lectura; revisar el candidato completo por la vía explícita.");
+ if(await input.confirm(["Riesgo ODD: "+initial.policy.risk+"; sin revisión independiente requerida por el plan.",
+  "Candidato: "+candidate.commit,"Árbol: "+candidate.tree,"Pruebas conjuntas firmadas: "+initial.receipt.testSuite.total,
+  "Comando/ejecutor registrado: "+initial.receipt.testSuite.runner,
+  "Comprueba requisitos, cambios y unión de unidades. Si detectas un riesgo nuevo o defecto, rechaza y vuelve a planificar.",
+  "Instrucciones originales:",initial.policy.requirements,"Diferencias completas:",diff.diff,
+  "No se ejecutan modelos ni se otorga permiso de escritura o integración."].join("\n"))!==true)
+  return Object.freeze({status:"declined" as const,acceptance:"not-accepted" as const,autoMerge:false as const});
+ const latest=await inspect();
+ if(latest.policy.fingerprint!==initial.policy.fingerprint||latest.receipt.signature!==initial.receipt.signature)
+  throw Error("El plan o recibo cambió durante la revisión; no se admite.");
+ const report:NativePartitionTestReport=Object.freeze({status:"joint-tests-reviewed",sessionId,
+  candidateRevision:candidate.tree,candidateTreeIdentity:candidate.tree,review:"human-readback-and-signed-tests",
+  independentReview:false,modelCalls:0,acceptance:"not-accepted",autoMerge:false,deliveryAuthority:false});
+ testReportBindings.set(report,{key:integrationKey(candidate,sessionId),fingerprint:latest.policy.fingerprint,
+  receiptSignature:latest.receipt.signature,todos});
+ return Object.freeze({status:report.status,report,acceptance:"not-accepted" as const,autoMerge:false as const});
+}
+
+/** Una integración exige evidencia genuina sobre el árbol exacto, según la
+ * política de revisión aplicable, y pruebas firmadas en todos los casos. */
 export async function verifyNativeIntegrationAcceptance(input:{
- candidate:NativeIntegrationCandidate;report:JudgmentDayReport;receipts:ReviewReceiptReader;sessionId:string;
-}):Promise<Readonly<{status:"verified-awaiting-integration-consent";commit:string;tree:string;tests:number;writerAuthority:false;autoMerge:false}>>{
+ candidate:NativeIntegrationCandidate;report:NativeIntegrationReviewReport;receipts:ReviewReceiptReader;sessionId:string;
+}):Promise<Readonly<{status:"verified-awaiting-integration-consent";commit:string;tree:string;tests:number;reviewMode:"dual"|"joint-tests";writerAuthority:false;autoMerge:false}>>{
  const {candidate,report}=input;
+ if(report.status==="joint-tests-reviewed"){
+  const binding=testReportBindings.get(report);
+  if(!binding||binding.key!==integrationKey(candidate,input.sessionId)||!isIssuedNativeIntegrationCandidate(candidate))
+   throw Error("La revisión proporcional no fue emitida para este candidato y sesión.");
+  const policy=await inspectPartitionPolicy(candidate,input.sessionId,binding.todos);
+  const receipt=await exactPassingReceipt(candidate,input.receipts);
+  if(policy.fingerprint!==binding.fingerprint||receipt.signature!==binding.receiptSignature)
+   throw Error("La política ODD o recibo revisado cambió; no integrar.");
+  return Object.freeze({status:"verified-awaiting-integration-consent",commit:candidate.commit,tree:candidate.tree,
+   tests:receipt.testSuite.total,reviewMode:"joint-tests",writerAuthority:false,autoMerge:false});
+ }
  if(!isIssuedNativeIntegrationCandidate(candidate)||!isIssuedJudgmentDayReport(report)||
   reportBindings.get(report)!==integrationKey(candidate,input.sessionId)||
   report.sessionId!==input.sessionId||report.candidateRevision!==candidate.tree||
@@ -84,15 +199,9 @@ export async function verifyNativeIntegrationAcceptance(input:{
   report.judges.length!==2||new Set(report.judges.map(judge=>judge.reviewerId)).size!==2||
   report.judges.some(judge=>judge.verdict!=="pass"||judge.identity?.status!=="declared-match")||report.findings.length)
   throw new Error("Two genuine passing independent judges on the exact integrated tree are required");
- readNativeIntegrationDiff(candidate);
- const state=await input.receipts.readReceiptState(candidate.commit);
- if(state.status!=="valid"||state.receipt.verdict!=="PASSED"||state.receipt.treeSha!==candidate.tree||
-  state.receipt.commitSha!==candidate.commit||!Number.isSafeInteger(state.receipt.testSuite.total)||
-  state.receipt.testSuite.total<1||state.receipt.testSuite.passed!==state.receipt.testSuite.total||
-  state.receipt.testSuite.failed!==0)
-  throw new Error("Authenticated passing test receipt of the exact integration candidate is required");
+ const receipt=await exactPassingReceipt(candidate,input.receipts);
  return Object.freeze({status:"verified-awaiting-integration-consent",commit:candidate.commit,tree:candidate.tree,
-  tests:state.receipt.testSuite.total,writerAuthority:false,autoMerge:false});
+  tests:receipt.testSuite.total,reviewMode:"dual",writerAuthority:false,autoMerge:false});
 }
 
 const acceptedIntegrations=new WeakMap<object,string>();
@@ -154,7 +263,7 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
  await input.validate();const evidence=await verifyNativeIntegrationAcceptance(input),initial=inspect();
  if(await input.confirm(["Integrar localmente el candidato verificado "+candidate.commit,
   "Rama: "+initial.branch,"Árbol: "+candidate.tree,"Archivos: "+candidate.paths.join(", "),
-  "Dos jueces PASS; pruebas firmadas: "+evidence.tests,
+  (evidence.reviewMode==="dual"?"Dos jueces PASS":"Lectura humana y política ODD de bajo/medio riesgo; sin revisión independiente")+"; pruebas firmadas: "+evidence.tests,
   ...(initial.prepared?["Reanudar una transición registrada con el índice y archivos exactos."]:[]),
   "Sin push, sin main/master, sin reintentos ni permiso Writer heredado."].join("\n"))!==true)return undefined;
  await input.validate();await verifyNativeIntegrationAcceptance(input);await input.validate();

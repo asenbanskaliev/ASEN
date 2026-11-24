@@ -60,10 +60,8 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
-import {reviewNativeIntegratedCandidate,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
 import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
-import type {JudgmentDayReport} from "../src/review/judgment-day.js";
-import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
 import {prepareNativePartitionChildren} from "../src/runtime/lifecycle/parallel-native-child-plans.js";
 import {ParallelTodoWorktreeJournal} from "../src/runtime/agents/parallel-todo-journal.js";
@@ -2526,7 +2524,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  const integrationReports=new Map<string,JudgmentDayReport>();
+  const integrationReports=new Map<string,NativeIntegrationReviewReport>();
   const worktreeCommands=registerParallelWorktreeCommand(register,{
    prepareNativeChildren:async(batchId,context,validate)=>{
     const ctx=context as CommandContext;validate();
@@ -2541,22 +2539,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    },
    reviewIntegratedCandidate:async(candidate,context,validate)=>{
     const ctx=context as CommandContext;validate();
-    const identity=await sessionIdentity(ctx),layers=await profileLayer(identity);
-    const registry=ctx.modelRegistry as unknown as PiReviewRegistry|undefined;
-    if(!todoStorePromise||!registry||typeof registry.getAvailable!=="function"||
-     typeof registry.hasConfiguredAuth!=="function"||typeof registry.streamSimple!=="function")
-     return {status:"unavailable",reason:"Pi no ofrece un registro de jueces autenticados."};
-    const rows=await (await todoStorePromise).list(identity);
-    const roots=candidate.sourceTodoIds.map(id=>rows.find(row=>row.taskId===id));
-    if(roots.some(row=>!row?.description))return {status:"blocked",reason:"Faltan instrucciones originales de las unidades integradas."};
-    const requirements=roots.map(row=>row!.description!).join("\n");
-    if(requirements.length>20000)return {status:"blocked",reason:"Las instrucciones completas superan el límite de revisión; no se enviará una versión recortada."};
-    const fixProfile=resolveAgentProfileTarget(layers,"jd-fix-agent").choice;
-    const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
-     judgeA:resolveAgentProfileTarget(layers,"jd-judge-a").choice,
-     judgeB:resolveAgentProfileTarget(layers,"jd-judge-b").choice,
-     ...(fixProfile?{fixProfile}:{}),fixJournal,requirements,
-     validate:async()=>{validate();},confirm:summary=>ctx.ui.confirm!("Revisar candidato integrado con dos jueces independientes?",summary),
+    const identity=await sessionIdentity(ctx);
+    if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
+    const result=await reviewNativePartitionWithTests({candidate,sessionId:identity.sessionId,
+     todos:await todoStorePromise,receipts:new ReceiptVerifierService(path.join(home(),".asen","receipts")),
+     validate:async()=>{validate();},confirm:summary=>ctx.ui.confirm!("Revisar candidato y pruebas conjuntas según ODD?",summary),
      ...(ctx.signal?{signal:ctx.signal}:{})});
     validate();
     if("report" in result&&result.report){

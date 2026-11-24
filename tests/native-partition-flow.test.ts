@@ -17,7 +17,7 @@ import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-chil
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
 import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import {bindNativeRunnerModels,captureNativeWriterBaseline,captureNativeWriterCompletionAsync} from "../src/runtime/agents/native-writer-completion.js";
-import {reviewNativeIntegratedCandidate,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
 import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
@@ -202,11 +202,25 @@ const terminalErrors:unknown[]=[];
    const receiptsDir=join(privateDir,"receipts"),receipts=new ReceiptVerifierService(receiptsDir);
    const proof={candidate,report:result.report,receipts,sessionId:identity.sessionId};
    await assert.rejects(()=>verifyNativeIntegrationAcceptance(proof),/receipt/u);
+   const proportional={candidate,sessionId:identity.sessionId,todos,receipts,validate:async()=>{},confirm:async()=>true};
+   await assert.rejects(()=>reviewNativePartitionWithTests(proportional),/receipt/u);
    // Las aserciones de los objetos Git anteriores son verificaciones reales
    // de este repositorio sintético, firmadas únicamente dentro de la prueba.
    await writeReviewReceipt(receiptsDir,createReviewReceiptSigned({commitSha:candidate.commit,treeSha:candidate.tree,
     oddTask:"odd/tasks/continuacion-local-flujo-de-agentes.md",testSuite:{total:3,passed:3,failed:0,durationMs:0,runner:"node:test fixture"},
     verdict:"PASSED"},await loadReceiptSigningKey(receiptsDir)));
+   assert.equal((await reviewNativePartitionWithTests({...proportional,confirm:async()=>false})).status,"declined");
+   const altered={list:async()=> (await todos.list(identity)).map(row=>row.taskId===candidate.sourceTodoIds[0]?{...row,current:{...row.current,revision:row.current.revision+1}}:row)};
+   await assert.rejects(()=>reviewNativePartitionWithTests({...proportional,todos:altered}),/raíz ODD original cambió/u);
+   const joint=await reviewNativePartitionWithTests(proportional);
+   assert.equal(joint.status,"joint-tests-reviewed");
+   if(!("report" in joint)||!joint.report)assert.fail("Sin revisión proporcional");
+   assert.equal(joint.report.modelCalls,0);
+   assert.equal(joint.report.independentReview,false);
+   const jointProof={...proof,report:joint.report};
+   assert.equal((await verifyNativeIntegrationAcceptance(jointProof)).reviewMode,"joint-tests");
+   await assert.rejects(()=>verifyNativeIntegrationAcceptance({...jointProof,report:{...joint.report}}),/no fue emitida/u);
+   await assert.rejects(()=>verifyNativeIntegrationAcceptance({...jointProof,sessionId:"otra-sesion"}),/no fue emitida/u);
    await assert.rejects(()=>acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>{git("switch","main");return true;}}),/rama/u);
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("rev-parse","refs/heads/prueba-integracion"),candidate.baseCommit);
@@ -220,7 +234,7 @@ const terminalErrors:unknown[]=[];
    await writeFile(join(project,"a.txt"),"edición ajena");
    await assert.rejects(()=>acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>true}),/limpio/u);
    await writeFile(join(project,"a.txt"),"resultado");
-   const accepted=await acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>true});
+   const accepted=await acceptNativeIntegration({...jointProof,validate:async()=>{},confirm:async()=>true});
    assert.ok(accepted);assert.equal(git("rev-parse","HEAD"),candidate.commit);
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("show",candidate.commit+":sin-cambios.txt"),"texto sin cambios\nsegunda línea");
