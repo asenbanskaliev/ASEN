@@ -617,7 +617,7 @@ export class PiProcessRunner implements AgentRunner{
          return;
         }
        }
-       if(strictModelPreflight&&observation?.model){const m=observation.model;observedModels.push(m.id.startsWith(m.provider+"/")?m.id:m.provider+"/"+m.id);}
+       if(strictModelPreflight&&observation?.model)observedModels.push(request.model!);
        if(observation)for(const subscription of selectionSubscriptions){
         if(!this.#selectionSubscriptions.has(subscription))continue;
         try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}
