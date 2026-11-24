@@ -62,13 +62,29 @@ function textContent(message:unknown):string{
  if(!Array.isArray(content)||isProxy(content)||Object.getPrototypeOf(content)!==Array.prototype)throw new Error("Independent review message is invalid");
  const descriptors=Object.getOwnPropertyDescriptors(content);
  if(Reflect.ownKeys(descriptors).length!==content.length+1)throw new Error("Independent review message content must be dense");
- const chunks:string[]=[];
+ if(content.length>256)throw Error("Independent review response exceeds its bound");
+ const chunks:string[]=[];let total=0;
  for(let index=0;index<content.length;index++){
   const slot=descriptors[String(index)];if(!slot?.enumerable||!("value" in slot))throw new Error("Independent review message content must be dense");
   const item=slot.value;if(typeof item!=="object"||item===null||isProxy(item))throw new Error("Independent review message contains unsupported content");
   const type=Object.getOwnPropertyDescriptor(item,"type"),text=Object.getOwnPropertyDescriptor(item,"text");
-  if(type&&"value" in type&&type.value==="text"&&text&&"value" in text&&typeof text.value==="string")chunks.push(text.value);else throw new Error("Independent reviewer attempted non-text output");
-  if(chunks.reduce((sum,part)=>sum+part.length,0)>maxResponseCharacters)throw new Error("Independent review response exceeds its bound");
+  if(type&&"value" in type&&type.value==="text"&&text&&"value" in text&&typeof text.value==="string"){
+   chunks.push(text.value);total+=text.value.length;
+  }else if(type&&"value" in type&&type.value==="thinking"){
+   // Pi 1.2 devuelve razonamiento separado del texto final. Nunca se
+   // interpreta como veredicto ni se guarda. Solo datos del tipo nativo.
+   const thinking=Object.getOwnPropertyDescriptor(item,"thinking");
+   const signature=Object.getOwnPropertyDescriptor(item,"thinkingSignature");
+   const redacted=Object.getOwnPropertyDescriptor(item,"redacted");
+   if(Object.getPrototypeOf(item)!==Object.prototype||
+    Reflect.ownKeys(item).some(k=>typeof k!=="string"||!["type","thinking","thinkingSignature","redacted"].includes(k))||
+    !thinking||!("value" in thinking)||typeof thinking.value!=="string"||
+    signature&&(!("value" in signature)||signature.value!==undefined&&typeof signature.value!=="string")||
+    redacted&&(!("value" in redacted)||redacted.value!==undefined&&typeof redacted.value!=="boolean"))
+    throw Error("Independent reviewer attempted non-text output");
+   total+=thinking.value.length+(typeof signature?.value==="string"?signature.value.length:0);
+  }else throw new Error("Independent reviewer attempted non-text output");
+  if(total>maxResponseCharacters)throw new Error("Independent review response exceeds its bound");
  }
  return chunks.join("");
 }
