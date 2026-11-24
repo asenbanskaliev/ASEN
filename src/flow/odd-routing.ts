@@ -55,6 +55,7 @@ const reviewKinds = ["none", "ordinary", "dual_explicit"] as const;
 const nonTrivialKinds = new Set<OddChangeKind>(["behavior", "schema", "security", "configuration", "migration"]);
 const issuedFacts = new WeakSet<object>();
 const plannedFacts = new WeakSet<object>();
+const partitionUnitFacts = new WeakSet<object>();
 const issuedDecisions = new WeakSet<object>();
 const claimedDecisions = new WeakSet<object>();
 const decisionFacts = new WeakMap<object, OddDerivedFacts>();
@@ -252,6 +253,40 @@ export function describeOddUnitPartition(facts:OddDerivedFacts):Readonly<{
  });
 }
 
+/** Solo divide implementaciones acotadas que no pierdan controles de riesgo.
+ * Los casos con revisión, incidentes, dudas o riesgos nombrados conservan
+ * su plan original; no se degradan a unidades aparentemente más seguras.
+ */
+export function canMaterializeOddPartition(facts:OddDerivedFacts):boolean{
+ if(!issuedFacts.has(facts))throw new Error("ODD facts were not issued here");
+ return facts.intent==="implementation"&&facts.scope.kind==="known"&&
+  (facts.risk==="low"||facts.risk==="medium")&&!facts.namedRisks.length&&
+  !facts.riskOperations.length&&!facts.unresolvedDecisions.length&&
+  facts.review.kind==="none"&&facts.testing.kind==="required"&&
+  facts.taskUnits.length>=2&&facts.taskUnits.every(unit=>!!unit.writePaths?.length)&&
+  facts.independentUnits===2&&facts.taskUnits.filter(unit=>!unit.dependsOn.length).length===2;
+}
+
+/** Deriva una candidatura de unidad a partir de la partición original validada.
+ * No es un permiso: el despachador sigue exigiendo candidato, ámbito y Pi.
+ */
+export function deriveOddPartitionUnitFacts(parent:OddDerivedFacts,unitId:string):OddDerivedFacts{
+ if(!canMaterializeOddPartition(parent))throw new Error("ODD partition is not eligible for scoped unit planning");
+ const unit=parent.taskUnits.find(value=>value.id===unitId);
+ if(!unit?.writePaths)throw new Error("ODD partition unit does not exist");
+ const taskIdentity="unit-"+createHash("sha256").update(JSON.stringify([parent.taskIdentity,unit.id])).digest("hex").slice(0,40);
+ const facts=deriveOddFacts({
+  taskIdentity,repositoryIdentity:parent.repositoryIdentity,intent:parent.intent,
+  scope:{kind:"known",expectedPaths:[...unit.writePaths]},
+  writes:parent.writes.filter(write=>unit.writePaths!.includes(write.path)),
+  riskOperations:parent.riskOperations,namedRisks:parent.namedRisks,
+  session:{estimatedMinutes:unit.estimatedMinutes,continuation:parent.session.continuation},
+  testing:parent.testing,review:parent.review,unresolvedDecisions:parent.unresolvedDecisions,
+ });
+ partitionUnitFacts.add(facts);
+ return facts;
+}
+
 /** Consumes genuine facts on the first planning attempt and issues no execution authority. */
 export function planOddRoute(facts: OddDerivedFacts): OddRouteDecision {
   if (typeof facts !== "object" || facts === null || !issuedFacts.has(facts)) throw new Error("ODD facts were not issued here");
@@ -268,6 +303,7 @@ export function planOddRoute(facts: OddDerivedFacts): OddRouteDecision {
     route="orchestrate"; reasons=["independent-substantial-task-units"];
   }
   else if (needsIndependent) { route = "orchestrate"; reasons = facts.namedRisks.map(item=>`named-risk-${item.item}`); }
+  else if (partitionUnitFacts.has(facts)) { route="orchestrate"; reasons=["partition-scoped-unit"]; }
   else { route = "direct"; reasons = ["bounded-work-with-controlled-risk"]; }
   const payload = { taskIdentity: facts.taskIdentity, repositoryIdentity: facts.repositoryIdentity, route, risk: facts.risk, verification: needsIndependent?"independent" as const:verificationLevel(facts.risk), reasons, requiresSingleWriter: route === "orchestrate" || route === "incident", requiresIsolatedChild: route === "orchestrate" || route === "incident" || route === "verify" };
   const decision = Object.freeze({ decisionId: createHash("sha256").update(JSON.stringify(payload)).digest("hex"), ...payload, reasons: Object.freeze(reasons) });
