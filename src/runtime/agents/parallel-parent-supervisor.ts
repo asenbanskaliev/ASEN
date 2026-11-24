@@ -16,6 +16,7 @@ import {ParentSupervisorClaimJournal} from "./parallel-parent-supervisor-claims.
 import {inspectParallelWorktreeChanges} from "./parallel-worktree-change-inspection.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import {inspectPlannedWorkerModelRoute} from "./parallel-worker-model-route.js";
+import {assertNativeChildPlanningSession} from "./pi-native-child-session.js";
 
 export interface ParentSupervisorReadyWorker{
  readonly sourceTodoId:string;
@@ -151,6 +152,12 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    link.autoDispatch===false&&link.autoMerge===false);
   if(links.length!==1){blockers.push(label+"Child Pi session is not uniquely attached");continue;}
   const link=links[0]!;
+  if(input.exactBatchConsent===true&&!link.nativeSessionFile){
+   blockers.push(label+"Exact batch consent requires native Pi child planning sessions");continue;
+  }
+  if(link.nativeSessionFile)try{
+   await assertNativeChildPlanningSession({sessionId:link.childSessionId,projectId:link.childProjectId,sessionFile:link.nativeSessionFile});
+  }catch{blockers.push(label+"Native Pi child session could not be verified");continue;}
   if(link.childSessionId===input.source.sessionId||childSessions.has(link.childSessionId)){
    blockers.push(label+"Child Pi session is reused or equals the parent session");continue;
   }
@@ -232,6 +239,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
  const declinedIndependent:string[]=[];
  if(initial.status!=="ready")return nonAuthorizing("blocked",initial.batchId,started,initial.blockers);
  if(await input.confirmBatch(initial)!==true)return nonAuthorizing("declined",initial.batchId,started,[]);
+ const consentExpiresAt=Date.now()+5*60_000;
  await input.validateParent();
  const fresh=await prepare(input);
  if(JSON.stringify(fresh)!==JSON.stringify(initial))
@@ -274,6 +282,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
      link.authority!=="none"||link.autoDispatch!==false||link.autoMerge!==false)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": El enlace Pi hijo cambió o está duplicado; revisar antes de ejecutar"]);
+  if(link.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:link.childSessionId,projectId:link.childProjectId,sessionFile:link.nativeSessionFile});
   enlaceAutorizado=JSON.stringify(link);
 
   const [rows,agents,links]=await Promise.all([
@@ -306,12 +315,15 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   // user consent, including while TrustedTaskAgentBinder performs its CAS.
   const validateExact=async()=>{
    await input.validateParent();
+   if(input.exactBatchConsent===true&&Date.now()>consentExpiresAt)throw new Error("Exact batch consent expired");
    const batches=await input.sourceJournal.list(input.source),
     currentBatch=batches.find(b=>b.id===unit.batchId),
     sourceTask=currentBatch?.tasks.find(t=>t.taskId===unit.sourceTodoId);
    const linksNow=await input.sessionJournal.listSource(input.source);
    const enlaceIntacto=enlacePiHijoIntacto(
     linksNow,unit.batchId,unit.sourceTodoId,enlaceAutorizado);
+   const native=linksNow.find(l=>l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId);
+   if(native?.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:native.childSessionId,projectId:native.childProjectId,sessionFile:native.nativeSessionFile});
    const currentSource=(await input.loadTodos(input.source)).find(t=>t.taskId===unit.sourceTodoId);
    const claims=await input.claimJournal.listSource(input.source,linksNow);
    const childRows=await input.loadTodos(child),
