@@ -194,6 +194,11 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
   ready.sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-
    (b.plan?.priority??Number.MAX_SAFE_INTEGER));
   const next=ready[0],candidate=next?.plan?.candidate;
+  if(link.nativeSessionFile&&next)try{
+   const basis=JSON.parse(next.plan?.writerAuthorizationBasis??"null");
+   if(typeof basis?.instruction!=="string")throw new Error("Missing delegated instruction");
+   await assertNativeChildPlanningSession({sessionId:link.childSessionId,projectId:link.childProjectId,sessionFile:link.nativeSessionFile},basis.instruction);
+  }catch{blockers.push(label+"Native Pi delegated instruction changed");continue;}
   if(!next||next.plan?.role!=="worker"||!next.requestId?.endsWith(":worker")||
    // El plan del hijo debe proceder de la MISMA petición ODD de origen.
    // Coincidir en modelo, SHA y rutas no basta para autorizar otra instrucción.
@@ -282,7 +287,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
      link.authority!=="none"||link.autoDispatch!==false||link.autoMerge!==false)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": El enlace Pi hijo cambió o está duplicado; revisar antes de ejecutar"]);
-  if(link.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:link.childSessionId,projectId:link.childProjectId,sessionFile:link.nativeSessionFile});
+  if(link.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:link.childSessionId,projectId:link.childProjectId,sessionFile:link.nativeSessionFile},unit.instruction.replace(/^Perform only the authorized, scoped work for: /u,""));
   enlaceAutorizado=JSON.stringify(link);
 
   const [rows,agents,links]=await Promise.all([
@@ -323,7 +328,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    const enlaceIntacto=enlacePiHijoIntacto(
     linksNow,unit.batchId,unit.sourceTodoId,enlaceAutorizado);
    const native=linksNow.find(l=>l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId);
-   if(native?.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:native.childSessionId,projectId:native.childProjectId,sessionFile:native.nativeSessionFile});
+   if(native?.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:native.childSessionId,projectId:native.childProjectId,sessionFile:native.nativeSessionFile},unit.instruction.replace(/^Perform only the authorized, scoped work for: /u,""));
    const currentSource=(await input.loadTodos(input.source)).find(t=>t.taskId===unit.sourceTodoId);
    const claims=await input.claimJournal.listSource(input.source,linksNow);
    const childRows=await input.loadTodos(child),
@@ -358,6 +363,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     !currentGit.headMatchesBase)
     throw new Error("Child Pi provenance changed after parent Worker authorization; no new launch");
    await input.validateParent();
+   if(input.exactBatchConsent===true&&Date.now()>consentExpiresAt)throw new Error("Exact batch consent expired");
   };
   try{await validateExact();}
   catch{
