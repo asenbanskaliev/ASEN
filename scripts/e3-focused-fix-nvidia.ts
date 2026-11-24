@@ -123,7 +123,10 @@ try{
   // Ultra ya completó la revisión real; el segundo juez usa otra familia
   // física del catálogo autenticado, sin repetir el modelo que dio error.
   const approved=["nvidia/nemotron-3-ultra-550b-a55b","deepseek-ai/deepseek-v4.1-flash","openai/gpt-oss-20b"];
-  const selected=approved.flatMap(id=>available.filter(m=>m.id===id)).slice(0,2);
+  const selected=approved.flatMap(id=>{
+   const matches=available.filter(m=>m.id===id);
+   return matches.length===1?matches:[];
+  }).slice(0,2);
   assert.equal(selected.length,2);assert.notEqual(key(selected[0]!),key(selected[1]!));assert.ok(selected.every(m=>!matchesJudgeIdentity(m,"nvidia",model)));
   [judgeA,judgeB]=[selected[0]!,selected[1]!];
   registry={getAvailable:()=>selected,hasConfiguredAuth:m=>selected.some(x=>key(x)===key(m)),async *streamSimple(m,ctx,options){
