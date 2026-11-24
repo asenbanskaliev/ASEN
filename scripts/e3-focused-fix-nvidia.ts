@@ -127,8 +127,10 @@ try{
        /timeout|timed.out|network|fetch|connection/i.test(message)?"network":
        "provider-error";
      }else if(event.type==="done"){
-      if(event.message.provider!==descriptor.provider||event.message.model!==descriptor.id||
-       event.message.responseModel!==undefined&&event.message.responseModel!==descriptor.id){
+      const selectedModel=descriptor.id.startsWith(descriptor.provider+"/")?descriptor.id:descriptor.provider+"/"+descriptor.id;
+      const acceptedResponse=[descriptor.id,selectedModel,selectedModel.slice(descriptor.provider.length+1)];
+      if(normalizeT06PiChildSelection({provider:event.message.provider,id:event.message.model},selectedModel)!==selectedModel||
+       event.message.responseModel!==undefined&&!acceptedResponse.includes(event.message.responseModel)){
        diagnostic.result="model-identity-mismatch";throw Error("Identidad física del juez no coincide");
       }
       diagnostic.result=event.reason==="stop"?"stop":event.reason==="length"?"length":event.reason==="toolUse"?"tool-use":"deferred";
