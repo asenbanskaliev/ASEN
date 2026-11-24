@@ -1,7 +1,7 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
-import {existsSync,mkdtempSync,rmSync,writeFileSync} from "node:fs";
+import {existsSync,mkdtempSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
@@ -88,5 +88,36 @@ test("T06 stale session and malformed request fail closed before consent",async 
  f.setSession("session-1");f.ctx.ui.editor=async()=>'{ "parentDir": ".", "units": [], "injected": true }';
  await assert.rejects(()=>f.run("prepare"),/exactly parentDir and units/u);
  assert.equal(f.calls.length,0);
+ assert.equal(f.git("worktree","list","--porcelain"),initial);
+});
+
+
+test("La preparación interna solo propone las dos raíces del plan recién guardado",async t=>{
+ const f=fixture(t),root=realpathSync(f.root),head=f.git("rev-parse","HEAD");
+ type SourceTodoRow=import("../src/runtime/agents/parallel-todo-bindings.js").SourceTodoRow;
+ const worker=(taskId:string,scope:string,dependsOn:string[]=[]):SourceTodoRow=>{
+  const current={taskId,sessionId:"session-1",projectId:root,revision:1,state:"planned",at:"2026-11-24T00:00:00.000Z"};
+  return {taskId,title:taskId,requestId:"asen-plan:"+taskId+":worker",description:"Ensayo",
+   current,events:[current],dependsOn,plan:{role:"worker",skillPaths:[],
+    skillSelection:{phase:"apply"},candidate:{id:taskId,repository:root,revision:head,createdAt:current.at},
+    writeSurfaces:[scope],writerAuthorizationBasis:'{"instruction":"Ensayo"}'}} as unknown as SourceTodoRow;
+ };
+ const older=worker("other-plan","other.txt"),a=worker("root-a","a.txt"),b=worker("root-b","b.txt"),
+  c=worker("successor","c.txt",["root-a","root-b"]);
+ const rows=[older,c,a,b];
+ const initial=f.git("worktree","list","--porcelain");
+ const registered=registerParallelWorktreeCommand(()=>{},{journalFile:join(f.parent,"exact-reservations.json"),loadTodos:async()=>rows});
+ f.setConfirm(false);
+ const denied=await registered.preparePartition(f.ctx,["root-a","root-b"]);
+ assert.deepEqual(denied,{status:"declined",grantsAuthority:false});
+ assert.equal(f.calls.length,1);
+ assert.match(f.calls[0]!.message,/root-a: a.txt/u);
+ assert.match(f.calls[0]!.message,/root-b: b.txt/u);
+ assert.doesNotMatch(f.calls[0]!.message,/other-plan:|successor:/u);
+ for(const ids of [["root-a","missing"],["root-a","root-a"],["root-a","successor"]]){
+  const result=await registered.preparePartition(f.ctx,ids) as {status:string};
+  assert.equal(result.status,"blocked");
+ }
+ assert.equal(f.calls.length,1);
  assert.equal(f.git("worktree","list","--porcelain"),initial);
 });
