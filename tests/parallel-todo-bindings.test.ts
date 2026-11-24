@@ -71,7 +71,9 @@ test("Megatanda B: encuentra una pareja aunque las primeras unidades se solapen 
 test("Megatanda B: rechaza candidato antiguo y duplicidad; no convierte una dependencia fallida en disponible",()=>{
  const a=worker("todo-1","a.ts"),b=worker("todo-2","b.ts"),c=worker("todo-3","c.ts");
  const stale={...a,plan:{...a.plan!,candidate:{...a.plan!.candidate!,revision:"b".repeat(40)}}} as SourceTodoRow;
- const failed={...a,current:{...a.current,state:"failed"}} as SourceTodoRow;
+ const running={...a.current,revision:2,state:"running" as const};
+ const blocked={...running,revision:3,state:"blocked" as const,reason:"Agent execution failed"};
+ const failed:SourceTodoRow={...a,current:blocked,events:[...a.events,running,blocked]};
  const dependent={...c,dependsOn:[a.taskId]};
  assert.deepEqual(selectReadyParallelSourcePair({identity,expectedHead:head,rows:[stale,b,c]}).map(u=>u.taskId),["todo-2","todo-3"]);
  assert.deepEqual(selectReadyParallelSourcePair({identity,expectedHead:head,rows:[failed,b,dependent]}),[]);
