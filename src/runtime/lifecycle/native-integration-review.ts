@@ -1,6 +1,10 @@
 /** Dos jueces Pi auténticos sobre el árbol combinado, sin entregar código al
  * Writer ni confundir el informe de modelos con pruebas o aceptación. */
 import {tmpdir} from "node:os";
+import {execFileSync} from "node:child_process";
+import {mkdtempSync,rmSync,realpathSync} from "node:fs";
+import {join} from "node:path";
+import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
 import {readFrozenIntegrationReviewEvidence} from "../../review/workspace-review-session.js";
 import {runJudgmentDay,isIssuedJudgmentDayReport,type JudgmentDayReport} from "../../review/judgment-day.js";
 import {availableIndependentPiReviewers,type PiReviewRegistry,type PiReviewerModel} from "../../review/pi-model-reviewer.js";
@@ -10,6 +14,8 @@ import type {RouteChoice} from "./profiles.js";
 import type {ReviewReceiptReader} from "./review-acceptance.js";
 import {isIssuedNativeIntegrationCandidate,readNativeIntegrationDiff,type NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
 
+const reportBindings=new WeakMap<object,string>();
+const integrationKey=(candidate:NativeIntegrationCandidate,sessionId:string)=>JSON.stringify([candidate.batchId,candidate.repository,candidate.commit,candidate.tree,sessionId]);
 export async function reviewNativeIntegratedCandidate(input:{
  candidate:NativeIntegrationCandidate;sessionId:string;registry:PiReviewRegistry;
  judgeA:RouteChoice|undefined;judgeB:RouteChoice|undefined;fixProfile?:RouteChoice;
@@ -50,6 +56,7 @@ export async function reviewNativeIntegratedCandidate(input:{
  const report=await runJudgmentDay({registry:filtered,author,judgeA:a,judgeB:b,evidence,
   requirements:input.requirements,...(input.signal?{signal:input.signal}:{}),validateBeforeJudge:validate});
  await validate();
+ reportBindings.set(report,integrationKey(candidate,sessionId));
  const fix=proposeJudgmentFixHandoff({report,evidence,...(input.fixProfile?{fixProfile:input.fixProfile}:{})});
  let fixProposalId:string|undefined;
  if((fix.status==="fix-planning-required"||fix.status==="manual-triage-required")&&fix.paths.every(path=>candidate.paths.includes(path))){
@@ -67,6 +74,7 @@ export async function verifyNativeIntegrationAcceptance(input:{
 }):Promise<Readonly<{status:"verified-awaiting-integration-consent";commit:string;tree:string;tests:number;writerAuthority:false;autoMerge:false}>>{
  const {candidate,report}=input;
  if(!isIssuedNativeIntegrationCandidate(candidate)||!isIssuedJudgmentDayReport(report)||
+  reportBindings.get(report)!==integrationKey(candidate,input.sessionId)||
   report.sessionId!==input.sessionId||report.candidateRevision!==candidate.tree||
   report.candidateTreeIdentity!==candidate.tree||report.status!=="analysis-complete"||
   report.judges.length!==2||new Set(report.judges.map(judge=>judge.reviewerId)).size!==2||
@@ -75,9 +83,59 @@ export async function verifyNativeIntegrationAcceptance(input:{
  readNativeIntegrationDiff(candidate);
  const state=await input.receipts.readReceiptState(candidate.commit);
  if(state.status!=="valid"||state.receipt.verdict!=="PASSED"||state.receipt.treeSha!==candidate.tree||
+  state.receipt.commitSha!==candidate.commit||!Number.isSafeInteger(state.receipt.testSuite.total)||
   state.receipt.testSuite.total<1||state.receipt.testSuite.passed!==state.receipt.testSuite.total||
   state.receipt.testSuite.failed!==0)
   throw new Error("Authenticated passing test receipt of the exact integration candidate is required");
  return Object.freeze({status:"verified-awaiting-integration-consent",commit:candidate.commit,tree:candidate.tree,
   tests:state.receipt.testSuite.total,writerAuthority:false,autoMerge:false});
+}
+
+const acceptedIntegrations=new WeakMap<object,string>();
+export type AcceptedNativeIntegration=Readonly<{status:"integrated";batchId:string;commit:string;tree:string;sessionId:string;repository:string;tests:number;remotePush:false;writerAuthority:false}>;
+export function isAcceptedNativeIntegration(value:unknown,candidate:NativeIntegrationCandidate,sessionId:string):value is AcceptedNativeIntegration{
+ return !!value&&typeof value==="object"&&acceptedIntegrations.get(value)===integrationKey(candidate,sessionId);
+}
+/** Integración LOCAL exclusivamente por avance rápido, después de aceptar los
+ * dos jueces y las pruebas firmadas. Nunca cambia main/master ni publica Git. */
+export async function acceptNativeIntegration(input:Parameters<typeof verifyNativeIntegrationAcceptance>[0]&{
+ validate:()=>Promise<void>;confirm:(summary:string)=>Promise<boolean>;
+}):Promise<AcceptedNativeIntegration|undefined>{
+ const {candidate}=input;
+ const git=(args:readonly string[],hooks?:string)=>execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false",
+  "-c","submodule.recurse=false","-c","commit.gpgSign=false",...(hooks?["-c","core.hooksPath="+hooks]:[]),
+  "-C",candidate.repository,...args],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:20000,maxBuffer:1000000,windowsHide:true});
+ const head=()=>git(["rev-parse","HEAD"]).trim();
+ const inspect=()=>{
+  if(realpathSync(git(["rev-parse","--show-toplevel"]).trim())!==realpathSync(candidate.repository)||
+   git(["status","--porcelain=v1","--untracked-files=all"]).length)
+   throw new Error("La integración requiere el proyecto original limpio.");
+  const branch=git(["symbolic-ref","--short","HEAD"]).trim();
+  if(!branch||["main","master"].includes(branch.toLowerCase()))throw new Error("Integración bloqueada en rama principal o sin rama.");
+  if(head()!==candidate.baseCommit&&head()!==candidate.commit)throw new Error("El HEAD original cambió.");
+  // No ejecutar filtros o drivers externos configurados por el repositorio.
+  try{
+   const config=git(["config","--get-regexp","^(filter\\.|merge\\..*\\.driver$|diff\\..*\\.command$)"]);
+   if(config.trim())throw new Error("Configuración Git externa no admitida para integrar.");
+  }catch(error){if((error as {status?:number})?.status!==1)throw error;}
+  return {branch,head:head()};
+ };
+ await input.validate();const evidence=await verifyNativeIntegrationAcceptance(input),initial=inspect();
+ if(await input.confirm(["Integrar localmente el candidato verificado "+candidate.commit,
+  "Rama: "+initial.branch,"Árbol: "+candidate.tree,"Archivos: "+candidate.paths.join(", "),
+  "Dos jueces PASS; pruebas firmadas: "+evidence.tests,
+  "Sin push, sin main/master, sin reintentos ni permiso Writer heredado."].join("\n"))!==true)return undefined;
+ await input.validate();await verifyNativeIntegrationAcceptance(input);
+ if(JSON.stringify(inspect())!==JSON.stringify(initial))throw new Error("La rama o candidato cambió durante la aprobación.");
+ if(initial.head===candidate.baseCommit){
+  const hooks=mkdtempSync(join(tmpdir(),"asen-integration-hooks-"));
+  try{git(["merge","--ff-only","--no-edit",candidate.commit],hooks);}
+  finally{rmSync(hooks,{recursive:true,force:true});}
+ }
+ await input.validate();
+ if(inspect().head!==candidate.commit||git(["rev-parse","HEAD^{tree}"]).trim()!==candidate.tree)
+  throw new Error("Integración incierta; no activar sucesoras.");
+ const accepted=Object.freeze({status:"integrated" as const,batchId:candidate.batchId,commit:candidate.commit,tree:candidate.tree,
+  sessionId:input.sessionId,repository:candidate.repository,tests:evidence.tests,remotePush:false as const,writerAuthority:false as const});
+ acceptedIntegrations.set(accepted,integrationKey(candidate,input.sessionId));return accepted;
 }
