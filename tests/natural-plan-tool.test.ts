@@ -304,7 +304,7 @@ test("risk-based natural plan keeps two blind reviewers but does not invent inde
 
 test("Megatanda B: el modo capturado conserva modelos y no modifica los perfiles",async()=>{
  const {ASEN_PROFILES_SCHEMA,resolveRuntimeDelegationMode,resolveRuntimeRoute,withCapturedDelegationMode}=await import("../src/runtime/lifecycle/profiles.js");
- const layers={project:{schema:ASEN_PROFILES_SCHEMA,active:"proyecto",profiles:[{name:"proyecto",mode:"organic" as const,routes:{worker:{model:"nvidia/worker"}}}]},
+ const layers:import("../src/runtime/lifecycle/profiles.js").ProfileLayer={project:{schema:ASEN_PROFILES_SCHEMA,active:"proyecto",profiles:[{name:"proyecto",mode:"organic" as const,routes:{worker:{model:"nvidia/worker"}}}]},
  global:{schema:ASEN_PROFILES_SCHEMA,active:"global",profiles:[{name:"global",routes:{explorer:{model:"nvidia/explorer"}}}]}};
  const changed=withCapturedDelegationMode(layers,"full-delegation");
  assert.equal(resolveRuntimeDelegationMode(changed).mode,"full-delegation");
