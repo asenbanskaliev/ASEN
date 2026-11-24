@@ -170,6 +170,18 @@ export class ParallelTodoWorktreeJournal{
   if(matches.length>1)throw new Error("Ambiguous worktree ownership in durable reservations");
   return matches[0]?Object.freeze({...matches[0],writeSurfaces:Object.freeze(matches[0].writeSurfaces)}):undefined;
  }
+ /** Solo devuelve IDs de las unidades consultadas que tienen conflicto.
+  * Incluye reservas de otras sesiones del mismo proyecto sin exponer sus datos.
+  * La reserva atómica sigue siendo la autoridad definitiva ante carreras.
+  */
+ async blockedSourceTodoIds(identity:TodoContext,units:readonly {taskId:string;writeSurfaces:readonly string[]}[]):Promise<ReadonlySet<string>>{
+  if(!valid(identity?.sessionId)||!valid(identity?.projectId)||!Array.isArray(units))
+   throw new Error("Invalid worktree selection identity");
+  const journal=await load(this.file);
+  const prior=journal.records.filter(r=>sameWorkspaceIdentityPath(r.projectId,identity.projectId)).flatMap(r=>r.tasks);
+  return new Set(units.filter(unit=>prior.some(task=>task.taskId===unit.taskId||
+   intersectScopes(task.writeSurfaces,unit.writeSurfaces))).map(unit=>unit.taskId));
+ }
  async list(identity:TodoContext):Promise<readonly ParallelTodoWorktreeRecord[]>{
   if(!valid(identity?.sessionId)||!valid(identity?.projectId))throw new Error("Invalid worktree inspection identity");
   const journal=await load(this.file);

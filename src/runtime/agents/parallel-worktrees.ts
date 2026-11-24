@@ -64,6 +64,28 @@ export type ParallelWorktreeProposal={
 };
 const genuineAllocations=new WeakSet<object>();
 const dispatchedAllocations=new WeakSet<object>();
+/** Valida ámbitos sin crear carpetas, conceder permisos ni ejecutar Git.
+ * La selección automática usa las mismas reglas que la preparación efectiva.
+ */
+export function validateParallelWorkerUnits(source:string,proposed:readonly ParallelWorkerUnit[]):readonly ParallelWorkerUnit[]{
+ if(!Array.isArray(proposed)||proposed.length<1||proposed.length>4)
+  throw new Error("Invalid number of parallel Worker units");
+ const ids=new Set<string>(),grants: {agentId:string;repository:string;surfaces:string[]}[]=[];
+ const units=proposed.map(unit=>{
+  if(!unit||!taskPattern.test(unit.taskId)||unit.taskId==="."||unit.taskId===".."||
+   ids.has(unit.taskId.toLowerCase())||!Array.isArray(unit.writeSurfaces)||unit.writeSurfaces.length<1||
+   unit.writeSurfaces.length>256||unit.writeSurfaces.some((path:unknown)=>!scoped(path))||
+   new Set(unit.writeSurfaces.map((p:string)=>p.toLowerCase())).size!==unit.writeSurfaces.length)
+   throw new Error("Invalid or repeated parallel Worker unit/scope");
+  ids.add(unit.taskId.toLowerCase());
+  const grant={agentId:unit.taskId,repository:source,surfaces:[...unit.writeSurfaces]};
+  // Different worktrees do not excuse overlapping integration surfaces.
+  const reduced={...grant,surfaces:grant.surfaces.map(surface=>surface.toLowerCase())};
+  validateWriteGrant(reduced,grants);grants.push(reduced);
+  return Object.freeze({taskId:unit.taskId,writeSurfaces:Object.freeze([...unit.writeSurfaces])});
+ });
+ return Object.freeze(units);
+}
 function validateProposal(input:ParallelWorktreeProposal){
  if(!input||!revisionPattern.test(input.expectedHead)||
   (input.batchId!==undefined&&!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(input.batchId))||
@@ -84,20 +106,7 @@ function validateProposal(input:ParallelWorktreeProposal){
    (isInside(root,realParent)&&
     (!sameWorkspaceIdentityPath(dirname(root),realParent)||!basename(root).startsWith("asen-worker-")))))
   throw new Error("Worktree parent overlaps an existing worktree");
- const ids=new Set<string>(),grants: {agentId:string;repository:string;surfaces:string[]}[]=[];
- const units=input.units.map(unit=>{
-  if(!unit||!taskPattern.test(unit.taskId)||unit.taskId==="."||unit.taskId===".."||
-   ids.has(unit.taskId.toLowerCase())||!Array.isArray(unit.writeSurfaces)||unit.writeSurfaces.length<1||
-   unit.writeSurfaces.length>256||unit.writeSurfaces.some((path:unknown)=>!scoped(path))||
-   new Set(unit.writeSurfaces.map((p:string)=>p.toLowerCase())).size!==unit.writeSurfaces.length)
-   throw new Error("Invalid or repeated parallel Worker unit/scope");
-  ids.add(unit.taskId.toLowerCase());
-  const grant={agentId:unit.taskId,repository:source,surfaces:[...unit.writeSurfaces]};
-  // Different worktrees do not excuse overlapping integration surfaces.
-  const reduced={...grant,surfaces:grant.surfaces.map(surface=>surface.toLowerCase())};
-  validateWriteGrant(reduced,grants);grants.push(reduced);
-  return Object.freeze({taskId:unit.taskId,writeSurfaces:Object.freeze([...unit.writeSurfaces])});
- });
+ const units=validateParallelWorkerUnits(source,input.units);
  if(gitHead(source)!==input.expectedHead||!clean(source))throw new Error("Parallel Workers require a clean exact pinned source candidate");
  return {source,parent:realParent,common,units};
 }
