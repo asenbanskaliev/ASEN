@@ -21,7 +21,7 @@ import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | plan-todo | supervise | collect | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | attach-plan | plan-todo | supervise | collect | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
  sessionManager?:{getSessionId?:()=>string};
@@ -62,15 +62,23 @@ export function registerParallelWorktreeCommand(
    writeSurfaces?:readonly string[];candidateRevision?:string
   }>)=>Promise<boolean>,validateParent:()=>Promise<void>)=>Promise<
    {status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>}
-):void{
- register(ASEN_WORKTREES_COMMAND,{
-  description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
-  handler:async(args,ctx)=>{
+):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[])=>Promise<unknown>}>{
+ // La selección exacta solo existe en el cableado interno, no en los argumentos
+ // del comando ni en los parámetros generados por el modelo.
+ const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[]):Promise<unknown>=>{
+
    const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
+   if(action==="attach-plan"){
+    // Se usa la sesión Pi que realmente está abierta en el worktree.
+    // Vinculación y reconstrucción siguen siendo pasos no autorizantes.
+    const attached=await handler("attach",ctx) as {status?:string};
+    if(attached.status!=="attached")return attached;
+    return await handler("plan-todo",ctx);
+   }
    if(action==="supervise"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||
      !ctx.ui.confirm||!ctx.ui.select||!options?.journalFile||!options.sessionLinksFile||
@@ -446,9 +454,17 @@ export function registerParallelWorktreeCommand(
     ctx.ui.notify(blocked.reason,"warning");return blocked;
    }
 
+   // El plan natural ya conoce las dos raíces guardadas. Nunca se
+   // seleccionan tareas de otro plan para completar un lote exacto.
+   const exactRows=exactTodoIds?exactTodoIds.map(todoId=>planned.find(todo=>todo.taskId===todoId)):undefined;
+   if(exactTodoIds&&(exactTodoIds.length!==2||new Set(exactTodoIds).size!==2||
+    exactRows?.some(row=>!row))){
+    const blocked={status:"blocked" as const,reason:"Las dos unidades ODD originales ya no están disponibles; no se preparan otras tareas."};
+    ctx.ui.notify(blocked.reason,"warning");return blocked;
+   }
    const sample={
     parentDir:path.join(path.dirname(root),path.basename(root)+"-worktrees"),
-    units:linked?planned.slice(0,2).map(todo=>({taskId:todo.taskId,writeSurfaces:todo.plan!.writeSurfaces!})):
+    units:linked?(exactRows??planned.slice(0,2)).map(todo=>({taskId:todo!.taskId,writeSurfaces:todo!.plan!.writeSurfaces!})):
      [{taskId:"backend",writeSurfaces:["src/backend"]},{taskId:"frontend",writeSurfaces:["src/frontend"]}]
    };
    // Dos tareas ODD y ámbitos persistidos: no se permite ampliar rutas por el editor.
@@ -552,6 +568,10 @@ export function registerParallelWorktreeCommand(
     grantsAuthority:false as const,autoMerge:false as const,
     next:automatic?"Dos tareas ODD aisladas preparadas sin editar JSON. Faltan sesiones Pi hijas reales y consentimiento Worker individual.":"Abrir una sesión Pi por worktree, preparar ODD y obtener consentimiento Worker individual. Revisión e integración manuales."};
    ctx.ui.notify(JSON.stringify(display,null,2),"info");return display;
-  }
+  };
+ register(ASEN_WORKTREES_COMMAND,{
+  description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
+  handler:(args,ctx)=>handler(args,ctx)
  });
+ return Object.freeze({preparePartition:(ctx,ids)=>handler("prepare-auto",ctx,Object.freeze([...ids]))});
 }
