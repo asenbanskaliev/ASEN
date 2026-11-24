@@ -193,7 +193,7 @@ const terminalErrors:unknown[]=[];
    // Jueces simulados: ejercicio de contratos, no prueba independiente real.
    let judgeCalls=0;
    const registry:PiReviewRegistry={getAvailable:()=>[{provider:"nvidia",id:"modelo-simulado"},{provider:"prueba",id:"juez-a"},{provider:"prueba",id:"juez-b"}],
-    hasConfiguredAuth:()=>true,async *streamSimple(){judgeCalls++;yield {type:"done",reason:"stop",message:{content:[{type:"text",text:JSON.stringify({verdict:"pass",summary:"Resultado de prueba sintética",findings:[]})}]}};}};
+    hasConfiguredAuth:()=>true,async *streamSimple(model){judgeCalls++;yield {type:"done",reason:"stop",message:{provider:model.provider,model:model.id,content:[{type:"text",text:JSON.stringify({verdict:"pass",summary:"Resultado de prueba sintética",findings:[]})}]}};}};
    const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
     judgeA:{model:"prueba/juez-a"},judgeB:{model:"prueba/juez-b"},fixJournal:new JudgmentFixProposalJournal(join(privateDir,"fixes.json")),
     requirements:"A y B deben contener resultado; C se conserva.",validate:async()=>{},confirm:async()=>true});

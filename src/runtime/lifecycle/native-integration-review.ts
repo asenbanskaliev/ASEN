@@ -7,7 +7,7 @@ import {join} from "node:path";
 import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import {readFrozenIntegrationReviewEvidence} from "../../review/workspace-review-session.js";
 import {runJudgmentDay,isIssuedJudgmentDayReport,type JudgmentDayReport} from "../../review/judgment-day.js";
-import {availableIndependentPiReviewers,type PiReviewRegistry,type PiReviewerModel} from "../../review/pi-model-reviewer.js";
+import {reviewModelIdentityKey,availableIndependentPiReviewers,type PiReviewRegistry,type PiReviewerModel} from "../../review/pi-model-reviewer.js";
 import {proposeJudgmentFixHandoff} from "../../review/odd-agent-review-flow.js";
 import type {JudgmentFixProposalJournal} from "../../review/judgment-fix-proposal-journal.js";
 import type {RouteChoice} from "./profiles.js";
@@ -28,7 +28,8 @@ export async function reviewNativeIntegratedCandidate(input:{
   return blocked("No hay modelos autores observados por Pi para acreditar independencia de los jueces.");
  const authors=new Set(candidate.authorModelsObserved),key=(m:PiReviewerModel)=>m.provider+"/"+m.id;
  // Excluir también la representación abreviada del mismo modelo de Pi.
- const isAuthor=(m:PiReviewerModel)=>authors.has(key(m))||authors.has(m.provider+"/"+(m.id.startsWith(m.provider+"/")?m.id.slice(m.provider.length+1):m.id))||authors.has(m.provider+"/"+key(m));
+ const authorKeys=new Set([...authors].map(value=>{const slash=value.indexOf("/");return reviewModelIdentityKey({provider:value.slice(0,slash),id:value.slice(slash+1)});}));
+ const isAuthor=(m:PiReviewerModel)=>authorKeys.has(reviewModelIdentityKey(m));
  const filtered:PiReviewRegistry={
   getAvailable:()=>registry.getAvailable().filter(model=>!isAuthor(model)),
   hasConfiguredAuth:model=>!isAuthor(model)&&registry.hasConfiguredAuth(model),
@@ -41,7 +42,7 @@ export async function reviewNativeIntegratedCandidate(input:{
  const author={provider:provider!,id:parts.join("/")};
  const available=availableIndependentPiReviewers(filtered,author);
  const a=available.find(model=>key(model)===input.judgeA?.model),b=available.find(model=>key(model)===input.judgeB?.model);
- if(!a||!b||key(a)===key(b)||input.judgeA?.thinking!==undefined||input.judgeB?.thinking!==undefined)
+ if(!a||!b||reviewModelIdentityKey(a)===reviewModelIdentityKey(b)||input.judgeA?.thinking!==undefined||input.judgeB?.thinking!==undefined)
   return blocked("Configura dos modelos juez autenticados, distintos entre sí y de todos los Writers observados. Este transporte no aplica esfuerzo por llamada.");
  const validate=async()=>{
   if(input.signal?.aborted)throw new Error("Revisión cancelada");
@@ -59,6 +60,7 @@ export async function reviewNativeIntegratedCandidate(input:{
   requirements:input.requirements,...(input.signal?{signal:input.signal}:{}),validateBeforeJudge:validate});
  await validate();
  reportBindings.set(report,integrationKey(candidate,sessionId));
+ if(report.judges.some(judge=>judge.identity?.status!=="declared-match"))return blocked("No se ha comprobado la identidad declarada de ambos jueces; no autorizar corrección ni integración.");
  const fix=proposeJudgmentFixHandoff({report,evidence,...(input.fixProfile?{fixProfile:input.fixProfile}:{})});
  let fixProposalId:string|undefined;
  if((fix.status==="fix-planning-required"||fix.status==="manual-triage-required")&&fix.paths.every(path=>candidate.paths.includes(path))){
@@ -80,7 +82,7 @@ export async function verifyNativeIntegrationAcceptance(input:{
   report.sessionId!==input.sessionId||report.candidateRevision!==candidate.tree||
   report.candidateTreeIdentity!==candidate.tree||report.status!=="analysis-complete"||
   report.judges.length!==2||new Set(report.judges.map(judge=>judge.reviewerId)).size!==2||
-  report.judges.some(judge=>judge.verdict!=="pass")||report.findings.length)
+  report.judges.some(judge=>judge.verdict!=="pass"||judge.identity?.status!=="declared-match")||report.findings.length)
   throw new Error("Two genuine passing independent judges on the exact integrated tree are required");
  readNativeIntegrationDiff(candidate);
  const state=await input.receipts.readReceiptState(candidate.commit);
