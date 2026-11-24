@@ -44,6 +44,7 @@ const report={schema:"asen.e2a.native-partition/v1",sha:expected,model,
 let runtime:AgentRuntime|undefined;
 let childOwners:Array<{sessionId:string;projectId:string;sourceTodoId:string;childTodoId:string;sessionFile:string}>=[];
 const terminalWork:Promise<unknown>[]=[];
+const terminalErrors:unknown[]=[];
 try{
  mkdirSync(project,{recursive:true});mkdirSync(privateDir,{recursive:true,mode:0o700});
  git(project,"init","-q");git(project,"config","user.name","ASEN ensayo");git(project,"config","user.email","test@example.invalid");git(project,"config","core.autocrlf","false");
@@ -85,7 +86,7 @@ try{
  runtime=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:2});
  const agents=runtime;
  runtime.subscribeTerminal(record=>{
-  terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}));
+  terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}).catch(error=>{terminalErrors.push(error);}));
  });
  const parent=SessionManager.create(project,join(base,"parent-sessions"));
  parent.appendMessage({role:"user",content:"Ensayo integral de tres unidades sintéticas",timestamp:Date.now()});
@@ -134,8 +135,9 @@ try{
  report.stage="settlement";
  while(Date.now()<deadline){
   const records=(await Promise.all(childOwners.map(owner=>agents.list(owner)))).flat();
-  if(records.length===2&&records.every(record=>["completed","failed","interrupted","cancelled"].includes(record.state))){
+  if(terminalWork.length===2&&records.length===2&&records.every(record=>["completed","failed","interrupted","cancelled"].includes(record.state))){
    await Promise.all(terminalWork);
+   assert.equal(terminalErrors.length,0);
    break;
   }
   await new Promise(resolve=>setTimeout(resolve,200));
