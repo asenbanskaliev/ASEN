@@ -93,7 +93,7 @@ export class Dispatcher {
  }
  /** Cancel a queued or running task. The runner receives the abort signal and must stop its owned work. */
  cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||!sameWorkspaceIdentityPath(control.projectId,projectId)||control.controller.signal.aborted)return false;control.controller.abort();return true;}
- async dispatch(request:AgentRequest):Promise<AgentResult>{
+ async dispatch(request:AgentRequest,startBefore?:number):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
   let runnerRequest:AgentRequest,writerLease:{verify:()=>void;release:()=>void}|undefined;
   try{
@@ -153,6 +153,7 @@ export class Dispatcher {
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    if(request.writeSurfaces){assertActiveWriterSnapshot(request);writerLease=acquireActiveWriterLease(request);writerLease?.verify();}
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
+   if(startBefore!==undefined&&(!Number.isSafeInteger(startBefore)||Date.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");
    const result=await this.runner.run(runnerRequest,controller.signal);
    if(!result||result.id!==request.id||typeof result.ok!=="boolean"||typeof result.output!=="string")throw new Error("Agent runner returned an invalid or mismatched result");
    if(request.writeSurfaces){assertActiveWriterSnapshotOutcome(request);writerLease?.verify();}
