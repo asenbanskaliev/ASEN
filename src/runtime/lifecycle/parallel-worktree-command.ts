@@ -71,7 +71,9 @@ export function registerParallelWorktreeCommand(
  // del comando ni en los parámetros generados por el modelo.
  const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
 
-   const action=args?.trim();
+   const raw=args?.trim()??"";
+   const integrationMatch=/^(integration(?:-review|-continue)?)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
+   const action=integrationMatch?.[1]??raw;
    if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-review"&&action!=="integration-continue"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
@@ -182,9 +184,12 @@ export function registerParallelWorktreeCommand(
     const sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal);
     const observations=new ParallelWorkerObservationJournal(options.observationFile);
     try{
-     const batch=(await sourceJournal.list(identity)).at(-1);
+     const batches=(await sourceJournal.list(identity)).filter(row=>row.state==="prepared");
      validate();
-     if(!batch)throw new Error("No existe lote ODD.");
+     const selected=integrationMatch?.[2]??(batches.length===1?batches[0]!.id:ctx.hasUI&&ctx.ui.select?await ctx.ui.select("Selecciona el lote ODD preparado",batches.map(row=>row.id)):undefined);
+     validate();
+     const batch=batches.find(row=>row.id===selected);
+     if(!batch)throw new Error("Selecciona un lote ODD propio por su identificador exacto.");
      const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
      validate();
      if(action!=="integration"){
