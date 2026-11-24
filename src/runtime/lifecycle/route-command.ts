@@ -4,6 +4,7 @@ import {buildOrchestrationPlan} from "../../orchestration/orchestrator.js";
 import {materializeExecutablePlan} from "../../orchestration/executable-plan.js";
 import type {Candidate} from "../../core/types.js";
 import type {ProfileLayer} from "./profiles.js";
+import {isPartitionUnitBasis,materializeOddPartitionPlan,materializePartitionRoot} from "./odd-unit-plan.js";
 
 const INPUT_KEYS=["taskIdentity","intent","scope","writes","riskOperations","session","testing","review","unresolvedDecisions"] as const;
 const PLAN_INPUT_KEYS=["instruction",...INPUT_KEYS] as const;
@@ -39,6 +40,17 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
   },null,2);
  }
  let value:unknown;try{value=JSON.parse(args);}catch{throw new Error("ASEN planning expects valid JSON instruction and ODD facts");}
+ // Una base de unidad solo puede producir un plan acotado; el despacho
+ // posterior requiere además la selección exacta del supervisor de hijos.
+ if(isPartitionUnitBasis(value)){
+  if(!candidate)throw new Error("ODD partition requires a real candidate");
+  const {decision,plan,graph}=materializePartitionRoot(value,repositoryIdentity,candidate,runtimeProfiles);
+  return JSON.stringify({task:decision.taskIdentity,route:decision.route,risk:decision.risk,verification:decision.verification,
+   reasons:decision.reasons,requiredAgentRoles:plan.agents.map(agent=>agent.role),selectedSkills:plan.skills,
+   executablePlan:graph,requiresSingleWriter:true,requiresIsolatedChild:true,
+   authorizationRequiredBeforeExecution:true,execution:{started:false,authorized:false},
+   notice:"Unidad ODD reconstruida; solo el supervisor puede iniciar este Writer con autorización individual."},null,2);
+ }
  if(!exactWithOptionalUnits(value,PLAN_INPUT_KEYS))throw new Error(`ASEN plan input must contain exactly: ${PLAN_INPUT_KEYS.join(", ")} (optional namedRisks, taskUnits)`);
  if(typeof value.instruction!=="string"||!value.instruction.trim()||value.instruction!==value.instruction.trim()||value.instruction.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(value.instruction))throw new Error("ASEN plan instruction is invalid");
  const {instruction,...factsInput}=value;
@@ -70,7 +82,9 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
  const writeSurfaces=facts.writes.map(write=>write.path);
  const plan=buildOrchestrationPlan({selectionProfile:"organic",taskId:decision.taskIdentity,repository:decision.repositoryIdentity,prompt:instruction,...(candidate?{candidate}:{}),...(candidate&&writeSurfaces.length?{writeSurfaces}:{}),...(runtimeProfiles?{runtimeProfiles}:{})},decision);
  const writerAuthorizationBasis=candidate&&writeSurfaces.length?JSON.stringify({instruction,...factsInput}):undefined;
- const executablePlan=materializeExecutablePlan(plan,instruction,writerAuthorizationBasis);
+ const partitionPlan=candidate&&decision.route==="orchestrate"
+  ?materializeOddPartitionPlan(facts,{instruction,...factsInput},candidate,runtimeProfiles):undefined;
+ const executablePlan=partitionPlan??materializeExecutablePlan(plan,instruction,writerAuthorizationBasis);
  const sensitive=facts.riskOperations.length>0;
  const unitPartition=describeOddUnitPartition(facts);
  return JSON.stringify({
@@ -79,12 +93,13 @@ export function controlledInstructionPlanCommand(args:string,repositoryIdentity:
   risk:decision.risk,
   verification:decision.verification,
   reasons:decision.reasons,
-  requiredAgentRoles:plan.agents.map(agent=>agent.role),
+  requiredAgentRoles:partitionPlan?partitionPlan.tasks.map(task=>task.role):plan.agents.map(agent=>agent.role),
   selectedSkills:plan.skills,
-  delegatedAgents:plan.agents.map(agent=>({id:agent.id,role:agent.role,phase:agent.expectedPhase??null,skillPaths:agent.skillPaths??[],model:agent.model??null,thinking:agent.thinking??null})),
+  delegatedAgents:partitionPlan?partitionPlan.tasks.map(task=>({id:task.id,role:task.role,phase:task.skillSelection?.phase??null,skillPaths:task.skillPaths,model:task.model??null,thinking:task.thinking??null})):plan.agents.map(agent=>({id:agent.id,role:agent.role,phase:agent.expectedPhase??null,skillPaths:agent.skillPaths??[],model:agent.model??null,thinking:agent.thinking??null})),
   executablePlan,
   ...(unitPartition?{unitPartition}:{}),
-  requiresSingleWriter:decision.requiresSingleWriter,
+  ...(partitionPlan?{partitionExecution:"supervised-worktrees-required",dependentUnits:"fresh-planning-after-integration-required"}:{}),
+  requiresSingleWriter:partitionPlan?false:decision.requiresSingleWriter,
   requiresIsolatedChild:decision.requiresIsolatedChild,
   sensitiveOperationsPresent:sensitive,
   authorizationRequiredBeforeExecution:true,
