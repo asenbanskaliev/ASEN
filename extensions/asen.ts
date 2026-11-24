@@ -305,8 +305,25 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const sessionDirectory=dependencies.enableWorkspaceRuntime?new SharedSessionDirectory(path.join(home(),".asen","session-directory")):new SessionDirectory();
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
-  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
+  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,requirePartitionModelBeforePrompt:true,...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
+  // Observación de modelos de unidades nativas durante toda la vida del runner,
+  // separada de la suscripción de notificaciones del padre activo.
+  const nativeWriterModels=new Map<string,string[]>();
+  const writerWitnessKey=(sessionId:string,projectId:string,agentId:string)=>JSON.stringify([sessionId,projectId,agentId]);
+  const observedModels=(sessionId:string,projectId:string,agentId:string)=>nativeWriterModels.get(writerWitnessKey(sessionId,projectId,agentId))?.slice();
+  if(composedAgentRunner instanceof PiProcessRunner){
+   composedAgentRunner.subscribeChildSelection(event=>{
+    if(!/^unit-[a-f0-9]{40}:worker$/u.test(event.taskId)||!event.model||nativeWriterModels.size>=512)return;
+    const key=writerWitnessKey(event.sessionId,event.projectId,event.taskId);
+    const model=event.model.id.startsWith(event.model.provider+"/")?event.model.id:event.model.provider+"/"+event.model.id;
+    if(!nativeWriterModels.has(key))nativeWriterModels.set(key,[model]);
+   });
+   composedAgentRunner.subscribeModelFallback(event=>{
+    const key=writerWitnessKey(event.sessionId,event.projectId,event.taskId),models=nativeWriterModels.get(key);
+    if(models&&!models.includes(event.to)){if(models.length>=9)nativeWriterModels.delete(key);else models.push(event.to);}
+   });
+  }
   const environmentAgentLimit = (()=>{const raw=process.env.ASEN_MAX_AGENTS;if(typeof raw!=="string"||!raw.trim())return undefined;const value=Number(raw);return Number.isSafeInteger(value)&&value>0?value:undefined;})();
  const agentRuntimePromise=suppliedAgentRuntime??(composedAgentRunner?AgentRuntime.open({storeFile:dependencies.agentStoreFile??path.join(home(),".asen","agents.json"),runner:composedAgentRunner,...((dependencies.agentMaxConcurrency??environmentAgentLimit)!==undefined?{maxConcurrency:(dependencies.agentMaxConcurrency??environmentAgentLimit)!}:{})}):undefined);
   const getAgentRuntime=async()=>{if(!agentRuntimePromise)throw new Error("ASEN agent runtime is unavailable");return agentRuntimePromise;};
@@ -1064,7 +1081,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         const sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
         const observed=await reconcileNativeChildTerminal({record,todos:await todoStorePromise,agents:runtime,links:taskAgentLinks,
          sourceJournal,sessionJournal:new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal),
-         claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),
+         claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),observedModels,
          observations:new ParallelWorkerObservationJournal(path.join(home(),".asen","parallel-worker-observations.json"))});
         const parent=agentDeliveryContext,owner=agentDeliveryIdentity;
         if(observed&&parent&&owner&&owner.sessionId===observed.source.sessionId&&owner.projectId===observed.source.projectId){
@@ -1151,7 +1168,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       for(const child of children){
        const records=await runtime.list({sessionId:child.childSessionId,projectId:child.childProjectId});
        for(const record of records.filter(row=>row.role==="worker"&&["completed","failed","cancelled","interrupted"].includes(row.state))){
-        await reconcileNativeChildTerminal({record,todos,agents:runtime,links:taskAgentLinks,sourceJournal,sessionJournal,claims,observations});
+        await reconcileNativeChildTerminal({record,todos,agents:runtime,links:taskAgentLinks,sourceJournal,sessionJournal,claims,observations,observedModels});
        }
       }
      }
