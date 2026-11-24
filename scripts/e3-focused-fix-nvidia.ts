@@ -26,6 +26,12 @@ import type {PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-revi
 import {createReviewReceiptSigned,loadReceiptSigningKey,writeReviewReceipt} from "../src/evidence/review-receipt.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {selectSkills} from "../src/skills/registry.js";
+import {executeRddRepositoryInspection,prepareRddRepositoryInspection} from "../src/defects/rdd-repository-inspection.js";
+import {parseRddPolicyBytes} from "../src/defects/rdd-policy-source.js";
+import {authorizeRepositoryOperation,type RepositoryOperationBinding} from "../src/repository/operation-policy.js";
+import {recordRddReproduction} from "../src/defects/rdd-reproduction.js";
+import {bindRddDefectEvidence} from "../src/defects/rdd-defect-binding.js";
+import {executeNodeTestObservation,executeNodePassingObservation} from "../src/test/tdd-observation.js";
 import {normalizeT06PiChildSelection} from "../src/runtime/agents/t06-pi-receipt-validator.js";
 import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
 
@@ -41,19 +47,26 @@ if(!expected||!output||git(root,"rev-parse","HEAD")!==expected||raw(root,"status
 const temp=realpathSync(mkdtempSync(join(tmpdir(),"asen-e3-fix-")));
 const project=join(temp,"repo"),home=join(temp,"home"),privateDir=join(home,".asen");
 const model="nvidia/nemotron-3.5-lightning-30b-a3b",wrong="ASEN-NATIVE-LOT-A",correct="ASEN-NATIVE-CORRECT-A";
-const requirements="Review only the exact requirement: a.txt must contain ASEN-NATIVE-CORRECT-A with no newline. If it differs, fail and quote both observed and expected tokens verbatim in an a.txt finding. If exact, pass with no findings. Tests are verified separately; do not treat the not-run evidence field as a defect. Return the required JSON object only.";
-const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],judgeCalls:0,firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
+const testPath="reproduction.test.mjs";
+const requirements="The reproduction test is an intentional failing test to preserve unchanged. Review only the exact requirement: a.txt must contain ASEN-NATIVE-CORRECT-A with no newline. If it differs, fail and quote both observed and expected tokens verbatim in an a.txt finding. If exact, pass with no findings. Tests are verified separately; do not treat the not-run evidence field as a defect. Return the required JSON object only.";
+const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],judgeCalls:0,firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
 let agents:AgentRuntime|undefined,owner:{sessionId:string;projectId:string}|undefined;
 try{
  mkdirSync(project);mkdirSync(privateDir,{recursive:true,mode:0o700});
  git(project,"init","-qb","ensayo-fix");git(project,"config","user.name","ASEN ensayo");git(project,"config","user.email","test@example.invalid");git(project,"config","core.autocrlf","false");
  const hooks=join(temp,"empty-hooks");mkdirSync(hooks);git(project,"config","core.hooksPath",hooks);
  for(const name of ["a.txt","b.txt","c.txt"])writeFileSync(join(project,name),"original");
+ writeFileSync(join(project,testPath),`import test from "node:test";test("negative control",()=>{});\n`);
  const skillPaths=new Set((["low","medium","high"] as const).flatMap(risk=>[false,true].flatMap(verification=>selectSkills({selectionProfile:"organic",phase:"apply",risk,defect:true,codeChange:false,behaviorChange:false,filesTouched:1,verification}).map(s=>s.path))));
  for(const path of skillPaths){const file=join(project,path);mkdirSync(dirname(file),{recursive:true});copyFileSync(join(root,path),file);}
  git(project,"add",".");git(project,"commit","-qm","Base de ensayo");
  const original=git(project,"rev-parse","HEAD");
  writeFileSync(join(project,"a.txt"),wrong);
+ writeFileSync(join(project,testPath),[
+  'import test from "node:test";import assert from "node:assert/strict";import {readFileSync} from "node:fs";',
+  'test("defect case",()=>assert.equal(readFileSync(new URL("./a.txt",import.meta.url),"utf8"),'+JSON.stringify(correct)+'));',
+  'test("negative control",()=>assert.equal(readFileSync(new URL("./b.txt",import.meta.url),"utf8"),"original"));',
+ ].join("\n")+"\n");
  const session=SessionManager.create(project,join(temp,"sessions"));
  session.appendMessage({role:"user",content:"Ensayo sintético: corregir únicamente a.txt.",timestamp:Date.now()});
  owner={sessionId:session.getSessionId(),projectId:project};
@@ -125,9 +138,14 @@ try{
  // Preparar una base limpia con el árbol revisado EXACTO, únicamente en la
  // copia sintética desechable. El Writer normal sigue exigiendo HEAD limpio.
  git(project,"add","--","a.txt");git(project,"commit","-qm","Candidato sintético con defecto");
+ const fixtureMain=git(project,"rev-parse","HEAD");
+ assert.equal(git(project,"rev-parse","HEAD^"),original);
+ // El padre de reproducción representa el main de la fixture, no GitHub.
+ git(project,"branch","main",fixtureMain);
+ git(project,"add","--",testPath);git(project,"commit","-qm","Prueba determinista de reproducción");
  const defectiveCommit=git(project,"rev-parse","HEAD");
  assert.equal(git(project,"rev-parse","HEAD^{tree}"),first.evidence.candidate.treeIdentity);
- assert.equal(git(project,"rev-parse","HEAD^"),original);assert.equal(git(project,"status","--porcelain"),"");
+ assert.equal(git(project,"rev-parse","HEAD^"),fixtureMain);assert.equal(git(project,"status","--porcelain"),"");
  report.stage="fix-plan";
  const ctx={cwd:project,mode:"tui",hasUI:true,sessionManager:session,isIdle:()=>true,ui:{
   notify(){},confirm:async()=>true,editor:async(_title:string,seed:string)=>{
@@ -140,6 +158,24 @@ try{
  assert.ok(fix?.plan?.fixSource);assert.equal(fix.plan.fixSource.treeIdentity,first.evidence.candidate.treeIdentity);
  assert.equal(fix.plan.candidate?.revision,defectiveCommit);assert.deepEqual(fix.plan.writeSurfaces,["a.txt"]);assert.equal(fix.current.state,"planned");
  assert.equal((await agents.list(owner)).length,0);report.fixPlanSaved=true;
+ report.stage="defect-intake";
+ const candidate=fix.plan.candidate!;
+ // Reutilizar D1/D2/D3/D4. La inspección de issue y main pertenece SOLO a la
+ // fixture sintética; las dos ejecuciones del test son reales y deterministas.
+ const repositoryUrl="https://github.example/asen/fixture",issueUrl=repositoryUrl+"/issues/1";
+ const bytes=new TextEncoder().encode('{"schemaVersion":1,"reviewMode":"enabled","issueApproval":{"requiredLabels":["kind:defect","status:approved"]}}');
+ const policyId=createHash("sha256").update("asen.rdd-policy.v1\0").update(bytes).digest("hex");
+ const policy=parseRddPolicyBytes(bytes,policyId);
+ const binding:RepositoryOperationBinding={host:"github.example",owner:"asen",repository:"fixture",sessionId:owner.sessionId,actor:"test-maintainer",action:"remote_read"};
+ const claim=prepareRddRepositoryInspection({binding,repositoryUrl,branch:"main",observedMainCommitIdentity:fixtureMain,expectedMainCommitIdentity:fixtureMain,issueUrl,policyLocator:".asen/rdd-policy.json"},policy);
+ const inspection=await executeRddRepositoryInspection(claim,authorizeRepositoryOperation(binding),binding,{read(){return {repositoryUrl,branch:"main",observedMainCommitIdentity:fixtureMain,issueUrl,issueNumber:1,issueState:"open",issueLabels:["kind:defect","status:approved"],policyLocator:".asen/rdd-policy.json",policyBytes:[...bytes],policyContentIdentity:policyId,pullRequestAudit:{complete:true,truncated:false,saturated:false,totalCount:0,rows:[]}};}});
+ const red1=await executeNodeTestObservation(candidate,[testPath]),red2=await executeNodeTestObservation(candidate,[testPath]);
+ const reproduction=recordRddReproduction(inspection,{repositoryUrl,issueUrl,mainCommitIdentity:fixtureMain,candidate:{id:candidate.id,repository:candidate.repository,revision:candidate.revision},reproductionCaseIds:["defect case"],negativeControlCaseIds:["negative control"]},red1,red2);
+ const intake=bindRddDefectEvidence(reproduction,{invariantIds:["approved-issue","current-main","deterministic-reproduction"],operatorFlows:[{id:"inspect-reproduce",from:"approved fixture issue",to:"reproduced defect",failureTo:"blocked"}],runtimeJourney:{command:[process.execPath,"--test","--test-reporter=tap",testPath],commandFingerprint:red1.commandFingerprint,result:"reproduced",candidateId:candidate.id,candidateRevision:candidate.revision,limitations:["synthetic issue and branch fixture, no production authority"]},rollback:{boundary:"candidate",targetRevision:fixtureMain,procedure:["discard disposable fixture"]},forecast:{changedLines:1,verificationEffort:"two deterministic tests and two independent judges",remainingUncertainty:["real provider verdict and write pending"],deferredVerification:["full integration CI"]}});
+ assert.throws(()=>agents!.recordDefectIntake(candidate,structuredClone(intake)),/genuine/u);
+ agents.recordDefectIntake(candidate,intake);
+ assert.throws(()=>agents!.recordDefectIntake(candidate,intake),/consumed/u);
+ report.defectReproduced=true;
  report.stage="fix-dispatch";
  const dispatched=await dispatchNextPlanTask({todos,agents,links,identity:owner,runtimeProfiles:{global:profiles},expectedTodoId:fix.taskId,
   validateIdentity:async()=>{assert.equal(session.getSessionId(),owner!.sessionId);assert.equal(git(project,"rev-parse","HEAD"),defectiveCommit);},
@@ -149,7 +185,8 @@ try{
  report.stage="fix-terminal";
  const deadline=Date.now()+160000;
  while(Date.now()<deadline){const a=(await agents.list(owner)).find(a=>a.id===dispatched.agentId);if(a&&["completed","failed","interrupted","cancelled"].includes(a.state))break;await new Promise(resolve=>setTimeout(resolve,150));}
- assert.equal((await agents.list(owner)).find(a=>a.id===dispatched.agentId)?.state,"completed");
+ const terminal=(await agents.list(owner)).find(a=>a.id===dispatched.agentId);
+ assert.equal(terminal?.state,"completed",real?"Fix no completado":terminal?.summary??"Sin diagnóstico");
  assert.equal(launches,1);assert.equal(report.fixStarted,true);
  if(real){assert.equal(report.nativeFixModel,model);assert.equal(report.nativeWriteStarts,1);assert.equal(report.nativeWriteEnds,1);assert.equal(report.nativeErrors,0);}
  await new TaskAgentTodoReconciler(todos,agents,links).reconcile(owner);
@@ -164,15 +201,21 @@ try{
  assert.deepEqual(git(project,"diff-tree","-r","--name-only","--no-commit-id","--no-renames",first.evidence.candidate.treeIdentity,tree).split("\n"),["a.txt"]);
  assert.equal(git(project,"ls-tree",tree,"--","a.txt").split(" ")[0],git(project,"ls-tree",first.evidence.candidate.treeIdentity,"--","a.txt").split(" ")[0]);
  report.exactTreeScope=true;report.finalTree=tree;
- const commit=git(project,"commit-tree",tree,"-p",defectiveCommit,"-m","Candidato sintético corregido");
+ // El host de ensayo confirma el resultado en su repo desechable, no el
+ // agente. Ejecutar la misma prueba RED en la revisión exacta corregida.
+ git(project,"add","--","a.txt");git(project,"commit","-qm","Candidato sintético corregido");
+ const commit=git(project,"rev-parse","HEAD");assert.equal(git(project,"rev-parse","HEAD^{tree}"),tree);
+ assert.equal(git(project,"rev-parse","HEAD^"),defectiveCommit);
+ const green=await executeNodePassingObservation({...candidate,id:candidate.id+"-fixed",revision:commit},[testPath]);
+ assert.deepEqual(green.executedCaseIds,["defect case","negative control"]);assert.equal(green.failingCaseIds.length,0);
  assert.equal(raw(project,"show",commit+":a.txt"),correct);assert.equal(raw(project,"show",commit+":b.txt"),"original");assert.equal(raw(project,"show",commit+":c.txt"),"original");
  const receipts=join(privateDir,"receipts");
- await writeReviewReceipt(receipts,createReviewReceiptSigned({commitSha:commit,treeSha:tree,oddTask:"odd/tasks/continuacion-local-flujo-de-agentes.md",testSuite:{total:3,passed:3,failed:0,durationMs:0,runner:"Aserciones Git del ensayo sintético"},verdict:"PASSED"},await loadReceiptSigningKey(receipts)));
+ await writeReviewReceipt(receipts,createReviewReceiptSigned({commitSha:commit,treeSha:tree,oddTask:"odd/tasks/continuacion-local-flujo-de-agentes.md",testSuite:{total:green.executedCaseIds.length,passed:green.executedCaseIds.length,failed:0,durationMs:0,runner:"node:test reproducción exacta"},verdict:"PASSED"},await loadReceiptSigningKey(receipts)));
  const receipt=await new ReceiptVerifierService(receipts).readReceiptState(commit);
  assert.equal(receipt.status,"valid");if(receipt.status!=="valid")throw Error("Recibo no válido");
  mkdirSync(dirname(output),{recursive:true,mode:0o700});
  writeFileSync(join(dirname(output),real?"signed-real.json":"signed-offline.json"),JSON.stringify(receipt.receipt,null,2)+"\n",{flag:"wx",mode:0o600});
- report.signedTests=true;assert.equal(git(project,"rev-parse","HEAD"),defectiveCommit);
+ report.signedTests=true;assert.equal(git(project,"rev-parse","HEAD"),commit);assert.equal(git(project,"rev-parse","refs/heads/main"),fixtureMain);
  report.stage="complete";report.status=real?"PASS_REAL_FOCUSED_NVIDIA_FIX_TEST_ONLY":"PASS_OFFLINE_FOCUSED_FIX";
 }catch(error){
  // El mensaje del proveedor podría contener secretos. En offline sí se
