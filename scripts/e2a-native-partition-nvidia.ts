@@ -54,6 +54,10 @@ try{
  mkdirSync(project,{recursive:true});mkdirSync(privateDir,{recursive:true,mode:0o700});
  git(project,"init","-q");git(project,"config","user.name","ASEN ensayo");git(project,"config","user.email","test@example.invalid");git(project,"config","core.autocrlf","false");
  const hooks=join(base,"empty-hooks");mkdirSync(hooks);git(project,"config","core.hooksPath",hooks);
+ // El host sintético ofrece únicamente la herramienta que autoriza el ensayo.
+ // Los perfiles y herramientas de producción permanecen intactos.
+ mkdirSync(join(project,".pi","gentle-ai"),{recursive:true});
+ writeFileSync(join(project,".pi","gentle-ai","tools.json"),JSON.stringify({remove:["read","edit"]}));
  for(const path of ["a.txt","b.txt","c.txt"])writeFileSync(join(project,path),"original");
  const skillPaths=selectSkills({selectionProfile:"organic",phase:"apply",risk:"low",defect:false,codeChange:false,behaviorChange:false,filesTouched:1}).map(s=>s.path);
  for(const path of skillPaths){const target=join(project,path);mkdirSync(dirname(target),{recursive:true});copyFileSync(join(root,path),target);}
@@ -106,13 +110,13 @@ try{
    return ["Preparar dos carpetas Git aisladas?","Preparar sesiones hijas Pi sin iniciar modelos?","Autorizar las dos escrituras ODD exactas de este lote?"].includes(title);}
  }};
  report.stage="natural-plan";
- const params={instruction:"Cada Writer debe usar una sola llamada nativa write para sustituir únicamente su archivo asignado por el contenido exacto de su objetivo, sin salto final. No uses edit, shell ni commits. Detente tras escribir.",
+ const params={instruction:"Ejecuta exactamente una llamada a la herramienta write. Los argumentos JSON exactos están en el objetivo de tu unidad. Copia el valor de content literalmente, sin añadir comillas, saltos de línea ni otros caracteres. No uses otra herramienta. Termina inmediatamente tras recibir el resultado de write.",
   intent:"implementation",scope:{kind:"known",expectedPaths:["a.txt","b.txt","c.txt"]},
   writes:["a.txt","b.txt","c.txt"].map(path=>({path,changeKind:"documentation"})),
   riskOperations:[],session:{estimatedMinutes:120,continuation:false},testing:{kind:"required"},
   review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[],taskUnits:[
-   {id:"a",objective:"Escribir a.txt con los bytes exactos ASEN-NATIVE-LOT-A",estimatedMinutes:40,dependsOn:[],writePaths:["a.txt"]},
-   {id:"b",objective:"Escribir b.txt con los bytes exactos ASEN-NATIVE-LOT-B",estimatedMinutes:40,dependsOn:[],writePaths:["b.txt"]},
+   {id:"a",objective:'write con argumentos exactos {"path":"a.txt","content":"ASEN-NATIVE-LOT-A"}',estimatedMinutes:40,dependsOn:[],writePaths:["a.txt"]},
+   {id:"b",objective:'write con argumentos exactos {"path":"b.txt","content":"ASEN-NATIVE-LOT-B"}',estimatedMinutes:40,dependsOn:[],writePaths:["b.txt"]},
    {id:"c",objective:"Integrar y verificar A y B antes de modificar c.txt",estimatedMinutes:40,dependsOn:["a","b"],writePaths:["c.txt"]}
   ]};
  const result=await tools.get("asen_plan_request").execute("call",params,undefined,undefined,context);
@@ -155,7 +159,8 @@ try{
   const scoped=changes.length===1&&changes[0]===path;
   const verified=record?.state==="completed"&&row?.current.state==="succeeded"&&exact&&scoped&&o?.model===model&&o.pid>0&&o.end>o.start&&o.writeStarts===1&&o.writeEnds===1&&o.errors===0;
   report.workers.push({verified:!!verified,agentState:record?.state??"missing",todoState:row?.current.state??"missing",
-   nativeModel:o?.model??"unknown",changedPaths:changes,exactBytes:exact,exactScope:scoped,oneWrite:o?.writeStarts===1&&o?.writeEnds===1});
+   nativeModel:o?.model??"unknown",changedPaths:changes,exactBytes:exact,exactScope:scoped,oneWrite:o?.writeStarts===1&&o?.writeEnds===1,
+   writeStarts:o?.writeStarts??0,writeEnds:o?.writeEnds??0,toolErrors:o?.errors??0,processClosed:!!o&&o.end>o.start});
  }
  const intervals=[...obs.values()];
  report.started=intervals.filter(o=>o.pid>0).length;
@@ -164,17 +169,20 @@ try{
  const rows=await todos.list(identity),dependent=rows.find(row=>row.dependsOn?.length===2);
  report.dependentBlocked=dependent?.current.state==="planned"&&(await agents.list(identity)).length===0;
  report.receipts=(await observations.listSource(identity,await sessionJournal.listSource(identity))).length;
- report.stage="acceptance";
+ report.stage="verify-writers";
  assert.equal(report.started,2);assert.equal(report.parallel,true);assert.equal(report.sourceClean,true);assert.equal(report.dependentBlocked,true);
  assert.equal(report.receipts,2);assert.ok(report.workers.length===2&&report.workers.every(w=>w.verified===true));
+ report.stage="build-integration";
  const batch=(await sourceJournal.list(identity)).at(-1)!;
  const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
  assert.deepEqual(candidate.paths,["a.txt","b.txt"]);
  for(const path of candidate.paths)assert.equal(rawGit(project,"show",candidate.commit+":"+path),values[path]);
  assert.equal(git(project,"rev-parse","HEAD"),head);
+ report.stage="frozen-review";
  const evidence=readFrozenIntegrationReviewEvidence(candidate,identity.sessionId,"pi-model:ensayo/lector",base);
  assert.equal(evidence.candidate.treeIdentity,candidate.tree);
  report.integrationCandidate=true;
+ report.stage="complete";
  report.status="PASS_REAL_NVIDIA_SCOPED_PARTITION_TEST_ONLY";
 }catch{
  // No volcar errores de proveedor, prompts ni datos privados.
@@ -187,5 +195,6 @@ try{
  mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
  writeFileSync(resolve(reportFile),JSON.stringify(report,null,2)+"\n",{encoding:"utf8",flag:"wx",mode:0o600});
 }
-process.stdout.write(JSON.stringify({status:report.status,stage:report.stage,nativeSessions:report.nativeSessions,admitted:report.admitted,started:report.started,parallel:report.parallel,receipts:report.receipts})+"\n");
+// Informe cerrado: solo contiene identidades del ensayo, estados y contadores.
+process.stdout.write(JSON.stringify(report)+"\n");
 if(report.status!=="PASS_REAL_NVIDIA_SCOPED_PARTITION_TEST_ONLY")process.exitCode=1;

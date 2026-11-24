@@ -159,6 +159,7 @@ export class Dispatcher {
    if(request.writeSurfaces){assertActiveWriterSnapshot(request);writerLease=acquireActiveWriterLease(request);writerLease?.verify();}
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
    const nativeBaseline=isNativePartitionWriter(request)?await captureNativeWriterBaseline(request):undefined;
+   if(nativeBaseline&&validateStart)await validateStart();
    writerLease?.verify();
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before Writer execution");
    if(startBefore!==undefined&&(!Number.isFinite(startBefore)||performance.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");
