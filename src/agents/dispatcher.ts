@@ -1,4 +1,4 @@
-import {captureNativeWriterBaseline,captureNativeWriterCompletionAsync,type NativeWriterCompletion} from "../runtime/agents/native-writer-completion.js";
+import {isNativePartitionWriter,captureNativeWriterBaseline,captureNativeWriterCompletionAsync,type NativeWriterCompletion} from "../runtime/agents/native-writer-completion.js";
 import {types} from "node:util";
 import { validateWriteGrant, type WriteGrant } from "../policies/scopes.js";
 import type {Candidate} from "../core/types.js";
@@ -158,7 +158,7 @@ export class Dispatcher {
    if(request.role==="worker"&&request.candidate&&!consumeIssuedWorkerContext(request.skillContext!))throw new Error("Candidate-bound worker requires unused worker context");
    if(request.writeSurfaces){assertActiveWriterSnapshot(request);writerLease=acquireActiveWriterLease(request);writerLease?.verify();}
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
-   const nativeBaseline=await captureNativeWriterBaseline(request);
+   const nativeBaseline=isNativePartitionWriter(request)?await captureNativeWriterBaseline(request):undefined;
    writerLease?.verify();
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before Writer execution");
    if(startBefore!==undefined&&(!Number.isFinite(startBefore)||performance.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");
@@ -169,7 +169,7 @@ export class Dispatcher {
    // Ignorar evidencia arbitraria del runner. Capturar los bytes propios antes de soltar el lease.
    const {nativeCompletion:_untrusted,...resultFields}=result;
    let nativeCompletion:NativeWriterCompletion|undefined;
-   if(result.ok&&!controller.signal.aborted)try{nativeCompletion=await captureNativeWriterCompletionAsync(request,result,nativeBaseline,controller.signal);}catch{/* Resultado sin árbol admisible: no integrar. */}
+   if(nativeBaseline&&result.ok&&!controller.signal.aborted)try{nativeCompletion=await captureNativeWriterCompletionAsync(request,result,nativeBaseline,controller.signal);}catch{/* Resultado sin árbol admisible: no integrar. */}
    writerLease?.verify();
    const acceptedResult=Object.freeze({...resultFields,...(nativeCompletion?{nativeCompletion}:{})});validatedRunnerResults.set(acceptedResult,{lifecycle:this.lifecycle,id:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,consumed:false});
    if(controller.signal.aborted){const pending=this.lifecycle?.cancelled(request.id,result.output);if(isPromise(pending))await pending;terminalState=true;lifecycleRunning=false;return {id:request.id,ok:false,output:"Cancellation requested; completion was not accepted"};}

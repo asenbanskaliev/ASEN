@@ -33,7 +33,7 @@ export function bindNativeRunnerModels(result:object,models:readonly string[]):v
  if(models.length&&models.length<=9&&new Set(models).size===models.length&&models.every(m=>model.test(m)))
   observedModels.set(result,Object.freeze([...models]));
 }
-function isNativePartitionWriter(request:AgentRequest):boolean{
+export function isNativePartitionWriter(request:AgentRequest):boolean{
  return request.role==="worker"&&/^unit-[a-f0-9]{40}:worker$/u.test(request.id)&&!!request.candidate&&!!request.writeSurfaces?.length;
 }
 /** Registrar los ignorados preexistentes ANTES de entregar la autoridad.
