@@ -56,8 +56,6 @@ try{
  const hooks=join(base,"empty-hooks");mkdirSync(hooks);git(project,"config","core.hooksPath",hooks);
  // El host sintético ofrece únicamente la herramienta que autoriza el ensayo.
  // Los perfiles y herramientas de producción permanecen intactos.
- mkdirSync(join(project,".pi","gentle-ai"),{recursive:true});
- writeFileSync(join(project,".pi","gentle-ai","tools.json"),JSON.stringify({remove:["read","edit"]}));
  for(const path of ["a.txt","b.txt","c.txt"])writeFileSync(join(project,path),"original");
  const skillPaths=selectSkills({selectionProfile:"organic",phase:"apply",risk:"low",defect:false,codeChange:false,behaviorChange:false,filesTouched:1}).map(s=>s.path);
  for(const path of skillPaths){const target=join(project,path);mkdirSync(dirname(target),{recursive:true});copyFileSync(join(root,path),target);}

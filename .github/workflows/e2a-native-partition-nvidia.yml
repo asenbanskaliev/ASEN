@@ -77,11 +77,12 @@ jobs:
           PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-native-partition-pi
         run: |
           set -euo pipefail
-          test "$(gh api \"/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER\" --jq .head.sha)" = "$ASEN_EXPECTED_SHA"
+          test "$(gh api "/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER" --jq .head.sha)" = "$ASEN_EXPECTED_SHA"
           unset GH_TOKEN
           test -n "$NVIDIA_API_KEY"
           mkdir -p "$PI_CODING_AGENT_DIR"
           node scripts/t12-pi-retry-settings.mjs
+          printf '%s\n' '{"remove":["read","edit"]}' > "$PI_CODING_AGENT_DIR/tools.json"
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           test -z "$(git -c core.fsmonitor=false status --porcelain=v1 --untracked-files=all)"
           timeout 360s tsx scripts/e2a-native-partition-nvidia.ts
