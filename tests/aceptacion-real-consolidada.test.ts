@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
-// Git puede materializar CRLF en Windows. La aceptación inspecciona la misma semántica YAML en los tres sistemas.\nconst workflow=readFileSync(".github/workflows/asen-real-agent-acceptance.yml","utf8").replace(/\\r\\n?/gu,"\\n");
+// Git puede materializar CRLF en Windows. La aceptación inspecciona la misma semántica YAML en los tres sistemas.
+const workflow=readFileSync(".github/workflows/asen-real-agent-acceptance.yml","utf8").replace(/\r\n?/gu,"\n");
 const marker="ci: lote real ASEN E2B E3 C01";
 const jobs=["shell-asen-beam-c01","real-parent-consumption","real-repaired-review"] as const;
 
