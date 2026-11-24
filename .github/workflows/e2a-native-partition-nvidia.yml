@@ -87,3 +87,5 @@ jobs:
           path: ${{ runner.temp }}/asen-native-partition/receipt.json
           if-no-files-found: warn
           retention-days: 30
+
+# Ensayo acotado: incluye la construcción del candidato y comprueba su árbol exacto.
