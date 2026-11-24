@@ -36,7 +36,7 @@ export function captureNativeWriterCompletion(request:AgentRequest,result:object
  const git=(...args:string[])=>execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-C",root,...args],
   {env:isolatedGitEnvironment(),timeout:10000,maxBuffer:1_000_000,windowsHide:true,stdio:["ignore","pipe","pipe"]});
  const untracked=git("ls-files","--others","-z").toString("utf8").split("\0").filter(Boolean);
- const projection=captureWorkspaceReviewProjection({repositoryRoot:root,intendedUntracked:untracked},request.writeSurfaces);
+ const projection=captureWorkspaceReviewProjection({repositoryRoot:root,intendedUntracked:untracked},request.writeSurfaces,undefined,true);
  if(projection.baseCommit!==base||projection.unexpectedUntracked.length)return;
  const paths=new TextDecoder("utf-8",{fatal:true}).decode(git("diff-tree","-r","--name-only","--no-renames","--no-commit-id","-z",projection.baseTree,projection.candidateTree)).split("\0").filter(Boolean).sort();
  // Los gitlinks sin cambios aparecen en la proyección pero no en el diff.

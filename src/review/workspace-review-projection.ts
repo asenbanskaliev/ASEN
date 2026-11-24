@@ -59,6 +59,7 @@ const decoder = new TextDecoder("utf-8", {fatal: true});
 const issuedProjections = new WeakSet<object>();
 const projectionRepositories = new WeakMap<object,Readonly<Record<string,never>>>();
 const projectionSelections = new WeakMap<object,readonly string[]>();
+const nativeGitTextProjections=new WeakSet<object>();
 const projectionCatalogs = new WeakMap<object,ReadonlyMap<string,Readonly<{mode:string;objectId:string;contentSha256:string|null}>>>();
 const projectionCorrections = new WeakMap<object,WorkspaceCorrectionConstraint>();
 
@@ -314,7 +315,42 @@ export function assertWorkspaceProjectionRepository(value:unknown):void{
  * Freezes workspace bytes into an immutable Git tree without changing the index.
  * The returned data is identity metadata only; it grants no review, write, or delivery authority.
  */
-export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectionRequest, selectedReviewPaths?: readonly string[], correction?: WorkspaceCorrectionConstraint): WorkspaceReviewProjection {
+/** Solo normaliza texto Git inequívoco. No ejecuta filtros, ni altera los
+ * bytes de la revisión ordinaria. Los archivos binarios y atributos especiales
+ * se mantienen crudos; las discrepancias quedan bloqueadas por el ámbito. */
+function normalizeNativeGitText(root:string,candidate:Map<string,SourceEntry>):void{
+  let autocrlf="";
+  try{autocrlf=gitText(root,["config","--get","core.autocrlf"]).toLowerCase();}
+  catch(error){if((error as {status?:number})?.status!==1)throw error;}
+  const eol=records(runGit(root,["ls-files","--eol","-z"]));
+  for(const record of eol){
+    const line=decoder.decode(record),tab=line.indexOf("\t");
+    if(tab<0)throw Error("Invalid Git EOL record");
+    const path=line.slice(tab+1),metadata=line.slice(0,tab);
+    const match=/^i\/(lf|none)\s+w\/crlf\s+attr\/(.*?)\s*$/u.exec(metadata);
+    if(!match)continue;
+    const source=candidate.get(path);
+    if(!source?.bytes||!["100644","100755"].includes(source.mode))continue;
+    const attrs=match[2]!.trim();
+    if(!(/^(?:text(?:=auto)?(?: eol=(?:lf|crlf))?|eol=(?:lf|crlf))$/u.test(attrs)||
+      attrs===""&&["true","input"].includes(autocrlf)))continue;
+    // Solo atributos de conversión interna de fin de línea; no filtros o
+    // codificaciones especiales. check-attr es lectura de metadatos.
+    const special=records(runGit(root,["check-attr","-z","filter","working-tree-encoding","ident","--",path])).map(x=>decoder.decode(x));
+    if(special.length!==9||special.some((v,i)=>i%3===2&&v!=="unspecified"&&v!=="unset"))continue;
+    const bytes=source.bytes;
+    if(bytes.includes(0))continue;
+    // No interpretar binarios ni codificaciones: conversión exacta byte a byte.
+    const output=Buffer.allocUnsafe(bytes.length);let offset=0;
+    for(let i=0;i<bytes.length;i++){
+      if(bytes[i]===13&&bytes[i+1]===10)continue;
+      output[offset++]=bytes[i]!;
+    }
+    source.bytes=output.subarray(0,offset);
+    source.contentSha256=sha256(source.bytes);
+  }
+}
+export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectionRequest, selectedReviewPaths?: readonly string[], correction?: WorkspaceCorrectionConstraint, nativeGitText=false): WorkspaceReviewProjection {
   const request = normalizeRequest(input);
   const selection = selectedReviewPaths === undefined ? undefined : Object.freeze(normalizeRequest({repositoryRoot:request.repositoryRoot,intendedUntracked:selectedReviewPaths}).intendedUntracked);
   const selected = selection === undefined ? undefined : new Set(selection);
@@ -380,6 +416,7 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
     candidate.set(path, source);
   }
 
+  if(nativeGitText)normalizeNativeGitText(root,candidate);
   for (const source of candidate.values()) if (source.bytes) {
     source.objectId = gitText(root, ["hash-object", "--no-filters", "--stdin"], source.bytes);
   }
@@ -436,6 +473,7 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
   });
   projectionRepositories.set(projection,identity);
   projectionCatalogs.set(projection,new Map([...candidate].map(([path,entry])=>[path,Object.freeze({mode:entry.mode,objectId:entry.objectId,contentSha256:entry.contentSha256})])));
+  if(nativeGitText)nativeGitTextProjections.add(projection);
   if(selection)projectionSelections.set(projection,selection);
   if(correctionPolicy)projectionCorrections.set(projection,correctionPolicy);
   return projection;
@@ -458,7 +496,7 @@ export function revalidateWorkspaceReviewProjection(
   if (!Array.isArray(data.intendedUntracked) || JSON.stringify([...data.intendedUntracked].sort()) !== JSON.stringify(request.intendedUntracked)) {
     throw new Error("workspace projection scope drifted");
   }
-  const current = captureWorkspaceReviewProjection({repositoryRoot: request.repositoryRoot, intendedUntracked: request.intendedUntracked},projectionSelections.get(saved),projectionCorrections.get(saved));
+  const current = captureWorkspaceReviewProjection({repositoryRoot: request.repositoryRoot, intendedUntracked: request.intendedUntracked},projectionSelections.get(saved),projectionCorrections.get(saved),nativeGitTextProjections.has(saved));
   const comparable = ["schemaVersion", "repositoryRoot", "baseCommit", "baseTree", "candidateTree", "intendedUntracked","unexpectedUntracked","indexIdentity", "sourceIdentity", "entries"] as const;
   for (const key of comparable) if (JSON.stringify(data[key]) !== JSON.stringify(current[key])) {
     throw new Error(`workspace projection drifted: ${key}`);
