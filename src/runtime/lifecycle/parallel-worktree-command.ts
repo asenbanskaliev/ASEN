@@ -60,6 +60,7 @@ export function registerParallelWorktreeCommand(
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
   loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>;
   loadChildAgentRecords?:(identity:TodoContext)=>Promise<readonly PublicAgentRecord[]>;
+  reconcileNativeChild?:(record:PublicAgentRecord)=>Promise<unknown>;
   loadChildTaskAgentLinks?:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>;
   launchChildWorker?:(unit:ParentSupervisorReadyWorker,confirm:(task:Readonly<{
    id:string;title:string;role:string;instruction:string;
@@ -253,6 +254,31 @@ export function registerParallelWorktreeCommand(
      loadTaskAgentLinks:options!.loadChildTaskAgentLinks!
     });
     const preview=await inspect();current();
+    const nativeLinks=(await sessionJournal.listSource(sourceIdentity)).filter(link=>link.batchId===batch.id&&link.nativeSessionFile);
+    if(nativeLinks.length&&options.reconcileNativeChild){
+     // La recuperación manual utiliza el mismo registro autenticado del
+     // runtime, no un árbol reconstruido tras finalizar el Writer.
+     const records=(await Promise.all(nativeLinks.map(link=>options.loadChildAgentRecords!({sessionId:link.childSessionId,projectId:link.childProjectId})))).flat()
+      .filter(record=>record.role==="worker"&&["completed","failed","cancelled","interrupted"].includes(record.state));
+     const before=(await observations.listSource(sourceIdentity,nativeLinks)).filter(row=>row.batchId===batch.id);
+     current();
+     const pending=records.filter(record=>!before.some(row=>row.agentId===record.id));
+     if(pending.length){
+      const approved=await ctx.ui.confirm("Recuperar recibos terminales del lote?",[
+       "Lote: "+batch.id,"Solo resultados duraderos de Workers ya terminados.",
+       "No lanzar, repetir, sustituir recibos ni integrar un lote incompleto."
+      ].join("\n"));
+      current();if(approved!==true)return {status:"declined",grantsAuthority:false,autoMerge:false};
+      for(const record of pending){current();await options.reconcileNativeChild(record);}
+     }
+     const saved=(await observations.listSource(sourceIdentity,nativeLinks)).filter(row=>row.batchId===batch.id);
+     current();
+     const complete=saved.length===batch.tasks.length;
+     const output={status:complete?"observed-needs-independent-review":"partial-needs-review",batchId:batch.id,
+      observed:saved.map(row=>({sourceTodoId:row.sourceTodoId,agentState:row.agentState,changeState:row.worktreeChangeState,modelActual:"unknown"})),
+      expected:batch.tasks.length,blockers:complete?[]:preview.blockers,acceptance:"not-accepted",grantsAuthority:false,autoRetry:false,autoMerge:false};
+     ctx.ui.notify(JSON.stringify(output,null,2),complete?"info":"warning");return output;
+    }
     if(preview.status!=="ready-to-record"){
      const blocked={status:"blocked" as const,batchId:batch.id,
       blockers:preview.blockers,grantsAuthority:false as const,autoRetry:false as const};

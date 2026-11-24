@@ -16,7 +16,7 @@ import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-s
 import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
 import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
-import {bindNativeRunnerModels} from "../src/runtime/agents/native-writer-completion.js";
+import {bindNativeRunnerModels,captureNativeWriterBaseline,captureNativeWriterCompletionAsync} from "../src/runtime/agents/native-writer-completion.js";
 import {reviewNativeIntegratedCandidate,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
 import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
@@ -241,4 +241,26 @@ const terminalErrors:unknown[]=[];
    assert.equal(finalRows.find(row=>row.requestId?.startsWith("asen-plan:continuation-")&&row.plan?.role==="worker")?.plan?.candidate?.revision,candidate.commit);
   }
  }finally{await Promise.allSettled(terminalWork);await rm(base,{recursive:true,force:true});}
+});
+
+test("El resultado nativo aislado excluye ignorados anteriores y conserva ignorados nuevos del ámbito",async()=>{
+ const project=await realpath(await mkdtemp(join(tmpdir(),"asen-ignored-writer-")));
+ const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",env:isolatedGitEnvironment(),stdio:["ignore","pipe","pipe"]}).trim();
+ try{
+  git("init","-q");git("config","user.name","ASEN");git("config","user.email","test@example.invalid");
+  await writeFile(join(project,".gitignore"),"*.cache\n");
+  git("add",".gitignore");git("commit","--no-gpg-sign","-qm","base");
+  await writeFile(join(project,"existente.cache"),"no pertenece al Writer");
+  const request={id:"unit-"+"a".repeat(40)+":worker",role:"worker" as const,repository:project,prompt:"Prueba",
+   candidate:{id:"fixture",repository:project,revision:git("rev-parse","HEAD"),createdAt:new Date().toISOString()},writeSurfaces:["nuevo.cache"]};
+  const baseline=await captureNativeWriterBaseline(request);
+  assert.deepEqual(baseline,["existente.cache"]);
+  await assert.rejects(()=>captureNativeWriterBaseline({...request,writeSurfaces:["existente.cache"]}),/ignorados preexistentes/u);
+  await writeFile(join(project,"nuevo.cache"),"nuevo resultado");
+  const result={};bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);
+  const completion=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
+  assert.deepEqual(completion?.paths,["nuevo.cache"]);assert.equal(git("show",completion!.candidateTree+":nuevo.cache"),"nuevo resultado");
+  await writeFile(join(project,"ajeno.cache"),"fuera del ámbito");
+  assert.equal(await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal),undefined);
+ }finally{await rm(project,{recursive:true,force:true});}
 });

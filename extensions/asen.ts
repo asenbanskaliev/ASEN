@@ -2597,6 +2597,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    supervisorClaimsFile:path.join(home(),".asen","parallel-parent-supervisor-claims.json"),
    ...(agentRuntimePromise&&taskAgentLinks?{
     loadChildAgentRecords:async identity=>(await agentRuntimePromise).list(identity),
+    reconcileNativeChild:async record=>{
+     if(!todoStorePromise)throw Error("No hay diario Todo.");
+     const sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
+     return reconcileNativeChildTerminal({record,todos:await todoStorePromise,agents:await agentRuntimePromise,links:taskAgentLinks,
+      sourceJournal,sessionJournal:new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal),
+      claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),
+      observations:new ParallelWorkerObservationJournal(path.join(home(),".asen","parallel-worker-observations.json"))});
+    },
     loadChildTaskAgentLinks:async identity=>taskAgentLinks.list(identity)
    }:{}),
    planChildTodo:async(input,context)=>preparePlan(input,context as CommandContext,false,true),
