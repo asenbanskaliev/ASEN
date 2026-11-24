@@ -117,7 +117,8 @@ export function readNativeIntegrationDiff(candidate:NativeIntegrationCandidate):
  const baseTree=txt(root,["rev-parse",candidate.baseCommit+"^{tree}"]);
  const paths=changed(root,baseTree,candidate.tree);
  if(!equal(paths,candidate.paths))throw new Error("Integrated candidate scope changed");
- const diff=new TextDecoder("utf-8",{fatal:true}).decode(git(root,["diff","--no-ext-diff","--no-textconv","--no-color","--no-renames","--binary","--full-index",baseTree,candidate.tree,"--"]));
- if(Buffer.byteLength(diff)>1_000_000)throw new Error("Integrated diff exceeds the independent review limit");
+ const bytes=git(root,["diff","--no-ext-diff","--no-textconv","--no-color","--no-renames","--binary","--full-index",baseTree,candidate.tree,"--"]);
+ if(bytes.length>1_000_000)throw new Error("Integrated diff exceeds the independent review limit");
+ let diff:string;try{diff=new TextDecoder("utf-8",{fatal:true}).decode(bytes);}catch{diff="Git diff (base64; original bytes):\n"+bytes.toString("base64");}
  return Object.freeze({baseTree,diff,paths:Object.freeze(paths)});
 }
