@@ -122,9 +122,11 @@ try{
   // Dos modelos de texto NVIDIA disponibles en el catálogo autenticado y
   // distintos del autor. Se priorizan los endpoints actuales de la familia
   // Nemotron frente a los modelos que el proveedor rechazó en el intento previo.
-  // Ultra ya respondió. Seleccionar otro modelo físico actual de Nemotron
-  // si está en el catálogo autenticado, sin repetir los dos endpoints fallidos.
-  const approved=["nvidia/nemotron-3-ultra-550b-a55b","nvidia/nemotron-3.5-super-vl-120b-a12b","nvidia/nemotron-3-super-120b-a12b"];
+  // Ultra respondió en el ensayo anterior. No repetir los endpoints que
+  // fallaron (GPT-OSS 20B, DeepSeek Flash y Super VL). Seleccionar un modelo
+  // de texto distinto del autor y solo si consta en el catálogo autenticado.
+  // Una vez elegida la pareja, no cambiarla ni reintentar durante el juicio.
+  const approved=["nvidia/nemotron-3-ultra-550b-a55b","nvidia/nemotron-3-super-120b-a12b","qwen/qwen3.5-397b-a17b","qwen/qwen3-next-80b-a3b-instruct","moonshotai/kimi-k2.5"];
   const selected=approved.flatMap(id=>{
    const matches=available.filter(m=>m.id===id);
    return matches.length===1?matches:[];
