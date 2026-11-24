@@ -55,9 +55,10 @@ export function materializeOddPartitionPlan(parent:OddDerivedFacts,request:Paren
  const unitIds=new Map<string,string>(),tasks:PlannedTask[]=[];
  for(const unit of parent.taskUnits){
   const child=deriveOddPartitionUnitFacts(parent,unit.id);
-  const instruction=instructionFor(request,unit.objective);
+  let instruction:string;
+  try{instruction=instructionFor(request,unit.objective);}catch{return undefined;}
   const basis=JSON.stringify({instruction,taskIdentity:child.taskIdentity,partitionOrigin:request,unitId:unit.id,sourceRevision:candidate.revision});
-  if(basis.length>16384)throw new Error("ODD partition unit basis exceeds the Todo storage limit");
+  if(basis.length>16384)return undefined;
   const task=unitPlan(child,instruction,basis,candidate,profiles).graph.tasks[0]!;
   unitIds.set(unit.id,task.id);
   tasks.push(task);
