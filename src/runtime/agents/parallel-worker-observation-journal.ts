@@ -10,7 +10,7 @@ import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import type {ParallelChildSessionLink} from "./parallel-todo-session-links.js";
 import type {AttributedParallelWorker} from "./parallel-worker-attribution.js";
 import type {ParallelWorktreeChangeInspection} from "./parallel-worktree-change-inspection.js";
-import {isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection} from "../../review/workspace-review-projection.js";
+import {validNativeWriterCompletion,type NativeWriterCompletion} from "./native-writer-completion.js";
 
 const SCHEMA="asen.parallel-worker-observations/v1" as const;
 const allowed=new Set(["completed","failed","cancelled","interrupted"]);
@@ -114,8 +114,7 @@ export interface ParallelWorkerObservationInput{
  readonly worker:AttributedParallelWorker;
  readonly sourceTodoRevision:number;
  readonly changes:ParallelWorktreeChangeInspection;
- readonly projection?:WorkspaceReviewProjection;
- readonly authorModelsObserved?:readonly string[];
+ readonly nativeCompletion?:NativeWriterCompletion;
 }
 function createObservationReceipt(input:ParallelWorkerObservationInput):ParallelWorkerObservation{
   const {link,worker,sourceTodoRevision,changes}=input;
@@ -126,14 +125,12 @@ function createObservationReceipt(input:ParallelWorkerObservationInput):Parallel
    !changes||changes.acceptance!=="not-accepted"||changes.autoMerge!==false||
    !validChanges(changes))
    throw new Error("Only a terminal exact native child Worker observation may be recorded");
-  const projection=input.projection;
-  if(projection&&(!isWorkspaceReviewProjectionGenuine(projection)||
-   !sameWorkspaceIdentityPath(projection.repositoryRoot,link.childProjectId)||
-   projection.baseCommit!==link.sourceHead||projection.unexpectedUntracked.length||
+  const completion=input.nativeCompletion;
+  if(completion&&(!validNativeWriterCompletion(completion)||
+   completion.baseCommit!==link.sourceHead||
    worker.agentState!=="completed"||worker.childTodoState!=="succeeded"||changes.status!=="scoped-changes"||
-   JSON.stringify(projection.entries.map(entry=>entry.path).sort())!==JSON.stringify([...changes.changedPaths].sort())||
-   projection.entries.some(entry=>!["100644","100755"].includes(entry.mode)||entry.change==="gitlink")))
-   throw new Error("Invalid native Worker immutable candidate projection");
+   JSON.stringify([...completion.paths].sort())!==JSON.stringify([...changes.changedPaths].sort())))
+   throw new Error("Invalid native Worker completion evidence");
   const receipt:ParallelWorkerObservation={
    batchId:link.batchId,sourceSessionId:link.sourceSessionId,sourceProjectId:link.sourceProjectId,
    sourceTodoId:link.sourceTodoId,sourceTodoRevision,
@@ -142,8 +139,8 @@ function createObservationReceipt(input:ParallelWorkerObservationInput):Parallel
    agentState:worker.agentState as ParallelWorkerObservation["agentState"],
    agentUpdatedAt:worker.agentUpdatedAt,childTodoState:worker.childTodoState,
    worktreeChangeState:changes.status,changedPaths:[...changes.changedPaths],
-   ...(projection?{candidateTree:projection.candidateTree}:{}),
-   ...(projection&&validAuthorModels(input.authorModelsObserved)?{authorModelsObserved:[...input.authorModelsObserved]}:{}),
+   ...(completion?{candidateTree:completion.candidateTree}:{}),
+   ...(completion&&validAuthorModels(completion.authorModelsObserved)?{authorModelsObserved:[...completion.authorModelsObserved]}:{}),
    recordedAt:new Date().toISOString(),
    modelActual:"unknown",modelConsumedProven:false,acceptance:"not-accepted",
    grantsAuthority:false,autoRetry:false,autoMerge:false
