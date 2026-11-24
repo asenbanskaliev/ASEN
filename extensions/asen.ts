@@ -61,6 +61,10 @@ import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/li
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
+import {prepareNativePartitionChildren} from "../src/runtime/lifecycle/parallel-native-child-plans.js";
+import {ParallelTodoWorktreeJournal} from "../src/runtime/agents/parallel-todo-journal.js";
+import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
+import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
 import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/agents/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
@@ -1604,18 +1608,45 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const ids=roots.map(task=>todoIds.get(task.id));
     const available=dependencies.autoAdvancePlans!==false&&!!agentRuntimePromise&&!!taskAgentLinks&&
      ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.confirm==="function"&&ids.length===2&&ids.every((id):id is string=>!!id);
+    output.execution={started:false,authorized:false,reason:"Las unidades deben ejecutarse en sus worktrees mediante el supervisor."};
     if(available){
      validateContext();
+     let stage="worktreePreparation";
      try{
-      output.worktreePreparation=await worktreeCommands.preparePartition(ctx,ids as string[]);
+      const preparation=await worktreeCommands.preparePartition(ctx,ids as string[]) as {status?:string;batchId?:string};
+      output.worktreePreparation=preparation;
       validateContext();
+      if(preparation.status==="prepared"&&preparation.batchId){
+       stage="childPreparation";
+       const sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
+       const children=await prepareNativePartitionChildren({
+        source:identity,batchId:preparation.batchId,sourceJournal,
+        sessionJournal:new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal),
+        claimJournal:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),
+        sessionDir:path.join(home(),".asen","native-child-sessions"),todos:store,
+        childProfiles:profileLayer,validateParent:validateContext,
+        confirm:summary=>ctx.ui.confirm!("Preparar sesiones hijas Pi sin iniciar modelos?",summary)
+       });
+       output.childPreparation=children;
+       validateContext();
+       if(children.status==="prepared"){
+        stage="supervisedLaunch";
+        const launched=await worktreeCommands.supervisePartition(ctx,preparation.batchId) as {status?:string;started?:unknown[]};
+        output.supervisedLaunch=launched;
+        output.execution={started:!!launched.started?.length,authorized:!!launched.started?.length,
+         reason:launched.status??"unknown"};
+        validateContext();
+       }
+      }
      }catch(error){
+      // Un fallo después de iniciar un Writer no permite afirmar que no hubo
+      // ejecución: se conserva el resultado conocido y se exige reconciliar.
+      output[stage]={status:"blocked-needs-review",reason:safeErrorMessage(error),autoRetry:false};
+      if(stage==="supervisedLaunch")output.execution={started:"unknown",authorized:"unknown",reason:"Inspeccionar los registros de agentes antes de continuar."};
       validateContext();
-      output.worktreePreparation={status:"blocked-needs-review",reason:safeErrorMessage(error),autoRetry:false};
      }
     }else output.worktreePreparation={status:"unavailable",reason:"La preparación requiere Pi interactivo y el supervisor disponible."};
-    output.execution={started:false,authorized:false,reason:"Las unidades deben ejecutarse en sus worktrees mediante el supervisor."};
-    output.notice="Se guardaron las unidades ODD. La preparación Git no inicia sesiones ni concede permisos Writer; no se despachan las raíces en el padre.";
+    output.notice="Las unidades se guardaron. La preparación de sesiones no concede permisos Writer; el lote exige un consentimiento exacto y cada Writer pasa por el despachador ODD. Las sucesoras requieren integración verificada y un candidato nuevo.";
     await refreshTodoWidget(ctx);
     return JSON.stringify(output,null,2);
    }
