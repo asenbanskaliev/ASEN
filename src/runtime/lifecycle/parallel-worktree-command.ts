@@ -75,8 +75,11 @@ export function registerParallelWorktreeCommand(
    if(action==="attach-plan"){
     // Se usa la sesión Pi que realmente está abierta en el worktree.
     // Vinculación y reconstrucción siguen siendo pasos no autorizantes.
+    const manager=ctx.sessionManager,cwd=ctx.cwd;
     const attached=await handler("attach",ctx) as {status?:string};
     if(attached.status!=="attached")return attached;
+    if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||ctx.cwd!==cwd)
+     throw new Error("Child Pi session changed after attachment; inspect the saved link");
     return await handler("plan-todo",ctx);
    }
    if(action==="supervise"){
@@ -458,9 +461,17 @@ export function registerParallelWorktreeCommand(
    // seleccionan tareas de otro plan para completar un lote exacto.
    const exactRows=exactTodoIds?exactTodoIds.map(todoId=>planned.find(todo=>todo.taskId===todoId)):undefined;
    if(exactTodoIds&&(exactTodoIds.length!==2||new Set(exactTodoIds).size!==2||
-    exactRows?.some(row=>!row))){
+    exactRows?.some(row=>!row||!!row.dependsOn?.length))){
     const blocked={status:"blocked" as const,reason:"Las dos unidades ODD originales ya no están disponibles; no se preparan otras tareas."};
     ctx.ui.notify(blocked.reason,"warning");return blocked;
+   }
+   if(exactTodoIds&&journal){
+    const prior=await journal.list(owner);
+    checkIdentity();
+    if(prior.some(batch=>batch.tasks.some(task=>exactTodoIds.includes(task.taskId)))){
+     const blocked={status:"blocked" as const,reason:"Las unidades de este plan ya tienen una reserva; revisar el lote existente sin repetirlo."};
+     ctx.ui.notify(blocked.reason,"warning");return blocked;
+    }
    }
    const sample={
     parentDir:path.join(path.dirname(root),path.basename(root)+"-worktrees"),
@@ -573,5 +584,5 @@ export function registerParallelWorktreeCommand(
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:(args,ctx)=>handler(args,ctx)
  });
- return Object.freeze({preparePartition:(ctx,ids)=>handler("prepare-auto",ctx,Object.freeze([...ids]))});
+ return Object.freeze({preparePartition:(ctx:WorktreeContext,ids:readonly string[])=>handler("prepare-auto",ctx,Object.freeze([...ids]))});
 }
