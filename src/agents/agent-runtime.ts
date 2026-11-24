@@ -11,6 +11,7 @@ import {workspaceIdentityPathKey} from "../runtime/workspace-store.js";
 import {issueControlledPlanPhaseGrant} from "../lifecycle/skill-lifecycle.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {isThinking} from "../runtime/lifecycle/profiles.js";
+import type {RddDefectBinding} from "../defects/rdd-defect-binding.js";
 
 export interface AgentSessionIdentity{sessionId:string;projectId:string;}
 /** Production coordinator using the existing Dispatcher, with session checks around every public action. */
@@ -35,6 +36,10 @@ export class AgentRuntime{
  /** Observers receive only persisted terminal outcomes; notification failures cannot alter execution. */
  /** Full durable entry for read-only projections. It never mutates, replays or re-authorizes a task. */
  async entry(id:string,identity:AgentSessionIdentity){return this.store.get(id,identity.sessionId,identity.projectId);}
+ /** Registra evidencia RDD genuina y ligada al candidato antes de un Fix autorizado. */
+ recordDefectIntake(candidate:Candidate,proof:RddDefectBinding){
+  return this.evidence.addDefectIntake(candidate,proof);
+ }
  subscribeTerminal(listener:(record:PublicAgentRecord)=>void):()=>void{
   this.#terminalListeners.add(listener);return ()=>{this.#terminalListeners.delete(listener);};
  }
