@@ -92,7 +92,7 @@ try{
  const authorId=model.slice("nvidia/".length);
  const possible=nativeRegistry.getAvailable().filter(m=>m.provider==="nvidia"&&
   m.id!==authorId&&m.id!=="nvidia/"+authorId&&nativeRegistry.hasConfiguredAuth(m)&&
-  typeof m.api==="string"&&m.api!=="virtual");
+  typeof m.api==="string"&&String(m.api)!=="virtual");
  const selected=allowed.flatMap(id=>possible.filter(m=>m.id===id||m.id==="nvidia/"+id))
   .filter((m,i,all)=>all.findIndex(x=>x.id.replace(/^nvidia\//u,"")===m.id.replace(/^nvidia\//u,""))===i).slice(0,2);
  report.catalogNvidia=possible.map(m=>m.id).slice(0,100);
@@ -292,7 +292,7 @@ try{
  assert.deepEqual(git(project,"diff","--name-only","HEAD","--").split("\n").sort(),["a.txt","b.txt"]);
  report.fixExact=true;
  const workspace=openWorkspaceReview({repositoryRoot:project,intendedUntracked:[],sessionId:fixOwner.sessionId,
-  reviewerId:"pi-model:"+key(judgeA!),viewParent:base,risk:{riskId:"e3-fixture",reason:"Revisión posterior al Fix",severity:"medium",lenses:["risk","resilience","reliability"]}});
+  reviewerId:"pi-model:"+key(judgeA!),viewParent:base,risk:{riskId:"e3-fixture",reason:"Revisión posterior al Fix",severity:"high",lenses:["risk","resilience","reliability"]}});
  try{
   const after=readWorkspaceReviewEvidence(workspace);
   assert.notEqual(after.candidate.treeIdentity,candidate.tree);
