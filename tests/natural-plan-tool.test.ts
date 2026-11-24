@@ -301,3 +301,64 @@ test("risk-based natural plan keeps two blind reviewers but does not invent inde
  assert.equal(actual.executablePlan.tasks.some((entry:{role:string})=>entry.role==="verifier"),false);
  assert.equal(actual.verification,"tests");
 });
+
+test("Megatanda B: el modo capturado conserva modelos y no modifica los perfiles",async()=>{
+ const {ASEN_PROFILES_SCHEMA,resolveRuntimeDelegationMode,resolveRuntimeRoute,withCapturedDelegationMode}=await import("../src/runtime/lifecycle/profiles.js");
+ const layers={project:{schema:ASEN_PROFILES_SCHEMA,active:"proyecto",profiles:[{name:"proyecto",mode:"organic" as const,routes:{worker:{model:"nvidia/worker"}}}]},
+ global:{schema:ASEN_PROFILES_SCHEMA,active:"global",profiles:[{name:"global",routes:{explorer:{model:"nvidia/explorer"}}}]}};
+ const changed=withCapturedDelegationMode(layers,"full-delegation");
+ assert.equal(resolveRuntimeDelegationMode(changed).mode,"full-delegation");
+ assert.equal(resolveRuntimeDelegationMode(layers).mode,"organic");
+ for(const role of ["worker","explorer","verifier"])assert.deepEqual(resolveRuntimeRoute(changed,role),resolveRuntimeRoute(layers,role));
+ const removed=withCapturedDelegationMode({},"full-delegation");
+ assert.equal(resolveRuntimeDelegationMode(removed).mode,"full-delegation");
+ assert.deepEqual(resolveRuntimeRoute(removed,"worker"),{source:"default"});
+});
+
+test("Megatanda B: el modo completo no da instrucciones contradictorias ni obliga a explorar",()=>{
+ const options={sections:{} as Record<string,string>};
+ const tools={plan:true,agent:true,todo:true};
+ addAsenRequestGuidance(options,tools,false,{delegationMode:"full-delegation",activePlan:false});
+ const full=options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!;
+ assert.match(full,/Toda modificación, incluso pequeña/u);
+ assert.match(full,/un único Explorer de solo lectura/u);
+ assert.match(full,/consultas simples de solo lectura/u);
+ assert.doesNotMatch(full,/Resuélvela directamente aunque afecte|keep the work inline in the primary Pi session/u);
+ addAsenRequestGuidance(options,tools,false,{delegationMode:"organic"});
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/keep the work inline in the primary Pi session/u);
+});
+
+test("Megatanda B: la entrada natural respeta la captura del turno, mantiene lectura directa y conserva bloqueos",async()=>{
+ const directory=await mkdtemp(path.join(os.tmpdir(),"asen-natural-full-delegation-"));
+ try{
+  const tools=new Map<string,any>();
+  const todos=await SessionTodoStore.open(path.join(directory,"todos.json"));
+  let mode:"organic"|"full-delegation"="full-delegation";
+  const pi={registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);},on(){}};
+  createAsenExtension({homeDir:()=>directory,resolveParentDelegationMode:async()=>mode,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,todoStoreFactory:async()=>todos})(pi);
+  const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-captured-mode"},ui:{notify(){}}};
+  const execute=(facts:unknown)=>tools.get(ASEN_PLAN_REQUEST_TOOL).execute("call",facts,undefined,undefined,context);
+  const delegated=await execute(request());
+  assert.deepEqual(delegated.details.requiredAgentRoles,["worker"]);
+  assert.equal(delegated.details.requiresIsolatedChild,true);
+  assert.equal(delegated.details.requiresSingleWriter,true);
+  assert.equal(delegated.details.inlineContinuation,undefined);
+  assert.equal(delegated.details.execution.authorized,false);
+  assert.match(delegated.content[0].text,/cambio delegado a un agente/u);
+  const reading=await execute({...request(),intent:"analysis",writes:[],testing:{kind:"n_a",reason:"Solo lectura"}});
+  assert.equal(reading.details.inlineContinuation,true);
+  assert.deepEqual(reading.details.requiredAgentRoles,[]);
+  const unclear=await execute({...request(),unresolvedDecisions:["Confirmar regla de negocio"]});
+  assert.equal(unclear.details.inlineClarification,true);
+  const risky=await execute({...request(),riskOperations:["security_boundary"]});
+  assert.equal(risky.details.inlineClarification,true);
+  assert.equal(risky.details.execution.started,false);
+  mode="organic";
+  const normal=await execute(request());
+  assert.equal(normal.details.inlineContinuation,true);
+  const persisted=await todos.list({sessionId:"natural-captured-mode",projectId:process.cwd()});
+  assert.equal(persisted.length,1);
+  assert.equal(persisted[0]?.plan?.role,"worker");
+  assert.equal(persisted[0]?.current.state,"planned");
+ }finally{await rm(directory,{recursive:true,force:true});}
+});
