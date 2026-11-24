@@ -5,6 +5,7 @@ import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {SessionManager} from "@earendil-works/pi-coding-agent";
+import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
 import {createAsenExtension} from "../extensions/asen.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
@@ -18,7 +19,7 @@ import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-nativ
 
 for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
  const base=await realpath(await mkdtemp(join(tmpdir(),"asen-native-odd-"))),project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
- const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+ const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:isolatedGitEnvironment()}).trim();
  let launched=0;
  const terminalWork:Promise<unknown>[]=[];
 const terminalErrors:unknown[]=[];
