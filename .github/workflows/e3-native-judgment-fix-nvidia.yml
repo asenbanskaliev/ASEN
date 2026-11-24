@@ -1,0 +1,101 @@
+name: E3 jueces independientes y Fix real NVIDIA
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - integration/megatanda-b-consolidada-20261124
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+jobs:
+  ensayo-real:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref == 'feat/megatanda-b-jueces-fix-real-20261124' &&
+      github.actor == 'asenbanskaliev' &&
+      github.run_attempt == 1
+    concurrency:
+      group: e3-native-judgment-fix-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Confirmar marcador de ensayo único
+        id: marker
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ASEN_WORKFLOW_RUN: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          if test "$(git log -1 --format=%s)" = 'ci(asen): verificar jueces fisicos y Fix con diagnostico 20261124'; then
+            # Una ejecución anterior del mismo SHA consume el intento, incluso
+            # si se canceló antes del proveedor. No se reintenta por reapertura.
+            previous=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/workflows/e3-native-judgment-fix-nvidia.yml/runs?head_sha=$ASEN_EXPECTED_SHA&per_page=100" --jq ".workflow_runs[] | select(.id < $ASEN_WORKFLOW_RUN) | .id")
+            if test -n "$previous"; then
+              echo "approved=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "approved=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "approved=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        if: steps.marker.outputs.approved == 'true'
+        with:
+          node-version: "24"
+      - name: Comprobar código y permiso de lote sin modelos
+        if: steps.marker.outputs.approved == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node_modules/.bin/tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck --types node scripts/e3-focused-fix-nvidia.ts
+          ASEN_E3_FOCUSED_REPORT="$RUNNER_TEMP/e3-focused/offline.json" node --import tsx scripts/e3-focused-fix-nvidia.ts --offline
+          node --import tsx --test tests/dispatcher.test.ts tests/odd-unit-partition.test.ts tests/parallel-worktree-command.test.ts tests/native-partition-flow.test.ts tests/pi-model-reviewer.test.ts
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          test "$(pi --version | tr -d '\r')" = "1.2.0"
+      - name: Ejecutar dos jueces, Fix real y segunda revisión sobre defecto sintético
+        if: steps.marker.outputs.approved == 'true'
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ASEN_PR_NUMBER: ${{ github.event.pull_request.number }}
+          ASEN_E3_FOCUSED_REPORT: ${{ runner.temp }}/e3-focused/real.json
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-native-judgment-fix-pi
+        run: |
+          set -euo pipefail
+          test "$(gh api "/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER" --jq .head.sha)" = "$ASEN_EXPECTED_SHA"
+          unset GH_TOKEN
+          test -n "$NVIDIA_API_KEY"
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node scripts/t12-pi-retry-settings.mjs
+          printf '%s\n' '{"remove":["read","edit"]}' > "$PI_CODING_AGENT_DIR/tools.json"
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          test -z "$(git -c core.fsmonitor=false status --porcelain=v1 --untracked-files=all)"
+          timeout 540s tsx scripts/e3-focused-fix-nvidia.ts --real
+      - name: Guardar recibo sin credenciales ni datos del proveedor
+        if: always() && steps.marker.outputs.approved == 'true'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: jueces-fix-nvidia-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/e3-focused/*.json
+          if-no-files-found: warn
+          retention-days: 30
+
+# Solo una prueba de integración sintética: no es consentimiento de producción.

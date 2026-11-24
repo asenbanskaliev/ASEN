@@ -192,13 +192,16 @@ test("EF-605 CodeRabbit: una inspección caducada mientras espera el bloqueo no 
   entered();
   return original(...args);
  };
- let pending!:Promise<unknown>;
+ let checked!:Promise<void>;
  await withExclusiveFileLock(journal.path,async()=>{
-  pending=call("asen_agent_ack",{eventId:row.eventId});
-  // La herramienta ya validó la inspección, pero el diario espera el bloqueo.
+  const pending=call("asen_agent_ack",{eventId:row.eventId});
+  // Registrar la expectativa antes de liberar el bloqueo: el rechazo puede
+  // llegar inmediatamente y no debe quedar temporalmente sin observador.
+  checked=assert.rejects(pending,/Inspect this exact terminal agent/u);
+  void checked.catch(()=>{});
   await reached;
   now+=300_001;
  });
- await assert.rejects(pending,/Inspect this exact terminal agent/u);
+ await checked;
  assert.equal((await journal.list(owner))[0]?.delivery,"enqueued");
 });
