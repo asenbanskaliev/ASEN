@@ -120,10 +120,10 @@ try{
   const native=new ModelRegistry(await ModelRuntime.create({authPath:join(privateDir,"auth.json"),modelsPath:join(privateDir,"models.json"),allowModelNetwork:true,modelRefreshTimeoutMs:30000}));
   const available=native.getAvailable().filter(m=>m.provider==="nvidia"&&native.hasConfiguredAuth(m)&&typeof m.api==="string"&&!["virtual","pi-virtual"].includes(String(m.api)));
   // El catálogo efectivo, no una lista supuesta de modelos, determina la
-  // selección. Se excluyen las cuatro rutas fallidas y el autor. Identidades
+  // selección. Se excluyen las cinco rutas fallidas y el autor. Identidades
   // ambiguas (incluidas variantes con prefijo NVIDIA redundante) no se usan.
   const physical=(id:string)=>id.replace(/^(?:nvidia\/)+/u,"").toLowerCase();
-  const excluded=new Set(["openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash","nemotron-3.5-super-vl-120b-a12b","google/gemma-3-12b-it",physical(model)]);
+  const excluded=new Set(["openai/gpt-oss-20b","deepseek-ai/deepseek-v4.1-flash","nemotron-3.5-super-vl-120b-a12b","google/gemma-3-12b-it","moonshotai/kimi-k2.6",physical(model)]);
   const isText=(id:string)=>/^[A-Za-z0-9][A-Za-z0-9._/-]{0,190}$/u.test(id)&&
    !/(?:embed|rerank|retriev|guard|safety|vision|(?:^|[-/])vl(?:[-/]|$)|audio|speech|image|video|ocr|diffusion|reward|moderation|classifier|asr|tts)/iu.test(id)&&
    /(?:nemotron|llama|mistral|mixtral|qwen|gemma|kimi|glm|gpt-oss|deepseek|command|minimax|phi|granite|dbrx|falcon|yi-)/iu.test(id);
@@ -132,11 +132,10 @@ try{
   report.catalogModels=[...new Set(available.map(m=>m.id).filter(id=>/^[A-Za-z0-9][A-Za-z0-9._/-]{0,190}$/u.test(id)))].sort().slice(0,150);
   const eligible=available.filter(m=>isText(m.id)&&counts.get(physical(m.id))===1&&!excluded.has(physical(m.id))&&
    !matchesJudgeIdentity(m,"nvidia",model)&&(!("input" in m)||!Array.isArray(m.input)||m.input.includes("text")));
-  // Recibo del ensayo 45483532066: Kimi K2.6 figura en el catálogo real;
-  // Gemma 3 12B devolvió model-unavailable. Probar primero la nueva ruta
-  // para no consumir Ultra otra vez si el nuevo proveedor la rechaza.
+  // El ensayo 45487655375 rechazó Kimi K2.6. Nano Omni consta en el
+  // catálogo autenticado observado; comprobarlo primero, sin reintentos.
   // Si falta una ruta, cerrar sin llamadas en vez de elegir otra a ciegas.
-  const planned=["moonshotai/kimi-k2.6","nemotron-3-ultra-550b-a55b"];
+  const planned=["nemotron-3-nano-omni-30b-a3b-reasoning","nemotron-3-ultra-550b-a55b"];
   const selected=planned.flatMap(id=>eligible.filter(m=>physical(m.id)===id));
   // No probar varios modelos hasta conseguir el veredicto deseado: elegir
   // exactamente dos y conservar la pareja para ambas revisiones.
@@ -150,7 +149,11 @@ try{
    // El diagnóstico solo conserva categorías fijas; ni errorMessage, ni
    // texto del modelo, ni cabeceras o credenciales llegan al artefacto.
    try{
-    const stream=native.streamSimple(descriptor,ctx as never,{...options,maxRetries:0,reasoning:undefined} as never);
+    // Aclarar el contrato de salida sin proporcionar un veredicto ni
+    // modificar los datos del candidato. El analizador estricto permanece.
+    const nano=physical(descriptor.id)==="nemotron-3-nano-omni-30b-a3b-reasoning";
+    const context=nano?{...ctx,systemPrompt:ctx.systemPrompt+" The final text must begin with an opening JSON object brace and end with its closing brace. No Markdown fences, preamble or trailing commentary. Keep the final answer concise; any reasoning must be separate from the final JSON."}:ctx;
+    const stream=native.streamSimple(descriptor,context as never,{...options,maxRetries:0,reasoning:undefined} as never);
     for await(const event of stream){
      if(event.type==="error"){
       const message=event.error?.errorMessage??"";
