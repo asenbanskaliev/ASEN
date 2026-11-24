@@ -19,6 +19,8 @@ import {ParallelTodoWorktreeJournal} from "../src/runtime/agents/parallel-todo-j
 import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
 import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-child-plan-claims.js";
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
+import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
+import {readFrozenIntegrationReviewEvidence} from "../src/review/workspace-review-session.js";
 import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-native-child-terminal.js";
 import {normalizeT06PiChildSelection} from "../src/runtime/agents/t06-pi-receipt-validator.js";
 import {selectSkills} from "../src/skills/registry.js";
@@ -41,7 +43,7 @@ const dialogs:string[]=[];
 const report={schema:"asen.e2a.native-partition/v1",sha:expected,model,
  authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoRetry:false,autoMerge:false,costVerified:false,
  status:"BLOCKED",stage:"fixture",nativeSessions:0,started:0,writeBatchConfirmations:0,parallel:false,sourceClean:false,
- dependentBlocked:false,receipts:0,workers:[] as Record<string,unknown>[]};
+ dependentBlocked:false,receipts:0,integrationCandidate:false,workers:[] as Record<string,unknown>[]};
 let runtime:AgentRuntime|undefined;
 let childOwners:Array<{sessionId:string;projectId:string;sourceTodoId:string;childTodoId:string;sessionFile:string}>=[];
 const terminalWork:Promise<unknown>[]=[];
@@ -87,7 +89,7 @@ try{
  runtime=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:2});
  const agents=runtime;
  runtime.subscribeTerminal(record=>{
-  terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations}).catch(error=>{terminalErrors.push(error);}));
+  terminalWork.push(reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations,observedModels:id=>{const observed=obs.get(id)?.model;return observed&&observed!=="unknown"?[observed]:[];}}).catch(error=>{terminalErrors.push(error);}));
  });
  const parent=SessionManager.create(project,join(base,"parent-sessions"));
  parent.appendMessage({role:"user",content:"Ensayo integral de tres unidades sintéticas",timestamp:Date.now()});
@@ -162,6 +164,14 @@ try{
  report.stage="acceptance";
  assert.equal(report.parallel,true);assert.equal(report.sourceClean,true);assert.equal(report.dependentBlocked,true);
  assert.equal(report.receipts,2);assert.ok(report.workers.length===2&&report.workers.every(w=>w.verified===true));
+ const batch=(await sourceJournal.list(identity)).at(-1)!;
+ const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
+ assert.deepEqual(candidate.paths,["a.txt","b.txt"]);
+ for(const path of candidate.paths)assert.equal(git(project,"show",candidate.commit+":"+path),values[path]);
+ assert.equal(git(project,"rev-parse","HEAD"),head);
+ const evidence=readFrozenIntegrationReviewEvidence(candidate,identity.sessionId,"pi-model:ensayo/lector",base);
+ assert.equal(evidence.candidate.treeIdentity,candidate.tree);
+ report.integrationCandidate=true;
  report.status="PASS_REAL_NVIDIA_SCOPED_PARTITION_TEST_ONLY";
 }catch{
  // No volcar errores de proveedor, prompts ni datos privados.
