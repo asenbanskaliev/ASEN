@@ -131,11 +131,31 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
  if(JSON.stringify(inspect())!==JSON.stringify(initial))throw new Error("La rama o candidato cambió durante la aprobación.");
  if(initial.head===candidate.baseCommit){
   const hooks=mkdtempSync(join(tmpdir(),"asen-integration-hooks-"));
-  try{git(["merge","--ff-only","--no-edit","--no-overwrite-ignore",candidate.commit],hooks);}
+  try{
+   // Git read-tree hace una transición de dos árboles sin --reset. Nunca
+   // resolver HEAD como destino de la actualización de una referencia.
+   // read-tree puede sobrescribir ignorados: rechazar colisiones de antemano.
+   const untracked=git(["ls-files","--others","-z"],hooks).split("\0").filter(Boolean);
+   if(untracked.some(path=>candidate.paths.some(changed=>path===changed||path.startsWith(changed+"/")||changed.startsWith(path+"/"))))
+    throw Error("Hay archivos locales que colisionan con el candidato.");
+   if(JSON.stringify(inspect())!==JSON.stringify(initial))throw Error("La rama autorizada cambió antes de preparar los archivos.");
+   git(["read-tree","-m","-u",candidate.baseCommit,candidate.commit],hooks);
+   // La preparación del índice no concede permiso para otra rama. Si hay
+   // concurrencia, detenerse y conservar el estado para inspección manual.
+   if(git(["symbolic-ref","HEAD"],hooks).trim()!==initial.branch||
+      git(["rev-parse","--verify",initial.branch],hooks).trim()!==initial.head||
+      git(["write-tree"],hooks).trim()!==candidate.tree||
+      git(["diff","--name-only","--no-ext-diff","--no-textconv"],hooks).trim())
+    throw Error("El checkout cambió durante la integración; inspeccionar sin reintento.");
+   // CAS de la referencia explícita y directa. Aunque HEAD cambie en este
+   // instante, Git no puede avanzar main/master ni otra rama.
+   git(["update-ref","--no-deref",initial.branch,candidate.commit,initial.head],hooks);
+  }
   finally{rmSync(hooks,{recursive:true,force:true});}
  }
  await input.validate();
- if(inspect().head!==candidate.commit||git(["rev-parse","HEAD^{tree}"]).trim()!==candidate.tree)
+ const final=inspect();
+ if(final.branch!==initial.branch||final.head!==candidate.commit||git(["rev-parse","HEAD^{tree}"]).trim()!==candidate.tree)
   throw new Error("Integración incierta; no activar sucesoras.");
  const accepted=Object.freeze({status:"integrated" as const,batchId:candidate.batchId,commit:candidate.commit,tree:candidate.tree,
   sessionId:input.sessionId,repository:candidate.repository,tests:evidence.tests,remotePush:false as const,writerAuthority:false as const});

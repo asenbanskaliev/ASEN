@@ -34,9 +34,13 @@ for(const mode of ["approved","declined","changed"] as const)test("ODD nativo 2+
 const terminalErrors:unknown[]=[];
  try{
   await mkdir(project);await mkdir(privateDir,{recursive:true,mode:0o700});
-  git("init","-q","-b","prueba-integracion");git("config","user.name","ASEN prueba");git("config","user.email","test@example.invalid");
+  git("init","-q","-b","prueba-integracion");git("config","core.autocrlf","true");git("config","user.name","ASEN prueba");git("config","user.email","test@example.invalid");
   for(const name of ["a.txt","b.txt","c.txt"])await writeFile(join(project,name),"original");
+  await writeFile(join(project,"sin-cambios.txt"),"texto sin cambios\nsegunda línea\n");
   git("add",".");git("commit","-qm","base");
+  await rm(join(project,"sin-cambios.txt"));git("checkout","--","sin-cambios.txt");
+  assert.equal(await readFile(join(project,"sin-cambios.txt"),"utf8"),"texto sin cambios\r\nsegunda línea\r\n");
+  git("branch","main");
   await writeFile(join(privateDir,"profiles.json"),JSON.stringify({schema:"asen.runtime-profiles/v1",active:"ensayo",profiles:[{name:"ensayo",mode:"full-delegation",routes:{worker:{model:"nvidia/modelo-simulado"}}}]}));
   const todos=await SessionTodoStore.openProjectScoped(join(privateDir,"todos"),join(privateDir,"todos.json"));
   const runner:AgentRunner={run:async request=>{
@@ -169,8 +173,14 @@ const terminalErrors:unknown[]=[];
    await writeReviewReceipt(receiptsDir,createReviewReceiptSigned({commitSha:candidate.commit,treeSha:candidate.tree,
     oddTask:"odd/tasks/continuacion-local-flujo-de-agentes.md",testSuite:{total:3,passed:3,failed:0,durationMs:0,runner:"node:test fixture"},
     verdict:"PASSED"},await loadReceiptSigningKey(receiptsDir)));
+   await assert.rejects(()=>acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>{git("switch","main");return true;}}),/rama/u);
+   assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
+   assert.equal(git("rev-parse","refs/heads/prueba-integracion"),candidate.baseCommit);
+   git("switch","prueba-integracion");
    const accepted=await acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>true});
    assert.ok(accepted);assert.equal(git("rev-parse","HEAD"),candidate.commit);
+   assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
+   assert.equal(git("show",candidate.commit+":sin-cambios.txt"),"texto sin cambios\nsegunda línea");
    const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{},
     validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(proof);}});
    assert.equal(successor.status,"successor-ready");
