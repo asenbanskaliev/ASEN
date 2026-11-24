@@ -62,10 +62,11 @@ export function registerParallelWorktreeCommand(
    writeSurfaces?:readonly string[];candidateRevision?:string
   }>)=>Promise<boolean>,validateParent:()=>Promise<void>)=>Promise<
    {status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>}
-):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[])=>Promise<unknown>}>{
+):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[])=>Promise<unknown>;
+ supervisePartition:(ctx:WorktreeContext,batchId:string)=>Promise<unknown>}>{
  // La selección exacta solo existe en el cableado interno, no en los argumentos
  // del comando ni en los parámetros generados por el modelo.
- const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[]):Promise<unknown>=>{
+ const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
 
    const action=args?.trim();
    if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="status"&&action!=="review"){
@@ -84,7 +85,7 @@ export function registerParallelWorktreeCommand(
    }
    if(action==="supervise"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||
-     !ctx.ui.confirm||!ctx.ui.select||!options?.journalFile||!options.sessionLinksFile||
+     !ctx.ui.confirm||(!exactBatchId&&!ctx.ui.select)||!options?.journalFile||!options.sessionLinksFile||
      !options.planClaimsFile||!options.supervisorClaimsFile||!options.loadTodos||!options.loadChildAgentRecords||
      !options.loadChildTaskAgentLinks||!options.launchChildWorker){
      const denied={status:"unavailable" as const,reason:"T06 supervisor requires the active parent Pi TUI, prepared child ODD, trusted AgentRuntime and a fresh confirmation per Worker"};
@@ -101,7 +102,7 @@ export function registerParallelWorktreeCommand(
      sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
      claimJournal=new ParallelChildPlanClaimJournal(options.planClaimsFile),
      attemptJournal=new ParentSupervisorClaimJournal(options.supervisorClaimsFile),
-     batch=(await sourceJournal.list(identity)).at(-1);
+     batches=await sourceJournal.list(identity),batch=exactBatchId?batches.find(item=>item.id===exactBatchId):batches.at(-1);
     await validateParent();
     if(!batch||batch.state!=="prepared"){
      const denied={status:"blocked" as const,reason:"No latest fully prepared source ODD batch; review worktrees before launching"};
@@ -111,17 +112,27 @@ export function registerParallelWorktreeCommand(
      source:identity,batchId:batch.id,sourceJournal,sessionJournal,claimJournal,attemptJournal,
      loadTodos:options.loadTodos,loadAgents:options.loadChildAgentRecords,
      loadTaskAgentLinks:options.loadChildTaskAgentLinks,validateParent,
+     ...(exactBatchId?{exactBatchConsent:true}:{}),
      confirmBatch:async ready=>{
       await validateParent();
-      const answer=await ctx.ui.confirm!("Preparar lanzamiento Pi de Workers hijos?",[
+      const answer=await ctx.ui.confirm!(exactBatchId?"Autorizar las dos escrituras ODD exactas de este lote?":"Preparar lanzamiento Pi de Workers hijos?",[
        "Lote ODD original: "+batch.id,
        ...ready.tasks.map(unit=>unit.sourceTodoId+" · child: "+unit.childSessionId+
         " · modelo solicitado: "+unit.model+" · scope: "+unit.writeSurfaces.join(", ")),
-       "Solo se usarán worktrees preparados y sesiones Pi hijas ya adjuntadas por el usuario.",
-       "Se solicitará una confirmación INDIVIDUAL por Worker con su instrucción y el candidato exacto.",
+       ...(exactBatchId?[
+        "Proyecto padre: "+root,"SHA exacto: "+batch.sourceHead,
+        ...ready.tasks.map(unit=>["Todo hijo: "+unit.childTodoId,"Sesión: "+unit.childSessionId,"Worktree: "+unit.childProjectId,
+         "Modelo solicitado: "+unit.model,"Ámbito exacto: "+unit.writeSurfaces.join(", "),
+         "Instrucción íntegra: "+unit.instruction].join("\n")),
+        "Permite un único intento por cada Writer indicado, solo lectura/edición/escritura dentro de sus ámbitos. Caduca en cinco minutos para iniciar. No se reutiliza tras fallo o reinicio.",
+        "Esta autorización se deriva individualmente dentro del despachador ODD real; no se amplían rutas ni se copian permisos del padre."
+       ]:[
+        "Solo se usarán worktrees preparados y sesiones Pi hijas ya adjuntadas por el usuario.",
+        "Se solicitará una confirmación INDIVIDUAL por Worker con su instrucción y el candidato exacto."
+       ]),
        "El coste real/monetario del modelo es DESCONOCIDO; consulta proveedor antes de consentir.",
        "Los Workers pueden ejecutarse simultáneamente tras lanzarse, bajo los límites del AgentRuntime.",
-       "Una denegación explícita comprobada permite ofrecer otro Worker independiente, pero solo con una aprobación individual nueva.",
+       ...(exactBatchId?[]:["Una denegación explícita comprobada permite ofrecer otro Worker independiente, pero solo con una aprobación individual nueva."]),
        "Si hay un fallo o resultado incierto, se detiene el lote. Ningún Worker iniciado se repite automáticamente.",
        "No se crearán sesiones ficticias, no habrá modelo de pago implícito, retry, PASS, limpieza ni merge."
       ].join("\n"));
@@ -131,6 +142,7 @@ export function registerParallelWorktreeCommand(
       await validateParent();
       const approvedLabel="Sí, autorizar únicamente este Worker";
       const declinedLabel="No, rechazar expresamente este Worker";
+      if(exactBatchId)return undefined; // No pedir otra autorización en la ruta exacta.
       const selected=await ctx.ui.select!([
        "Autorizar Worker Pi separado?",
        "Todo original: "+unit.sourceTodoId,"Todo hijo: "+unit.childTodoId,
@@ -593,5 +605,6 @@ export function registerParallelWorktreeCommand(
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:(args,ctx)=>handler(args,ctx)
  });
- return Object.freeze({preparePartition:(ctx:WorktreeContext,ids:readonly string[])=>handler("prepare-auto",ctx,Object.freeze([...ids]))});
+ return Object.freeze({preparePartition:(ctx:WorktreeContext,ids:readonly string[])=>handler("prepare-auto",ctx,Object.freeze([...ids])),
+  supervisePartition:(ctx:WorktreeContext,batchId:string)=>handler("supervise",ctx,undefined,batchId)});
 }
