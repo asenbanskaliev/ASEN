@@ -28,7 +28,7 @@ export async function reviewNativeIntegratedCandidate(input:{
   return blocked("No hay modelos autores observados por Pi para acreditar independencia de los jueces.");
  const authors=new Set(candidate.authorModelsObserved),key=(m:PiReviewerModel)=>m.provider+"/"+m.id;
  // Excluir también la representación abreviada del mismo modelo de Pi.
- const isAuthor=(m:PiReviewerModel)=>authors.has(key(m))||authors.has(m.provider+"/"+m.id.replace(new RegExp("^"+m.provider+"/","u"),""))||authors.has(m.provider+"/"+key(m));
+ const isAuthor=(m:PiReviewerModel)=>authors.has(key(m))||authors.has(m.provider+"/"+(m.id.startsWith(m.provider+"/")?m.id.slice(m.provider.length+1):m.id))||authors.has(m.provider+"/"+key(m));
  const filtered:PiReviewRegistry={
   getAvailable:()=>registry.getAvailable().filter(model=>!isAuthor(model)),
   hasConfiguredAuth:model=>!isAuthor(model)&&registry.hasConfiguredAuth(model),
