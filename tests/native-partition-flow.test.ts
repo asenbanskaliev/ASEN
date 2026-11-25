@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from "node:fs/promises";
+import {mkdtemp,mkdir,writeFile,readFile,rm,realpath,readdir} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -18,7 +18,7 @@ import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-chil
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
 import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import {bindNativeRunnerModels,captureNativeWriterBaseline,captureNativeWriterCompletionAsync} from "../src/runtime/agents/native-writer-completion.js";
-import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,markNativeDualReviewPending,nativeReviewCheckpointStatus,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
 import {persistNativePartitionSuccessor,inspectCompletedNativePartition} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {parsePartitionUnitBasis,materializeHistoricalIntegratedSuccessor} from "../src/runtime/lifecycle/odd-unit-plan.js";
@@ -277,6 +277,27 @@ const terminalErrors:unknown[]=[];
    assert.equal(judgeCalls,2,"La revisión proporcional no necesita llamadas adicionales de jueces");
    const jointProof={...proof,report:joint.report};
    assert.equal((await verifyNativeIntegrationAcceptance(jointProof)).reviewMode,"joint-tests");
+   const checkpoint={candidate,sessionId:identity.sessionId,todos,receipts,storageDir:receiptsDir};
+   await saveNativeReviewCheckpoint({...checkpoint,report:joint.report});
+   const restored=await restoreNativeIntegrationReview(checkpoint);assert.ok(restored);
+   assert.equal((await verifyNativeIntegrationAcceptance({...jointProof,report:restored})).reviewMode,"joint-tests");
+   const dualCheckpoint={...checkpoint,storageDir:join(privateDir,"dual-checkpoint")};
+   const missingReceipt={...dualCheckpoint,storageDir:join(privateDir,"missing-receipt"),receipts:{readReceiptState:async()=>({status:"absent" as const})}};
+   await assert.rejects(()=>markNativeDualReviewPending(missingReceipt),/receipt|recibo/iu);
+   assert.equal(await nativeReviewCheckpointStatus(missingReceipt),"absent");
+   await markNativeDualReviewPending(dualCheckpoint);
+   await assert.rejects(()=>saveNativeReviewCheckpoint({...dualCheckpoint,report:joint.report}),/degradar/u);
+   await saveNativeReviewCheckpoint({...dualCheckpoint,report:result.report});
+   await assert.rejects(()=>markNativeDualReviewPending(dualCheckpoint),/Ya existe/u);
+   assert.equal((await restoreNativeIntegrationReview(dualCheckpoint))?.reviewMode,"dual");
+   let changedDuringRecoveredReceipt=false;
+   const dynamicDual={...dualCheckpoint,todos:{list:async()=>changedDuringRecoveredReceipt?altered.list():todos.list(identity)}};
+   const recoveredDual=await restoreNativeIntegrationReview(dynamicDual);
+   assert.ok(recoveredDual);
+   await assert.rejects(()=>verifyNativeIntegrationAcceptance({candidate,report:recoveredDual,sessionId:identity.sessionId,receipts:{readReceiptState:async sha=>{changedDuringRecoveredReceipt=true;return receipts.readReceiptState(sha);}}}),/raíz ODD original cambió/u);
+   const metrics=await readNativeReviewMetrics(dualCheckpoint.storageDir,identity);
+   assert.equal(metrics.reviews.length,1);assert.equal(metrics.reviews[0]?.judges.length,2);
+   assert.equal((await readNativeReviewMetrics(dualCheckpoint.storageDir,{...identity,sessionId:"otra"})).reviews.length,0);
    let changedDuringReceipt=false;
    const dynamicTodos={list:async()=>changedDuringReceipt?altered.list():todos.list(identity)};
    const dynamic=await reviewNativePartitionWithTests({...proportional,todos:dynamicTodos});
@@ -304,7 +325,9 @@ const terminalErrors:unknown[]=[];
    await assert.rejects(()=>verifyNativeIntegrationAcceptance({...jointProof,report:{...joint.report}}),/no fue emitida/u);
    const renewed=await reviewNativePartitionWithTests({...proportional,candidate:rebuilt});
    if(!("report" in renewed)||!renewed.report)assert.fail("Falta nueva revisión");
-   const accepted=await acceptNativeIntegration({...jointProof,candidate:rebuilt,report:renewed.report,validate:async()=>{},confirm:async()=>true});
+   const recoveredReview=await restoreNativeIntegrationReview({...checkpoint,candidate:rebuilt});assert.ok(recoveredReview);
+   assert.equal(await acceptNativeIntegration({...jointProof,candidate:rebuilt,report:recoveredReview,validate:async()=>{},confirm:async()=>false}),undefined);
+   const accepted=await acceptNativeIntegration({...jointProof,candidate:rebuilt,report:recoveredReview,validate:async()=>{},confirm:async()=>true});
    assert.ok(accepted);assert.equal(git("rev-parse","HEAD"),candidate.commit);
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("show",candidate.commit+":sin-cambios.txt"),"texto sin cambios\nsegunda línea");
@@ -489,5 +512,22 @@ test("El inventario de ignorados supera el antiguo límite de stdout y conserva 
   const result={};bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);
   const completion=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
   assert.deepEqual(completion?.paths,["resultado.txt"]);
+  const temp=await realpath(await mkdtemp(join(tmpdir(),"asen-inventory-cleanup-")));
+  const keys=["TMPDIR","TMP","TEMP"] as const,previous=keys.map(key=>process.env[key]);
+  try{
+   for(const key of keys)process.env[key]=temp;
+   const controller=new AbortController();
+   const pending=captureNativeWriterCompletionAsync(request,result,baseline,controller.signal);
+   // El directorio se crea antes del primer await; cancelar un hilo real.
+   controller.abort();
+   assert.equal(await pending,undefined);
+   assert.deepEqual(await readdir(temp),[]);
+   const completed=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
+   assert.deepEqual(completed?.paths,["resultado.txt"]);
+   assert.deepEqual(await readdir(temp),[]);
+  }finally{
+   keys.forEach((key,index)=>{const value=previous[index];if(value===undefined)delete process.env[key];else process.env[key]=value;});
+   await rm(temp,{recursive:true,force:true,maxRetries:10,retryDelay:100});
+  }
  }finally{await rm(project,{recursive:true,force:true});}
 });

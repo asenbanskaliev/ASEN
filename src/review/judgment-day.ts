@@ -2,6 +2,7 @@
  * The result is analysis only; no write, correction, merge or RDD approval. */
 import {reviewModelIdentityKey,availableIndependentPiReviewers,isPiReviewVerdictGenuine,runIndependentPiReview,type PiReviewEvidence,type PiReviewFinding,type PiReviewRegistry,type PiReviewerModel,type PiReviewVerdict,type PiReviewIdentity} from "./pi-model-reviewer.js";
 import {isWorkspaceReviewEvidenceGenuine} from "./workspace-review-session.js";
+import type {FlowUsage} from "../runtime/agents/flow-metrics.js";
 
 export interface JudgmentDayInput{
  registry:PiReviewRegistry;author:PiReviewerModel;judgeA:PiReviewerModel;judgeB:PiReviewerModel;
@@ -10,7 +11,7 @@ export interface JudgmentDayInput{
 export interface JudgmentDayReport{
  readonly status:"analysis-complete"|"findings-require-review"|"disagreement-requires-review";
  readonly requestId:string;readonly sessionId:string;readonly candidateTreeIdentity:string;readonly candidateRevision:string;
- readonly judges:readonly Readonly<{judge:"jd-judge-a"|"jd-judge-b";reviewerId:string;identity?:PiReviewIdentity;verdict:PiReviewVerdict["verdict"];summary:string;findingsCount:number}>[];
+ readonly judges:readonly Readonly<{judge:"jd-judge-a"|"jd-judge-b";reviewerId:string;identity?:PiReviewIdentity;usage?:FlowUsage;elapsedMs?:number;verdict:PiReviewVerdict["verdict"];summary:string;findingsCount:number}>[];
  readonly findings:readonly Readonly<{judge:"jd-judge-a"|"jd-judge-b";reviewerId:string;finding:PiReviewFinding}>[];
  readonly acceptance:"not-accepted";readonly deliveryAuthority:false;readonly autoMerge:false;readonly fixAgent:"not-launched";
 }
@@ -38,8 +39,8 @@ export async function runJudgmentDay(input:JudgmentDayInput):Promise<JudgmentDay
  if(!isPiReviewVerdictGenuine(first)||!isPiReviewVerdictGenuine(second))throw new Error("Judgment Day did not receive genuine Pi results");
  if(signal?.aborted)throw new Error("Judgment Day cancelled after Judge B");
  const judges=Object.freeze([
-  Object.freeze({judge:"jd-judge-a" as const,reviewerId:first.reviewerId,...(first.identity?{identity:first.identity}:{}),verdict:first.verdict,summary:first.summary,findingsCount:first.findings.length}),
-  Object.freeze({judge:"jd-judge-b" as const,reviewerId:second.reviewerId,...(second.identity?{identity:second.identity}:{}),verdict:second.verdict,summary:second.summary,findingsCount:second.findings.length})
+  Object.freeze({judge:"jd-judge-a" as const,reviewerId:first.reviewerId,...(first.identity?{identity:first.identity}:{}),...(first.usage?{usage:first.usage}:{}),...(first.elapsedMs!==undefined?{elapsedMs:first.elapsedMs}:{}),verdict:first.verdict,summary:first.summary,findingsCount:first.findings.length}),
+  Object.freeze({judge:"jd-judge-b" as const,reviewerId:second.reviewerId,...(second.identity?{identity:second.identity}:{}),...(second.usage?{usage:second.usage}:{}),...(second.elapsedMs!==undefined?{elapsedMs:second.elapsedMs}:{}),verdict:second.verdict,summary:second.summary,findingsCount:second.findings.length})
  ]);
  const findings=Object.freeze([
   ...first.findings.map(finding=>Object.freeze({judge:"jd-judge-a" as const,reviewerId:first.reviewerId,finding})),

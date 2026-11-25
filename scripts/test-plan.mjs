@@ -21,6 +21,8 @@ export const WINDOWS_PROCESS_TESTS=Object.freeze([
  "tests/skill-registry-restart.test.ts",
  // Exercises durable agent recovery, child-process crashes and private-store locks.
  "tests/pi-agent-runtime.test.ts",
+ // Tiene un límite estricto por archivo y excede el margen cuando comparte carga.
+ "tests/keymaps.test.ts",
  "tests/spawn-contained.test.ts",
  // Hosted Windows ordinary-chunk load exhausted this strict command witness's
  // existing execution deadline. Preserve that deadline and serialize its launches.

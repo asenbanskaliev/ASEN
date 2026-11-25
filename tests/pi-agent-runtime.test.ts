@@ -1107,3 +1107,39 @@ test("fallback-child runtime rejects malformed chains before durable admission",
  const home=await mkdtemp(join(tmpdir(),"asen-fallback-runtime-invalid-"));t.after(()=>rm(home,{recursive:true,force:true}));const {AgentRuntime}=await import("../src/agents/agent-runtime.js"),projectId=await realpath(process.cwd());let runs=0;const runtime=await AgentRuntime.open({storeFile:join(home,"agents.json"),runner:{run:async request=>{runs++;return{id:request.id,ok:true,output:"unexpected"};}}});
  await assert.rejects(()=>runtime.startReadOnly({role:"explorer",prompt:"inspect",session:{sessionId:"fallback-invalid",projectId},modelFallback:{chain:[{model:"provider/duplicate"},{model:"provider/duplicate"}]}}),/duplicate fallback model/u);assert.equal(runs,0);assert.deepEqual(runtime.snapshot(),[]);
 });
+
+test("Megatanda E1: Explorer por presupuesto, perfil nuevo y rechazo de duplicados en una sesión",async t=>{
+ const fixture=await sessionProfileFixture(t,"asen-e1-budget-profile-"),profilesFile=join(fixture.home,".asen","profiles.json");
+ const state=host(),capture=requestQueue(),root=await realpath(process.cwd());
+ const base=state.context("e1-budget-profile",root),oldModel="nvidia/modelo-a",newModel="nvidia/modelo-b";
+ const ctx={...base,modelRegistry:{find:(provider:string,id:string)=>{
+  if(provider==="nvidia"&&id==="nvidia/modelo-b")return {provider,id};
+  return undefined;
+ }}};
+ fixture.track(state,ctx);
+ await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"normal",profiles:[
+  {name:"normal",mode:"organic",routes:{explorer:{model:oldModel}}},
+  {name:"completo",mode:"full-delegation",routes:{explorer:{model:newModel}}}
+ ]});
+ createAsenExtension({homeDir:()=>fixture.home,profilesFile,enableAgentRuntime:true,enableTodoRuntime:false,
+  enableWorkspaceRuntime:false,enableMemoryRuntime:false,agentRunner:capture.runner,autoAdvancePlans:false})(state.pi as any);
+ await startPublicSession(state,ctx);
+ const invoke=()=>state.tools.get("asen_agent_start").execute("e1-explorer",{prompt:"Lee solo el contexto pendiente",budgetExplorer:true},new AbortController().signal,()=>{},ctx);
+ await assert.rejects(invoke,/exact configured Explorer model/u);
+ assert.equal(capture.requests.length,0);
+ await state.commands.get("asen-profiles").handler("session completo",ctx);
+ await assert.rejects(invoke,/fresh, same-session read budget/u);
+ const emit=async(id:string,toolName:string)=>{for(const handler of state.events.get("tool_execution_end")??[])await handler({
+  toolCallId:id,toolName,isError:false,result:{content:[{type:"text",text:"observado"}]}
+ },ctx);};
+ for(let n=0;n<3;n++)await emit("e1-read-"+n,"read");
+ await emit("e1-read-2","read");
+ await assert.rejects(invoke,/fresh, same-session read budget/u);
+ await emit("e1-read-3","read");
+ const admitted=await invoke();assert.equal(admitted.details.role,"explorer");
+ const request=await capture.at(0);assert.equal(request.model,newModel);
+ assert.equal(request.isolationKey,ctx.sessionManager.getSessionId());assert.equal(request.repository,root);
+ for(const key of ["candidate","writeSurfaces","writerAdmission","phaseGrant","runnerWriteReceiver"] as const)assert.equal(Object.hasOwn(request,key),false);
+ await assert.rejects(invoke,/fresh, same-session read budget/u);
+ assert.equal(capture.requests.length,1);
+});

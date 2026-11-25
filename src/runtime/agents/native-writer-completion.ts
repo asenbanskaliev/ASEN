@@ -5,6 +5,7 @@ import {spawn,execFileSync} from "node:child_process";
 import {Worker} from "node:worker_threads";
 import {existsSync,mkdtempSync,openSync,closeSync,readSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
+import {rm} from "node:fs/promises";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {captureWorkspaceReviewProjection} from "../../review/workspace-review-projection.js";
@@ -149,19 +150,28 @@ export async function captureNativeWriterCompletionAsync(request:AgentRequest,re
  }
  const data={module,loader,request:{id:request.id,role:request.role,repository:request.repository,candidate:request.candidate,writeSurfaces:[...request.writeSurfaces!]},
   models:[...(observedModels.get(result)??[])],baseline:[...baseline]};
- const worker=new Worker(`
+ // Todo temporal del hilo (inventario, configuración Git de Windows y
+ // proyección) queda dentro de un directorio exclusivo del padre. El hilo
+ // puede terminar sin ejecutar finally; el padre lo limpia tras terminarlo.
+ const workerTemp=mkdtempSync(join(tmpdir(),"asen-native-capture-"));
+ const cleanup=()=>rm(workerTemp,{recursive:true,force:true,maxRetries:20,retryDelay:100});
+ for(const key of ["TMPDIR","TMP","TEMP"])env[key]=workerTemp;
+ let worker:Worker;
+ try{worker=new Worker(`
   const {parentPort,workerData:d}=require("node:worker_threads");
   (async()=>{
    const m=d.loader?await (await import(d.loader)).tsImport(d.module,d.module):await import(d.module);
    const receipt={};m.bindNativeRunnerModels(receipt,d.models);
    parentPort.postMessage(m.captureNativeWriterCompletion(d.request,receipt,d.baseline));
   })().catch(()=>parentPort.postMessage(undefined));
- `,{eval:true,execArgv:[],env,workerData:data});
+ `,{eval:true,execArgv:[],env,workerData:data});}catch(error){await cleanup();throw error;}
  return new Promise(resolve=>{
   let settled=false;
   const finish=(value:NativeWriterCompletion|undefined)=>{
    if(settled)return;settled=true;clearTimeout(timer);signal.removeEventListener("abort",abort);
-   void worker.terminate().then(()=>resolve(value),()=>resolve(undefined));
+   // El padre conserva la propiedad del temporal aunque el hilo no ejecute finally.
+   // No devolver evidencia si la terminación o la limpieza no se han confirmado.
+   void worker.terminate().then(async()=>{await cleanup();return signal.aborted?undefined:value;},async()=>{await cleanup();return undefined;}).then(resolve,()=>resolve(undefined));
   };
   const abort=()=>finish(undefined),timer=setTimeout(abort,60000);
   worker.once("message",(value:unknown)=>{

@@ -32,6 +32,7 @@ export const ASEN_COMMAND_CATALOG:readonly PublicCommand[]=[
  {group:"session",name:"asen-history",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-usage",implemented:true,owner:"extensions/asen.ts"},
  {group:"session",name:"asen-stats",implemented:true,owner:"extensions/asen.ts"},
+ {group:"diagnostics",name:"asen-flow-metrics",implemented:true,owner:"extensions/asen.ts"},
  {group:"memory",name:"asen-memory",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-status",implemented:true,owner:"extensions/asen.ts"},
  {group:"diagnostics",name:"asen-doctor",implemented:true,owner:"extensions/asen.ts"},
@@ -45,7 +46,7 @@ export function missingCommands(){return ASEN_COMMAND_CATALOG.filter(c=>!c.imple
 export const CURATED_PALETTE_GROUPS:readonly{title:string;commands:readonly string[]}[]=[
  {title:"Session",commands:["asen-status","asen-agents","asen-todos","asen-changes","asen-history","asen-panel"]},
  {title:"Configuration",commands:["asen-profiles","asen-persona","asen-mode","asen-customize","asen-language","asen-banner","asen-presentation"]},
- {title:"Diagnostics",commands:["asen-doctor","asen-stats","asen-usage","asen-telemetry","asen-integrations"]},
+ {title:"Diagnostics",commands:["asen-doctor","asen-stats","asen-flow-metrics","asen-usage","asen-telemetry","asen-integrations"]},
  {title:"Workflow",commands:["asen-plan","asen-route","asen-worktrees","asen-review","asen-accept-review","asen-memory","asen-commands","asen-skill-registry"]},
 ];
 

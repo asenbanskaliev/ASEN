@@ -1,4 +1,5 @@
 import {createHash} from "node:crypto";
+import {realpathSync} from "node:fs";
 import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
@@ -100,9 +101,14 @@ type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLi
  independentReadOnly?:Readonly<{blockedTodoId:string;verifiedConfiguredModel:(role:string,model:string)=>boolean}>;};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"inline";todoId:string;revision:number;role:"primary";instruction:string}|{status:"blocked";reason:string};
 
-function currentRevision(repository:string):string{
- try{return execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
- catch(error){const revision=error&&typeof error==="object"&&"status" in error&&error.status===0&&"stdout" in error?String(error.stdout).trim():"";if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(revision))throw error;return revision;}
+/** Comprobar el proyecto exacto, sin aceptar GIT_DIR/WORK_TREE del proceso padre. */
+export function currentRevision(repository:string):string{
+ const git=(...args:string[])=>execFileSync("git",["--no-replace-objects","-C",repository,...args],{env:isolatedGitEnvironment(),encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:5000,windowsHide:true}).trim();
+ if(realpathSync(git("rev-parse","--show-toplevel"))!==realpathSync(repository))
+  throw Error("La revisión debe pertenecer a la raíz exacta del proyecto.");
+ const revision=git("rev-parse","--verify","HEAD^{commit}");
+ if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(revision))throw Error("Candidato Git inválido");
+ return revision;
 }
 /** Reconstruir la sucesora desde las filas originales ya aceptadas, no
  * desde su identificador ni desde una solicitud del modelo. */
@@ -303,9 +309,22 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   }
   const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
   try{
-   const agentId=await input.agents.startControlledWorker({...(input.startBefore!==undefined?{startBefore:input.startBefore,validateStart:input.validateIdentity}:{}),taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
+   const agentId=await input.agents.startControlledWorker({...(input.startBefore!==undefined?{startBefore:input.startBefore}:{}),validateStart:async()=>{
+    await input.validateIdentity();
+    if(currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("El candidato cambió antes de la ejecución efectiva del Writer");
+    if(prepared.taskIdentity.startsWith("continuation-")){
+     await verifiedContinuationBasis(fresh,input.identity,input.todos,prepared.candidate.revision,prepared.taskIdentity);
+     if(currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("El candidato integrado cambió antes de la ejecución efectiva de la sucesora");
+    }
+   },taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
     const validateLaunch=async()=>{
      await input.validateIdentity();
+     if(currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("El candidato cambió antes de iniciar el Writer");
+     if(prepared.taskIdentity.startsWith("continuation-")){
+      await verifiedContinuationBasis(fresh,input.identity,input.todos,prepared.candidate.revision,prepared.taskIdentity);
+      const dirty=execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-C",input.identity.projectId,"status","--porcelain=v1","--untracked-files=all"],{env:isolatedGitEnvironment(),encoding:"utf8",timeout:5000,windowsHide:true,stdio:["ignore","pipe","ignore"]}).trim();
+      if(dirty||currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("La integración cambió antes de iniciar la sucesora");
+     }
      // La comprobación vuelve a ejecutarse bajo el bloqueo de lanzamiento
      // para que no se retire el Verifier justo antes de iniciar Pi.
      if(prepared.riskVerifier){

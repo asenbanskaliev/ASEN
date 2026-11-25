@@ -1,6 +1,14 @@
 /** Dos jueces Pi auténticos sobre el árbol combinado, sin entregar código al
  * Writer ni confundir el informe de modelos con pruebas o aceptación. */
 import {tmpdir} from "node:os";
+import {createHash,createHmac,timingSafeEqual} from "node:crypto";
+import {readFile,lstat,readdir} from "node:fs/promises";
+import {preparePrivateFile} from "../../io/private-file.js";
+import {atomicWriteText} from "../../io/atomic-write.js";
+import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
+import {loadReceiptSigningKey} from "../../evidence/review-receipt.js";
+import {exactReviewModel,reviewIdentityEvidence,splitPiModelIdentity} from "../../review/model-identity.js";
+import {summarizeFlowUsage,type FlowUsage} from "../agents/flow-metrics.js";
 import {execFileSync} from "node:child_process";
 import {mkdtempSync,rmSync,realpathSync,lstatSync,fstatSync,openSync,closeSync,readSync,writeFileSync,fsyncSync,constants} from "node:fs";
 import {join} from "node:path";
@@ -44,7 +52,7 @@ export async function reviewNativeIntegratedCandidate(input:{
  const [provider,...parts]=candidate.authorModelsObserved[0]!.split("/");
  const author={provider:provider!,id:parts.join("/")};
  const available=availableIndependentPiReviewers(filtered,author);
- const a=available.find(model=>key(model)===input.judgeA?.model),b=available.find(model=>key(model)===input.judgeB?.model);
+ const a=exactReviewModel(available,input.judgeA?.model),b=exactReviewModel(available,input.judgeB?.model);
  if(!a||!b||reviewModelIdentityKey(a)===reviewModelIdentityKey(b)||input.judgeA?.thinking!==undefined||input.judgeB?.thinking!==undefined)
   return blocked("Configura dos modelos juez autenticados, distintos entre sí y de todos los Writers observados. Este transporte no aplica esfuerzo por llamada.");
  const validate=async()=>{
@@ -82,7 +90,7 @@ export type NativePartitionTestReport=Readonly<{
  review:"human-readback-and-signed-tests";independentReview:false;modelCalls:0;
  acceptance:"not-accepted";autoMerge:false;deliveryAuthority:false;
 }>;
-export type NativeIntegrationReviewReport=JudgmentDayReport|NativePartitionTestReport;
+export type NativeIntegrationReviewReport=JudgmentDayReport|NativePartitionTestReport|RecoveredIntegrationReview;
 const testReportBindings=new WeakMap<object,{key:string;fingerprint:string;receiptSignature:string;todos:Pick<SessionTodoStore,"list">}>();
 export async function inspectPartitionPolicy(candidate:NativeIntegrationCandidate,sessionId:string,todos:Pick<SessionTodoStore,"list">){
  if(!isIssuedNativeIntegrationCandidate(candidate)||!sessionId||candidate.sourceBindings?.length!==2)
@@ -176,12 +184,153 @@ export async function reviewNativePartitionWithTests(input:{
  return Object.freeze({status:report.status,report,acceptance:"not-accepted" as const,autoMerge:false as const});
 }
 
+
+/** Un checkpoint solo conserva hechos revisados. No restaura tokens, permisos,
+ * aprobaciones de integración ni una instancia emitida de JudgmentDay. */
+type ReviewCheckpoint=Readonly<{
+ schema:"asen.native-review/v1";key:string;policyHash:string;
+ phase:"dual-pending"|"dual-findings"|"joint-tests-reviewed"|"dual-reviewed";receiptSignature:string|null;
+ findingsCount?:number;fixProposalId?:string;
+ judges:readonly {route:string;evidence:"provider-response-match"|"requested-descriptor-only"|"unknown";usage?:FlowUsage;elapsedMs?:number;verdict?:string}[];
+}>;
+type RecoveredIntegrationReview=Readonly<{status:"recovered-integration-review";reviewMode:"dual"|"joint-tests";identityEvidence:readonly string[];usage:ReturnType<typeof summarizeFlowUsage>;acceptance:"not-accepted";autoMerge:false}>;
+type CheckpointInput={candidate:NativeIntegrationCandidate;sessionId:string;todos:Pick<SessionTodoStore,"list">;receipts:ReviewReceiptReader;storageDir:string};
+const recoveredBindings=new WeakMap<object,{input:CheckpointInput;serialized:string}>();
+const digest=(text:string)=>createHash("sha256").update(text).digest("hex");
+const checkpointFile=(input:CheckpointInput)=>join(input.storageDir,"native-review-"+digest(integrationKey(input.candidate,input.sessionId))+".json");
+const checkpointMac=(key:Buffer,body:string)=>createHmac("sha256",key).update("asen.native-review/v1\0"+body).digest("hex");
+async function readSignedCheckpoint(file:string,storageDir:string):Promise<ReviewCheckpoint|undefined>{
+ if(!await preparePrivateFile(file))return;
+ if((await lstat(file)).size>65536)throw Error("Checkpoint de revisión demasiado grande");
+ const value=JSON.parse(await readFile(file,"utf8")) as {body?:unknown;mac?:unknown};
+ if(typeof value.body!=="string"||typeof value.mac!=="string"||!/^[a-f0-9]{64}$/u.test(value.mac))throw Error("Checkpoint de revisión inválido");
+ const expected=checkpointMac(await loadReceiptSigningKey(storageDir),value.body);
+ if(!timingSafeEqual(Buffer.from(expected,"hex"),Buffer.from(value.mac,"hex")))throw Error("Checkpoint de revisión sin firma válida");
+ const data=JSON.parse(value.body) as ReviewCheckpoint;
+ if(data.schema!=="asen.native-review/v1"||typeof data.key!=="string"||!["dual-pending","dual-findings","joint-tests-reviewed","dual-reviewed"].includes(data.phase)||!Array.isArray(data.judges)||data.judges.length>2||!/^[a-f0-9]{64}$/u.test(data.policyHash))
+  throw Error("Checkpoint de revisión inválido");
+ return data;
+}
+async function readCheckpoint(input:CheckpointInput){
+ const data=await readSignedCheckpoint(checkpointFile(input),input.storageDir);
+ if(data&&data.key!==integrationKey(input.candidate,input.sessionId))throw Error("Checkpoint de otro candidato o sesión");
+ return data;
+}
+/** Solo lectura informativa: no depende de que las raíces sigan planificadas ni reconstruye permisos. */
+export async function readNativeReviewMetrics(storageDir:string,identity:{sessionId:string;projectId:string}){
+ const names=await readdir(storageDir).catch(error=>{if((error as NodeJS.ErrnoException).code==="ENOENT")return [];throw error;});
+ const files=names.filter(name=>/^native-review-[a-f0-9]{64}\.json$/u.test(name)).sort();
+ const reviews=[];let unavailable=0;
+ for(const name of files.slice(0,2000))try{
+  const row=await readSignedCheckpoint(join(storageDir,name),storageDir);if(!row)continue;
+  if(name!=="native-review-"+digest(row.key)+".json")throw Error("Identidad de archivo distinta");
+  const key=JSON.parse(row.key);
+  if(!Array.isArray(key)||key.length!==5||key[1]!==identity.projectId||key[4]!==identity.sessionId)continue;
+  reviews.push({batchId:key[0],commit:key[2],tree:key[3],phase:row.phase,findingsCount:row.findingsCount??null,fixProposalId:row.fixProposalId??null,
+   judges:row.judges.map(judge=>({model:judge.route,identityEvidence:judge.evidence,elapsedMs:judge.elapsedMs??null,verdict:judge.verdict??null,usage:judge.usage??null})),
+   usage:summarizeFlowUsage(row.judges.map(judge=>({model:judge.route,...(judge.usage?{usage:judge.usage}:{})})))});
+ }catch{unavailable++;}
+ return {reviews,unavailable,completeInventory:files.length<=2000,billingVerified:false};
+}
+async function checkpointPolicy(input:CheckpointInput){
+ if(!isIssuedNativeIntegrationCandidate(input.candidate))throw Error("Checkpoint requiere candidato reconstruido desde los recibos originales");
+ return digest((await inspectPartitionPolicy(input.candidate,input.sessionId,input.todos)).fingerprint);
+}
+async function writeCheckpoint(input:CheckpointInput,data:ReviewCheckpoint){
+ const body=JSON.stringify(data),mac=checkpointMac(await loadReceiptSigningKey(input.storageDir),body);
+ await atomicWriteText(checkpointFile(input),JSON.stringify({body,mac})+"\n");
+}
+export async function nativeReviewCheckpointStatus(input:CheckpointInput){
+ const saved=await readCheckpoint(input);
+ if(!saved)return "absent" as const;
+ if(saved.policyHash!==await checkpointPolicy(input))throw Error("Cambió la política ODD de la revisión pendiente");
+ return saved.phase;
+}
+/** Registrar antes de los jueces: reiniciar no permite degradar una doble revisión. */
+export async function markNativeDualReviewPending(input:CheckpointInput){
+ const file=checkpointFile(input);await preparePrivateFile(file,true);
+ await withExclusiveFileLock(file,async()=>{
+  const prior=await readCheckpoint(input),policyHash=await checkpointPolicy(input);
+  if(prior&&prior.policyHash!==policyHash)throw Error("La política de revisión cambió");
+  const receipt=await exactPassingReceipt(input.candidate,input.receipts);
+  if(policyHash!==await checkpointPolicy(input))throw Error("La política cambió antes de iniciar la revisión doble");
+  // Una decisión explícita previa no se borra al volver a abrir el menú.
+  if(prior?.phase==="dual-pending"){
+   if(prior.receiptSignature!==receipt.signature)throw Error("Cambió el recibo de pruebas de la revisión pendiente");
+   return;
+  }
+  if(prior?.phase==="dual-reviewed"||prior?.phase==="dual-findings")throw Error("Ya existe un dictamen doble para este candidato. Consultar los resultados o preparar un candidato corregido.");
+  await writeCheckpoint(input,{schema:"asen.native-review/v1",key:integrationKey(input.candidate,input.sessionId),policyHash,
+   phase:"dual-pending",receiptSignature:receipt.signature,judges:[]});
+ });
+}
+/** Solo guarda resultados genuinos que ya pasan la misma puerta de aceptación.
+ * La firma está separada de la firma de pruebas y no equivale a factura. */
+export async function saveNativeReviewCheckpoint(input:CheckpointInput&{report:NativeIntegrationReviewReport;fixProposalId?:string}){
+ const file=checkpointFile(input);await preparePrivateFile(file,true);
+ await withExclusiveFileLock(file,async()=>{
+  const initial=await checkpointPolicy(input),prior=await readCheckpoint(input);
+  if(prior&&prior.policyHash!==initial)throw Error("La política de revisión cambió");
+  if(prior?.phase==="dual-reviewed"||prior?.phase==="dual-findings")throw Error("Ya se guardó un dictamen doble para este candidato; no sobrescribirlo.");
+  const report=input.report;
+  if(report.status==="recovered-integration-review")throw Error("No volver a emitir una revisión recuperada");
+  const receipt=await exactPassingReceipt(input.candidate,input.receipts);
+  let phase:ReviewCheckpoint["phase"];
+  if(report.status==="joint-tests-reviewed"||report.status==="analysis-complete"){
+   const verified=await verifyNativeIntegrationAcceptance(input);
+   if(verified.reviewMode==="joint-tests"&&prior&&prior.phase!=="joint-tests-reviewed")throw Error("No se puede degradar una revisión doble solicitada");
+   phase=verified.reviewMode==="dual"?"dual-reviewed":"joint-tests-reviewed";
+  }else{
+   if(!isIssuedJudgmentDayReport(report)||reportBindings.get(report)!==integrationKey(input.candidate,input.sessionId)||report.judges.some(judge=>judge.identity?.status!=="declared-match"))throw Error("Hallazgos de revisión no auténticos");
+   phase="dual-findings";
+  }
+  const judges=report.status==="joint-tests-reviewed"?[]:report.judges.map(judge=>({
+   route:judge.identity!.selected,evidence:reviewIdentityEvidence(judge.identity),verdict:judge.verdict,...(judge.usage?{usage:judge.usage}:{}),...(judge.elapsedMs!==undefined?{elapsedMs:judge.elapsedMs}:{})
+  }));
+  if(initial!==await checkpointPolicy(input))throw Error("La política cambió antes de guardar la revisión");
+  await writeCheckpoint(input,{schema:"asen.native-review/v1",key:integrationKey(input.candidate,input.sessionId),policyHash:initial,
+   phase,receiptSignature:receipt.signature,judges,...(report.status!=="joint-tests-reviewed"?{findingsCount:report.findings.length}:{}),...(input.fixProposalId?{fixProposalId:input.fixProposalId}:{})});
+ });
+}
+async function verifyCheckpoint(input:CheckpointInput,expected?:string){
+ const data=await readCheckpoint(input);if(!data||data.phase==="dual-pending"||data.phase==="dual-findings")throw Error("La revisión todavía está pendiente o tiene hallazgos");
+ if(expected!==undefined&&JSON.stringify(data)!==expected)throw Error("Cambió el checkpoint de revisión");
+ const receipt=await exactPassingReceipt(input.candidate,input.receipts);
+ if(data.policyHash!==await checkpointPolicy(input))throw Error("La política ODD cambió desde la revisión");
+ if(receipt.signature!==data.receiptSignature)throw Error("El recibo de pruebas revisado cambió");
+ if(data.phase==="dual-reviewed"){
+  const models=data.judges.map(judge=>splitPiModelIdentity(judge.route)),authors=(input.candidate.authorModelsObserved??[]).map(splitPiModelIdentity);
+  if(models.length!==2||models.some(model=>!model)||!authors.length||authors.some(model=>!model)||
+   data.judges.some(judge=>judge.evidence==="unknown")||
+   new Set(models.map(model=>reviewModelIdentityKey(model!))).size!==2||
+   models.some(model=>authors.some(author=>reviewModelIdentityKey(author!)===reviewModelIdentityKey(model!))))
+   throw Error("No se acredita independencia declarada en la revisión recuperada");
+ }else if(data.judges.length)throw Error("Checkpoint proporcional incompatible");
+ return {data,receipt};
+}
+export async function restoreNativeIntegrationReview(input:CheckpointInput):Promise<RecoveredIntegrationReview|undefined>{
+ const status=await nativeReviewCheckpointStatus(input);
+ if(status==="absent"||status==="dual-pending"||status==="dual-findings")return;
+ const {data}=await verifyCheckpoint(input);
+ const report:RecoveredIntegrationReview=Object.freeze({status:"recovered-integration-review",
+  reviewMode:data.phase==="dual-reviewed"?"dual":"joint-tests",identityEvidence:Object.freeze(data.judges.map(judge=>judge.evidence)),
+  usage:summarizeFlowUsage(data.judges.map(judge=>({model:judge.route,...(judge.usage?{usage:judge.usage}:{})}))),
+  acceptance:"not-accepted",autoMerge:false});
+ recoveredBindings.set(report,{input,serialized:JSON.stringify(data)});return report;
+}
+
 /** Una integración exige evidencia genuina sobre el árbol exacto, según la
  * política de revisión aplicable, y pruebas firmadas en todos los casos. */
 export async function verifyNativeIntegrationAcceptance(input:{
  candidate:NativeIntegrationCandidate;report:NativeIntegrationReviewReport;receipts:ReviewReceiptReader;sessionId:string;
 }):Promise<Readonly<{status:"verified-awaiting-integration-consent";commit:string;tree:string;tests:number;reviewMode:"dual"|"joint-tests";writerAuthority:false;autoMerge:false}>>{
  const {candidate,report}=input;
+ if(report.status==="recovered-integration-review"){
+  const binding=recoveredBindings.get(report);
+  if(!binding||integrationKey(candidate,input.sessionId)!==integrationKey(binding.input.candidate,binding.input.sessionId)||!isIssuedNativeIntegrationCandidate(candidate))throw Error("Revisión recuperada no corresponde al candidato");
+  const {receipt}=await verifyCheckpoint({...binding.input,candidate,receipts:input.receipts},binding.serialized);
+  return Object.freeze({status:"verified-awaiting-integration-consent",commit:candidate.commit,tree:candidate.tree,tests:receipt.testSuite.total,reviewMode:report.reviewMode,writerAuthority:false,autoMerge:false});
+ }
  if(report.status==="joint-tests-reviewed"){
   const binding=testReportBindings.get(report);
   if(!binding||binding.key!==integrationKey(candidate,input.sessionId)||!isIssuedNativeIntegrationCandidate(candidate))

@@ -60,7 +60,9 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
-import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
+import {summarizeParentFlow,summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
+import type {NativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
 import {persistNativePartitionSuccessor,inspectCompletedNativePartition} from "../src/runtime/lifecycle/native-integration-successor.js";
@@ -261,6 +263,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let flushPendingAgentNotices:((ctx:CommandContext)=>Promise<void>)|undefined;
   let scheduleAgentWakeAtBoundary:(()=>void)|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
+  // No publicar un aviso parcial después de otro más avanzado de la misma sesión.
+  const publishedBatchCounts=new WeakMap<object,Map<string,number>>();
   const agentDeliveryTasks=new Set<Promise<void>>();
   const agentNoticeJournal=new AgentNotificationJournal(path.join(home(),".asen","agent-notices.json"));
   let selectionGeneration=0,unsubscribeChildSelection:(()=>void)|undefined;
@@ -667,8 +671,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;
    if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
     return {started:false,authorized:false,reason:"La sesión Pi cambió antes de tomar el trabajo."};
-   if(!planAdvanceQueue.enter(key,independentBlockedTodoId))
-    return {started:false,authorized:false,reason:"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
+   if(!planAdvanceQueue.enter(key,independentBlockedTodoId,expectedTodoId===undefined))
+    return {started:false,authorized:false,reason:expectedTodoId?"El avance exacto está ocupado. La tarea conserva su estado; no se ha encolado otra selección.":"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
     // Una tanda no puede superar dos agentes vivos en el mismo proyecto y sesión.
@@ -1081,7 +1085,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
          const latest=(await observations.listSource(observed.source,await sessionJournal.listSource(observed.source))).filter(row=>row.batchId===observed.batchId);
          const live=await sessionIdentity(parent);
          if(latest.length===observed.observed&&agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&live.sessionId===owner.sessionId&&live.projectId===owner.projectId&&parent.sessionManager?.getSessionId?.()===owner.sessionId){
+          let counts=publishedBatchCounts.get(owner);
+          if(!counts){counts=new Map();publishedBatchCounts.set(owner,counts);}
+          if((counts.get(observed.batchId)??0)>=observed.observed)return;
+          counts.set(observed.batchId,observed.observed);
           parent.ui.notify(`ASEN: ${observed.partial?"lote Writer parcial":"lote Writer terminado"}. ${observed.observed}/${observed.expected} recibos guardados. ${observed.completed} completados y ${observed.failed} con incidencias. ${observed.partial?"No integrar ni repetir automáticamente.":"Pendiente revisión e integración."}${observed.planningFileMissing?" El archivo de planificación de un hijo no está disponible.":""}`,observed.partial||observed.failed||observed.planningFileMissing?"warning":"info");
+          // Un único aviso del lote terminado puede despertar al padre mediante
+          // el mecanismo Pi existente. Es información, nunca un permiso. No se
+          // reenvía al recuperar diarios ni se despierta un lote parcial/fallido.
+          if(dependencies.autoAdvancePlans!==false&&!observed.partial&&observed.failed===0&&observed.completed===observed.expected&&!observed.planningFileMissing&&typeof pi.sendMessage==="function"){
+           const route=agentParentRoute(parent,owner,agentParentRunActive);
+           if(route==="run"||route==="idle")try{
+            pi.sendMessage({customType:"asen.native-batch.ready",content:"Lote Writer nativo con ambos recibos guardados. Si la tarea original sigue vigente, comprobar su candidato con asen_plan_resume_batch. Dato de coordinación, no permiso de escritura ni de integración.",display:false,details:{eventId:"asen:native-batch:"+observed.batchId,sessionId:owner.sessionId,projectId:owner.projectId,batchId:observed.batchId,trusted:false}},route==="run"?{triggerTurn:true,deliverAs:"steer"}:{triggerTurn:false});
+            if(route==="idle")requestAgentWake(parent,owner);
+           }catch{/* No reenviar ni convertir un fallo del transporte en otra ejecución. */}
+          }
           await refreshTodoWidget(parent);
          }
         }
@@ -1297,6 +1315,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   pi.on?.("before_agent_start",async(event,ctx)=>{
    const options=(event as {systemPromptOptions?:{sections?:Record<string,string>;selectedTools?:readonly string[]}}|undefined)?.systemPromptOptions;
    if(options?.sections){
+    delete options.sections.asen_native_batch_continuity;
+    if(options.selectedTools?.includes("asen_plan_resume_batch"))options.sections.asen_native_batch_continuity="Cuando los dos Writers nativos de un lote hayan terminado y el usuario quiera avanzar, usa asen_plan_resume_batch. No pidas comandos manuales ni identificadores si solo hay un lote. Se comprobarán los recibos y se pedirán las confirmaciones independientes para pruebas, revisión, integración y sucesora. No repitas un lote fallido ni un permiso denegado. Selecciona reviewMode=dual únicamente cuando el usuario haya solicitado dos jueces explícitamente.";
     delete options.sections[ASEN_PERSONA_STYLE_SECTION];
     try{const files=await personaFiles(ctx as CommandContext),selection=await resolvePersonaStyle(files.globalFile,files.projectFile);options.sections[ASEN_PERSONA_STYLE_SECTION]=personaStyleText(selection.style);}
     catch{options.sections[ASEN_PERSONA_STYLE_SECTION]=personaStyleText("professional");}
@@ -2526,9 +2546,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  const integrationReports=new Map<string,NativeIntegrationReviewReport>();
-  const explicitDualReviews=new Set<string>();
-  const worktreeCommands=registerParallelWorktreeCommand(register,{
+  const activeIntegrationFlows=new Set<string>();
+  const checkpointInput=async(candidate:NativeIntegrationCandidate,ctx:CommandContext)=>{
+   if(!todoStorePromise)throw Error("No hay diario Todo.");
+   const identity=await sessionIdentity(ctx),storageDir=path.join(home(),".asen","receipts");
+   if(candidate.repository!==identity.projectId)throw Error("El candidato no pertenece a la sesión actual");
+   return {candidate,sessionId:identity.sessionId,todos:await todoStorePromise,receipts:new ReceiptVerifierService(storageDir),storageDir};
+  };
+  const integrationOperations={
    prepareNativeChildren:async(batchId,context,validate)=>{
     const ctx=context as CommandContext;validate();
     if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
@@ -2558,17 +2583,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const ctx=context as CommandContext;validate();
     const identity=await sessionIdentity(ctx);
     if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
-    const key=JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]);
-    if(explicitDualReviews.has(key))return {status:"blocked",reason:"Se solicitó revisión doble explícita de este candidato; no sustituirla por una revisión inferior en esta sesión."};
-    integrationReports.delete(key);
+    const checkpoint=await checkpointInput(candidate,ctx),saved=await nativeReviewCheckpointStatus(checkpoint);validate();
+    if(saved==="dual-pending"||saved==="dual-findings"||saved==="dual-reviewed")return {status:"blocked",reason:"Se solicitó revisión doble explícita de este candidato; no sustituirla por una revisión inferior."};
     const result=await reviewNativePartitionWithTests({candidate,sessionId:identity.sessionId,
      todos:await todoStorePromise,receipts:new ReceiptVerifierService(path.join(home(),".asen","receipts")),
      validate:async()=>{validate();},confirm:summary=>ctx.ui.confirm!("Revisar candidato y pruebas conjuntas según ODD?",summary),
      ...(ctx.signal?{signal:ctx.signal}:{})});
     validate();
     if("report" in result&&result.report){
-     if(integrationReports.size>=128)integrationReports.clear();
-     integrationReports.set(JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]),result.report);
+     await saveNativeReviewCheckpoint({...checkpoint,report:result.report});validate();
     }
     return result;
    },
@@ -2582,12 +2605,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const todos=await todoStorePromise;
     const policy=await inspectPartitionPolicy(candidate,identity.sessionId,todos);
     const layers=await profileLayer(identity);
-    const key=JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]);
-    if(!explicitDualReviews.has(key)&&explicitDualReviews.size>=128)
-     return {status:"blocked",reason:"Límite de revisiones explícitas en esta sesión; renovar la sesión antes de solicitar otra."};
     const fixProfile=resolveAgentProfileTarget(layers,"jd-fix-agent").choice;
-    integrationReports.delete(key);
-    explicitDualReviews.add(key);
+    const checkpoint=await checkpointInput(candidate,ctx);await markNativeDualReviewPending(checkpoint);validate();
     const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
      judgeA:resolveAgentProfileTarget(layers,"jd-judge-a").choice,judgeB:resolveAgentProfileTarget(layers,"jd-judge-b").choice,
      ...(fixProfile?{fixProfile}:{}),fixJournal,requirements:policy.requirements,
@@ -2598,8 +2617,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      ...(ctx.signal?{signal:ctx.signal}:{})});
     validate();
     if("report" in result&&result.report){
-     if(integrationReports.size>=128)integrationReports.clear();
-     integrationReports.set(key,result.report);
+     await saveNativeReviewCheckpoint({...checkpoint,report:result.report,...("fixProposalId" in result&&typeof result.fixProposalId==="string"?{fixProposalId:result.fixProposalId}:{})});
+     validate();
     }
     return result;
    },
@@ -2610,7 +2629,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const todos=await todoStorePromise,receipts=new ReceiptVerifierService(path.join(home(),".asen","receipts"));
     const recovered=await inspectCompletedNativePartition({candidate,identity,todos,receipts,validate:async()=>{validate();}});
     if(recovered)return recovered; // No volver a lanzar una sucesora ya guardada.
-    const report=integrationReports.get(JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]));
+    const checkpoint=await checkpointInput(candidate,ctx);
+    const report=await restoreNativeIntegrationReview(checkpoint);validate();
     if(!report)return {status:"blocked",reason:"Se necesita integration-review del candidato exacto en esta sesión."};
     const proof={candidate,report,sessionId:identity.sessionId,receipts};
     const accepted=await acceptNativeIntegration({...proof,validate:async()=>{validate();},
@@ -2630,6 +2650,44 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }catch(error){
      return {status:"integrated-continuation-blocked",integration:accepted,reason:safeErrorMessage(error)};
     }
+   },
+  } satisfies NonNullable<Parameters<typeof registerParallelWorktreeCommand>[1]>;
+  const worktreeCommands=registerParallelWorktreeCommand(register,{
+   ...integrationOperations,
+   integrationFlowLockDirectory:path.join(home(),".asen","native-flow-locks"),
+   advanceIntegratedCandidate:async(candidate,context,validate,reviewMode)=>{
+    const ctx=context as CommandContext,checkpoint=await checkpointInput(candidate,ctx);validate();
+    const key=JSON.stringify([checkpoint.sessionId,candidate.repository,candidate.batchId,candidate.commit]);
+    if(activeIntegrationFlows.has(key))return {status:"blocked",reason:"Ya hay un avance activo para este candidato."};
+    activeIntegrationFlows.add(key);
+    try{
+     const completed=await inspectCompletedNativePartition({candidate,identity:{sessionId:checkpoint.sessionId,projectId:candidate.repository},todos:checkpoint.todos,receipts:checkpoint.receipts,validate:async()=>validate()});
+     if(completed){
+      // Una petición natural de continuación puede solicitar permiso NUEVO para
+      // una sucesora todavía planificada. Nunca relanzar una ya reclamada.
+      if(completed.todoState!=="planned")return completed;
+      validate();const execution=await advancePlan(ctx,undefined,completed.todoId);
+      return {...completed,execution};
+     }
+     const receipt=await checkpoint.receipts.readReceiptState(candidate.commit);validate();
+     if(receipt.status==="absent"){
+      const tested=await integrationOperations.testIntegratedCandidate(candidate,context,validate);
+      if(tested.status!=="tests-signed")return tested;
+     }
+     await exactPassingReceipt(candidate,checkpoint.receipts);validate();
+     const stage=await nativeReviewCheckpointStatus(checkpoint);validate();
+     if(stage==="dual-pending"||stage==="dual-findings")return {status:"blocked",reason:"Hay una revisión doble pendiente o con hallazgos. No se repetirá ni se sustituirá por revisión proporcional."};
+     if(reviewMode==="dual"&&(stage==="absent"||stage==="joint-tests-reviewed")){
+      // Solo se propone esta modalidad por petición explícita, y el diálogo
+      // nativo vuelve a comprobar consentimiento, identidad y coste desconocido.
+      const reviewed=await integrationOperations.reviewIntegratedCandidateDual(candidate,context,validate);
+      if(reviewed.status!=="analysis-complete")return reviewed;
+     }else if(stage==="absent"){
+      const reviewed=await integrationOperations.reviewIntegratedCandidate(candidate,context,validate);
+      if(reviewed.status!=="joint-tests-reviewed")return reviewed;
+     }
+     validate();return await integrationOperations.continueIntegratedCandidate(candidate,context,validate);
+    }finally{activeIntegrationFlows.delete(key);}
    },
    journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
    sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
@@ -2688,6 +2746,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    ...(todoStorePromise?{loadTodos:async identity=>(await todoStorePromise).list(identity)}:{}),
    ...(agentRuntimePromise?{loadChildAgents:async identity=>(await agentRuntimePromise).list(identity)}:{})
   });
+  if(pi.registerTool&&todoStorePromise&&agentRuntimePromise)pi.registerTool({name:"asen_plan_resume_batch",label:"Continuar lote ODD",description:"Avanza un lote nativo propio ya terminado: pruebas conjuntas, revisión, integración y sucesora con confirmaciones separadas. No repite Writers ni modifica main. Usar revisión dual solo si el usuario la solicita expresamente; el consentimiento nativo es obligatorio.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{batchId:{type:"string",pattern:"^[0-9a-f-]{36}$"},reviewMode:{type:"string",enum:["proportional","dual"]}}},execute:async(_id:any,params:any,signal:any,_update:any,host:any)=>{
+   if(signal?.aborted)throw Error("Continuación cancelada");
+   const batchId=params?.batchId;if(batchId!==undefined&&(typeof batchId!=="string"||!/^[0-9a-f-]{36}$/u.test(batchId)))throw Error("Lote inválido");
+   const ctx=host as CommandContext;if(ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm)return {content:[{type:"text",text:"Se necesita la sesión interactiva propietaria."}],details:{status:"unavailable"}};
+   const reviewMode=params?.reviewMode??"proportional";if(reviewMode!=="proportional"&&reviewMode!=="dual")throw Error("Modalidad de revisión inválida");
+   const result=await worktreeCommands.advancePartition(ctx,batchId,reviewMode,signal);
+   return {content:[{type:"text",text:JSON.stringify(result)}],details:result};
+  }} as any);
+  registerData("asen-flow-metrics",{description:"Mostrar métricas observadas de la sesión y sus hijos, sin estimar facturas",handler:async(_args:string|undefined,ctx:CommandContext)=>{
+   const identity=await sessionIdentity(ctx),parent=summarizeParentFlow(ctx.sessionManager?.getEntries?.()??[]);
+   const children=[];if(agentRuntimePromise){
+    const runtime=await agentRuntimePromise,sourceJournal=new ParallelTodoWorktreeJournal(path.join(home(),".asen","parallel-todo-worktrees.json"));
+    const owners=await new ParallelChildSessionJournal(path.join(home(),".asen","parallel-worktree-sessions.json"),sourceJournal).listSource(identity);
+    const sessions=[identity,...owners.map(owner=>({sessionId:owner.childSessionId,projectId:owner.childProjectId}))],seen=new Set<string>();
+    for(const owner of sessions)for(const record of await runtime.list(owner)){
+     if(seen.has(record.id))continue;seen.add(record.id);const entry=await runtime.entry(record.id,owner);if(entry)children.push(summarizeChildFlow(entry));
+    }
+   }
+   const judges=await readNativeReviewMetrics(path.join(home(),".asen","receipts"),identity);
+   const live=await sessionIdentity(ctx);if(live.sessionId!==identity.sessionId||live.projectId!==identity.projectId)throw Error("Cambió la sesión de métricas");
+   return {parent,children,judges,billingVerified:false,note:"Un coste nulo significa desconocido, no cero. Los costes informados por Pi no son facturas."};
+  }});
   const fixJournal=new JudgmentFixProposalJournal(path.join(home(),".asen","judgment-fix-proposals.json"));
   const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
    const sessionId=context.sessionManager.getSessionId(),projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
@@ -2806,7 +2886,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
   protectedStateDirs:[path.join(dependencies.homeDir?.() ?? homedir(),".asen")],
  }));
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
- const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
+ const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...((dependencies.enableAgentRuntime===false&&!dependencies.agentRuntimeFactory)||(dependencies.enableTodoRuntime===false&&!dependencies.todoStoreFactory)?[]:["asen_plan_resume_batch"]),...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext,event?:{reason?:unknown})=>Promise<void>)|undefined;
  pi.on("session_start",async(event,ctx)=>{
   delegationTurn.nextTurn();

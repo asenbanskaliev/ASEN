@@ -142,3 +142,9 @@ test("episode freezes profile identity, tracks tried models, and clears on succe
  episode.markTried("primary");episode.clear("aborted");
  assert.deepEqual(episode.triedModels(),[]);
 });
+
+test("structured HTTP diagnostics preserve specific quota and context causes",()=>{
+ assert.equal(classifyAssistantError({stopReason:"error",diagnostics:[{error:{code:429}}],errorMessage:"HTTP 429: quota exceeded"}),"quota");
+ assert.equal(classifyAssistantError({stopReason:"error",diagnostics:[{error:{code:400}}],errorMessage:"HTTP 400: maximum context length exceeded"}),"context_length");
+ assert.equal(classifyAssistantError({stopReason:"error",diagnostics:[{error:{code:400}}],errorMessage:"HTTP 400: rate limit text"}),"invalid_request");
+});
