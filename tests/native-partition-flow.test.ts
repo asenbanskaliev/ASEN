@@ -293,6 +293,23 @@ const terminalErrors:unknown[]=[];
    assert.equal(await canResumeUnstartedDualReview(dualCheckpoint),false);
    await assert.rejects(()=>markNativeDualReviewPending(dualCheckpoint),/incierto/u);
    await assert.rejects(()=>markNativeDualReviewAttemptStarted(dualCheckpoint,initialSignature),/iniciado/u);
+   // E: simular una interrupción tras el primer juez sobre un checkpoint independiente.
+   const partialCheckpoint={...checkpoint,storageDir:join(privateDir,"partial-checkpoint")};
+   const partialSignature=await markNativeDualReviewPending(partialCheckpoint);
+   const partialRegistry:PiReviewRegistry={...registry,async *streamSimple(model){
+    if(model.id==="juez-b")throw Error("segundo juez interrumpido");
+    yield {type:"done",reason:"stop",message:{provider:model.provider,model:model.id,content:[{type:"text",text:JSON.stringify({verdict:"pass",summary:"Resultado parcial simulado",findings:[]})}]}};
+   }};
+   await assert.rejects(()=>reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry:partialRegistry,
+    judgeA:{model:"prueba/juez-a"},judgeB:{model:"prueba/juez-b"},fixJournal:new JudgmentFixProposalJournal(join(privateDir,"partial-fixes.json")),
+    requirements:"Revisar candidato",validate:async()=>{},confirm:async()=>true,
+    beforeModelUse:()=>markNativeDualReviewAttemptStarted(partialCheckpoint,partialSignature),
+    progressCheckpoint:{input:partialCheckpoint,signature:partialSignature}}));
+   const partialMetrics=await readNativeReviewMetrics(partialCheckpoint.storageDir,identity);
+   assert.equal(partialMetrics.reviews[0]?.judges.length,1);
+   assert.equal(partialMetrics.reviews[0]?.completeJudgment,false);
+   assert.equal(await restoreNativeIntegrationReview(partialCheckpoint),undefined);
+   assert.equal(await canResumeUnstartedDualReview(partialCheckpoint),false);
    const originalReceipt=await receipts.readReceiptState(candidate.commit);
    if(originalReceipt.status!=="valid")assert.fail("Sin recibo auténtico");
    // El lector simula una nueva firma auténtica para el mismo árbol: no basta conservar el SHA.

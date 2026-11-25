@@ -689,7 +689,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
      return !!model&&`${model.provider}/${model.id}`===ref;
     };
-    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,...(signal?{signal}:{}),
+    const profileFallbacks=await readProfileFallbacksFile(profileFallbacksFile).catch(()=>undefined);
+    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,...(profileFallbacks?{profileFallbacks}:{}),...(signal?{signal}:{}),
      ...(expectedTodoId?{expectedTodoId}:{}),
      ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
      runtimeProfiles:activeProfiles,validateIdentity:async()=>{
@@ -2619,6 +2620,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        throw Error("La partición cambió durante la revisión doble.");
       validate();},confirm:summary=>ctx.ui.confirm!("Revisión doble explícita del candidato?",summary),
      beforeModelUse:async()=>{validate();await markNativeDualReviewAttemptStarted(checkpoint,signature);validate();},
+     progressCheckpoint:{input:checkpoint,signature},
      ...(signal?{signal}:{})});
     validate();
     if("report" in result&&result.report){
