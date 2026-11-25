@@ -37,6 +37,8 @@ jobs:
         run: |
           npm run typecheck
           npx --no-install tsc -p tsconfig.t08.json
+          # El ensayo integral debe compilar antes de autorizar modelos reales.
+          npx --no-install tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck --types node scripts/e2a-native-partition-nvidia.ts
       - name: Pruebas específicas de la Megatanda B sin modelos externos
         run: |
           node --import tsx --test \
