@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtemp,mkdir,writeFile,rm,realpath} from "node:fs/promises";
+import {mkdtemp,mkdir,writeFile,rm,realpath,readdir} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
-import {captureNativeWriterBaseline,captureNativeWriterCompletion,bindNativeRunnerModels} from "../src/runtime/agents/native-writer-completion.js";
+import {captureNativeWriterBaseline,captureNativeWriterCompletion,captureNativeWriterCompletionAsync,bindNativeRunnerModels} from "../src/runtime/agents/native-writer-completion.js";
 
 test("Inventario ignorado superior a 1 MB no bloquea un Writer ajeno a esos archivos",async()=>{
  const project=await realpath(await mkdtemp(join(tmpdir(),"asen-inv-")));
@@ -31,6 +31,21 @@ test("Inventario ignorado superior a 1 MB no bloquea un Writer ajeno a esos arch
   const completion=captureNativeWriterCompletion(request,result,baseline);
   assert.deepEqual(completion?.paths,["nuevo.cache"]);
   assert.equal(git("show",completion!.candidateTree+":nuevo.cache"),"nuevo resultado");
+  // El directorio temporal pertenece al padre incluso cuando se cancela el hilo.
+  const temp=await mkdtemp(join(tmpdir(),"asen-inv-cancel-"));
+  const envKeys=["TMPDIR","TMP","TEMP"] as const;
+  const saved=envKeys.map(key=>process.env[key]);
+  try{
+   for(const key of envKeys)process.env[key]=temp;
+   const controller=new AbortController();
+   const pending=captureNativeWriterCompletionAsync(request,result,baseline,controller.signal);
+   controller.abort();
+   assert.equal(await pending,undefined);
+   assert.deepEqual(await readdir(temp),[]);
+  }finally{
+   envKeys.forEach((key,i)=>{const value=saved[i];if(value===undefined)delete process.env[key];else process.env[key]=value;});
+   await rm(temp,{recursive:true,force:true});
+  }
   await assert.rejects(()=>captureNativeWriterBaseline({...request,writeSurfaces:[baseline[0]!]}),/ignorados preexistentes/u);
   await writeFile(join(project,"ajeno.cache"),"fuera del ámbito");
   assert.throws(()=>captureNativeWriterCompletion(request,result,baseline));
