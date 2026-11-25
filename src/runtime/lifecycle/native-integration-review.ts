@@ -31,7 +31,7 @@ export async function reviewNativeIntegratedCandidate(input:{
  candidate:NativeIntegrationCandidate;sessionId:string;registry:PiReviewRegistry;
  judgeA:RouteChoice|undefined;judgeB:RouteChoice|undefined;fixProfile?:RouteChoice;
  fixJournal:JudgmentFixProposalJournal;requirements:string;validate:()=>Promise<void>;
- confirm:(summary:string)=>Promise<boolean>;signal?:AbortSignal;
+ confirm:(summary:string)=>Promise<boolean>;signal?:AbortSignal;beforeModelUse?:()=>Promise<void>;
 }){
  const {candidate,registry,sessionId}=input;
  const blocked=(reason:string)=>Object.freeze({status:"blocked" as const,reason,acceptance:"not-accepted" as const,autoMerge:false as const});
@@ -67,6 +67,8 @@ export async function reviewNativeIntegratedCandidate(input:{
   "Juez A: "+key(a),"Juez B: "+key(b),"Dos llamadas de lectura; coste no verificado. No se escribe ni integra código."].join("\n"))!==true)
   return Object.freeze({status:"declined" as const,acceptance:"not-accepted" as const,autoMerge:false as const});
  await validate();
+ // Registrar la frontera irreversible únicamente después del consentimiento.
+ await input.beforeModelUse?.();await validate();
  const report=await runJudgmentDay({registry:filtered,author,judgeA:a,judgeB:b,evidence,
   requirements:input.requirements,...(input.signal?{signal:input.signal}:{}),validateBeforeJudge:validate});
  await validate();
@@ -190,7 +192,7 @@ export async function reviewNativePartitionWithTests(input:{
 type ReviewCheckpoint=Readonly<{
  schema:"asen.native-review/v1";key:string;policyHash:string;
  phase:"dual-pending"|"dual-findings"|"joint-tests-reviewed"|"dual-reviewed";receiptSignature:string|null;
- findingsCount?:number;fixProposalId?:string;
+ findingsCount?:number;fixProposalId?:string;attemptStarted?:boolean;
  judges:readonly {route:string;evidence:"provider-response-match"|"requested-descriptor-only"|"unknown";usage?:FlowUsage;elapsedMs?:number;verdict?:string}[];
 }>;
 type RecoveredIntegrationReview=Readonly<{status:"recovered-integration-review";reviewMode:"dual"|"joint-tests";identityEvidence:readonly string[];usage:ReturnType<typeof summarizeFlowUsage>;acceptance:"not-accepted";autoMerge:false}>;
@@ -257,12 +259,33 @@ export async function markNativeDualReviewPending(input:CheckpointInput){
   // Una decisión explícita previa no se borra al volver a abrir el menú.
   if(prior?.phase==="dual-pending"){
    if(prior.receiptSignature!==receipt.signature)throw Error("Cambió el recibo de pruebas de la revisión pendiente");
+   if(prior.attemptStarted!==false)throw Error("Intento de jueces previo iniciado o incierto; no repetir automáticamente ni manualmente sobre el mismo candidato");
    return receipt.signature;
   }
   if(prior?.phase==="dual-reviewed"||prior?.phase==="dual-findings")throw Error("Ya existe un dictamen doble para este candidato. Consultar los resultados o preparar un candidato corregido.");
   await writeCheckpoint(input,{schema:"asen.native-review/v1",key:integrationKey(input.candidate,input.sessionId),policyHash,
-   phase:"dual-pending",receiptSignature:receipt.signature,judges:[]});
+   phase:"dual-pending",receiptSignature:receipt.signature,judges:[],attemptStarted:false});
   return receipt.signature;
+ });
+}
+/** Una revisión pendiente sin llamada iniciada puede volver a ofrecer consentimiento.
+ * Los checkpoints antiguos sin esta evidencia son inciertos por defecto. */
+export async function canResumeUnstartedDualReview(input:CheckpointInput):Promise<boolean>{
+ const saved=await readCheckpoint(input);
+ if(saved?.phase!=="dual-pending"||saved.attemptStarted!==false)return false;
+ await assertNativeDualReviewReceipt(input,saved.receiptSignature!);
+ return true;
+}
+/** Una única transición duradera antes de la primera llamada; un fallo de
+ * escritura o una interrupción posterior nunca habilitan otra inferencia. */
+export async function markNativeDualReviewAttemptStarted(input:CheckpointInput,signature:string){
+ const file=checkpointFile(input);
+ await withExclusiveFileLock(file,async()=>{
+  await assertNativeDualReviewReceipt(input,signature);
+  const saved=await readCheckpoint(input);
+  if(!saved||saved.phase!=="dual-pending"||saved.attemptStarted!==false||saved.receiptSignature!==signature)
+   throw Error("El intento de jueces no está disponible o ya fue iniciado");
+  await writeCheckpoint(input,{...saved,attemptStarted:true});
  });
 }
 /** La revisión conserva la firma inicial; no admite otro recibo del mismo árbol. */

@@ -18,7 +18,7 @@ import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-chil
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
 import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import {bindNativeRunnerModels,captureNativeWriterBaseline,captureNativeWriterCompletionAsync} from "../src/runtime/agents/native-writer-completion.js";
-import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,markNativeDualReviewPending,assertNativeDualReviewReceipt,nativeReviewCheckpointStatus,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,markNativeDualReviewPending,assertNativeDualReviewReceipt,canResumeUnstartedDualReview,markNativeDualReviewAttemptStarted,nativeReviewCheckpointStatus,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
 import {persistNativePartitionSuccessor,inspectCompletedNativePartition} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {parsePartitionUnitBasis,materializeHistoricalIntegratedSuccessor} from "../src/runtime/lifecycle/odd-unit-plan.js";
@@ -287,6 +287,12 @@ const terminalErrors:unknown[]=[];
    assert.equal(await nativeReviewCheckpointStatus(missingReceipt),"absent");
    const initialSignature=await markNativeDualReviewPending(dualCheckpoint);
    await assertNativeDualReviewReceipt(dualCheckpoint,initialSignature);
+   assert.equal(await canResumeUnstartedDualReview(dualCheckpoint),true);
+   assert.equal(await markNativeDualReviewPending(dualCheckpoint),initialSignature);
+   await markNativeDualReviewAttemptStarted(dualCheckpoint,initialSignature);
+   assert.equal(await canResumeUnstartedDualReview(dualCheckpoint),false);
+   await assert.rejects(()=>markNativeDualReviewPending(dualCheckpoint),/incierto/u);
+   await assert.rejects(()=>markNativeDualReviewAttemptStarted(dualCheckpoint,initialSignature),/iniciado/u);
    const originalReceipt=await receipts.readReceiptState(candidate.commit);
    if(originalReceipt.status!=="valid")assert.fail("Sin recibo auténtico");
    // El lector simula una nueva firma auténtica para el mismo árbol: no basta conservar el SHA.

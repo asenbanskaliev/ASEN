@@ -60,7 +60,7 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
-import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,assertNativeDualReviewReceipt,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,assertNativeDualReviewReceipt,canResumeUnstartedDualReview,markNativeDualReviewAttemptStarted,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {summarizeParentFlow,summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
 import type {NativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import {resolvePiReviewRegistry} from "../src/review/pi-model-reviewer.js";
@@ -2618,6 +2618,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       if((await inspectPartitionPolicy(candidate,identity.sessionId,todos)).fingerprint!==policy.fingerprint)
        throw Error("La partición cambió durante la revisión doble.");
       validate();},confirm:summary=>ctx.ui.confirm!("Revisión doble explícita del candidato?",summary),
+     beforeModelUse:async()=>{validate();await markNativeDualReviewAttemptStarted(checkpoint,signature);validate();},
      ...(signal?{signal}:{})});
     validate();
     if("report" in result&&result.report){
@@ -2680,8 +2681,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      }
      await exactPassingReceipt(candidate,checkpoint.receipts);validate();
      const stage=await nativeReviewCheckpointStatus(checkpoint);validate();
-     if(stage==="dual-pending"||stage==="dual-findings")return {status:"blocked",reason:"Hay una revisión doble pendiente o con hallazgos. No se repetirá ni se sustituirá por revisión proporcional."};
-     if(reviewMode==="dual"&&(stage==="absent"||stage==="joint-tests-reviewed")){
+     const unstarted=stage==="dual-pending"&&reviewMode==="dual"&&await canResumeUnstartedDualReview(checkpoint);
+     validate();
+     if((stage==="dual-pending"&&!unstarted)||stage==="dual-findings")return {status:"blocked",reason:"Hay una revisión doble pendiente, incierta o con hallazgos. No se repetirá ni se sustituirá por revisión proporcional."};
+     if(reviewMode==="dual"&&(stage==="absent"||stage==="joint-tests-reviewed"||unstarted)){
       // Solo se propone esta modalidad por petición explícita, y el diálogo
       // nativo vuelve a comprobar consentimiento, identidad y coste desconocido.
       const reviewed=await integrationOperations.reviewIntegratedCandidateDual(candidate,context,validate,signal);
