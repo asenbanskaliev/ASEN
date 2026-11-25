@@ -22,7 +22,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 128,
       "sha": "0d5a5e57b7b03cbae517a01a3d4626d4a6d09700",
-      "next": "Corregir procedencia del perfil persistido: ámbito y nombre del perfil que creó el Todo; no adjuntar alternativas por mera igualdad de modelo. Coordinar con E campo de procedencia y conexión. Pruebas de perfiles mismo modelo, ámbito y cambio de perfil; no tocar archivos ajenos.",
+      "next": "Añadir procedencia opcional validada (ámbito y nombre) al Todo Explorer en todo-store y enlazarla al despachador. No adjuntar alternativas a planes históricos sin procedencia. Probar mismo modelo con perfiles distintos y ámbito distinto; E conserva creación del plan y lectura de archivo global/proyecto en extensions/asen.ts. Coordinar contrato antes de publicar.",
       "files": [
         "src/runtime/lifecycle/plan-dispatcher.ts",
         "tests/asen-b-planned-fallback.test.ts"
@@ -39,26 +39,19 @@
       ]
     },
     "C": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-g2-C-4701179608-regression",
-        "generation": 2,
-        "package": "C1",
-        "base": "6cddbd22e3870c5b18c6b3916330f78e2b2bfcf8",
-        "branch": "feat/asen-equipo-C-C1-g2-judges-4701179608",
-        "phase": "escritura"
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 132,
-      "sha": "6cddbd22e3870c5b18c6b3916330f78e2b2bfcf8",
+      "sha": "23bc4ce17c5716df38dde3119e7653ed55125aee",
       "next": "Consultar CI exacta y entregar a E para candidato conjunto.",
       "files": [
         "src/runtime/lifecycle/native-integration-review.ts",
         "tests/native-partition-flow.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Regresión publicada, CI pendiente",
+      "tests": "Regresión de cambio de política publicada; CI del nuevo SHA pendiente.",
       "blocker": null,
       "generation": 2,
       "candidatePR": 130,
@@ -140,7 +133,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Coordinar corrección de ámbito de fallback global/proyecto en extensions/asen.ts con B; asignar explícitamente propiedad de esquema Todo a B si necesario, auditar A1 y agrupar correcciones en candidato nuevo basado en #130 exacto sin integrar #130 defectuosa.",
+      "next": "Conectar procedencia de Explorer al persistir plan (extensions/asen.ts:1674) y cargar alternativas según ámbito del perfil en despacho (línea 692); coordinar contrato con B. A sigue independiente, D lista para revisión rápida, C #132 pendiente CI. No fusionar #130.",
       "blocker": null,
       "generation": 2,
       "pr": 130,
@@ -220,7 +213,9 @@
       "src/review/model-identity.ts",
       "src/review/pi-model-reviewer.ts",
       "tests/model-fallback*.test.ts",
-      "tests/asen-b-*.test.ts"
+      "tests/asen-b-*.test.ts",
+      "src/runtime/lifecycle/todo-store.ts",
+      "tests/todo-store.test.ts"
     ],
     "C": [
       "src/runtime/lifecycle/native-integration-review.ts",
@@ -381,12 +376,5 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {
-    "tests/native-partition-flow.test.ts": {
-      "team": "C",
-      "lease": "manual-g2-C-4701179608-regression",
-      "assignedBy": "E",
-      "scope": "Ajustar aserción de restauración que debe rechazar política cambiada"
-    }
-  }
+  "temporaryOwnership": {}
 }
