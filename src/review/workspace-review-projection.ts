@@ -322,15 +322,24 @@ export function assertWorkspaceProjectionRepository(value:unknown):void{
 function normalizeNativeGitText(root:string,candidate:Map<string,SourceEntry>):void{
   const {autocrlf}=checkoutEolSettings(root);
   const eol=records(runGit(root,["ls-files","--eol","-z"]));
+  // Las altas explícitas pueden no figurar en el índice, incluso si Git las ignora.
+  // Consultar solo las rutas ya admitidas, nunca recorrer dependencias ajenas.
+  for(const source of candidate.values()){
+    if(source.objectId===""&&source.bytes){
+      eol.push(...records(runGit(root,["ls-files","--others","--eol","-z","--",":(literal)"+source.path])));
+    }
+  }
   for(const record of eol){
     const line=decoder.decode(record),tab=line.indexOf("\t");
     if(tab<0)throw Error("Invalid Git EOL record");
     const path=line.slice(tab+1),metadata=line.slice(0,tab);
-    const match=/^i\/(lf|none)\s+w\/crlf\s+attr\/(.*?)\s*$/u.exec(metadata);
+    const match=/^i\/(lf|none|)\s+w\/(crlf|mixed)\s+attr\/(.*?)\s*$/u.exec(metadata);
     if(!match)continue;
     const source=candidate.get(path);
     if(!source?.bytes||!["100644","100755"].includes(source.mode))continue;
-    const attrs=match[2]!.trim();
+    const attrs=match[3]!.trim();
+    // Para finales mixtos, exigir texto explícito; text=auto puede ser binario.
+    if(match[2]==="mixed"&&!/^(?:text(?: eol=(?:lf|crlf))?|eol=(?:lf|crlf))$/u.test(attrs))continue;
     if(!(/^(?:text(?:=auto)?(?: eol=(?:lf|crlf))?|eol=(?:lf|crlf))$/u.test(attrs)||
       attrs===""&&["true","input"].includes(autocrlf)))continue;
     // Solo atributos de conversión interna de fin de línea; no filtros o

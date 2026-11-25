@@ -152,6 +152,30 @@ const terminalErrors:unknown[]=[];
    assert.equal(launched,2);
    const durable=await observations.listSource(identity,await sessionJournal.listSource(identity));
    assert.equal(durable.length,2);assert.equal(partialObserved,true);
+   // Repetir la recogida con otro diario, sin volver a lanzar ningún Writer.
+   // Si falla la lectura de un hijo, el recibo auténtico del otro debe persistir.
+   const recoveryObservations=new ParallelWorkerObservationJournal(join(privateDir,"observaciones-recuperacion-prueba.json"));
+   const okRecord=(await agents.list(children[0]!))[0]!;
+   const failedRecord=(await agents.list(children[1]!))[0]!;
+   const originalQuery=agents.query.bind(agents);
+   agents.query=async (...args:Parameters<typeof agents.query>)=>{
+    if(args[0]===failedRecord.id)throw Error("Lectura de finalización interrumpida");
+    return originalQuery(...args);
+   };
+   const recoveryInput={record:okRecord,todos,agents,links,sourceJournal,sessionJournal,claims,observations:recoveryObservations};
+   try{
+    await assert.rejects(()=>reconcileNativeChildTerminal(recoveryInput),/No se pudieron recuperar todos los recibos nativos/u);
+    const partial=await recoveryObservations.listSource(identity,await sessionJournal.listSource(identity));
+    assert.equal(partial.length,1);
+    assert.equal(partial[0]!.agentId,okRecord.id);
+    assert.ok(partial[0]!.candidateTree);
+   }finally{agents.query=originalQuery;}
+   const recovered=await reconcileNativeChildTerminal(recoveryInput);
+   assert.equal(recovered?.observed,2);
+   const restored=await recoveryObservations.listSource(identity,await sessionJournal.listSource(identity));
+   assert.equal(restored.length,2);
+   assert.ok(restored.every(receipt=>receipt.candidateTree));
+   assert.equal(launched,2);
    const first=durable.find(row=>row.changedPaths.includes("a.txt"));
    assert.ok(first?.candidateTree);assert.equal(first.currentWorktree?.status,"clean");
    const batch=(await sourceJournal.list(identity)).at(-1)!;
@@ -311,5 +335,30 @@ test("El resultado nativo aislado excluye ignorados anteriores y conserva ignora
   assert.deepEqual(completion?.paths,["nuevo.cache"]);assert.equal(git("show",completion!.candidateTree+":nuevo.cache"),"nuevo resultado");
   await writeFile(join(project,"ajeno.cache"),"fuera del ámbito");
   assert.equal(await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal),undefined);
+ }finally{await rm(project,{recursive:true,force:true});}
+});
+
+test("La captura nativa conserva altas y finales mixtos de texto explícito como blobs Git canónicos",async()=>{
+ const project=await realpath(await mkdtemp(join(tmpdir(),"asen-native-eol-")));
+ const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",env:isolatedGitEnvironment(),stdio:["ignore","pipe","pipe"]});
+ try{
+  git("init","-q");git("config","user.name","ASEN");git("config","user.email","test@example.invalid");
+  git("config","core.autocrlf","false");
+  await writeFile(join(project,".gitattributes"),"*.txt text eol=crlf\n");
+  await writeFile(join(project,"existente.txt"),"original\n");
+  git("add",".");git("commit","--no-gpg-sign","-qm","base");
+  const request={id:"unit-"+"b".repeat(40)+":worker",role:"worker" as const,repository:project,prompt:"Prueba",
+   candidate:{id:"fixture",repository:project,revision:git("rev-parse","HEAD").trim(),createdAt:new Date().toISOString()},
+   writeSurfaces:["existente.txt","nuevo.txt"]};
+  const baseline=await captureNativeWriterBaseline(request);
+  await writeFile(join(project,"existente.txt"),"cambiado\r\nsegunda\n");
+  await writeFile(join(project,"nuevo.txt"),"nuevo\r\nsegunda\n");
+  const result={};bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);
+  const completion=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
+  assert.ok(completion);
+  assert.deepEqual(completion.paths,["existente.txt","nuevo.txt"]);
+  assert.equal(git("show",completion.candidateTree+":existente.txt"),"cambiado\nsegunda\n");
+  assert.equal(git("show",completion.candidateTree+":nuevo.txt"),"nuevo\nsegunda\n");
+  assert.equal(await readFile(join(project,"nuevo.txt"),"utf8"),"nuevo\r\nsegunda\n");
  }finally{await rm(project,{recursive:true,force:true});}
 });

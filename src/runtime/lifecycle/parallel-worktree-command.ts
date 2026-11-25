@@ -22,7 +22,7 @@ import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | prepare-native <lote> | attach | attach-plan | plan-todo | supervise | collect | integration | integration-review | integration-review-dual | integration-continue | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | prepare-native <lote> | attach | attach-plan | plan-todo | supervise | collect [lote] | integration | integration-review | integration-review-dual | integration-continue | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;
  sessionManager?:{getSessionId?:()=>string};
@@ -75,7 +75,7 @@ export function registerParallelWorktreeCommand(
  const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
 
    const raw=args?.trim()??"";
-   const integrationMatch=/^(integration(?:-review-dual|-review|-continue)?|prepare-native)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
+   const integrationMatch=/^(integration(?:-review-dual|-review|-continue)?|prepare-native|collect)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
    const action=integrationMatch?.[1]??raw;
    if(action!=="prepare-native"&&action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-review"&&action!=="integration-review-dual"&&action!=="integration-continue"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
@@ -243,10 +243,13 @@ export function registerParallelWorktreeCommand(
      sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
      claimJournal=new ParallelChildPlanClaimJournal(options.planClaimsFile),
      observations=new ParallelWorkerObservationJournal(options.observationFile);
-    const batches=await sourceJournal.list(sourceIdentity),batch=batches.at(-1);
+    const batches=(await sourceJournal.list(sourceIdentity)).filter(row=>row.state==="prepared");
     current();
+    const selected=integrationMatch?.[2]??(batches.length===1?batches[0]!.id:ctx.ui.select?await ctx.ui.select("Selecciona el lote ODD a recuperar",batches.map(row=>row.id)):undefined);
+    current();
+    const batch=batches.find(row=>row.id===selected);
     if(!batch||batch.state!=="prepared"){
-     const blocked={status:"blocked" as const,reason:"No last fully prepared parent ODD batch to collect; inspect the journal manually"};
+     const blocked={status:"blocked" as const,reason:"Selecciona un lote ODD preparado propio por su identificador exacto."};
      ctx.ui.notify(blocked.reason,"warning");return blocked;
     }
     const inspect=()=>inspectParallelBatchWorkerOutcomes({
@@ -254,32 +257,44 @@ export function registerParallelWorktreeCommand(
      loadTodos:options!.loadTodos!,loadAgents:options!.loadChildAgentRecords!,
      loadTaskAgentLinks:options!.loadChildTaskAgentLinks!
     });
-    const preview=await inspect();current();
+    // La recuperación nativa no depende de que el otro hijo sea legible.
     const nativeLinks=(await sessionJournal.listSource(sourceIdentity)).filter(link=>link.batchId===batch.id&&link.nativeSessionFile);
+    if(nativeLinks.length&&!options.reconcileNativeChild){
+     const blocked={status:"blocked" as const,batchId:batch.id,reason:"Falta el reconciliador nativo; no guardar recibos genéricos.",grantsAuthority:false,autoMerge:false};
+     ctx.ui.notify(blocked.reason,"warning");return blocked;
+    }
     if(nativeLinks.length&&options.reconcileNativeChild){
      // La recuperación manual utiliza el mismo registro autenticado del
      // runtime, no un árbol reconstruido tras finalizar el Writer.
-     const records=(await Promise.all(nativeLinks.map(link=>options.loadChildAgentRecords!({sessionId:link.childSessionId,projectId:link.childProjectId})))).flat()
+     const reads=await Promise.allSettled(nativeLinks.map(link=>options.loadChildAgentRecords!({sessionId:link.childSessionId,projectId:link.childProjectId})));
+     const failures=reads.filter(item=>item.status==="rejected").length;
+     const records=reads.flatMap(item=>item.status==="fulfilled"?item.value:[])
       .filter(record=>record.role==="worker"&&["completed","failed","cancelled","interrupted"].includes(record.state));
      const before=(await observations.listSource(sourceIdentity,nativeLinks)).filter(row=>row.batchId===batch.id);
      current();
      const pending=records.filter(record=>!before.some(row=>row.agentId===record.id));
+     let recoveryFailures=0;
      if(pending.length){
       const approved=await ctx.ui.confirm("Recuperar recibos terminales del lote?",[
        "Lote: "+batch.id,"Solo resultados duraderos de Workers ya terminados.",
        "No lanzar, repetir, sustituir recibos ni integrar un lote incompleto."
       ].join("\n"));
       current();if(approved!==true)return {status:"declined",grantsAuthority:false,autoMerge:false};
-      for(const record of pending){current();await options.reconcileNativeChild(record);}
+      for(const record of pending){
+       current();try{await options.reconcileNativeChild(record);}catch{recoveryFailures++;}
+       current();
+      }
      }
      const saved=(await observations.listSource(sourceIdentity,nativeLinks)).filter(row=>row.batchId===batch.id);
      current();
      const complete=saved.length===batch.tasks.length;
      const output={status:complete?"observed-needs-independent-review":"partial-needs-review",batchId:batch.id,
       observed:saved.map(row=>({sourceTodoId:row.sourceTodoId,agentState:row.agentState,changeState:row.worktreeChangeState,modelActual:"unknown"})),
-      expected:batch.tasks.length,blockers:complete?[]:preview.blockers,acceptance:"not-accepted",grantsAuthority:false,autoRetry:false,autoMerge:false};
+      expected:batch.tasks.length,blockers:complete?[]:["Faltan recibos terminales auténticos; no repetir Writers."],
+      lookupFailures:failures,reconciliationFailures:recoveryFailures,acceptance:"not-accepted",grantsAuthority:false,autoRetry:false,autoMerge:false};
      ctx.ui.notify(JSON.stringify(output,null,2),complete?"info":"warning");return output;
     }
+    const preview=await inspect();current();
     if(preview.status!=="ready-to-record"){
      const blocked={status:"blocked" as const,batchId:batch.id,
       blockers:preview.blockers,grantsAuthority:false as const,autoRetry:false as const};
