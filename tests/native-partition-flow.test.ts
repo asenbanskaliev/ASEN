@@ -18,6 +18,7 @@ import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-w
 import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import {bindNativeRunnerModels,captureNativeWriterBaseline,captureNativeWriterCompletionAsync} from "../src/runtime/agents/native-writer-completion.js";
 import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
+import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
 import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {parsePartitionUnitBasis,materializeHistoricalIntegratedSuccessor} from "../src/runtime/lifecycle/odd-unit-plan.js";
 import {createHash} from "node:crypto";
@@ -41,6 +42,8 @@ const terminalErrors:unknown[]=[];
   git("init","-q","-b","prueba-integracion");git("config","core.autocrlf","true");git("config","user.name","ASEN prueba");git("config","user.email","test@example.invalid");
   for(const name of ["a.txt","b.txt","c.txt"])await writeFile(join(project,name),"original");
   await writeFile(join(project,"sin-cambios.txt"),"texto sin cambios\nsegunda línea\n");
+  await writeFile(join(project,"conjuntas.test.mjs"),"import test from 'node:test'; import assert from 'node:assert/strict'; import {readFileSync} from 'node:fs'; test('A y B combinados',()=>{assert.equal(readFileSync('a.txt','utf8'),'resultado');assert.equal(readFileSync('b.txt','utf8'),'resultado');}); test('C intacto',()=>assert.equal(readFileSync('c.txt','utf8'),'original'));");
+  await writeFile(join(project,"fallo.test.mjs"),"import test from 'node:test'; import assert from 'node:assert/strict'; test('fallo deliberado',()=>assert.fail('prueba negativa'));");
   git("add",".");git("commit","-qm","base");
   await rm(join(project,"sin-cambios.txt"));git("checkout","--","sin-cambios.txt");
   assert.equal(await readFile(join(project,"sin-cambios.txt"),"utf8"),"texto sin cambios\r\nsegunda línea\r\n");
@@ -230,11 +233,17 @@ const terminalErrors:unknown[]=[];
    await assert.rejects(()=>verifyNativeIntegrationAcceptance(proof),/receipt/u);
    const proportional={candidate,sessionId:identity.sessionId,todos,receipts,validate:async()=>{},confirm:async()=>true};
    await assert.rejects(()=>reviewNativePartitionWithTests(proportional),/receipt/u);
-   // Las aserciones de los objetos Git anteriores son verificaciones reales
-   // de este repositorio sintético, firmadas únicamente dentro de la prueba.
-   await writeReviewReceipt(receiptsDir,createReviewReceiptSigned({commitSha:candidate.commit,treeSha:candidate.tree,
-    oddTask:"odd/tasks/continuacion-local-flujo-de-agentes.md",testSuite:{total:3,passed:3,failed:0,durationMs:0,runner:"node:test fixture"},
-    verdict:"PASSED"},await loadReceiptSigningKey(receiptsDir)));
+   const testInput={candidate,sessionId:identity.sessionId,todos,storageDir:receiptsDir,validate:async()=>{},confirm:async()=>true};
+   assert.equal((await testNativeIntegrationCandidate({...testInput,testPaths:["conjuntas.test.mjs"],confirm:async()=>false})).status,"declined");
+   assert.equal((await receipts.readReceiptState(candidate.commit)).status,"absent");
+   await assert.rejects(()=>testNativeIntegrationCandidate({...testInput,testPaths:["fallo.test.mjs"]}),/no terminaron/u);
+   assert.equal((await receipts.readReceiptState(candidate.commit)).status,"absent");
+   const signed=await testNativeIntegrationCandidate({...testInput,testPaths:["conjuntas.test.mjs"]});
+   assert.equal(signed.status,"tests-signed");
+   if(signed.status==="tests-signed")assert.equal(signed.tests,2);
+   assert.equal(git("rev-parse","HEAD"),candidate.baseCommit);
+   assert.equal(git("status","--porcelain"),"");
+   await assert.rejects(()=>testNativeIntegrationCandidate({...testInput,testPaths:["conjuntas.test.mjs"]}),/Ya existe/u);
    assert.equal((await reviewNativePartitionWithTests({...proportional,confirm:async()=>false})).status,"declined");
    const altered={list:async()=> (await todos.list(identity)).map(row=>row.taskId===candidate.sourceTodoIds[0]?{...row,current:{...row.current,revision:row.current.revision+1}}:row)};
    await assert.rejects(()=>reviewNativePartitionWithTests({...proportional,todos:altered}),/raíz ODD original cambió/u);

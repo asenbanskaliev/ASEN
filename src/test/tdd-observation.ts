@@ -3,7 +3,7 @@ import {realpathSync} from "node:fs";
 import {isAbsolute,relative,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import type { Candidate } from "../core/types.js";
-import { executeCapturedEvidenceCommand,executeNodeCoverageCommand, type ExecutedEvidence } from "../evidence/execution.js";
+import { executeCapturedEvidenceCommand,executeFrozenNodeEvidence,executeNodeCoverageCommand, type ExecutedEvidence } from "../evidence/execution.js";
 
 export interface TestObservation {
   readonly adapterId: "node-test";
@@ -88,6 +88,17 @@ export async function executeNodePassingObservation(candidate:Candidate,testPath
  const {proof,stdout,stderr}=await executeCapturedEvidenceCommand(candidate,command,{cwd:candidate.repository,timeoutMs:120000});
  if(proof.exitCode!==0||stderr.trim())throw new Error("Node passing observation requires a clean test run");
  const parsed=parseTap(stdout,true);if(parsed.executed.some(caseId=>{const normalized=caseId.replace(/\\/gu,"/");return testPathPattern.test(normalized)||paths.some(item=>normalized===item||normalized.endsWith(`/${item}`));}))throw new Error("Node TAP did not report an executed test case");
+ const observation=Object.freeze({adapterId:"node-test" as const,commandFingerprint:createHash("sha256").update(JSON.stringify(proof.command)).digest("hex"),testPaths:Object.freeze(paths),executedCaseIds:Object.freeze(parsed.executed),failingCaseIds:Object.freeze([]) as readonly []});
+ issued.set(observation,proof);return observation;
+}
+/** Reutiliza el analizador TAP y su emisión genuina, sin aceptar comandos del modelo. */
+export async function executeFrozenNodePassingObservation(candidate:Candidate,input:{baseRevision:string;tree:string;testPaths:readonly string[];signal?:AbortSignal}):Promise<PassingTestObservation>{
+ const paths=strictTestPaths(input.testPaths);
+ if(paths.length>64)throw Error("Seleccionar como máximo 64 archivos de pruebas");
+ const {proof,stdout,stderr}=await executeFrozenNodeEvidence(candidate,{...input,testPaths:paths});
+ if(proof.exitCode!==0||stderr.trim())throw Error("Las pruebas conjuntas no terminaron correctamente");
+ const parsed=parseTap(stdout,true);
+ if(parsed.executed.some(caseId=>{const normalized=caseId.replace(/\\/gu,"/");return testPathPattern.test(normalized)||paths.some(item=>normalized===item||normalized.endsWith(`/${item}`));}))throw Error("No hay casos Node realmente ejecutados");
  const observation=Object.freeze({adapterId:"node-test" as const,commandFingerprint:createHash("sha256").update(JSON.stringify(proof.command)).digest("hex"),testPaths:Object.freeze(paths),executedCaseIds:Object.freeze(parsed.executed),failingCaseIds:Object.freeze([]) as readonly []});
  issued.set(observation,proof);return observation;
 }

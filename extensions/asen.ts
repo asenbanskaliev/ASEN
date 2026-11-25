@@ -62,6 +62,7 @@ import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
 import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
+import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
 import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
 import {prepareNativePartitionChildren} from "../src/runtime/lifecycle/parallel-native-child-plans.js";
@@ -2538,6 +2539,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      sessionDir:path.join(home(),".asen","native-child-sessions"),todos:await todoStorePromise,
      childProfiles:profileLayer,validateParent:validate,
      confirm:summary=>ctx.ui.confirm!("Preparar sesiones hijas Pi sin iniciar modelos?",summary)});
+   },
+   testIntegratedCandidate:async(candidate,context,validate)=>{
+    const ctx=context as CommandContext;validate();
+    if(!todoStorePromise||!ctx.ui.editor)return {status:"unavailable",reason:"Se necesita el editor de la sesión propietaria para elegir las pruebas."};
+    const identity=await sessionIdentity(ctx),todos=await todoStorePromise;
+    const raw=await ctx.ui.editor("Rutas relativas de pruebas Node de confianza (lista JSON)",'[]');
+    validate();
+    if(raw===undefined)return {status:"declined"};
+    if(raw.length>16384)throw Error("Lista de pruebas demasiado larga");
+    const testPaths:unknown=JSON.parse(raw);
+    if(!Array.isArray(testPaths)||testPaths.some(item=>typeof item!=="string"))throw Error("Indicar un array JSON de rutas de pruebas");
+    return testNativeIntegrationCandidate({candidate,sessionId:identity.sessionId,todos,storageDir:path.join(home(),".asen","receipts"),
+     testPaths,validate:async()=>{validate();},confirm:summary=>ctx.ui.confirm!("Ejecutar pruebas conjuntas y firmar su resultado?",summary),
+     ...(ctx.signal?{signal:ctx.signal}:{})});
    },
    reviewIntegratedCandidate:async(candidate,context,validate)=>{
     const ctx=context as CommandContext;validate();
