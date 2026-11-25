@@ -37,6 +37,7 @@ export function inspectReviewIdentity(requested:PiModelIdentity,selected:PiModel
  };
  const provider=read("provider"),model=read("model"),responseModel=read("responseModel");
  const expected=reviewModelIdentityKey(selected);
+ if(reviewModelIdentityKey(requested)!==expected)throw Error("Independent reviewer selected model differs from requested model");
  const matches=(id:string,isResponse:boolean)=>{
   const raw=isResponse&&selected.provider==="nvidia"&&id.startsWith("private/")?id.slice(8):id;
   return reviewModelIdentityKey({provider:selected.provider,id:raw})===expected;

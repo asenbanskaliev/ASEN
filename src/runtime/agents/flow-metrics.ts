@@ -32,7 +32,8 @@ export function summarizeParentFlow(entries:readonly unknown[]){
   if(typeof row.id==="string"){if(seen.has(row.id))continue;seen.add(row.id);}
   const s=sample(row.message);if(s)messages.push(s);
  }
- return {...summarizeFlowUsage(messages),completeInventory:entries.length<=20000,source:"pi-session-messages"};
+ const completeInventory=entries.length<=20000;
+ return {...summarizeFlowUsage(messages),...(!completeInventory?{inputTokens:null,outputTokens:null,totalTokens:null,reportedCostUsd:null}:{}),completeInventory,source:"pi-session-messages"};
 }
 export function summarizeChildFlow(entry:{record:{id:string;role:string;state:string;createdAt:string;updatedAt:string};events:readonly {state:string;at:string}[];result?:{output:string}}){
  const started=entry.events.find(row=>row.state==="running"),terminal=["completed","failed","cancelled","interrupted"].includes(entry.record.state);

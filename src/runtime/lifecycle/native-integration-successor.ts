@@ -85,12 +85,15 @@ export async function inspectCompletedNativePartition(input:{
  readNativeIntegrationDiff(candidate);
  const receipt=await exactPassingReceipt(candidate,input.receipts);
  await input.validate();
- assertIntegratedCheckout(candidate,identity);
+ // Solo una sucesora aún planificada necesita el checkout integrado intacto.
+ // Si ya se ejecutó, su resultado puede haber cambiado el worktree; aquí
+ // se informa de su estado sin restaurar permisos ni aceptar esos cambios.
+ if(task.current.state==="planned")assertIntegratedCheckout(candidate,identity);
  const latest=await todos.list(identity);
  const relevant=[...roots,old,task,...rows.filter(row=>row.requestId==="asen-plan:"+id+":reviewer"||row.requestId==="asen-plan:"+id+":reviewer:2")];
  if(relevant.some(row=>JSON.stringify(row)!==JSON.stringify(latest.find(item=>item.taskId===row.taskId))))
   throw Error("El estado cambió durante la recuperación; consultar el diario sin repetir");
- await input.validate();assertIntegratedCheckout(candidate,identity);
+ await input.validate();if(task.current.state==="planned")assertIntegratedCheckout(candidate,identity);
  return Object.freeze({status:"successor-already-persisted" as const,todoId:task.taskId,commit:candidate.commit,
   todoState:task.current.state,tests:receipt.testSuite.total,writerAuthority:false as const,autoRetry:false as const,
   next:task.current.state==="planned"?"La sucesora sigue planificada. Avanzar el Todo requiere autorización nueva.":"Consultar el estado del Todo y su agente existente; no repetir automáticamente."});

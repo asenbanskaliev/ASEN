@@ -315,7 +315,8 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
      if(currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("El candidato cambió antes de iniciar el Writer");
      if(prepared.taskIdentity.startsWith("continuation-")){
       await verifiedContinuationBasis(fresh,input.identity,input.todos,prepared.candidate.revision,prepared.taskIdentity);
-      if(currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("La integración cambió antes de iniciar la sucesora");
+      const dirty=execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-C",input.identity.projectId,"status","--porcelain=v1","--untracked-files=all"],{env:isolatedGitEnvironment(),encoding:"utf8",timeout:5000,windowsHide:true,stdio:["ignore","pipe","ignore"]}).trim();
+      if(dirty||currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("La integración cambió antes de iniciar la sucesora");
      }
      // La comprobación vuelve a ejecutarse bajo el bloqueo de lanzamiento
      // para que no se retire el Verifier justo antes de iniciar Pi.

@@ -60,7 +60,7 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
-import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
 import {summarizeParentFlow,summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
 import type {NativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
@@ -2577,7 +2577,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
     const key=JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]);
     const checkpoint=await checkpointInput(candidate,ctx),saved=await nativeReviewCheckpointStatus(checkpoint);validate();
-    if(explicitDualReviews.has(key)||saved==="dual-pending"||saved==="dual-reviewed")return {status:"blocked",reason:"Se solicitó revisión doble explícita de este candidato; no sustituirla por una revisión inferior."};
+    if(explicitDualReviews.has(key)||saved==="dual-pending"||saved==="dual-findings"||saved==="dual-reviewed")return {status:"blocked",reason:"Se solicitó revisión doble explícita de este candidato; no sustituirla por una revisión inferior."};
     integrationReports.delete(key);
     const result=await reviewNativePartitionWithTests({candidate,sessionId:identity.sessionId,
      todos:await todoStorePromise,receipts:new ReceiptVerifierService(path.join(home(),".asen","receipts")),
@@ -2619,7 +2619,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     validate();
     if("report" in result&&result.report){
      if(integrationReports.size>=128)integrationReports.clear();
-     if(result.report.status==="analysis-complete")await saveNativeReviewCheckpoint({...checkpoint,report:result.report});
+     await saveNativeReviewCheckpoint({...checkpoint,report:result.report,...("fixProposalId" in result&&typeof result.fixProposalId==="string"?{fixProposalId:result.fixProposalId}:{})});
      validate();integrationReports.set(key,result.report);
     }
     return result;
@@ -2663,7 +2663,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     activeIntegrationFlows.add(key);
     try{
      const completed=await inspectCompletedNativePartition({candidate,identity:{sessionId:checkpoint.sessionId,projectId:candidate.repository},todos:checkpoint.todos,receipts:checkpoint.receipts,validate:async()=>validate()});
-     if(completed)return completed;
+     if(completed){
+      // Una petición natural de continuación puede solicitar permiso NUEVO para
+      // una sucesora todavía planificada. Nunca relanzar una ya reclamada.
+      if(completed.todoState!=="planned")return completed;
+      validate();const execution=await advancePlan(ctx,undefined,completed.todoId);
+      return {...completed,execution};
+     }
      const receipt=await checkpoint.receipts.readReceiptState(candidate.commit);validate();
      if(receipt.status==="absent"){
       const tested=await integrationOperations.testIntegratedCandidate(candidate,context,validate);
@@ -2671,7 +2677,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      }
      await exactPassingReceipt(candidate,checkpoint.receipts);validate();
      const stage=await nativeReviewCheckpointStatus(checkpoint);validate();
-     if(stage==="dual-pending")return {status:"blocked",reason:"Hay una revisión doble pendiente. No se repetirá ni se sustituirá por revisión proporcional."};
+     if(stage==="dual-pending"||stage==="dual-findings")return {status:"blocked",reason:"Hay una revisión doble pendiente o con hallazgos. No se repetirá ni se sustituirá por revisión proporcional."};
      if(stage==="absent"){
       const reviewed=await integrationOperations.reviewIntegratedCandidate(candidate,context,validate);
       if(reviewed.status!=="joint-tests-reviewed")return reviewed;
@@ -2753,8 +2759,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(seen.has(record.id))continue;seen.add(record.id);const entry=await runtime.entry(record.id,owner);if(entry)children.push(summarizeChildFlow(entry));
     }
    }
+   const judges=await readNativeReviewMetrics(path.join(home(),".asen","receipts"),identity);
    const live=await sessionIdentity(ctx);if(live.sessionId!==identity.sessionId||live.projectId!==identity.projectId)throw Error("Cambió la sesión de métricas");
-   return {parent,children,billingVerified:false,note:"Coste nulo significa desconocido; no es cero. Jueces conjuntos: consultar evidencia de revisión recuperada."};
+   return {parent,children,judges,billingVerified:false,note:"Un coste nulo significa desconocido, no cero. Los costes informados por Pi no son facturas."};
   }});
   const fixJournal=new JudgmentFixProposalJournal(path.join(home(),".asen","judgment-fix-proposals.json"));
   const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
