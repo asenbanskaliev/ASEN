@@ -256,7 +256,7 @@ export function registerParallelWorktreeCommand(
      loadTodos:options!.loadTodos!,loadAgents:options!.loadChildAgentRecords!,
      loadTaskAgentLinks:options!.loadChildTaskAgentLinks!
     });
-    const preview=await inspect();current();
+    // La recuperación nativa no depende de que el otro hijo sea legible.
     const nativeLinks=(await sessionJournal.listSource(sourceIdentity)).filter(link=>link.batchId===batch.id&&link.nativeSessionFile);
     if(nativeLinks.length&&!options.reconcileNativeChild){
      const blocked={status:"blocked" as const,batchId:batch.id,reason:"Falta el reconciliador nativo; no guardar recibos genéricos.",grantsAuthority:false,autoMerge:false};
@@ -265,27 +265,35 @@ export function registerParallelWorktreeCommand(
     if(nativeLinks.length&&options.reconcileNativeChild){
      // La recuperación manual utiliza el mismo registro autenticado del
      // runtime, no un árbol reconstruido tras finalizar el Writer.
-     const records=(await Promise.all(nativeLinks.map(link=>options.loadChildAgentRecords!({sessionId:link.childSessionId,projectId:link.childProjectId})))).flat()
+     const reads=await Promise.allSettled(nativeLinks.map(link=>options.loadChildAgentRecords!({sessionId:link.childSessionId,projectId:link.childProjectId})));
+     const failures=reads.filter(item=>item.status==="rejected").length;
+     const records=reads.flatMap(item=>item.status==="fulfilled"?item.value:[])
       .filter(record=>record.role==="worker"&&["completed","failed","cancelled","interrupted"].includes(record.state));
      const before=(await observations.listSource(sourceIdentity,nativeLinks)).filter(row=>row.batchId===batch.id);
      current();
      const pending=records.filter(record=>!before.some(row=>row.agentId===record.id));
+     let recoveryFailures=0;
      if(pending.length){
       const approved=await ctx.ui.confirm("Recuperar recibos terminales del lote?",[
        "Lote: "+batch.id,"Solo resultados duraderos de Workers ya terminados.",
        "No lanzar, repetir, sustituir recibos ni integrar un lote incompleto."
       ].join("\n"));
       current();if(approved!==true)return {status:"declined",grantsAuthority:false,autoMerge:false};
-      for(const record of pending){current();await options.reconcileNativeChild(record);}
+      for(const record of pending){
+       current();try{await options.reconcileNativeChild(record);}catch{recoveryFailures++;}
+       current();
+      }
      }
      const saved=(await observations.listSource(sourceIdentity,nativeLinks)).filter(row=>row.batchId===batch.id);
      current();
      const complete=saved.length===batch.tasks.length;
      const output={status:complete?"observed-needs-independent-review":"partial-needs-review",batchId:batch.id,
       observed:saved.map(row=>({sourceTodoId:row.sourceTodoId,agentState:row.agentState,changeState:row.worktreeChangeState,modelActual:"unknown"})),
-      expected:batch.tasks.length,blockers:complete?[]:preview.blockers,acceptance:"not-accepted",grantsAuthority:false,autoRetry:false,autoMerge:false};
+      expected:batch.tasks.length,blockers:complete?[]:["Faltan recibos terminales auténticos; no repetir Writers."],
+      lookupFailures:failures,reconciliationFailures:recoveryFailures,acceptance:"not-accepted",grantsAuthority:false,autoRetry:false,autoMerge:false};
      ctx.ui.notify(JSON.stringify(output,null,2),complete?"info":"warning");return output;
     }
+    const preview=await inspect();current();
     if(preview.status!=="ready-to-record"){
      const blocked={status:"blocked" as const,batchId:batch.id,
       blockers:preview.blockers,grantsAuthority:false as const,autoRetry:false as const};

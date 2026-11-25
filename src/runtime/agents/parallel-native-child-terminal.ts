@@ -59,9 +59,11 @@ export async function reconcileNativeChildTerminal(input:{
      const owned={sessionId:unit.link.childSessionId,projectId:unit.link.childProjectId};
      const result=await agents.query(unit.worker.agentId,owned),completion=result?.nativeCompletion;
      if(result?.record.state!=="completed"||result.record.updatedAt!==unit.worker.agentUpdatedAt||
-      !completion||completion.baseCommit!==unit.link.sourceHead)return unit;
+      !completion||completion.baseCommit!==unit.link.sourceHead)
+      throw Error("No se dispone de la finalización nativa exacta; conservar el hueco para reconciliar.");
      const task=batch.tasks.find(row=>row.taskId===unit.link.sourceTodoId);
-     if(!task||completion.paths.some(path=>!task.writeSurfaces.includes(path)))return unit;
+     if(!task||completion.paths.some(path=>!task.writeSurfaces.includes(path)))
+      throw Error("La finalización nativa no coincide con el ámbito original.");
      return {...unit,nativeCompletion:completion};
     })();
     try{saved.push(await observations.record(candidate));}

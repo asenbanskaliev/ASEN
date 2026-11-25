@@ -65,7 +65,7 @@ for(const id of ["nvidia/nemotron-3-ultra-550b-a55b","nvidia/nemotron-3.5-super-
  assert.equal(matchesJudgeIdentity(descriptor,"otro",id),false);
  assert.equal(matchesJudgeIdentity(descriptor,"nvidia",id+"-otro"),false);
 }
-const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],catalogModels:[] as string[],judgeCalls:0,judgeDiagnostics:[] as {model:string;result:string;providerMatches?:boolean;modelMatches?:boolean;responseMatches?:boolean;responseModel?:string;contentKinds?:string[]}[],failureCategory:"none",firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixStarted:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
+const report={schema:"asen.e3.focused-fix/v1",sha:expected,mode:real?"REAL_NVIDIA":"OFFLINE_SIMULATION",fixture:"DETERMINISTIC_DEFECT_NOT_WRITER_OUTPUT",authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoMerge:false,autoRetry:false,costVerified:false,status:"BLOCKED",stage:"fixture",judgeModels:[] as string[],catalogModels:[] as string[],judgeCalls:0,judgeDiagnostics:[] as {model:string;result:string;providerMatches?:boolean;modelMatches?:boolean;responseMatches?:boolean;identityEvidence?:"requested-descriptor-only"|"provider-response-match";responseModel?:string;contentKinds?:string[]}[],failureCategory:"none",firstVerdicts:[] as string[],secondVerdicts:[] as string[],fixPlanSaved:false,defectReproduced:false,fixApproved:false,fixDispatched:false,fixStarted:false,fixSimulated:false,nativeFixModel:"unknown",nativeWriteStarts:0,nativeWriteEnds:0,nativeErrors:0,exactTreeScope:false,signedTests:false,finalTree:"unknown"};
 let agents:AgentRuntime|undefined,owner:{sessionId:string;projectId:string}|undefined;
 try{
  mkdirSync(project);mkdirSync(privateDir,{recursive:true,mode:0o700});
@@ -97,14 +97,14 @@ try{
  const runner:AgentRunner={run:async(request,signal)=>{
   launches++;
   if(launches!==1||request.role!=="worker"||request.model!==model||request.repository!==project||request.isolationKey!==owner!.sessionId||JSON.stringify(request.writeSurfaces)!=='["a.txt"]'||!request.id.startsWith("fix-"))return {id:request.id,ok:false,output:"Ámbito de ensayo no admitido"};
-  report.fixStarted=true;
-  if(!real){writeFileSync(join(project,"a.txt"),correct);return {id:request.id,ok:true,output:"Writer simulado de prueba local"};}
+  report.fixDispatched=true;
+  if(!real){report.fixSimulated=true;writeFileSync(join(project,"a.txt"),correct);return {id:request.id,ok:true,output:"Writer simulado de prueba local"};}
   const pi=new PiProcessRunner({command:"pi",policyRoot:root,providerCredential:"NVIDIA_API_KEY",requireChildModelBeforePrompt:true,
    oneShotWritePath:"a.txt",exactWriteReceipt:{path:"a.txt",fileSha256:createHash("sha256").update(correct).digest("hex")},
    attributionFile:join(privateDir,"fix-attribution.json"),timeoutMs:110000,maxOutputBytes:60000,maxStreamBytes:240000,
    onToolExecution:event=>{if(event.type==="tool_execution_end"&&event.isError)report.nativeErrors++;
     if(event.toolName==="write"){if(event.type==="tool_execution_start")report.nativeWriteStarts++;else report.nativeWriteEnds++;}}});
-  const unsubscribe=pi.subscribeChildSelection(event=>{if(event.taskId===request.id&&event.sessionId===owner!.sessionId&&event.projectId===project)report.nativeFixModel=normalizeT06PiChildSelection(event.model,model)??"unknown";});
+  const unsubscribe=pi.subscribeChildSelection(event=>{if(event.taskId===request.id&&event.sessionId===owner!.sessionId&&event.projectId===project){report.fixStarted=true;report.nativeFixModel=normalizeT06PiChildSelection(event.model,model)??"unknown";}});
   try{return await pi.run(request,signal);}finally{unsubscribe();}
  }};
  agents=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:1});
@@ -170,13 +170,13 @@ try{
       const acceptedResponse=[...forms,...forms.map(identity=>"private/"+identity)];
       const providerMatches=event.message.provider===descriptor.provider,
        modelMatches=matchesJudgeIdentity(descriptor,event.message.provider,event.message.model),
-       responseMatches=event.message.responseModel===undefined||acceptedResponse.includes(event.message.responseModel);
-      if(!providerMatches||!modelMatches||!responseMatches){
+       responseMatches=event.message.responseModel===undefined?undefined:acceptedResponse.includes(event.message.responseModel);
+      if(!providerMatches||!modelMatches||responseMatches===false){
        const observed=event.message.responseModel;
        Object.assign(diagnostic,{providerMatches,modelMatches,responseMatches,...(typeof observed==="string"&&/^[A-Za-z0-9._/-]{1,256}$/u.test(observed)?{responseModel:observed}:{})});
        diagnostic.result="model-identity-mismatch";throw Error("Identidad física del juez no coincide");
       }
-      Object.assign(diagnostic,{contentKinds:[...new Set(event.message.content.map(part=>["text","thinking","toolCall"].includes(part.type)?part.type:"unknown"))]});
+      Object.assign(diagnostic,{providerMatches,modelMatches,...(responseMatches===undefined?{identityEvidence:"requested-descriptor-only"}:{responseMatches,identityEvidence:"provider-response-match"}),contentKinds:[...new Set(event.message.content.map(part=>["text","thinking","toolCall"].includes(part.type)?part.type:"unknown"))]});
       diagnostic.result=event.reason==="stop"?"stop":event.reason==="length"?"length":event.reason==="toolUse"?"tool-use":"deferred";
      }
      yield event as unknown as import("../src/review/pi-model-reviewer.js").PiReviewEvent;
@@ -257,11 +257,12 @@ try{
  if(dispatched.status!=="dispatched")throw Error("Fix no despachado: "+dispatched.status);
  assert.equal(dispatched.todoId,fix.taskId);assert.equal(dispatched.role,"worker");
  report.stage="fix-terminal";
- const deadline=Date.now()+160000;
+ const deadline=Date.now()+3*110000+5000; // Tres fases acotadas del Runner.
  while(Date.now()<deadline){const a=(await agents.list(owner)).find(a=>a.id===dispatched.agentId);if(a&&["completed","failed","interrupted","cancelled"].includes(a.state))break;await new Promise(resolve=>setTimeout(resolve,150));}
  const terminal=(await agents.list(owner)).find(a=>a.id===dispatched.agentId);
  assert.equal(terminal?.state,"completed",real?"Fix no completado":terminal?.summary??"Sin diagnóstico");
- assert.equal(launches,1);assert.equal(report.fixStarted,true);
+ assert.equal(launches,1);assert.equal(report.fixDispatched,true);
+ assert.equal(report.fixStarted,real);assert.equal(report.fixSimulated,!real);
  if(real){assert.equal(report.nativeFixModel,model);assert.equal(report.nativeWriteStarts,1);assert.equal(report.nativeWriteEnds,1);assert.equal(report.nativeErrors,0);}
  await new TaskAgentTodoReconciler(todos,agents,links).reconcile(owner);
  assert.equal((await todos.list(owner)).find(t=>t.taskId===fix.taskId)?.current.state,"succeeded");
