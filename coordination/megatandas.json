@@ -1,0 +1,66 @@
+{
+  "schema": "asen.megatandas/v1",
+  "integrationPR": 115,
+  "integrationBranch": "integration/megatanda-b-consolidada-20261124",
+  "initialBase": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+  "mode": "solo-codigo-y-pruebas-sin-modelos",
+  "maximumWriters": 2,
+  "teams": {
+    "A": {
+      "state": "disponible",
+      "lease": null,
+      "package": "A1",
+      "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras"
+    },
+    "B": {
+      "state": "disponible",
+      "lease": null,
+      "package": "B1",
+      "scope": "Selección de modelos, alternativas e independencia"
+    },
+    "C": {
+      "state": "disponible",
+      "lease": null,
+      "package": "C1",
+      "scope": "Revisión, recibos, jueces, Fix y aceptación final"
+    },
+    "D": {
+      "state": "disponible",
+      "lease": null,
+      "package": "D1",
+      "scope": "Métricas, contexto y preparación de ensayos sin consumo"
+    },
+    "E": {
+      "state": "disponible",
+      "lease": null,
+      "package": "E1",
+      "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva"
+    }
+  },
+  "packages": {
+    "A1": "Generalizar el escenario 2+1 a dos raíces sin sucesora y otros grafos seguros; máximo dos Writers vivos; no admitir topologías no implementadas, mantener permisos y recuperación.",
+    "B1": "Alternativas en el despachador de tareas persistidas: modelos autorizados, identidad efectiva, errores elegibles y prohibición de repetir escrituras inciertas; respetar independencia y perfiles.",
+    "C1": "Cierre verificable de sucesora y revisiones con hallazgos: recuperar estados, ligar recibos y Fix a candidato exacto, sin repetir inferencias ni aceptar por omisión.",
+    "D1": "Medición de intentos fallidos, recuperados e incompletos, cobertura de consumo y tiempos; preparar E1/E2A/E3/E4 y comparativa sin llamar modelos.",
+    "E1": "Validar 815786a y revisar deuda técnica; repartir archivos compartidos, revisar PR de A-D, admitir solo evidencia comprobada y preparar integración agrupada."
+  },
+  "sharedFilesOwner": "E",
+  "sharedFiles": [
+    "extensions/asen.ts",
+    "src/runtime/lifecycle/plan-dispatcher.ts",
+    "src/runtime/lifecycle/parallel-worktree-command.ts",
+    "src/runtime/lifecycle/native-integration-successor.ts",
+    "src/runtime/lifecycle/native-integration-review.ts",
+    "tests/native-partition-flow.test.ts",
+    ".github/workflows/**",
+    "package.json",
+    "package-lock.json"
+  ],
+  "policy": {
+    "manual": "Consultar estado de ejecución y reserva antes de iniciar; no volver a lanzar un equipo activo.",
+    "reservation": "Adquirir mediante commit hijo del HEAD exacto del registro y update_ref no forzado con expected_sha; comprobar titular antes de publicar. Liberar solo la propia reserva con CAS. Sin robo por caducidad.",
+    "integration": "Solo E; PR propia, revisión de diferencias y CI exacta, agrupar si se puede sin saltar validación. No fusionar main ni cerrar #61/#115.",
+    "noModelCalls": true,
+    "globalFull": false
+  }
+}
