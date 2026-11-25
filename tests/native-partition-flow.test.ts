@@ -223,6 +223,18 @@ const terminalErrors:unknown[]=[];
    let judgeCalls=0;
    const registry:PiReviewRegistry={getAvailable:()=>[{provider:"nvidia",id:"modelo-simulado"},{provider:"prueba",id:"juez-a"},{provider:"prueba",id:"juez-b"}],
     hasConfiguredAuth:()=>true,async *streamSimple(model){judgeCalls++;yield {type:"done",reason:"stop",message:{provider:model.provider,model:model.id,content:[{type:"text",text:JSON.stringify({verdict:"pass",summary:"Resultado de prueba sintética",findings:[]})}]}};}};
+   // C2: uno o dos modelos totales (incluido el autor) no permiten dos jueces independientes.
+   // No se solicita consentimiento ni se llama al transporte si falta independencia.
+   for(const count of [1,2]){
+    let confirmations=0;
+    const restricted:PiReviewRegistry={...registry,getAvailable:()=>registry.getAvailable().slice(0,count)};
+    const blocked=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry:restricted,
+     judgeA:{model:"prueba/juez-a"},judgeB:{model:"prueba/juez-b"},fixJournal:new JudgmentFixProposalJournal(join(privateDir,"fixes.json")),
+     requirements:"A y B deben contener resultado; C se conserva.",validate:async()=>{},confirm:async()=>{confirmations++;return true;}});
+    assert.equal(blocked.status,"blocked");assert.equal(confirmations,0);assert.equal(judgeCalls,0);
+    assert.equal(git("rev-parse","HEAD"),candidate.baseCommit);
+   }
+   // El catálogo completo de tres modelos continúa por la ruta explícita ya probada.
    const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
     judgeA:{model:"prueba/juez-a"},judgeB:{model:"prueba/juez-b"},fixJournal:new JudgmentFixProposalJournal(join(privateDir,"fixes.json")),
     requirements:"A y B deben contener resultado; C se conserva.",validate:async()=>{},confirm:async()=>true});
@@ -252,6 +264,7 @@ const terminalErrors:unknown[]=[];
    if(!("report" in joint)||!joint.report)assert.fail("Sin revisión proporcional");
    assert.equal(joint.report.modelCalls,0);
    assert.equal(joint.report.independentReview,false);
+   assert.equal(judgeCalls,2,"La revisión proporcional no necesita llamadas adicionales de jueces");
    const jointProof={...proof,report:joint.report};
    assert.equal((await verifyNativeIntegrationAcceptance(jointProof)).reviewMode,"joint-tests");
    let changedDuringReceipt=false;
