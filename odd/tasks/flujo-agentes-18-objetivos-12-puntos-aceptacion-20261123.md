@@ -64,6 +64,27 @@ Un ensayo real aislado acredita solo el comportamiento ensayado. Una CI correcta
 - B: #116 SHA 0fa0231e67f9c50dee07a17823f6ea98fd7dd53c, [E3 real 45491178357](https://github.com/asenbanskaliev/ASEN/actions/runs/45491178357) correcto sobre fixture separada: Nano Omni + Ultra, Fix Lightning, segunda revisión y recibo firmado. Refuerza objetivos 11–13 y adicional 10; falta candidato E2A→E3 único y consentimiento real. CI definitiva en curso al corte; no inferir resultado ni integración.
 - Refuerzos y criterios de actualización: [P01–P06](flujo-agentes-refuerzo-quirurgico-ab-20261124.md). Estados de aceptación conservadores; no elevar una fila completa por una evidencia limitada. Verificar SHA y artefactos actuales antes de admitir.
 
+## Actualización de evidencia · 25/11/2026
+
+- B0: #115 `4f66fb4eaba00ce211349040a1889bbf16e2f194`: [CI 45557740308](https://github.com/asenbanskaliev/ASEN/actions/runs/45557740308) fallida. #117 `39c34a9103c2ccbb267c7b07db0de569eec520bc`: [CI 45557811544](https://github.com/asenbanskaliev/ASEN/actions/runs/45557811544) fallida. Dictamen E [#63](https://github.com/asenbanskaliev/ASEN/issues/63#issuecomment-7154736972): revisión COMMENTED con hallazgos pendientes. No admitir ni trasladar al plan.
+- [#118](https://github.com/asenbanskaliev/ASEN/pull/118) `dcf5698378598e8517e26d56746b670df8aca1a4`: corrige prueba negativa de selección exacta y añade caso positivo de clarifier instrumentado; sin aprobación CI ni prueba Writer positiva. No promover las filas 04/06/07/08/15 ni adicionales 05/06/08/09.
+- E2A/E3 históricos del 24/11 permanecen evidencia real limitada, no aceptación del SHA actual. Sin inferencia nueva en esta unidad. Los 18 objetivos y 12 puntos conservan los estados de las tablas anteriores.
+
+### Control P01–P06 (complemento transversal, no otra matriz de aceptación)
+
+| Refuerzo | Estado a este corte | Siguiente evidencia y responsable |
+|---|---|---|
+| P01 | PARCIAL, #117 no admitida | B/E: probar independencia por identidad canónica y política proporcional; casos 1/2/3 modelos. |
+| P02 | PARCIAL, #117 no admitida | B/E: identidad solicitada/seleccionada/declarada tras alternativa; ausente o ambigua no acredita independencia. |
+| P03 | PENDIENTE_INTEGRAL | C: recorrido natural Pi sobre base admitida, recibo conjunto real y sucesora; primero pruebas sin proveedor. |
+| P04 | PARCIAL, #117 no admitida | B/C: reinicio en cada límite del diario, conciliación por ID exacto, rechazo de repetición incierta. |
+| P05 | CONDICIONADO | C: comparar 1 vs 2 agentes, coste desconocido como unknown; no ampliar a 3/4 antes de medir. |
+| P06 | TRANSVERSAL, NO ACEPTADO | A/E: conservar estados, verificar SHA/run/job/recibo y límites; D valida antes de integrar. |
+
+Casos de política que no pueden omitirse: bajo/medio sin riesgo nombrado y sin revisión explícita, recibo firmado del árbol exacto y consentimiento de integración; riesgo nombrado exige verificador independiente; doble explícita exige dos identidades distintas y compatibles; si hay 1/2/3 modelos insuficientes para el riesgo, bloquear la revisión obligatoria, nunca sustituirla por autorrevisión. Rechazar recibo alterado, cambio de riesgo o candidato durante espera, identidad desconocida, permiso caduco y recuperación de otro lote. Sucesora conserva la política original y permiso Writer aislado; nunca fuerza doble revisión artificial.
+
+**Próximo criterio comprobable:** B0 pasa exclusivamente con nueva CI completa y revisión pertinente sobre SHA exacto; D no integra por un test corregido sin resultado. Mantener CTX/E1–E4/F y `globalFull:false`.
+
 ## Cierre
 
 Solo marcar `globalFull:true` cuando las treinta filas tengan evidencia positiva adecuada a sus criterios, y exista un recorrido auténtico completo desde Pi, con revisión independiente, CI y Release Gate sobre el **mismo SHA final**. Sin aprobación humana de integración no se fusiona en `main`.
