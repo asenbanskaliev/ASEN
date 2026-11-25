@@ -1,4 +1,5 @@
 import {createHash} from "node:crypto";
+import {realpathSync} from "node:fs";
 import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
@@ -100,9 +101,14 @@ type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLi
  independentReadOnly?:Readonly<{blockedTodoId:string;verifiedConfiguredModel:(role:string,model:string)=>boolean}>;};
 type DispatchResult={status:"dispatched";todoId:string;agentId:string;role:string}|{status:"inline";todoId:string;revision:number;role:"primary";instruction:string}|{status:"blocked";reason:string};
 
-function currentRevision(repository:string):string{
- try{return execFileSync("git",["rev-parse","HEAD"],{cwd:repository,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
- catch(error){const revision=error&&typeof error==="object"&&"status" in error&&error.status===0&&"stdout" in error?String(error.stdout).trim():"";if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(revision))throw error;return revision;}
+/** Comprobar el proyecto exacto, sin aceptar GIT_DIR/WORK_TREE del proceso padre. */
+export function currentRevision(repository:string):string{
+ const git=(...args:string[])=>execFileSync("git",["--no-replace-objects","-C",repository,...args],{env:isolatedGitEnvironment(),encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:5000,windowsHide:true}).trim();
+ if(realpathSync(git("rev-parse","--show-toplevel"))!==realpathSync(repository))
+  throw Error("La revisión debe pertenecer a la raíz exacta del proyecto.");
+ const revision=git("rev-parse","--verify","HEAD^{commit}");
+ if(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(revision))throw Error("Candidato Git inválido");
+ return revision;
 }
 /** Reconstruir la sucesora desde las filas originales ya aceptadas, no
  * desde su identificador ni desde una solicitud del modelo. */

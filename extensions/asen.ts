@@ -261,6 +261,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let flushPendingAgentNotices:((ctx:CommandContext)=>Promise<void>)|undefined;
   let scheduleAgentWakeAtBoundary:(()=>void)|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
+  // No publicar un aviso parcial después de otro más avanzado de la misma sesión.
+  const publishedBatchCounts=new WeakMap<object,Map<string,number>>();
   const agentDeliveryTasks=new Set<Promise<void>>();
   const agentNoticeJournal=new AgentNotificationJournal(path.join(home(),".asen","agent-notices.json"));
   let selectionGeneration=0,unsubscribeChildSelection:(()=>void)|undefined;
@@ -1081,6 +1083,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
          const latest=(await observations.listSource(observed.source,await sessionJournal.listSource(observed.source))).filter(row=>row.batchId===observed.batchId);
          const live=await sessionIdentity(parent);
          if(latest.length===observed.observed&&agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&live.sessionId===owner.sessionId&&live.projectId===owner.projectId&&parent.sessionManager?.getSessionId?.()===owner.sessionId){
+          let counts=publishedBatchCounts.get(owner);
+          if(!counts){counts=new Map();publishedBatchCounts.set(owner,counts);}
+          if((counts.get(observed.batchId)??0)>=observed.observed)return;
+          counts.set(observed.batchId,observed.observed);
           parent.ui.notify(`ASEN: ${observed.partial?"lote Writer parcial":"lote Writer terminado"}. ${observed.observed}/${observed.expected} recibos guardados. ${observed.completed} completados y ${observed.failed} con incidencias. ${observed.partial?"No integrar ni repetir automáticamente.":"Pendiente revisión e integración."}${observed.planningFileMissing?" El archivo de planificación de un hijo no está disponible.":""}`,observed.partial||observed.failed||observed.planningFileMissing?"warning":"info");
           await refreshTodoWidget(parent);
          }

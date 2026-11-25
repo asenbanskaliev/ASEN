@@ -48,6 +48,13 @@ function categoryFromSignals(message:{errorMessage?:unknown;rawStopReason?:unkno
   typeof message.rawStopReason==="string"&&ERROR_IDENTIFIER.test(message.rawStopReason)?message.rawStopReason:"",
   ...diagnosticCodes(message.diagnostics),
  ].filter(signal=>signal.length>0);
+ // Los códigos estructurados tienen prioridad sobre el texto libre del proveedor.
+ // Un HTTP 400 no debe provocar otra llamada porque su mensaje mencione un 429.
+ for(const code of diagnosticCodes(message.diagnostics)){
+  if(/^[45]\d\d$/u.test(code))return statusCategory(Number(code));
+ }
+ const status=typeof message.errorMessage==="string"?HTTP_STATUS.exec(message.errorMessage.slice(0,ERROR_SCAN_MAX))?.[1]:undefined;
+ if(status)return statusCategory(Number(status));
  for(const [category,pattern] of ERROR_KEYWORDS)if(signals.some(signal=>pattern.test(signal)))return category;
  for(const signal of signals){const status=HTTP_STATUS.exec(signal)?.[1];if(status)return statusCategory(Number(status));}
  return TERMINAL_ERROR_CATEGORY.UNAVAILABLE;

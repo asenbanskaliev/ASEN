@@ -326,7 +326,10 @@ function normalizeNativeGitText(root:string,candidate:Map<string,SourceEntry>):v
   // Consultar solo las rutas ya admitidas, nunca recorrer dependencias ajenas.
   for(const source of candidate.values()){
     if(source.objectId===""&&source.bytes){
-      eol.push(...records(runGit(root,["ls-files","--others","--eol","-z","--",":(literal)"+source.path])));
+      const rows=records(runGit(root,["ls-files","--others","--eol","-z","--",":(literal)"+source.path]));
+      if(rows.length!==1||decoder.decode(rows[0]!).split("\t").slice(1).join("\t")!==source.path)
+       throw Error("No se pudo comprobar la clasificación Git de una adición explícita");
+      eol.push(rows[0]!);
     }
   }
   for(const record of eol){
