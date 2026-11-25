@@ -60,7 +60,7 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
-import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {summarizeParentFlow,summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
 import type {NativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
@@ -2546,7 +2546,6 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  const integrationReports=new Map<string,NativeIntegrationReviewReport>();
   const activeIntegrationFlows=new Set<string>();
   const checkpointInput=async(candidate:NativeIntegrationCandidate,ctx:CommandContext)=>{
    if(!todoStorePromise)throw Error("No hay diario Todo.");
@@ -2588,16 +2587,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const key=JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]);
     const checkpoint=await checkpointInput(candidate,ctx),saved=await nativeReviewCheckpointStatus(checkpoint);validate();
     if(explicitDualReviews.has(key)||saved==="dual-pending"||saved==="dual-findings"||saved==="dual-reviewed")return {status:"blocked",reason:"Se solicitó revisión doble explícita de este candidato; no sustituirla por una revisión inferior."};
-    integrationReports.delete(key);
     const result=await reviewNativePartitionWithTests({candidate,sessionId:identity.sessionId,
      todos:await todoStorePromise,receipts:new ReceiptVerifierService(path.join(home(),".asen","receipts")),
      validate:async()=>{validate();},confirm:summary=>ctx.ui.confirm!("Revisar candidato y pruebas conjuntas según ODD?",summary),
      ...(ctx.signal?{signal:ctx.signal}:{})});
     validate();
     if("report" in result&&result.report){
-     if(integrationReports.size>=128)integrationReports.clear();
      await saveNativeReviewCheckpoint({...checkpoint,report:result.report});validate();
-     integrationReports.set(JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]),result.report);
     }
     return result;
    },
@@ -2615,7 +2611,6 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!explicitDualReviews.has(key)&&explicitDualReviews.size>=128)
      return {status:"blocked",reason:"Límite de revisiones explícitas en esta sesión; renovar la sesión antes de solicitar otra."};
     const fixProfile=resolveAgentProfileTarget(layers,"jd-fix-agent").choice;
-    integrationReports.delete(key);
     explicitDualReviews.add(key);
     const checkpoint=await checkpointInput(candidate,ctx);await markNativeDualReviewPending(checkpoint);validate();
     const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
@@ -2628,9 +2623,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      ...(ctx.signal?{signal:ctx.signal}:{})});
     validate();
     if("report" in result&&result.report){
-     if(integrationReports.size>=128)integrationReports.clear();
      await saveNativeReviewCheckpoint({...checkpoint,report:result.report,...("fixProposalId" in result&&typeof result.fixProposalId==="string"?{fixProposalId:result.fixProposalId}:{})});
-     validate();integrationReports.set(key,result.report);
+     validate();
     }
     return result;
    },
@@ -2891,7 +2885,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
   protectedStateDirs:[path.join(dependencies.homeDir?.() ?? homedir(),".asen")],
  }));
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
- const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
+ const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false||dependencies.enableTodoRuntime===false?[]:["asen_plan_resume_batch"]),...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
  let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext,event?:{reason?:unknown})=>Promise<void>)|undefined;
  pi.on("session_start",async(event,ctx)=>{
   delegationTurn.nextTurn();

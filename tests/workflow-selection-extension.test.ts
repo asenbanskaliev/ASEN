@@ -52,7 +52,8 @@ await test("public ODD-only production factory registers without a host SDD comm
   createPiExtension({homeDir:()=>root,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi as never);
   await events.get("session_start")![0]!({},ctx);
   assert.equal(commands.has("asen-workflow"),false);
-  assert.equal(commands.size,37,"including the consent-only asen-worktrees command");
+  assert.equal(commands.size,38,"incluye la continuidad ODD y las métricas de flujo");
+  assert.ok(commands.has("asen-flow-metrics"));
   const rows=await commands.get("asen-commands")!.handler("",ctx);
   assert.equal(rows,undefined,"production handlers notify rather than returning internal DTOs");
   for(const name of ["asen-profiles","asen-persona","asen-plan","asen-route","asen-review"])assert.ok(commands.has(name));
