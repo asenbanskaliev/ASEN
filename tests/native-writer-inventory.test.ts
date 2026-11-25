@@ -33,6 +33,6 @@ test("Inventario ignorado superior a 1 MB no bloquea un Writer ajeno a esos arch
   assert.equal(git("show",completion!.candidateTree+":nuevo.cache"),"nuevo resultado");
   await assert.rejects(()=>captureNativeWriterBaseline({...request,writeSurfaces:[baseline[0]!]}),/ignorados preexistentes/u);
   await writeFile(join(project,"ajeno.cache"),"fuera del ámbito");
-  assert.equal(captureNativeWriterCompletion(request,result,baseline),undefined);
+  assert.throws(()=>captureNativeWriterCompletion(request,result,baseline));
  }finally{await rm(project,{recursive:true,force:true});}
 });
