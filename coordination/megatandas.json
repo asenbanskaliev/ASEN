@@ -12,36 +12,40 @@
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
       "generation": 2,
-      "next": "Reanudar A1 desde base #115; inspeccionar código y ramas, publicar solo cambios faltantes en rama nueva de generación 2. No esperar #130 para trabajo independiente.",
+      "next": "A1 independiente: inspectCompletedNativePartition y persistNativePartitionSuccessor exigen una única sucesora; comprobar contrato de cierre atómico de raíces sin sucesora y pruebas; desarrollar variante acotada en rama g2 sobre #115, sin alterar contratos compartidos sin E.",
       "blocker": null
     },
     "B": {
-      "state": "revision-candidato",
+      "state": "correccion-lista",
       "lease": null,
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 128,
       "sha": "0d5a5e57b7b03cbae517a01a3d4626d4a6d09700",
-      "next": "Auditar alternativas de Explorer en #130 y cobertura de autorización/identidad; registrar hallazgos sin repetir #128. Esperar admisión de #130 antes de B2 o cambios dependientes.",
+      "next": "Corregir procedencia del perfil persistido: ámbito y nombre del perfil que creó el Todo; no adjuntar alternativas por mera igualdad de modelo. Coordinar con E campo de procedencia y conexión. Pruebas de perfiles mismo modelo, ámbito y cambio de perfil; no tocar archivos ajenos.",
       "files": [
         "src/runtime/lifecycle/plan-dispatcher.ts",
         "tests/asen-b-planned-fallback.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "tests": "Incluido en candidato #130: CI completa, rápida, arquitectura, Release Gate y Pi runtime correctos; Pi Free Smoke omitido. No integrado.",
-      "blocker": "CodeRabbit #130 pendiente; no impide auditoría independiente",
+      "blocker": null,
       "generation": 2,
       "candidatePR": 130,
-      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0"
+      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "reviewFindings": [
+        4701179615
+      ]
     },
     "C": {
-      "state": "revision-candidato",
+      "state": "correccion-lista",
       "lease": null,
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 129,
       "sha": "d7be3471c7390c9a9b41f1e35576a05a5ab20b7c",
-      "next": "Auditar persistencia parcial y recuperación en #130; revisar pruebas de cierre de sucesora; no repetir #129. Preparar casos negativos independientes; cambios dependientes tras admisión.",
+      "next": "Conservar observaciones auténticas de juez terminado aun si cambia política viva; validar firma original, identidad del candidato, intento y orden. Mantener validación viva antes de nueva inferencia y aceptación. Añadir regresión sin modelos.",
       "files": [
         "src/review/judgment-day.ts",
         "src/runtime/lifecycle/native-integration-review.ts",
@@ -49,32 +53,40 @@
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "tests": "Incluido en candidato #130: CI completa, rápida, arquitectura, Release Gate y Pi runtime correctos; Pi Free Smoke omitido. No integrado.",
-      "blocker": "CodeRabbit #130 pendiente; no impide auditoría independiente",
+      "blocker": null,
       "generation": 2,
       "candidatePR": 130,
-      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0"
+      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "reviewFindings": [
+        4701179608
+      ]
     },
     "D": {
-      "state": "revision-candidato",
+      "state": "correccion-lista",
       "lease": null,
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 127,
       "sha": "4d13866c3dc302cb7c1e6a9956b0923d87fa1dc3",
-      "next": "Auditar medición y pruebas de #130, inventariar huecos de E1/E2A/E3/E4 sin modelos. No repetir #127; preparar unidad independiente o esperar admisión.",
+      "next": "Conservar muestras válidas anteriores a JSON malformado; totales incompletos siguen null. Añadir regresión de prefijo válido y JSON inválido.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "tests": "Incluido en candidato #130: CI completa, rápida, arquitectura, Release Gate y Pi runtime correctos; Pi Free Smoke omitido. No integrado.",
-      "blocker": "CodeRabbit #130 pendiente; no impide auditoría independiente",
+      "blocker": null,
       "generation": 2,
       "candidatePR": 130,
-      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0"
+      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "reviewFindings": [
+        4701179598
+      ]
     },
     "E": {
-      "state": "revision",
+      "state": "correccion-lista",
       "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
@@ -120,8 +132,8 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Revisar #130 por SHA y base exactos, CodeRabbit en curso, no repetir solicitud. Auditar cambios y solo integrar cuando comprobaciones y revisión satisfagan criterios; registrar siguiente unidad A–D. No repetir consolidación.",
-      "blocker": "CodeRabbit #130 pendiente; no impide auditoría independiente",
+      "next": "Coordinar corrección de ámbito de fallback global/proyecto en extensions/asen.ts con B; asignar explícitamente propiedad de esquema Todo a B si necesario, auditar A1 y agrupar correcciones en candidato nuevo basado en #130 exacto sin integrar #130 defectuosa.",
+      "blocker": null,
       "generation": 2,
       "pr": 130,
       "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
@@ -147,7 +159,11 @@
           "state": "solicitada-no-validada",
           "commentId": 7175214564
         }
-      }
+      },
+      "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "reviewFindings": [
+        4701179590
+      ]
     }
   },
   "packages": {
@@ -173,7 +189,8 @@
     "globalFull": false,
     "ownership": "Cada equipo trabaja solo dentro de ownership. Cualquier archivo no asignado o interfaz compartida requiere asignación expresa de E registrada con CAS. E coordina las modificaciones en extensión y workflows. Evitar modificaciones simultáneas al mismo archivo, incluso en ramas distintas.",
     "generationFence": "Ramas nuevas de escritura feat/asen-equipo-<equipo>-<paquete>-g<generacion>-<id>, nunca reutilizar ramas de reservas revocadas. #127–130 son instantáneas anteriores: no modificar ni aceptar cambios tardíos sin auditoría, SHA exacto y nueva admisión. Solo E integra tras comprobar base/candidato y vigencia de generación; si cambia HEAD, detener integración y revalidar.",
-    "workflow": "Revisión o CI en curso = estado de espera sin reserva de escritura. Cada tarea revisa cambios materiales y realiza unidad independiente si existe. No repetir pruebas, solicitudes de revisión, comentarios ni commits sin cambios. No considerar skipped como éxito; globalFull false hasta evidencia real."
+    "workflow": "Revisión o CI en curso = estado de espera sin reserva de escritura. Cada tarea revisa cambios materiales y realiza unidad independiente si existe. No repetir pruebas, solicitudes de revisión, comentarios ni commits sin cambios. No considerar skipped como éxito; globalFull false hasta evidencia real.",
+    "corrections": "B/C/D/E pueden corregir hallazgos asignados desde correctionBase exacta de #130 no admitida, exclusivamente en ramas nuevas g2 de reparación. Esta excepción no admite ni fusiona #130 ni permite otros cambios dependientes. E compone nuevo candidato y exige todas las puertas de nuevo. A sigue independiente desde #115."
   },
   "ownership": {
     "A": [
@@ -246,8 +263,14 @@
         "piFreeSmoke": "skipped"
       },
       "review": {
-        "state": "solicitada-no-validada",
-        "commentId": 7175214564
+        "state": "hallazgos-pendientes",
+        "commentIds": [
+          4701179615,
+          4701179608,
+          4701179598,
+          4701179590
+        ],
+        "required": "Resolver y verificar; no fusionar #130 actual."
       }
     },
     "leases": {
