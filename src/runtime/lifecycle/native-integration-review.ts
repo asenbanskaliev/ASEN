@@ -248,7 +248,7 @@ export async function nativeReviewCheckpointStatus(input:CheckpointInput){
 }
 /** Registrar antes de los jueces: reiniciar no permite degradar una doble revisión. */
 export async function markNativeDualReviewPending(input:CheckpointInput){
- const file=checkpointFile(input);
+ const file=checkpointFile(input);await preparePrivateFile(file,true);
  await withExclusiveFileLock(file,async()=>{
   const prior=await readCheckpoint(input),policyHash=await checkpointPolicy(input);
   if(prior&&prior.policyHash!==policyHash)throw Error("La política de revisión cambió");
@@ -260,7 +260,6 @@ export async function markNativeDualReviewPending(input:CheckpointInput){
    return;
   }
   if(prior?.phase==="dual-reviewed"||prior?.phase==="dual-findings")throw Error("Ya existe un dictamen doble para este candidato. Consultar los resultados o preparar un candidato corregido.");
-  await preparePrivateFile(file,true);
   await writeCheckpoint(input,{schema:"asen.native-review/v1",key:integrationKey(input.candidate,input.sessionId),policyHash,
    phase:"dual-pending",receiptSignature:receipt.signature,judges:[]});
  });
