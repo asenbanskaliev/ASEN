@@ -1,9 +1,11 @@
 import {retainNativeGitObject} from "./native-git-evidence-ref.js";
 /** Evidencia del resultado nativo, capturada antes de liberar el permiso
  * exclusivo del Writer. El recibo autenticado de AgentStore la conserva. */
-import {execFile,execFileSync} from "node:child_process";
+import {spawn,execFileSync} from "node:child_process";
 import {Worker} from "node:worker_threads";
-import {existsSync} from "node:fs";
+import {existsSync,mkdtempSync,openSync,closeSync,readSync,rmSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {captureWorkspaceReviewProjection} from "../../review/workspace-review-projection.js";
 import {validatePortableReviewPaths} from "../../review/review-tree-paths.js";
@@ -36,19 +38,70 @@ export function bindNativeRunnerModels(result:object,models:readonly string[]):v
 export function isNativePartitionWriter(request:AgentRequest):boolean{
  return request.role==="worker"&&/^unit-[a-f0-9]{40}:worker$/u.test(request.id)&&!!request.candidate&&!!request.writeSurfaces?.length;
 }
-/** Registrar los ignorados preexistentes ANTES de entregar la autoridad.
- * Los archivos ignorados nuevos no se ocultan. Un ignorado que ya ocupa el
- * ámbito exacto requiere intervención previa: no atribuir sus bytes al Writer. */
+/** Inventario NUL incremental: sin el límite de stdout de execFile. Se
+ * mantiene un presupuesto explícito de memoria y se rechaza cualquier
+ * inventario incompleto; no se silencian altas ignoradas. */
+class NativePathInventory{
+ private readonly paths:string[]=[];
+ private pending=Buffer.alloc(0);
+ private size=0;
+ add(chunk:Buffer):void{
+  this.size+=chunk.length;
+  if(this.size>128*1024*1024)throw Error("Inventario Git supera el presupuesto de 128 MiB; revisar el worktree.");
+  const data=this.pending.length?Buffer.concat([this.pending,chunk]):chunk;
+  let start=0;
+  for(let offset=data.indexOf(0,start);offset>=0;offset=data.indexOf(0,start)){
+   if(offset===start||offset-start>65536||this.paths.length>=1_000_000)throw Error("Inventario Git inválido o demasiado grande.");
+   this.paths.push(new TextDecoder("utf-8",{fatal:true}).decode(data.subarray(start,offset)));
+   start=offset+1;
+  }
+  this.pending=Buffer.from(data.subarray(start));
+  if(this.pending.length>65536)throw Error("Ruta Git supera el presupuesto.");
+ }
+ finish():readonly string[]{
+  if(this.pending.length)throw Error("Inventario Git truncado.");
+  return Object.freeze(this.paths);
+ }
+}
+const inventoryArgs=(root:string,args:readonly string[])=>["--no-replace-objects","-c","core.fsmonitor=false","-C",root,"ls-files",...args,"-z"];
+async function inventoryAsync(root:string,args:readonly string[]):Promise<readonly string[]>{
+ const inventory=new NativePathInventory();
+ return new Promise((resolve,reject)=>{
+  const child=spawn("git",inventoryArgs(root,args),{env:isolatedGitEnvironment(),stdio:["ignore","pipe","ignore"],windowsHide:true});
+  let failure:unknown;
+  const fail=(error:unknown)=>{if(failure===undefined){failure=error;child.kill();}};
+  const timer=setTimeout(()=>fail(Error("Tiempo agotado al inventariar Git.")),30000);
+  child.stdout.on("data",(chunk:Buffer)=>{if(failure===undefined)try{inventory.add(chunk);}catch(error){fail(error);}});
+  child.once("error",error=>{clearTimeout(timer);reject(error);});
+  child.once("close",code=>{clearTimeout(timer);
+   if(failure!==undefined||code!==0){reject(failure??Error("Git no completó el inventario."));return;}
+   try{resolve(inventory.finish());}catch(error){reject(error);}
+  });
+ });
+}
+function inventorySync(root:string,args:readonly string[]):readonly string[]{
+ // La captura se ejecuta en el Worker aislado; spool privado para no
+ // imponer el maxBuffer de Node al inventario de dependencias del usuario.
+ const dir=mkdtempSync(join(tmpdir(),"asen-path-inventory-")),file=join(dir,"paths");
+ let fd:number|undefined;
+ try{
+  fd=openSync(file,"wx+",0o600);
+  execFileSync("git",inventoryArgs(root,args),{env:isolatedGitEnvironment(),stdio:["ignore",fd,"ignore"],timeout:30000,windowsHide:true});
+  const inventory=new NativePathInventory(),chunk=Buffer.alloc(65536);
+  for(let position=0;;){
+   const count=readSync(fd,chunk,0,chunk.length,position);if(!count)break;
+   inventory.add(chunk.subarray(0,count));position+=count;
+  }
+  return inventory.finish();
+ }finally{if(fd!==undefined)closeSync(fd);rmSync(dir,{recursive:true,force:true});}
+}
+/** Registrar los ignorados preexistentes ANTES de entregar la autoridad. */
 export async function captureNativeWriterBaseline(request:AgentRequest):Promise<readonly string[]>{
  if(!isNativePartitionWriter(request))return Object.freeze([]);
- const raw=await new Promise<Buffer>((resolve,reject)=>execFile("git",
-  ["--no-replace-objects","-c","core.fsmonitor=false","-C",request.repository,"ls-files","--others","--ignored","--exclude-standard","-z"],
-  {env:isolatedGitEnvironment(),encoding:"buffer",timeout:10000,maxBuffer:1_000_000,windowsHide:true},
-  (error,stdout)=>error?reject(error):resolve(stdout)));
- const paths=new TextDecoder("utf-8",{fatal:true}).decode(raw).split("\0").filter(Boolean);
+ const paths=await inventoryAsync(request.repository,["--others","--ignored","--exclude-standard"]);
  if(paths.some(path=>request.writeSurfaces!.some(scope=>scope===path||path.startsWith(scope+"/")||scope.startsWith(path+"/"))))
   throw Error("El ámbito Writer contiene archivos ignorados preexistentes; revisar antes de lanzar.");
- return Object.freeze(paths);
+ return paths;
 }
 export function captureNativeWriterCompletion(request:AgentRequest,result:object,baseline:readonly string[]=[]):NativeWriterCompletion|undefined{
  if(!isNativePartitionWriter(request))return;
@@ -56,7 +109,7 @@ export function captureNativeWriterCompletion(request:AgentRequest,result:object
  const git=(...args:string[])=>execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-C",root,...args],
   {env:isolatedGitEnvironment(),timeout:10000,maxBuffer:1_000_000,windowsHide:true,stdio:["ignore","pipe","pipe"]});
  const existing=new Set(baseline);
- const untracked=new TextDecoder("utf-8",{fatal:true}).decode(git("ls-files","--others","-z")).split("\0").filter(path=>!!path&&!existing.has(path));
+ const untracked=inventorySync(root,["--others"]).filter(path=>!existing.has(path));
  const projection=captureWorkspaceReviewProjection({repositoryRoot:root,intendedUntracked:untracked},request.writeSurfaces,undefined,true);
  if(projection.baseCommit!==base||projection.unexpectedUntracked.length)return;
  const paths=new TextDecoder("utf-8",{fatal:true}).decode(git("diff-tree","-r","--name-only","--no-renames","--no-commit-id","-z",projection.baseTree,projection.candidateTree)).split("\0").filter(Boolean).sort();

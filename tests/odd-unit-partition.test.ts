@@ -156,16 +156,20 @@ test("Pi guarda las tres unidades en el diario real y no despacha la raíz en la
  const {tmpdir}=await import("node:os");
  const {join}=await import("node:path");
  const {execFileSync}=await import("node:child_process");
+ const {isolatedGitEnvironment}=await import("../src/runtime/agents/git-isolated-environment.js");
  const {SessionTodoStore}=await import("../src/runtime/lifecycle/todo-store.js");
  const {createAsenExtension}=await import("../extensions/asen.js");
  const {dispatchNextPlanTask}=await import("../src/runtime/lifecycle/plan-dispatcher.js");
  const {bindParallelSourceTodos}=await import("../src/runtime/agents/parallel-todo-bindings.js");
  const directory=await mkdtemp(join(tmpdir(),"asen-odd-partition-"));
+ // Esta prueba corre en su proceso Node de archivo; preservar el entorno de las demás pruebas.
+ const gitVariables=Object.entries(process.env).filter(([key])=>key.toUpperCase().startsWith("GIT_"));
+ for(const [key] of gitVariables)delete process.env[key];
  try{
   const root=join(directory,"repo"),home=join(directory,"home");
   await mkdir(root);await mkdir(home);
   const project=await realpath(root);
-  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:isolatedGitEnvironment()}).trim();
   git("init","-q");git("config","user.name","ASEN");git("config","user.email","test@example.invalid");git("commit","--no-gpg-sign","--allow-empty","-qm","base");
   const head=git("rev-parse","HEAD");
   const todos=await SessionTodoStore.open(join(home,"todos.json"));
@@ -196,5 +200,8 @@ test("Pi guarda las tres unidades en el diario real y no despacha la raíz en la
   if(denied.status==="blocked")assert.match(denied.reason,/supervisor padre/u);
   assert.equal(confirmations,0);
   assert.ok((await todos.list(identity)).every(row=>row.current.state==="planned"));
- }finally{await rm(directory,{recursive:true,force:true});}
+ }finally{
+  for(const [key,value] of gitVariables)if(value!==undefined)process.env[key]=value;
+  await rm(directory,{recursive:true,force:true});
+ }
 });
