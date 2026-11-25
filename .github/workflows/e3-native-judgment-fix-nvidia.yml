@@ -2,7 +2,7 @@ name: E3 jueces independientes y Fix real NVIDIA
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [labeled]
     branches:
       - integration/megatanda-b-consolidada-20261124
 
@@ -16,7 +16,9 @@ jobs:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.event.pull_request.head.ref == 'feat/megatanda-b-jueces-fix-real-20261124' &&
+      (github.event.pull_request.head.ref == 'feat/megatanda-b-jueces-fix-real-20261124' ||
+       github.event.pull_request.head.ref == 'feat/refuerzo-b-identidad-modelos-20261124') &&
+      github.event.label.name == format('asen-e3-{0}', github.event.pull_request.head.sha) &&
       github.actor == 'asenbanskaliev' &&
       github.run_attempt == 1
     concurrency:
@@ -31,27 +33,38 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - name: Confirmar marcador de ensayo único
+      - name: Confirmar autorización exacta y ensayo único
         id: marker
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           ASEN_WORKFLOW_RUN: ${{ github.run_id }}
+          ASEN_PR_NUMBER: ${{ github.event.pull_request.number }}
+          ASEN_APPROVAL_LABEL: ${{ github.event.label.name }}
         run: |
           set -euo pipefail
+          [[ "$ASEN_EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$ASEN_APPROVAL_LABEL" = "asen-e3-$ASEN_EXPECTED_SHA"
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
-          if test "$(git log -1 --format=%s)" = 'ci(asen): verificar jueces fisicos y Fix con diagnostico 20261124'; then
-            # Una ejecución anterior del mismo SHA consume el intento, incluso
-            # si se canceló antes del proveedor. No se reintenta por reapertura.
-            previous=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/workflows/e3-native-judgment-fix-nvidia.yml/runs?head_sha=$ASEN_EXPECTED_SHA&per_page=100" --jq ".workflow_runs[] | select(.id < $ASEN_WORKFLOW_RUN) | .id")
-            if test -n "$previous"; then
-              echo "approved=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            echo "approved=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "approved=false" >> "$GITHUB_OUTPUT"
-          fi
+          test "$(gh api "/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER" --jq .head.sha)" = "$ASEN_EXPECTED_SHA"
+          # La etiqueta se vincula al SHA, no a un texto de commit reutilizable.
+          # El evento y el actor propietario están fijados también en el job.
+          # Una ejecución anterior no omitida consume el intento. Una consulta
+          # incompleta, cancelada o incierta bloquea el nuevo consumo.
+          previous=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/workflows/e3-native-judgment-fix-nvidia.yml/runs?head_sha=$ASEN_EXPECTED_SHA&per_page=100" --jq ".workflow_runs[] | select(.id < $ASEN_WORKFLOW_RUN) | [.id,.status] | @tsv")
+          while IFS=$'\t' read -r run status; do
+            test -z "$run" && continue
+            test "$status" = "completed" || { echo "Intento previo incierto"; exit 1; }
+            count=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/runs/$run/jobs?per_page=100" --jq '.jobs[] | select(.name == "ensayo-real") | .conclusion' | awk '$0 != "skipped" { n++ } END { print n+0 }')
+            test "$count" = 0 || { echo "El intento anterior ya consumió la autorización"; exit 1; }
+          done <<< "$previous"
+          # No usar el verde de otro commit. Los ensayos con credenciales
+          # se admiten solo tras CI y Release Gate de esta revisión.
+          runs=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/runs?head_sha=$ASEN_EXPECTED_SHA&event=pull_request&per_page=100" --jq '.workflow_runs[] | [.name,.status,.conclusion] | @tsv')
+          for required in 'CI' 'Release Gate'; do
+            printf '%s\n' "$runs" | awk -F '\t' -v name="$required" '$1==name && $2=="completed" && $3=="success" { ok=1 } END { exit !ok }'
+          done
+          echo "approved=true" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         if: steps.marker.outputs.approved == 'true'
         with:
@@ -80,6 +93,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh api "/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER" --jq .head.sha)" = "$ASEN_EXPECTED_SHA"
+          test "$(gh api "/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER" --jq '.labels[].name' | grep -Fx "asen-e3-$ASEN_EXPECTED_SHA")" = "asen-e3-$ASEN_EXPECTED_SHA"
           unset GH_TOKEN
           test -n "$NVIDIA_API_KEY"
           mkdir -p "$PI_CODING_AGENT_DIR"
