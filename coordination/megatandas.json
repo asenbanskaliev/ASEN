@@ -17,26 +17,42 @@
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras"
     },
     "B": {
-      "state": "disponible",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-253b0e4dfcbd-B",
+        "package": "B1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia"
     },
     "C": {
-      "state": "disponible",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-253b0e4dfcbd-C",
+        "package": "C1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final"
     },
     "D": {
-      "state": "disponible",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-253b0e4dfcbd-D",
+        "package": "D1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo"
     },
     "E": {
-      "state": "disponible",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-253b0e4dfcbd-E",
+        "package": "E1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva"
     }
