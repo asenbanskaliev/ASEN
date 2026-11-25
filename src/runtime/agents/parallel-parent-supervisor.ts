@@ -191,12 +191,10 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    blockers.push(label+"Child Worker was already attempted; no duplicate or automatic resume");continue;
   }
   const byId=new Map(todos.map(row=>[row.taskId,row]));
-  const ready=todos.filter(row=>row.requestId?.startsWith("asen-plan:")&&
+  const ready=todos.filter(row=>row.requestId===source.requestId&&
    row.current.state==="planned"&&
    (row.dependsOn??[]).every(id=>["succeeded","done"].includes(byId.get(id)?.current.state??"")));
-  ready.sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-
-   (b.plan?.priority??Number.MAX_SAFE_INTEGER));
-  const next=ready[0],candidate=next?.plan?.candidate;
+  const next=ready.length===1?ready[0]:undefined,candidate=next?.plan?.candidate;
   if(link.nativeSessionFile&&next)try{
    const basis=JSON.parse(next.plan?.writerAuthorizationBasis??"null");
    if(typeof basis?.instruction!=="string")throw new Error("Missing delegated instruction");

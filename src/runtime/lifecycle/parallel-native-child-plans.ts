@@ -10,6 +10,7 @@ import {inspectParallelWorktreeChanges} from "../agents/parallel-worktree-change
 import {createNativeChildPlanningSession,assertNativeChildPlanningSession} from "../agents/pi-native-child-session.js";
 import {materializePartitionRoot,parsePartitionUnitBasis} from "./odd-unit-plan.js";
 import {resolveRuntimeRoute,type ProfileLayer} from "./profiles.js";
+import {inspectPlannedWorkerModelRoute} from "../agents/parallel-worker-model-route.js";
 import type {SessionTodoStore,TodoContext,TodoPlanDraft} from "./todo-store.js";
 
 type PreparedChild={sourceTodoId:string;childTodoId:string;sessionId:string;projectId:string;sessionFile:string};
@@ -53,8 +54,12 @@ export async function prepareNativePartitionChildren(input:{
    const git=inspectParallelWorktreeChanges({sourceRoot:source.projectId,worktreeRoot:record.worktreeRoot,
     baseRevision:batch.sourceHead,writeSurfaces:record.writeSurfaces});
    if(git.status!=="clean"||!git.sourceVerified||!git.headMatchesBase)throw new Error("El worktree hijo no está intacto.");
-   return {record,row,basis:row.plan.writerAuthorizationBasis,instruction:parsed.instruction};
+   return {record,row,basis:row.plan.writerAuthorizationBasis,instruction:parsed.instruction,parentFacts:parsed.parentFacts,unitId:parsed.unit.id};
   });
+  if(selected.length!==2||selected[0]!.unitId===selected[1]!.unitId||
+   JSON.stringify(selected[0]!.parentFacts)!==JSON.stringify(selected[1]!.parentFacts)||
+   JSON.stringify(JSON.parse(selected[0]!.basis).partitionOrigin)!==JSON.stringify(JSON.parse(selected[1]!.basis).partitionOrigin))
+   throw Error("Las dos raíces deben pertenecer a la misma partición ODD.");
   input.validateParent();return {batch,selected};
  };
  let initial:Awaited<ReturnType<typeof inspect>>;
@@ -68,7 +73,7 @@ export async function prepareNativePartitionChildren(input:{
  let parentRoute:ReturnType<typeof resolveRuntimeRoute>["choice"];
  try{parentRoute=resolveRuntimeRoute(await input.childProfiles(source),"worker").choice;}catch{return result("blocked","No se pudo comprobar el modelo Writer configurado.");}
  const routes=initial.selected.map(item=>({model:item.row.plan!.model??parentRoute?.model,thinking:item.row.plan!.thinking??parentRoute?.thinking}));
- if(routes.some(route=>!route.model||!/^[-a-zA-Z0-9._]+\/.+$/u.test(route.model)))
+ if(routes.some(route=>inspectPlannedWorkerModelRoute(route.model).status!=="pinned"))
   return result("blocked","Configurar un modelo Writer explícito antes de preparar las sesiones; después se puede reanudar el mismo lote.");
  const summary=["Crear dos sesiones nativas de planificación Pi (sin llamar a modelos ni permisos Writer).",
   "Lote: "+batchId,"SHA: "+initial.batch.sourceHead,
