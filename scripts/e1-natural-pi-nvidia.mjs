@@ -50,45 +50,61 @@ async function runCase(c){
   "pi.on('tool_call',event=>event.toolName==='asen_plan_request'?undefined:{block:true,reason:'Ensayo E1: herramienta no autorizada'});\n}\n");
  const env={HOME:home,USERPROFILE:home,PI_CODING_AGENT_DIR:piDir,NVIDIA_API_KEY:process.env.NVIDIA_API_KEY,
   ASEN_NO_SKILL_REGISTRY:"1",TERM:"dumb",...gitEnv};
- const child=spawn("pi",["--mode","rpc","--no-extensions","--extension",probe,"--no-skills","--no-builtin-tools","--provider","nvidia","--model",model],{cwd:project,env,stdio:["pipe","pipe","pipe"]});
+ const child=spawn("pi",["--mode","rpc","--no-extensions","--extension",probe,"--no-skills","--no-builtin-tools","--model",model],{cwd:project,env,stdio:["pipe","pipe","pipe"]});
  const summary={id:c.id,mode:c.mode,status:"BLOCKED",modelSelected:false,responseModelDeclared:false,
-  parentTurns:0,toolCalls:0,planCalls:0,childCalls:0,writeAuthority:false,projectClean:false,durationMs:0,stage:"startup",identityEvidence:"unknown"};
+  parentTurns:0,toolCalls:0,planCalls:0,childCalls:0,writeAuthority:false,projectClean:false,durationMs:0,stage:"startup",identityEvidence:"unknown",diagnostics:{extensionLoaded:false,modelPreflight:false,promptAck:false,agentStart:false,agentEnd:false,settled:false,exitCode:null,failure:"none",stderrCategory:"none"}};
  const started=performance.now();let bytes=0,buffer="",failure=false,settled=false,promptSent=false,ack=false;
  let finalText="";const decoder=new StringDecoder("utf8");
  const send=value=>child.stdin.write(JSON.stringify(value)+"\n");
- const stop=()=>{failure=true;child.kill();};
- const timeout=setTimeout(stop,150000);
+ const diagnostic=summary.diagnostics;
+ const stop=(reason="transport")=>{if(failure)return;failure=true;diagnostic.failure=reason;child.kill();};
+ const timeout=setTimeout(()=>stop("timeout"),150000);
  const handle=event=>{
+  if(event.type==="response"&&event.id==="commands"){
+   if(event.success!==true||!Array.isArray(event.data?.commands)||event.data.commands.filter(command=>command.name==="asen-profiles"&&command.source==="extension").length!==1)return stop("extension-not-loaded");
+   diagnostic.extensionLoaded=true;summary.stage="model-preflight";send({type:"get_state",id:"state"});
+  }
   if(event.type==="response"&&event.id==="state"){
-   if(!event.success||promptSent)throw Error("Host no disponible");
+   if(!event.success||promptSent||!diagnostic.extensionLoaded)return stop("state-preflight");
+   const selected=event.data?.model;
+   if(selected?.provider!=="nvidia"||typeof selected.id!=="string"||canonical(selected.id)!==canonical(model))return stop("model-preflight");
+   diagnostic.modelPreflight=true;
    summary.stage="prompt";promptSent=true;send({type:"prompt",id:"peticion",message:c.prompt});
   }
-  if(event.type==="response"&&event.id==="peticion"){if(!event.success)throw Error("Petición rechazada");ack=true;}
+  if(event.type==="response"&&event.id==="peticion"){if(!event.success)return stop("prompt-rejected");ack=true;diagnostic.promptAck=true;}
+  if(event.type==="agent_start"&&promptSent)diagnostic.agentStart=true;
+  if(event.type==="agent_end"&&promptSent){diagnostic.agentEnd=true;if(event.willRetry===true)return stop("retry-forbidden");}
+  if(event.type==="extension_error")return stop("extension-error");
   if(event.type==="tool_execution_start"){
    summary.toolCalls++;
    if(event.toolName!=="asen_plan_request"||summary.toolCalls>1)throw Error("Herramienta inesperada o repetida");
   }
   if(event.type==="message_end"&&event.message?.role==="assistant"){
    summary.parentTurns++;
-   if(summary.parentTurns>3||event.message.stopReason==="error"||!inspectModel(event.message))throw Error("Turno del proveedor no verificado");
+   if(summary.parentTurns>3)return stop("turn-limit");
+   if(event.message.stopReason==="error")return stop("provider-error");
+   if(!inspectModel(event.message))return stop("assistant-identity");
    summary.modelSelected=true;summary.responseModelDeclared||=typeof event.message.responseModel==="string";
    summary.identityEvidence=summary.responseModelDeclared?"provider-response-match":"requested-descriptor-only";
    finalText=(event.message.content??[]).filter(p=>p.type==="text").map(p=>p.text).join("\n").trim();
   }
   if(event.type==="extension_ui_request"&&["confirm","select","input","editor"].includes(event.method))throw Error("Diálogo no autorizado en E1");
-  if(event.type==="agent_settled"){settled=true;child.stdin.end();}
+  if(event.type==="agent_settled"&&promptSent){if(event.aborted===true||!ack||!diagnostic.agentEnd)return stop("incomplete-settlement");settled=true;diagnostic.settled=true;child.stdin.end();}
  };
  child.stdout.on("data",chunk=>{
   try{bytes+=chunk.length;if(bytes>2_000_000)throw Error("Salida excesiva");
    buffer+=decoder.write(chunk);let index;while((index=buffer.indexOf("\n"))>=0){const line=buffer.slice(0,index).trim();buffer=buffer.slice(index+1);if(line)handle(JSON.parse(line));}
-  }catch{stop();}
+  }catch{stop("invalid-rpc");}
  });
- child.stderr.resume();child.stdin.on("error",stop);
+ let stderr="";child.stderr.on("data",chunk=>{stderr=(stderr+String(chunk)).slice(-12000);});child.stdin.on("error",()=>stop("stdin"));
  const closed=new Promise(resolve=>{child.once("error",()=>{failure=true;resolve({code:null,signal:"error"});});child.once("close",(code,signal)=>resolve({code,signal}));});
- send({type:"get_state",id:"state"});
+ summary.stage="extension-preflight";send({type:"get_commands",id:"commands"});
  const end=await closed;clearTimeout(timeout);
+ diagnostic.exitCode=end.code;
+ diagnostic.stderrCategory=!stderr.trim()?"none":/unknown option|unrecognized option|unknown flag/i.test(stderr)?"cli-option":/cannot find module|module not found|ERR_MODULE_NOT_FOUND/i.test(stderr)?"module-load":/extension.*(?:error|failed)|failed.*extension/i.test(stderr)?"extension-load":/no models?|model.*not found|unknown model/i.test(stderr)?"model-catalog":/api key|unauthorized|authentication/i.test(stderr)?"authentication":"other";
+ if(!settled&&diagnostic.failure==="none")diagnostic.failure="premature-exit";
  try{
-  summary.stage="settlement";assert.ok(!failure&&settled&&promptSent&&ack&&end.code===0&&end.signal===null);
+  assert.ok(!failure&&settled&&promptSent&&ack&&end.code===0&&end.signal===null);summary.stage="settlement";
   assert.ok(summary.modelSelected&&finalText);
   let plans=[];try{plans=readFileSync(record,"utf8").trim().split("\n").filter(Boolean).map(JSON.parse);}catch(error){if(error.code!=="ENOENT")throw error;}
   let calls="";try{calls=readFileSync(runnerCalls,"utf8");}catch(error){if(error.code!=="ENOENT")throw error;}
