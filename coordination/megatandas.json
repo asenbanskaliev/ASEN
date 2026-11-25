@@ -16,8 +16,19 @@
       "blocker": null
     },
     "B": {
-      "state": "correccion-lista",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-g2-perfil-BE-4701179615-B",
+        "generation": 2,
+        "package": "B1",
+        "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+        "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615",
+        "phase": "escritura",
+        "joint": [
+          "B",
+          "E"
+        ]
+      },
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 128,
@@ -39,19 +50,19 @@
       ]
     },
     "C": {
-      "state": "espera-ci",
+      "state": "listo-revision",
       "lease": null,
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 132,
       "sha": "23bc4ce17c5716df38dde3119e7653ed55125aee",
-      "next": "Consultar CI exacta y entregar a E para candidato conjunto.",
+      "next": "E: incluir corrección en candidato conjunto y validar CI completa.",
       "files": [
         "src/runtime/lifecycle/native-integration-review.ts",
         "tests/native-partition-flow.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Regresión de cambio de política publicada; CI del nuevo SHA pendiente.",
+      "tests": "CI rápida 45709037207 y arquitectura 45709037157 correctas; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
       "candidatePR": 130,
@@ -87,8 +98,19 @@
       "branch": "feat/asen-equipo-D-D1-g2-c0d1e190"
     },
     "E": {
-      "state": "correccion-lista",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-g2-perfil-BE-4701179615-E",
+        "generation": 2,
+        "package": "E1",
+        "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+        "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615",
+        "phase": "escritura",
+        "joint": [
+          "B",
+          "E"
+        ]
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -376,5 +398,19 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {}
+  "temporaryOwnership": {},
+  "jointCorrection": {
+    "id": "manual-g2-perfil-BE-4701179615",
+    "teams": [
+      "B",
+      "E"
+    ],
+    "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+    "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615",
+    "findings": [
+      4701179615,
+      4701179590
+    ],
+    "scope": "B: esquema Todo, resolución y pruebas. E: extensión. Publicación conjunta para mantener compilación y contrato."
+  }
 }
