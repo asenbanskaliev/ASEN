@@ -33,6 +33,12 @@ if(!process.env.NVIDIA_API_KEY||!reportFile||!expected||!(/^[a-f0-9]{40}$/u.test
  execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8",env:isolatedGitEnvironment()}).trim()!==expected||
  execFileSync("git",["-c","core.fsmonitor=false","status","--porcelain=v1","--untracked-files=all"],{cwd:root,encoding:"utf8",env:isolatedGitEnvironment()}).length!==0)
  throw Error("E2A integral: SHA, proveedor o recibo no autorizado");
+const piDirectory=process.env.PI_CODING_AGENT_DIR;
+if(!piDirectory||resolve(piDirectory)!==piDirectory)throw Error("E2A requiere un directorio Pi absoluto y preparado");
+const retrySettings=JSON.parse(readFileSync(join(piDirectory,"settings.json"),"utf8"));
+if(retrySettings?.retry?.enabled!==false||retrySettings?.retry?.maxRetries!==0||retrySettings?.retry?.provider?.maxRetries!==0)
+ throw Error("E2A requiere desactivar los reintentos Pi y del proveedor antes de inferir");
+const phaseBudgetMs=110000;
 const base=realpathSync(mkdtempSync(join(tmpdir(),"asen-native-partition-")));
 const project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
 const rawGit=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args],{
@@ -77,7 +83,7 @@ try{
   const pi=new PiProcessRunner({command:"pi",policyRoot:root,providerCredential:"NVIDIA_API_KEY",
    requireChildModelBeforePrompt:true,oneShotWritePath:path,exactWriteReceipt:{path,fileSha256:hash(value)},
    attributionFile:join(privateDir,request.id+".json").replace(/:worker\.json$/u,"-worker.json"),
-   timeoutMs:110000,maxOutputBytes:60000,maxStreamBytes:240000,
+   timeoutMs:phaseBudgetMs,maxOutputBytes:60000,maxStreamBytes:240000,
    onProcessStart:pid=>{o.pid=pid;o.start=performance.now();},
    onProcessClose:()=>{o.end=performance.now();},
    onToolExecution:event=>{
@@ -138,17 +144,20 @@ try{
  assert.equal(report.writeBatchConfirmations,1);
  assert.equal(dialogs.length,3);
  assert.equal(details.supervisedLaunch.status,"started");
- const deadline=Date.now()+200000;
+ const deadline=Date.now()+3*phaseBudgetMs+15000;
+ let settled=false;
  report.stage="settlement";
  while(Date.now()<deadline){
   const records=(await Promise.all(childOwners.map(owner=>agents.list(owner)))).flat();
   if(terminalWork.length===2&&records.length===2&&records.every(record=>["completed","failed","interrupted","cancelled"].includes(record.state))){
    await Promise.all(terminalWork);
    assert.equal(terminalErrors.length,0);
+   settled=true;
    break;
   }
   await new Promise(resolve=>setTimeout(resolve,200));
  }
+ assert.equal(settled,true,"No se recibieron ambos terminales nativos dentro del presupuesto");
  for(const child of childOwners){
   const records=await agents.list(child),record=records[0],o=record?obs.get(record.id):undefined;
   const row=(await todos.list(child))[0],path=row?.plan?.writeSurfaces?.[0],value=path?values[path]:undefined;
