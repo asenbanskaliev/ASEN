@@ -294,6 +294,21 @@ export function deriveOddPartitionUnitFacts(parent:OddDerivedFacts,unitId:string
  return facts;
 }
 
+/** Replanificación de una unidad ya integrada, sin inventar una revisión doble.
+ * Solo reconstruye hechos; el host debe comprobar las raíces y el permiso nuevo. */
+export function deriveOddContinuationFacts(source:OddDerivedFacts,taskIdentity:string):OddDerivedFacts{
+ if(!partitionUnitFacts.has(source)||!/^continuation-[a-f0-9]{40}$/u.test(taskIdentity))
+  throw Error("La sucesora requiere hechos genuinos de unidad ODD");
+ const facts=deriveOddFacts({
+  taskIdentity,repositoryIdentity:source.repositoryIdentity,intent:source.intent,
+  scope:source.scope,writes:source.writes,riskOperations:source.riskOperations,namedRisks:source.namedRisks,
+  session:{...source.session,continuation:true},testing:source.testing,review:source.review,
+  unresolvedDecisions:source.unresolvedDecisions,
+ });
+ partitionUnitFacts.add(facts);
+ return facts;
+}
+
 /** Consumes genuine facts on the first planning attempt and issues no execution authority. */
 export function planOddRoute(facts: OddDerivedFacts): OddRouteDecision {
   if (typeof facts !== "object" || facts === null || !issuedFacts.has(facts)) throw new Error("ODD facts were not issued here");

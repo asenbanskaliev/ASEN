@@ -596,7 +596,7 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
@@ -613,7 +613,7 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
   if(stateRequired&&!stateReady){emit({type:"response",id:request.id,command:"prompt",success:false});emit({type:"agent_end"});continue;}
   turn++;
   const reply={type:"response",id:request.id,command:"prompt",success:turn===1||!rejectContinuation};
-  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"respuesta de prueba completada"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
+  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",...${JSON.stringify(options.assistantIdentity??{})},content:[{type:"text",text:"respuesta de prueba completada"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
   else if(coalesceSecondTurn){
    const records=[reply];
    if(duplicateContinuationResponse)records.push({...reply});
@@ -853,4 +853,22 @@ test("T06 conserva eventos sanitizados aunque Pi reemplace la salida al fallar",
  await runner(p,{noTools:false,timeoutMs:5_000,
   onNativeReviewEvent:event=>outside.push(event)}).run({...request,id:"t06-sin-restriccion-de-lectura"});
  assert.deepEqual(outside,[],"No se anuncia un revisor sin modo noTools");
+});
+
+test("P02: Pi diferencia respuesta compatible, desconocida e incompatible en cualquier rol",async t=>{
+ const {readPiChildIdentityEvidence}=await import("../src/review/model-identity.js");
+ for(const item of [
+  {assistantIdentity:{provider:"provider",model:"primary",responseModel:"primary"},status:"declared-match",ok:true},
+  {assistantIdentity:{},status:"unknown",ok:true},
+  {assistantIdentity:{provider:"provider",model:"distinto"},status:"incompatible",ok:false}
+ ] as const){
+  const {d,p}=await fallbackRpcFixture({initialSuccess:true,assistantIdentity:item.assistantIdentity});
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const child=runner(p,{timeoutMs:10_000,requireChildModelBeforePrompt:true,noTools:true});
+  child.subscribeChildSelection(()=>{});
+  const result=await child.run({id:"p02-identidad",role:"explorer",prompt:"Prueba simulada",repository:d,model:"provider/primary"});
+  assert.equal(result.ok,item.ok,result.output);
+  assert.equal(readPiChildIdentityEvidence(result).at(-1)?.status,item.status);
+  assert.equal(readPiChildIdentityEvidence({...result}).length,0);
+ }
 });
