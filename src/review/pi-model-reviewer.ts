@@ -1,3 +1,5 @@
+import {reviewProvider,reviewModelId,reviewModelIdentityKey,inspectReviewIdentity,type PiReviewIdentity} from "./model-identity.js";
+export {reviewModelIdentityKey,type PiReviewIdentity} from "./model-identity.js";
 import {isReviewLens,reviewLensSystemInstruction} from "./review-lens-contracts.js";
 import type {ReviewLens} from "./review-risk.js";
 export type PiReviewerModel=Readonly<{id:string;provider:string}>;
@@ -89,46 +91,6 @@ function textContent(message:unknown):string{
  return chunks.join("");
 }
 const isVirtualReviewModel=(model:PiReviewerModel):boolean=>"api" in model&&(model.api==="pi-virtual"||model.api==="virtual");
-const reviewProvider=/^[a-z0-9][a-z0-9._-]{0,63}$/u;
-const reviewModelId=/^[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u;
-/** Equivalencia conservadora respaldada por los recibos NVIDIA del ensayo E3.
- * No se equiparan familias, versiones, proveedores ni alias desconocidos. */
-export function reviewModelIdentityKey(model:PiReviewerModel):string{
- let id=model.id;
- if(model.provider==="nvidia"){
-  while(id.startsWith("nvidia/")&&id.length>7)id=id.slice(7);
- }
- return JSON.stringify([model.provider,id]);
-}
-export type PiReviewIdentity=Readonly<{
- requested:string;selected:string;declaredModel?:string;responseModel?:string;
- status:"declared-match"|"unknown";
-}>;
-function inspectReviewIdentity(requested:PiReviewerModel,selected:PiReviewerModel,message:unknown):PiReviewIdentity{
- if(typeof message!=="object"||message===null||isProxy(message))throw Error("Independent review message is invalid");
- const read=(key:string):string|undefined=>{
-  const d=Object.getOwnPropertyDescriptor(message,key);
-  if(!d)return undefined;
-  if(!("value" in d))throw Error("Independent reviewer identity is invalid");
-  if(d.value===undefined)return undefined;
-  if(typeof d.value!=="string"||!reviewModelId.test(d.value)||d.value.split("/").some((part:string)=>!part||part==="."||part===".."))
-   throw Error("Independent reviewer identity is invalid");
-  return d.value;
- };
- const provider=read("provider"),model=read("model"),responseModel=read("responseModel");
- const expected=reviewModelIdentityKey(selected);
- const matches=(id:string,isResponse:boolean)=>{
-  const raw=isResponse&&selected.provider==="nvidia"&&id.startsWith("private/")?id.slice(8):id;
-  return reviewModelIdentityKey({provider:selected.provider,id:raw})===expected||
-   raw===selected.provider+"/"+selected.id;
- };
- if(provider!==undefined&&provider!==selected.provider||model!==undefined&&!matches(model,false)||
-  responseModel!==undefined&&!matches(responseModel,true))throw Error("Independent reviewer model identity mismatch");
- return Object.freeze({requested:requested.provider+"/"+requested.id,selected:selected.provider+"/"+selected.id,
-  ...(model!==undefined?{declaredModel:model}:{}),...(responseModel!==undefined?{responseModel}:{}),
-  status:provider!==undefined&&model!==undefined?"declared-match":"unknown"});
-}
-
 /** El catálogo Pi puede contener entradas malformadas o duplicadas. Ninguna
  * ruta ni control de interfaz debe aceptar identidades con controles o vacíos. */
 export function availableIndependentPiReviewers(registry:PiReviewRegistry,author:PiReviewerModel|undefined):readonly PiReviewerModel[]{

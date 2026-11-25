@@ -234,7 +234,14 @@ const terminalErrors:unknown[]=[];
    await writeFile(join(project,"a.txt"),"edición ajena");
    await assert.rejects(()=>acceptNativeIntegration({...proof,validate:async()=>{},confirm:async()=>true}),/limpio/u);
    await writeFile(join(project,"a.txt"),"resultado");
-   const accepted=await acceptNativeIntegration({...jointProof,validate:async()=>{},confirm:async()=>true});
+   // Reconstruir desde los diarios: ni el candidato serializado ni el registro
+   // Git restauran una aprobación anterior. Revisión y consentimiento nuevos.
+   const rebuilt=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
+   assert.notEqual(rebuilt,candidate);assert.equal(rebuilt.commit,candidate.commit);
+   await assert.rejects(()=>verifyNativeIntegrationAcceptance({...jointProof,report:{...joint.report}}),/no fue emitida/u);
+   const renewed=await reviewNativePartitionWithTests({...proportional,candidate:rebuilt});
+   if(!("report" in renewed)||!renewed.report)assert.fail("Falta nueva revisión");
+   const accepted=await acceptNativeIntegration({...jointProof,candidate:rebuilt,report:renewed.report,validate:async()=>{},confirm:async()=>true});
    assert.ok(accepted);assert.equal(git("rev-parse","HEAD"),candidate.commit);
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("show",candidate.commit+":sin-cambios.txt"),"texto sin cambios\nsegunda línea");

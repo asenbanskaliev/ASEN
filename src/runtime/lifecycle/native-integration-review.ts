@@ -2,7 +2,7 @@
  * Writer ni confundir el informe de modelos con pruebas o aceptación. */
 import {tmpdir} from "node:os";
 import {execFileSync} from "node:child_process";
-import {mkdtempSync,rmSync,realpathSync,lstatSync,openSync,closeSync,readSync,writeFileSync,fsyncSync,constants} from "node:fs";
+import {mkdtempSync,rmSync,realpathSync,lstatSync,fstatSync,openSync,closeSync,readSync,writeFileSync,fsyncSync,constants} from "node:fs";
 import {join} from "node:path";
 import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import {readFrozenIntegrationReviewEvidence} from "../../review/workspace-review-session.js";
@@ -228,9 +228,12 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
   if(!first.isFile()||first.isSymbolicLink()||first.size>4096)throw Error("Registro de integración inseguro");
   const fd=openSync(marker,process.platform==="win32"?constants.O_RDONLY:constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
   try{
+   const same=(value:ReturnType<typeof fstatSync>)=>value.isFile()&&value.dev===first.dev&&value.ino===first.ino&&
+    value.size===first.size&&value.mtimeMs===first.mtimeMs&&value.ctimeMs===first.ctimeMs;
+   if(!same(fstatSync(fd)))throw Error("Registro de integración cambiado");
    const bytes=Buffer.alloc(4097),size=readSync(fd,bytes,0,bytes.length,0);
    const last=lstatSync(marker);
-   if(size!==first.size||last.dev!==first.dev||last.ino!==first.ino||last.isSymbolicLink())throw Error("Registro de integración cambiado");
+   if(size!==first.size||!same(fstatSync(fd))||!same(last)||last.isSymbolicLink())throw Error("Registro de integración cambiado");
    return new TextDecoder("utf-8",{fatal:true}).decode(bytes.subarray(0,size));
   }finally{closeSync(fd);}
  };
@@ -259,7 +262,7 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
    !git(["diff","--name-only","--no-ext-diff","--no-textconv"]).trim()&&
    !git(["ls-files","--others","--exclude-standard","-z"]).length;
   if(dirty&&!prepared)throw new Error("La integración requiere el proyecto original limpio o una preparación exacta registrada.");
-  return {branch,head:current,prepared};
+  return {branch,head:current,prepared,pending:pending??null};
  };
  await input.validate();const evidence=await verifyNativeIntegrationAcceptance(input),initial=inspect();
  if(await input.confirm(["Integrar localmente el candidato verificado "+candidate.commit,
@@ -298,6 +301,8 @@ export async function acceptNativeIntegration(input:Parameters<typeof verifyNati
  const final=inspect();
  if(final.branch!==initial.branch||final.head!==candidate.commit||git(["rev-parse","HEAD^{tree}"]).trim()!==candidate.tree)
   throw new Error("Integración incierta; no activar sucesoras.");
+ // No borrar un registro ajeno; la revisión y aprobación actuales son
+ // imprescindibles también si se reabre el proceso tras el avance de Git.
  if(readMarker()===markerText(final.branch))rmSync(marker);
  const accepted=Object.freeze({status:"integrated" as const,batchId:candidate.batchId,commit:candidate.commit,tree:candidate.tree,
   sessionId:input.sessionId,repository:candidate.repository,tests:evidence.tests,remotePush:false as const,writerAuthority:false as const});
