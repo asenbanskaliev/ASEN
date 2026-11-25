@@ -1,5 +1,4 @@
 import {AgentProjectAccess} from "./agent-project-access.js";
-import {execFileSync} from "node:child_process";
 import {realpath} from "node:fs/promises";
 import {realpathSync} from "node:fs";
 import {isAbsolute,resolve} from "node:path";
@@ -13,7 +12,8 @@ import type {TaskAgentLinkStore} from "../runtime/agents/task-agent-link-store.j
 import type {SessionTodoStore,TodoPlanMetadata} from "../runtime/lifecycle/todo-store.js";
 import {runtimeRoutingMetadata,type RouteChoice,type ProfileLayer} from "../runtime/lifecycle/profiles.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
-import {dispatchNextPlanTask} from "../runtime/lifecycle/plan-dispatcher.js";
+import {currentRevision,dispatchNextPlanTask} from "../runtime/lifecycle/plan-dispatcher.js";
+import {reviewModelIdentityKey,splitPiModelIdentity} from "../review/model-identity.js";
 import {inspectInterruptedWrite} from "../runtime/lifecycle/interrupted-write-inspection.js";
 import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 import {continueInterruptedExplorer} from "./interrupted-explorer-continuation.js";
@@ -34,7 +34,7 @@ function assertCurrentReadOnlyCandidate(plan:TodoPlanMetadata,projectId:string):
  const expected=plan.candidateRevision;
  if(expected===undefined)return;
  let current:string;
- try{current=execFileSync("git",["rev-parse","HEAD"],{cwd:projectId,encoding:"utf8",stdio:["ignore","pipe","ignore"],timeout:2000,windowsHide:true}).trim();}
+ try{current=currentRevision(projectId);}
  catch{throw new Error("Planned read-only candidate is unavailable; rebuild the plan before dispatch");}
  if(current!==expected)throw new Error("Planned read-only candidate changed; rebuild the plan before dispatch");
 }
@@ -87,10 +87,16 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    // Sin modelo explícito de perfil, no se utiliza el modelo del padre por accidente.
    // El precio del modelo configurado no concede derechos adicionales.
    const reference=routeSource!=="default"?resolved.model:undefined;
-   const sep=typeof reference==="string"?reference.indexOf("/"):-1;
-   const model=sep>0&&sep<reference!.length-1?
-    context?.modelRegistry?.find?.(reference!.slice(0,sep),reference!.slice(sep+1)):undefined;
-   if(!model||`${model.provider}/${model.id}`!==reference)
+   const requestedIdentity=splitPiModelIdentity(reference);
+   const registry=context?.modelRegistry;
+   // El catálogo Pi de NVIDIA puede incluir el prefijo del proveedor dentro del ID.
+   // Aceptar solo equivalencia canónica conocida y un descriptor inequívoco.
+   const found=requestedIdentity?registry?.find?.(requestedIdentity.provider,requestedIdentity.id):undefined;
+   const candidates=found?[found]:requestedIdentity?.provider==="nvidia"?
+    [registry?.find?.("nvidia","nvidia/"+requestedIdentity.id)].filter(Boolean):[];
+   const matching=candidates.filter(model=>model&&typeof model.provider==="string"&&typeof model.id==="string"&&requestedIdentity&&
+    reviewModelIdentityKey({provider:model.provider,id:model.id})===reviewModelIdentityKey(requestedIdentity));
+   if(matching.length!==1)
     throw new Error("Budget Explorer requires the exact configured Explorer model in the current Pi catalog; no agent was launched");
    if(prompt.length>2048)throw new Error("Budget Explorer instruction exceeds the read-only handoff limit");
    resolved={...resolved,model:reference!};

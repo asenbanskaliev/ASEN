@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash,randomUUID} from "node:crypto";
 import {syncBuiltinESMExports} from "node:module";
-import {lstat,link,mkdir,open,readFile,readdir,readlink,rename,symlink,utimes,writeFile} from "node:fs/promises";
+import {lstat,link,mkdir,mkdtemp,open,readFile,readdir,readlink,realpath,rename,rm,symlink,utimes,writeFile} from "node:fs/promises";
+import {tmpdir} from "node:os";
 // Filesystem mutation in this suite is confined to fresh owned u9v fixtures.
 import path from "node:path";
 import {performance} from "node:perf_hooks";
@@ -16,10 +17,14 @@ const sha=(bytes:string|Buffer)=>createHash("sha256").update(bytes).digest("hex"
 const described=(sourcePath:string,bytes:string|Buffer,destinationPath=sourcePath)=>({sourcePath,destinationPath,size:Buffer.byteLength(bytes),sha256:sha(bytes)});
 const manifest=(files:unknown[])=>({schema:"asen.managed-acquisition/v1",version:"1.2.3",files});
 
+// Cada proceso de pruebas posee su directorio. Ninguna limpieza de .cache
+// de otro caso o fragmento de CI puede eliminar estas pruebas en ejecución.
+const fixtureDirectory=await realpath(await mkdtemp(path.join(tmpdir(),"asen-u9v-")));
+test.after(()=>rm(fixtureDirectory,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
 async function fixture(files:Record<string,string|Buffer>={"package/cli.js":"hello"}){
- const root=path.join(process.cwd(),".cache",`u9v-${randomUUID()}`);
- const relative=path.relative(process.cwd(),root);
- assert.ok(relative.startsWith(`.cache${path.sep}u9v-`)&&!relative.includes(".."));
+ const root=path.join(fixtureDirectory,`u9v-${randomUUID()}`);
+ const relative=path.relative(fixtureDirectory,root);
+ assert.ok(relative.startsWith("u9v-")&&!relative.includes("..")&&!relative.includes(path.sep));
  await mkdir(root,{recursive:false});
  for(const [name,bytes] of Object.entries(files)){
   const target=path.join(root,...name.split("/"));
