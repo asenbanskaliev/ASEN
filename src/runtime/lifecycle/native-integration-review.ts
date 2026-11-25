@@ -15,7 +15,7 @@ import {join} from "node:path";
 import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import {readFrozenIntegrationReviewEvidence} from "../../review/workspace-review-session.js";
 import {runJudgmentDay,isIssuedJudgmentDayReport,type JudgmentDayReport} from "../../review/judgment-day.js";
-import {reviewModelIdentityKey,availableIndependentPiReviewers,type PiReviewRegistry,type PiReviewerModel} from "../../review/pi-model-reviewer.js";
+import {reviewModelIdentityKey,availableIndependentPiReviewers,isPiReviewVerdictGenuine,type PiReviewVerdict,type PiReviewRegistry,type PiReviewerModel} from "../../review/pi-model-reviewer.js";
 import {proposeJudgmentFixHandoff} from "../../review/odd-agent-review-flow.js";
 import type {JudgmentFixProposalJournal} from "../../review/judgment-fix-proposal-journal.js";
 import type {RouteChoice} from "./profiles.js";
@@ -32,8 +32,11 @@ export async function reviewNativeIntegratedCandidate(input:{
  judgeA:RouteChoice|undefined;judgeB:RouteChoice|undefined;fixProfile?:RouteChoice;
  fixJournal:JudgmentFixProposalJournal;requirements:string;validate:()=>Promise<void>;
  confirm:(summary:string)=>Promise<boolean>;signal?:AbortSignal;beforeModelUse?:()=>Promise<void>;
+ progressCheckpoint?:Readonly<{input:CheckpointInput;signature:string}>;
 }){
  const {candidate,registry,sessionId}=input;
+ const progress=input.progressCheckpoint;
+ if(progress&&(progress.input.candidate!==candidate||progress.input.sessionId!==sessionId))throw Error("Checkpoint parcial de otro candidato");
  const blocked=(reason:string)=>Object.freeze({status:"blocked" as const,reason,acceptance:"not-accepted" as const,autoMerge:false as const});
  if(!isIssuedNativeIntegrationCandidate(candidate)||!candidate.authorModelsObserved?.length)
   return blocked("No hay modelos autores observados por Pi para acreditar independencia de los jueces.");
@@ -70,7 +73,8 @@ export async function reviewNativeIntegratedCandidate(input:{
  // Registrar la frontera irreversible únicamente después del consentimiento.
  await input.beforeModelUse?.();await validate();
  const report=await runJudgmentDay({registry:filtered,author,judgeA:a,judgeB:b,evidence,
-  requirements:input.requirements,...(input.signal?{signal:input.signal}:{}),validateBeforeJudge:validate});
+  requirements:input.requirements,...(input.signal?{signal:input.signal}:{}),validateBeforeJudge:validate,
+  ...(progress?{onJudgeResult:(judge,verdict)=>recordNativeDualJudgeProgress(progress.input,progress.signature,judge,verdict)}:{})});
  await validate();
  if(report.judges.some(judge=>judge.identity?.status!=="declared-match"))return blocked("No se ha comprobado la identidad declarada de ambos jueces; no autorizar corrección ni integración.");
  reportBindings.set(report,integrationKey(candidate,sessionId));
@@ -230,7 +234,8 @@ export async function readNativeReviewMetrics(storageDir:string,identity:{sessio
   if(!Array.isArray(key)||key.length!==5||key[1]!==identity.projectId||key[4]!==identity.sessionId)continue;
   reviews.push({batchId:key[0],commit:key[2],tree:key[3],phase:row.phase,findingsCount:row.findingsCount??null,fixProposalId:row.fixProposalId??null,
    judges:row.judges.map(judge=>({model:judge.route,identityEvidence:judge.evidence,elapsedMs:judge.elapsedMs??null,verdict:judge.verdict??null,usage:judge.usage??null})),
-   usage:summarizeFlowUsage(row.judges.map(judge=>({model:judge.route,...(judge.usage?{usage:judge.usage}:{})})))});
+   usage:summarizeFlowUsage(row.judges.map(judge=>({model:judge.route,...(judge.usage?{usage:judge.usage}:{})}))),
+   completeJudgment:row.phase==="dual-reviewed"||row.phase==="dual-findings",attemptStarted:row.attemptStarted??null});
  }catch{unavailable++;}
  return {reviews,unavailable,completeInventory:files.length<=2000,billingVerified:false};
 }
@@ -286,6 +291,20 @@ export async function markNativeDualReviewAttemptStarted(input:CheckpointInput,s
   if(!saved||saved.phase!=="dual-pending"||saved.attemptStarted!==false||saved.receiptSignature!==signature)
    throw Error("El intento de jueces no está disponible o ya fue iniciado");
   await writeCheckpoint(input,{...saved,attemptStarted:true});
+ });
+}
+/** Conserva el consumo y resultado parcial, incluso si el segundo juez falla.
+ * Nunca restaura un veredicto conjunto ni permite continuar una inferencia incierta. */
+async function recordNativeDualJudgeProgress(input:CheckpointInput,signature:string,judge:"jd-judge-a"|"jd-judge-b",verdict:PiReviewVerdict){
+ if(!isPiReviewVerdictGenuine(verdict))throw Error("Resultado parcial no auténtico");
+ const file=checkpointFile(input);
+ await withExclusiveFileLock(file,async()=>{
+  await assertNativeDualReviewReceipt(input,signature);
+  const saved=await readCheckpoint(input),index=judge==="jd-judge-a"?0:1;
+  if(!saved||saved.attemptStarted!==true||saved.judges.length!==index)throw Error("Orden de resultados parciales inválido");
+  const route=verdict.identity?.selected??verdict.reviewerId;
+  await writeCheckpoint(input,{...saved,judges:[...saved.judges,{route,evidence:reviewIdentityEvidence(verdict.identity),verdict:verdict.verdict,
+   ...(verdict.usage?{usage:verdict.usage}:{}),...(verdict.elapsedMs!==undefined?{elapsedMs:verdict.elapsedMs}:{})}]});
  });
 }
 /** La revisión conserva la firma inicial; no admite otro recibo del mismo árbol. */

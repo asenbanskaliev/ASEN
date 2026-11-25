@@ -7,6 +7,8 @@ import type {FlowUsage} from "../runtime/agents/flow-metrics.js";
 export interface JudgmentDayInput{
  registry:PiReviewRegistry;author:PiReviewerModel;judgeA:PiReviewerModel;judgeB:PiReviewerModel;
  evidence:PiReviewEvidence;requirements:string;signal?:AbortSignal;validateBeforeJudge?:(judge:"jd-judge-a"|"jd-judge-b")=>void|Promise<void>;
+ /** Información parcial auténtica; no es un dictamen conjunto ni concede permisos. */
+ onJudgeResult?:(judge:"jd-judge-a"|"jd-judge-b",verdict:PiReviewVerdict)=>void|Promise<void>;
 }
 export interface JudgmentDayReport{
  readonly status:"analysis-complete"|"findings-require-review"|"disagreement-requires-review";
@@ -32,11 +34,14 @@ export async function runJudgmentDay(input:JudgmentDayInput):Promise<JudgmentDay
  await input.validateBeforeJudge?.("jd-judge-a");
  if(signal?.aborted)throw new Error("Judgment Day cancelled before Judge A");
  const first=await runIndependentPiReview({registry,model:judgeA,author,evidence,requirements,perspective:"jd-judge-a",...(signal?{signal}:{})});
+ if(!isPiReviewVerdictGenuine(first))throw Error("Judgment Day did not receive a genuine first Pi result");
+ await input.onJudgeResult?.("jd-judge-a",first);
  if(signal?.aborted)throw new Error("Judgment Day cancelled after Judge A");
  await input.validateBeforeJudge?.("jd-judge-b");
  if(signal?.aborted)throw new Error("Judgment Day cancelled before Judge B");
  const second=await runIndependentPiReview({registry,model:judgeB,author,evidence,requirements,perspective:"jd-judge-b",...(signal?{signal}:{})});
  if(!isPiReviewVerdictGenuine(first)||!isPiReviewVerdictGenuine(second))throw new Error("Judgment Day did not receive genuine Pi results");
+ await input.onJudgeResult?.("jd-judge-b",second);
  if(signal?.aborted)throw new Error("Judgment Day cancelled after Judge B");
  const judges=Object.freeze([
   Object.freeze({judge:"jd-judge-a" as const,reviewerId:first.reviewerId,...(first.identity?{identity:first.identity}:{}),...(first.usage?{usage:first.usage}:{}),...(first.elapsedMs!==undefined?{elapsedMs:first.elapsedMs}:{}),verdict:first.verdict,summary:first.summary,findingsCount:first.findings.length}),
