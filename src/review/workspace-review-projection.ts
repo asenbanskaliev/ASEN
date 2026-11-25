@@ -319,14 +319,23 @@ export function assertWorkspaceProjectionRepository(value:unknown):void{
 /** Solo normaliza texto Git inequívoco. No ejecuta filtros, ni altera los
  * bytes de la revisión ordinaria. Los archivos binarios y atributos especiales
  * se mantienen crudos; las discrepancias quedan bloqueadas por el ámbito. */
-function normalizeNativeGitText(root:string,candidate:Map<string,SourceEntry>):void{
+function normalizeNativeGitText(root:string,candidate:Map<string,SourceEntry>,intendedUntracked:readonly string[]):void{
   const {autocrlf}=checkoutEolSettings(root);
   const eol=records(runGit(root,["ls-files","--eol","-z"]));
+  // Consultar solo las adiciones expresamente admitidas, también las ignoradas.
+  // No enumerar dependencias ni interpretar comodines del nombre.
+  for(const path of intendedUntracked){
+    if(!candidate.has(path))continue;
+    const rows=records(runGit(root,["ls-files","--others","--eol","-z","--",":(literal)"+path]));
+    if(rows.length!==1||decoder.decode(rows[0]!).split("\t").slice(1).join("\t")!==path)
+      throw Error("No se pudo verificar el tipo de texto de una adición Git");
+    eol.push(rows[0]!);
+  }
   for(const record of eol){
     const line=decoder.decode(record),tab=line.indexOf("\t");
     if(tab<0)throw Error("Invalid Git EOL record");
     const path=line.slice(tab+1),metadata=line.slice(0,tab);
-    const match=/^i\/(lf|none)\s+w\/crlf\s+attr\/(.*?)\s*$/u.exec(metadata);
+    const match=/^i\/(lf|none|)\s+w\/(?:crlf|mixed)\s+attr\/(.*?)\s*$/u.exec(metadata);
     if(!match)continue;
     const source=candidate.get(path);
     if(!source?.bytes||!["100644","100755"].includes(source.mode))continue;
@@ -415,7 +424,7 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
     candidate.set(path, source);
   }
 
-  if(nativeGitText)normalizeNativeGitText(root,candidate);
+  if(nativeGitText)normalizeNativeGitText(root,candidate,request.intendedUntracked);
   // Git calcula el ID de un blob sin filtros sobre su cabecera y bytes.
   // Evita crear un proceso Git por archivo; las escrituras de blobs
   // modificados siguen comprobándose contra Git más abajo.
