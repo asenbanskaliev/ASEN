@@ -12,7 +12,8 @@ import {isThinking,type Thinking} from "./profiles.js";
 
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
 export type TodoPlanRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
-export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;fixSource?:Readonly<{proposalId:string;treeIdentity:string}>;}
+export type ExplorerProfileOrigin=Readonly<{scope:"global"|"project";name:string}>;
+export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;explorerProfileOrigin?:ExplorerProfileOrigin;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;fixSource?:Readonly<{proposalId:string;treeIdentity:string}>;}
 export interface TodoPlanDraft{title:string;requestId:string;dependsOn:readonly string[];description:string;plan:TodoPlanMetadata;}
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
@@ -47,10 +48,16 @@ const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&
 const identity=(v:unknown)=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function validPlan(value:unknown):value is TodoPlanMetadata{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
- const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),hasModel=Object.hasOwn(value,"model"),hasThinking=Object.hasOwn(value,"thinking"),hasCandidate=Object.hasOwn(value,"candidate"),hasCandidateRevision=Object.hasOwn(value,"candidateRevision"),hasWriteSurfaces=Object.hasOwn(value,"writeSurfaces"),hasAuthorizationBasis=Object.hasOwn(value,"writerAuthorizationBasis"),hasFixSource=Object.hasOwn(value,"fixSource"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[]),...(hasModel?["model"]:[]),...(hasThinking?["thinking"]:[]),...(hasCandidate?["candidate"]:[]),...(hasCandidateRevision?["candidateRevision"]:[]),...(hasWriteSurfaces?["writeSurfaces"]:[]),...(hasAuthorizationBasis?["writerAuthorizationBasis"]:[]),...(hasFixSource?["fixSource"]:[])];
+ const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),hasModel=Object.hasOwn(value,"model"),hasThinking=Object.hasOwn(value,"thinking"),hasCandidate=Object.hasOwn(value,"candidate"),hasCandidateRevision=Object.hasOwn(value,"candidateRevision"),hasWriteSurfaces=Object.hasOwn(value,"writeSurfaces"),hasAuthorizationBasis=Object.hasOwn(value,"writerAuthorizationBasis"),hasFixSource=Object.hasOwn(value,"fixSource"),hasOrigin=Object.hasOwn(value,"explorerProfileOrigin"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[]),...(hasModel?["model"]:[]),...(hasThinking?["thinking"]:[]),...(hasCandidate?["candidate"]:[]),...(hasCandidateRevision?["candidateRevision"]:[]),...(hasWriteSurfaces?["writeSurfaces"]:[]),...(hasAuthorizationBasis?["writerAuthorizationBasis"]:[]),...(hasFixSource?["fixSource"]:[]),...(hasOrigin?["explorerProfileOrigin"]:[])];
  if(!exact(value,keys)||!(["primary","explorer","worker","reviewer","verifier","clarifier"] as unknown[]).includes(value.role)||!Array.isArray(value.skillPaths)||value.skillPaths.some(p=>typeof p!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/u.test(p))||new Set(value.skillPaths).size!==value.skillPaths.length)return false;
  if(hasPriority&&(!Number.isSafeInteger(value.priority)||Number(value.priority)<1||Number(value.priority)>100))return false;
  if(hasModel&&(typeof value.model!=="string"||!value.model||value.model!==value.model.trim()||value.model.length>256||/[\u0000-\u001f\u007f]/u.test(value.model)))return false;
+ if(hasOrigin){
+  const origin=value.explorerProfileOrigin;
+  if(value.role!=="explorer"||!hasModel||!exact(origin,["scope","name"])||
+   (origin.scope!=="global"&&origin.scope!=="project")||typeof origin.name!=="string"||
+   !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u.test(origin.name))return false;
+ }
  if(hasThinking&&!isThinking(value.thinking))return false;
  if(hasCandidateRevision&&(!["explorer","reviewer","verifier"].includes(String(value.role))||typeof value.candidateRevision!=="string"||!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(value.candidateRevision)))return false;
  if(hasCandidate){const candidate=value.candidate;if(!candidate||typeof candidate!=="object"||Array.isArray(candidate)||!exact(candidate,["id","repository","revision","createdAt"])||!identity(candidate.id)||!identity(candidate.repository)||typeof candidate.revision!=="string"||!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(candidate.revision)||typeof candidate.createdAt!=="string"||!Number.isFinite(Date.parse(candidate.createdAt)))return false;}
