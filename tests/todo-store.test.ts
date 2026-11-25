@@ -250,3 +250,15 @@ test("a Todo commit failure preserves durable history and permits a clean retry"
  }finally{t.mock.restoreAll();syncBuiltinESMExports();}
  await store.update(todo.taskId,one,1,"running");assert.deepEqual((await store.history(todo.taskId,one)).map(event=>event.revision),[1,2]);
 });
+
+ test("Todo Explorer conserva procedencia de perfil y rechaza ámbitos inválidos",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file);
+ const plan={role:"explorer" as const,skillPaths:[],skillSelection:{phase:"explore" as const},model:"nvidia/modelo",explorerProfileOrigin:{scope:"project" as const,name:"perfil"}};
+ const draft={title:"Explorar",requestId:"asen-plan:origin",dependsOn:[],description:"Inspección",plan};
+ await store.addPlan([draft],one);
+ const reopened=await SessionTodoStore.open(file);
+ assert.deepEqual((await reopened.list(one))[0]?.plan?.explorerProfileOrigin,plan.explorerProfileOrigin);
+ for(const bad of [{scope:"session",name:"perfil"},{scope:"project",name:"../perfil"},{scope:"global",name:"perfil",extra:true}]){
+  await assert.rejects(()=>store.addPlan([{...draft,requestId:"asen-plan:origin-bad",plan:{...plan,explorerProfileOrigin:bad as typeof plan.explorerProfileOrigin}}],one),/Invalid ASEN Todo plan task/);
+ }
+ });
