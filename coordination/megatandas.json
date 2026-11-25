@@ -203,5 +203,61 @@
       "package-lock.json",
       "integración y registro de coordinación"
     ]
+  },
+  "reconciliation": {
+    "status": "pendiente-confirmacion-terminal",
+    "checkedAt": "2026-11-25",
+    "candidate": {
+      "pr": 130,
+      "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "includes": [
+        127,
+        128,
+        129
+      ],
+      "checks": {
+        "ci": 45700279185,
+        "quick": 45700279200,
+        "architecture": 45700279342,
+        "releaseGate": 45700279334,
+        "piRuntime": 45700279202,
+        "conclusion": "success",
+        "piFreeSmoke": "skipped"
+      },
+      "review": {
+        "state": "solicitada-no-validada",
+        "commentId": 7175214564
+      }
+    },
+    "leases": {
+      "A": {
+        "id": "A-20261125T202953Z-7e91c4",
+        "terminalEvidence": "no disponible para el titular exacto",
+        "action": "conservar"
+      },
+      "B": {
+        "id": "manual-9342f0dd79dc-B",
+        "terminalEvidence": "no disponible para el titular exacto",
+        "action": "conservar"
+      },
+      "C": {
+        "id": "manual-9342f0dd79dc-C",
+        "terminalEvidence": "no disponible para el titular exacto",
+        "action": "conservar"
+      },
+      "D": {
+        "id": "manual-9342f0dd79dc-D",
+        "terminalEvidence": "no disponible para el titular exacto",
+        "action": "conservar"
+      },
+      "E": {
+        "id": "manual-9342f0dd79dc-E",
+        "terminalEvidence": "no disponible para el titular exacto",
+        "action": "conservar"
+      }
+    },
+    "next": "No modificar los paquetes B/C/D ni integrar #130 hasta revisar el candidato exacto. Conservar reservas hasta evidencia terminal o reconciliación manual explícita del titular. A permanece fuera de #130.",
+    "globalFull": false
   }
 }
