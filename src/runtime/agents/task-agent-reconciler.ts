@@ -7,7 +7,7 @@ import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON} from "./trusted-task-agent-bind
 const terminal=new Set(["completed","failed","cancelled","interrupted"]);
 /** Closes read-only exploration automatically; review results require explicit user acceptance. */
 export class TaskAgentTodoReconciler{
- constructor(private readonly todos:Pick<SessionTodoStore,"list"|"update">,private readonly agents:Pick<AgentRuntime,"list">,private readonly links:Pick<TaskAgentLinkStore,"list">){}
+ constructor(private readonly todos:Pick<SessionTodoStore,"list"|"update">,private readonly agents:Pick<AgentRuntime,"list">&Partial<Pick<AgentRuntime,"query">>,private readonly links:Pick<TaskAgentLinkStore,"list">){}
  async reconcile(identity:AgentSessionIdentity):Promise<string[]>{
   const [tasks,agents,links]=await Promise.all([this.todos.list(identity),this.agents.list(identity),this.links.list(identity)]);
   const ownedAgents=new Map(agents.filter(agent=>agent.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(agent.projectId,identity.projectId)).map(agent=>[agent.id,agent]));
@@ -75,7 +75,13 @@ export class TaskAgentTodoReconciler{
    const hasSavedResult=typeof latest.summary==="string"&&!!latest.summary.trim();
    // Both Explorer and Writer outcomes must carry a durable non-empty summary.
    // A recorded terminal flag alone is not an observed successful result.
-   const accepted=succeeded&&hasSavedResult&&
+   // Una sucesora nativa no puede desbloquear dependientes por texto solamente.
+   let nativeReceiptValid=true;
+   if(succeeded&&task.plan?.role==="worker"&&/^continuation-[a-f0-9]{40}:worker$/u.test(latest.id)){
+    const receipt=(await this.agents.query?.(latest.id,identity))?.nativeCompletion;
+    nativeReceiptValid=!!receipt&&receipt.baseCommit===task.plan.candidate?.revision&&receipt.paths.length>0&&receipt.paths.every(path=>task.plan!.writeSurfaces?.includes(path));
+   }
+   const accepted=succeeded&&hasSavedResult&&nativeReceiptValid&&
     (task.plan?.role==="explorer"||task.plan?.role==="worker");
    const nextState=accepted?(task.plan?.role==="worker"?"succeeded":"done"):"blocked";
    const reason=!validRecoveryChain?

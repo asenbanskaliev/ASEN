@@ -36,14 +36,14 @@ const shellTools=new Set(["bash","bash_background","monitor","asen_background_st
 // Native user consent decisions have their own independent UI; Auto must not
 // answer them, and YOLO/Super YOLO must not inherit them to children.
 const consentTools=new Set(["ask_user","ask_user_question","question","asen_session_consult",
- "asen_todo_accept_result","asen_plan_dispatch_next"]);
+ "asen_todo_accept_result","asen_plan_dispatch_next","asen_plan_resume_batch"]);
 // Herramientas permitidas al padre en delegación total; las que escriben código
 // se ejecutan exclusivamente en el hijo con autorización propia.
 const fullDelegationTools=new Set([
  "asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel",
  "asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next",
  "asen_todo_inspect_interrupted_write","asen_todo_add","asen_todo_update",
- "asen_todo_list","asen_todo_accept_result","asen_plan_request",
+ "asen_todo_list","asen_todo_accept_result","asen_plan_request","asen_plan_resume_batch",
 ]);
 const denied=(reason:string):ToolCallEventResult=>({block:true,reason:`ASEN primary tool policy blocked ${reason}`});
 

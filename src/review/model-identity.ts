@@ -11,6 +11,15 @@ export function reviewModelIdentityKey(model:PiModelIdentity):string{
  }
  return JSON.stringify([model.provider,id]);
 }
+/** Seleccionar la ruta configurada con equivalencia conservadora; un catálogo ambiguo se bloquea. */
+export function exactReviewModel<T extends PiModelIdentity>(models:readonly T[],route:string|undefined):T|undefined{
+ const requested=splitPiModelIdentity(route);if(!requested)return;
+ const matching=models.filter(model=>reviewModelIdentityKey(model)===reviewModelIdentityKey(requested));
+ return matching.length===1?matching[0]:undefined;
+}
+export function reviewIdentityEvidence(identity:PiReviewIdentity|undefined):"provider-response-match"|"requested-descriptor-only"|"unknown"{
+ return identity?.status==="declared-match"?(identity.responseModel===undefined?"requested-descriptor-only":"provider-response-match"):"unknown";
+}
 export type PiReviewIdentity=Readonly<{
  requested:string;selected:string;declaredModel?:string;responseModel?:string;
  status:"declared-match"|"unknown";
