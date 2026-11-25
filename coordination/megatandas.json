@@ -17,44 +17,103 @@
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras"
     },
     "B": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-253b0e4dfcbd-B",
-        "package": "B1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "revision-parcial",
+      "lease": null,
       "package": "B1",
-      "scope": "Selección de modelos, alternativas e independencia"
+      "scope": "Selección de modelos, alternativas e independencia",
+      "pr": 128,
+      "sha": "0d5a5e57b7b03cbae517a01a3d4626d4a6d09700",
+      "next": "Validar CI y completar conexión de profileFallbacks en extensión con E; comprobar que runner no utiliza cierre estricto con alternativas.",
+      "files": [
+        "src/runtime/lifecycle/plan-dispatcher.ts",
+        "tests/asen-b-planned-fallback.test.ts"
+      ],
+      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "tests": "Regresiones escritas; CI aún no verificada",
+      "blocker": "PR en borrador, validar antes de integrar"
     },
     "C": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-253b0e4dfcbd-C",
-        "package": "C1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "revision-parcial",
+      "lease": null,
       "package": "C1",
-      "scope": "Revisión, recibos, jueces, Fix y aceptación final"
+      "scope": "Revisión, recibos, jueces, Fix y aceptación final",
+      "pr": 129,
+      "sha": "d7be3471c7390c9a9b41f1e35576a05a5ab20b7c",
+      "next": "Validar CI, conectar progressCheckpoint en extensión con E, prueba de recuperación del checkpoint real y después cierre sucesora.",
+      "files": [
+        "src/review/judgment-day.ts",
+        "src/runtime/lifecycle/native-integration-review.ts",
+        "tests/asen-c-judgment-progress.test.ts"
+      ],
+      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "tests": "Regresiones escritas; CI aún no verificada",
+      "blocker": "PR en borrador, validar antes de integrar"
     },
     "D": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-253b0e4dfcbd-D",
-        "package": "D1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "revision-parcial",
+      "lease": null,
       "package": "D1",
-      "scope": "Métricas, contexto y preparación de ensayos sin consumo"
+      "scope": "Métricas, contexto y preparación de ensayos sin consumo",
+      "pr": 127,
+      "sha": "4d13866c3dc302cb7c1e6a9956b0923d87fa1dc3",
+      "next": "Validar CI y ampliar registro por intento; distinguir sesiones con fallback interno y pérdida de eventos.",
+      "files": [
+        "src/runtime/agents/flow-metrics.ts",
+        "tests/asen-d-flow-usage.test.ts"
+      ],
+      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "tests": "Regresiones escritas; CI aún no verificada",
+      "blocker": "PR en borrador, validar antes de integrar"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-253b0e4dfcbd-E",
-        "package": "E1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "disponible",
+      "lease": null,
       "package": "E1",
-      "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva"
+      "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
+      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "verified": {
+        "ci": [
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45689464762,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "CI rápida",
+            "id": 45689464786,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 45689465032,
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45689464799,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45689465239,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "CI",
+            "id": 45689464739,
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "openReviewThreads": 0
+      },
+      "next": "Auditar #127–129, comprobar A1 y preparar conexión de B/C en extensions/asen.ts sobre candidato común; no integrar borradores. Resolver fallos antes de CI completa.",
+      "blocker": "Nuevas PR todavía no validadas."
     }
   },
   "packages": {
