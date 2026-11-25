@@ -282,7 +282,7 @@ const terminalErrors:unknown[]=[];
    const restored=await restoreNativeIntegrationReview(checkpoint);assert.ok(restored);
    assert.equal((await verifyNativeIntegrationAcceptance({...jointProof,report:restored})).reviewMode,"joint-tests");
    const dualCheckpoint={...checkpoint,storageDir:join(privateDir,"dual-checkpoint")};
-   const missingReceipt={...dualCheckpoint,storageDir:join(privateDir,"missing-receipt"),receipts:{readReceiptState:async()=>({status:"missing" as const})}};
+   const missingReceipt={...dualCheckpoint,storageDir:join(privateDir,"missing-receipt"),receipts:{readReceiptState:async()=>({status:"absent" as const})}};
    await assert.rejects(()=>markNativeDualReviewPending(missingReceipt),/receipt|recibo/iu);
    assert.equal(await nativeReviewCheckpointStatus(missingReceipt),"absent");
    await markNativeDualReviewPending(dualCheckpoint);
