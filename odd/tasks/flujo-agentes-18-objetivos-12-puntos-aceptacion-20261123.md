@@ -85,6 +85,13 @@ Casos de política que no pueden omitirse: bajo/medio sin riesgo nombrado y sin 
 
 **Próximo criterio comprobable:** B0 pasa exclusivamente con nueva CI completa y revisión pertinente sobre SHA exacto; D no integra por un test corregido sin resultado. Mantener CTX/E1–E4/F y `globalFull:false`.
 
+## Segundo corte · 25/11/2026
+
+- #118: CI 45561936867 superada para dcf5698, revisión no registrada. Nuevo SHA 2d4e57b444a5de95a9d64de61ea8874db453800f incorpora validación de raíces de la misma partición, ruta Writer concreta, selección exacta y recuperación nativa por lote. CI 45565748323 pendiente; pruebas negativas específicas y revisión por verificar.
+- #117: SHA 86476085528c031ef6035bdc56246d379a095222, corrección de equivalencias de identidad y relectura de política tras el recibo, con regresiones de prueba. CI 45565786394 pendiente. No resuelve aún la generación de recibos firmados por el producto, la vía explícita alcanzable ni recuperación de planes históricos.
+- #120: ensayo sintético de catálogos, CI previa 45562052657 falló por la expectativa heredada de selección Todo (no prueba fallo del caso C2). SHA 987b5d6710af04eb0bd54bc4bf4d778bc06f6 incorpora la corrección de prueba de #118 en la rama experimental; CI 45565849123 pendiente. No ejecutar NVIDIA hasta base admitida.
+- B0 sigue bloqueado por #115, CI fallida y observaciones de revisión vigentes; no trasladar a la rama del plan hasta admisión. E debe contrastar las reparaciones con los SHA nuevos. Sin nuevos ensayos reales; mantener los 30 estados y globalFull:false.
+
 ## Cierre
 
 Solo marcar `globalFull:true` cuando las treinta filas tengan evidencia positiva adecuada a sus criterios, y exista un recorrido auténtico completo desde Pi, con revisión independiente, CI y Release Gate sobre el **mismo SHA final**. Sin aprobación humana de integración no se fusiona en `main`.
