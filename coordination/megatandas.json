@@ -7,83 +7,75 @@
   "maximumWriters": 2,
   "teams": {
     "A": {
-      "state": "trabajando",
-      "lease": {
-        "id": "A-20261125T202953Z-7e91c4",
-        "package": "A1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "listo",
+      "lease": null,
       "package": "A1",
-      "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras"
+      "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
+      "generation": 2,
+      "next": "Reanudar A1 desde base #115; inspeccionar código y ramas, publicar solo cambios faltantes en rama nueva de generación 2. No esperar #130 para trabajo independiente.",
+      "blocker": null
     },
     "B": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-9342f0dd79dc-B",
-        "package": "B1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "revision-candidato",
+      "lease": null,
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 128,
       "sha": "0d5a5e57b7b03cbae517a01a3d4626d4a6d09700",
-      "next": "Validar CI y completar conexión de profileFallbacks en extensión con E; comprobar que runner no utiliza cierre estricto con alternativas.",
+      "next": "Auditar alternativas de Explorer en #130 y cobertura de autorización/identidad; registrar hallazgos sin repetir #128. Esperar admisión de #130 antes de B2 o cambios dependientes.",
       "files": [
         "src/runtime/lifecycle/plan-dispatcher.ts",
         "tests/asen-b-planned-fallback.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Regresiones escritas; CI aún no verificada",
-      "blocker": "PR en borrador, validar antes de integrar"
+      "tests": "Incluido en candidato #130: CI completa, rápida, arquitectura, Release Gate y Pi runtime correctos; Pi Free Smoke omitido. No integrado.",
+      "blocker": "CodeRabbit #130 pendiente; no impide auditoría independiente",
+      "generation": 2,
+      "candidatePR": 130,
+      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0"
     },
     "C": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-9342f0dd79dc-C",
-        "package": "C1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "revision-candidato",
+      "lease": null,
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 129,
       "sha": "d7be3471c7390c9a9b41f1e35576a05a5ab20b7c",
-      "next": "Validar CI, conectar progressCheckpoint en extensión con E, prueba de recuperación del checkpoint real y después cierre sucesora.",
+      "next": "Auditar persistencia parcial y recuperación en #130; revisar pruebas de cierre de sucesora; no repetir #129. Preparar casos negativos independientes; cambios dependientes tras admisión.",
       "files": [
         "src/review/judgment-day.ts",
         "src/runtime/lifecycle/native-integration-review.ts",
         "tests/asen-c-judgment-progress.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Regresiones escritas; CI aún no verificada",
-      "blocker": "PR en borrador, validar antes de integrar"
+      "tests": "Incluido en candidato #130: CI completa, rápida, arquitectura, Release Gate y Pi runtime correctos; Pi Free Smoke omitido. No integrado.",
+      "blocker": "CodeRabbit #130 pendiente; no impide auditoría independiente",
+      "generation": 2,
+      "candidatePR": 130,
+      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0"
     },
     "D": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-9342f0dd79dc-D",
-        "package": "D1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "revision-candidato",
+      "lease": null,
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 127,
       "sha": "4d13866c3dc302cb7c1e6a9956b0923d87fa1dc3",
-      "next": "Validar CI y ampliar registro por intento; distinguir sesiones con fallback interno y pérdida de eventos.",
+      "next": "Auditar medición y pruebas de #130, inventariar huecos de E1/E2A/E3/E4 sin modelos. No repetir #127; preparar unidad independiente o esperar admisión.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Regresiones escritas; CI aún no verificada",
-      "blocker": "PR en borrador, validar antes de integrar"
+      "tests": "Incluido en candidato #130: CI completa, rápida, arquitectura, Release Gate y Pi runtime correctos; Pi Free Smoke omitido. No integrado.",
+      "blocker": "CodeRabbit #130 pendiente; no impide auditoría independiente",
+      "generation": 2,
+      "candidatePR": 130,
+      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-9342f0dd79dc-E",
-        "package": "E1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
-      },
+      "state": "revision",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -128,8 +120,34 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Auditar #127–129, comprobar A1 y preparar conexión de B/C en extensions/asen.ts sobre candidato común; no integrar borradores. Resolver fallos antes de CI completa.",
-      "blocker": "Nuevas PR todavía no validadas."
+      "next": "Revisar #130 por SHA y base exactos, CodeRabbit en curso, no repetir solicitud. Auditar cambios y solo integrar cuando comprobaciones y revisión satisfagan criterios; registrar siguiente unidad A–D. No repetir consolidación.",
+      "blocker": "CodeRabbit #130 pendiente; no impide auditoría independiente",
+      "generation": 2,
+      "pr": 130,
+      "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "verifiedCandidate": {
+        "pr": 130,
+        "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+        "includes": [
+          127,
+          128,
+          129
+        ],
+        "checks": {
+          "ci": 45700279185,
+          "quick": 45700279200,
+          "architecture": 45700279342,
+          "releaseGate": 45700279334,
+          "piRuntime": 45700279202,
+          "conclusion": "success",
+          "piFreeSmoke": "skipped"
+        },
+        "review": {
+          "state": "solicitada-no-validada",
+          "commentId": 7175214564
+        }
+      }
     }
   },
   "packages": {
@@ -148,12 +166,14 @@
     "package-lock.json"
   ],
   "policy": {
-    "manual": "Consultar estado de ejecución y reserva antes de iniciar; no volver a lanzar un equipo activo.",
-    "reservation": "Adquirir mediante commit hijo del HEAD exacto del registro y update_ref no forzado con expected_sha; comprobar titular antes de publicar. Liberar solo la propia reserva con CAS. Sin robo por caducidad.",
+    "manual": "Cada ejecución comprueba generación, unidad, SHA y estado. Si hay trabajo activo, avanzar auditoría independiente sin reserva de escritura; nunca crear duplicados ni esperar CI.",
+    "reservation": "CAS contra HEAD exacto; reservar solo antes de escribir, con generación, ID, paquete, base, rama única y fase. Máximo dos equipos A–D con reserva de escritura simultánea. Cerrar mediante CAS en toda salida normal o error, incluso sin cambios; no retener reserva durante CI o revisión. Revalidar titular y HEAD antes de cada publicación. Si se interrumpe, E reconcilia con ejecución terminal y ramas/PR. Si no hay evidencia terminal, aislar unidad incierta, registrar bloqueo específico y avanzar unidades independientes; no robar reserva por tiempo.",
     "integration": "Solo E; PR propia, revisión de diferencias y CI exacta, agrupar si se puede sin saltar validación. No fusionar main ni cerrar #61/#115.",
     "noModelCalls": true,
     "globalFull": false,
-    "ownership": "Cada equipo trabaja solo dentro de ownership. Cualquier archivo no asignado o interfaz compartida requiere asignación expresa de E registrada con CAS. E coordina las modificaciones en extensión y workflows. Evitar modificaciones simultáneas al mismo archivo, incluso en ramas distintas."
+    "ownership": "Cada equipo trabaja solo dentro de ownership. Cualquier archivo no asignado o interfaz compartida requiere asignación expresa de E registrada con CAS. E coordina las modificaciones en extensión y workflows. Evitar modificaciones simultáneas al mismo archivo, incluso en ramas distintas.",
+    "generationFence": "Ramas nuevas de escritura feat/asen-equipo-<equipo>-<paquete>-g<generacion>-<id>, nunca reutilizar ramas de reservas revocadas. #127–130 son instantáneas anteriores: no modificar ni aceptar cambios tardíos sin auditoría, SHA exacto y nueva admisión. Solo E integra tras comprobar base/candidato y vigencia de generación; si cambia HEAD, detener integración y revalidar.",
+    "workflow": "Revisión o CI en curso = estado de espera sin reserva de escritura. Cada tarea revisa cambios materiales y realiza unidad independiente si existe. No repetir pruebas, solicitudes de revisión, comentarios ni commits sin cambios. No considerar skipped como éxito; globalFull false hasta evidencia real."
   },
   "ownership": {
     "A": [
@@ -205,7 +225,7 @@
     ]
   },
   "reconciliation": {
-    "status": "pendiente-confirmacion-terminal",
+    "status": "reservas-revocadas-con-archivo",
     "checkedAt": "2026-11-25",
     "candidate": {
       "pr": 130,
@@ -233,31 +253,101 @@
     "leases": {
       "A": {
         "id": "A-20261125T202953Z-7e91c4",
-        "terminalEvidence": "no disponible para el titular exacto",
-        "action": "conservar"
+        "action": "archivada y revocada",
+        "terminalEvidence": "fallo programado observado, sin rama A1 publicada; recuperacion"
       },
       "B": {
         "id": "manual-9342f0dd79dc-B",
-        "terminalEvidence": "no disponible para el titular exacto",
-        "action": "conservar"
+        "action": "archivada y revocada",
+        "terminalEvidence": "revocacion administrativa autorizada por usuario; terminal manual no confirmado"
       },
       "C": {
         "id": "manual-9342f0dd79dc-C",
-        "terminalEvidence": "no disponible para el titular exacto",
-        "action": "conservar"
+        "action": "archivada y revocada",
+        "terminalEvidence": "revocacion administrativa autorizada por usuario; terminal manual no confirmado"
       },
       "D": {
         "id": "manual-9342f0dd79dc-D",
-        "terminalEvidence": "no disponible para el titular exacto",
-        "action": "conservar"
+        "action": "archivada y revocada",
+        "terminalEvidence": "revocacion administrativa autorizada por usuario; terminal manual no confirmado"
       },
       "E": {
         "id": "manual-9342f0dd79dc-E",
-        "terminalEvidence": "no disponible para el titular exacto",
-        "action": "conservar"
+        "action": "archivada y revocada",
+        "terminalEvidence": "revocacion administrativa autorizada por usuario; terminal manual no confirmado"
       }
     },
-    "next": "No modificar los paquetes B/C/D ni integrar #130 hasta revisar el candidato exacto. Conservar reservas hasta evidencia terminal o reconciliación manual explícita del titular. A permanece fuera de #130.",
-    "globalFull": false
-  }
+    "next": "Nueva generación 2; no admitir escrituras tardías de ramas anteriores. Revisión de #130 sigue en curso; A listo, auditorías B–E disponibles.",
+    "globalFull": false,
+    "previousRegistry": "85f0fea76295f44ba7f3100d9035eac0d0c2b725",
+    "terminalManualUnconfirmed": true
+  },
+  "generation": 2,
+  "archivedReservations": [
+    {
+      "team": "A",
+      "lease": {
+        "id": "A-20261125T202953Z-7e91c4",
+        "package": "A1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
+      "previousState": "trabajando",
+      "pr": null,
+      "sha": null,
+      "disposition": "fallo programado observado, sin rama A1 publicada; recuperacion",
+      "admissibleFutureWrites": false
+    },
+    {
+      "team": "B",
+      "lease": {
+        "id": "manual-9342f0dd79dc-B",
+        "package": "B1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
+      "previousState": "trabajando",
+      "pr": 128,
+      "sha": "0d5a5e57b7b03cbae517a01a3d4626d4a6d09700",
+      "disposition": "revocacion administrativa autorizada por usuario; terminal manual no confirmado",
+      "admissibleFutureWrites": false
+    },
+    {
+      "team": "C",
+      "lease": {
+        "id": "manual-9342f0dd79dc-C",
+        "package": "C1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
+      "previousState": "trabajando",
+      "pr": 129,
+      "sha": "d7be3471c7390c9a9b41f1e35576a05a5ab20b7c",
+      "disposition": "revocacion administrativa autorizada por usuario; terminal manual no confirmado",
+      "admissibleFutureWrites": false
+    },
+    {
+      "team": "D",
+      "lease": {
+        "id": "manual-9342f0dd79dc-D",
+        "package": "D1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
+      "previousState": "trabajando",
+      "pr": 127,
+      "sha": "4d13866c3dc302cb7c1e6a9956b0923d87fa1dc3",
+      "disposition": "revocacion administrativa autorizada por usuario; terminal manual no confirmado",
+      "admissibleFutureWrites": false
+    },
+    {
+      "team": "E",
+      "lease": {
+        "id": "manual-9342f0dd79dc-E",
+        "package": "E1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
+      "previousState": "trabajando",
+      "pr": 130,
+      "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "disposition": "revocacion administrativa autorizada por usuario; terminal manual no confirmado",
+      "admissibleFutureWrites": false
+    }
+  ]
 }
