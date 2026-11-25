@@ -89,7 +89,7 @@ function userSummary(value:unknown):string{
 /** Registers the model-facing intake bridge. ODD facts are generated inside Pi, not authored by the user. */
 export function registerAsenPlanRequestTool(
  pi:{registerTool?:(tool:ToolDefinition<any>)=>void},
- prepare:(argumentsJson:string,context:any)=>Promise<string>,
+ prepare:(argumentsJson:string,context:any,signal?:AbortSignal)=>Promise<string>,
  taskIdentity:()=>string=()=>`task-${randomUUID()}`,
 ):void{
  pi.registerTool?.({
@@ -97,11 +97,12 @@ export function registerAsenPlanRequestTool(
   description:"Turn the user's ordinary-language project request into a validated ASEN plan. Inspect the project first; derive these ODD facts yourself, never ask the user to write JSON or supply internal IDs. Cuando haya unidades funcionales sustanciales realmente independientes, incluye su objetivo, estimación y dependencias en taskUnits; no infieras independencia por la cantidad de archivos. Si conoces las rutas exactas de escritura de todas las unidades, añade writePaths en cada unidad, incluyendo sus pruebas y documentación, sin solapes ni omisiones. La partición se materializa cuando sus controles lo permiten. Bounded requests stay in chat only when the active mode permits direct work; full delegation routes every proposed write through a scoped Writer. Material clarifications are asked in chat without parking a task; coordinated work is persisted and may start dependency-ready read-only steps. ASEN never grants write permission; every writer needs fresh exact Pi approval. Review and independent verification are included only when present in the issued plan; completion requires explicit user acceptance after reviewing available results.",
   executionMode:"sequential",
   parameters:{type:"object",additionalProperties:false,required:[...planKeys],properties:{instruction:{type:"string",minLength:1,maxLength:8192},intent,scope,writes,riskOperations,namedRisks,session,testing,review,unresolvedDecisions,taskUnits}},
-  execute:async(_callId,params,_signal,_update,context)=>{
+  execute:async(_callId,params,signal,_update,context)=>{
+   if(signal?.aborted)throw Error("Planificación cancelada antes de preparar el trabajo");
    assertExactRequest(params);
    const id=taskIdentity();if(!id||id.trim()!==id)throw new Error("ASEN could not create an internal task identity.");
    const argumentsJson=JSON.stringify({...params,taskIdentity:id});
-   const raw=await prepare(argumentsJson,context);
+   const raw=await prepare(argumentsJson,context,signal);
    let parsed:unknown;try{parsed=JSON.parse(raw);}catch{throw new Error("ASEN returned an invalid planning result.");}
    return {content:[{type:"text",text:userSummary(parsed)}],details:parsed};
   },

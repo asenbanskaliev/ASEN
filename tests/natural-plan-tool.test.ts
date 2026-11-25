@@ -362,3 +362,17 @@ test("Megatanda B: la entrada natural respeta la captura del turno, mantiene lec
   assert.equal(persisted[0]?.current.state,"planned");
  }finally{await rm(directory,{recursive:true,force:true});}
 });
+
+
+test("El plan natural conserva el contexto vivo y transmite la cancelación original",async()=>{
+ let tool:any,calls=0;
+ const controller=new AbortController(),context={cwd:"/repo"};
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async(_args,host,signal)=>{
+  calls++;assert.equal(host,context);assert.equal(signal,controller.signal);
+  return "{}";
+ },()=>"cancelacion-plan");
+ await tool.execute("call",request(),controller.signal,undefined,context);
+ controller.abort();
+ await assert.rejects(()=>tool.execute("call",request(),controller.signal,undefined,context),/Planificación cancelada/u);
+ assert.equal(calls,1);
+});

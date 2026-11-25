@@ -72,10 +72,10 @@ export function registerParallelWorktreeCommand(
   launchChildWorker?:(unit:ParentSupervisorReadyWorker,confirm:(task:Readonly<{
    id:string;title:string;role:string;instruction:string;
    writeSurfaces?:readonly string[];candidateRevision?:string
-  }>)=>Promise<boolean>,validateParent:()=>Promise<void>,startBefore?:number)=>Promise<
+  }>)=>Promise<boolean>,validateParent:()=>Promise<void>,startBefore?:number,signal?:AbortSignal)=>Promise<
    {status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>}
-):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[])=>Promise<unknown>;
- supervisePartition:(ctx:WorktreeContext,batchId:string)=>Promise<unknown>;
+):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[],signal?:AbortSignal)=>Promise<unknown>;
+ supervisePartition:(ctx:WorktreeContext,batchId:string,signal?:AbortSignal)=>Promise<unknown>;
  advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode?:"proportional"|"dual",signal?:AbortSignal)=>Promise<unknown>}>{
  // La selección exacta solo existe en el cableado interno, no en los argumentos
  // del comando ni en los parámetros generados por el modelo.
@@ -191,7 +191,7 @@ export function registerParallelWorktreeCommand(
       // Escape devuelve undefined. Solo una selección explícita puede denegar.
       return selected===approvedLabel?true:selected===declinedLabel?false:undefined;
      },
-     launchChild:(unit,confirm,validateExact,startBefore)=>options.launchChildWorker!(unit,confirm,validateExact,startBefore)
+     launchChild:(unit,confirm,validateExact,startBefore)=>options.launchChildWorker!(unit,confirm,validateExact,startBefore,signal)
     });
     ctx.ui.notify(JSON.stringify(result,null,2),
      result.status==="started"?"info":"warning");
@@ -730,7 +730,7 @@ export function registerParallelWorktreeCommand(
   description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
   handler:(args,ctx)=>handler(args,ctx)
  });
- return Object.freeze({preparePartition:(ctx:WorktreeContext,ids:readonly string[])=>handler("prepare-auto",ctx,Object.freeze([...ids])),
-  supervisePartition:(ctx:WorktreeContext,batchId:string)=>handler("supervise",ctx,undefined,batchId),
+ return Object.freeze({preparePartition:(ctx:WorktreeContext,ids:readonly string[],signal?:AbortSignal)=>handler("prepare-auto",ctx,Object.freeze([...ids]),undefined,signal),
+  supervisePartition:(ctx:WorktreeContext,batchId:string,signal?:AbortSignal)=>handler("supervise",ctx,undefined,batchId,signal),
   advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode:"proportional"|"dual"="proportional",signal?:AbortSignal)=>handler((reviewMode==="dual"?"integration-auto-dual":"integration-auto")+(batchId?" "+batchId:""),ctx,undefined,undefined,signal)});
 }
