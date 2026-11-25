@@ -22,7 +22,7 @@ import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | prepare-native <lote> | attach | attach-plan | plan-todo | supervise | collect | integration | integration-review | integration-continue | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | prepare-native <lote> | attach | attach-plan | plan-todo | supervise | collect [lote] | integration | integration-review | integration-continue | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;
  sessionManager?:{getSessionId?:()=>string};
@@ -74,7 +74,7 @@ export function registerParallelWorktreeCommand(
  const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
 
    const raw=args?.trim()??"";
-   const integrationMatch=/^(integration(?:-review|-continue)?|prepare-native)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
+   const integrationMatch=/^(integration(?:-review|-continue)?|prepare-native|collect)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
    const action=integrationMatch?.[1]??raw;
    if(action!=="prepare-native"&&action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-review"&&action!=="integration-continue"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
@@ -242,10 +242,13 @@ export function registerParallelWorktreeCommand(
      sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
      claimJournal=new ParallelChildPlanClaimJournal(options.planClaimsFile),
      observations=new ParallelWorkerObservationJournal(options.observationFile);
-    const batches=await sourceJournal.list(sourceIdentity),batch=batches.at(-1);
+    const batches=(await sourceJournal.list(sourceIdentity)).filter(row=>row.state==="prepared");
     current();
+    const selected=integrationMatch?.[2]??(batches.length===1?batches[0]!.id:ctx.ui.select?await ctx.ui.select("Selecciona el lote ODD a recuperar",batches.map(row=>row.id)):undefined);
+    current();
+    const batch=batches.find(row=>row.id===selected);
     if(!batch||batch.state!=="prepared"){
-     const blocked={status:"blocked" as const,reason:"No last fully prepared parent ODD batch to collect; inspect the journal manually"};
+     const blocked={status:"blocked" as const,reason:"Selecciona un lote ODD preparado propio por su identificador exacto."};
      ctx.ui.notify(blocked.reason,"warning");return blocked;
     }
     const inspect=()=>inspectParallelBatchWorkerOutcomes({
@@ -255,6 +258,10 @@ export function registerParallelWorktreeCommand(
     });
     const preview=await inspect();current();
     const nativeLinks=(await sessionJournal.listSource(sourceIdentity)).filter(link=>link.batchId===batch.id&&link.nativeSessionFile);
+    if(nativeLinks.length&&!options.reconcileNativeChild){
+     const blocked={status:"blocked" as const,batchId:batch.id,reason:"Falta el reconciliador nativo; no guardar recibos genéricos.",grantsAuthority:false,autoMerge:false};
+     ctx.ui.notify(blocked.reason,"warning");return blocked;
+    }
     if(nativeLinks.length&&options.reconcileNativeChild){
      // La recuperación manual utiliza el mismo registro autenticado del
      // runtime, no un árbol reconstruido tras finalizar el Writer.
