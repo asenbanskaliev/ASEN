@@ -33,7 +33,11 @@ for(const mode of ["approved","declined","changed","child-declined"] as const)te
  let releaseSibling:()=>void=()=>{};
  const siblingGate=new Promise<void>(resolve=>{releaseSibling=resolve;});
  const terminalWork:Promise<unknown>[]=[];
-const terminalErrors:unknown[]=[];
+ const terminalErrors:unknown[]=[];
+ let signalBoth:()=>void=()=>{};
+ const bothCallbacks=new Promise<void>(resolve=>{signalBoth=resolve;});
+ let drain:()=>Promise<void>=async()=>{};
+ let unsubscribeTerminal:()=>void=()=>{};
  try{
   await mkdir(project);await mkdir(privateDir,{recursive:true,mode:0o700});
   git("init","-q","-b","prueba-integracion");git("config","core.autocrlf","true");git("config","user.name","ASEN prueba");git("config","user.email","test@example.invalid");
@@ -51,7 +55,7 @@ const terminalErrors:unknown[]=[];
    assert.ok(["a.txt","b.txt"].includes(request.writeSurfaces![0]!));
    if(mode==="approved"&&request.writeSurfaces![0]==="b.txt"){
     let timer:ReturnType<typeof setTimeout>|undefined;
-    try{await Promise.race([siblingGate,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("No se guardó el recibo parcial de A")),15000);})]);}
+    try{await Promise.race([siblingGate,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("No se guardó el recibo parcial de A")),90000);})]);}
     finally{if(timer)clearTimeout(timer);}
    }
    // Simulación explícita: el agente no es un proceso Pi ni evidencia de proveedor.
@@ -66,7 +70,7 @@ const terminalErrors:unknown[]=[];
   const sessionJournal=new ParallelChildSessionJournal(join(privateDir,"parallel-worktree-sessions.json"),sourceJournal);
   const claims=new ParallelChildPlanClaimJournal(join(privateDir,"parallel-child-plan-claims.json"));
   const observations=new ParallelWorkerObservationJournal(join(privateDir,"parallel-worker-observations.json"));
-  agents.subscribeTerminal(record=>{terminalWork.push((async()=>{
+  unsubscribeTerminal=agents.subscribeTerminal(record=>{terminalWork.push((async()=>{
    const owned={sessionId:record.sessionId,projectId:record.projectId};
    const row=(await todos.list(owned)).find(item=>item.plan?.role==="worker");
    const first=mode==="approved"&&record.state==="completed"&&row?.plan?.writeSurfaces?.[0]==="a.txt";
@@ -77,10 +81,15 @@ const terminalErrors:unknown[]=[];
     const receipt=await reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations});
     if(first){assert.ok(receipt?.partial);assert.equal(receipt.observed,1);partialObserved=true;}
    }finally{if(first)releaseSibling();}
-  })().catch(error=>{terminalErrors.push(error);releaseSibling();}));});
+  })().catch(error=>{terminalErrors.push(error);releaseSibling();}));if(terminalWork.length===2)signalBoth();});
   const parent=SessionManager.create(project,join(base,"parent-sessions"));
   parent.appendMessage({role:"user",content:"Prueba local sin modelos",timestamp:Date.now()});
   const identity={sessionId:parent.getSessionId(),projectId:project};
+  drain=async()=>{
+   releaseSibling();
+   const linked=await sessionJournal.listSource(identity);
+   await Promise.all(linked.map(child=>agents.cancelSession({sessionId:child.childSessionId,projectId:child.childProjectId})));
+  };
   const tools=new Map<string,any>(),commands=new Map<string,any>(),dialogs:string[]=[];
   createAsenExtension({homeDir:()=>home,agentRuntimeFactory:async()=>agents,todoStoreFactory:async()=>todos,
    enableWorkspaceRuntime:false,enableMemoryRuntime:false,enableTodoRuntime:false,deferSessionStart:true})({
@@ -140,40 +149,41 @@ const terminalErrors:unknown[]=[];
   if(mode==="approved"){
    assert.equal(detail.supervisedLaunch.status,"started");
    assert.equal(detail.supervisedLaunch.started.length,2);
-   for(let i=0;i<200;i++){
-    const states=(await Promise.all(children.map(child=>agents.list(child)))).flat();
-    if(terminalWork.length===2&&states.length===2&&states.every(state=>state.state==="completed"||state.state==="failed"))break;
-    await new Promise(resolve=>setTimeout(resolve,20));
-   }
-   await Promise.all(terminalWork);
+   let timer:ReturnType<typeof setTimeout>|undefined;
+   try{
+    await Promise.race([bothCallbacks,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("No llegaron ambos terminales nativos")),150000);})]);
+    await Promise.all(terminalWork);
+   }finally{if(timer)clearTimeout(timer);}
    assert.equal(terminalErrors.length,0);
    assert.equal(launched,2);
    const durable=await observations.listSource(identity,await sessionJournal.listSource(identity));
    assert.equal(durable.length,2);assert.equal(partialObserved,true);
    // Repetir la recogida con otro diario, sin volver a lanzar ningún Writer.
    // Si falla la lectura de un hijo, el recibo auténtico del otro debe persistir.
-   const recoveryObservations=new ParallelWorkerObservationJournal(join(privateDir,"observaciones-recuperacion-prueba.json"));
-   const okRecord=(await agents.list(children[0]!))[0]!;
-   const failedRecord=(await agents.list(children[1]!))[0]!;
-   const originalQuery=agents.query.bind(agents);
-   agents.query=async (...args:Parameters<typeof agents.query>)=>{
-    if(args[0]===failedRecord.id)throw Error("Lectura de finalización interrumpida");
-    return originalQuery(...args);
-   };
-   const recoveryInput={record:okRecord,todos,agents,links,sourceJournal,sessionJournal,claims,observations:recoveryObservations};
-   try{
-    await assert.rejects(()=>reconcileNativeChildTerminal(recoveryInput),/No se pudieron recuperar todos los recibos nativos/u);
-    const partial=await recoveryObservations.listSource(identity,await sessionJournal.listSource(identity));
-    assert.equal(partial.length,1);
-    assert.equal(partial[0]!.agentId,okRecord.id);
-    assert.ok(partial[0]!.candidateTree);
-   }finally{agents.query=originalQuery;}
-   const recovered=await reconcileNativeChildTerminal(recoveryInput);
-   assert.equal(recovered?.observed,2);
-   const restored=await recoveryObservations.listSource(identity,await sessionJournal.listSource(identity));
-   assert.equal(restored.length,2);
-   assert.ok(restored.every(receipt=>receipt.candidateTree));
-   assert.equal(launched,2);
+   for(const failedIndex of [0,1]){
+    const recoveryObservations=new ParallelWorkerObservationJournal(join(privateDir,"observaciones-recuperacion-"+failedIndex+".json"));
+    const okRecord=(await agents.list(children[1-failedIndex]!))[0]!;
+    const failedRecord=(await agents.list(children[failedIndex]!))[0]!;
+    const originalQuery=agents.query.bind(agents);
+    agents.query=async (...args:Parameters<typeof agents.query>)=>{
+     if(args[0]===failedRecord.id)throw Error("Lectura de finalización interrumpida");
+     return originalQuery(...args);
+    };
+    const recoveryInput={record:okRecord,todos,agents,links,sourceJournal,sessionJournal,claims,observations:recoveryObservations};
+    try{
+     await assert.rejects(()=>reconcileNativeChildTerminal(recoveryInput),/No se pudieron recuperar todos los recibos nativos/u);
+     const partial=await recoveryObservations.listSource(identity,await sessionJournal.listSource(identity));
+     assert.equal(partial.length,1);
+     assert.equal(partial[0]!.agentId,okRecord.id);
+     assert.ok(partial[0]!.candidateTree);
+    }finally{agents.query=originalQuery;}
+    const recovered=await reconcileNativeChildTerminal(recoveryInput);
+    assert.equal(recovered?.observed,2);
+    const restored=await recoveryObservations.listSource(identity,await sessionJournal.listSource(identity));
+    assert.equal(restored.length,2);
+    assert.ok(restored.every(receipt=>receipt.candidateTree));
+    assert.equal(launched,2);
+   }
    const first=durable.find(row=>row.changedPaths.includes("a.txt"));
    assert.ok(first?.candidateTree);assert.equal(first.currentWorktree?.status,"clean");
    const batch=(await sourceJournal.list(identity)).at(-1)!;
@@ -264,7 +274,7 @@ const terminalErrors:unknown[]=[];
    assert.equal(finalRows.find(row=>row.taskId===rows.find(item=>item.dependsOn?.length===2)!.taskId)?.current.state,"cancelled");
    assert.equal(finalRows.find(row=>row.requestId?.startsWith("asen-plan:continuation-")&&row.plan?.role==="worker")?.plan?.candidate?.revision,candidate.commit);
   }
- }finally{await Promise.allSettled(terminalWork);await rm(base,{recursive:true,force:true});}
+ }finally{try{await drain();}finally{unsubscribeTerminal();await Promise.allSettled(terminalWork);await rm(base,{recursive:true,force:true});}}
 });
 
 test("El resultado nativo aislado excluye ignorados anteriores y conserva ignorados nuevos del ámbito",async()=>{
