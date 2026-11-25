@@ -309,7 +309,14 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   }
   const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
   try{
-   const agentId=await input.agents.startControlledWorker({...(input.startBefore!==undefined?{startBefore:input.startBefore,validateStart:input.validateIdentity}:{}),taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
+   const agentId=await input.agents.startControlledWorker({...(input.startBefore!==undefined?{startBefore:input.startBefore}:{}),validateStart:async()=>{
+    await input.validateIdentity();
+    if(currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("El candidato cambió antes de la ejecución efectiva del Writer");
+    if(prepared.taskIdentity.startsWith("continuation-")){
+     await verifiedContinuationBasis(fresh,input.identity,input.todos,prepared.candidate.revision,prepared.taskIdentity);
+     if(currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("El candidato integrado cambió antes de la ejecución efectiva de la sucesora");
+    }
+   },taskIdentity:prepared.taskIdentity,prompt:prepared.instruction,session:input.identity,candidate:prepared.candidate,writeSurfaces:prepared.writeSurfaces,skillSelection:prepared.workerSelection,...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),writerAdmission:prepared.admission,routeEvidence:prepared.routeEvidence,onPrepared:async(id,enqueue,dispatch)=>{
     const validateLaunch=async()=>{
      await input.validateIdentity();
      if(currentRevision(input.identity.projectId)!==prepared.candidate.revision)throw Error("El candidato cambió antes de iniciar el Writer");

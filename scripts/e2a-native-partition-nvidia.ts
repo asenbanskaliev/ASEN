@@ -67,7 +67,7 @@ const report={schema:"asen.e2a.native-partition/v1",sha:expected,model,
  reviewMode:"none",independentReview:false,integrationConsent:false,syntheticIntegration:false,
  successorPlanned:false,restartVerified:false,successorWriterStarted:false,
  successorDeclineVerified:false,successorConfirmations:0,successorVerified:false,duplicateBlocked:false,
- successorDiagnostic:{state:"unknown",todoState:"unknown",runnerOutcome:"unknown",selectedModel:false,processClosed:false,writeStarts:0,writeEnds:0,toolErrors:0,exactBytes:false,authenticatedReceipt:false},
+ successorDiagnostic:{state:"unknown",todoState:"unknown",runnerOutcome:"unknown",terminalCategory:"unknown",selectedModel:false,processClosed:false,writeStarts:0,writeEnds:0,toolErrors:0,exactBytes:false,authenticatedReceipt:false},
  finalTests:0,finalSignedTests:false,finalCommit:"unknown",finalTree:"unknown",
  measurements:{parallelElapsedMs:0,writerElapsedMs:[] as number[],overlapMs:0,successorElapsedMs:0,totalElapsedMs:0,
   tokenUsage:"unknown",cost:"unknown",comparison:"single-observation-not-ab"}};
@@ -349,7 +349,11 @@ try{
  }
  const finalAgent=(await resumedAgents.list(identity)).find(a=>a.id===dispatched.agentId);
  report.successorDiagnostic.state=finalAgent?.state??"missing";
- report.successorDiagnostic.exactBytes=readFileSync(join(project,"c.txt"),"utf8")===values["c.txt"];
+ // Clasificar también errores posteriores al Runner: no volcar el texto,
+ // porque puede incluir rutas, instrucciones o errores de proveedor.
+ const summary=finalAgent?.summary??"";
+ report.successorDiagnostic.terminalCategory=finalAgent?.state==="completed"?"completed":/candidate|candidato|integraci[oó]n|checkout|snapshot/u.test(summary.toLowerCase())?"candidate-changed":/receipt|recibo|tree|[aá]rbol/u.test(summary.toLowerCase())?"receipt":/scope|surfaces|lease|authority|grant|admission/u.test(summary.toLowerCase())?"scope-or-admission":/timed out|timeout/u.test(summary.toLowerCase())?"timeout":/model identity|model selection/u.test(summary.toLowerCase())?"model-identity":/correlated response|envelope|agent_settled/u.test(summary.toLowerCase())?"rpc":/assistant failed/u.test(summary.toLowerCase())?"provider-failure":finalAgent?.state==="failed"?"other-failure":finalAgent?.state??"missing";
+ report.successorDiagnostic.exactBytes=existsSync(join(project,"c.txt"))&&readFileSync(join(project,"c.txt"),"utf8")===values["c.txt"];
  report.successorDiagnostic.authenticatedReceipt=!!(await resumedAgents.query(dispatched.agentId,identity))?.nativeCompletion;
  assert.equal(finalAgent?.state,"completed");
  report.stage="successor-reconcile";
