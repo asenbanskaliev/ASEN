@@ -63,7 +63,8 @@ export function summarizeChildFlow(entry:{record:{id:string;role:string;state:st
    }catch{valid=false;break;}
   }
  }else valid=false;
- const observed=summarizeFlowUsage(valid?messages:[]);
+ // Las muestras válidas del prefijo siguen siendo observaciones, no totales completos.
+ const observed=summarizeFlowUsage(messages);
  // Una sola ejecución terminal y un cierre RPC explícito son necesarios;
  // el resultado de un reintento puede omitir por completo el primer consumo.
  const completeInventory=valid&&settled&&!duplicate&&starts.length===1&&entry.record.state==="completed"&&messages.length>0;
@@ -72,5 +73,5 @@ export function summarizeChildFlow(entry:{record:{id:string;role:string;state:st
   ...observed,
   ...(!completeInventory?{inputTokens:null,outputTokens:null,totalTokens:null,reportedCostUsd:null}:{}),
   observedUsage:observed,
-  source:valid&&messages.length?"saved-pi-rpc-result":"usage-unavailable",completeInventory});
+  source:messages.length?"saved-pi-rpc-result":"usage-unavailable",completeInventory});
 }
