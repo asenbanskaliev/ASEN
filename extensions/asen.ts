@@ -1078,8 +1078,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
          claims:new ParallelChildPlanClaimJournal(path.join(home(),".asen","parallel-child-plan-claims.json")),observations});
         const parent=agentDeliveryContext,owner=agentDeliveryIdentity;
         if(observed&&parent&&owner&&owner.sessionId===observed.source.sessionId&&owner.projectId===observed.source.projectId){
-         const live=await sessionIdentity(parent);
          const latest=(await observations.listSource(observed.source,await sessionJournal.listSource(observed.source))).filter(row=>row.batchId===observed.batchId);
+         const live=await sessionIdentity(parent);
          if(latest.length===observed.observed&&agentDeliveryContext===parent&&agentDeliveryIdentity===owner&&live.sessionId===owner.sessionId&&live.projectId===owner.projectId&&parent.sessionManager?.getSessionId?.()===owner.sessionId){
           parent.ui.notify(`ASEN: ${observed.partial?"lote Writer parcial":"lote Writer terminado"}. ${observed.observed}/${observed.expected} recibos guardados. ${observed.completed} completados y ${observed.failed} con incidencias. ${observed.partial?"No integrar ni repetir automáticamente.":"Pendiente revisión e integración."}${observed.planningFileMissing?" El archivo de planificación de un hijo no está disponible.":""}`,observed.partial||observed.failed||observed.planningFileMissing?"warning":"info");
           await refreshTodoWidget(parent);
