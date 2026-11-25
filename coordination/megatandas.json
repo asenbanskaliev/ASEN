@@ -16,30 +16,21 @@
       "blocker": null
     },
     "B": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-g2-perfil-BE-4701179615-B",
-        "generation": 2,
-        "package": "B1",
-        "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
-        "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615",
-        "phase": "escritura",
-        "joint": [
-          "B",
-          "E"
-        ]
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
-      "pr": 128,
-      "sha": "0d5a5e57b7b03cbae517a01a3d4626d4a6d09700",
-      "next": "Añadir procedencia opcional validada (ámbito y nombre) al Todo Explorer en todo-store y enlazarla al despachador. No adjuntar alternativas a planes históricos sin procedencia. Probar mismo modelo con perfiles distintos y ámbito distinto; E conserva creación del plan y lectura de archivo global/proyecto en extensions/asen.ts. Coordinar contrato antes de publicar.",
+      "pr": 133,
+      "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
+      "next": "Consultar CI rápida de #133 y corregir únicamente fallos propios.",
       "files": [
+        "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
-        "tests/asen-b-planned-fallback.test.ts"
+        "tests/asen-b-planned-fallback.test.ts",
+        "tests/todo-store.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Incluido en candidato #130: CI completa, rápida, arquitectura, Release Gate y Pi runtime correctos; Pi Free Smoke omitido. No integrado.",
+      "tests": "Regresiones publicadas; CI del SHA exacto pendiente.",
       "blocker": null,
       "generation": 2,
       "candidatePR": 130,
@@ -47,7 +38,8 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179615
-      ]
+      ],
+      "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615"
     },
     "C": {
       "state": "listo-revision",
@@ -98,19 +90,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-c0d1e190"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-g2-perfil-BE-4701179615-E",
-        "generation": 2,
-        "package": "E1",
-        "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
-        "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615",
-        "phase": "escritura",
-        "joint": [
-          "B",
-          "E"
-        ]
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -155,11 +136,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Conectar procedencia de Explorer al persistir plan (extensions/asen.ts:1674) y cargar alternativas según ámbito del perfil en despacho (línea 692); coordinar contrato con B. A sigue independiente, D lista para revisión rápida, C #132 pendiente CI. No fusionar #130.",
+      "next": "Tras CI rápida de #133, agrupar #131, #132 y #133 preservando commits, exigir CI completa y revisión exacta del nuevo candidato.",
       "blocker": null,
       "generation": 2,
-      "pr": 130,
-      "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "pr": 133,
+      "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
       "verifiedCandidate": {
         "pr": 130,
         "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
@@ -186,6 +167,11 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179590
+      ],
+      "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615",
+      "tests": "Regresiones publicadas; CI del SHA exacto pendiente.",
+      "files": [
+        "extensions/asen.ts"
       ]
     }
   },
@@ -411,6 +397,9 @@
       4701179615,
       4701179590
     ],
-    "scope": "B: esquema Todo, resolución y pruebas. E: extensión. Publicación conjunta para mantener compilación y contrato."
+    "scope": "B: esquema Todo, resolución y pruebas. E: extensión. Publicación conjunta para mantener compilación y contrato.",
+    "status": "publicada-espera-ci",
+    "pr": 133,
+    "sha": "ab17255d9569f874e196407ab12bd321ab827acc"
   }
 }
