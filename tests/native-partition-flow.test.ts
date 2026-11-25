@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtemp,mkdir,writeFile,readFile,rm,realpath,readdir} from "node:fs/promises";
+import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -18,7 +18,7 @@ import {ParallelChildPlanClaimJournal} from "../src/runtime/agents/parallel-chil
 import {ParallelWorkerObservationJournal} from "../src/runtime/agents/parallel-worker-observation-journal.js";
 import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
 import {bindNativeRunnerModels,captureNativeWriterBaseline,captureNativeWriterCompletionAsync} from "../src/runtime/agents/native-writer-completion.js";
-import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,markNativeDualReviewPending,nativeReviewCheckpointStatus,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,markNativeDualReviewPending,assertNativeDualReviewReceipt,nativeReviewCheckpointStatus,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
 import {persistNativePartitionSuccessor,inspectCompletedNativePartition} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {parsePartitionUnitBasis,materializeHistoricalIntegratedSuccessor} from "../src/runtime/lifecycle/odd-unit-plan.js";
@@ -285,7 +285,15 @@ const terminalErrors:unknown[]=[];
    const missingReceipt={...dualCheckpoint,storageDir:join(privateDir,"missing-receipt"),receipts:{readReceiptState:async()=>({status:"absent" as const})}};
    await assert.rejects(()=>markNativeDualReviewPending(missingReceipt),/receipt|recibo/iu);
    assert.equal(await nativeReviewCheckpointStatus(missingReceipt),"absent");
-   await markNativeDualReviewPending(dualCheckpoint);
+   const initialSignature=await markNativeDualReviewPending(dualCheckpoint);
+   await assertNativeDualReviewReceipt(dualCheckpoint,initialSignature);
+   const originalReceipt=await receipts.readReceiptState(candidate.commit);
+   if(originalReceipt.status!=="valid")assert.fail("Sin recibo auténtico");
+   // El lector simula una nueva firma auténtica para el mismo árbol: no basta conservar el SHA.
+   const swapped={...dualCheckpoint,receipts:{readReceiptState:async()=>({status:"valid" as const,receipt:{...originalReceipt.receipt,signature:"0".repeat(64)}})}};
+   await assert.rejects(()=>assertNativeDualReviewReceipt(swapped,initialSignature),/Cambió el recibo/u);
+   await assert.rejects(()=>saveNativeReviewCheckpoint({...swapped,report:result.report}),/Cambió el recibo/u);
+   assert.equal(await nativeReviewCheckpointStatus(dualCheckpoint),"dual-pending");
    await assert.rejects(()=>saveNativeReviewCheckpoint({...dualCheckpoint,report:joint.report}),/degradar/u);
    await saveNativeReviewCheckpoint({...dualCheckpoint,report:result.report});
    await assert.rejects(()=>markNativeDualReviewPending(dualCheckpoint),/Ya existe/u);
@@ -488,46 +496,5 @@ test("La captura nativa conserva altas y finales mixtos de texto explícito como
   assert.equal(git("show",completion.candidateTree+":existente.txt"),"cambiado\nsegunda\n");
   assert.equal(git("show",completion.candidateTree+":nuevo.txt"),"nuevo\nsegunda\n");
   assert.equal(await readFile(join(project,"nuevo.txt"),"utf8"),"nuevo\r\nsegunda\n");
- }finally{await rm(project,{recursive:true,force:true});}
-});
-
-test("El inventario de ignorados supera el antiguo límite de stdout y conserva el ámbito",async()=>{
- const project=await realpath(await mkdtemp(join(tmpdir(),"asen-inventory-large-")));
- const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",env:isolatedGitEnvironment(),stdio:["ignore","pipe","pipe"]}).trim();
- try{
-  git("init","-q");git("config","user.name","ASEN");git("config","user.email","test@example.invalid");
-  await writeFile(join(project,".gitignore"),"dep-*\n");git("add",".gitignore");git("commit","--no-gpg-sign","-qm","base");
-  // Rutas largas en directorios, no nombres de archivo que excedan límites Windows.
-  const dirs=Array.from({length:96},(_,i)=>"dep-"+i+"-"+"x".repeat(75));
-  for(const dir of dirs){
-   await mkdir(join(project,dir));
-   await Promise.all(Array.from({length:120},(_,i)=>writeFile(join(project,dir,"f-"+i+"-"+"y".repeat(25)),"")));
-  }
-  const request={id:"unit-"+"c".repeat(40)+":worker",role:"worker" as const,repository:project,prompt:"Prueba",
-   candidate:{id:"fixture",repository:project,revision:git("rev-parse","HEAD"),createdAt:new Date().toISOString()},writeSurfaces:["resultado.txt"]};
-  const baseline=await captureNativeWriterBaseline(request);
-  assert.equal(baseline.length,96*120);
-  assert.ok(Buffer.byteLength(baseline.join("\0"))>1_000_000);
-  await writeFile(join(project,"resultado.txt"),"resultado");
-  const result={};bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);
-  const completion=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
-  assert.deepEqual(completion?.paths,["resultado.txt"]);
-  const temp=await realpath(await mkdtemp(join(tmpdir(),"asen-inventory-cleanup-")));
-  const keys=["TMPDIR","TMP","TEMP"] as const,previous=keys.map(key=>process.env[key]);
-  try{
-   for(const key of keys)process.env[key]=temp;
-   const controller=new AbortController();
-   const pending=captureNativeWriterCompletionAsync(request,result,baseline,controller.signal);
-   // El directorio se crea antes del primer await; cancelar un hilo real.
-   controller.abort();
-   assert.equal(await pending,undefined);
-   assert.deepEqual(await readdir(temp),[]);
-   const completed=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
-   assert.deepEqual(completed?.paths,["resultado.txt"]);
-   assert.deepEqual(await readdir(temp),[]);
-  }finally{
-   keys.forEach((key,index)=>{const value=previous[index];if(value===undefined)delete process.env[key];else process.env[key]=value;});
-   await rm(temp,{recursive:true,force:true,maxRetries:10,retryDelay:100});
-  }
  }finally{await rm(project,{recursive:true,force:true});}
 });

@@ -31,6 +31,9 @@ test("Inventario ignorado superior a 1 MB no bloquea un Writer ajeno a esos arch
   const completion=captureNativeWriterCompletion(request,result,baseline);
   assert.deepEqual(completion?.paths,["nuevo.cache"]);
   assert.equal(git("show",completion!.candidateTree+":nuevo.cache"),"nuevo resultado");
+  const asyncResult=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
+  assert.deepEqual(asyncResult?.paths,["nuevo.cache"]);
+  assert.equal(asyncResult?.candidateTree,completion?.candidateTree);
   // El directorio temporal pertenece al padre incluso cuando se cancela el hilo.
   const temp=await mkdtemp(join(tmpdir(),"asen-inv-cancel-"));
   const envKeys=["TMPDIR","TMP","TEMP"] as const;
@@ -42,9 +45,12 @@ test("Inventario ignorado superior a 1 MB no bloquea un Writer ajeno a esos arch
    controller.abort();
    assert.equal(await pending,undefined);
    assert.deepEqual(await readdir(temp),[]);
+   const completed=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
+   assert.equal(completed?.candidateTree,completion?.candidateTree);
+   assert.deepEqual(await readdir(temp),[]);
   }finally{
    envKeys.forEach((key,i)=>{const value=saved[i];if(value===undefined)delete process.env[key];else process.env[key]=value;});
-   await rm(temp,{recursive:true,force:true});
+   await rm(temp,{recursive:true,force:true,maxRetries:10,retryDelay:100});
   }
   await assert.rejects(()=>captureNativeWriterBaseline({...request,writeSurfaces:[baseline[0]!]}),/ignorados preexistentes/u);
   await writeFile(join(project,"ajeno.cache"),"fuera del ámbito");
