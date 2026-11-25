@@ -37,6 +37,8 @@ jobs:
         run: |
           npm run typecheck
           npx --no-install tsc -p tsconfig.t08.json
+          node --check scripts/e1-natural-pi-nvidia.mjs
+          node --import tsx --test tests/e1-candidate-fallback-regression.test.ts
           # El ensayo integral debe compilar antes de autorizar modelos reales.
           npx --no-install tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck --types node scripts/e2a-native-partition-nvidia.ts
       - name: Pruebas específicas de la Megatanda B sin modelos externos
