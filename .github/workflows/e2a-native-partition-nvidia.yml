@@ -16,6 +16,7 @@ jobs:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.number == 115 &&
       github.event.pull_request.head.ref == 'integration/megatanda-b-consolidada-20261124' &&
       github.event.label.name == format('asen-e2a-{0}', github.event.pull_request.head.sha) &&
       github.actor == 'asenbanskaliev' &&
@@ -24,7 +25,7 @@ jobs:
       group: e2a-native-partition-${{ github.event.pull_request.head.sha }}
       cancel-in-progress: false
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -54,10 +55,9 @@ jobs:
             count=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/runs/$run/jobs?per_page=100" --jq '.jobs[] | select(.name == "ensayo-real") | .conclusion' | awk '$0 != "skipped" { n++ } END { print n+0 }')
             test "$count" = 0 || { echo "El intento anterior ya consumió la autorización"; exit 1; }
           done <<< "$previous"
-          runs=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/runs?head_sha=$ASEN_EXPECTED_SHA&event=pull_request&per_page=100" --jq '.workflow_runs[] | [.name,.status,.conclusion] | @tsv')
-          for required in 'CI' 'Release Gate'; do
-            printf '%s\n' "$runs" | awk -F '\t' -v name="$required" '$1==name && $2=="completed" && $3=="success" { ok=1 } END { exit !ok }'
-          done
+          # La etiqueta también puede iniciar CI/Release Gate: admitir solo el último
+          # resultado del SHA exacto, esperar de forma acotada sin credenciales NVIDIA.
+          node scripts/await-exact-validation.mjs 1500
           echo "approved=true" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         if: steps.marker.outputs.approved == 'true'
@@ -87,6 +87,7 @@ jobs:
           set -euo pipefail
           test "$(gh api "/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER" --jq .head.sha)" = "$ASEN_EXPECTED_SHA"
           test "$(gh api "/repos/asenbanskaliev/ASEN/pulls/$ASEN_PR_NUMBER" --jq '.labels[].name' | grep -Fx "asen-e2a-$ASEN_EXPECTED_SHA")" = "asen-e2a-$ASEN_EXPECTED_SHA"
+          node scripts/await-exact-validation.mjs 0
           unset GH_TOKEN
           test -n "$NVIDIA_API_KEY"
           mkdir -p "$PI_CODING_AGENT_DIR"
