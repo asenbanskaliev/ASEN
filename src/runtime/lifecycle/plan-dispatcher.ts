@@ -226,6 +226,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
     !blocker.requestId?.startsWith("asen-plan:")))
   return {status:"blocked",reason:"Independent continuation requires a verified, persisted blocked ODD task; no agent was launched."};
  const ready=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&
+  (input.expectedTodoId===undefined||row.taskId===input.expectedTodoId)&&
   row.current.state==="planned"&&
   (row.dependsOn??[]).every(id=>["succeeded","done"].includes(byId.get(id)?.current.state??""))&&
   (!input.readOnlyWave||row.plan?.role==="explorer"||row.plan?.role==="reviewer"||row.plan?.role==="verifier")&&
