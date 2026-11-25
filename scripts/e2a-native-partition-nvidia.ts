@@ -29,6 +29,10 @@ import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-in
 import {reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
 import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
+import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
+import {executeNodePassingObservation} from "../src/test/tdd-observation.js";
+import {createReviewReceiptSigned,loadReceiptSigningKey,writeReviewReceipt} from "../src/evidence/review-receipt.js";
 
 const root=resolve(process.env.GITHUB_WORKSPACE??process.cwd()),expected=process.env.ASEN_EXPECTED_SHA;
 const reportFile=process.env.ASEN_NATIVE_PARTITION_REPORT,model="nvidia/nemotron-3.5-lightning-30b-a3b";
@@ -49,7 +53,10 @@ const rawGit=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args
  encoding:"utf8",stdio:["ignore","pipe","ignore"],env:isolatedGitEnvironment(),timeout:10000});
 const git=(cwd:string,...args:string[])=>rawGit(cwd,...args).trim();
 const hash=(s:string)=>createHash("sha256").update(s).digest("hex");
-const values:Record<string,string>={"a.txt":"ASEN-NATIVE-LOT-A","b.txt":"ASEN-NATIVE-LOT-B"};
+const values:Record<string,string>={"a.txt":"ASEN-NATIVE-LOT-A","b.txt":"ASEN-NATIVE-LOT-B","c.txt":"ASEN-NATIVE-LOT-C"};
+const measurementsStarted=performance.now();
+let successorCandidate:string|undefined,successorSession:string|undefined;
+let successorApproved=false;
 const obs=new Map<string,{pid:number;start:number;end:number;model:string;writeStarts:number;writeEnds:number;errors:number}>();
 const dialogs:string[]=[];
 const report={schema:"asen.e2a.native-partition/v1",sha:expected,model,
@@ -58,8 +65,13 @@ const report={schema:"asen.e2a.native-partition/v1",sha:expected,model,
  dependentBlocked:false,receipts:0,integrationCandidate:false,workers:[] as Record<string,unknown>[],
  e2aVerified:false,integrationCommit:"unknown",integrationTree:"unknown",jointTests:0,signedJointTests:false,
  reviewMode:"none",independentReview:false,integrationConsent:false,syntheticIntegration:false,
- successorPlanned:false,restartVerified:false,successorWriterStarted:false};
-let runtime:AgentRuntime|undefined;
+ successorPlanned:false,restartVerified:false,successorWriterStarted:false,
+ successorDeclineVerified:false,successorConfirmations:0,successorVerified:false,duplicateBlocked:false,
+ finalTests:0,finalSignedTests:false,finalCommit:"unknown",finalTree:"unknown",
+ measurements:{parallelElapsedMs:0,writerElapsedMs:[] as number[],overlapMs:0,successorElapsedMs:0,totalElapsedMs:0,
+  tokenUsage:"unknown",cost:"unknown",comparison:"single-observation-not-ab"}};
+let runtime:AgentRuntime|undefined,successorRuntime:AgentRuntime|undefined;
+let successorOwner:{sessionId:string;projectId:string}|undefined;
 let childOwners:Array<{sessionId:string;projectId:string;sourceTodoId:string;childTodoId:string;sessionFile:string}>=[];
 const terminalWork:Promise<unknown>[]=[];
 const terminalErrors:unknown[]=[];
@@ -77,6 +89,12 @@ try{
   "test('A y B combinados',()=>{assert.equal(readFileSync('a.txt','utf8'),'ASEN-NATIVE-LOT-A');assert.equal(readFileSync('b.txt','utf8'),'ASEN-NATIVE-LOT-B');});",
   "test('C intacto',()=>assert.equal(readFileSync('c.txt','utf8'),'original'));"
  ].join("\n")+"\n");
+ const finalTestPath="final.test.mjs";
+ writeFileSync(join(project,finalTestPath),[
+  "import test from 'node:test'; import assert from 'node:assert/strict'; import {readFileSync} from 'node:fs';",
+  "test('A y B se conservan',()=>{assert.equal(readFileSync('a.txt','utf8'),'ASEN-NATIVE-LOT-A');assert.equal(readFileSync('b.txt','utf8'),'ASEN-NATIVE-LOT-B');});",
+  "test('C ejecutada',()=>assert.equal(readFileSync('c.txt','utf8'),'ASEN-NATIVE-LOT-C'));"
+ ].join("\n")+"\n");
  const skillPaths=selectSkills({selectionProfile:"organic",phase:"apply",risk:"low",defect:false,codeChange:false,behaviorChange:false,filesTouched:1}).map(s=>s.path);
  for(const path of skillPaths){const target=join(project,path);mkdirSync(dirname(target),{recursive:true});copyFileSync(join(root,path),target);}
  git(project,"add",".");git(project,"commit","-qm","base sintetica");const head=git(project,"rev-parse","HEAD");
@@ -92,6 +110,14 @@ try{
   const path=request.writeSurfaces?.[0],value=path?values[path]:undefined;
   if(request.role!=="worker"||request.writeSurfaces?.length!==1||!path||!value||request.model!==model)
    return {id:request.id,ok:false,output:"Test denied unexpected candidate or model"};
+  // La tercera escritura nunca se autoriza por el permiso del lote de dos.
+  if(path==="c.txt"){
+   if(!successorApproved||request.repository!==project||request.isolationKey!==successorSession||
+     request.candidate?.revision!==successorCandidate||obs.size!==2)
+    return {id:request.id,ok:false,output:"Sucesora sin autorización nueva exacta"};
+  }else if(obs.size>=2||successorApproved||request.repository===project){
+   return {id:request.id,ok:false,output:"Lote inicial fuera de ámbito o duplicado"};
+  }
   const o={pid:0,start:0,end:0,model:"unknown",writeStarts:0,writeEnds:0,errors:0};
   if(obs.has(request.id))throw Error("Duplicate Writer");
   obs.set(request.id,o);
@@ -99,7 +125,7 @@ try{
    requireChildModelBeforePrompt:true,oneShotWritePath:path,exactWriteReceipt:{path,fileSha256:hash(value)},
    attributionFile:join(privateDir,request.id+".json").replace(/:worker\.json$/u,"-worker.json"),
    timeoutMs:phaseBudgetMs,maxOutputBytes:60000,maxStreamBytes:240000,
-   onProcessStart:pid=>{o.pid=pid;o.start=performance.now();},
+   onProcessStart:pid=>{o.pid=pid;o.start=performance.now();if(path==="c.txt")report.successorWriterStarted=true;},
    onProcessClose:()=>{o.end=performance.now();},
    onToolExecution:event=>{
     if(event.type==="tool_execution_end"&&event.isError)o.errors++;
@@ -136,7 +162,7 @@ try{
   review:{kind:"none",estimatedMinutes:0},unresolvedDecisions:[],taskUnits:[
    {id:"a",objective:'write con argumentos exactos {"path":"a.txt","content":"ASEN-NATIVE-LOT-A"}',estimatedMinutes:40,dependsOn:[],writePaths:["a.txt"]},
    {id:"b",objective:'write con argumentos exactos {"path":"b.txt","content":"ASEN-NATIVE-LOT-B"}',estimatedMinutes:40,dependsOn:[],writePaths:["b.txt"]},
-   {id:"c",objective:"Integrar y verificar A y B antes de modificar c.txt",estimatedMinutes:40,dependsOn:["a","b"],writePaths:["c.txt"]}
+   {id:"c",objective:'Solo tras integrar y verificar A y B: write con argumentos exactos {"path":"c.txt","content":"ASEN-NATIVE-LOT-C"}',estimatedMinutes:40,dependsOn:["a","b"],writePaths:["c.txt"]}
   ]};
  const result=await tools.get("asen_plan_request").execute("call",params,undefined,undefined,context);
  const details=result.details;
@@ -187,6 +213,9 @@ try{
  const intervals=[...obs.values()];
  report.started=intervals.filter(o=>o.pid>0).length;
  report.parallel=intervals.length===2&&new Set(intervals.map(o=>o.pid)).size===2&&intervals.every(o=>o.pid>0&&o.end>o.start)&&Math.max(...intervals.map(o=>o.start))<Math.min(...intervals.map(o=>o.end));
+ report.measurements.writerElapsedMs=intervals.map(o=>Math.round(o.end-o.start));
+ report.measurements.parallelElapsedMs=Math.round(Math.max(...intervals.map(o=>o.end))-Math.min(...intervals.map(o=>o.start)));
+ report.measurements.overlapMs=Math.round(Math.max(0,Math.min(...intervals.map(o=>o.end))-Math.max(...intervals.map(o=>o.start))));
  report.sourceClean=git(project,"rev-parse","HEAD")===head&&git(project,"status","--porcelain=v1","--untracked-files=all")==="";
  const rows=await todos.list(identity),dependent=rows.find(row=>row.dependsOn?.length===2);
  report.dependentBlocked=dependent?.current.state==="planned"&&(await agents.list(identity)).length===0;
@@ -207,7 +236,7 @@ try{
  report.e2aVerified=true;report.integrationCommit=candidate.commit;report.integrationTree=candidate.tree;
  // C1/C2: utilizar el mismo candidato producido por los dos Writers reales.
  // Consentimientos del host de ensayo, no del usuario de producción.
- // No se crea ningún agente ni se llama al proveedor después de E2A.
+ // No se crea ningún agente hasta terminar la integración y recuperar la sucesora.
  report.stage="joint-tests";
  const receiptsDir=join(privateDir,"receipts"),receipts=new ReceiptVerifierService(receiptsDir);
  const validate=async()=>{
@@ -271,15 +300,92 @@ try{
  assert.equal((await agents.list(identity)).length,0);assert.equal(obs.size,2);
  assert.equal(readFileSync(join(project,"c.txt"),"utf8"),"original");
  assert.equal(git(project,"status","--porcelain=v1","--untracked-files=all"),"");
+ // Reabrir el almacén real del runtime: no copiar permisos ni agentes vivos.
+ report.stage="successor-dispatch";
+ const reopenedTodos=await SessionTodoStore.openProjectScoped(join(privateDir,"todos"),join(privateDir,"todos.json"));
+ const reopenedLinks=new TaskAgentLinkStore(join(privateDir,"task-agent-links.json"));
+ successorRuntime=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:1});
+ const resumedAgents=successorRuntime;
+ successorOwner=identity;successorSession=identity.sessionId;successorCandidate=candidate.commit;
+ const successorInput={todos:reopenedTodos,agents:resumedAgents,links:reopenedLinks,identity,
+  runtimeProfiles:{global:{schema:"asen.runtime-profiles/v1" as const,active:"nvidia",profiles:[{name:"nvidia",mode:"full-delegation" as const,routes:{worker:{model,thinking:"minimal" as const}}}]}},
+  expectedTodoId:successor.todoId,validateIdentity:async()=>{
+   await validate();assert.equal(git(project,"rev-parse","HEAD"),candidate.commit);
+  }};
+ const beforeDecline=(await reopenedTodos.list(identity)).find(row=>row.taskId===successor.todoId);
+ const denied=await dispatchNextPlanTask({...successorInput,confirm:async task=>{
+  assert.equal(task.id,successor.todoId);assert.equal(task.candidateRevision,candidate.commit);
+  assert.deepEqual(task.writeSurfaces,["c.txt"]);report.successorConfirmations++;return false;
+ }});
+ assert.equal(denied.status,"blocked");assert.equal(report.successorConfirmations,1);
+ assert.deepEqual((await reopenedTodos.list(identity)).find(row=>row.taskId===successor.todoId),beforeDecline);
+ assert.equal((await resumedAgents.list(identity)).length,0);assert.equal(obs.size,2);
+ report.successorDeclineVerified=true;
+ const dispatched=await dispatchNextPlanTask({...successorInput,confirm:async task=>{
+  assert.equal(task.id,successor.todoId);assert.equal(task.role,"worker");
+  assert.equal(task.candidateRevision,candidate.commit);assert.deepEqual(task.writeSurfaces,["c.txt"]);
+  assert.equal(successorApproved,false);report.successorConfirmations++;successorApproved=true;return true;
+ }});
+ assert.equal(dispatched.status,"dispatched");
+ if(dispatched.status!=="dispatched")throw Error("Sucesora no despachada");
+ assert.equal(dispatched.todoId,successor.todoId);assert.equal(report.successorConfirmations,2);
+ report.stage="successor-terminal";
+ const successorDeadline=Date.now()+3*phaseBudgetMs+15000;
+ while(Date.now()<successorDeadline){
+  const row=(await resumedAgents.list(identity)).find(a=>a.id===dispatched.agentId);
+  if(row&&["completed","failed","interrupted","cancelled"].includes(row.state))break;
+  await new Promise(resolve=>setTimeout(resolve,200));
+ }
+ const finalAgent=(await resumedAgents.list(identity)).find(a=>a.id===dispatched.agentId);
+ assert.equal(finalAgent?.state,"completed");
+ await new TaskAgentTodoReconciler(reopenedTodos,resumedAgents,reopenedLinks).reconcile(identity);
+ assert.equal((await reopenedTodos.list(identity)).find(row=>row.taskId===successor.todoId)?.current.state,"succeeded");
+ const observed=obs.get(dispatched.agentId);assert.ok(observed);
+ assert.equal(observed.model,model);assert.ok(observed.pid>0&&observed.end>observed.start);
+ assert.equal(observed.writeStarts,1);assert.equal(observed.writeEnds,1);assert.equal(observed.errors,0);
+ assert.ok(observed.start>=Math.max(...intervals.map(o=>o.end)));
+ assert.equal(obs.size,3);assert.equal(report.successorWriterStarted,true);
+ report.measurements.successorElapsedMs=Math.round(observed.end-observed.start);
+ const completion=(await resumedAgents.query(dispatched.agentId,identity))?.nativeCompletion;
+ assert.ok(completion);assert.equal(completion.baseCommit,candidate.commit);assert.deepEqual(completion.paths,["c.txt"]);
+ assert.equal(readFileSync(join(project,"c.txt"),"utf8"),values["c.txt"]);
+ assert.equal(readFileSync(join(project,"a.txt"),"utf8"),values["a.txt"]);
+ assert.equal(readFileSync(join(project,"b.txt"),"utf8"),values["b.txt"]);
+ assert.deepEqual(git(project,"diff","--name-only","HEAD","--").split("\n"),["c.txt"]);
+ assert.equal(rawGit(project,"ls-files","--others","-z"),"");
+ report.successorVerified=true;
+ const duplicate=await dispatchNextPlanTask({...successorInput,confirm:async()=>{throw Error("Una sucesora terminal no puede solicitar permiso otra vez");}});
+ assert.equal(duplicate.status,"blocked");assert.equal(obs.size,3);report.duplicateBlocked=true;
+ // El host de ensayo, no el agente, prepara un commit en su repositorio temporal.
+ // Las pruebas finales no heredan credenciales ni acreditan revisión independiente.
+ report.stage="final-tests";
+ git(project,"add","--","c.txt");git(project,"commit","-qm","Resultado sintético de la sucesora");
+ const finalCommit=git(project,"rev-parse","HEAD"),finalTree=git(project,"rev-parse","HEAD^{tree}");
+ assert.equal(git(project,"rev-parse","HEAD^"),candidate.commit);
+ assert.equal(finalTree,completion.candidateTree);
+ const finalEvidence=await executeNodePassingObservation({id:"asen-"+finalCommit.slice(0,12),repository:project,revision:finalCommit,createdAt:new Date().toISOString()},[finalTestPath]);
+ assert.equal(finalEvidence.executedCaseIds.length,2);assert.equal(finalEvidence.failingCaseIds.length,0);
+ const finalReceipt=createReviewReceiptSigned({commitSha:finalCommit,treeSha:finalTree,oddTask:"native-partition:"+batch.id+":successor",
+  testSuite:{total:2,passed:2,failed:0,durationMs:0,runner:"node:test pruebas finales del ensayo"},verdict:"PASSED"},await loadReceiptSigningKey(receiptsDir));
+ await writeReviewReceipt(receiptsDir,finalReceipt);
+ const finalRead=await receipts.readReceiptState(finalCommit);assert.equal(finalRead.status,"valid");
+ if(finalRead.status!=="valid")throw Error("Recibo final inválido");
+ writeFileSync(join(dirname(resolve(reportFile)),"signed-final.json"),JSON.stringify(finalRead.receipt,null,2)+"\n",{flag:"wx",mode:0o600});
+ report.finalTests=2;report.finalSignedTests=true;report.finalCommit=finalCommit;report.finalTree=finalTree;
+ assert.equal(git(project,"rev-parse","refs/heads/main"),head);
+ assert.equal(git(project,"status","--porcelain=v1","--untracked-files=all"),"");
  report.stage="complete";
  report.status="PASS_REAL_NVIDIA_SCOPED_PARTITION_TEST_ONLY";
 }catch{
  // No volcar errores de proveedor, prompts ni datos privados.
  report.status="BLOCKED";
 }finally{
+ if(successorOwner)await successorRuntime?.cancelSession(successorOwner).catch(()=>{});
  for(const child of childOwners)await runtime?.cancelSession(child).catch(()=>{});
  await Promise.allSettled(terminalWork);
- report.started=[...obs.values()].filter(o=>o.pid>0).length;
+ // El contador E2A sigue contando exclusivamente los dos agentes iniciales.
+ report.started=[...obs.values()].slice(0,2).filter(o=>o.pid>0).length;
+ report.measurements.totalElapsedMs=Math.round(performance.now()-measurementsStarted);
  try{rmSync(base,{recursive:true,force:true});}catch{report.status="BLOCKED";}
  mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
  writeFileSync(resolve(reportFile),JSON.stringify(report,null,2)+"\n",{encoding:"utf8",flag:"wx",mode:0o600});
