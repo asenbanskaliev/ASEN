@@ -7,8 +7,12 @@
   "maximumWriters": 2,
   "teams": {
     "A": {
-      "state": "disponible",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "A-20261125T202953Z-7e91c4",
+        "package": "A1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf"
+      },
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras"
     },
