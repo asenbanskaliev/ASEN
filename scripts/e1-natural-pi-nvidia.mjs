@@ -52,7 +52,7 @@ async function runCase(c){
   ASEN_NO_SKILL_REGISTRY:"1",TERM:"dumb",...gitEnv};
  const child=spawn("pi",["--mode","rpc","--no-extensions","--extension",probe,"--no-skills","--no-builtin-tools","--provider","nvidia","--model",model],{cwd:project,env,stdio:["pipe","pipe","pipe"]});
  const summary={id:c.id,mode:c.mode,status:"BLOCKED",modelSelected:false,responseModelDeclared:false,
-  parentTurns:0,toolCalls:0,planCalls:0,childCalls:0,writeAuthority:false,projectClean:false,durationMs:0};
+  parentTurns:0,toolCalls:0,planCalls:0,childCalls:0,writeAuthority:false,projectClean:false,durationMs:0,stage:"startup",identityEvidence:"unknown"};
  const started=performance.now();let bytes=0,buffer="",failure=false,settled=false,promptSent=false,ack=false;
  let finalText="";const decoder=new StringDecoder("utf8");
  const send=value=>child.stdin.write(JSON.stringify(value)+"\n");
@@ -61,7 +61,7 @@ async function runCase(c){
  const handle=event=>{
   if(event.type==="response"&&event.id==="state"){
    if(!event.success||promptSent)throw Error("Host no disponible");
-   promptSent=true;send({type:"prompt",id:"peticion",message:c.prompt});
+   summary.stage="prompt";promptSent=true;send({type:"prompt",id:"peticion",message:c.prompt});
   }
   if(event.type==="response"&&event.id==="peticion"){if(!event.success)throw Error("Petición rechazada");ack=true;}
   if(event.type==="tool_execution_start"){
@@ -72,6 +72,7 @@ async function runCase(c){
    summary.parentTurns++;
    if(summary.parentTurns>3||event.message.stopReason==="error"||!inspectModel(event.message))throw Error("Turno del proveedor no verificado");
    summary.modelSelected=true;summary.responseModelDeclared||=typeof event.message.responseModel==="string";
+   summary.identityEvidence=summary.responseModelDeclared?"provider-response-match":"requested-descriptor-only";
    finalText=(event.message.content??[]).filter(p=>p.type==="text").map(p=>p.text).join("\n").trim();
   }
   if(event.type==="extension_ui_request"&&["confirm","select","input","editor"].includes(event.method))throw Error("Diálogo no autorizado en E1");
@@ -87,7 +88,7 @@ async function runCase(c){
  send({type:"get_state",id:"state"});
  const end=await closed;clearTimeout(timeout);
  try{
-  assert.ok(!failure&&settled&&promptSent&&ack&&end.code===0&&end.signal===null);
+  summary.stage="settlement";assert.ok(!failure&&settled&&promptSent&&ack&&end.code===0&&end.signal===null);
   assert.ok(summary.modelSelected&&finalText);
   let plans=[];try{plans=readFileSync(record,"utf8").trim().split("\n").filter(Boolean).map(JSON.parse);}catch(error){if(error.code!=="ENOENT")throw error;}
   let calls="";try{calls=readFileSync(runnerCalls,"utf8");}catch(error){if(error.code!=="ENOENT")throw error;}
@@ -96,6 +97,7 @@ async function runCase(c){
   summary.projectClean=git(project,"rev-parse","HEAD")===initial&&git(project,"status","--porcelain=v1")==="";
   assert.ok(summary.projectClean);assert.equal(readFileSync(join(project,"README.md"),"utf8"),"Base\n");
   for(const p of plans){assert.notEqual(p.started,true);assert.notEqual(p.authorized,true);}
+  summary.stage="decision";
   if(c.id==="directo"){assert.equal(plans.length,0);assert.equal(finalText,"5");}
   if(c.id==="ambiguo"){
    assert.equal((finalText.match(/\?/g)??[]).length,1);assert.ok(/mañana|tarde/i.test(finalText));
@@ -106,7 +108,7 @@ async function runCase(c){
    assert.ok(p.roles.some(t=>t.role==="worker"&&JSON.stringify(t.paths)===JSON.stringify(["README.md"])));
    assert.ok(!p.inlineContinuation&&!p.inlineClarification);
   }
-  summary.status="PASS_NATURAL_DECISION_TEST_ONLY";
+  summary.stage="complete";summary.status="PASS_NATURAL_DECISION_TEST_ONLY";
  }catch{/* El recibo nunca contiene texto privado ni errores del proveedor. */}
  summary.durationMs=Math.round(performance.now()-started);return summary;
 }

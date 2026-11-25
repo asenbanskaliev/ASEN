@@ -67,6 +67,7 @@ const report={schema:"asen.e2a.native-partition/v1",sha:expected,model,
  reviewMode:"none",independentReview:false,integrationConsent:false,syntheticIntegration:false,
  successorPlanned:false,restartVerified:false,successorWriterStarted:false,
  successorDeclineVerified:false,successorConfirmations:0,successorVerified:false,duplicateBlocked:false,
+ successorDiagnostic:{state:"unknown",todoState:"unknown",runnerOutcome:"unknown",selectedModel:false,processClosed:false,writeStarts:0,writeEnds:0,toolErrors:0,exactBytes:false,authenticatedReceipt:false},
  finalTests:0,finalSignedTests:false,finalCommit:"unknown",finalTree:"unknown",
  measurements:{parallelElapsedMs:0,writerElapsedMs:[] as number[],overlapMs:0,successorElapsedMs:0,totalElapsedMs:0,
   tokenUsage:"unknown",cost:"unknown",comparison:"single-observation-not-ab"}};
@@ -135,7 +136,17 @@ try{
    if(event.taskId===request.id&&event.sessionId===request.isolationKey&&event.projectId===request.repository)
     o.model=normalizeT06PiChildSelection(event.model,model)??"unknown";
   });
-  try{return await pi.run(request,signal);}finally{unsubscribe();}
+  try{
+   const result=await pi.run(request,signal);
+   if(path==="c.txt"){
+    const category=(result.ok?"ok":/identity mismatch|selection was not confirmed/u.test(result.output)?"model-identity":/timed out/u.test(result.output)?"timeout":/assistant failed/u.test(result.output)?"provider-failure":/correlated response/u.test(result.output)?"correlation":/authority|grant|policy extension|Skill paths/u.test(result.output)?"policy":/receipt|write/u.test(result.output)?"write-receipt":"other");
+    report.successorDiagnostic.runnerOutcome=category;
+   }
+   return result;
+  }finally{
+   if(path==="c.txt")Object.assign(report.successorDiagnostic,{selectedModel:o.model===model,processClosed:o.end>o.start,writeStarts:o.writeStarts,writeEnds:o.writeEnds,toolErrors:o.errors});
+   unsubscribe();
+  }
  }};
  runtime=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:2});
  const agents=runtime;
@@ -337,15 +348,22 @@ try{
   await new Promise(resolve=>setTimeout(resolve,200));
  }
  const finalAgent=(await resumedAgents.list(identity)).find(a=>a.id===dispatched.agentId);
+ report.successorDiagnostic.state=finalAgent?.state??"missing";
+ report.successorDiagnostic.exactBytes=readFileSync(join(project,"c.txt"),"utf8")===values["c.txt"];
+ report.successorDiagnostic.authenticatedReceipt=!!(await resumedAgents.query(dispatched.agentId,identity))?.nativeCompletion;
  assert.equal(finalAgent?.state,"completed");
+ report.stage="successor-reconcile";
  await new TaskAgentTodoReconciler(reopenedTodos,resumedAgents,reopenedLinks).reconcile(identity);
- assert.equal((await reopenedTodos.list(identity)).find(row=>row.taskId===successor.todoId)?.current.state,"succeeded");
+ report.successorDiagnostic.todoState=(await reopenedTodos.list(identity)).find(row=>row.taskId===successor.todoId)?.current.state??"missing";
+ assert.equal(report.successorDiagnostic.todoState,"succeeded");
+ report.stage="successor-observation";
  const observed=obs.get(dispatched.agentId);assert.ok(observed);
  assert.equal(observed.model,model);assert.ok(observed.pid>0&&observed.end>observed.start);
  assert.equal(observed.writeStarts,1);assert.equal(observed.writeEnds,1);assert.equal(observed.errors,0);
  assert.ok(observed.start>=Math.max(...intervals.map(o=>o.end)));
  assert.equal(obs.size,3);assert.equal(report.successorWriterStarted,true);
  report.measurements.successorElapsedMs=Math.round(observed.end-observed.start);
+ report.stage="successor-receipt";
  const completion=(await resumedAgents.query(dispatched.agentId,identity))?.nativeCompletion;
  assert.ok(completion);assert.equal(completion.baseCommit,candidate.commit);assert.deepEqual(completion.paths,["c.txt"]);
  assert.equal(readFileSync(join(project,"c.txt"),"utf8"),values["c.txt"]);
@@ -363,10 +381,11 @@ try{
  const finalCommit=git(project,"rev-parse","HEAD"),finalTree=git(project,"rev-parse","HEAD^{tree}");
  assert.equal(git(project,"rev-parse","HEAD^"),candidate.commit);
  assert.equal(finalTree,completion.candidateTree);
+ const testsStarted=performance.now();
  const finalEvidence=await executeNodePassingObservation({id:"asen-"+finalCommit.slice(0,12),repository:project,revision:finalCommit,createdAt:new Date().toISOString()},[finalTestPath]);
  assert.equal(finalEvidence.executedCaseIds.length,2);assert.equal(finalEvidence.failingCaseIds.length,0);
  const finalReceipt=createReviewReceiptSigned({commitSha:finalCommit,treeSha:finalTree,oddTask:"native-partition:"+batch.id+":successor",
-  testSuite:{total:2,passed:2,failed:0,durationMs:0,runner:"node:test pruebas finales del ensayo"},verdict:"PASSED"},await loadReceiptSigningKey(receiptsDir));
+  testSuite:{total:2,passed:2,failed:0,durationMs:Math.round(performance.now()-testsStarted),runner:"node:test pruebas finales del ensayo"},verdict:"PASSED"},await loadReceiptSigningKey(receiptsDir));
  await writeReviewReceipt(receiptsDir,finalReceipt);
  const finalRead=await receipts.readReceiptState(finalCommit);assert.equal(finalRead.status,"valid");
  if(finalRead.status!=="valid")throw Error("Recibo final inválido");

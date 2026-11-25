@@ -1,5 +1,5 @@
 import {runnerStartDeadline} from "./dispatcher.js";
-import {bindNativeRunnerModels} from "../runtime/agents/native-writer-completion.js";
+import {bindNativeRunnerModels,isNativePartitionWriter} from "../runtime/agents/native-writer-completion.js";
 import {splitPiModelIdentity,inspectReviewIdentity,bindPiChildIdentityEvidence,type PiChildIdentityObservation,type PiModelIdentity} from "../review/model-identity.js";
 import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {performance} from "node:perf_hooks";
@@ -235,7 +235,7 @@ export class PiProcessRunner implements AgentRunner{
   if(this.options.onModelFallback||fallbackSubscriptions.length){const taskId=request.id,sessionId=request.isolationKey??"default",projectId=request.repository;if(selectionText(taskId,1024)&&selectionText(sessionId,1024)&&selectionText(projectId,32768))fallbackOwner=Object.freeze({taskId,sessionId,projectId});}
   const receiverValid=request.runnerWriteReceiver!==undefined&&consumeRunnerWriteReceiver(request.runnerWriteReceiver,request);
   const strictModelPreflight=this.options.requireChildModelBeforePrompt===true||
-   this.options.requirePartitionModelBeforePrompt===true&&request.role==="worker"&&/^unit-[a-f0-9]{40}:worker$/u.test(request.id);
+   this.options.requirePartitionModelBeforePrompt===true&&isNativePartitionWriter(request);
   if(strictModelPreflight&&(!selectionOwner||!selectionSubscriptions.length||typeof request.model!=="string"))
    return Promise.resolve({id:request.id,ok:false,output:"Pi model preflight requires a selected model and an identified child observer"});
   if(request.runnerWriteReceiver!==undefined&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
