@@ -39,8 +39,15 @@
       ]
     },
     "C": {
-      "state": "correccion-lista",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-g2-C-4701179608",
+        "generation": 2,
+        "package": "C1",
+        "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+        "branch": "feat/asen-equipo-C-C1-g2-judges-4701179608",
+        "phase": "escritura"
+      },
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 129,
@@ -373,5 +380,13 @@
       "disposition": "revocacion administrativa autorizada por usuario; terminal manual no confirmado",
       "admissibleFutureWrites": false
     }
-  ]
+  ],
+  "temporaryOwnership": {
+    "tests/native-partition-flow.test.ts": {
+      "team": "C",
+      "lease": "manual-g2-C-4701179608",
+      "assignedBy": "E",
+      "scope": "Regresión de hallazgo 4701179608 solamente"
+    }
+  }
 }
