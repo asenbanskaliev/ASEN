@@ -30,8 +30,7 @@ export function inspectReviewIdentity(requested:PiModelIdentity,selected:PiModel
  const expected=reviewModelIdentityKey(selected);
  const matches=(id:string,isResponse:boolean)=>{
   const raw=isResponse&&selected.provider==="nvidia"&&id.startsWith("private/")?id.slice(8):id;
-  return reviewModelIdentityKey({provider:selected.provider,id:raw})===expected||
-   raw===selected.provider+"/"+selected.id;
+  return reviewModelIdentityKey({provider:selected.provider,id:raw})===expected;
  };
  if(provider!==undefined&&provider!==selected.provider||model!==undefined&&!matches(model,false)||
   responseModel!==undefined&&!matches(responseModel,true))throw Error("Independent reviewer model identity mismatch");

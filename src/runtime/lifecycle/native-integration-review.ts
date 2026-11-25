@@ -147,8 +147,8 @@ export async function reviewNativePartitionWithTests(input:{
  const inspect=async()=>{
   if(input.signal?.aborted)throw Error("Revisión cancelada");
   await input.validate();
-  const policy=await inspectPartitionPolicy(candidate,sessionId,todos);
   const receipt=await exactPassingReceipt(candidate,receipts);
+  const policy=await inspectPartitionPolicy(candidate,sessionId,todos);
   await input.validate();
   if(input.signal?.aborted)throw Error("Revisión cancelada");
   return {policy,receipt};
@@ -186,8 +186,8 @@ export async function verifyNativeIntegrationAcceptance(input:{
   const binding=testReportBindings.get(report);
   if(!binding||binding.key!==integrationKey(candidate,input.sessionId)||!isIssuedNativeIntegrationCandidate(candidate))
    throw Error("La revisión proporcional no fue emitida para este candidato y sesión.");
-  const policy=await inspectPartitionPolicy(candidate,input.sessionId,binding.todos);
   const receipt=await exactPassingReceipt(candidate,input.receipts);
+  const policy=await inspectPartitionPolicy(candidate,input.sessionId,binding.todos);
   if(policy.fingerprint!==binding.fingerprint||receipt.signature!==binding.receiptSignature)
    throw Error("La política ODD o recibo revisado cambió; no integrar.");
   return Object.freeze({status:"verified-awaiting-integration-consent",commit:candidate.commit,tree:candidate.tree,

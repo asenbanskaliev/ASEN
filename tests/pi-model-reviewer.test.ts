@@ -184,3 +184,12 @@ test("B+: distingue identidad declarada, desconocida e incompatible sin guardar 
  await assert.rejects(()=>execute({provider:reviewer.provider,model:reviewer.id,responseModel:"otro"}),/identity mismatch/u);
  closeWorkspaceReview(workspace);
 });
+
+
+test("B+ la declaración con prefijo ajeno no une identidades distintas",async()=>{
+ const {inspectReviewIdentity,reviewModelIdentityKey}=await import("../src/review/model-identity.js");
+ const short={provider:"p",id:"judge"},long={provider:"p",id:"p/judge"};
+ assert.notEqual(reviewModelIdentityKey(short),reviewModelIdentityKey(long));
+ assert.throws(()=>inspectReviewIdentity(short,short,{provider:"p",model:"p/judge"}),/identity mismatch/u);
+ assert.equal(inspectReviewIdentity(long,long,{provider:"p",model:"p/judge"}).status,"declared-match");
+});
