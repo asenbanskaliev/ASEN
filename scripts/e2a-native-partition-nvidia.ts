@@ -25,6 +25,10 @@ import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-nativ
 import {normalizeT06PiChildSelection} from "../src/runtime/agents/t06-pi-receipt-validator.js";
 import {selectSkills} from "../src/skills/registry.js";
 import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
+import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
+import {reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
+import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
+import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 
 const root=resolve(process.env.GITHUB_WORKSPACE??process.cwd()),expected=process.env.ASEN_EXPECTED_SHA;
 const reportFile=process.env.ASEN_NATIVE_PARTITION_REPORT,model="nvidia/nemotron-3.5-lightning-30b-a3b";
@@ -33,6 +37,12 @@ if(!process.env.NVIDIA_API_KEY||!reportFile||!expected||!(/^[a-f0-9]{40}$/u.test
  execFileSync("git",["rev-parse","HEAD"],{cwd:root,encoding:"utf8",env:isolatedGitEnvironment()}).trim()!==expected||
  execFileSync("git",["-c","core.fsmonitor=false","status","--porcelain=v1","--untracked-files=all"],{cwd:root,encoding:"utf8",env:isolatedGitEnvironment()}).length!==0)
  throw Error("E2A integral: SHA, proveedor o recibo no autorizado");
+const piDirectory=process.env.PI_CODING_AGENT_DIR;
+if(!piDirectory||resolve(piDirectory)!==piDirectory)throw Error("E2A requiere un directorio Pi absoluto y preparado");
+const retrySettings=JSON.parse(readFileSync(join(piDirectory,"settings.json"),"utf8"));
+if(retrySettings?.retry?.enabled!==false||retrySettings?.retry?.maxRetries!==0||retrySettings?.retry?.provider?.maxRetries!==0)
+ throw Error("E2A requiere desactivar los reintentos Pi y del proveedor antes de inferir");
+const phaseBudgetMs=110000;
 const base=realpathSync(mkdtempSync(join(tmpdir(),"asen-native-partition-")));
 const project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
 const rawGit=(cwd:string,...args:string[])=>execFileSync("git",["-C",cwd,...args],{
@@ -45,21 +55,32 @@ const dialogs:string[]=[];
 const report={schema:"asen.e2a.native-partition/v1",sha:expected,model,
  authorization:"TEST_HOST_CONSENT_ONLY",globalFull:false,autoRetry:false,autoMerge:false,costVerified:false,
  status:"BLOCKED",stage:"fixture",nativeSessions:0,admitted:0,started:0,writeBatchConfirmations:0,parallel:false,sourceClean:false,
- dependentBlocked:false,receipts:0,integrationCandidate:false,workers:[] as Record<string,unknown>[]};
+ dependentBlocked:false,receipts:0,integrationCandidate:false,workers:[] as Record<string,unknown>[],
+ e2aVerified:false,integrationCommit:"unknown",integrationTree:"unknown",jointTests:0,signedJointTests:false,
+ reviewMode:"none",independentReview:false,integrationConsent:false,syntheticIntegration:false,
+ successorPlanned:false,restartVerified:false,successorWriterStarted:false};
 let runtime:AgentRuntime|undefined;
 let childOwners:Array<{sessionId:string;projectId:string;sourceTodoId:string;childTodoId:string;sessionFile:string}>=[];
 const terminalWork:Promise<unknown>[]=[];
 const terminalErrors:unknown[]=[];
 try{
  mkdirSync(project,{recursive:true});mkdirSync(privateDir,{recursive:true,mode:0o700});
- git(project,"init","-q");git(project,"config","user.name","ASEN ensayo");git(project,"config","user.email","test@example.invalid");git(project,"config","core.autocrlf","false");
+ git(project,"init","-q","-b","prueba-integracion");git(project,"config","user.name","ASEN ensayo");git(project,"config","user.email","test@example.invalid");git(project,"config","core.autocrlf","false");
  const hooks=join(base,"empty-hooks");mkdirSync(hooks);git(project,"config","core.hooksPath",hooks);
  // El host sintético ofrece únicamente la herramienta que autoriza el ensayo.
  // Los perfiles y herramientas de producción permanecen intactos.
  for(const path of ["a.txt","b.txt","c.txt"])writeFileSync(join(project,path),"original");
+ // Pruebas fijas, conocidas y comprometidas antes de cualquier Writer.
+ const jointTestPath="conjuntas.test.mjs";
+ writeFileSync(join(project,jointTestPath),[
+  "import test from 'node:test'; import assert from 'node:assert/strict'; import {readFileSync} from 'node:fs';",
+  "test('A y B combinados',()=>{assert.equal(readFileSync('a.txt','utf8'),'ASEN-NATIVE-LOT-A');assert.equal(readFileSync('b.txt','utf8'),'ASEN-NATIVE-LOT-B');});",
+  "test('C intacto',()=>assert.equal(readFileSync('c.txt','utf8'),'original'));"
+ ].join("\n")+"\n");
  const skillPaths=selectSkills({selectionProfile:"organic",phase:"apply",risk:"low",defect:false,codeChange:false,behaviorChange:false,filesTouched:1}).map(s=>s.path);
  for(const path of skillPaths){const target=join(project,path);mkdirSync(dirname(target),{recursive:true});copyFileSync(join(root,path),target);}
  git(project,"add",".");git(project,"commit","-qm","base sintetica");const head=git(project,"rev-parse","HEAD");
+ git(project,"branch","main",head);
  writeFileSync(join(privateDir,"profiles.json"),JSON.stringify({schema:"asen.runtime-profiles/v1",active:"nvidia",profiles:[{name:"nvidia",mode:"full-delegation",routes:{worker:{model,thinking:"minimal"}}}]}),{mode:0o600});
  const todos=await SessionTodoStore.openProjectScoped(join(privateDir,"todos"),join(privateDir,"todos.json"));
  const links=new TaskAgentLinkStore(join(privateDir,"task-agent-links.json"));
@@ -77,7 +98,7 @@ try{
   const pi=new PiProcessRunner({command:"pi",policyRoot:root,providerCredential:"NVIDIA_API_KEY",
    requireChildModelBeforePrompt:true,oneShotWritePath:path,exactWriteReceipt:{path,fileSha256:hash(value)},
    attributionFile:join(privateDir,request.id+".json").replace(/:worker\.json$/u,"-worker.json"),
-   timeoutMs:110000,maxOutputBytes:60000,maxStreamBytes:240000,
+   timeoutMs:phaseBudgetMs,maxOutputBytes:60000,maxStreamBytes:240000,
    onProcessStart:pid=>{o.pid=pid;o.start=performance.now();},
    onProcessClose:()=>{o.end=performance.now();},
    onToolExecution:event=>{
@@ -138,17 +159,20 @@ try{
  assert.equal(report.writeBatchConfirmations,1);
  assert.equal(dialogs.length,3);
  assert.equal(details.supervisedLaunch.status,"started");
- const deadline=Date.now()+200000;
+ const deadline=Date.now()+3*phaseBudgetMs+15000;
+ let settled=false;
  report.stage="settlement";
  while(Date.now()<deadline){
   const records=(await Promise.all(childOwners.map(owner=>agents.list(owner)))).flat();
   if(terminalWork.length===2&&records.length===2&&records.every(record=>["completed","failed","interrupted","cancelled"].includes(record.state))){
    await Promise.all(terminalWork);
    assert.equal(terminalErrors.length,0);
+   settled=true;
    break;
   }
   await new Promise(resolve=>setTimeout(resolve,200));
  }
+ assert.equal(settled,true,"No se recibieron ambos terminales nativos dentro del presupuesto");
  for(const child of childOwners){
   const records=await agents.list(child),record=records[0],o=record?obs.get(record.id):undefined;
   const row=(await todos.list(child))[0],path=row?.plan?.writeSurfaces?.[0],value=path?values[path]:undefined;
@@ -180,6 +204,73 @@ try{
  const evidence=readFrozenIntegrationReviewEvidence(candidate,identity.sessionId,"pi-model:ensayo/lector",base);
  assert.equal(evidence.candidate.treeIdentity,candidate.tree);
  report.integrationCandidate=true;
+ report.e2aVerified=true;report.integrationCommit=candidate.commit;report.integrationTree=candidate.tree;
+ // C1/C2: utilizar el mismo candidato producido por los dos Writers reales.
+ // Consentimientos del host de ensayo, no del usuario de producción.
+ // No se crea ningún agente ni se llama al proveedor después de E2A.
+ report.stage="joint-tests";
+ const receiptsDir=join(privateDir,"receipts"),receipts=new ReceiptVerifierService(receiptsDir);
+ const validate=async()=>{
+  assert.equal(parent.getSessionId(),identity.sessionId);
+  assert.equal(git(project,"rev-parse","refs/heads/main"),head);
+ };
+ const testInput={candidate,sessionId:identity.sessionId,todos,storageDir:receiptsDir,testPaths:[jointTestPath],validate};
+ assert.equal((await testNativeIntegrationCandidate({...testInput,confirm:async()=>false})).status,"declined");
+ assert.equal((await receipts.readReceiptState(candidate.commit)).status,"absent");
+ const signed=await testNativeIntegrationCandidate({...testInput,confirm:async()=>true});
+ assert.equal(signed.status,"tests-signed");
+ if(signed.status!=="tests-signed")throw Error("Pruebas conjuntas no firmadas");
+ assert.equal(signed.tests,2);report.jointTests=signed.tests;
+ const persisted=await receipts.readReceiptState(candidate.commit);
+ assert.equal(persisted.status,"valid");
+ if(persisted.status!=="valid")throw Error("Recibo inválido");
+ report.signedJointTests=true;
+ mkdirSync(dirname(resolve(reportFile)),{recursive:true,mode:0o700});
+ writeFileSync(join(dirname(resolve(reportFile)),"signed-integration.json"),JSON.stringify(persisted.receipt,null,2)+"\n",{flag:"wx",mode:0o600});
+ assert.equal(git(project,"rev-parse","HEAD"),head);
+ report.stage="proportional-review";
+ const reviewInput={candidate,sessionId:identity.sessionId,todos,receipts,validate};
+ assert.equal((await reviewNativePartitionWithTests({...reviewInput,confirm:async()=>false})).status,"declined");
+ const reviewed=await reviewNativePartitionWithTests({...reviewInput,confirm:async()=>true});
+ assert.equal(reviewed.status,"joint-tests-reviewed");
+ if(!("report" in reviewed)||!reviewed.report)throw Error("Informe conjunto ausente");
+ assert.equal(reviewed.report.modelCalls,0);assert.equal(reviewed.report.independentReview,false);
+ const proof={candidate,sessionId:identity.sessionId,report:reviewed.report,receipts};
+ assert.equal((await verifyNativeIntegrationAcceptance(proof)).reviewMode,"joint-tests");
+ report.reviewMode="joint-tests";
+ report.stage="acceptance";
+ assert.ok(!(await acceptNativeIntegration({...proof,validate,confirm:async()=>false})));
+ assert.equal(git(project,"rev-parse","HEAD"),head);
+ const accepted=await acceptNativeIntegration({...proof,validate,confirm:async()=>{report.integrationConsent=true;return true;}});
+ assert.ok(accepted);assert.equal(git(project,"rev-parse","HEAD"),candidate.commit);
+ assert.equal(git(project,"rev-parse","HEAD^{tree}"),candidate.tree);
+ assert.equal(git(project,"rev-parse","refs/heads/main"),head);
+ report.syntheticIntegration=true;
+ report.stage="successor";
+ const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos,
+  profiles:{global:{schema:"asen.runtime-profiles/v1",active:"nvidia",profiles:[{name:"nvidia",mode:"full-delegation",routes:{worker:{model,thinking:"minimal"}}}]}},
+  validate,verify:async()=>{await verifyNativeIntegrationAcceptance(proof);}});
+ assert.equal(successor.status,"successor-ready");
+ if(successor.status!=="successor-ready")throw Error("Sucesora no preparada");
+ assert.equal(successor.writerAuthority,false);
+ const finalRows=await todos.list(identity);
+ assert.equal(finalRows.filter(row=>candidate.sourceTodoIds.includes(row.taskId)&&row.current.state==="done").length,2);
+ assert.equal(finalRows.find(row=>row.taskId===dependent?.taskId)?.current.state,"cancelled");
+ const next=finalRows.find(row=>row.taskId===successor.todoId);
+ assert.equal(next?.current.state,"planned");assert.equal(next?.plan?.candidate?.revision,candidate.commit);
+ assert.deepEqual(next?.plan?.writeSurfaces,["c.txt"]);
+ report.successorPlanned=true;
+ // Reiniciar el lector de diarios en un proceso sin credenciales ni permisos.
+ report.stage="restart";
+ const restarted=JSON.parse(execFileSync(process.execPath,["--import","tsx",join(root,"tests","fixtures","native-partition-restart.ts"),"inspect",privateDir,JSON.stringify(identity),batch.id],
+  {cwd:root,encoding:"utf8",env:isolatedGitEnvironment(),timeout:45000,windowsHide:true,stdio:["ignore","pipe","pipe"]}).trim());
+ assert.equal(restarted.status,"successor-already-persisted");assert.equal(restarted.todoId,successor.todoId);
+ assert.equal(restarted.todoState,"planned");assert.equal(restarted.authorizations,0);
+ assert.equal(restarted.writerAuthority,false);assert.equal(restarted.autoRetry,false);
+ report.restartVerified=true;
+ assert.equal((await agents.list(identity)).length,0);assert.equal(obs.size,2);
+ assert.equal(readFileSync(join(project,"c.txt"),"utf8"),"original");
+ assert.equal(git(project,"status","--porcelain=v1","--untracked-files=all"),"");
  report.stage="complete";
  report.status="PASS_REAL_NVIDIA_SCOPED_PARTITION_TEST_ONLY";
 }catch{
