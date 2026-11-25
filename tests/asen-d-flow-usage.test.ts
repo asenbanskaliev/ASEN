@@ -22,3 +22,19 @@ test("Las métricas no confunden consumo observado con total en fallos o reanuda
  const complete=build("completed",started,[message,settled]);
  assert.equal(complete.completeInventory,true);assert.equal(complete.totalTokens,12);
 });
+
+test("Conserva el consumo observado de un prefijo válido aunque una línea posterior esté dañada",()=>{
+ const row=summarizeChildFlow({
+  record:{id:"agent",role:"explorer",state:"completed",createdAt:at,updatedAt:end},
+  events:[{state:"running",at}],
+  result:{output:[JSON.stringify(message),JSON.stringify(settled),"{json inválido"].join("\n")}
+ });
+ assert.equal(row.completeInventory,false);
+ assert.equal(row.inputTokens,null);
+ assert.equal(row.outputTokens,null);
+ assert.equal(row.totalTokens,null);
+ assert.equal(row.reportedCostUsd,null);
+ assert.equal(row.observedUsage.totalTokens,12);
+ assert.equal(row.observedUsage.reportedCostUsd,0.01);
+ assert.equal(row.source,"saved-pi-rpc-result");
+});
