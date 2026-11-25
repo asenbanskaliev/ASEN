@@ -129,7 +129,7 @@ export async function inspectPartitionPolicy(candidate:NativeIntegrationCandidat
  return {fingerprint:JSON.stringify([...roots.map(root=>root.row),successor[0]]),risk:first.parsed.parentFacts.risk,
   requirements:roots.map(root=>root.row.description!).join("\n")};
 }
-async function exactPassingReceipt(candidate:NativeIntegrationCandidate,receipts:ReviewReceiptReader){
+export async function exactPassingReceipt(candidate:NativeIntegrationCandidate,receipts:ReviewReceiptReader){
  readNativeIntegrationDiff(candidate);
  const state=await receipts.readReceiptState(candidate.commit);
  if(state.status!=="valid"||state.receipt.verdict!=="PASSED"||state.receipt.treeSha!==candidate.tree||

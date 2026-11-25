@@ -4,6 +4,7 @@ import {execFileSync} from "node:child_process";
 import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {fileURLToPath} from "node:url";
 import {SessionManager} from "@earendil-works/pi-coding-agent";
 import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
 import {createAsenExtension} from "../extensions/asen.js";
@@ -19,7 +20,7 @@ import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-na
 import {bindNativeRunnerModels,captureNativeWriterBaseline,captureNativeWriterCompletionAsync} from "../src/runtime/agents/native-writer-completion.js";
 import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
 import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
-import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
+import {persistNativePartitionSuccessor,inspectCompletedNativePartition} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {parsePartitionUnitBasis,materializeHistoricalIntegratedSuccessor} from "../src/runtime/lifecycle/odd-unit-plan.js";
 import {createHash} from "node:crypto";
 import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
@@ -312,10 +313,24 @@ const terminalErrors:unknown[]=[];
    assert.ok(savedBefore);
    assert.equal(JSON.parse(savedBefore.plan!.writerAuthorizationBasis!).review.kind,mode==="approved-legacy"?"dual_explicit":"none");
    assert.equal((await todos.list(identity)).filter(row=>row.requestId?.startsWith("asen-plan:continuation-")).length,mode==="approved-legacy"?3:1);
-   const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{global:{schema:"asen.runtime-profiles/v1",active:"cambiado",profiles:[{name:"cambiado",mode:"full-delegation",routes:{worker:{model:"nvidia/otro-modelo",thinking:"minimal"}}}]}},
-    validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(jointProof);}});
-   if(successor.status==="successor-ready")assert.equal(successor.todoId,savedBefore.taskId);
+   // Un proceso nuevo reconstruye los diarios y vuelve a pedir revisión y
+   // consentimiento. Ningún WeakMap ni permiso del proceso padre cruza el límite.
+   const restartFile=fileURLToPath(new URL("./fixtures/native-partition-restart.ts",import.meta.url));
+   const restart=(phase:string)=>JSON.parse(execFileSync(process.execPath,["--import","tsx",restartFile,phase,privateDir,JSON.stringify(identity),batch.id],{
+    encoding:"utf8",timeout:45000,windowsHide:true,stdio:["ignore","pipe","pipe"]}).trim());
+   const successor=restart("resume");
+   assert.equal(successor.todoId,savedBefore.taskId);
    assert.equal(successor.status,"successor-ready");
+   assert.equal(successor.authorizations,2);
+   const recovered=restart("inspect");
+   assert.equal(recovered.status,"successor-already-persisted");
+   assert.equal(recovered.todoId,savedBefore.taskId);
+   assert.equal(recovered.todoState,"planned");
+   assert.equal(recovered.authorizations,0);
+   assert.equal(recovered.writerAuthority,false);
+   assert.equal(recovered.autoRetry,false);
+   assert.equal(launched,2);
+   await assert.rejects(()=>inspectCompletedNativePartition({candidate:{...candidate},identity,todos,receipts,validate:async()=>{}}),/auténtico/u);
    const finalRows=await todos.list(identity);
    assert.equal(finalRows.filter(row=>candidate.sourceTodoIds.includes(row.taskId)&&row.current.state==="done").length,2);
    assert.equal(finalRows.find(row=>row.taskId===rows.find(item=>item.dependsOn?.length===2)!.taskId)?.current.state,"cancelled");

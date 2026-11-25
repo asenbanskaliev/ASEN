@@ -63,7 +63,7 @@ import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js"
 import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
 import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
-import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
+import {persistNativePartitionSuccessor,inspectCompletedNativePartition} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
 import {prepareNativePartitionChildren} from "../src/runtime/lifecycle/parallel-native-child-plans.js";
 import {ParallelTodoWorktreeJournal} from "../src/runtime/agents/parallel-todo-journal.js";
@@ -2607,9 +2607,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const ctx=context as CommandContext;validate();
     if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
     const identity=await sessionIdentity(ctx);
+    const todos=await todoStorePromise,receipts=new ReceiptVerifierService(path.join(home(),".asen","receipts"));
+    const recovered=await inspectCompletedNativePartition({candidate,identity,todos,receipts,validate:async()=>{validate();}});
+    if(recovered)return recovered; // No volver a lanzar una sucesora ya guardada.
     const report=integrationReports.get(JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]));
     if(!report)return {status:"blocked",reason:"Se necesita integration-review del candidato exacto en esta sesión."};
-    const proof={candidate,report,sessionId:identity.sessionId,receipts:new ReceiptVerifierService(path.join(home(),".asen","receipts"))};
+    const proof={candidate,report,sessionId:identity.sessionId,receipts};
     const accepted=await acceptNativeIntegration({...proof,validate:async()=>{validate();},
      confirm:summary=>ctx.ui.confirm!("Integrar candidato verificado?",summary)});
     if(!accepted)return {status:"declined",integration:false};

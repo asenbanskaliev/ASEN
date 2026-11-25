@@ -57,6 +57,9 @@ async function terminateProcessTree(child:ChildProcess):Promise<void>{
 }
 
 type FrozenExecution=Readonly<{baseRevision:string;tree:string;testPaths:readonly string[];signal?:AbortSignal}>;
+// Node 22 conserva el nombre experimental; desde 23.6 se usa el nuevo.
+const [nodeMajor,nodeMinor]=process.versions.node.split(".").map(Number);
+const testIsolationFlag=nodeMajor===22||nodeMajor===23&&(nodeMinor??0)<6?"--experimental-test-isolation=none":"--test-isolation=none";
 function frozenGit(cwd:string,args:readonly string[],hooks:string,eol:readonly string[]=["-c","core.autocrlf=false","-c","core.eol=lf"]):string{
  return execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-c","core.hooksPath="+hooks,
  ...eol,"-c","gc.auto=0","-c","maintenance.auto=false","-C",cwd,...args],
@@ -147,7 +150,7 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
   if(frozen&&frozenGit(isolated,["rev-parse","HEAD^{tree}"],hooks).trim()!==frozen.tree)throw Error("El árbol materializado no coincide");
   const startedAt=new Date().toISOString(),stdout:Buffer[]=[],stderr:Buffer[]=[],limit=1024*1024,coverageDirectory=join(parent,"coverage");
   if(coverage)await mkdir(coverageDirectory);
-  const actualArgs=frozen?["--permission","--allow-fs-read="+coverageRoot,"--test","--test-isolation=none","--test-reporter=tap","--",...frozen.testPaths.map(path=>"./"+path)]:command.slice(1);
+  const actualArgs=frozen?["--permission","--allow-fs-read="+coverageRoot,"--test",testIsolationFlag,"--test-reporter=tap","--",...frozen.testPaths.map(path=>"./"+path)]:command.slice(1);
   const exitCode=await new Promise<number>((resolve,reject)=>{
    // La prueba explícitamente autorizada ejecuta Node sin claves, HOME, PATH,
    // NODE_OPTIONS ni configuración heredada. La restricción de Node reduce
@@ -189,7 +192,7 @@ export function executeCapturedEvidenceCommand(candidate:Candidate,command:reado
 /** Internal structured capture; coverage bytes never cross this boundary. */
 /** Adaptador fijo para la prueba Node autorizada del candidato aún no integrado. */
 export function executeFrozenNodeEvidence(candidate:Candidate,frozen:FrozenExecution):Promise<CapturedExecution>{
- const command=[process.execPath,"--permission","--test","--test-isolation=none","--test-reporter=tap","--",...frozen.testPaths] as [string,...string[]];
+ const command=[process.execPath,"--permission","--test",testIsolationFlag,"--test-reporter=tap","--",...frozen.testPaths] as [string,...string[]];
  return runEvidenceCommand(candidate,command,{cwd:candidate.repository,timeoutMs:120000,frozen},true) as Promise<CapturedExecution>;
 }
 export function executeNodeCoverageCommand(candidate:Candidate,command:readonly [string,...string[]],options:{cwd?:string;timeoutMs?:number}={}):Promise<CoverageExecution>{
