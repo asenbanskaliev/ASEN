@@ -3,7 +3,7 @@ import {execFileSync} from "node:child_process";
 import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import type {NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
 import {isAcceptedNativeIntegration,type AcceptedNativeIntegration} from "./native-integration-review.js";
-import {parsePartitionUnitBasis,materializeIntegratedSuccessor} from "./odd-unit-plan.js";
+import {parsePartitionUnitBasis,materializeIntegratedSuccessor,materializeHistoricalIntegratedSuccessor} from "./odd-unit-plan.js";
 import type {ProfileLayer} from "./profiles.js";
 import type {SessionTodoStore,TodoContext,TodoPlanDraft} from "./todo-store.js";
 
@@ -42,10 +42,19 @@ export async function persistNativePartitionSuccessor(input:{
   throw new Error("Los predecesores no pertenecen a la misma partición ODD.");
  const freshId="continuation-"+createHash("sha256").update(JSON.stringify([old.requestId,candidate.commit])).digest("hex").slice(0,40);
  const facts=parsed.facts;
- const graph=materializeIntegratedSuccessor(parsed,freshId,{
+ const pinned={
   id:"asen-"+candidate.commit.slice(0,12),repository:identity.projectId,revision:candidate.commit,
   createdAt:new Date(execFileSync("git",["-C",identity.projectId,"show","-s","--format=%cI",candidate.commit],{encoding:"utf8",env:isolatedGitEnvironment(),timeout:5000}).trim()).toISOString()
- },input.profiles);
+ };
+ const existing=rows.find(row=>row.requestId==="asen-plan:"+freshId+":worker");
+ let graph=materializeIntegratedSuccessor(parsed,freshId,pinned,input.profiles);
+ if(existing&&existing.plan?.writerAuthorizationBasis!==graph.tasks[0]?.writerAuthorizationBasis){
+  const historical=materializeHistoricalIntegratedSuccessor(parsed,freshId,pinned,input.profiles);
+  const legacyWorker=historical.tasks.find(task=>task.role==="worker");
+  if(!legacyWorker?.writerAuthorizationBasis||existing.plan?.writerAuthorizationBasis!==legacyWorker.writerAuthorizationBasis)
+   throw Error("La base guardada de la sucesora no coincide con el contrato vigente ni histórico.");
+  graph=historical; // addPlan validará exactamente todas las filas históricas, incluidos los dos revisores.
+ }
  const workers=graph.tasks.filter(task=>task.role==="worker");
  if(workers.length!==1||!workers[0]?.writerAuthorizationBasis||!workers[0].candidate||
   JSON.stringify(workers[0].writeSurfaces)!==JSON.stringify(facts.writes.map(write=>write.path)))

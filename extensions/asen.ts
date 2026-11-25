@@ -60,7 +60,8 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
-import {reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,type NativeIntegrationReviewReport} from "../src/runtime/lifecycle/native-integration-review.js";
+import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
 import {prepareNativePartitionChildren} from "../src/runtime/lifecycle/parallel-native-child-plans.js";
@@ -2525,6 +2526,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
   const integrationReports=new Map<string,NativeIntegrationReviewReport>();
+  const explicitDualReviews=new Set<string>();
   const worktreeCommands=registerParallelWorktreeCommand(register,{
    prepareNativeChildren:async(batchId,context,validate)=>{
     const ctx=context as CommandContext;validate();
@@ -2541,6 +2543,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const ctx=context as CommandContext;validate();
     const identity=await sessionIdentity(ctx);
     if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
+    const key=JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]);
+    if(explicitDualReviews.has(key))return {status:"blocked",reason:"Se solicitó revisión doble explícita de este candidato; no sustituirla por una revisión inferior en esta sesión."};
+    integrationReports.delete(key);
     const result=await reviewNativePartitionWithTests({candidate,sessionId:identity.sessionId,
      todos:await todoStorePromise,receipts:new ReceiptVerifierService(path.join(home(),".asen","receipts")),
      validate:async()=>{validate();},confirm:summary=>ctx.ui.confirm!("Revisar candidato y pruebas conjuntas según ODD?",summary),
@@ -2549,6 +2554,37 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if("report" in result&&result.report){
      if(integrationReports.size>=128)integrationReports.clear();
      integrationReports.set(JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]),result.report);
+    }
+    return result;
+   },
+   reviewIntegratedCandidateDual:async(candidate,context,validate)=>{
+    const ctx=context as CommandContext;validate();
+    const identity=await sessionIdentity(ctx);
+    const registry=ctx.modelRegistry as unknown as PiReviewRegistry|undefined;
+    if(!todoStorePromise||!registry||typeof registry.getAvailable!=="function"||
+     typeof registry.hasConfiguredAuth!=="function"||typeof registry.streamSimple!=="function")
+     return {status:"unavailable",reason:"Pi no ofrece un registro de jueces autenticados."};
+    const todos=await todoStorePromise;
+    const policy=await inspectPartitionPolicy(candidate,identity.sessionId,todos);
+    const layers=await profileLayer(identity);
+    const key=JSON.stringify([identity.sessionId,candidate.repository,candidate.batchId,candidate.commit]);
+    if(!explicitDualReviews.has(key)&&explicitDualReviews.size>=128)
+     return {status:"blocked",reason:"Límite de revisiones explícitas en esta sesión; renovar la sesión antes de solicitar otra."};
+    const fixProfile=resolveAgentProfileTarget(layers,"jd-fix-agent").choice;
+    integrationReports.delete(key);
+    explicitDualReviews.add(key);
+    const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
+     judgeA:resolveAgentProfileTarget(layers,"jd-judge-a").choice,judgeB:resolveAgentProfileTarget(layers,"jd-judge-b").choice,
+     ...(fixProfile?{fixProfile}:{}),fixJournal,requirements:policy.requirements,
+     validate:async()=>{validate();
+      if((await inspectPartitionPolicy(candidate,identity.sessionId,todos)).fingerprint!==policy.fingerprint)
+       throw Error("La partición cambió durante la revisión doble.");
+      validate();},confirm:summary=>ctx.ui.confirm!("Revisión doble explícita del candidato?",summary),
+     ...(ctx.signal?{signal:ctx.signal}:{})});
+    validate();
+    if("report" in result&&result.report){
+     if(integrationReports.size>=128)integrationReports.clear();
+     integrationReports.set(key,result.report);
     }
     return result;
    },

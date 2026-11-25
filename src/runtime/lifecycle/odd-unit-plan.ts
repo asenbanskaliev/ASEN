@@ -101,3 +101,19 @@ export function materializeIntegratedSuccessor(parsed:ReturnType<typeof parsePar
  const {facts,basis}=integratedSuccessorBasis(parsed,taskIdentity);
  return unitPlan(facts,parsed.instruction,basis,candidate,profiles).graph;
 }
+
+/** Compatibilidad con un plan de sucesora guardado antes de introducir la
+ * revisión proporcional. Solo se reconstruye el contrato histórico exacto:
+ * conserva sus dos lectores y nunca emite un permiso de escritura. */
+export function materializeHistoricalIntegratedSuccessor(parsed:ReturnType<typeof parsePartitionUnitBasis>,taskIdentity:string,candidate:Candidate,profiles:ProfileLayer){
+ if(candidate.repository!==parsed.facts.repositoryIdentity||!sha(candidate.revision))
+  throw Error("Candidato de sucesora histórico inválido");
+ const current=integratedSuccessorBasis(parsed,taskIdentity);
+ const legacy={...JSON.parse(current.basis),review:{kind:"dual_explicit",estimatedMinutes:15}};
+ const {instruction,...raw}=legacy;
+ const facts=deriveOddFacts({...raw,repositoryIdentity:candidate.repository} as OddRoutingRequest);
+ const decision=planOddRoute(facts);
+ const plan=buildOrchestrationPlan({selectionProfile:"organic",taskId:facts.taskIdentity,repository:facts.repositoryIdentity,
+  prompt:instruction,candidate,writeSurfaces:facts.writes.map(write=>write.path),runtimeProfiles:profiles},decision);
+ return materializeExecutablePlan(plan,instruction,JSON.stringify(legacy));
+}

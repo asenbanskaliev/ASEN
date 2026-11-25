@@ -19,6 +19,8 @@ import {buildNativeIntegrationCandidate} from "../src/runtime/agents/parallel-na
 import {bindNativeRunnerModels,captureNativeWriterBaseline,captureNativeWriterCompletionAsync} from "../src/runtime/agents/native-writer-completion.js";
 import {reviewNativeIntegratedCandidate,reviewNativePartitionWithTests,acceptNativeIntegration,verifyNativeIntegrationAcceptance} from "../src/runtime/lifecycle/native-integration-review.js";
 import {persistNativePartitionSuccessor} from "../src/runtime/lifecycle/native-integration-successor.js";
+import {parsePartitionUnitBasis,materializeHistoricalIntegratedSuccessor} from "../src/runtime/lifecycle/odd-unit-plan.js";
+import {createHash} from "node:crypto";
 import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {createReviewReceiptSigned,loadReceiptSigningKey,writeReviewReceipt} from "../src/evidence/review-receipt.js";
@@ -26,7 +28,7 @@ import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {readFrozenIntegrationReviewEvidence} from "../src/review/workspace-review-session.js";
 import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-native-child-terminal.js";
 
-for(const mode of ["approved","declined","changed","child-declined"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
+for(const mode of ["approved","approved-legacy","declined","changed","child-declined"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
  const base=await realpath(await mkdtemp(join(tmpdir(),"asen-native-odd-"))),project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:isolatedGitEnvironment()}).trim();
  let launched=0,partialObserved=false;
@@ -49,7 +51,7 @@ const terminalErrors:unknown[]=[];
    launched++;
    assert.equal(request.role,"worker");assert.equal(request.writeSurfaces?.length,1);
    assert.ok(["a.txt","b.txt"].includes(request.writeSurfaces![0]!));
-   if(mode==="approved"&&request.writeSurfaces![0]==="b.txt"){
+   if((mode==="approved"||mode==="approved-legacy")&&request.writeSurfaces![0]==="b.txt"){
     let timer:ReturnType<typeof setTimeout>|undefined;
     try{await Promise.race([siblingGate,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("No se guardó el recibo parcial de A")),15000);})]);}
     finally{if(timer)clearTimeout(timer);}
@@ -69,7 +71,7 @@ const terminalErrors:unknown[]=[];
   agents.subscribeTerminal(record=>{terminalWork.push((async()=>{
    const owned={sessionId:record.sessionId,projectId:record.projectId};
    const row=(await todos.list(owned)).find(item=>item.plan?.role==="worker");
-   const first=mode==="approved"&&record.state==="completed"&&row?.plan?.writeSurfaces?.[0]==="a.txt";
+   const first=(mode==="approved"||mode==="approved-legacy")&&record.state==="completed"&&row?.plan?.writeSurfaces?.[0]==="a.txt";
    try{
     // El resultado ya quedó firmado en AgentStore. Restaurar el archivo
     // antes de recoger el recibo no debe sustituir ese árbol inmutable.
@@ -137,7 +139,7 @@ const terminalErrors:unknown[]=[];
    assert.equal(SessionManager.open(child.sessionFile).getSessionId(),child.sessionId);
    assert.equal(SessionManager.open(child.sessionFile).getCwd(),child.projectId);
   }
-  if(mode==="approved"){
+  if((mode==="approved"||mode==="approved-legacy")){
    assert.equal(detail.supervisedLaunch.status,"started");
    assert.equal(detail.supervisedLaunch.started.length,2);
    for(let i=0;i<200;i++){
@@ -187,7 +189,7 @@ const terminalErrors:unknown[]=[];
   assert.equal(await readFile(join(project,"a.txt"),"utf8"),"original");
   assert.equal(await readFile(join(project,"b.txt"),"utf8"),"original");
   assert.equal(git("status","--porcelain"),"");
-  if(mode==="approved"){
+  if((mode==="approved"||mode==="approved-legacy")){
    const batch=(await sourceJournal.list(identity)).at(-1)!;
    const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
    // Jueces simulados: ejercicio de contratos, no prueba independiente real.
@@ -251,14 +253,33 @@ const terminalErrors:unknown[]=[];
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("show",candidate.commit+":sin-cambios.txt"),"texto sin cambios\nsegunda línea");
    assert.equal(await readFile(join(project,"sin-cambios.txt"),"utf8"),"texto sin cambios\r\nsegunda línea\r\n");
+   // Un plan histórico conserva sus revisores, incluso después de actualizar.
+   if(mode==="approved-legacy"){
+    const roots=candidate.sourceTodoIds.map(id=>rows.find(row=>row.taskId===id)!);
+    const old=rows.find(row=>row.dependsOn?.length===2)!;
+    const parsed=parsePartitionUnitBasis(JSON.parse(old.plan!.writerAuthorizationBasis!),project,candidate.baseCommit);
+    const freshId="continuation-"+createHash("sha256").update(JSON.stringify([old.requestId,candidate.commit])).digest("hex").slice(0,40);
+    const graph=materializeHistoricalIntegratedSuccessor(parsed,freshId,{id:"asen-"+candidate.commit.slice(0,12),repository:project,
+     revision:candidate.commit,createdAt:new Date(git("show","-s","--format=%cI",candidate.commit)).toISOString()},{});
+    assert.equal(graph.tasks.filter(task=>task.role==="reviewer").length,2);
+    await todos.addPlan([...roots.map(row=>({title:row.title,requestId:row.requestId!,dependsOn:[],description:row.description!,plan:row.plan!})),
+     ...graph.tasks.map(task=>({title:task.title,requestId:"asen-plan:"+task.id,
+      dependsOn:task.role==="worker"?roots.map(row=>row.requestId!):task.dependsOn.map(id=>"asen-plan:"+id),description:task.instruction,
+      plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,
+       ...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.model?{model:task.model}:{}),...(task.thinking?{thinking:task.thinking}:{}),
+       ...(task.role==="worker"&&task.candidate?{candidate:task.candidate}:{}),
+       ...(task.role==="reviewer"||task.role==="verifier"?{candidateRevision:candidate.commit}:{}),
+       ...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),
+       ...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{})}}))],identity);
+   }
    // Fallo después de guardar el reemplazo pero antes de cerrar sus raíces.
    let verifications=0;
    await assert.rejects(()=>persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{},
     validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(jointProof);if(++verifications===3)throw Error("interrupción simulada");}}),/interrupción simulada/u);
    const savedBefore=(await todos.list(identity)).find(row=>row.requestId?.startsWith("asen-plan:continuation-")&&row.plan?.role==="worker");
    assert.ok(savedBefore);
-   assert.equal(JSON.parse(savedBefore.plan!.writerAuthorizationBasis!).review.kind,"none");
-   assert.equal((await todos.list(identity)).filter(row=>row.requestId?.startsWith("asen-plan:continuation-")).length,1);
+   assert.equal(JSON.parse(savedBefore.plan!.writerAuthorizationBasis!).review.kind,mode==="approved-legacy"?"dual_explicit":"none");
+   assert.equal((await todos.list(identity)).filter(row=>row.requestId?.startsWith("asen-plan:continuation-")).length,mode==="approved-legacy"?3:1);
    const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{global:{schema:"asen.runtime-profiles/v1",active:"cambiado",profiles:[{name:"cambiado",mode:"full-delegation",routes:{worker:{model:"nvidia/otro-modelo",thinking:"minimal"}}}]}},
     validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(jointProof);}});
    if(successor.status==="successor-ready")assert.equal(successor.todoId,savedBefore.taskId);

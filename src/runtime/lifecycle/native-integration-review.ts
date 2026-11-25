@@ -32,7 +32,7 @@ export async function reviewNativeIntegratedCandidate(input:{
  const authors=new Set(candidate.authorModelsObserved),key=(m:PiReviewerModel)=>m.provider+"/"+m.id;
  // Excluir también la representación abreviada del mismo modelo de Pi.
  const authorKeys=new Set([...authors].map(value=>{const slash=value.indexOf("/");return reviewModelIdentityKey({provider:value.slice(0,slash),id:value.slice(slash+1)});}));
- const isAuthor=(m:PiReviewerModel)=>authorKeys.has(reviewModelIdentityKey(m));
+ const isAuthor=(m:PiReviewerModel)=>!m||typeof m.provider!=="string"||typeof m.id!=="string"||authorKeys.has(reviewModelIdentityKey(m));
  const filtered:PiReviewRegistry={
   getAvailable:()=>registry.getAvailable().filter(model=>!isAuthor(model)),
   hasConfiguredAuth:model=>!isAuthor(model)&&registry.hasConfiguredAuth(model),
@@ -62,8 +62,8 @@ export async function reviewNativeIntegratedCandidate(input:{
  const report=await runJudgmentDay({registry:filtered,author,judgeA:a,judgeB:b,evidence,
   requirements:input.requirements,...(input.signal?{signal:input.signal}:{}),validateBeforeJudge:validate});
  await validate();
- reportBindings.set(report,integrationKey(candidate,sessionId));
  if(report.judges.some(judge=>judge.identity?.status!=="declared-match"))return blocked("No se ha comprobado la identidad declarada de ambos jueces; no autorizar corrección ni integración.");
+ reportBindings.set(report,integrationKey(candidate,sessionId));
  const fix=proposeJudgmentFixHandoff({report,evidence,...(input.fixProfile?{fixProfile:input.fixProfile}:{})});
  let fixProposalId:string|undefined;
  if((fix.status==="fix-planning-required"||fix.status==="manual-triage-required")&&fix.paths.every(path=>candidate.paths.includes(path))){
@@ -84,7 +84,7 @@ export type NativePartitionTestReport=Readonly<{
 }>;
 export type NativeIntegrationReviewReport=JudgmentDayReport|NativePartitionTestReport;
 const testReportBindings=new WeakMap<object,{key:string;fingerprint:string;receiptSignature:string;todos:Pick<SessionTodoStore,"list">}>();
-async function inspectPartitionPolicy(candidate:NativeIntegrationCandidate,sessionId:string,todos:Pick<SessionTodoStore,"list">){
+export async function inspectPartitionPolicy(candidate:NativeIntegrationCandidate,sessionId:string,todos:Pick<SessionTodoStore,"list">){
  if(!isIssuedNativeIntegrationCandidate(candidate)||!sessionId||candidate.sourceBindings?.length!==2)
   throw Error("La revisión proporcional requiere las dos raíces originales acreditadas.");
  const rows=await todos.list({sessionId,projectId:candidate.repository});
@@ -156,7 +156,7 @@ export async function reviewNativePartitionWithTests(input:{
  const initial=await inspect(),diff=readNativeIntegrationDiff(candidate);
  // No truncar el diff para conseguir un consentimiento aparente.
  if(diff.diff.length>24000||initial.policy.requirements.length>20000)
-  throw Error("La revisión proporcional excede el límite de lectura; revisar el candidato completo por la vía explícita.");
+  throw Error("La revisión proporcional excede el límite de lectura; usar /asen-worktrees integration-review-dual <lote> si hay dos jueces independientes disponibles, o volver a planificar un ámbito menor.");
  if(await input.confirm(["Riesgo ODD: "+initial.policy.risk+"; sin revisión independiente requerida por el plan.",
   "Candidato: "+candidate.commit,"Árbol: "+candidate.tree,"Pruebas conjuntas firmadas: "+initial.receipt.testSuite.total,
   "Comando/ejecutor registrado: "+initial.receipt.testSuite.runner,
