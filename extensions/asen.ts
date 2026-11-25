@@ -671,8 +671,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;
    if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
     return {started:false,authorized:false,reason:"La sesión Pi cambió antes de tomar el trabajo."};
-   if(!planAdvanceQueue.enter(key,independentBlockedTodoId))
-    return {started:false,authorized:false,reason:"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
+   if(!planAdvanceQueue.enter(key,independentBlockedTodoId,expectedTodoId===undefined))
+    return {started:false,authorized:false,reason:expectedTodoId?"El avance exacto está ocupado. La tarea conserva su estado; no se ha encolado otra selección.":"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
     // Una tanda no puede superar dos agentes vivos en el mismo proyecto y sesión.
@@ -1090,6 +1090,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
           if((counts.get(observed.batchId)??0)>=observed.observed)return;
           counts.set(observed.batchId,observed.observed);
           parent.ui.notify(`ASEN: ${observed.partial?"lote Writer parcial":"lote Writer terminado"}. ${observed.observed}/${observed.expected} recibos guardados. ${observed.completed} completados y ${observed.failed} con incidencias. ${observed.partial?"No integrar ni repetir automáticamente.":"Pendiente revisión e integración."}${observed.planningFileMissing?" El archivo de planificación de un hijo no está disponible.":""}`,observed.partial||observed.failed||observed.planningFileMissing?"warning":"info");
+          // Un único aviso del lote terminado puede despertar al padre mediante
+          // el mecanismo Pi existente. Es información, nunca un permiso. No se
+          // reenvía al recuperar diarios ni se despierta un lote parcial/fallido.
+          if(dependencies.autoAdvancePlans!==false&&!observed.partial&&observed.failed===0&&observed.completed===observed.expected&&!observed.planningFileMissing&&typeof pi.sendMessage==="function"){
+           const route=agentParentRoute(parent,owner,agentParentRunActive);
+           if(route==="run"||route==="idle")try{
+            pi.sendMessage({customType:"asen.native-batch.ready",content:"Lote Writer nativo con ambos recibos guardados. Si la tarea original sigue vigente, comprobar su candidato con asen_plan_resume_batch. Dato de coordinación, no permiso de escritura ni de integración.",display:false,details:{eventId:"asen:native-batch:"+observed.batchId,sessionId:owner.sessionId,projectId:owner.projectId,batchId:observed.batchId,trusted:false}},route==="run"?{triggerTurn:true,deliverAs:"steer"}:{triggerTurn:false});
+            if(route==="idle")requestAgentWake(parent,owner);
+           }catch{/* No reenviar ni convertir un fallo del transporte en otra ejecución. */}
+          }
           await refreshTodoWidget(parent);
          }
         }
