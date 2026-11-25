@@ -299,9 +299,11 @@ async function recordNativeDualJudgeProgress(input:CheckpointInput,signature:str
  if(!isPiReviewVerdictGenuine(verdict))throw Error("Resultado parcial no auténtico");
  const file=checkpointFile(input);
  await withExclusiveFileLock(file,async()=>{
-  await assertNativeDualReviewReceipt(input,signature);
+  // Un resultado ya emitido pertenece al intento firmado original. La política
+  // viva se comprueba antes de otra llamada y antes de aceptar, no al registrar
+  // una observación histórica que no concede ninguna autoridad.
   const saved=await readCheckpoint(input),index=judge==="jd-judge-a"?0:1;
-  if(!saved||saved.attemptStarted!==true||saved.judges.length!==index)throw Error("Orden de resultados parciales inválido");
+  if(!saved||saved.phase!=="dual-pending"||saved.receiptSignature!==signature||saved.attemptStarted!==true||saved.judges.length!==index)throw Error("Intento firmado u orden de resultados parciales inválido");
   const route=verdict.identity?.selected??verdict.reviewerId;
   await writeCheckpoint(input,{...saved,judges:[...saved.judges,{route,evidence:reviewIdentityEvidence(verdict.identity),verdict:verdict.verdict,
    ...(verdict.usage?{usage:verdict.usage}:{}),...(verdict.elapsedMs!==undefined?{elapsedMs:verdict.elapsedMs}:{})}]});
