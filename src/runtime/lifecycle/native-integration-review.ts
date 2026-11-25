@@ -249,7 +249,7 @@ export async function nativeReviewCheckpointStatus(input:CheckpointInput){
 /** Registrar antes de los jueces: reiniciar no permite degradar una doble revisión. */
 export async function markNativeDualReviewPending(input:CheckpointInput){
  const file=checkpointFile(input);await preparePrivateFile(file,true);
- await withExclusiveFileLock(file,async()=>{
+ return await withExclusiveFileLock(file,async()=>{
   const prior=await readCheckpoint(input),policyHash=await checkpointPolicy(input);
   if(prior&&prior.policyHash!==policyHash)throw Error("La política de revisión cambió");
   const receipt=await exactPassingReceipt(input.candidate,input.receipts);
@@ -257,12 +257,20 @@ export async function markNativeDualReviewPending(input:CheckpointInput){
   // Una decisión explícita previa no se borra al volver a abrir el menú.
   if(prior?.phase==="dual-pending"){
    if(prior.receiptSignature!==receipt.signature)throw Error("Cambió el recibo de pruebas de la revisión pendiente");
-   return;
+   return receipt.signature;
   }
   if(prior?.phase==="dual-reviewed"||prior?.phase==="dual-findings")throw Error("Ya existe un dictamen doble para este candidato. Consultar los resultados o preparar un candidato corregido.");
   await writeCheckpoint(input,{schema:"asen.native-review/v1",key:integrationKey(input.candidate,input.sessionId),policyHash,
    phase:"dual-pending",receiptSignature:receipt.signature,judges:[]});
+  return receipt.signature;
  });
+}
+/** La revisión conserva la firma inicial; no admite otro recibo del mismo árbol. */
+export async function assertNativeDualReviewReceipt(input:CheckpointInput,signature:string){
+ const receipt=await exactPassingReceipt(input.candidate,input.receipts);
+ const prior=await readCheckpoint(input);
+ if(!prior||prior.phase!=="dual-pending"||prior.receiptSignature!==signature||receipt.signature!==signature||prior.policyHash!==await checkpointPolicy(input))
+  throw Error("Cambió el recibo o la política de la revisión doble pendiente");
 }
 /** Solo guarda resultados genuinos que ya pasan la misma puerta de aceptación.
  * La firma está separada de la firma de pruebas y no equivale a factura. */
@@ -275,6 +283,7 @@ export async function saveNativeReviewCheckpoint(input:CheckpointInput&{report:N
   const report=input.report;
   if(report.status==="recovered-integration-review")throw Error("No volver a emitir una revisión recuperada");
   const receipt=await exactPassingReceipt(input.candidate,input.receipts);
+  if(prior?.phase==="dual-pending"&&prior.receiptSignature!==receipt.signature)throw Error("Cambió el recibo de pruebas de la revisión pendiente");
   let phase:ReviewCheckpoint["phase"];
   if(report.status==="joint-tests-reviewed"||report.status==="analysis-complete"){
    const verified=await verifyNativeIntegrationAcceptance(input);
@@ -287,6 +296,7 @@ export async function saveNativeReviewCheckpoint(input:CheckpointInput&{report:N
   const judges=report.status==="joint-tests-reviewed"?[]:report.judges.map(judge=>({
    route:judge.identity!.selected,evidence:reviewIdentityEvidence(judge.identity),verdict:judge.verdict,...(judge.usage?{usage:judge.usage}:{}),...(judge.elapsedMs!==undefined?{elapsedMs:judge.elapsedMs}:{})
   }));
+  if(receipt.signature!==(await exactPassingReceipt(input.candidate,input.receipts)).signature)throw Error("Cambió el recibo antes de guardar la revisión");
   if(initial!==await checkpointPolicy(input))throw Error("La política cambió antes de guardar la revisión");
   await writeCheckpoint(input,{schema:"asen.native-review/v1",key:integrationKey(input.candidate,input.sessionId),policyHash:initial,
    phase,receiptSignature:receipt.signature,judges,...(report.status!=="joint-tests-reviewed"?{findingsCount:report.findings.length}:{}),...(input.fixProposalId?{fixProposalId:input.fixProposalId}:{})});

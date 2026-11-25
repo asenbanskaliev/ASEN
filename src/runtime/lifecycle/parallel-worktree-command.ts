@@ -55,11 +55,11 @@ function readRequest(value:string):{parentDir:string;units:readonly ParallelWork
 export function registerParallelWorktreeCommand(
  register:(name:string,command:WorktreeCommand)=>void,
  options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;observationFile?:string;supervisorClaimsFile?:string;
-  testIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
-  reviewIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
-  reviewIntegratedCandidateDual?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
-  continueIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
-  advanceIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,reviewMode:"proportional"|"dual")=>Promise<unknown>;
+  testIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,signal?:AbortSignal)=>Promise<unknown>;
+  reviewIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,signal?:AbortSignal)=>Promise<unknown>;
+  reviewIntegratedCandidateDual?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,signal?:AbortSignal)=>Promise<unknown>;
+  continueIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,signal?:AbortSignal)=>Promise<unknown>;
+  advanceIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,reviewMode:"proportional"|"dual",signal?:AbortSignal)=>Promise<unknown>;
   integrationFlowLockDirectory?:string;
   prepareNativeChildren?:(batchId:string,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
   planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
@@ -222,7 +222,12 @@ export function registerParallelWorktreeCommand(
       const automatic=action==="integration-auto"||action==="integration-auto-dual";
       const run=automatic?options.advanceIntegratedCandidate:action==="integration-test"?options.testIntegratedCandidate:action==="integration-review"?options.reviewIntegratedCandidate:action==="integration-review-dual"?options.reviewIntegratedCandidateDual:options.continueIntegratedCandidate;
       if(!run||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm)return {status:"unavailable",reason:"Se necesita la sesión Pi propietaria y confirmación interactiva."};
-      const execute=async()=>{validate();const result=await run(candidate,ctx,validate,action==="integration-auto-dual"?"dual":"proportional");validate();return result;};
+      const execute=async()=>{
+       validate();
+       const result=automatic?await options.advanceIntegratedCandidate!(candidate,ctx,validate,action==="integration-auto-dual"?"dual":"proportional",signal):
+        await (run as NonNullable<typeof options.testIntegratedCandidate>)(candidate,ctx,validate,signal);
+       validate();return result;
+      };
       // El bloqueo compartido abarca también los comandos manuales: dos
       // sesiones/procesos no pueden consumir otra revisión del mismo candidato
       // mientras esperan el consentimiento o realizan la transición Git.

@@ -9,6 +9,13 @@ export interface PiReviewRegistry{
  hasConfiguredAuth(model:PiReviewerModel):boolean;
  streamSimple(model:PiReviewerModel,context:{systemPrompt:string;messages:readonly {role:"user";content:readonly {type:"text";text:string}[];timestamp:number}[]},options?:{maxTokens?:number;signal?:AbortSignal}):AsyncIterable<PiReviewEvent>;
 }
+/** Comprueba la fachada pública de Pi sin iniciar una solicitud ni leer credenciales. */
+export function resolvePiReviewRegistry(value:unknown):PiReviewRegistry|undefined{
+ if(!value||typeof value!=="object")return;
+ const registry=value as Partial<PiReviewRegistry>;
+ if(typeof registry.getAvailable!=="function"||typeof registry.hasConfiguredAuth!=="function"||typeof registry.streamSimple!=="function")return;
+ return registry as PiReviewRegistry;
+}
 export type PiReviewEvent=
  | Readonly<{type:"done";reason:"stop"|"length"|"toolUse"|"deferred";message:{content:readonly unknown[];[key:string]:unknown}}>
  | Readonly<{type:"error";reason:"aborted"|"error"}>

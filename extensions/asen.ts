@@ -60,10 +60,10 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
-import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
+import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,assertNativeDualReviewReceipt,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {summarizeParentFlow,summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
 import type {NativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
-import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
+import {resolvePiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {testNativeIntegrationCandidate} from "../src/runtime/lifecycle/native-integration-tests.js";
 import {persistNativePartitionSuccessor,inspectCompletedNativePartition} from "../src/runtime/lifecycle/native-integration-successor.js";
 import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
@@ -662,14 +662,16 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   },async identity=>profileLayer(identity)):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const planAdvanceQueue=new PlanAdvanceQueue();
-  const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string,expectedTodoId?:string):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
+  const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string,expectedTodoId?:string,toolSignal?:AbortSignal):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
+   const signal=toolSignal&&ctx.signal?AbortSignal.any([ctx.signal,toolSignal]):toolSignal??ctx.signal;
+   const cancelled=()=>ctx.signal?.aborted===true||toolSignal?.aborted===true;
    if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false,reason:"Automatic plan dispatch is disabled."};
    if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false,reason:"The local plan dispatcher is unavailable."};
    const generation=parentBindingGeneration,manager=ctx.sessionManager;
-   if(hostStatusClosed||ctx.signal?.aborted)
+   if(hostStatusClosed||cancelled())
     return {started:false,authorized:false,reason:"La sesión Pi ha terminado; no se reanuda un trabajo antiguo."};
    const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;
-   if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
+   if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||cancelled())
     return {started:false,authorized:false,reason:"La sesión Pi cambió antes de tomar el trabajo."};
    if(!planAdvanceQueue.enter(key,independentBlockedTodoId,expectedTodoId===undefined))
     return {started:false,authorized:false,reason:expectedTodoId?"El avance exacto está ocupado. La tarea conserva su estado; no se ha encolado otra selección.":"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
@@ -687,14 +689,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
      return !!model&&`${model.provider}/${model.id}`===ref;
     };
-    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,
+    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,...(signal?{signal}:{}),
      ...(expectedTodoId?{expectedTodoId}:{}),
      ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
      runtimeProfiles:activeProfiles,validateIdentity:async()=>{
-      if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
+      if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||cancelled())
        throw new Error("La sesión Pi terminó durante el avance: no se lanzará ningún agente");
       const current=await sessionIdentity(ctx);
-      if(ctx.signal?.aborted)
+      if(cancelled())
        throw new Error("La sesión Pi terminó durante el avance: no se lanzará ningún agente");
       if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||
          current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
@@ -710,7 +712,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     let lecturasIniciadas=dispatched&&result.role!=="worker"?1:0;
     // Segunda unidad únicamente si la primera es de lectura y la siguiente
     // está lista por sus propias dependencias. El supervisor nunca adelanta un Writer.
-    if(lecturasIniciadas===1&&!independentBlockedTodoId&&!expectedTodoId&&!ctx.signal?.aborted)try{
+    if(lecturasIniciadas===1&&!independentBlockedTodoId&&!expectedTodoId&&!cancelled())try{
      const activos=(await agents.list(identity)).filter(agent=>agent.state==="queued"||agent.state==="running").length;
      if(activos<2){
       const rows=await todos.list(identity),byId=new Map(rows.map(row=>[row.taskId,row]));
@@ -743,8 +745,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        try{
         const now=await sessionIdentity(ctx);
         if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||
-           now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.signal?.aborted)break;
-        await advancePlan(ctx,blockedId);
+           now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||cancelled())break;
+        await advancePlan(ctx,blockedId,undefined,signal);
        }catch{
         try{ctx.ui.notify("ASEN no pudo recuperar un aviso de avance. Las tareas siguen guardadas; no se repitieron escrituras.","error");}catch{}
        }
@@ -2565,7 +2567,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      childProfiles:profileLayer,validateParent:validate,
      confirm:summary=>ctx.ui.confirm!("Preparar sesiones hijas Pi sin iniciar modelos?",summary)});
    },
-   testIntegratedCandidate:async(candidate,context,validate)=>{
+   testIntegratedCandidate:async(candidate,context,validate,signal)=>{
     const ctx=context as CommandContext;validate();
     if(!todoStorePromise||!ctx.ui.editor)return {status:"unavailable",reason:"Se necesita el editor de la sesión propietaria para elegir las pruebas."};
     const identity=await sessionIdentity(ctx),todos=await todoStorePromise;
@@ -2577,9 +2579,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(!Array.isArray(testPaths)||testPaths.some(item=>typeof item!=="string"))throw Error("Indicar un array JSON de rutas de pruebas");
     return testNativeIntegrationCandidate({candidate,sessionId:identity.sessionId,todos,storageDir:path.join(home(),".asen","receipts"),
      testPaths,validate:async()=>{validate();},confirm:summary=>ctx.ui.confirm!("Ejecutar pruebas conjuntas y firmar su resultado?",summary),
-     ...(ctx.signal?{signal:ctx.signal}:{})});
+     ...(signal?{signal}:{})});
    },
-   reviewIntegratedCandidate:async(candidate,context,validate)=>{
+   reviewIntegratedCandidate:async(candidate,context,validate,signal)=>{
     const ctx=context as CommandContext;validate();
     const identity=await sessionIdentity(ctx);
     if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
@@ -2588,33 +2590,34 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const result=await reviewNativePartitionWithTests({candidate,sessionId:identity.sessionId,
      todos:await todoStorePromise,receipts:new ReceiptVerifierService(path.join(home(),".asen","receipts")),
      validate:async()=>{validate();},confirm:summary=>ctx.ui.confirm!("Revisar candidato y pruebas conjuntas según ODD?",summary),
-     ...(ctx.signal?{signal:ctx.signal}:{})});
+     ...(signal?{signal}:{})});
     validate();
     if("report" in result&&result.report){
      await saveNativeReviewCheckpoint({...checkpoint,report:result.report});validate();
     }
     return result;
    },
-   reviewIntegratedCandidateDual:async(candidate,context,validate)=>{
+   reviewIntegratedCandidateDual:async(candidate,context,validate,signal)=>{
     const ctx=context as CommandContext;validate();
     const identity=await sessionIdentity(ctx);
-    const registry=ctx.modelRegistry as unknown as PiReviewRegistry|undefined;
-    if(!todoStorePromise||!registry||typeof registry.getAvailable!=="function"||
-     typeof registry.hasConfiguredAuth!=="function"||typeof registry.streamSimple!=="function")
+    const registry=resolvePiReviewRegistry(ctx.modelRegistry);
+    if(!todoStorePromise||!registry)
      return {status:"unavailable",reason:"Pi no ofrece un registro de jueces autenticados."};
     const todos=await todoStorePromise;
     const policy=await inspectPartitionPolicy(candidate,identity.sessionId,todos);
     const layers=await profileLayer(identity);
     const fixProfile=resolveAgentProfileTarget(layers,"jd-fix-agent").choice;
-    const checkpoint=await checkpointInput(candidate,ctx);await markNativeDualReviewPending(checkpoint);validate();
+    const checkpoint=await checkpointInput(candidate,ctx);
+    const signature=await markNativeDualReviewPending(checkpoint);validate();
     const result=await reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry,
      judgeA:resolveAgentProfileTarget(layers,"jd-judge-a").choice,judgeB:resolveAgentProfileTarget(layers,"jd-judge-b").choice,
      ...(fixProfile?{fixProfile}:{}),fixJournal,requirements:policy.requirements,
      validate:async()=>{validate();
+      await assertNativeDualReviewReceipt(checkpoint,signature);validate();
       if((await inspectPartitionPolicy(candidate,identity.sessionId,todos)).fingerprint!==policy.fingerprint)
        throw Error("La partición cambió durante la revisión doble.");
       validate();},confirm:summary=>ctx.ui.confirm!("Revisión doble explícita del candidato?",summary),
-     ...(ctx.signal?{signal:ctx.signal}:{})});
+     ...(signal?{signal}:{})});
     validate();
     if("report" in result&&result.report){
      await saveNativeReviewCheckpoint({...checkpoint,report:result.report,...("fixProposalId" in result&&typeof result.fixProposalId==="string"?{fixProposalId:result.fixProposalId}:{})});
@@ -2622,7 +2625,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }
     return result;
    },
-   continueIntegratedCandidate:async(candidate,context,validate)=>{
+   continueIntegratedCandidate:async(candidate,context,validate,signal)=>{
     const ctx=context as CommandContext;validate();
     if(!todoStorePromise)return {status:"unavailable",reason:"No hay diario Todo."};
     const identity=await sessionIdentity(ctx);
@@ -2639,10 +2642,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     try{
      const successor=await persistNativePartitionSuccessor({candidate,accepted,identity,todos:await todoStorePromise,
       profiles:await profileLayer(identity),validate:async()=>{validate();},
-      verify:async()=>{await verifyNativeIntegrationAcceptance(proof);},...(ctx.signal?{signal:ctx.signal}:{})});
+      verify:async()=>{await verifyNativeIntegrationAcceptance(proof);},...(signal?{signal}:{})});
      if(successor.status!=="successor-ready")return {status:successor.status,integration:accepted,successor};
      try{
-      const execution=await advancePlan(ctx,undefined,successor.todoId);
+      validate();const execution=await advancePlan(ctx,undefined,successor.todoId,signal);
       return {status:successor.status,integration:accepted,successor,execution};
      }catch(error){
       return {status:successor.status,integration:accepted,successor,execution:{started:"unknown",reason:safeErrorMessage(error)}};
@@ -2655,7 +2658,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const worktreeCommands=registerParallelWorktreeCommand(register,{
    ...integrationOperations,
    integrationFlowLockDirectory:path.join(home(),".asen","native-flow-locks"),
-   advanceIntegratedCandidate:async(candidate,context,validate,reviewMode)=>{
+   advanceIntegratedCandidate:async(candidate,context,validate,reviewMode,signal)=>{
     const ctx=context as CommandContext,checkpoint=await checkpointInput(candidate,ctx);validate();
     const key=JSON.stringify([checkpoint.sessionId,candidate.repository,candidate.batchId,candidate.commit]);
     if(activeIntegrationFlows.has(key))return {status:"blocked",reason:"Ya hay un avance activo para este candidato."};
@@ -2666,12 +2669,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
       // Una petición natural de continuación puede solicitar permiso NUEVO para
       // una sucesora todavía planificada. Nunca relanzar una ya reclamada.
       if(completed.todoState!=="planned")return completed;
-      validate();const execution=await advancePlan(ctx,undefined,completed.todoId);
+      validate();const execution=await advancePlan(ctx,undefined,completed.todoId,signal);
       return {...completed,execution};
      }
      const receipt=await checkpoint.receipts.readReceiptState(candidate.commit);validate();
      if(receipt.status==="absent"){
-      const tested=await integrationOperations.testIntegratedCandidate(candidate,context,validate);
+      const tested=await integrationOperations.testIntegratedCandidate(candidate,context,validate,signal);
       if(tested.status!=="tests-signed")return tested;
      }
      await exactPassingReceipt(candidate,checkpoint.receipts);validate();
@@ -2680,13 +2683,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(reviewMode==="dual"&&(stage==="absent"||stage==="joint-tests-reviewed")){
       // Solo se propone esta modalidad por petición explícita, y el diálogo
       // nativo vuelve a comprobar consentimiento, identidad y coste desconocido.
-      const reviewed=await integrationOperations.reviewIntegratedCandidateDual(candidate,context,validate);
+      const reviewed=await integrationOperations.reviewIntegratedCandidateDual(candidate,context,validate,signal);
       if(reviewed.status!=="analysis-complete")return reviewed;
      }else if(stage==="absent"){
-      const reviewed=await integrationOperations.reviewIntegratedCandidate(candidate,context,validate);
+      const reviewed=await integrationOperations.reviewIntegratedCandidate(candidate,context,validate,signal);
       if(reviewed.status!=="joint-tests-reviewed")return reviewed;
      }
-     validate();return await integrationOperations.continueIntegratedCandidate(candidate,context,validate);
+     validate();return await integrationOperations.continueIntegratedCandidate(candidate,context,validate,signal);
     }finally{activeIntegrationFlows.delete(key);}
    },
    journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),

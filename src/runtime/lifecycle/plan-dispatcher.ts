@@ -92,7 +92,7 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 }
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;
  /** Solo el coordinador interno puede reservar una plaza de lectura.
   * Nunca es permiso para iniciar un Writer ni eludir las selecciones hijas. */
  readOnlyWave?:boolean;
@@ -342,7 +342,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
     // El almacén vuelve a ejecutar esta verificación dentro del bloqueo,
     // inmediatamente antes de arrancar el agente.
     await binder.launchExact(fresh,id,input.identity,enqueue,dispatch,validateLaunch);
-   }});
+   }},input.signal);
    return {status:"dispatched",todoId:task.taskId,agentId,role};
   }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting authorization; refresh the plan before dispatch."};throw error;}
  }
@@ -383,7 +383,7 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  await validateReadOnlyLaunch();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
  try{
-  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await validateReadOnlyLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateReadOnlyLaunch);}});
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await validateReadOnlyLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateReadOnlyLaunch);}},input.signal);
   return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
  }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }
