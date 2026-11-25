@@ -310,6 +310,28 @@ const terminalErrors:unknown[]=[];
    assert.equal(partialMetrics.reviews[0]?.completeJudgment,false);
    assert.equal(await restoreNativeIntegrationReview(partialCheckpoint),undefined);
    assert.equal(await canResumeUnstartedDualReview(partialCheckpoint),false);
+   // Una revisión del Todo durante el primer juez no borra el resultado observado,
+   // pero impide el segundo juez y cualquier aceptación.
+   let changedDuringJudge=false,policyJudgeCalls=0;
+   const policyCheckpoint={...checkpoint,storageDir:join(privateDir,"policy-change-checkpoint"),
+    todos:{list:async()=>changedDuringJudge?altered.list():todos.list(identity)}};
+   const policySignature=await markNativeDualReviewPending(policyCheckpoint);
+   const policyRegistry:PiReviewRegistry={...registry,async *streamSimple(model){
+    policyJudgeCalls++;
+    changedDuringJudge=true;
+    yield {type:"done",reason:"stop",message:{provider:model.provider,model:model.id,content:[{type:"text",text:JSON.stringify({verdict:"pass",summary:"Observación anterior al cambio",findings:[]})}]}};
+   }};
+   await assert.rejects(()=>reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry:policyRegistry,
+    judgeA:{model:"prueba/juez-a"},judgeB:{model:"prueba/juez-b"},fixJournal:new JudgmentFixProposalJournal(join(privateDir,"policy-change-fixes.json")),
+    requirements:"Revisar candidato",validate:()=>assertNativeDualReviewReceipt(policyCheckpoint,policySignature),confirm:async()=>true,
+    beforeModelUse:()=>markNativeDualReviewAttemptStarted(policyCheckpoint,policySignature),
+    progressCheckpoint:{input:policyCheckpoint,signature:policySignature}}),/raíz ODD original cambió/u);
+   const policyMetrics=await readNativeReviewMetrics(policyCheckpoint.storageDir,identity);
+   assert.equal(policyJudgeCalls,1);
+   assert.equal(policyMetrics.reviews[0]?.judges.length,1);
+   assert.equal(policyMetrics.reviews[0]?.completeJudgment,false);
+   assert.equal(await canResumeUnstartedDualReview(policyCheckpoint),false);
+   assert.equal(await restoreNativeIntegrationReview(policyCheckpoint),undefined);
    const originalReceipt=await receipts.readReceiptState(candidate.commit);
    if(originalReceipt.status!=="valid")assert.fail("Sin recibo auténtico");
    // El lector simula una nueva firma auténtica para el mismo árbol: no basta conservar el SHA.
