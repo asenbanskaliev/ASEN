@@ -3,7 +3,10 @@ import {realpathSync} from "node:fs";
 import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
-import {resolveRuntimeDelegationMode,type ProfileLayer} from "./profiles.js";
+import {resolveRuntimeDelegationMode,resolveRuntimeRoute,type ProfileLayer} from "./profiles.js";
+import {resolveProfileFallbackChain,type ProfileFallbacksFile} from "./profile-fallback-store.js";
+import {reviewModelIdentityKey,splitPiModelIdentity} from "../../review/model-identity.js";
+import type {AgentModelFallback} from "../../agents/dispatcher.js";
 import {isPartitionUnitBasis,parsePartitionUnitBasis,integratedSuccessorBasis} from "./odd-unit-plan.js";
 import type {Candidate} from "../../core/types.js";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../../flow/odd-routing.js";
@@ -92,7 +95,24 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
 }
 
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;
+/** Solo Explorer de un plan normal puede cambiar de modelo sin alterar la
+ * independencia de un lector obligatorio ni repetir una escritura incierta.
+ * No reinterpretar un Todo antiguo usando otro perfil. */
+export function plannedExplorerFallback(input:{role:string;model?:string;profiles?:ProfileLayer;fallbacks?:ProfileFallbacksFile;independentRecovery?:boolean}):AgentModelFallback|undefined{
+ if(input.role!=="explorer"||input.independentRecovery||!input.model||!input.profiles||!input.fallbacks)return;
+ const route=resolveRuntimeRoute(input.profiles,input.role);
+ if(route.source==="default"||route.choice?.model!==input.model)return;
+ const profile=input.profiles[route.source]?.active,primary=splitPiModelIdentity(input.model);
+ if(!profile||!primary)return;
+ const seen=new Set([reviewModelIdentityKey(primary)]);
+ const chain=resolveProfileFallbackChain(input.fallbacks,profile,input.role).filter(step=>{
+  const model=splitPiModelIdentity(step.model);if(!model)return false;
+  const key=reviewModelIdentityKey(model);if(seen.has(key))return false;
+  seen.add(key);return true;
+ });
+ return chain.length?{profile,chain}:undefined;
+}
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;profileFallbacks?:ProfileFallbacksFile;
  /** Solo el coordinador interno puede reservar una plaza de lectura.
   * Nunca es permiso para iniciar un Writer ni eludir las selecciones hijas. */
  readOnlyWave?:boolean;
@@ -382,8 +402,9 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed while awaiting exploration approval; rebuild the plan against the current candidate."};}
  await validateReadOnlyLaunch();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
+ const modelFallback=plannedExplorerFallback({role:readRole,...(task.plan.model?{model:task.plan.model}:{}),...(input.runtimeProfiles?{profiles:input.runtimeProfiles}:{}),...(input.profileFallbacks?{fallbacks:input.profileFallbacks}:{}),independentRecovery:!!independence});
  try{
-  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await validateReadOnlyLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateReadOnlyLaunch);}},input.signal);
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),...(modelFallback?{modelFallback}:{}),onPrepared:async(id,enqueue,dispatch)=>{await validateReadOnlyLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateReadOnlyLaunch);}},input.signal);
   return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
  }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }
