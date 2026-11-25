@@ -37,6 +37,11 @@ for(const mode of ["approved","approved-legacy","declined","changed","child-decl
  const siblingGate=new Promise<void>(resolve=>{releaseSibling=resolve;});
  const terminalWork:Promise<unknown>[]=[];
 const terminalErrors:unknown[]=[];
+ let terminalCount=0,resolveTerminals:()=>void=()=>{};
+ const terminalBarrier=new Promise<void>(resolve=>{resolveTerminals=resolve;});
+ let cleanupAgents:AgentRuntime|undefined;
+ let cleanupChildren:readonly {sessionId:string;projectId:string}[]=[];
+ let expectedTerminals=0;
  try{
   await mkdir(project);await mkdir(privateDir,{recursive:true,mode:0o700});
   git("init","-q","-b","prueba-integracion");git("config","core.autocrlf","true");git("config","user.name","ASEN prueba");git("config","user.email","test@example.invalid");
@@ -66,6 +71,7 @@ const terminalErrors:unknown[]=[];
    bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);return result;
   }};
   const agents=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner,maxConcurrency:2});
+  cleanupAgents=agents;
   const links=new TaskAgentLinkStore(join(privateDir,"task-agent-links.json"));
   const sourceJournal=new ParallelTodoWorktreeJournal(join(privateDir,"parallel-todo-worktrees.json"));
   const sessionJournal=new ParallelChildSessionJournal(join(privateDir,"parallel-worktree-sessions.json"),sourceJournal);
@@ -82,7 +88,7 @@ const terminalErrors:unknown[]=[];
     const receipt=await reconcileNativeChildTerminal({record,todos,agents,links,sourceJournal,sessionJournal,claims,observations});
     if(first){assert.ok(receipt?.partial);assert.equal(receipt.observed,1);partialObserved=true;}
    }finally{if(first)releaseSibling();}
-  })().catch(error=>{terminalErrors.push(error);releaseSibling();}));});
+  })().catch(error=>{terminalErrors.push(error);releaseSibling();}).finally(()=>{if(++terminalCount===2)resolveTerminals();}));});
   const parent=SessionManager.create(project,join(base,"parent-sessions"));
   parent.appendMessage({role:"user",content:"Prueba local sin modelos",timestamp:Date.now()});
   const identity={sessionId:parent.getSessionId(),projectId:project};
@@ -136,6 +142,7 @@ const terminalErrors:unknown[]=[];
   const children=detail.childPreparation.children as Array<{sessionId:string;projectId:string;sessionFile:string;childTodoId:string}>;
   assert.equal(children.length,2);
   assert.equal(dialogs.length,3);
+  cleanupChildren=children;
   assert.equal(new Set(children.map(child=>child.sessionId)).size,2);
   for(const child of children){
    if(mode==="changed"&&child.sessionFile===(await sessionJournal.listSource(identity))[0]!.nativeSessionFile)continue;
@@ -145,11 +152,10 @@ const terminalErrors:unknown[]=[];
   if((mode==="approved"||mode==="approved-legacy")){
    assert.equal(detail.supervisedLaunch.status,"started");
    assert.equal(detail.supervisedLaunch.started.length,2);
-   for(let i=0;i<200;i++){
-    const states=(await Promise.all(children.map(child=>agents.list(child)))).flat();
-    if(terminalWork.length===2&&states.length===2&&states.every(state=>state.state==="completed"||state.state==="failed"))break;
-    await new Promise(resolve=>setTimeout(resolve,20));
-   }
+   expectedTerminals=2;
+   let terminalTimer:ReturnType<typeof setTimeout>|undefined;
+   try{await Promise.race([terminalBarrier,new Promise<never>((_,reject)=>{terminalTimer=setTimeout(()=>reject(Error("No llegaron los dos terminales nativos")),90000);})]);}
+   finally{if(terminalTimer)clearTimeout(terminalTimer);}
    await Promise.all(terminalWork);
    assert.equal(terminalErrors.length,0);
    assert.equal(launched,2);
@@ -349,7 +355,18 @@ const terminalErrors:unknown[]=[];
    assert.equal(finalRows.find(row=>row.taskId===rows.find(item=>item.dependsOn?.length===2)!.taskId)?.current.state,"cancelled");
    assert.equal(finalRows.find(row=>row.requestId?.startsWith("asen-plan:continuation-")&&row.plan?.role==="worker")?.plan?.candidate?.revision,candidate.commit);
   }
- }finally{await Promise.allSettled(terminalWork);await rm(base,{recursive:true,force:true});}
+ }finally{
+  releaseSibling();
+  if(cleanupAgents)for(const child of cleanupChildren)await cleanupAgents.cancelSession(child);
+  if(expectedTerminals===2&&terminalCount<2){
+   let timer:ReturnType<typeof setTimeout>|undefined;
+   try{await Promise.race([terminalBarrier,new Promise<void>(resolve=>{timer=setTimeout(resolve,90000);})]);}
+   finally{if(timer)clearTimeout(timer);}
+  }
+  await Promise.allSettled(terminalWork);
+  // Ante un terminal incierto no borrar un checkout que todavía puede estar en uso.
+  if(expectedTerminals===0||terminalCount===2)await rm(base,{recursive:true,force:true});
+ }
 });
 
 test("El resultado nativo aislado excluye ignorados anteriores y conserva ignorados nuevos del ámbito",async()=>{
@@ -396,5 +413,29 @@ test("La captura nativa conserva altas y finales mixtos de texto explícito como
   assert.equal(git("show",completion.candidateTree+":existente.txt"),"cambiado\nsegunda\n");
   assert.equal(git("show",completion.candidateTree+":nuevo.txt"),"nuevo\nsegunda\n");
   assert.equal(await readFile(join(project,"nuevo.txt"),"utf8"),"nuevo\r\nsegunda\n");
+ }finally{await rm(project,{recursive:true,force:true});}
+});
+
+test("El inventario de ignorados supera el antiguo límite de stdout y conserva el ámbito",async()=>{
+ const project=await realpath(await mkdtemp(join(tmpdir(),"asen-inventory-large-")));
+ const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",env:isolatedGitEnvironment(),stdio:["ignore","pipe","pipe"]}).trim();
+ try{
+  git("init","-q");git("config","user.name","ASEN");git("config","user.email","test@example.invalid");
+  await writeFile(join(project,".gitignore"),"dep-*\n");git("add",".gitignore");git("commit","--no-gpg-sign","-qm","base");
+  // Rutas largas en directorios, no nombres de archivo que excedan límites Windows.
+  const dirs=Array.from({length:96},(_,i)=>"dep-"+i+"-"+"x".repeat(75));
+  for(const dir of dirs){
+   await mkdir(join(project,dir));
+   await Promise.all(Array.from({length:120},(_,i)=>writeFile(join(project,dir,"f-"+i+"-"+"y".repeat(25)),"")));
+  }
+  const request={id:"unit-"+"c".repeat(40)+":worker",role:"worker" as const,repository:project,prompt:"Prueba",
+   candidate:{id:"fixture",repository:project,revision:git("rev-parse","HEAD"),createdAt:new Date().toISOString()},writeSurfaces:["resultado.txt"]};
+  const baseline=await captureNativeWriterBaseline(request);
+  assert.equal(baseline.length,96*120);
+  assert.ok(Buffer.byteLength(baseline.join("\0"))>1_000_000);
+  await writeFile(join(project,"resultado.txt"),"resultado");
+  const result={};bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);
+  const completion=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
+  assert.deepEqual(completion?.paths,["resultado.txt"]);
  }finally{await rm(project,{recursive:true,force:true});}
 });

@@ -38,6 +38,13 @@ import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environ
 const real=process.argv[2]==="--real";
 if(!real&&process.argv[2]!=="--offline")throw Error("Indicar --offline o --real");
 if(real&&!process.env.NVIDIA_API_KEY)throw Error("Falta credencial NVIDIA");
+if(real){
+ const directory=process.env.PI_CODING_AGENT_DIR;
+ if(!directory||resolve(directory)!==directory)throw Error("El ensayo real requiere un directorio Pi absoluto y preparado.");
+ const settings=JSON.parse(readFileSync(join(directory,"settings.json"),"utf8"));
+ if(settings.retry?.enabled!==false||settings.retry?.maxRetries!==0||settings.retry?.provider?.maxRetries!==0)
+  throw Error("No se ha desactivado explícitamente el reintento de Pi y del proveedor.");
+}
 for(const key of Object.keys(process.env))if(key.toUpperCase().startsWith("GIT_"))delete process.env[key];
 const root=realpathSync(resolve(process.env.GITHUB_WORKSPACE??process.cwd()));
 const expected=process.env.ASEN_EXPECTED_SHA,output=process.env.ASEN_E3_FOCUSED_REPORT;
