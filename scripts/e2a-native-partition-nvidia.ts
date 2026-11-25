@@ -1,5 +1,5 @@
 /** E2A/E2B: petición ODD -> worktrees -> sesiones SDK Pi -> permiso de lote
- * -> Dispatcher -> dos procesos NVIDIA -> recibos. Host de diálogo instrumentado,
+ * -> Dispatcher -> dos procesos NVIDIA -> recibos -> sucesora separada. Host de diálogo instrumentado,
  * no un consentimiento humano de producción. Repositorio sintético desechable.
  */
 import assert from "node:assert/strict";

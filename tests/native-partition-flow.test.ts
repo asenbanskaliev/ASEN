@@ -28,6 +28,8 @@ import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import type {PiReviewRegistry} from "../src/review/pi-model-reviewer.js";
 import {readFrozenIntegrationReviewEvidence} from "../src/review/workspace-review-session.js";
 import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-native-child-terminal.js";
+import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 
 for(const mode of ["approved","approved-legacy","declined","changed","child-declined"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
  const base=await realpath(await mkdtemp(join(tmpdir(),"asen-native-odd-"))),project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
@@ -356,6 +358,54 @@ const terminalErrors:unknown[]=[];
    assert.equal(finalRows.filter(row=>candidate.sourceTodoIds.includes(row.taskId)&&row.current.state==="done").length,2);
    assert.equal(finalRows.find(row=>row.taskId===rows.find(item=>item.dependsOn?.length===2)!.taskId)?.current.state,"cancelled");
    assert.equal(finalRows.find(row=>row.requestId?.startsWith("asen-plan:continuation-")&&row.plan?.role==="worker")?.plan?.candidate?.revision,candidate.commit);
+   if(mode==="approved"){
+    const reopenedTodos=await SessionTodoStore.openProjectScoped(join(privateDir,"todos"),join(privateDir,"todos.json"));
+    const reopenedLinks=new TaskAgentLinkStore(join(privateDir,"task-agent-links.json"));
+    let successorCalls=0;
+    const successorRunner:AgentRunner={run:async request=>{
+     successorCalls++;
+     assert.equal(request.repository,project);assert.equal(request.isolationKey,identity.sessionId);
+     assert.equal(request.candidate?.revision,candidate.commit);
+     assert.deepEqual(request.writeSurfaces,["c.txt"]);
+     await writeFile(join(project,"c.txt"),"sucesora");
+     const result={id:request.id,ok:true,output:"Resultado simulado de sucesora"};
+     bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);return result;
+    }};
+    const successorAgents=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner:successorRunner,maxConcurrency:1});
+    const input={todos:reopenedTodos,agents:successorAgents,links:reopenedLinks,identity,
+     runtimeProfiles:{global:{schema:"asen.runtime-profiles/v1" as const,active:"ensayo",profiles:[{name:"ensayo",mode:"full-delegation" as const,routes:{worker:{model:"nvidia/modelo-simulado"}}}]}},
+     expectedTodoId:savedBefore.taskId,validateIdentity:async()=>{assert.equal(git("rev-parse","HEAD"),candidate.commit);}};
+    let confirmations=0;
+    const confirm=async(task:{id:string;candidateRevision?:string;writeSurfaces?:readonly string[]},approved:boolean)=>{
+     confirmations++;assert.equal(task.id,savedBefore.taskId);assert.equal(task.candidateRevision,candidate.commit);
+     assert.deepEqual(task.writeSurfaces,["c.txt"]);return approved;
+    };
+    try{
+     const denied=await dispatchNextPlanTask({...input,confirm:task=>confirm(task,false)});
+     assert.equal(denied.status,"blocked");assert.equal(confirmations,1);assert.equal(successorCalls,0);
+     const dispatched=await dispatchNextPlanTask({...input,confirm:task=>confirm(task,true)});
+     assert.equal(dispatched.status,"dispatched");
+     if(dispatched.status!=="dispatched")assert.fail("No se despachó la sucesora exacta");
+     const deadline=Date.now()+90000;
+     while(Date.now()<deadline){
+      const record=(await successorAgents.list(identity)).find(row=>row.id===dispatched.agentId);
+      if(record&&["completed","failed","cancelled","interrupted"].includes(record.state))break;
+      await new Promise(resolve=>setTimeout(resolve,100));
+     }
+     assert.equal((await successorAgents.list(identity)).find(row=>row.id===dispatched.agentId)?.state,"completed");
+     await new TaskAgentTodoReconciler(reopenedTodos,successorAgents,reopenedLinks).reconcile(identity);
+     assert.equal((await reopenedTodos.list(identity)).find(row=>row.taskId===savedBefore.taskId)?.current.state,"succeeded");
+     const completion=(await successorAgents.query(dispatched.agentId,identity))?.nativeCompletion;
+     assert.ok(completion);assert.equal(completion.baseCommit,candidate.commit);assert.deepEqual(completion.paths,["c.txt"]);
+     assert.equal(git("show",completion.candidateTree+":c.txt"),"sucesora");
+     const reloaded=await AgentRuntime.open({storeFile:join(privateDir,"agents.json"),runner:successorRunner,maxConcurrency:1});
+     assert.deepEqual((await reloaded.query(dispatched.agentId,identity))?.nativeCompletion,completion);
+     const duplicate=await dispatchNextPlanTask({...input,confirm:()=>{throw Error("No debe repetir el permiso");}});
+     assert.equal(duplicate.status,"blocked");assert.equal(confirmations,2);assert.equal(successorCalls,1);
+     assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
+     assert.equal(git("diff","--name-only","HEAD"),"c.txt");
+    }finally{await successorAgents.cancelSession(identity);}
+   }
   }
  }finally{
   releaseSibling();

@@ -35,8 +35,13 @@ export function bindNativeRunnerModels(result:object,models:readonly string[]):v
  if(models.length&&models.length<=9&&new Set(models).size===models.length&&models.every(m=>model.test(m)))
   observedModels.set(result,Object.freeze([...models]));
 }
+/** Solo clasifica evidencia; nunca concede admisión ni permiso de escritura.
+ * La sucesora debe haber superado el Dispatcher y sus dependencias originales. */
+export function isNativePartitionWriterIdentity(role:string,id:string):boolean{
+ return role==="worker"&&/^(?:unit|continuation)-[a-f0-9]{40}:worker$/u.test(id);
+}
 export function isNativePartitionWriter(request:AgentRequest):boolean{
- return request.role==="worker"&&/^unit-[a-f0-9]{40}:worker$/u.test(request.id)&&!!request.candidate&&!!request.writeSurfaces?.length;
+ return isNativePartitionWriterIdentity(request.role,request.id)&&!!request.candidate&&!!request.writeSurfaces?.length;
 }
 /** Inventario NUL incremental: sin el límite de stdout de execFile. Se
  * mantiene un presupuesto explícito de memoria y se rechaza cualquier
