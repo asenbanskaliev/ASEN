@@ -194,3 +194,13 @@ En la tabla, “implementación presente” significa que el flujo y sus salvagu
 - CodeRabbit revisó el SHA `b5bc92429020fa878ef0aa99db9915cbe96efbc1` y señaló seis riesgos: autorización E1, recibo de revisión doble, cancelación y contexto del host, ámbito de escritura E1, clasificación HTTP y recuperación del dictamen.
 - Esta tanda añade correcciones y regresiones automatizadas para esos puntos. La CI del SHA resultante debe anotarse al terminar. No se inició ningún ensayo con modelos ni se consumieron servicios de modelos.
 - La matriz de 30 requisitos conserva estados prudentes. `globalFull:false` hasta completar los ensayos reales E1–E4 y los demás criterios de aceptación.
+
+
+### Evidencia final de implementación · 25/11/2026
+
+- SHA de implementación validado: `8e6bbe8e9756a39d055dd6405c86801f6d8fa098`. PR #126 permanece separada de `main`.
+- CI completa [45668159776](https://github.com/asenbanskaliev/ASEN/actions/runs/45668159776): correcta; 23 trabajos, pruebas automatizadas en Windows, Ubuntu y macOS. La prueba de mapas de teclas quedó aislada en Windows para evitar agotamiento del límite por carga compartida.
+- Release Gate [45668159947](https://github.com/asenbanskaliev/ASEN/actions/runs/45668159947), arquitectura [45668159717](https://github.com/asenbanskaliev/ASEN/actions/runs/45668159717), CI rápida [45668159998](https://github.com/asenbanskaliev/ASEN/actions/runs/45668159998) y evidencia de Pi 1.2 [45668159806](https://github.com/asenbanskaliev/ASEN/actions/runs/45668159806): correctos.
+- Los seis hilos de CodeRabbit en #126 están resueltos; no hay hilos inline abiertos. La revisión incremental no emitió un informe nuevo sobre cambios que ya estaban revisados. Los dos hallazgos de #122 están corregidos y sus pruebas están en #126.
+- No se ejecutaron E1–E4/F, ensayos con modelos ni llamadas a proveedores. Sus puertas, escenarios y recibos siguen preparados. Mantener `globalFull:false` hasta superar esos ensayos y la revisión funcional integral.
+- La tabla de 30 requisitos distingue implementación y validación automatizada de la evidencia real pendiente. Una CI verde no eleva por sí sola la aceptación real.
