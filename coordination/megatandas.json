@@ -39,27 +39,19 @@
       ]
     },
     "C": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-g2-C-4701179608",
-        "generation": 2,
-        "package": "C1",
-        "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
-        "branch": "feat/asen-equipo-C-C1-g2-judges-4701179608",
-        "phase": "escritura"
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
-      "pr": 129,
-      "sha": "d7be3471c7390c9a9b41f1e35576a05a5ab20b7c",
-      "next": "Conservar observaciones auténticas de juez terminado aun si cambia política viva; validar firma original, identidad del candidato, intento y orden. Mantener validación viva antes de nueva inferencia y aceptación. Añadir regresión sin modelos.",
+      "pr": 132,
+      "sha": "6cddbd22e3870c5b18c6b3916330f78e2b2bfcf8",
+      "next": "Consultar CI exacta y entregar a E para candidato conjunto.",
       "files": [
-        "src/review/judgment-day.ts",
         "src/runtime/lifecycle/native-integration-review.ts",
-        "tests/asen-c-judgment-progress.test.ts"
+        "tests/native-partition-flow.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Incluido en candidato #130: CI completa, rápida, arquitectura, Release Gate y Pi runtime correctos; Pi Free Smoke omitido. No integrado.",
+      "tests": "Regresión publicada, CI pendiente",
       "blocker": null,
       "generation": 2,
       "candidatePR": 130,
@@ -67,22 +59,23 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179608
-      ]
+      ],
+      "branch": "feat/asen-equipo-C-C1-g2-judges-4701179608"
     },
     "D": {
-      "state": "espera-ci",
+      "state": "listo-revision",
       "lease": null,
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 131,
       "sha": "6899f25cbd23cae2234865690bb400ffad4e0489",
-      "next": "Consultar CI de #131 sin reservar; E debe incorporar la corrección al candidato conjunto solo tras validación.",
+      "next": "E: incorporar al nuevo candidato sujeto a CI completa y revisión.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Regresión añadida; CI del SHA nuevo pendiente.",
+      "tests": "CI rápida 45706866421 y arquitectura 45706866167 correctas; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
       "candidatePR": 130,
@@ -381,12 +374,5 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {
-    "tests/native-partition-flow.test.ts": {
-      "team": "C",
-      "lease": "manual-g2-C-4701179608",
-      "assignedBy": "E",
-      "scope": "Regresión de hallazgo 4701179608 solamente"
-    }
-  }
+  "temporaryOwnership": {}
 }
