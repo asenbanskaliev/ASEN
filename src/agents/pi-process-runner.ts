@@ -1,5 +1,6 @@
 import {runnerStartDeadline} from "./dispatcher.js";
 import {bindNativeRunnerModels} from "../runtime/agents/native-writer-completion.js";
+import {splitPiModelIdentity,inspectReviewIdentity,bindPiChildIdentityEvidence,type PiChildIdentityObservation,type PiModelIdentity} from "../review/model-identity.js";
 import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {performance} from "node:perf_hooks";
 import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
@@ -381,6 +382,8 @@ export class PiProcessRunner implements AgentRunner{
    const preflightId=`asen-policy:${request.id}`,selectionId=`asen-selection:${request.id}`;
    let selectionRequested=false,selectionResponded=false;
    const observedModels:string[]=[];
+   const identityEvidence:PiChildIdentityObservation[]=[];
+   let selectedIdentity:PiModelIdentity|undefined,identityIncomplete=false;
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
    let timer:ReturnType<typeof setTimeout>|undefined;
 
@@ -391,7 +394,10 @@ export class PiProcessRunner implements AgentRunner{
     signal?.removeEventListener("abort",onAbort);
     for(const pending of pendingRpc.values())pending.resolve({success:false,error:"task finished"});pendingRpc.clear();
     rmSync(policyDirectory,{recursive:true,force:true});
-    if(result.ok&&strictModelPreflight)bindNativeRunnerModels(result,observedModels);
+    bindPiChildIdentityEvidence(result,identityEvidence);
+    // Un get_state o set_model por sí solo no acredita al autor de una respuesta.
+    if(result.ok&&strictModelPreflight&&!identityIncomplete&&observedModels.length&&identityEvidence.length)
+     bindNativeRunnerModels(result,observedModels);
     resolve(result);
    };
    const stop=(result:AgentResult)=>{
@@ -458,7 +464,8 @@ export class PiProcessRunner implements AgentRunner{
     });
    };
    const publishFallback=(change:Omit<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">)=>{
-    if(strictModelPreflight&&observedModels.length&&!observedModels.includes(change.to))observedModels.push(change.to);
+    // La confirmación del cambio de ruta no es aún una respuesta del modelo.
+    selectedIdentity=undefined;
     if(!fallbackOwner)return;const observation=Object.freeze({...fallbackOwner,...change});
     try{this.options.onModelFallback?.(observation);}catch{/* Observers cannot affect child execution. */}
     for(const subscription of fallbackSubscriptions){if(!this.#fallbackSubscriptions.has(subscription))continue;try{subscription.listener(observation);}catch{/* Observers cannot affect child execution. */}}
@@ -576,6 +583,28 @@ export class PiProcessRunner implements AgentRunner{
         (!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
       const assistant=(record as {message?:Parameters<typeof classifyAssistantError>[0]}).message;
       lastAssistantFailure=classifyAssistantError(assistant);
+      // Metadatos de la respuesta RPC, no del texto generado. Se conservan
+      // solo nombres validados, nunca prompts, contenido ni errores del proveedor.
+      if(policyLoaded&&!agentEnded&&identityEvidence.length<64){
+       const expected=splitPiModelIdentity(currentModel),selected=selectedIdentity??expected;
+       if(expected&&selected){
+        try{
+         const evidence=inspectReviewIdentity(expected,selected,assistant);
+         identityEvidence.push(Object.freeze({...evidence}));
+         if(evidence.status==="declared-match"){
+          const identity=selected.provider+"/"+selected.id;
+          if(!observedModels.includes(identity))observedModels.push(identity);
+         }else if(!lastAssistantFailure)identityIncomplete=true;
+        }catch{
+         identityEvidence.push(Object.freeze({requested:expected.provider+"/"+expected.id,status:"incompatible"}));
+         identityIncomplete=true;
+         if(strictModelPreflight){stop({id:request.id,ok:false,output:"Pi assistant model identity mismatch"});return;}
+        }
+       }else{
+        identityIncomplete=true;
+        identityEvidence.push(Object.freeze({requested:"unknown",status:"unknown"}));
+       }
+      }else if(policyLoaded&&!agentEnded)identityIncomplete=true;
       if(lastAssistantFailure==="invalid_request"&&this.options.onInvalidRequest){
        const facts=summarizePiInvalidRequest(assistant);
        if(facts)try{this.options.onInvalidRequest(facts);}catch{/* Observadores sin autoridad. */}
@@ -624,7 +653,7 @@ export class PiProcessRunner implements AgentRunner{
          return;
         }
        }
-       if(strictModelPreflight&&observation?.model)observedModels.push(request.model!);
+       if(observation?.model)selectedIdentity=observation.model;
        if(observation)for(const subscription of selectionSubscriptions){
         if(!this.#selectionSubscriptions.has(subscription))continue;
         try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}

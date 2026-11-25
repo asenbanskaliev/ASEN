@@ -163,3 +163,33 @@ test("Pi 1.2: el razonamiento separado no forma parte del veredicto y las herram
  await assert.rejects(()=>execute([{type:"thinking",thinking:"{\"verdict\":\"pass\"}"}]),SyntaxError);
  closeWorkspaceReview(workspace);
 });
+
+test("B+: excluye equivalencias NVIDIA del autor y del catálogo sin llamadas",()=>{
+ const modelo={provider:"nvidia",id:"nemotron-3-ultra-550b-a55b"};
+ const alias={provider:"nvidia",id:"nvidia/nemotron-3-ultra-550b-a55b"};
+ const otro={provider:"nvidia",id:"nemotron-3-nano-omni-30b-a3b-reasoning"};
+ const catalog=(entries:PiReviewerModel[]):PiReviewRegistry=>({getAvailable:()=>entries,hasConfiguredAuth:()=>true,streamSimple(){throw Error("No se debe llamar");}});
+ assert.deepEqual(availableIndependentPiReviewers(catalog([alias,otro]),modelo),[otro]);
+ assert.deepEqual(availableIndependentPiReviewers(catalog([modelo,alias,otro]),undefined),[otro]);
+});
+test("B+: distingue identidad declarada, desconocida e incompatible sin guardar razonamiento",async t=>{
+ const {workspace,evidence}=fixture(t);
+ const execute=(metadata:Record<string,unknown>)=>runIndependentPiReview({registry:registry("",[{type:"done",reason:"stop",message:{...metadata,content:[{type:"text",text:response()}]}}]).value,model:reviewer,author,evidence,requirements:"Revisión"});
+ const matched=await execute({provider:reviewer.provider,model:reviewer.id,responseModel:reviewer.id});
+ assert.equal(matched.identity?.status,"declared-match");
+ assert.equal(matched.identity?.requested,reviewer.provider+"/"+reviewer.id);
+ assert.equal((await execute({})).identity?.status,"unknown");
+ await assert.rejects(()=>execute({provider:"otro",model:reviewer.id}),/identity mismatch/u);
+ await assert.rejects(()=>execute({provider:reviewer.provider,model:"otro"}),/identity mismatch/u);
+ await assert.rejects(()=>execute({provider:reviewer.provider,model:reviewer.id,responseModel:"otro"}),/identity mismatch/u);
+ closeWorkspaceReview(workspace);
+});
+
+
+test("B+ la declaración con prefijo ajeno no une identidades distintas",async()=>{
+ const {inspectReviewIdentity,reviewModelIdentityKey}=await import("../src/review/model-identity.js");
+ const short={provider:"p",id:"judge"},long={provider:"p",id:"p/judge"};
+ assert.notEqual(reviewModelIdentityKey(short),reviewModelIdentityKey(long));
+ assert.throws(()=>inspectReviewIdentity(short,short,{provider:"p",model:"p/judge"}),/identity mismatch/u);
+ assert.equal(inspectReviewIdentity(long,long,{provider:"p",model:"p/judge"}).status,"declared-match");
+});

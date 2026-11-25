@@ -1,6 +1,6 @@
 /** Two genuinely independent, no-tools Pi judges over one issued candidate.
  * The result is analysis only; no write, correction, merge or RDD approval. */
-import {availableIndependentPiReviewers,isPiReviewVerdictGenuine,runIndependentPiReview,type PiReviewEvidence,type PiReviewFinding,type PiReviewRegistry,type PiReviewerModel,type PiReviewVerdict} from "./pi-model-reviewer.js";
+import {reviewModelIdentityKey,availableIndependentPiReviewers,isPiReviewVerdictGenuine,runIndependentPiReview,type PiReviewEvidence,type PiReviewFinding,type PiReviewRegistry,type PiReviewerModel,type PiReviewVerdict,type PiReviewIdentity} from "./pi-model-reviewer.js";
 import {isWorkspaceReviewEvidenceGenuine} from "./workspace-review-session.js";
 
 export interface JudgmentDayInput{
@@ -10,7 +10,7 @@ export interface JudgmentDayInput{
 export interface JudgmentDayReport{
  readonly status:"analysis-complete"|"findings-require-review"|"disagreement-requires-review";
  readonly requestId:string;readonly sessionId:string;readonly candidateTreeIdentity:string;readonly candidateRevision:string;
- readonly judges:readonly Readonly<{judge:"jd-judge-a"|"jd-judge-b";reviewerId:string;verdict:PiReviewVerdict["verdict"];summary:string;findingsCount:number}>[];
+ readonly judges:readonly Readonly<{judge:"jd-judge-a"|"jd-judge-b";reviewerId:string;identity?:PiReviewIdentity;verdict:PiReviewVerdict["verdict"];summary:string;findingsCount:number}>[];
  readonly findings:readonly Readonly<{judge:"jd-judge-a"|"jd-judge-b";reviewerId:string;finding:PiReviewFinding}>[];
  readonly acceptance:"not-accepted";readonly deliveryAuthority:false;readonly autoMerge:false;readonly fixAgent:"not-launched";
 }
@@ -23,7 +23,7 @@ export async function runJudgmentDay(input:JudgmentDayInput):Promise<JudgmentDay
  if(!isWorkspaceReviewEvidenceGenuine(evidence))throw new Error("Judgment Day requires controller-issued candidate evidence");
  if(typeof requirements!=="string"||!requirements.trim()||requirements.length>20000)throw new Error("Judgment Day requirements are missing or oversized");
  if(!author||typeof author.provider!=="string"||!author.provider||typeof author.id!=="string"||!author.id)throw new Error("Judgment Day requires an observed author model");
- if(!judgeA||!judgeB||identity(judgeA)===identity(judgeB))throw new Error("Judgment Day requires distinct independent judges");
+ if(!judgeA||!judgeB||reviewModelIdentityKey(judgeA)===reviewModelIdentityKey(judgeB))throw new Error("Judgment Day requires distinct independent judges");
  const available=availableIndependentPiReviewers(registry,author);
  if(!available.some(model=>identity(model)===identity(judgeA))||!available.some(model=>identity(model)===identity(judgeB)))
   throw new Error("Judgment Day judges must be authenticated and different from the author");
@@ -38,8 +38,8 @@ export async function runJudgmentDay(input:JudgmentDayInput):Promise<JudgmentDay
  if(!isPiReviewVerdictGenuine(first)||!isPiReviewVerdictGenuine(second))throw new Error("Judgment Day did not receive genuine Pi results");
  if(signal?.aborted)throw new Error("Judgment Day cancelled after Judge B");
  const judges=Object.freeze([
-  Object.freeze({judge:"jd-judge-a" as const,reviewerId:first.reviewerId,verdict:first.verdict,summary:first.summary,findingsCount:first.findings.length}),
-  Object.freeze({judge:"jd-judge-b" as const,reviewerId:second.reviewerId,verdict:second.verdict,summary:second.summary,findingsCount:second.findings.length})
+  Object.freeze({judge:"jd-judge-a" as const,reviewerId:first.reviewerId,...(first.identity?{identity:first.identity}:{}),verdict:first.verdict,summary:first.summary,findingsCount:first.findings.length}),
+  Object.freeze({judge:"jd-judge-b" as const,reviewerId:second.reviewerId,...(second.identity?{identity:second.identity}:{}),verdict:second.verdict,summary:second.summary,findingsCount:second.findings.length})
  ]);
  const findings=Object.freeze([
   ...first.findings.map(finding=>Object.freeze({judge:"jd-judge-a" as const,reviewerId:first.reviewerId,finding})),
