@@ -288,3 +288,28 @@ test("El resultado nativo aislado excluye ignorados anteriores y conserva ignora
   assert.equal(await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal),undefined);
  }finally{await rm(project,{recursive:true,force:true});}
 });
+
+test("La captura nativa conserva altas y finales mixtos de texto explícito como blobs Git canónicos",async()=>{
+ const project=await realpath(await mkdtemp(join(tmpdir(),"asen-native-eol-")));
+ const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",env:isolatedGitEnvironment(),stdio:["ignore","pipe","pipe"]});
+ try{
+  git("init","-q");git("config","user.name","ASEN");git("config","user.email","test@example.invalid");
+  git("config","core.autocrlf","false");
+  await writeFile(join(project,".gitattributes"),"*.txt text eol=crlf\n");
+  await writeFile(join(project,"existente.txt"),"original\n");
+  git("add",".");git("commit","--no-gpg-sign","-qm","base");
+  const request={id:"unit-"+"b".repeat(40)+":worker",role:"worker" as const,repository:project,prompt:"Prueba",
+   candidate:{id:"fixture",repository:project,revision:git("rev-parse","HEAD").trim(),createdAt:new Date().toISOString()},
+   writeSurfaces:["existente.txt","nuevo.txt"]};
+  const baseline=await captureNativeWriterBaseline(request);
+  await writeFile(join(project,"existente.txt"),"cambiado\r\nsegunda\n");
+  await writeFile(join(project,"nuevo.txt"),"nuevo\r\nsegunda\n");
+  const result={};bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);
+  const completion=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
+  assert.ok(completion);
+  assert.deepEqual(completion.paths,["existente.txt","nuevo.txt"]);
+  assert.equal(git("show",completion.candidateTree+":existente.txt"),"cambiado\nsegunda\n");
+  assert.equal(git("show",completion.candidateTree+":nuevo.txt"),"nuevo\nsegunda\n");
+  assert.equal(await readFile(join(project,"nuevo.txt"),"utf8"),"nuevo\r\nsegunda\n");
+ }finally{await rm(project,{recursive:true,force:true});}
+});
