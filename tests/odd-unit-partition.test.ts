@@ -165,7 +165,8 @@ test("Pi guarda las tres unidades en el diario real y no despacha la raíz en la
   const root=join(directory,"repo"),home=join(directory,"home");
   await mkdir(root);await mkdir(home);
   const project=await realpath(root);
-  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+  const {isolatedGitEnvironment}=await import("../src/runtime/agents/git-isolated-environment.js");
+  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",env:isolatedGitEnvironment(),stdio:["ignore","pipe","pipe"]}).trim();
   git("init","-q");git("config","user.name","ASEN");git("config","user.email","test@example.invalid");git("commit","--no-gpg-sign","--allow-empty","-qm","base");
   const head=git("rev-parse","HEAD");
   const todos=await SessionTodoStore.open(join(home,"todos.json"));
