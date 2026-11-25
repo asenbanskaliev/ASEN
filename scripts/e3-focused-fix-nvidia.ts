@@ -7,7 +7,7 @@ import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {copyFileSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {dirname,join,resolve} from "node:path";
+import {dirname,isAbsolute,join,resolve} from "node:path";
 import {SessionManager,ModelRuntime,ModelRegistry} from "@earendil-works/pi-coding-agent";
 import {createAsenExtension} from "../extensions/asen.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
@@ -38,6 +38,14 @@ import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environ
 const real=process.argv[2]==="--real";
 if(!real&&process.argv[2]!=="--offline")throw Error("Indicar --offline o --real");
 if(real&&!process.env.NVIDIA_API_KEY)throw Error("Falta credencial NVIDIA");
+if(real){
+ const dir=process.env.PI_CODING_AGENT_DIR;
+ if(!dir||!isAbsolute(dir))throw Error("Falta configuración Pi aislada para el ensayo");
+ const settings=JSON.parse(readFileSync(join(dir,"settings.json"),"utf8"));
+ if(settings?.retry?.enabled!==false||settings?.retry?.maxRetries!==0||settings?.retry?.provider?.maxRetries!==0)
+  throw Error("Los reintentos Pi deben estar desactivados antes de cualquier inferencia");
+}
+const fixPhaseBudgetMs=110000;
 for(const key of Object.keys(process.env))if(key.toUpperCase().startsWith("GIT_"))delete process.env[key];
 const root=realpathSync(resolve(process.env.GITHUB_WORKSPACE??process.cwd()));
 const expected=process.env.ASEN_EXPECTED_SHA,output=process.env.ASEN_E3_FOCUSED_REPORT;
@@ -97,11 +105,11 @@ try{
  const runner:AgentRunner={run:async(request,signal)=>{
   launches++;
   if(launches!==1||request.role!=="worker"||request.model!==model||request.repository!==project||request.isolationKey!==owner!.sessionId||JSON.stringify(request.writeSurfaces)!=='["a.txt"]'||!request.id.startsWith("fix-"))return {id:request.id,ok:false,output:"Ámbito de ensayo no admitido"};
-  report.fixStarted=true;
-  if(!real){writeFileSync(join(project,"a.txt"),correct);return {id:request.id,ok:true,output:"Writer simulado de prueba local"};}
+  if(!real){report.fixStarted=true;writeFileSync(join(project,"a.txt"),correct);return {id:request.id,ok:true,output:"Writer simulado de prueba local"};}
   const pi=new PiProcessRunner({command:"pi",policyRoot:root,providerCredential:"NVIDIA_API_KEY",requireChildModelBeforePrompt:true,
    oneShotWritePath:"a.txt",exactWriteReceipt:{path:"a.txt",fileSha256:createHash("sha256").update(correct).digest("hex")},
-   attributionFile:join(privateDir,"fix-attribution.json"),timeoutMs:110000,maxOutputBytes:60000,maxStreamBytes:240000,
+   attributionFile:join(privateDir,"fix-attribution.json"),timeoutMs:fixPhaseBudgetMs,maxOutputBytes:60000,maxStreamBytes:240000,
+   onProcessStart:()=>{report.fixStarted=true;},
    onToolExecution:event=>{if(event.type==="tool_execution_end"&&event.isError)report.nativeErrors++;
     if(event.toolName==="write"){if(event.type==="tool_execution_start")report.nativeWriteStarts++;else report.nativeWriteEnds++;}}});
   const unsubscribe=pi.subscribeChildSelection(event=>{if(event.taskId===request.id&&event.sessionId===owner!.sessionId&&event.projectId===project)report.nativeFixModel=normalizeT06PiChildSelection(event.model,model)??"unknown";});
@@ -170,11 +178,11 @@ try{
       const acceptedResponse=[...forms,...forms.map(identity=>"private/"+identity)];
       const providerMatches=event.message.provider===descriptor.provider,
        modelMatches=matchesJudgeIdentity(descriptor,event.message.provider,event.message.model),
-       responseMatches=event.message.responseModel===undefined||acceptedResponse.includes(event.message.responseModel);
+       responseMatches=typeof event.message.responseModel==="string"&&acceptedResponse.includes(event.message.responseModel);
       if(!providerMatches||!modelMatches||!responseMatches){
        const observed=event.message.responseModel;
        Object.assign(diagnostic,{providerMatches,modelMatches,responseMatches,...(typeof observed==="string"&&/^[A-Za-z0-9._/-]{1,256}$/u.test(observed)?{responseModel:observed}:{})});
-       diagnostic.result="model-identity-mismatch";throw Error("Identidad física del juez no coincide");
+       diagnostic.result=event.message.responseModel===undefined?"model-identity-unknown":"model-identity-mismatch";throw Error("Identidad física del juez no acreditada");
       }
       Object.assign(diagnostic,{contentKinds:[...new Set(event.message.content.map(part=>["text","thinking","toolCall"].includes(part.type)?part.type:"unknown"))]});
       diagnostic.result=event.reason==="stop"?"stop":event.reason==="length"?"length":event.reason==="toolUse"?"tool-use":"deferred";
@@ -257,7 +265,7 @@ try{
  if(dispatched.status!=="dispatched")throw Error("Fix no despachado: "+dispatched.status);
  assert.equal(dispatched.todoId,fix.taskId);assert.equal(dispatched.role,"worker");
  report.stage="fix-terminal";
- const deadline=Date.now()+160000;
+ const deadline=Date.now()+3*fixPhaseBudgetMs+15000;
  while(Date.now()<deadline){const a=(await agents.list(owner)).find(a=>a.id===dispatched.agentId);if(a&&["completed","failed","interrupted","cancelled"].includes(a.state))break;await new Promise(resolve=>setTimeout(resolve,150));}
  const terminal=(await agents.list(owner)).find(a=>a.id===dispatched.agentId);
  assert.equal(terminal?.state,"completed",real?"Fix no completado":terminal?.summary??"Sin diagnóstico");
