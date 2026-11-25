@@ -39,8 +39,15 @@
       ]
     },
     "C": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-g2-C-4701179608-regression",
+        "generation": 2,
+        "package": "C1",
+        "base": "6cddbd22e3870c5b18c6b3916330f78e2b2bfcf8",
+        "branch": "feat/asen-equipo-C-C1-g2-judges-4701179608",
+        "phase": "escritura"
+      },
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 132,
@@ -374,5 +381,12 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {}
+  "temporaryOwnership": {
+    "tests/native-partition-flow.test.ts": {
+      "team": "C",
+      "lease": "manual-g2-C-4701179608-regression",
+      "assignedBy": "E",
+      "scope": "Ajustar aserción de restauración que debe rechazar política cambiada"
+    }
+  }
 }
