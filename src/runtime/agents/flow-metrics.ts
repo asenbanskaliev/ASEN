@@ -35,18 +35,42 @@ export function summarizeParentFlow(entries:readonly unknown[]){
  const completeInventory=entries.length<=20000;
  return {...summarizeFlowUsage(messages),...(!completeInventory?{inputTokens:null,outputTokens:null,totalTokens:null,reportedCostUsd:null}:{}),completeInventory,source:"pi-session-messages"};
 }
+/** Los resultados conservados son una muestra, no necesariamente todos los
+ * intentos de un agente. Un fallo, truncamiento o recuperación no puede
+ * convertir el consumo observado en el consumo total de ese agente. */
 export function summarizeChildFlow(entry:{record:{id:string;role:string;state:string;createdAt:string;updatedAt:string};events:readonly {state:string;at:string}[];result?:{output:string}}){
- const started=entry.events.find(row=>row.state==="running"),terminal=["completed","failed","cancelled","interrupted"].includes(entry.record.state);
- const elapsed=started&&terminal?Date.parse(entry.record.updatedAt)-Date.parse(started.at):NaN;
- const messages:Sample[]=[];let valid=!!entry.result;
- if(entry.result&&entry.result.output.length<=1_000_000){
+ const starts=entry.events.filter(row=>row.state==="running");
+ const terminals=new Set(["completed","failed","cancelled","interrupted"]);
+ const terminal=terminals.has(entry.record.state);
+ const elapsed=starts.length&&terminal?Date.parse(entry.record.updatedAt)-Date.parse(starts[0]!.at):NaN;
+ const messages:Sample[]=[];let valid=!!entry.result,settled=false,duplicate=false;
+ const seen=new Set<string>();
+ if(entry.result&&Buffer.byteLength(entry.result.output,"utf8")<=1_000_000){
   for(const line of entry.result.output.split(/\r?\n/u)){
    if(!line.trim())continue;
-   try{const event=JSON.parse(line);if(event?.type==="message_end"){const s=sample(event.message);if(s)messages.push(s);}}
-   catch{valid=false;break;}
+   try{
+    const event=JSON.parse(line);
+    if(event?.type==="agent_settled"&&event.aborted!==true)settled=true;
+    if(event?.type==="message_end"){
+     const s=sample(event.message);if(!s)continue;
+     const id=event.message?.id;
+     if(typeof id==="string"&&id.length>0){
+      if(seen.has(id)){duplicate=true;continue;}
+      seen.add(id);
+     }
+     messages.push(s);
+    }
+   }catch{valid=false;break;}
   }
  }else valid=false;
+ const observed=summarizeFlowUsage(valid?messages:[]);
+ // Una sola ejecución terminal y un cierre RPC explícito son necesarios;
+ // el resultado de un reintento puede omitir por completo el primer consumo.
+ const completeInventory=valid&&settled&&!duplicate&&starts.length===1&&entry.record.state==="completed"&&messages.length>0;
  return Object.freeze({id:entry.record.id,role:entry.record.role,state:entry.record.state,
-  elapsedMs:Number.isFinite(elapsed)&&elapsed>=0?elapsed:null,...summarizeFlowUsage(valid?messages:[]),
-  source:valid&&messages.length?"saved-pi-rpc-result":"usage-unavailable",completeInventory:valid&&messages.length>0});
+  elapsedMs:Number.isFinite(elapsed)&&elapsed>=0?elapsed:null,observedAttempts:starts.length,
+  ...observed,
+  ...(!completeInventory?{inputTokens:null,outputTokens:null,totalTokens:null,reportedCostUsd:null}:{}),
+  observedUsage:observed,
+  source:valid&&messages.length?"saved-pi-rpc-result":"usage-unavailable",completeInventory});
 }

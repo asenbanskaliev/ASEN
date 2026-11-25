@@ -1,0 +1,24 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
+const at="2026-01-01T00:00:00Z",end="2026-01-01T00:00:05Z";
+const message={type:"message_end",message:{id:"m1",role:"assistant",provider:"nvidia",model:"modelo",usage:{input:10,output:2,totalTokens:12,cost:{total:0.01}}}};
+const settled={type:"agent_settled",aborted:false};
+const build=(state:string,events:readonly {state:string;at:string}[],lines:unknown[])=>summarizeChildFlow({
+ record:{id:"agent",role:"explorer",state,createdAt:at,updatedAt:end},events,
+ result:{output:lines.map(row=>JSON.stringify(row)).join("\n")}});
+test("Las métricas no confunden consumo observado con total en fallos o reanudaciones",()=>{
+ const started=[{state:"running",at}];
+ for(const state of ["failed","cancelled","interrupted","running"]){
+  const row=build(state,started,[message,settled]);
+  assert.equal(row.completeInventory,false);assert.equal(row.totalTokens,null);
+  assert.equal(row.observedUsage.totalTokens,12);
+ }
+ const resumed=build("completed",[...started,{state:"interrupted",at:end},{state:"running",at:end}],[message,settled]);
+ assert.equal(resumed.observedAttempts,2);assert.equal(resumed.totalTokens,null);
+ const duplicate=build("completed",started,[message,message,settled]);
+ assert.equal(duplicate.observedUsage.assistantTurns,1);assert.equal(duplicate.completeInventory,false);
+ assert.equal(build("completed",started,[message]).totalTokens,null);
+ const complete=build("completed",started,[message,settled]);
+ assert.equal(complete.completeInventory,true);assert.equal(complete.totalTokens,12);
+});
