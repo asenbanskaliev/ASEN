@@ -94,14 +94,14 @@ jobs:
           printf '%s\n' '{"remove":["read","edit"]}' > "$PI_CODING_AGENT_DIR/tools.json"
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           test -z "$(git -c core.fsmonitor=false status --porcelain=v1 --untracked-files=all)"
-          timeout 480s tsx scripts/e2a-native-partition-nvidia.ts
+          timeout 600s tsx scripts/e2a-native-partition-nvidia.ts
       - name: Guardar recibo sin credenciales ni datos del proveedor
         if: always() && steps.marker.outputs.approved == 'true'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: lote-nativo-nvidia-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
-          path: ${{ runner.temp }}/asen-native-partition/receipt.json
+          path: ${{ runner.temp }}/asen-native-partition/*.json
           if-no-files-found: warn
           retention-days: 30
 
-# Ensayo acotado: incluye la construcción del candidato y comprueba su árbol exacto.
+# Ensayo acotado: dos Writers reales, pruebas conjuntas y sucesora planificada sin nuevas llamadas.
