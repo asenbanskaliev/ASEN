@@ -5,7 +5,7 @@ import {tmpdir} from "node:os";
 import {isAbsolute,join,relative} from "node:path";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import {spawnContained} from "./spawn-contained.js";
-import {isolatedGitEnvironment} from "../runtime/agents/git-isolated-environment.js";
+import {isolatedGitEnvironment,checkoutEolSettings} from "../runtime/agents/git-isolated-environment.js";
 import {validatePortableReviewPaths} from "../review/review-tree-paths.js";
 import type {Candidate,Evidence} from "../core/types.js";
 import type {EvidenceStore} from "./store.js";
@@ -57,13 +57,13 @@ async function terminateProcessTree(child:ChildProcess):Promise<void>{
 }
 
 type FrozenExecution=Readonly<{baseRevision:string;tree:string;testPaths:readonly string[];signal?:AbortSignal}>;
-function frozenGit(cwd:string,args:readonly string[],hooks:string):string{
+function frozenGit(cwd:string,args:readonly string[],hooks:string,eol:readonly string[]=["-c","core.autocrlf=false","-c","core.eol=lf"]):string{
  return execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-c","core.hooksPath="+hooks,
- "-c","core.autocrlf=false","-c","core.eol=lf","-c","gc.auto=0","-c","maintenance.auto=false","-C",cwd,...args],
+ ...eol,"-c","gc.auto=0","-c","maintenance.auto=false","-C",cwd,...args],
  {env:isolatedGitEnvironment(),encoding:"utf8",stdio:["ignore","pipe","ignore"],maxBuffer:16*1024*1024,timeout:15000,windowsHide:true});
 }
-export function assertExactGitCandidate(candidate:Candidate,cwd:string,hooks?:string):void{
- const run=(...args:string[])=>hooks?frozenGit(cwd,args,hooks).trim():execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],maxBuffer:16*1024*1024}).trim();
+export function assertExactGitCandidate(candidate:Candidate,cwd:string,hooks?:string,eol?:readonly string[]):void{
+ const run=(...args:string[])=>hooks?frozenGit(cwd,args,hooks,eol).trim():execFileSync("git",["-C",cwd,...args],{encoding:"utf8",stdio:["ignore","pipe","ignore"],maxBuffer:16*1024*1024}).trim();
  let prefix:string,head:string;
  try{prefix=run("rev-parse","--show-prefix");head=run("rev-parse","HEAD");}
  catch{throw new Error("Execution evidence requires a Git repository with a checked-out HEAD");}
@@ -74,7 +74,7 @@ export function assertExactGitCandidate(candidate:Candidate,cwd:string,hooks?:st
  catch(error){throw new Error(`Execution evidence could not inspect untracked Git files: ${error instanceof Error?error.message:String(error)}`);}
  if(untracked!=="")throw new Error(`Execution evidence requires no untracked Git files: ${untracked.split("\n").slice(0,20).join(", ")}${untracked.split("\n").length>20?" …":""}`);
  // HEAD alone does not identify the bytes executed from a modified checkout.
- try{if(hooks)frozenGit(cwd,["diff","--quiet","--no-ext-diff","--no-textconv","HEAD","--"],hooks);else execFileSync("git",["-C",cwd,"diff","--quiet","HEAD","--"],{stdio:"ignore"});}
+ try{if(hooks)frozenGit(cwd,["diff","--quiet","--no-ext-diff","--no-textconv","HEAD","--"],hooks,eol);else execFileSync("git",["-C",cwd,"diff","--quiet","HEAD","--"],{stdio:"ignore"});}
  catch{throw new Error("Execution evidence requires unchanged tracked files at the candidate revision");}
 }
 
@@ -105,10 +105,18 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
  if(!frozen)assertExactGitCandidate(candidate,requestedCwd);
  const parent=await mkdtemp(join(tmpdir(),"asen-evidence-worktree-")),isolated=join(parent,"candidate"),hooks=join(parent,"hooks");
  let created=false;
+ let sourceEol:readonly string[]|undefined;
+ const rejectExternalConfig=()=>{
+  try{
+   if(frozenGit(requestedCwd,["config","--get-regexp","^(filter\\.|merge\\..*\\.driver$|diff\\..*\\.command$|core\\.sshcommand$)"],hooks).trim())
+    throw Error("Configuración Git externa no admitida para estas pruebas");
+  }catch(error){if((error as {status?:number})?.status!==1)throw error;}
+ };
  const assertSource=()=>{
   if(!frozen)return assertExactGitCandidate(candidate,requestedCwd);
   if(frozen.signal?.aborted)throw Error("Pruebas canceladas");
-  assertExactGitCandidate({...candidate,revision:frozen.baseRevision},requestedCwd,hooks);
+  rejectExternalConfig();
+  assertExactGitCandidate({...candidate,revision:frozen.baseRevision},requestedCwd,hooks,sourceEol);
   if(frozenGit(requestedCwd,["rev-parse",candidate.revision+"^{tree}"],hooks).trim()!==frozen.tree||
      frozenGit(requestedCwd,["rev-parse",candidate.revision+"^"],hooks).trim()!==frozen.baseRevision)
    throw Error("El candidato congelado cambió");
@@ -118,12 +126,9 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
    if(!/^[a-f0-9]{40}$/u.test(candidate.revision)||! /^[a-f0-9]{40}$/u.test(frozen.baseRevision)||! /^[a-f0-9]{40}$/u.test(frozen.tree))
     throw Error("Las pruebas congeladas requieren objetos Git SHA-1 exactos");
    await mkdir(hooks);
+   // Consultar configuración de finales de línea del checkout original, sin usarla en el checkout temporal.
+   sourceEol=checkoutEolSettings(requestedCwd).args;
    assertSource();
-   // Git operativo nunca hereda credenciales, filtros externos ni hooks.
-   try{
-    if(frozenGit(requestedCwd,["config","--get-regexp","^(filter\\.|merge\\..*\\.driver$|diff\\..*\\.command$|core\\.sshcommand$)"],hooks).trim())
-     throw Error("Configuración Git externa no admitida para estas pruebas");
-   }catch(error){if((error as {status?:number})?.status!==1)throw error;}
    const entries=frozenGit(requestedCwd,["ls-tree","-r","-z",frozen.tree],hooks).split("\0").filter(Boolean).map(line=>{
     const match=/^(100644|100755) blob [a-f0-9]{40}\t(.+)$/u.exec(line);
     if(!match)throw Error("Las pruebas congeladas no admiten enlaces, submódulos o rutas no portables");
@@ -142,15 +147,15 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
   if(frozen&&frozenGit(isolated,["rev-parse","HEAD^{tree}"],hooks).trim()!==frozen.tree)throw Error("El árbol materializado no coincide");
   const startedAt=new Date().toISOString(),stdout:Buffer[]=[],stderr:Buffer[]=[],limit=1024*1024,coverageDirectory=join(parent,"coverage");
   if(coverage)await mkdir(coverageDirectory);
+  const actualArgs=frozen?["--permission","--allow-fs-read="+coverageRoot,"--test","--test-isolation=none","--test-reporter=tap","--",...frozen.testPaths.map(path=>"./"+path)]:command.slice(1);
   const exitCode=await new Promise<number>((resolve,reject)=>{
    // La prueba explícitamente autorizada ejecuta Node sin claves, HOME, PATH,
    // NODE_OPTIONS ni configuración heredada. La restricción de Node reduce
    // accesos accidentales; NO es una barrera frente a código hostil.
    const env=frozen?Object.fromEntries(["SystemRoot","SYSTEMROOT","WINDIR"].flatMap(key=>process.env[key]===undefined?[]:[[key,process.env[key]]])):
     capture?{...process.env,NODE_TEST_CONTEXT:undefined,...(coverage?{NODE_V8_COVERAGE:coverageDirectory}:{})}:undefined;
-   const args=frozen?["--permission","--allow-fs-read="+coverageRoot,"--test","--test-isolation=none","--test-reporter=tap","--",...frozen.testPaths.map(path=>"./"+path)]:command.slice(1);
    if(frozen?.signal?.aborted){reject(Error("Pruebas canceladas"));return;}
-   const child=spawnContained(command[0],args,{cwd:isolated,stdio:capture?["ignore","pipe","pipe"]:"ignore",shell:false,detached:process.platform!=="win32",env});
+   const child=spawnContained(command[0],actualArgs,{cwd:isolated,stdio:capture?["ignore","pipe","pipe"]:"ignore",shell:false,detached:process.platform!=="win32",env});
    let stopped=false,size=0,timer:NodeJS.Timeout;
    const abort=()=>fail(Error("Pruebas canceladas"));
    const fail=(error:Error)=>{if(stopped)return;stopped=true;if(timer)clearTimeout(timer);frozen?.signal?.removeEventListener("abort",abort);void terminateProcessTree(child).finally(()=>reject(error));};
@@ -162,7 +167,7 @@ async function runEvidenceCommand(candidate:Candidate,command:readonly [string,.
    frozen?.signal?.addEventListener("abort",abort,{once:true});if(frozen?.signal?.aborted)abort();
   });
   assertExactGitCandidate({...candidate,repository:isolated},isolated,frozen?hooks:undefined);assertSource();
-  const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([...command]),cwd:isolated,exitCode,startedAt,finishedAt:new Date().toISOString()});
+  const proof=Object.freeze({candidateRepository:candidate.repository,candidateId:candidate.id,candidateRevision:candidate.revision,command:Object.freeze([command[0],...actualArgs]),cwd:isolated,exitCode,startedAt,finishedAt:new Date().toISOString()});
   executed.add(proof);const result={proof,stdout:Buffer.concat(stdout).toString("utf8"),stderr:Buffer.concat(stderr).toString("utf8")};
   if(!coverage)return Object.freeze(result);
   const names=(await readdir(coverageDirectory)).sort();if(!names.length||names.some(name=>!/^coverage-\d+-\d+-\d+\.json$/u.test(name)))throw new Error("Node coverage output is missing or ambiguous");
