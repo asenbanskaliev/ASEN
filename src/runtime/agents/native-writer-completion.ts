@@ -5,6 +5,7 @@ import {spawn,execFileSync} from "node:child_process";
 import {Worker} from "node:worker_threads";
 import {existsSync,mkdtempSync,openSync,closeSync,readFileSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
+import {rm} from "node:fs/promises";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
 import {captureWorkspaceReviewProjection} from "../../review/workspace-review-projection.js";
@@ -61,14 +62,14 @@ async function readIgnoredInventory(root:string):Promise<Buffer>{
   return readFileSync(file);
  }finally{rmSync(dir,{recursive:true,force:true});}
 }
-function readUntrackedInventory(root:string):Buffer{
- const dir=mkdtempSync(join(tmpdir(),"asen-inventario-git-"));
+function readUntrackedInventory(root:string,parentDir?:string):Buffer{
+ const dir=parentDir??mkdtempSync(join(tmpdir(),"asen-inventario-git-"));
  try{
   const file=join(dir,"inventario"),fd=openSync(file,"wx",0o600);
   try{execFileSync("git",inventoryArgs(root,false),{env:isolatedGitEnvironment(),timeout:10000,windowsHide:true,stdio:["ignore",fd,"ignore"]});}
   finally{closeSync(fd);}
   return readFileSync(file);
- }finally{rmSync(dir,{recursive:true,force:true});}
+ }finally{if(!parentDir)rmSync(dir,{recursive:true,force:true});}
 }
 /** Registrar los ignorados preexistentes ANTES de entregar la autoridad.
  * Los archivos ignorados nuevos no se ocultan. Un ignorado que ya ocupa el
@@ -81,13 +82,13 @@ export async function captureNativeWriterBaseline(request:AgentRequest):Promise<
   throw Error("El ámbito Writer contiene archivos ignorados preexistentes; revisar antes de lanzar.");
  return Object.freeze(paths);
 }
-export function captureNativeWriterCompletion(request:AgentRequest,result:object,baseline:readonly string[]=[]):NativeWriterCompletion|undefined{
+export function captureNativeWriterCompletion(request:AgentRequest,result:object,baseline:readonly string[]=[],parentInventoryDir?:string):NativeWriterCompletion|undefined{
  if(!isNativePartitionWriter(request))return;
  const root=request.repository,base=request.candidate!.revision;
  const git=(...args:string[])=>execFileSync("git",["--no-replace-objects","-c","core.fsmonitor=false","-C",root,...args],
   {env:isolatedGitEnvironment(),timeout:10000,maxBuffer:1_000_000,windowsHide:true,stdio:["ignore","pipe","pipe"]});
  const existing=new Set(baseline);
- const untracked=new TextDecoder("utf-8",{fatal:true}).decode(readUntrackedInventory(root)).split("\0").filter(path=>!!path&&!existing.has(path));
+ const untracked=new TextDecoder("utf-8",{fatal:true}).decode(readUntrackedInventory(root,parentInventoryDir)).split("\0").filter(path=>!!path&&!existing.has(path));
  const projection=captureWorkspaceReviewProjection({repositoryRoot:root,intendedUntracked:untracked},request.writeSurfaces,undefined,true);
  if(projection.baseCommit!==base||projection.unexpectedUntracked.length)return;
  const paths=new TextDecoder("utf-8",{fatal:true}).decode(git("diff-tree","-r","--name-only","--no-renames","--no-commit-id","-z",projection.baseTree,projection.candidateTree)).split("\0").filter(Boolean).sort();
@@ -120,21 +121,28 @@ export async function captureNativeWriterCompletionAsync(request:AgentRequest,re
  for(const key of ["HOME","USERPROFILE","XDG_CONFIG_HOME","GIT_CONFIG_GLOBAL","GIT_CONFIG_SYSTEM","GIT_CONFIG_NOSYSTEM"]){
   if(process.env[key]===undefined)delete env[key];else env[key]=process.env[key];
  }
- const data={module,loader,request:{id:request.id,role:request.role,repository:request.repository,candidate:request.candidate,writeSurfaces:[...request.writeSurfaces!]},
+ // El padre conserva la propiedad del directorio aunque termine el hilo.
+ const inventoryDir=mkdtempSync(join(tmpdir(),"asen-inventario-git-"));
+ const cleanup=()=>rm(inventoryDir,{recursive:true,force:true,maxRetries:20,retryDelay:100});
+ const data={module,loader,inventoryDir,request:{id:request.id,role:request.role,repository:request.repository,candidate:request.candidate,writeSurfaces:[...request.writeSurfaces!]},
   models:[...(observedModels.get(result)??[])],baseline:[...baseline]};
- const worker=new Worker(`
+ let worker:Worker;
+ try{worker=new Worker(`
   const {parentPort,workerData:d}=require("node:worker_threads");
   (async()=>{
    const m=d.loader?await (await import(d.loader)).tsImport(d.module,d.module):await import(d.module);
    const receipt={};m.bindNativeRunnerModels(receipt,d.models);
-   parentPort.postMessage(m.captureNativeWriterCompletion(d.request,receipt,d.baseline));
+   parentPort.postMessage(m.captureNativeWriterCompletion(d.request,receipt,d.baseline,d.inventoryDir));
   })().catch(()=>parentPort.postMessage(undefined));
- `,{eval:true,execArgv:[],env,workerData:data});
+ `,{eval:true,execArgv:[],env,workerData:data});}
+ catch(error){await cleanup();throw error;}
  return new Promise(resolve=>{
   let settled=false;
   const finish=(value:NativeWriterCompletion|undefined)=>{
    if(settled)return;settled=true;clearTimeout(timer);signal.removeEventListener("abort",abort);
-   void worker.terminate().then(()=>resolve(value),()=>resolve(undefined));
+   void worker.terminate().then(()=>value,()=>undefined).then(async outcome=>{
+    try{await cleanup();resolve(outcome);}catch{resolve(undefined);}
+   });
   };
   const abort=()=>finish(undefined),timer=setTimeout(abort,60000);
   worker.once("message",(value:unknown)=>{
