@@ -331,7 +331,7 @@ const terminalErrors:unknown[]=[];
    assert.equal(policyMetrics.reviews[0]?.judges.length,1);
    assert.equal(policyMetrics.reviews[0]?.completeJudgment,false);
    assert.equal(await canResumeUnstartedDualReview(policyCheckpoint),false);
-   assert.equal(await restoreNativeIntegrationReview(policyCheckpoint),undefined);
+   await assert.rejects(()=>restoreNativeIntegrationReview(policyCheckpoint),/raíz ODD original cambió/u);
    const originalReceipt=await receipts.readReceiptState(candidate.commit);
    if(originalReceipt.status!=="valid")assert.fail("Sin recibo auténtico");
    // El lector simula una nueva firma auténtica para el mismo árbol: no basta conservar el SHA.
