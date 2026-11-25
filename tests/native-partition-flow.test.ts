@@ -294,7 +294,7 @@ const terminalErrors:unknown[]=[];
    const dynamicDual={...dualCheckpoint,todos:{list:async()=>changedDuringRecoveredReceipt?altered.list():todos.list(identity)}};
    const recoveredDual=await restoreNativeIntegrationReview(dynamicDual);
    assert.ok(recoveredDual);
-   await assert.rejects(()=>verifyNativeIntegrationAcceptance({candidate,report:recoveredDual,sessionId:identity.sessionId,receipts:{readReceiptState:async sha=>{changedDuringRecoveredReceipt=true;return receipts.readReceiptState(sha);}}}),/política ODD cambió/u);
+   await assert.rejects(()=>verifyNativeIntegrationAcceptance({candidate,report:recoveredDual,sessionId:identity.sessionId,receipts:{readReceiptState:async sha=>{changedDuringRecoveredReceipt=true;return receipts.readReceiptState(sha);}}}),/raíz ODD original cambió/u);
    const metrics=await readNativeReviewMetrics(dualCheckpoint.storageDir,identity);
    assert.equal(metrics.reviews.length,1);assert.equal(metrics.reviews[0]?.judges.length,2);
    assert.equal((await readNativeReviewMetrics(dualCheckpoint.storageDir,{...identity,sessionId:"otra"})).reviews.length,0);
