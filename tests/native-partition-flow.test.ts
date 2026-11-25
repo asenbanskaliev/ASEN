@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from "node:fs/promises";
+import {mkdtemp,mkdir,writeFile,readFile,rm,realpath,readdir} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {fileURLToPath} from "node:url";
@@ -489,5 +489,22 @@ test("El inventario de ignorados supera el antiguo límite de stdout y conserva 
   const result={};bindNativeRunnerModels(result,["nvidia/modelo-simulado"]);
   const completion=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
   assert.deepEqual(completion?.paths,["resultado.txt"]);
+  const temp=await realpath(await mkdtemp(join(tmpdir(),"asen-inventory-cleanup-")));
+  const keys=["TMPDIR","TMP","TEMP"] as const,previous=keys.map(key=>process.env[key]);
+  try{
+   for(const key of keys)process.env[key]=temp;
+   const controller=new AbortController();
+   const pending=captureNativeWriterCompletionAsync(request,result,baseline,controller.signal);
+   // El directorio se crea antes del primer await; cancelar un hilo real.
+   controller.abort();
+   assert.equal(await pending,undefined);
+   assert.deepEqual(await readdir(temp),[]);
+   const completed=await captureNativeWriterCompletionAsync(request,result,baseline,new AbortController().signal);
+   assert.deepEqual(completed?.paths,["resultado.txt"]);
+   assert.deepEqual(await readdir(temp),[]);
+  }finally{
+   keys.forEach((key,index)=>{const value=previous[index];if(value===undefined)delete process.env[key];else process.env[key]=value;});
+   await rm(temp,{recursive:true,force:true,maxRetries:10,retryDelay:100});
+  }
  }finally{await rm(project,{recursive:true,force:true});}
 });
