@@ -1,4 +1,7 @@
 import {execFileSync} from "node:child_process";
+import {createHash} from "node:crypto";
+import {preparePrivateFile} from "../../io/private-file.js";
+import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
 import {existsSync,mkdirSync,realpathSync,rmdirSync} from "node:fs";
 import path from "node:path";
 import {prepareParallelWorkerWorktrees,type ParallelWorkerUnit} from "../agents/parallel-worktrees.js";
@@ -22,7 +25,7 @@ import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | prepare-native <lote> | attach | attach-plan | plan-todo | supervise | collect [lote] | integration | integration-test | integration-review | integration-review-dual | integration-continue | integration-auto | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | prepare-native <lote> | attach | attach-plan | plan-todo | supervise | collect [lote] | integration | integration-test | integration-review | integration-review-dual | integration-continue | integration-auto | integration-auto-dual | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
  cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;
  sessionManager?:{getSessionId?:()=>string};
@@ -56,7 +59,8 @@ export function registerParallelWorktreeCommand(
   reviewIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
   reviewIntegratedCandidateDual?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
   continueIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
-  advanceIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
+  advanceIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,reviewMode:"proportional"|"dual")=>Promise<unknown>;
+  integrationFlowLockDirectory?:string;
   prepareNativeChildren?:(batchId:string,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
   planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
   childProfiles?:(identity:TodoContext)=>Promise<ProfileLayer>;
@@ -72,15 +76,15 @@ export function registerParallelWorktreeCommand(
    {status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>}
 ):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[])=>Promise<unknown>;
  supervisePartition:(ctx:WorktreeContext,batchId:string)=>Promise<unknown>;
- advancePartition:(ctx:WorktreeContext,batchId?:string)=>Promise<unknown>}>{
+ advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode?:"proportional"|"dual")=>Promise<unknown>}>{
  // La selección exacta solo existe en el cableado interno, no en los argumentos
  // del comando ni en los parámetros generados por el modelo.
  const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
 
    const raw=args?.trim()??"";
-   const integrationMatch=/^(integration(?:-test|-review-dual|-review|-continue|-auto)?|prepare-native|collect)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
+   const integrationMatch=/^(integration(?:-test|-review-dual|-review|-continue|-auto-dual|-auto)?|prepare-native|collect)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
    const action=integrationMatch?.[1]??raw;
-   if(action!=="prepare-native"&&action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-test"&&action!=="integration-review"&&action!=="integration-review-dual"&&action!=="integration-continue"&&action!=="integration-auto"&&action!=="status"&&action!=="review"){
+   if(action!=="prepare-native"&&action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-test"&&action!=="integration-review"&&action!=="integration-review-dual"&&action!=="integration-continue"&&action!=="integration-auto"&&action!=="integration-auto-dual"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
@@ -192,7 +196,7 @@ export function registerParallelWorktreeCommand(
      result.status==="started"?"info":"warning");
     return result;
    }
-   if(action==="integration"||action==="integration-test"||action==="integration-review"||action==="integration-review-dual"||action==="integration-continue"||action==="integration-auto"){
+   if(action==="integration"||action==="integration-test"||action==="integration-review"||action==="integration-review-dual"||action==="integration-continue"||action==="integration-auto"||action==="integration-auto-dual"){
     if(!id||!ctx.cwd||!options?.journalFile||!options.sessionLinksFile||!options.observationFile)
      return {status:"unavailable",reason:"No existe una sesión propietaria y sus diarios de lote."};
     const source=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
@@ -214,9 +218,21 @@ export function registerParallelWorktreeCommand(
      const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
      validate();
      if(action!=="integration"){
-      const run=action==="integration-test"?options.testIntegratedCandidate:action==="integration-review"?options.reviewIntegratedCandidate:action==="integration-review-dual"?options.reviewIntegratedCandidateDual:action==="integration-auto"?options.advanceIntegratedCandidate:options.continueIntegratedCandidate;
+      const automatic=action==="integration-auto"||action==="integration-auto-dual";
+      const run=automatic?options.advanceIntegratedCandidate:action==="integration-test"?options.testIntegratedCandidate:action==="integration-review"?options.reviewIntegratedCandidate:action==="integration-review-dual"?options.reviewIntegratedCandidateDual:options.continueIntegratedCandidate;
       if(!run||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm)return {status:"unavailable",reason:"Se necesita la sesión Pi propietaria y confirmación interactiva."};
-      const result=await run(candidate,ctx,validate);validate();ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
+      const execute=async()=>{validate();const result=await run(candidate,ctx,validate,action==="integration-auto-dual"?"dual":"proportional");validate();return result;};
+      // El bloqueo compartido abarca también los comandos manuales: dos
+      // sesiones/procesos no pueden consumir otra revisión del mismo candidato
+      // mientras esperan el consentimiento o realizan la transición Git.
+      let result:unknown;
+      if(options.integrationFlowLockDirectory){
+       const key=createHash("sha256").update(JSON.stringify([source,candidate.commit])).digest("hex");
+       const lock=path.join(options.integrationFlowLockDirectory,"native-flow-"+key);
+       await preparePrivateFile(lock,true);validate();
+       result=await withExclusiveFileLock(lock,execute,1000,ctx.signal);
+      }else result=await execute();
+      validate();ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
      }
      const result={status:"candidate-prepared",candidate,
       next:"Ejecutar /asen-worktrees integration-test <lote>, revisar el candidato y obtener aprobación antes de integrar; las sucesoras siguen bloqueadas."};
@@ -710,5 +726,5 @@ export function registerParallelWorktreeCommand(
  });
  return Object.freeze({preparePartition:(ctx:WorktreeContext,ids:readonly string[])=>handler("prepare-auto",ctx,Object.freeze([...ids])),
   supervisePartition:(ctx:WorktreeContext,batchId:string)=>handler("supervise",ctx,undefined,batchId),
-  advancePartition:(ctx:WorktreeContext,batchId?:string)=>handler(batchId?"integration-auto "+batchId:"integration-auto",ctx)});
+  advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode:"proportional"|"dual"="proportional")=>handler((reviewMode==="dual"?"integration-auto-dual":"integration-auto")+(batchId?" "+batchId:""),ctx)});
 }

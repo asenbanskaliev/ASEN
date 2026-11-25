@@ -11,3 +11,8 @@ Base de trabajo: PR #126 sobre #115. Complemento del plan de 18 objetivos y 12 p
 | Identidad de jueces | Equivalencia canónica restringida, rechazo de selección distinta, distinción entre descriptor declarado y respuesta de proveedor; recuperación conserva independencia declarada. | Si el proveedor no suministra responseModel, la identidad física no se acredita. |
 
 No se han lanzado nuevos ensayos de modelos ni declarado éxito por CI. globalFull:false. Pendientes: revisión del nuevo SHA, pruebas y aceptación real del flujo de extremo a extremo, causa del fallo de la sucesora, datos de facturación e identidad del proveedor cuando existan. No ampliar paralelismo o eliminar contexto sin mediciones.
+
+## Revisión posterior
+
+- Corregir inventarios de comandos y herramientas Pi; registrar asen-flow-metrics y reservar asen_plan_resume_batch para impedir colisiones. La CI 45639738580 detectó cuatro fallos de inventario, propagados a los tres sistemas. No dar por validado el nuevo SHA hasta la CI.
+- Conservar dictámenes dobles existentes. La recuperación solo acepta checkpoints firmados del mismo candidato. Serializar avance automático y comandos manuales con el bloqueo privado existente, sin reintento de inferencia ante contención. La doble revisión se puede solicitar desde el flujo natural sin comando manual, con consentimiento específico. No repetir una revisión doble pendiente automáticamente.
