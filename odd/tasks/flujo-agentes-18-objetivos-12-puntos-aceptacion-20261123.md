@@ -187,3 +187,10 @@ En la tabla, “implementación presente” significa que el flujo y sus salvagu
 - Mantener `globalFull:false` hasta que los ensayos reales y la revisión independiente pasen sobre el mismo SHA. No fusionar en `main`.
 
 **Criterio de cierre de implementación:** con CI y revisión independientes del SHA final, esta matriz separa la implementación automatizada ya cubierta de la evidencia reservada a E1–E4/F y mediciones reales. No afirmar la causa de C3 ni la identidad física de un juez cuando Pi no devuelve `responseModel`.
+
+
+### Octavo corte · correcciones de revisión · 25/11/2026
+
+- CodeRabbit revisó el SHA `b5bc92429020fa878ef0aa99db9915cbe96efbc1` y señaló seis riesgos: autorización E1, recibo de revisión doble, cancelación y contexto del host, ámbito de escritura E1, clasificación HTTP y recuperación del dictamen.
+- Esta tanda añade correcciones y regresiones automatizadas para esos puntos. La CI del SHA resultante debe anotarse al terminar. No se inició ningún ensayo con modelos ni se consumieron servicios de modelos.
+- La matriz de 30 requisitos conserva estados prudentes. `globalFull:false` hasta completar los ensayos reales E1–E4 y los demás criterios de aceptación.

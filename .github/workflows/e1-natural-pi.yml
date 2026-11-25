@@ -54,9 +54,10 @@ jobs:
             count=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/runs/$run/jobs?per_page=100" --jq '.jobs[] | select(.name == "ensayo-real") | .conclusion' | awk '$0 != "skipped" { n++ } END { print n+0 }')
             test "$count" = 0 || { echo "El intento anterior ya consumió la autorización"; exit 1; }
           done <<< "$previous"
-          runs=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/runs?head_sha=$ASEN_EXPECTED_SHA&event=pull_request&per_page=100" --jq '.workflow_runs[] | [.name,.status,.conclusion] | @tsv')
+          runs=$(gh api --paginate "/repos/asenbanskaliev/ASEN/actions/runs?head_sha=$ASEN_EXPECTED_SHA&event=pull_request&per_page=100" --jq '.workflow_runs[] | [.id,.name,.status,.conclusion] | @tsv')
           for required in 'CI' 'Release Gate'; do
-            printf '%s\n' "$runs" | awk -F '\t' -v name="$required" '$1==name && $2=="completed" && $3=="success" { ok=1 } END { exit !ok }'
+            latest=$(printf '%s\n' "$runs" | awk -F '\t' -v name="$required" '$2==name && ($1+0)>max { max=$1+0; status=$3; conclusion=$4 } END { if(max) printf "%s\t%s",status,conclusion }')
+            test "$latest" = "$(printf 'completed\tsuccess')" || { echo "La ejecución más reciente de $required no terminó correctamente"; exit 1; }
           done
           echo "approved=true" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1

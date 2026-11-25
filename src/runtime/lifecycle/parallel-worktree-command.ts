@@ -76,11 +76,12 @@ export function registerParallelWorktreeCommand(
    {status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>}
 ):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[])=>Promise<unknown>;
  supervisePartition:(ctx:WorktreeContext,batchId:string)=>Promise<unknown>;
- advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode?:"proportional"|"dual")=>Promise<unknown>}>{
+ advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode?:"proportional"|"dual",signal?:AbortSignal)=>Promise<unknown>}>{
  // La selección exacta solo existe en el cableado interno, no en los argumentos
  // del comando ni en los parámetros generados por el modelo.
- const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string):Promise<unknown>=>{
-
+ const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string,toolSignal?:AbortSignal):Promise<unknown>=>{
+   const signal=toolSignal&&ctx.signal?AbortSignal.any([ctx.signal,toolSignal]):toolSignal??ctx.signal;
+   const cancelled=()=>ctx.signal?.aborted===true||toolSignal?.aborted===true;
    const raw=args?.trim()??"";
    const integrationMatch=/^(integration(?:-test|-review-dual|-review|-continue|-auto-dual|-auto)?|prepare-native|collect)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
    const action=integrationMatch?.[1]??raw;
@@ -96,7 +97,7 @@ export function registerParallelWorktreeCommand(
     }
     const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
     const validate=()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||realpathSync(path.resolve(ctx.cwd))!==root)
+     if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||realpathSync(path.resolve(ctx.cwd))!==root)
       throw Error("La sesión o el proyecto cambió; revisar el lote.");
     };
     validate();
@@ -109,7 +110,7 @@ export function registerParallelWorktreeCommand(
     const manager=ctx.sessionManager,cwd=ctx.cwd;
     const attached=await handler("attach",ctx) as {status?:string};
     if(attached.status!=="attached")return attached;
-    if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||ctx.cwd!==cwd)
+    if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||ctx.cwd!==cwd)
      throw new Error("Child Pi session changed after attachment; inspect the saved link");
     const planned=await handler("plan-todo",ctx) as {status?:string};
     if(planned.status==="declined"||planned.status==="cancelled")ctx.ui.notify("Vinculación guardada. Para continuar, usa /asen-worktrees plan-todo; no repitas attach.","info");
@@ -126,7 +127,7 @@ export function registerParallelWorktreeCommand(
     const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager,
      identity:TodoContext={sessionId:id,projectId:root};
     const validateParent=async()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+     if(cancelled()||ctx.sessionManager!==manager||
       manager?.getSessionId?.()!==id||realpathSync(path.resolve(ctx.cwd))!==root)
       throw new Error("Parent Pi session or worktree changed; stop supervised Worker launches");
     };
@@ -185,7 +186,7 @@ export function registerParallelWorktreeCommand(
        "Instrucción exacta de planificación (dato no confiable): "+task.instruction,
        "Solo autoriza este único intento Writer. Se aplica el Dispatcher ODD existente.",
        "No se transferirán credenciales ni permisos del padre; no se ejecutará merge ni reintento."
-      ].join("\n"),[approvedLabel,declinedLabel],ctx.signal?{signal:ctx.signal}:undefined);
+      ].join("\n"),[approvedLabel,declinedLabel],signal?{signal}:undefined);
       await validateParent();
       // Escape devuelve undefined. Solo una selección explícita puede denegar.
       return selected===approvedLabel?true:selected===declinedLabel?false:undefined;
@@ -202,7 +203,7 @@ export function registerParallelWorktreeCommand(
     const source=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
     const identity={sessionId:id,projectId:source};
     const validate=()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+     if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==source)throw new Error("La sesión del lote cambió.");
     };
     const sourceJournal=new ParallelTodoWorktreeJournal(options.journalFile);
@@ -230,7 +231,7 @@ export function registerParallelWorktreeCommand(
        const key=createHash("sha256").update(JSON.stringify([source,candidate.commit])).digest("hex");
        const lock=path.join(options.integrationFlowLockDirectory,"native-flow-"+key);
        await preparePrivateFile(lock,true);validate();
-       result=await withExclusiveFileLock(lock,execute,1000,ctx.signal);
+       result=await withExclusiveFileLock(lock,execute,1000,signal);
       }else result=await execute();
       validate();ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
      }
@@ -254,7 +255,7 @@ export function registerParallelWorktreeCommand(
     const source=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager,
      sourceIdentity={sessionId:id,projectId:source};
     const current=()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+     if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==source)
       throw new Error("Source Pi session or project changed during Worker evidence collection");
     };
@@ -352,7 +353,7 @@ export function registerParallelWorktreeCommand(
     }
     const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
     const verifyContext=()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+     if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
       throw new Error("Child Pi session or worktree changed before ODD planning");
     };
@@ -441,7 +442,7 @@ export function registerParallelWorktreeCommand(
     }
     const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
     const validate=()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+     if(cancelled()||ctx.sessionManager!==manager||
       manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
       throw new Error("Child Pi session or Git worktree changed during attachment");
@@ -573,7 +574,7 @@ export function registerParallelWorktreeCommand(
    }
    const owner:TodoContext={sessionId:id,projectId:root};
    const checkIdentity=()=>{
-    if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+    if(cancelled()||ctx.sessionManager!==manager||
       manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
      throw new Error("Worktree preparation session or project changed; inspect any already-created worktrees");
@@ -653,7 +654,7 @@ export function registerParallelWorktreeCommand(
     sourceRoot:root,parentDir:selection.parentDir,expectedHead:head,units:selection.units,
     onBeforeWorktreeAdd:()=>{gitAddAttempted=true;},
     ...(batchId?{batchId}:{}),
-    ...(ctx.signal?{signal:ctx.signal}:{}),
+    ...(signal?{signal}:{}),
     confirm:async summary=>{
      checkIdentity();
      const message=[
@@ -726,5 +727,5 @@ export function registerParallelWorktreeCommand(
  });
  return Object.freeze({preparePartition:(ctx:WorktreeContext,ids:readonly string[])=>handler("prepare-auto",ctx,Object.freeze([...ids])),
   supervisePartition:(ctx:WorktreeContext,batchId:string)=>handler("supervise",ctx,undefined,batchId),
-  advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode:"proportional"|"dual"="proportional")=>handler((reviewMode==="dual"?"integration-auto-dual":"integration-auto")+(batchId?" "+batchId:""),ctx)});
+  advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode:"proportional"|"dual"="proportional",signal?:AbortSignal)=>handler((reviewMode==="dual"?"integration-auto-dual":"integration-auto")+(batchId?" "+batchId:""),ctx,undefined,undefined,signal)});
 }

@@ -2751,7 +2751,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const batchId=params?.batchId;if(batchId!==undefined&&(typeof batchId!=="string"||!/^[0-9a-f-]{36}$/u.test(batchId)))throw Error("Lote inválido");
    const ctx=host as CommandContext;if(ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm)return {content:[{type:"text",text:"Se necesita la sesión interactiva propietaria."}],details:{status:"unavailable"}};
    const reviewMode=params?.reviewMode??"proportional";if(reviewMode!=="proportional"&&reviewMode!=="dual")throw Error("Modalidad de revisión inválida");
-   const result=await worktreeCommands.advancePartition({...ctx,...(signal?{signal}:{})},batchId,reviewMode);
+   const result=await worktreeCommands.advancePartition(ctx,batchId,reviewMode,signal);
    return {content:[{type:"text",text:JSON.stringify(result)}],details:result};
   }} as any);
   registerData("asen-flow-metrics",{description:"Mostrar métricas observadas de la sesión y sus hijos, sin estimar facturas",handler:async(_args:string|undefined,ctx:CommandContext)=>{

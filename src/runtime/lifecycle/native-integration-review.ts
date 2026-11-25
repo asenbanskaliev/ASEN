@@ -248,15 +248,21 @@ export async function nativeReviewCheckpointStatus(input:CheckpointInput){
 }
 /** Registrar antes de los jueces: reiniciar no permite degradar una doble revisión. */
 export async function markNativeDualReviewPending(input:CheckpointInput){
- const file=checkpointFile(input);await preparePrivateFile(file,true);
+ const file=checkpointFile(input);
  await withExclusiveFileLock(file,async()=>{
   const prior=await readCheckpoint(input),policyHash=await checkpointPolicy(input);
   if(prior&&prior.policyHash!==policyHash)throw Error("La política de revisión cambió");
+  const receipt=await exactPassingReceipt(input.candidate,input.receipts);
+  if(policyHash!==await checkpointPolicy(input))throw Error("La política cambió antes de iniciar la revisión doble");
   // Una decisión explícita previa no se borra al volver a abrir el menú.
-  if(prior?.phase==="dual-pending")return;
+  if(prior?.phase==="dual-pending"){
+   if(prior.receiptSignature!==receipt.signature)throw Error("Cambió el recibo de pruebas de la revisión pendiente");
+   return;
+  }
   if(prior?.phase==="dual-reviewed"||prior?.phase==="dual-findings")throw Error("Ya existe un dictamen doble para este candidato. Consultar los resultados o preparar un candidato corregido.");
+  await preparePrivateFile(file,true);
   await writeCheckpoint(input,{schema:"asen.native-review/v1",key:integrationKey(input.candidate,input.sessionId),policyHash,
-   phase:"dual-pending",receiptSignature:null,judges:[]});
+   phase:"dual-pending",receiptSignature:receipt.signature,judges:[]});
  });
 }
 /** Solo guarda resultados genuinos que ya pasan la misma puerta de aceptación.
@@ -290,8 +296,8 @@ export async function saveNativeReviewCheckpoint(input:CheckpointInput&{report:N
 async function verifyCheckpoint(input:CheckpointInput,expected?:string){
  const data=await readCheckpoint(input);if(!data||data.phase==="dual-pending"||data.phase==="dual-findings")throw Error("La revisión todavía está pendiente o tiene hallazgos");
  if(expected!==undefined&&JSON.stringify(data)!==expected)throw Error("Cambió el checkpoint de revisión");
- if(data.policyHash!==await checkpointPolicy(input))throw Error("La política ODD cambió desde la revisión");
  const receipt=await exactPassingReceipt(input.candidate,input.receipts);
+ if(data.policyHash!==await checkpointPolicy(input))throw Error("La política ODD cambió desde la revisión");
  if(receipt.signature!==data.receiptSignature)throw Error("El recibo de pruebas revisado cambió");
  if(data.phase==="dual-reviewed"){
   const models=data.judges.map(judge=>splitPiModelIdentity(judge.route)),authors=(input.candidate.authorModelsObserved??[]).map(splitPiModelIdentity);

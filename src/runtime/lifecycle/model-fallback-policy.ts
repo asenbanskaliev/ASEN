@@ -51,7 +51,12 @@ function categoryFromSignals(message:{errorMessage?:unknown;rawStopReason?:unkno
  // Los códigos estructurados tienen prioridad sobre el texto libre del proveedor.
  // Un HTTP 400 no debe provocar otra llamada porque su mensaje mencione un 429.
  for(const code of diagnosticCodes(message.diagnostics)){
-  if(/^[45]\d\d$/u.test(code))return statusCategory(Number(code));
+  if(/^[45]\d\d$/u.test(code)){
+   const status=Number(code),detail=typeof message.errorMessage==="string"?message.errorMessage.slice(0,ERROR_SCAN_MAX):"";
+   if(status===400&&ERROR_KEYWORDS[0]![1].test(detail))return TERMINAL_ERROR_CATEGORY.CONTEXT_LENGTH;
+   if(status===429&&ERROR_KEYWORDS[1]![1].test(detail))return TERMINAL_ERROR_CATEGORY.QUOTA;
+   return statusCategory(status);
+  }
  }
  const status=typeof message.errorMessage==="string"?HTTP_STATUS.exec(message.errorMessage.slice(0,ERROR_SCAN_MAX))?.[1]:undefined;
  if(status){

@@ -1,6 +1,7 @@
 /** E1: decisiones del padre Pi auténtico sobre peticiones naturales.
  * Host instrumentado, sin agentes hijos ni escritura autorizada. */
 import assert from "node:assert/strict";
+import {assertReadmeOnlyWriterPlan} from "./e1-natural-plan-validation.mjs";
 import {spawn,execFileSync} from "node:child_process";
 import {mkdtempSync,mkdirSync,writeFileSync,readFileSync,rmSync,realpathSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -121,7 +122,7 @@ async function runCase(c){
   }
   if(c.id==="delegado"){
    assert.equal(plans.length,1);const p=plans[0];assert.equal(p.persistence,"saved");
-   assert.ok(p.roles.some(t=>t.role==="worker"&&JSON.stringify(t.paths)===JSON.stringify(["README.md"])));
+   assertReadmeOnlyWriterPlan(p);
    assert.ok(!p.inlineContinuation&&!p.inlineClarification);
   }
   summary.stage="complete";summary.status="PASS_NATURAL_DECISION_TEST_ONLY";
