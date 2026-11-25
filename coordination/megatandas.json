@@ -47,10 +47,6 @@
   "sharedFilesOwner": "E",
   "sharedFiles": [
     "extensions/asen.ts",
-    "src/runtime/lifecycle/plan-dispatcher.ts",
-    "src/runtime/lifecycle/parallel-worktree-command.ts",
-    "src/runtime/lifecycle/native-integration-successor.ts",
-    "src/runtime/lifecycle/native-integration-review.ts",
     "tests/native-partition-flow.test.ts",
     ".github/workflows/**",
     "package.json",
@@ -61,6 +57,56 @@
     "reservation": "Adquirir mediante commit hijo del HEAD exacto del registro y update_ref no forzado con expected_sha; comprobar titular antes de publicar. Liberar solo la propia reserva con CAS. Sin robo por caducidad.",
     "integration": "Solo E; PR propia, revisión de diferencias y CI exacta, agrupar si se puede sin saltar validación. No fusionar main ni cerrar #61/#115.",
     "noModelCalls": true,
-    "globalFull": false
+    "globalFull": false,
+    "ownership": "Cada equipo trabaja solo dentro de ownership. Cualquier archivo no asignado o interfaz compartida requiere asignación expresa de E registrada con CAS. E coordina las modificaciones en extensión y workflows. Evitar modificaciones simultáneas al mismo archivo, incluso en ramas distintas."
+  },
+  "ownership": {
+    "A": [
+      "src/flow/odd-routing.ts",
+      "src/runtime/lifecycle/odd-unit-plan.ts",
+      "src/runtime/lifecycle/parallel-worktree-command.ts",
+      "src/runtime/lifecycle/native-integration-successor.ts",
+      "src/runtime/agents/parallel-*",
+      "src/orchestration/**",
+      "tests/odd-unit-partition.test.ts",
+      "tests/parallel-*.test.ts",
+      "tests/asen-a-*.test.ts"
+    ],
+    "B": [
+      "src/runtime/lifecycle/model-fallback*",
+      "src/runtime/lifecycle/plan-dispatcher.ts",
+      "src/runtime/lifecycle/profile*",
+      "src/agents/**",
+      "src/review/model-identity.ts",
+      "src/review/pi-model-reviewer.ts",
+      "tests/model-fallback*.test.ts",
+      "tests/asen-b-*.test.ts"
+    ],
+    "C": [
+      "src/runtime/lifecycle/native-integration-review.ts",
+      "src/runtime/lifecycle/native-integration-tests.ts",
+      "src/runtime/lifecycle/review-acceptance.ts",
+      "src/review/** excepto model-identity.ts y pi-model-reviewer.ts",
+      "src/evidence/**",
+      "src/runtime/agents/task-agent-reconciler.ts",
+      "tests/asen-c-*.test.ts"
+    ],
+    "D": [
+      "src/runtime/agents/flow-metrics.ts",
+      "src/runtime/ui/request-guidance.ts",
+      "src/stats/**",
+      "scripts/e1-*",
+      "scripts/e2a-*",
+      "scripts/agent-observable-*",
+      "tests/asen-d-*.test.ts"
+    ],
+    "E": [
+      "extensions/asen.ts",
+      "tests/native-partition-flow.test.ts",
+      ".github/workflows/**",
+      "package.json",
+      "package-lock.json",
+      "integración y registro de coordinación"
+    ]
   }
 }
