@@ -200,11 +200,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar SHA exacto: CI rápida/completa, Release Gate, Pi 1.2 y compatibilidad 1.6, Windows G08 y CodeRabbit. Tras puertas verdes, ejecutar T06 API y sesiones Pi, cada una con marcador de un uso.",
+      "next": "Identificar en el Windows G08 exacto la etapa candidate-drift; corregir la causa en el motor, no relajar las pruebas. Revalidar todo en un único SHA y exigir CodeRabbit exacto.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "4c1264af1b56e3b78982223b77325efce5de7139",
+      "sha": "1a0d333f91f2c204aec5e9aa01e3a331057a4261",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -256,7 +256,7 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "En curso sobre el SHA exacto 4c1264af1b56e3b78982223b77325efce5de7139. dba4ce6 falló por importación huérfana de G08 y la prueba confirmó el defecto; se eliminó comando/parser/help de staging duplicado, manteniendo managed-lifecycle. CodeRabbit encontró en aa5cfb4 que se mostraba presión si faltaba getSettings; corregido en este SHA y añadido test de API ausente/fallida.",
+      "tests": "En curso sobre 1a0d333f91f2c204aec5e9aa01e3a331057a4261. En 4c1264a, CI rápida y Pi 1.2 pasaron; Phase 0 pasó. El trabajo G08 Windows falló en t09-lifecycle: el sondeo de la primera instalación devolvió candidate-drift antes de iniciar el CLI. Se añadieron razones por etapa para diagnosticar sin exponer rutas.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -265,7 +265,8 @@
         "tests/managed-update-stage-cli.test.ts",
         ".github/workflows/ci.yml",
         "tests/flujo-agentes-nvidia-workflow.test.ts",
-        "tests/host-status-projection.test.ts"
+        "tests/host-status-projection.test.ts",
+        "src/runtime/managed/managed-cli-version-probe.ts"
       ],
       "lastAttempt": {
         "pr": 144,
@@ -949,11 +950,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; módulo G08 duplicado retirado y G02 oculta indicador si falta getSettings; corrección CodeRabbit aa5 aplicada; SHA 4c1264af1b56e3b78982223b77325efce5de7139 pendiente de validaciones exactas",
+    "m2": "abierta; validación Windows detectó candidate-drift en la ruta de instalación administrada; SHA 1a0d333f91f2c204aec5e9aa01e3a331057a4261 añade causa por etapa y está en validación exacta",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:31:00Z",
-    "g02Head": "4c1264af1b56e3b78982223b77325efce5de7139"
+    "updatedAt": "2026-11-26T19:33:00Z",
+    "g02Head": "1a0d333f91f2c204aec5e9aa01e3a331057a4261"
   },
   "modelCallException": {
     "enabled": true,
