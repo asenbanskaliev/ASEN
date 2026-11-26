@@ -96,6 +96,8 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  const windows=ci.slice(windowsStart,windowsEnd);
  assert.ok(windows.includes("runs-on: windows-latest"));
  assert.ok(windows.includes("tests/managed-install.test.ts"));
- assert.ok(windows.includes("tests/managed-acquisition-update.test.ts"));
+ assert.ok(windows.includes("tests/t09-lifecycle.test.ts"));
+ assert.ok(windows.includes("interrupted upgrade"));
+ assert.ok(windows.includes("unhealthy automatic rollback"));
  assert.ok(windows.includes("npm run typecheck"));
 });
