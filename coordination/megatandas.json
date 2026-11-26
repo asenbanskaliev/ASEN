@@ -7,29 +7,27 @@
   "maximumWriters": 2,
   "teams": {
     "A": {
-      "state": "trabajando",
-      "lease": {
-        "id": "A1a-g2-cierre-dos-raices-1126",
-        "generation": 2,
-        "package": "A1a",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-        "branch": "feat/asen-equipo-A-A1a-g2-cierre-dos-raices-1126",
-        "phase": "publicacion",
-        "files": [
-          "src/flow/odd-routing.ts",
-          "src/runtime/lifecycle/native-integration-review.ts",
-          "src/runtime/lifecycle/todo-store.ts",
-          "src/runtime/lifecycle/native-integration-successor.ts",
-          "extensions/asen.ts",
-          "tests/odd-unit-partition.test.ts",
-          "tests/native-partition-flow.test.ts"
-        ]
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
       "generation": 2,
-      "next": "A1a ejecutable: dos raíces sin sucesora, extremo a extremo, rama nueva g2 desde la base admitida #115. Comprobar canMaterializeOddPartition (hoy exige 3 unidades), inspectPartitionPolicy (exige sucesora), cierre atómico Todo, recuperación y consumidores en extensions/asen.ts. Autorizar temporalmente los archivos de la asignación A1a. No ampliar otros grafos. Pruebas de dos raíces sin sucesora, 2+1 histórico, solape, rechazo, recibo alterado y reinicio. Publicar un borrador único y liberar reserva.",
-      "blocker": null
+      "next": "Validar #136 exacta, corregir fallos y entregar a E para reconciliación con candidato vigente. No abrir duplicados.",
+      "blocker": null,
+      "pr": 136,
+      "sha": "a0caab2acf7eae6d1e4d8402f9e44ea06e12e4ff",
+      "branch": "feat/asen-equipo-A-A1a-g2-cierre-dos-raices-1126",
+      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "files": [
+        "src/flow/odd-routing.ts",
+        "src/runtime/lifecycle/native-integration-review.ts",
+        "src/runtime/lifecycle/todo-store.ts",
+        "src/runtime/lifecycle/native-integration-successor.ts",
+        "extensions/asen.ts",
+        "tests/odd-unit-partition.test.ts",
+        "tests/native-partition-flow.test.ts"
+      ],
+      "tests": "Regresiones publicadas; CI rápida pendiente."
     },
     "B": {
       "state": "espera-candidato",
@@ -152,7 +150,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "E1: #135 es el único candidato activo; comprobar SHA/base, CI completa, Release Gate, arquitectura, Pi runtime y revisión pertinente. Si hay hallazgo, asignar corrección exacta al dueño; si todo pasa, integrar solo en rama #115 y validar nuevo HEAD. A1a independiente con propiedad temporal; no escribir archivos de A durante reserva. Auditar compatibilidad de A1a con B/C/D, admitir un candidato por vez. Tras admisión, archivar PR #127–134 como sustituidas solo si ancestros o cambios exactos comprobados y no hay trabajo único.",
+      "next": "Comprobar revisión solicitada de #135; CI requerida superada. Auditar #136 y reconciliar ambos candidatos sin sobrescribir archivos compartidos; no fusionar hasta revisión válida.",
       "blocker": null,
       "generation": 2,
       "pr": 135,
@@ -169,22 +167,10 @@
             "conclusion": "skipped"
           },
           {
-            "name": "Release Gate",
-            "id": 45768465427,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
             "name": "Phase 0 Architecture",
             "id": 45768465424,
             "status": "completed",
             "conclusion": "success"
-          },
-          {
-            "name": "CI",
-            "id": 45768465518,
-            "status": "in_progress",
-            "conclusion": null
           },
           {
             "name": "CI rápida",
@@ -197,12 +183,24 @@
             "id": 45768465398,
             "status": "completed",
             "conclusion": "success"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45768465427,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "CI",
+            "id": 45768465518,
+            "status": "completed",
+            "conclusion": "success"
           }
         ],
         "review": {
-          "submissions": [],
-          "openThreads": 0,
-          "confirmed": false
+          "confirmed": false,
+          "requestCommentId": 7185359435,
+          "reason": "Revisión automática omitida por rama secundaria; solicitada manualmente para SHA exacto."
         }
       },
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
@@ -427,23 +425,7 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {
-    "A1a": {
-      "team": "A",
-      "generation": 2,
-      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "files": [
-        "src/runtime/lifecycle/todo-store.ts",
-        "tests/todo-store.test.ts",
-        "src/runtime/lifecycle/native-integration-review.ts",
-        "extensions/asen.ts",
-        "tests/native-partition-flow.test.ts",
-        "src/runtime/lifecycle/parallel-native-child-plans.ts"
-      ],
-      "scope": "Solo cierre y admisión de partición de dos raíces sin sucesora, recuperación y pruebas. No tocar lógica de alternativas ni jueces/registro de consumo. Exclusivo de A durante su reserva; B/C/E no editar estos archivos mientras A escribe. E reconcilia cambios no solapados con candidato vigente por comparación de tres versiones; no sobrescribir.",
-      "release": "Al publicar PR A1a o cancelar unidad, E revoca o reasigna propiedad temporal mediante CAS."
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -479,7 +461,7 @@
       4701179615,
       4704551343
     ],
-    "status": "espera-ci-y-revision",
+    "status": "espera-revision",
     "globalFull": false,
     "latestFinding": 4704551343,
     "ci": {
@@ -492,22 +474,10 @@
           "conclusion": "skipped"
         },
         {
-          "name": "Release Gate",
-          "id": 45768465427,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
           "name": "Phase 0 Architecture",
           "id": 45768465424,
           "status": "completed",
           "conclusion": "success"
-        },
-        {
-          "name": "CI",
-          "id": 45768465518,
-          "status": "in_progress",
-          "conclusion": null
         },
         {
           "name": "CI rápida",
@@ -518,6 +488,18 @@
         {
           "name": "Pi 1.2 runtime evidence",
           "id": 45768465398,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Release Gate",
+          "id": 45768465427,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "CI",
+          "id": 45768465518,
           "status": "completed",
           "conclusion": "success"
         }
