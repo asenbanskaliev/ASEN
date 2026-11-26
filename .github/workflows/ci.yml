@@ -772,7 +772,7 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels"
-          present=$(gh api "$endpoint" --jq 'any(.[]; .name == "asen-t06-nvidia-una-vez")')
+          present=$(gh api "$endpoint" --jq 'map(.name) | index($label) != null' --arg label 'asen-t06-nvidia-una-vez')
           test "$present" = true
           gh api --method DELETE "$endpoint/asen-t06-nvidia-una-vez" >/dev/null
       - name: Verificar candidato y pruebas negativas sin secretos
@@ -863,6 +863,39 @@ jobs:
           path: ${{ runner.temp }}/asen-t06-nvidia-pi/receipt.json
           if-no-files-found: warn
           retention-days: 7
+
+
+  managed-update-windows:
+    name: G08 actualización administrada aislada (Windows)
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 149 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-compactacion-148'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instalar dependencias sin ejecutar scripts externos
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verificar SHA y tipos del candidato
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne $env:ASEN_EXPECTED_SHA) { throw "SHA de G08 no coincide" }
+          npm run typecheck
+      - name: Probar instalación aislada, rollback y cancelación
+        shell: pwsh
+        run: node --import tsx --test tests/managed-install.test.ts tests/managed-acquisition-update.test.ts
 
   # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
   # Ensayo adicional exclusivamente por etiqueta manual de un solo evento,
