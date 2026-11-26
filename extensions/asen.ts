@@ -444,6 +444,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    hostStatusUI=undefined;hostStatusSnapshot=undefined;
   };
   const refreshHostStatus=async(ctx:CommandContext,pressureOnly=false):Promise<void>=>{
+   const refreshEpoch=panelEpoch;
    const generation=pressureOnly?hostRefreshGeneration:++hostRefreshGeneration;
    const pressureGeneration=pressureOnly?++hostPressureGeneration:0;
    if(hostStatusClosed||ctx?.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setStatus!=="function"||!ctx.sessionManager?.getSessionId?.()){
@@ -475,7 +476,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     hostStatusSnapshot=info;
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
     ensureHostCompactionObserver(ctx,settingsSnapshot);
-   }catch{if((pressureOnly?pressureGeneration===hostPressureGeneration:generation===hostRefreshGeneration)&&!hostStatusClosed)clearHostStatus();}
+   }catch{if(refreshEpoch===panelEpoch&&(pressureOnly?pressureGeneration===hostPressureGeneration:generation===hostRefreshGeneration)&&!hostStatusClosed)clearHostStatus();}
   };
   const ensureHostCompactionObserver=(ctx:CommandContext,initial:string):void=>{
    const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;
