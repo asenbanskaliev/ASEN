@@ -1,6 +1,6 @@
 import path from "node:path";
 import {createManagedUpdatePreview} from "./managed-update-preview.js";
-import {ManagedInstallError,stageAdditionalManagedVersion,type ManagedInstallFile} from "./managed-install.js";
+import {ManagedInstallError,inspectManagedInstall,selectManagedVersion,stageAdditionalManagedVersion,type ManagedInstallFile} from "./managed-install.js";
 
 export interface ManagedAcquisitionUpdateRequest{
  readonly manifestPath:string;
@@ -33,4 +33,79 @@ export async function stageManagedAcquisitionUpdate(request:ManagedAcquisitionUp
  const expected={schema:"asen.managed-acquisition/v1" as const,version:preview.acquisition.version,files:preview.acquisition.files.map(file=>({sourcePath:file.sourcePath,destinationPath:file.destinationPath,size:file.size,sha256:file.sha256}))};
  const staged=await stageAdditionalManagedVersion({prefix:request.prefix,packageRoot:request.packageRoot,version:expected.version,files:expected.files.map(file=>({sourcePath:file.sourcePath,destinationPath:file.destinationPath})),protectedPaths:request.protectedPaths,confirmed:true,expectedAcquisition:expected});
  return Object.freeze({schema:"asen.managed-acquisition-update/v1",operation:"managed-acquisition-update",status:staged.status as "staged"|"unchanged",prefix:path.resolve(request.prefix),version:expected.version,files:staged.files,selection:"not-run",activation:"not-run",producerAuthenticity:"not-established",runtimeReady:false});
+}
+
+
+export interface ManagedAcquisitionActivationReport{
+ readonly schema:"asen.managed-acquisition-update/v1";
+ readonly operation:"managed-acquisition-update";
+ readonly status:"staged"|"activated"|"rolled-back"|"ambiguous";
+ readonly prefix:string;
+ readonly version:string;
+ readonly previousVersion:string;
+ readonly selection:"not-run"|"selected"|"restored"|"uncertain";
+ readonly activation:"not-run"|"verified"|"failed";
+ readonly runtimeReady:boolean;
+ readonly error:"CANCELLED_BEFORE_SELECTION"|"CANCELLED_DURING_ACTIVATION"|"ACTIVATION_FAILED"|"ROLLBACK_UNCERTAIN"|null;
+}
+const freezeActivation=(report:ManagedAcquisitionActivationReport)=>Object.freeze({...report});
+
+/**
+ * Selecciona una versión ya validada, ejecuta la comprobación del lanzador y
+ * restaura la anterior si la activación falla o se cancela. Nunca elimina la
+ * versión nueva ni modifica datos fuera del inventario administrado.
+ */
+export async function activateManagedAcquisitionUpdate(
+ request:ManagedAcquisitionUpdateRequest,
+ activate:(version:string,signal?:AbortSignal)=>Promise<void>,
+ signal?:AbortSignal
+):Promise<ManagedAcquisitionActivationReport>{
+ if(typeof activate!=="function")throw new ManagedInstallError("INVALID_REQUEST","Managed acquisition update requires an activation verifier");
+ const prefix=path.resolve(request.prefix);
+ const before=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix});
+ if(before.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
+ const previousVersion=before.managed.activeVersion;
+ if(!previousVersion)throw new ManagedInstallError("SOURCE_DRIFT","Recoverable update requires a currently selected managed version");
+ const staged=await stageManagedAcquisitionUpdate(request);
+ const base={schema:"asen.managed-acquisition-update/v1" as const,operation:"managed-acquisition-update" as const,
+  prefix,version:staged.version,previousVersion,selection:"not-run" as const,activation:"not-run" as const,
+  runtimeReady:false,error:null};
+ if(staged.version===previousVersion)return freezeActivation({...base,status:"staged"});
+ if(signal?.aborted)return freezeActivation({...base,status:"staged",error:"CANCELLED_BEFORE_SELECTION"});
+ let selection;
+ try{
+  selection=await selectManagedVersion({prefix,version:staged.version,expectedCurrentVersion:previousVersion,confirmed:true});
+ }catch{
+  const current=await inspectManagedInstall({prefix}).catch(()=>undefined);
+  if(current?.status==="owned"&&current.activeVersion===previousVersion)
+   return freezeActivation({...base,status:"staged",error:null});
+  return freezeActivation({...base,status:"ambiguous",selection:"uncertain",error:"ROLLBACK_UNCERTAIN"});
+ }
+ if(selection.status!=="selected"&&selection.status!=="unchanged")
+  return freezeActivation({...base,status:"ambiguous",selection:"uncertain",error:"ROLLBACK_UNCERTAIN"});
+ try{
+  if(signal?.aborted)throw Error("CANCELLED_DURING_ACTIVATION");
+  await activate(staged.version,signal);
+  if(signal?.aborted)throw Error("CANCELLED_DURING_ACTIVATION");
+  const current=await inspectManagedInstall({prefix});
+  if(current.status!=="owned"||current.activeVersion!==staged.version)throw Error("ACTIVATION_FAILED");
+  return freezeActivation({...base,status:"activated",selection:"selected",activation:"verified",runtimeReady:true});
+ }catch(error){
+  const cancelled=signal?.aborted===true||(error instanceof Error&&error.message==="CANCELLED_DURING_ACTIVATION");
+  try{
+   const observed=await inspectManagedInstall({prefix});
+   if(observed.status!=="owned")throw Error("OWNERSHIP_UNCERTAIN");
+   if(observed.activeVersion!==previousVersion){
+    if(observed.activeVersion!==staged.version)throw Error("SELECTION_CHANGED");
+    const restored=await selectManagedVersion({prefix,version:previousVersion,expectedCurrentVersion:staged.version,confirmed:true});
+    if(restored.status!=="selected"&&restored.status!=="unchanged")throw Error("ROLLBACK_UNCERTAIN");
+   }
+   const final=await inspectManagedInstall({prefix});
+   if(final.status!=="owned"||final.activeVersion!==previousVersion)throw Error("ROLLBACK_UNCERTAIN");
+   return freezeActivation({...base,status:"rolled-back",selection:"restored",activation:"failed",
+    error:cancelled?"CANCELLED_DURING_ACTIVATION":"ACTIVATION_FAILED"});
+  }catch{
+   return freezeActivation({...base,status:"ambiguous",selection:"uncertain",activation:"failed",error:"ROLLBACK_UNCERTAIN"});
+  }
+ }
 }

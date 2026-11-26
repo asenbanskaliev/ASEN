@@ -5,8 +5,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {performance} from "node:perf_hooks";
 import {syncBuiltinESMExports} from "node:module";
-import {inspectManagedInstall,stageManagedInstall} from "../src/runtime/managed/managed-install.js";
-import {stageManagedAcquisitionUpdate} from "../src/runtime/managed/managed-acquisition-update.js";
+import {inspectManagedInstall,selectManagedVersion,stageManagedInstall} from "../src/runtime/managed/managed-install.js";
+import {activateManagedAcquisitionUpdate,stageManagedAcquisitionUpdate} from "../src/runtime/managed/managed-acquisition-update.js";
 import {MANAGED_ACQUISITION_COPY_DEADLINE_MS} from "../src/runtime/managed/managed-acquisition-copy.js";
 
 const sha=(bytes:string|Buffer)=>createHash("sha256").update(bytes).digest("hex");
@@ -97,4 +97,44 @@ test("growth during bounded copy is rejected and the certain private stage is re
  const bytes=Buffer.alloc(1024*1024+2,0x62),f=await fixture("2.0.0",bytes),source=path.join(f.packageRoot,"dist","cli.js"),mutator=await fs.open(source,"a"),probe=await fs.open(source,"r"),proto=Object.getPrototypeOf(probe) as {read:Function};await probe.close();const original=proto.read,owners=new WeakMap<object,number>();let sourceCycles=0,mutated=false;
  proto.read=async function(this:unknown,...args:unknown[]){const result=await original.apply(this,args) as {bytesRead:number};const buffer=args[0] as Buffer;if(result.bytesRead&&buffer[0]===0x62){const owner=this as object,count=(owners.get(owner)??0)+1;if(count===1)sourceCycles++;owners.set(owner,count);if(sourceCycles===4&&count===1&&!mutated){mutated=true;await mutator.write(Buffer.from("growth"));}}return result;};syncBuiltinESMExports();
  try{let failure:{report:{cleanup:string;retainedPaths:readonly string[];error:string|null};cause?:unknown}|undefined;await assert.rejects(()=>run(f),error=>{if((error as Error).name!=="ManagedAdditionalStageError")return false;failure=error as typeof failure;return true;});assert.ok(sourceCycles>=4);assert.equal(mutated,true);const cause=failure!.cause as AggregateError|undefined;assert.equal(failure!.report.cleanup,"removed",JSON.stringify({report:failure!.report,cleanupErrors:cause?.errors?.map(error=>String(error))}));assert.deepEqual(failure!.report.retainedPaths,[]);await absent(f.versionRoot);assert.deepEqual(await fs.readdir(path.join(f.prefix,"install","staging")),[]);}finally{proto.read=original;syncBuiltinESMExports();await mutator.close();}
+});
+
+
+async function selectInitialVersion(f:Fixture){
+ const result=await selectManagedVersion({prefix:f.prefix,version:"1.0.0",expectedCurrentVersion:null,confirmed:true});
+ assert.equal(result.status,"selected");
+}
+test("G08 activa la versión verificada y conserva la anterior",async()=>{
+ const f=await fixture();await selectInitialVersion(f);
+ const report=await activateManagedAcquisitionUpdate({manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,
+  protectedPaths:[path.join(f.root,"protected")],confirmed:true},async version=>{assert.equal(version,"2.0.0");});
+ assert.equal(report.status,"activated");assert.equal(report.previousVersion,"1.0.0");assert.equal(report.version,"2.0.0");
+ assert.equal(report.runtimeReady,true);assert.equal((await inspectManagedInstall({prefix:f.prefix})).activeVersion,"2.0.0");
+ assert.equal(await fs.readFile(path.join(f.prefix,"install","versions","1.0.0","cli.js"),"utf8"),"v1");
+ assert.equal(await fs.readFile(path.join(f.prefix,"install","versions","2.0.0","dist","cli.js"),"utf8"),f.bytes);
+ assert.equal(await fs.readFile(path.join(f.prefix,"personal.json"),"utf8"),JSON.stringify("PERSONAL"));
+});
+test("G08 restaura la versión previa si falla la comprobación de activación",async()=>{
+ const f=await fixture();await selectInitialVersion(f);
+ const report=await activateManagedAcquisitionUpdate({manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,
+  protectedPaths:[path.join(f.root,"protected")],confirmed:true},async()=>{throw Error("error interno no se publica");});
+ const state=await inspectManagedInstall({prefix:f.prefix});
+ assert.equal(report.status,"rolled-back");assert.equal(report.selection,"restored");assert.equal(report.error,"ACTIVATION_FAILED");
+ assert.equal(state.activeVersion,"1.0.0");assert.deepEqual(state.versions.map(x=>x.version),["1.0.0","2.0.0"]);
+ assert.equal(await fs.readFile(path.join(f.prefix,"install","versions","1.0.0","cli.js"),"utf8"),"v1");
+ assert.equal(await fs.readFile(path.join(f.prefix,"personal.json"),"utf8"),JSON.stringify("PERSONAL"));
+});
+test("G08 restaura la versión previa ante cancelación durante activación",async()=>{
+ const f=await fixture();await selectInitialVersion(f);const controller=new AbortController();
+ const report=await activateManagedAcquisitionUpdate({manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,
+  protectedPaths:[path.join(f.root,"protected")],confirmed:true},async()=>{controller.abort();},controller.signal);
+ assert.equal(report.status,"rolled-back");assert.equal(report.error,"CANCELLED_DURING_ACTIVATION");
+ assert.equal((await inspectManagedInstall({prefix:f.prefix})).activeVersion,"1.0.0");
+});
+test("G08 cancelación antes de selección deja intacta la versión activa",async()=>{
+ const f=await fixture();await selectInitialVersion(f);const controller=new AbortController();controller.abort();let calls=0;
+ const report=await activateManagedAcquisitionUpdate({manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,
+  protectedPaths:[path.join(f.root,"protected")],confirmed:true},async()=>{calls++;},controller.signal);
+ assert.equal(report.status,"staged");assert.equal(report.selection,"not-run");assert.equal(report.error,"CANCELLED_BEFORE_SELECTION");
+ assert.equal(calls,0);assert.equal((await inspectManagedInstall({prefix:f.prefix})).activeVersion,"1.0.0");
 });
