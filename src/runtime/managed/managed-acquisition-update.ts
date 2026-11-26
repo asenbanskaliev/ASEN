@@ -3,7 +3,6 @@ import {open,lstat,readFile,unlink} from "node:fs/promises";
 import path from "node:path";
 import {createManagedUpdatePreview} from "./managed-update-preview.js";
 import {ManagedInstallError,inspectManagedInstall,selectManagedVersion,stageAdditionalManagedVersion,type ManagedInstallFile} from "./managed-install.js";
-import {withManagedMaintenanceLock} from "./managed-maintenance-lock.js";
 
 export interface ManagedAcquisitionUpdateRequest{
  readonly manifestPath:string;
@@ -56,7 +55,7 @@ const freezeActivation=(report:ManagedAcquisitionActivationReport)=>Object.freez
 type PendingManagedUpdate=Readonly<{schema:"asen.managed-acquisition-update-pending/v1";previousVersion:string;targetVersion:string}>;
 const pendingPath=(prefix:string)=>path.join(path.resolve(prefix),"install",".asen-acquisition-update.pending");
 async function writePendingManagedUpdate(prefix:string,previousVersion:string,targetVersion:string):Promise<string>{
- const file=pendingPath(prefix),bytes=JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",token:randomUUID(),previousVersion,targetVersion})+"\\n";
+ const file=pendingPath(prefix),bytes=JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",token:randomUUID(),previousVersion,targetVersion})+"\n";
  const handle=await open(file,"wx",0o600);
  try{await handle.writeFile(bytes);await handle.sync();}finally{await handle.close();}
  return bytes;
