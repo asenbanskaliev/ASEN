@@ -16,13 +16,13 @@
       "blocker": null
     },
     "B": {
-      "state": "espera-ci",
+      "state": "listo-revision",
       "lease": null,
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Consultar CI rápida de #133 y corregir únicamente fallos propios.",
+      "next": "E: candidato conjunto de las tres reparaciones.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -30,7 +30,7 @@
         "tests/todo-store.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "tests": "Regresiones publicadas; CI del SHA exacto pendiente.",
+      "tests": "CI rápida 45709504351, arquitectura 45709504258 y Pi runtime 45709504245 correctos; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
       "candidatePR": 130,
@@ -90,8 +90,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-c0d1e190"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "manual-g2-E-consolidacion-131-133",
+        "generation": 2,
+        "package": "E1",
+        "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+        "branch": "feat/asen-equipo-E-E1-g2-consolidacion-131-133",
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
