@@ -196,11 +196,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar CI rápida, CI completa, Release Gate, Pi 1.2 y Windows sobre el SHA 8be0cccb; cerrar los hilos de CodeRabbit y comprobar G08 dentro del runtime antes de habilitar los dos ensayos NVIDIA acotados.",
+      "next": "Esperar y resolver validaciones del SHA b25f1c97; revisar si G08 queda conectado a una ruta ejecutable de actualización; habilitar T06 solo con todas las puertas de ese SHA.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
-      "sha": "8be0cccb28a005ab239c21397ac4ce6f0a8aeccb",
+      "sha": "b25f1c9722e4eb58602b07164cfdbe0bf4096a32",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -252,7 +252,7 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "SHA f28bd329 falló typecheck/build por helpers de diario ausentes y propiedad incorrecta; corregido en la rama. SHA 8be0cccb tiene CI aún pendiente de aparecer. Los ensayos NVIDIA no están lanzados.",
+      "tests": "CI rápida, CI completa, Release Gate, Pi 1.2 y Windows pendientes para SHA b25f1c97; arquitectura correcta. Revisiones previas de CodeRabbit reparadas; revisión del SHA actual solicitada. El gate NVIDIA continúa sin etiqueta ni llamadas.",
       "files": [
         "extensions/asen.ts"
       ],
@@ -938,11 +938,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; G02 y recuperación G08 en corrección; CI/revisión exactas pendientes; ensayo NVIDIA autorizado pero bloqueado por puertas",
+    "m2": "abierta; G02 mejorado y G08 con diario idempotente, bloqueo de PID activo, restauración y cancelación; validaciones exactas en curso; ensayo NVIDIA bloqueado por puertas",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:15:00Z",
-    "g02Head": "8be0cccb28a005ab239c21397ac4ce6f0a8aeccb"
+    "updatedAt": "2026-11-26T19:20:00Z",
+    "g02Head": "b25f1c9722e4eb58602b07164cfdbe0bf4096a32"
   },
   "modelCallException": {
     "enabled": true,
