@@ -120,7 +120,7 @@ export function plannedExplorerFallback(input:{role:string;model?:string;profile
  });
  return chain.length?{profile,chain}:undefined;
 }
-type ExplorerFallbackConfig=Pick<Parameters<typeof plannedExplorerFallback>[0],"profiles"|"fallbacksByScope">;
+export type ExplorerFallbackConfig=Pick<Parameters<typeof plannedExplorerFallback>[0],"profiles"|"fallbacksByScope">;
 /** No ampliar ni sustituir alternativas de una tarea ya seleccionada. */
 export async function assertPlannedExplorerFallbackCurrent(expected:AgentModelFallback,selection:Parameters<typeof plannedExplorerFallback>[0],readCurrent:()=>Promise<ExplorerFallbackConfig>):Promise<void>{
  const current=await readCurrent();

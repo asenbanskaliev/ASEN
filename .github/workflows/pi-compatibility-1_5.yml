@@ -23,7 +23,8 @@ jobs:
        github.head_ref == 'feat/asen-equipo-E-M3-g2-correlacion-pi-150' ||
        github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151' ||
        github.head_ref == 'feat/asen-equipo-E-M2-g2-reparar-admision-152' ||
-       github.head_ref == 'feat/asen-equipo-E-M2-g2-limites-154')
+       github.head_ref == 'feat/asen-equipo-E-M2-g2-limites-154' ||
+       github.head_ref == 'feat/asen-equipo-E-M2-g2-rutas-vigentes-155')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:

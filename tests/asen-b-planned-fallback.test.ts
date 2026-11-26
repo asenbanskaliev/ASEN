@@ -168,3 +168,47 @@ test("B1 mantiene el snapshot activo y aplica la alternativa nueva en el siguien
  assert.deepEqual(seen.find(request=>request.id===id)?.modelFallback,initial);
  assert.deepEqual(seen.find(request=>request.id===nextId)?.modelFallback,afterChange);
 });
+
+test("B1 las rutas públicas comparten la selección y la vigencia de alternativas",async t=>{
+ const {registerAgentTools}=await import("../src/agents/pi-agent-tools.js");
+ const home=await mkdtemp(join(tmpdir(),"asen-b-publico-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const identity={sessionId:"b1-publico",projectId:await realpath(process.cwd())};
+ const todos=await SessionTodoStore.open(join(home,"todos.json")),links=new TaskAgentLinkStore(join(home,"links.json"));
+ const {TrustedTaskAgentBinder}=await import("../src/runtime/agents/trusted-task-agent-binder.js");
+ let enter!:()=>void,release!:()=>void;
+ const entered=new Promise<void>(resolve=>{enter=resolve;}),hold=new Promise<void>(resolve=>{release=resolve;});
+ const seen:AgentRequest[]=[];
+ const agents=await AgentRuntime.open({storeFile:join(home,"agents.json"),maxConcurrency:1,runner:{run:async request=>{
+  seen.push(request);if(request.prompt==="Ocupar plaza"){enter();await hold;}return {id:request.id,ok:true,output:"Resultado instrumentado"};
+ }}});
+ const tools=new Map<string,any>();let current=fallbacks;
+ registerAgentTools({registerTool:tool=>{tools.set(tool.name,tool);}},async()=>agents,{todos:async()=>todos,links:async()=>links,binder:async()=>new TrustedTaskAgentBinder(todos,agents,links)},undefined,undefined,undefined,async()=>profiles,undefined,async()=>({profiles,fallbacksByScope:{global:current}}));
+ const context={cwd:identity.projectId,sessionManager:{getSessionId:()=>identity.sessionId},hasUI:false};
+ const selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0};
+ const plan={role:"explorer" as const,skillPaths:selectSkills(selection).map(skill=>skill.path),skillSelection:selection,model:primary,explorerProfileOrigin:{scope:"global" as const,name:"perfil"}};
+ const [one,two]=await todos.addPlan([{title:"Uno",requestId:"asen-plan:publico-uno:explorer",dependsOn:[],description:"Exploración uno",plan},{title:"Dos",requestId:"asen-plan:publico-dos:explorer",dependsOn:[],description:"Exploración dos",plan}],identity);
+ assert.ok(one&&two);
+ const blocker=await agents.startReadOnly({role:"clarifier",prompt:"Ocupar plaza",session:identity});
+ await entered;
+ let first:string|undefined,second:string|undefined;
+ try{
+  const result=await tools.get("asen_agent_start").execute("start",{role:"explorer",prompt:"Exploración uno",todoId:one.taskId},undefined,undefined,context);
+  first=result.details.id;assert.ok(first);
+  // Ambas rutas deben conservar la alternativa autorizada en el diario.
+  assert.deepEqual((await agents.query(first,identity))?.spec.modelFallback,{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
+  const next=await tools.get("asen_plan_dispatch_next").execute("next",{},undefined,undefined,context);
+  assert.equal(next.details.status,"dispatched");second=next.details.agentId;assert.ok(second);
+  assert.deepEqual((await agents.query(second,identity))?.spec.modelFallback,{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
+  current=emptyProfileFallbacks();
+ }finally{release();}
+ const deadline=Date.now()+10_000;
+ while(Date.now()<deadline){
+  const states=await Promise.all([blocker,first,second].filter((id):id is string=>!!id).map(id=>agents.query(id,identity)));
+  if(states.every(entry=>entry&&["completed","failed","cancelled"].includes(entry.record.state)))break;
+  await new Promise<void>(resolve=>setTimeout(resolve,10));
+ }
+ assert.ok(first&&second);assert.equal((await agents.query(first,identity))?.record.state,"failed");
+ assert.equal((await agents.query(second,identity))?.record.state,"failed");
+ assert.equal(seen.length,1,"No se ejecutan alternativas retiradas");
+});

@@ -73,12 +73,13 @@ export async function inspectCompletedNativePartition(input:{
    throw Error("El cierre sin sucesora no coincide con el plan original.");
   readNativeIntegrationDiff(candidate);
   const receipt=await exactPassingReceipt(candidate,input.receipts);
-  await input.validate();assertIntegratedCheckout(candidate,identity);
+  // El cierre histórico no concede autoridad ni depende del checkout actual.
+  await input.validate();
   const latest=await readRows();
   if(roots.some(row=>JSON.stringify(row)!==JSON.stringify(latest.find(item=>item.taskId===row.taskId)))||
    latest.some(row=>row.dependsOn?.some(id=>candidate.sourceTodoIds.includes(id))))
    throw Error("El estado cambió durante la recuperación; consultar el diario sin repetir");
-  await input.validate();assertIntegratedCheckout(candidate,identity);
+  await input.validate();
   return Object.freeze({status:"partition-already-closed" as const,commit:candidate.commit,
    tests:receipt.testSuite.total,writerAuthority:false as const,autoRetry:false as const});
  }

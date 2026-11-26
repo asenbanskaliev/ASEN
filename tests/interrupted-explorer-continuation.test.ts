@@ -93,3 +93,14 @@ test("UFC-M2-03c shipped request guidance and tool description keep the same no-
  assert.match(tools,/resume only an interrupted read-only explorer/u,"the public tool description matches the guard clause");
  assert.match(tools,/Never use this for failed, cancelled, reviewer, verifier, or writer tasks/u,"the description names every non-explorer target");
 });
+
+test("B1 rechaza alternativas retiradas al continuar Explorer antes de reclamar el intento",async()=>{
+ const saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}]};
+ let started=0;
+ const runtime={query:async()=>({...interruptedEntry,spec:{model:"nvidia/modelo-a",modelFallback:saved}}),continue:async()=>{started++;return "unused";}};
+ await assert.rejects(()=>continueInterruptedExplorer({runtime,agentId:"parent",identity,readCurrentDirectFallback:async()=>undefined}),/alternativas del perfil cambiaron/u);
+ assert.equal(started,0);
+ let validated=false;
+ const result=await continueInterruptedExplorer({runtime:{...runtime,continue:async(_id,_identity,_signal,_onQueued,validateStart)=>{assert.ok(validateStart);await validateStart();validated=true;return "child";}},agentId:"parent",identity,readCurrentDirectFallback:async()=>saved});
+ assert.equal(result.id,"child");assert.equal(validated,true);
+});

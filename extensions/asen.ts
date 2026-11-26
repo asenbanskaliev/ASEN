@@ -686,6 +686,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
   }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined,async host=>{await advancePlan(host as CommandContext);},async host=>refreshTodoWidget(host as CommandContext));
   if(memoryStorePromise)registerPiMemoryTools(pi,host=>currentMemoryBinding(host));
+  // Un único lector por ámbito para las rutas públicas y el avance automático.
+  const readFallbacksByScope=async(identity:ProfileSessionIdentity)=>{
+   const [globalFallbacks,projectFallbacks]=await Promise.all([
+    profileFallbacksReader(profileFallbacksFile).catch(()=>undefined),
+    profileFallbacksReader(path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>undefined)
+   ]);
+   return {...(globalFallbacks?{global:globalFallbacks}:{}),...(projectFallbacks?{project:projectFallbacks}:{})};
+  };
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity,directExplorer)=>{
    const layers=await profileLayer(identity),route=resolveRuntimeRoute(layers,role);
    if(!directExplorer)return route;
@@ -696,7 +704,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const budget=explorerBudget;
    return !!budget&&budget.sessionId===identity.sessionId&&
     budget.projectId===identity.projectId&&budget.telemetry.claimBudgetExplorer();
-  },async identity=>profileLayer(identity)):undefined;
+  },async identity=>profileLayer(identity),undefined,async identity=>({profiles:await profileLayer(identity),fallbacksByScope:await readFallbacksByScope(identity)})):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const planAdvanceQueue=new PlanAdvanceQueue();
   const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string,expectedTodoId?:string,toolSignal?:AbortSignal):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
@@ -726,16 +734,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
      return !!model&&`${model.provider}/${model.id}`===ref;
     };
-    const readFallbacksByScope=async()=>{
-     const [globalFallbacks,projectFallbacks]=await Promise.all([
-      profileFallbacksReader(profileFallbacksFile).catch(()=>undefined),
-      profileFallbacksReader(path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>undefined)
-     ]);
-     return {...(globalFallbacks?{global:globalFallbacks}:{}),...(projectFallbacks?{project:projectFallbacks}:{})};
-    };
-    const profileFallbacksByScope=await readFallbacksByScope();
+    const profileFallbacksByScope=await readFallbacksByScope(identity);
     const readCurrentExplorerFallbackConfig=async()=>({
-     profiles:await parentProfileLayer(ctx,identity),fallbacksByScope:await readFallbacksByScope()
+     profiles:await parentProfileLayer(ctx,identity),fallbacksByScope:await readFallbacksByScope(identity)
     });
     const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,profileFallbacksByScope,readCurrentExplorerFallbackConfig,...(signal?{signal}:{}),
      ...(expectedTodoId?{expectedTodoId}:{}),

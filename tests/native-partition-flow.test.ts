@@ -422,6 +422,11 @@ const terminalErrors:unknown[]=[];
     const inspectInput={candidate,identity,todos,receipts,validate:async()=>{}};
     await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{readRecoverySnapshot:async()=>[...closedRows,...closedRows]}}),/solapan/u);
     await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{readRecoverySnapshot:async()=>closedRows.slice(0,1)}}),/raíces originales/u);
+    await writeFile(join(project,"posterior.txt"),"trabajo posterior autorizado");
+    git("add","posterior.txt");git("commit","-m","Trabajo posterior");
+    assert.notEqual(git("rev-parse","HEAD"),candidate.commit);
+    const historical=await inspectCompletedNativePartition(inspectInput);
+    assert.equal(historical?.status,"partition-already-closed");assert.equal(historical?.writerAuthority,false);
     assert.equal(launched,2);
     return;
    }
