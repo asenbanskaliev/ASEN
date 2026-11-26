@@ -32,13 +32,20 @@
       "candidateSha": "ef3a91053b553f01e22e8d396ac3173a10357caf"
     },
     "B": {
-      "state": "espera-revision",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "B-M3-g2-recuperacion-diario-152",
+        "package": "P04",
+        "base": "630adf5c11330ec3e2d8f5a55085db05dae9fb33",
+        "branch": "feat/asen-equipo-B-M3-g2-recuperacion-diario-152",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Snapshot B1 instrumentado validado en #149; repetir en #150 y distinguir identidad real pendiente.",
+      "next": "Proteger reparación inicial de diario ante escritores activos, preservar recibos y no repetir agentes.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -572,7 +579,16 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "B-M3-g2-recuperacion-diario-152": {
+      "owner": "B",
+      "files": [
+        "src/runtime/agents/agent-store.ts",
+        "tests/agent-store.test.ts"
+      ],
+      "reason": "P04: serializar lectura, reparación de recibos y cuarentena con el mismo bloqueo que escritura; no tocar candidato #152 ni permisos."
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
