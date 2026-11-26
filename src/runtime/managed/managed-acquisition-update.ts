@@ -60,7 +60,7 @@ export async function activateManagedAcquisitionUpdate(
  activate:(version:string,signal?:AbortSignal)=>Promise<void>,
  signal?:AbortSignal
 ):Promise<ManagedAcquisitionActivationReport>{
- if(typeof activate!=="function")throw new ManagedInstallError("INVALID_REQUEST","Managed acquisition update requires an activation verifier");
+ if(typeof activate!=="function")throw new TypeError("Managed acquisition update requires an activation verifier");
  const prefix=path.resolve(request.prefix);
  const before=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix});
  if(before.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
