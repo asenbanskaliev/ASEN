@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Auditar perfiles y contratos de SDK 1.6; matriz #141 positiva sin llamadas; alineación de dependencias pendiente.",
+      "next": "E coordina reparación conjunta B1: comprobar alternativas vigentes antes de encolar y ejecutar; no duplicar.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -114,8 +114,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-vigencia-perfil-142",
+        "package": "M2-B1",
+        "base": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
+        "branch": "feat/asen-equipo-B-M2-g2-vigencia-perfil-142",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -160,7 +167,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #142, pedir revisión exacta y reconciliar #141 después de admitir M1. No admitir #140 con hallazgo.",
+      "next": "Preparar candidato independiente de B1 con extensión, despachador, runtime y pruebas; no admitir M1 hasta CI/revisión.",
       "blocker": null,
       "generation": 2,
       "pr": 142,
@@ -614,10 +621,18 @@
       "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
     },
     "review": {
-      "confirmed": false
+      "confirmed": false,
+      "requestedCommentId": 7192496419
     },
     "ci": {
-      "conclusion": "pendiente"
+      "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
+      "quick": 45822958208,
+      "architecture": 45822958311,
+      "pi": 45822958212,
+      "full": 45822958288,
+      "releaseGate": 45822958279,
+      "conclusion": "in_progress",
+      "piFreeSmoke": "skipped"
     },
     "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
   },
@@ -643,6 +658,10 @@
           "architecture": 45811828653,
           "result": "success",
           "scope": "arranque, interfaz, RPC/JSON/print y salida natural; cero modelos; no acredita flujo de agentes real"
+        },
+        "review": {
+          "confirmed": false,
+          "requestedCommentId": 7192497097
         }
       },
       "G02": {
