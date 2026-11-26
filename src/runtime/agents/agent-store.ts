@@ -128,13 +128,36 @@ export class PersistentAgentStore implements AgentLifecycleSink{
  readonly #receiptKey:Buffer;
  private constructor(readonly path:string,private readonly now:()=>string,receiptKey:Buffer,initial:AgentStoreFile){this.#receiptKey=receiptKey;for(const entry of initial.entries)this.#records.set(entry.record.id,structuredClone(entry.record));}
  static async open(path:string,now:()=>string=()=>new Date().toISOString()):Promise<{store:PersistentAgentStore;quarantined?:string}>{
-  await preparePrivateFile(path,true);const receiptKey=await openReceiptKey(path);let initial=empty(),quarantined:string|undefined,normalized=false;
-  try{initial=await read(path,receiptKey);}catch(error){
-   if(!(error instanceof SyntaxError)&&!(error instanceof Error&&error.message==="Invalid ASEN agent store"))throw error;
-   try{initial=parseAgentStore(await readFile(path,"utf8"),receiptKey,true);normalized=true;for(const entry of initial.entries){if(entry.record.state!=="completed"||entry.result)continue;const recovered=recoverAgentLifecycleRecords([entry.record],now())[0]!;entry.record={...recovered,summary:"Unverified completion after restart; explicit review is required"};entry.events.push(event(entry.record,entry.events.length+1));}}
-   catch{const target=`${path}.corrupt-${Date.now()}-${randomUUID()}`;await rename(path,target);quarantined=target;}
-  }
-  if(normalized)await write(path,initial);
+  await preparePrivateFile(path,true);const receiptKey=await openReceiptKey(path);
+  // La lectura, reparación y cuarentena comparten el bloqueo de las escrituras.
+  // No publicar una instantánea leída antes de que otro proceso termine.
+  const {initial,quarantined}=await withExclusiveFileLock(path,async()=>{
+   let initial=empty(),quarantined:string|undefined,normalized=false;
+   if(await preparePrivateFile(path)){
+    const raw=await readFile(path,"utf8");
+    try{initial=parseAgentStore(raw,receiptKey);}catch(error){
+     if(!(error instanceof SyntaxError)&&!(error instanceof Error&&error.message==="Invalid ASEN agent store"))throw error;
+     try{
+      initial=parseAgentStore(raw,receiptKey,true);
+      for(const entry of initial.entries){
+       if(entry.record.state!=="completed"||entry.result)continue;
+       const recovered=recoverAgentLifecycleRecords([entry.record],now())[0]!;
+       entry.record={...recovered,summary:"Unverified completion after restart; explicit review is required"};
+       entry.events.push(event(entry.record,entry.events.length+1));
+      }
+      initial=parseAgentStore(JSON.stringify({...initial,revision:initial.revision+1}),receiptKey);
+      normalized=true;
+     }catch(error){
+      // No convertir fallos operativos en corrupción. Solo formatos no válidos.
+      if(!(error instanceof SyntaxError)&&!(error instanceof Error&&["Invalid ASEN agent store","Duplicate ASEN agent task id","Invalid or duplicate ASEN agent continuation"].includes(error.message)))throw error;
+      const target=`${path}.corrupt-${Date.now()}-${randomUUID()}`;
+      await rename(path,target);quarantined=target;initial=empty();
+     }
+    }
+   }
+   if(normalized)await write(path,initial);
+   return {initial,quarantined};
+  });
   const store=new PersistentAgentStore(path,now,receiptKey,initial);await store.#recover();return {store,...(quarantined?{quarantined}:{})};
  }
  createdAt():string{return this.now();}
