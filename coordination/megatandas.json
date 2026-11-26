@@ -159,7 +159,8 @@
           "tests/managed-maintenance-lock.test.ts",
           "tests/managed-cli-version-lock.test.ts",
           "tests/managed-cli-version-probe-control.test.ts",
-          "tests/t09-lifecycle.test.ts"
+          "tests/t09-lifecycle.test.ts",
+          "src/runtime/managed/managed-install.ts"
         ],
         "startedAt": "2026-11-26T18:15:00Z"
       },
@@ -207,11 +208,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Completar validación exacta de b186e7d: CI completa, Release Gate, G08 Windows, Pi 1.2 y CodeRabbit completo. Revisar artefactos; solo después habilitar las dos fases NVIDIA acotadas.",
+      "next": "Comprobar G08 sobre 59a0fda: selección de versión en rutas Windows 8.3, fallos de sonda, rollback e interrupción; cerrar CI completa y Release Gate, pedir revisión CodeRabbit exacta del SHA final y solo luego habilitar ensayos reales.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "b186e7d655824b0613959772b86651f93f2c8bf2",
+      "sha": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -270,7 +271,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "ddffab1 falló G08 Windows: la comprobación del marcador rechazaba realpath 8.3 de Windows, provocando LOCK_RETAINED, probes no ejecutados y cinco casos de upgrade sin probar. 9f5dbeb corrige identidad del marcador en alias y cierra cuatro hallazgos CodeRabbit; b186e7d actualiza tres aserciones de deriva detectadas por CodeRabbit. Puertas exactas b186e7 en ejecución; evidencia anterior no se atribuye a este SHA.",
+      "tests": "G08 ddff falló por alias 8.3 del marcador. En b186, las 12 pruebas del bloqueo Windows pasaron, pero cinco pruebas T09 fallaron porque selección de versión comparaba ruta física realpath con la ruta temporal alias, produciendo FOREIGN_MANAGED_ROOT. 59a0fda permite comparación física por realpath en Windows solo tras validar que el inventario es archivo/directorio ordinario; validación exacta en curso. Los hallazgos de CodeRabbit sobre el SHA b186 se corrigieron, pero falta revisión final del nuevo SHA.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -285,7 +286,8 @@
         "tests/managed-maintenance-lock.test.ts",
         "tests/managed-cli-version-lock.test.ts",
         "tests/managed-cli-version-probe-control.test.ts",
-        "tests/t09-lifecycle.test.ts"
+        "tests/t09-lifecycle.test.ts",
+        "src/runtime/managed/managed-install.ts"
       ],
       "lastAttempt": {
         "pr": 144,
@@ -294,39 +296,18 @@
       },
       "reviewState": "corregidos-en-b186-pendientes-de-revision-y-pruebas-exactas",
       "latestValidation": {
-        "sha": "b186e7d655824b0613959772b86651f93f2c8bf2",
-        "runs": [
-          {
-            "name": "CI rápida",
-            "id": 45885806432,
-            "state": "queued"
-          },
-          {
-            "name": "CI",
-            "id": 45885806137,
-            "state": "pending"
-          },
-          {
-            "name": "Release Gate",
-            "id": 45885806257,
-            "state": "queued"
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 45885806252,
-            "state": "in_progress"
-          },
-          {
-            "name": "Pi 1.2 runtime evidence",
-            "id": 45885806311,
-            "state": "in_progress"
-          },
-          {
-            "name": "Pi Free Smoke",
-            "id": 45885806354,
-            "state": "skipped"
-          }
-        ]
+        "sha": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
+        "state": "pendiente-de-ejecucion",
+        "previousSha": "b186e7d655824b0613959772b86651f93f2c8bf2",
+        "previousEvidence": {
+          "ciQuick": "success",
+          "pi12": "success",
+          "architecture": "success",
+          "g08Windows": "failure",
+          "cause": "SelectionEpoch rechazó alias 8.3; regresiones T09: FOREIGN_MANAGED_ROOT"
+        },
+        "piFreeSmoke": "skipped",
+        "globalFull": false
       }
     }
   },
