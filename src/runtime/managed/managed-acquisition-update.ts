@@ -123,6 +123,7 @@ export async function activateManagedAcquisitionUpdate(
   await activate(staged.version,signal);
   if(signal?.aborted)throw Error("CANCELLED_DURING_ACTIVATION");
   const current=await inspectManagedInstall({prefix});
+  if(signal?.aborted)throw Error("CANCELLED_DURING_ACTIVATION");
   if(current.status!=="owned"||current.activeVersion!==staged.version)throw Error("ACTIVATION_FAILED");
   await removePendingManagedUpdate(prefix,journal);
   return freezeActivation({...base,status:"activated",selection:"selected",activation:"verified",runtimeReady:true});
