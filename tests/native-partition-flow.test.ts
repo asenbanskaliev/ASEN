@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from "node:fs/promises";
+import {mkdtemp,mkdir,writeFile,readFile,rm,realpath,readdir} from "node:fs/promises";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {SessionManager} from "@earendil-works/pi-coding-agent";
 import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
 import {createAsenExtension} from "../extensions/asen.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
-import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/lifecycle/todo-store.js";
 import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {ParallelTodoWorktreeJournal} from "../src/runtime/agents/parallel-todo-journal.js";
 import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
@@ -394,9 +394,25 @@ const terminalErrors:unknown[]=[];
     const restartFile=fileURLToPath(new URL("./fixtures/native-partition-restart.ts",import.meta.url));
     const restart=(phase:string)=>JSON.parse(execFileSync(process.execPath,["--import","tsx",restartFile,phase,privateDir,JSON.stringify(identity),batch.id],{
      encoding:"utf8",timeout:45000,windowsHide:true,stdio:["ignore","pipe","pipe"]}).trim());
+    const activeFile=todoProjectStorageFile(join(privateDir,"todos"),identity.projectId);
+    const beforeArchive=await readFile(activeFile,"utf8");
     const closed=restart("resume");
     assert.equal(closed.status,"partition-closed");assert.equal(closed.authorizations,2);
+    // Reconstruir el punto de corte real: archivo durable, marcador presente,
+    // diario activo todavía anterior al cierre. El reinicio debe reconciliarlo.
+    const archiveDir=join(dirname(activeFile),"archive");
+    const archiveNames=(await readdir(archiveDir)).filter(name=>/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(name));
+    assert.equal(archiveNames.length,1);
+    const archiveName=archiveNames[0]!,archiveRaw=await readFile(join(archiveDir,archiveName),"utf8");
+    const markerFile=activeFile+".archive-pending.json",marker={schema:"asen.todo-archive-transaction/v1",archiveFile:archiveName,
+     sha256:createHash("sha256").update(archiveRaw).digest("hex"),revision:JSON.parse(archiveRaw).revision};
+    await writeFile(activeFile,beforeArchive,{mode:0o600});
+    await writeFile(markerFile,JSON.stringify({...marker,sha256:"0".repeat(64)}),{mode:0o600});
+    await assert.rejects(()=>inspectCompletedNativePartition({candidate,identity,todos,receipts,validate:async()=>{}}),/checksum mismatch/u);
+    assert.equal(await readFile(activeFile,"utf8"),beforeArchive);
+    await writeFile(markerFile,JSON.stringify(marker),{mode:0o600});
     const recovered=restart("inspect");
+    await assert.rejects(()=>readFile(markerFile),{code:"ENOENT"});
     assert.equal(recovered.status,"partition-already-closed");assert.equal(recovered.authorizations,0);
     assert.equal(recovered.writerAuthority,false);assert.equal(recovered.autoRetry,false);
     const closedRows=await todos.archived(identity);
@@ -404,8 +420,8 @@ const terminalErrors:unknown[]=[];
     assert.equal(closedRows.length,2);assert.ok(closedRows.every(row=>row.current.state==="done"));
     assert.deepEqual(closedRows.map(row=>row.taskId).sort(),[...candidate.sourceTodoIds].sort());
     const inspectInput={candidate,identity,todos,receipts,validate:async()=>{}};
-    await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{list:async()=>closedRows,archived:async()=>closedRows}}),/solapan/u);
-    await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{list:async()=>[],archived:async()=>closedRows.slice(0,1)}}),/raíces originales/u);
+    await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{readRecoverySnapshot:async()=>[...closedRows,...closedRows]}}),/solapan/u);
+    await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{readRecoverySnapshot:async()=>closedRows.slice(0,1)}}),/raíces originales/u);
     assert.equal(launched,2);
     return;
    }

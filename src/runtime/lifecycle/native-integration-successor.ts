@@ -21,23 +21,19 @@ function assertIntegratedCheckout(candidate:NativeIntegrationCandidate,identity:
 }
 /** Reconoce el cierre atómico del Todo después de reiniciar el proceso.
  * No reconstituye AcceptedNativeIntegration, no autoriza el Writer, no ejecuta
- * herramientas, no modifica el diario ni reintenta un agente incierto. */
+ * herramientas ni reintenta agentes. Solo reconcilia el archivo ya registrado. */
 export async function inspectCompletedNativePartition(input:{
- candidate:NativeIntegrationCandidate;identity:TodoContext;todos:Pick<SessionTodoStore,"list"|"archived">;receipts:ReviewReceiptReader;
+ candidate:NativeIntegrationCandidate;identity:TodoContext;todos:Pick<SessionTodoStore,"readRecoverySnapshot">;receipts:ReviewReceiptReader;
  validate:()=>Promise<void>;
 }){
  const {candidate,identity,todos}=input;
  if(!isIssuedNativeIntegrationCandidate(candidate)||identity.projectId!==candidate.repository||candidate.sourceBindings?.length!==2)
   throw Error("La recuperación requiere el lote original auténtico");
  await input.validate();
- // El cierre de las dos raíces puede archivar el diario completo. Leer las
- // dos ubicaciones por la misma identidad, sin recuperar autoridad de escritura.
- // Un solape entre instantáneas indica una transición o una historia ambigua:
- // bloquear en lugar de elegir arbitrariamente una versión de la tarea.
+ // El diario reconcilia una transacción pendiente bajo bloqueo antes de
+ // leer las dos ubicaciones. Los duplicados restantes son ambiguos.
  const readRows=async()=>{
-  const active=await todos.list(identity);
-  const archived=await todos.archived(identity);
-  const all=[...active,...archived];
+  const all=await todos.readRecoverySnapshot(identity);
   if(new Set(all.map(row=>row.taskId)).size!==all.length)
    throw Error("El diario activo y archivado se solapan; consultar sin repetir");
   return all;

@@ -366,6 +366,17 @@ export class SessionTodoStore{
  }
  async list(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");const data=await this.#readSnapshot(context);return data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];});}
  async archived(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");return this.#archivedItems(this.#file(context),context);}
+ /** Recuperación de hechos persistidos: completa solamente una transacción de
+  * archivo ya registrada y obtiene ambas ubicaciones bajo el mismo bloqueo.
+  * No crea tareas, eventos ni autorizaciones de ejecución. */
+ async readRecoverySnapshot(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{
+  if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");
+  const file=this.#file(context);await preparePrivateFile(file,true);
+  return withExclusiveFileLock(file,async()=>{
+   if(this.projectScoped)await this.#reconcileArchive(file);
+   return [...await this.list(context),...await this.archived(context)];
+  });
+ }
  async history(taskId:string,context:TodoContext):Promise<readonly TaskEvent[]>{const data=await this.#readSnapshot(context);let item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));if(!item)item=(await this.archived(context)).find(x=>x.taskId===taskId);return item?item.events.map(event=>structuredClone(event)):[];}
  async recover(context:TodoContext,reason:"restart"|"shutdown"="restart"):Promise<void>{if(!identity(context.sessionId)||!identity(context.projectId)||!(reason==="restart"||reason==="shutdown"))throw new Error("Invalid ASEN Todo recovery session");await this.#mutate(context,data=>{for(const item of data.items){const current=replayTask(item.events);if(current?.state!=="running"||current.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(current.projectId,context.projectId))continue;const blocked:TaskEvent={taskId:item.taskId,sessionId:current.sessionId,projectId:current.projectId,revision:current.revision+1,state:"blocked",at:this.now(),reason:reason==="shutdown"?"Pi session ended while this task was running; explicit review is required before continuing":"ASEN restarted while this task was running; explicit review is required before continuing"};item.events.push(applyTaskEvent(current,blocked));}});}
  async #mutate(context:TodoContext,change:(data:TodoFile)=>void|boolean|Promise<void|boolean>,signal?:AbortSignal):Promise<void>{
