@@ -145,7 +145,7 @@ test("G08 restaura la versión previa después de una interrupción",async()=>{
  const request={manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,protectedPaths:[path.join(f.root,"protected")],confirmed:true};
  await stageManagedAcquisitionUpdate(request);
  const journal=path.join(f.prefix,"install",".asen-acquisition-update.pending");
- await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",previousVersion:"1.0.0",targetVersion:"2.0.0"})+"\n",{mode:0o600});
+ await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",pid:2147483647,previousVersion:"1.0.0",targetVersion:"2.0.0"})+"\n",{mode:0o600});
  await selectManagedVersion({prefix:f.prefix,version:"2.0.0",expectedCurrentVersion:"1.0.0",confirmed:true});
  const recovered=await recoverManagedAcquisitionUpdate({prefix:f.prefix,confirmed:true});
  assert.equal(recovered.status,"restored");assert.equal(recovered.previousVersion,"1.0.0");
@@ -171,4 +171,15 @@ test("G08 cancela y restaura si la señal se aborta durante la inspección final
   assert.equal((await inspectManagedInstall({prefix:f.prefix})).activeVersion,"1.0.0");
   await assert.rejects(()=>fs.lstat(path.join(f.prefix,"install",".asen-acquisition-update.pending")),{code:"ENOENT"});
  }finally{Object.defineProperty(fsPromises,"lstat",{configurable:true,writable:true,value:originalLstat});syncBuiltinESMExports();}
+});
+
+
+test("G08 no revierte ni publica durante una actualización activa",async()=>{
+ const f=await fixture();await selectInitialVersion(f);await stageManagedAcquisitionUpdate({manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,protectedPaths:[],confirmed:true});
+ const journal=path.join(f.prefix,"install",".asen-acquisition-update.pending");
+ await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",pid:process.pid,previousVersion:"1.0.0",targetVersion:"2.0.0"})+"\\n",{mode:0o600});
+ const recovered=await recoverManagedAcquisitionUpdate({prefix:f.prefix,confirmed:true});assert.equal(recovered.status,"ambiguous");
+ await assert.rejects(()=>run(f),error=>(error as {code?:unknown}).code==="RECOVERY_REQUIRED");
+ assert.equal((await inspectManagedInstall({prefix:f.prefix})).activeVersion,"1.0.0");
+ assert.equal(await fs.readFile(journal,"utf8").then(value=>value.includes(String(process.pid))),true);
 });
