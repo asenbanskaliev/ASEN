@@ -76,12 +76,12 @@ export async function recoverManagedAcquisitionUpdate(request:Readonly<{prefix:s
  catch{return Object.freeze({status:"ambiguous"});}
  const inventory=await inspectManagedInstall({prefix}).catch(()=>undefined);
  if(inventory?.status!=="owned"||!inventory.versions.some(item=>item.version===journal.previousVersion)||!inventory.versions.some(item=>item.version===journal.targetVersion))return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
- if(inventory.selectedVersion===journal.targetVersion){
+ if(inventory.activeVersion===journal.targetVersion){
   const restored=await selectManagedVersion({prefix,version:journal.previousVersion,expectedCurrentVersion:journal.targetVersion,confirmed:true}).catch(()=>undefined);
   if(restored?.status!=="selected"&&restored?.status!=="unchanged")return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
- }else if(inventory.selectedVersion!==journal.previousVersion)return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
+ }else if(inventory.activeVersion!==journal.previousVersion)return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
  try{await removePendingManagedUpdate(prefix,bytes);}catch{return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});}
- return Object.freeze({status:inventory.selectedVersion===journal.targetVersion?"restored":"already-previous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
+ return Object.freeze({status:inventory.activeVersion===journal.targetVersion?"restored":"already-previous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
 }
 
 /**
