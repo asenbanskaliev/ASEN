@@ -59,7 +59,7 @@ import {TrustedTaskAgentBinder} from "../src/runtime/agents/trusted-task-agent-b
 import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
-import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {dispatchNextPlanTask,plannedExplorerProfileOrigin} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,assertNativeDualReviewReceipt,canResumeUnstartedDualReview,markNativeDualReviewAttemptStarted,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {summarizeParentFlow,summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
 import type {NativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
@@ -689,8 +689,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
      return !!model&&`${model.provider}/${model.id}`===ref;
     };
-    const profileFallbacks=await readProfileFallbacksFile(profileFallbacksFile).catch(()=>undefined);
-    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,...(profileFallbacks?{profileFallbacks}:{}),...(signal?{signal}:{}),
+    const [globalFallbacks,projectFallbacks]=await Promise.all([
+     profileFallbacksReader(profileFallbacksFile).catch(()=>undefined),
+     profileFallbacksReader(path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>undefined)
+    ]);
+    const profileFallbacksByScope={...(globalFallbacks?{global:globalFallbacks}:{}),...(projectFallbacks?{project:projectFallbacks}:{})};
+    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,profileFallbacksByScope,...(signal?{signal}:{}),
      ...(expectedTodoId?{expectedTodoId}:{}),
      ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
      runtimeProfiles:activeProfiles,validateIdentity:async()=>{
@@ -1651,7 +1655,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const validateContext=()=>{if(signal?.aborted||ctx.signal?.aborted||ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed or was cancelled before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
    let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
-   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await (deferChildLaunch?profileLayer({sessionId,projectId:project}):parentProfileLayer(ctx,{sessionId,projectId:project})))) as typeof output;}
+   let planningProfiles:ProfileLayer;
+   try{planningProfiles=await (deferChildLaunch?profileLayer({sessionId,projectId:project}):parentProfileLayer(ctx,{sessionId,projectId:project}));output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),planningProfiles)) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(output.executablePlan.route==="direct"&&!output.executablePlan.tasks.some(task=>task.role==="worker")){
@@ -1671,7 +1676,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
    const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>(),ordered=output.executablePlan.topologicalOrder.map(taskId=>{const task=output.executablePlan!.tasks.find(item=>item.id===taskId);if(!task)throw new Error("ASEN executable plan order references an unknown task");return task;});
    validateContext();if(identity.sessionId!==sessionId||identity.projectId!==project)throw new Error("Pi session or project changed while preparing the plan");
-    const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.model?{model:task.model}:{}),...(task.thinking?{thinking:task.thinking}:{}),...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{}),...(fixSource&&task.role==="worker"?{fixSource}:{})}})),identity,signal,validateContext);
+    const persisted=await store.addPlan(ordered.map(task=>{const explorerProfileOrigin=plannedExplorerProfileOrigin(task.role,task.model,planningProfiles);return {title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.model?{model:task.model}:{}),...(task.thinking?{thinking:task.thinking}:{}),...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{}),...(fixSource&&task.role==="worker"?{fixSource}:{}),...(explorerProfileOrigin?{explorerProfileOrigin}:{})}}}),identity,signal,validateContext);
    validateContext();
    for(const item of persisted)todoIds.set(item.requestId!.slice("asen-plan:".length),item.taskId);
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
