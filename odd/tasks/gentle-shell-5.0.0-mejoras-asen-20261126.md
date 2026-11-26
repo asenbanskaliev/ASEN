@@ -115,3 +115,9 @@ La corrección se publicó como SHA 1d44a763b12703ad2e597b450087c977faf66143 en 
 En la revisión completa del SHA 1d44a763b12703ad2e597b450087c977faf66143, CodeRabbit señaló que una captura de ajustes con valor undefined podía disparar una segunda lectura y que un refresco completo antiguo podía publicar después de perder la propiedad del estado. Ambos hallazgos (comentarios 4712914863 y 4712914868) se corrigieron en el SHA 586f7a0b08bb544c71cc7a873da13c99560ac23c. Se eliminó el valor predeterminado que releía ajustes, se hizo explícita la captura en los dos puntos de observación, y se añadió al control de publicación la comprobación de que el mismo UI conserva la propiedad. Las pruebas de G02 exigen estas garantías.
 
 Las validaciones del SHA 1d44a76 quedan supersedidas para la admisión: CI completa/Release Gate del SHA nuevo deben volver a pasar. G08 Windows y T02–T11 sí habían pasado en el SHA anterior, pero no se atribuyen al nuevo. La nueva revisión independiente exacta también queda pendiente. No ejecutar el permiso NVIDIA/Pi hasta cerrar esas puertas. globalFull:false.
+
+### Corrección de recuperación parcial G08 — 26/11/2026
+
+CodeRabbit detectó en el SHA 586f7a0 que dos gates de recuperación parcial comparaban la ruta física guardada en el recibo con la ruta lexical solicitada. En Windows, un alias 8.3 válido podía causar rechazo seguro antes de recuperar. El SHA 315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c alinea ambos gates con realpath(root) y amplía la prueba Windows: alias 8.3, inventario alterado, recuperación parcial, callback ejecutado una sola vez y marcador retirado con seguridad.
+
+Este cambio vuelve a invalidar como evidencia de cierre la CI anterior. G08 había pasado en sus pruebas dedicadas, pero la nueva regresión requiere CI completa y revisión CodeRabbit sobre 315fc98. Solo después de ambas, y del Release Gate y Pi exactos, se consumirá la única autorización NVIDIA/Pi. globalFull:false.
