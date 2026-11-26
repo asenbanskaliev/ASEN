@@ -772,7 +772,7 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels"
-          present=$(gh api "$endpoint" --jq 'any(.[]; .name == "asen-t06-nvidia-una-vez")')
+          present=$(gh api "$endpoint" --jq 'map(.name) | index($label) != null' --arg label 'asen-t06-nvidia-una-vez')
           test "$present" = true
           gh api --method DELETE "$endpoint/asen-t06-nvidia-una-vez" >/dev/null
       - name: Verificar candidato y pruebas negativas sin secretos
