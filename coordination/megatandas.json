@@ -703,7 +703,7 @@
   },
   "gentleShell5": {
     "planBranch": "feat/flujo-de-agentes-20261115",
-    "planSha": "793cffb5b970674d7f4fe03e42cd0d355cc2b997",
+    "planSha": "b78fcfd92d9678ee8e6a6b70bc52f27df7b1e584",
     "planPath": "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
@@ -795,7 +795,7 @@
         }
       },
       "G02": {
-        "state": "correccion-publicada-espera-ci-completa-y-revision",
+        "state": "correccion-publicada-espera-ci-completa-y-respuesta-coderabbit",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
@@ -804,40 +804,38 @@
         "next": "Validar #149 y paridad SDK, representación y revisión independiente.",
         "connectionCandidate": {
           "pr": 149,
-          "sha": "493ac1f23cec7a335a655b633e8b9039624b36fc",
+          "sha": "8e7f71d805967e6668e5a7ed50153301a8ed5401",
           "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
           "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "correccion-G02-publicada-espera-validacion-exact-SHA",
+          "state": "correccion-para-reconciliar-estado-persistente-espera-CI-y-revision-final",
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática.",
           "evidence": {
-            "ci": 45871105174,
+            "ci": 45872179990,
             "ciStatus": "in_progress",
-            "releaseGate": 45871105214,
+            "releaseGate": 45872179912,
             "releaseStatus": "in_progress",
-            "architecture": 45871105310,
+            "architecture": 45872179971,
             "architectureStatus": "success",
-            "quick": 45871105152,
+            "quick": 45872179876,
             "quickStatus": "success",
-            "piRuntime": 45871105164,
+            "piRuntime": 45872180063,
             "piRuntimeStatus": "success",
             "piFreeSmoke": "skipped"
           },
           "review": {
             "triggered": true,
-            "commentId": 7199758239,
+            "reviewState": "COMMENTED",
             "actionable": 1,
-            "correction": {
-              "finding": 4711841262,
-              "commit": "493ac1f23cec7a335a655b633e8b9039624b36fc",
-              "state": "pending-CI-and-review"
-            }
+            "openThread": true,
+            "headSha": "8e7f71d805967e6668e5a7ed50153301a8ed5401",
+            "note": "CodeRabbit conserva observación sobre estado persistente; se verificará que cubra el sondeo y callback actuales."
           }
         },
         "blockers": [
-          "Validar SHA 493ac1f23cec7a335a655b633e8b9039624b36fc en CI, Release Gate, arquitectura y Pi 1.2 exactos",
-          "Revisar la corrección de actualización del estado con CodeRabbit",
+          "CI y Release Gate exactos aún en curso",
+          "Revisar contra código final la observación CodeRabbit sobre publicación del estado",
           "Identidad/independencia real de modelos no acreditada bajo noModelCalls:true",
-          "G08 actualización Windows recuperable pendiente"
+          "Cambio de perfil tras inicio de agente no cubierto"
         ],
         "review": {
           "triggered": true,
@@ -866,8 +864,24 @@
         "state": "pendiente"
       },
       "G08": {
-        "state": "pendiente-sin-codigo-ni-PR-en-la-cadena-auditada",
-        "next": "Reservar y desarrollar actualización Windows recuperable en rama aislada; rollback, bloqueo, cancelación e integridad/versionado deben superar pruebas antes de integrar."
+        "state": "implementacion-parcial-en-cadena-pi16-validacion-de-rollback-pendiente",
+        "next": "Definir y probar recuperación transaccional de actualización activa, sin tocar versión ajena ni conceder activación antes de confirmar integridad.",
+        "evidence": {
+          "candidatePR": 148,
+          "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
+          "files": [
+            "src/runtime/managed/managed-acquisition-update.ts",
+            "src/runtime/managed/managed-install.ts",
+            "tests/managed-acquisition-update.test.ts",
+            "tests/managed-install.test.ts"
+          ],
+          "tests": {
+            "managedInstall": 24,
+            "acquisitionUpdate": 13
+          },
+          "validatedOnCandidate": "CI/Release Gate/arquitectura/Pi1.2 correctos; Pi Free Smoke omitido",
+          "limitation": "La composición deja selección/activación en not-run; falta rollback de actualización activa, cancelación y prueba Windows completa."
+        }
       }
     }
   },
@@ -906,61 +920,10 @@
         "unresolved": 0
       }
     },
-    "m2": {
-      "pr148": {
-        "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
-        "ci": "success",
-        "releaseGate": "success",
-        "architecture": "success",
-        "matrix": "success",
-        "quick": "success",
-        "piRuntime": "success",
-        "piFreeSmoke": "skipped",
-        "coderabbitFullReview": "completed-no-actionable-comments",
-        "commentId": 7199407376,
-        "openThreads": 0
-      },
-      "pr149": {
-        "sha": "493ac1f23cec7a335a655b633e8b9039624b36fc",
-        "ci": "in_progress",
-        "releaseGate": "in_progress",
-        "architecture": "success",
-        "quick": "success",
-        "piRuntime": "success",
-        "piFreeSmoke": "skipped",
-        "coderabbit": {
-          "priorFinding": 4711841262,
-          "correctionCommitted": true,
-          "reviewRequested": true,
-          "openThreads": 1,
-          "commentId": 7199758239
-        }
-      },
-      "g08": "pending",
-      "limitations": [
-        "No hay evidencia de identidad observada del modelo en ejecución ni independencia real de jueces; la matriz Pi es sin modelos.",
-        "La regresión #148 cubre cambio de alternativas durante espera en cola, pero no cambios de configuración después de iniciar un agente.",
-        "G08 no tiene implementación/PR en la cadena auditada.",
-        "CI completa y Release Gate de #149 al SHA actual continúan en curso; CodeRabbit debe revisar el SHA corregido."
-      ]
-    },
-    "m3": {
-      "state": "parcial-en-codigo-de-115-sin-aceptacion-integral",
-      "pr": 115,
-      "sha": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-      "ci": "success",
-      "reviewThreads": {
-        "resolved": 94,
-        "unresolved": 0
-      },
-      "limitations": [
-        "No se ha acreditado recorrido natural completo en un único ensayo del SHA actual",
-        "G03: continuidad de turnos abiertos del proveedor pendiente",
-        "P04: recuperación de proceso en todos los cortes y sin doble efecto pendiente",
-        "La continuidad de tareas dependientes mantiene autorización explícita; no se declara ejecución autónoma aceptada"
-      ],
-      "modelsAllowed": false
-    },
-    "globalFull": false
+    "m2": "abierta-validacion-pendiente",
+    "m3": "base-auditoria-continua",
+    "globalFull": false,
+    "updatedAt": "2026-11-26T18:05:00Z",
+    "g02Head": "8e7f71d805967e6668e5a7ed50153301a8ed5401"
   }
 }
