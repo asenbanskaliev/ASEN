@@ -200,11 +200,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Cerrar CI rápida, CI completa, Release Gate, Pi 1.2/1.6, Windows G08 y revisión CodeRabbit exactos. Solo con puertas verdes, ejecutar T06 API y Pi, cada fase con marcador de un uso.",
+      "next": "Validar SHA exacto: CI rápida/completa, Release Gate, Pi 1.2 y compatibilidad 1.6, Windows G08 y CodeRabbit. Tras puertas verdes, ejecutar T06 API y sesiones Pi, cada una con marcador de un uso.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "aa5cfb4f3a24e1acacb624ab4e73fa13134ea54a",
+      "sha": "4c1264af1b56e3b78982223b77325efce5de7139",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -256,7 +256,7 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "SHA aa5cfb4f3a24e1acacb624ab4e73fa13134ea54a: validaciones nuevas en curso. dba4ce6 falló porque src/cli.ts aún importaba el módulo duplicado borrado; se eliminó el comando huérfano, el parser y la ayuda, se convirtió su prueba en rechazo seguro y se actualizaron los chequeos estáticos Windows/T06.",
+      "tests": "En curso sobre el SHA exacto 4c1264af1b56e3b78982223b77325efce5de7139. dba4ce6 falló por importación huérfana de G08 y la prueba confirmó el defecto; se eliminó comando/parser/help de staging duplicado, manteniendo managed-lifecycle. CodeRabbit encontró en aa5cfb4 que se mostraba presión si faltaba getSettings; corregido en este SHA y añadido test de API ausente/fallida.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -264,7 +264,8 @@
         "src/runtime/lifecycle/cli-usage.ts",
         "tests/managed-update-stage-cli.test.ts",
         ".github/workflows/ci.yml",
-        "tests/flujo-agentes-nvidia-workflow.test.ts"
+        "tests/flujo-agentes-nvidia-workflow.test.ts",
+        "tests/host-status-projection.test.ts"
       ],
       "lastAttempt": {
         "pr": 144,
@@ -948,11 +949,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; G08 reutiliza managed-lifecycle sin CLI duplicado; T06 limitado con marcadores no repetibles por SHA para API y sesiones Pi; candidato aa5cfb4 pendiente de CI, Release Gate, Pi y CodeRabbit",
+    "m2": "abierta; módulo G08 duplicado retirado y G02 oculta indicador si falta getSettings; corrección CodeRabbit aa5 aplicada; SHA 4c1264af1b56e3b78982223b77325efce5de7139 pendiente de validaciones exactas",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:27:00Z",
-    "g02Head": "aa5cfb4f3a24e1acacb624ab4e73fa13134ea54a"
+    "updatedAt": "2026-11-26T19:31:00Z",
+    "g02Head": "4c1264af1b56e3b78982223b77325efce5de7139"
   },
   "modelCallException": {
     "enabled": true,
