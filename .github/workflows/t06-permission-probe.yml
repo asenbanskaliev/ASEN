@@ -1,0 +1,52 @@
+name: T06 comprobar permisos sin modelos
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: t06-permission-probe-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  probe:
+    name: Comprobar etiquetas y comentarios sin NVIDIA
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Verificar identidad de PR y autorización de metadatos
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          repo="repos/$GITHUB_REPOSITORY"
+          pr="$repo/pulls/$PR_NUMBER"
+          issue="$repo/issues/$PR_NUMBER"
+          label="asen-t06-permission-check"
+          test "$(gh api "$pr" --jq '.head.sha')" = "$EXPECTED_SHA"
+          test "$(gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = ""
+          if test "$(gh api "$repo/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = ""; then
+            gh api --method POST "$repo/labels" -f name="$label" -f color="ededed" -f description="Diagnóstico de permisos sin modelos" >/dev/null
+          fi
+          # La etiqueta exclusiva de diagnóstico nunca concede permiso de modelos.
+          printf '%s\n' '{"labels":["asen-t06-permission-check"]}' | gh api --method POST "$issue/labels" --input - >/dev/null
+          test "$(gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = "$label"
+          gh api --method DELETE "$issue/labels/$label" >/dev/null
+          test "$(gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = ""
+          marker="<!-- asen-t06-diagnostico-permisos:$EXPECTED_SHA:$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT -->"
+          comment=$(gh api --method POST "$issue/comments" -f body="$marker" --jq '.id')
+          test "$(gh api "$repo/issues/comments/$comment" --jq '.user.login')" = "github-actions[bot]"
+          test "$(gh api "$repo/issues/comments/$comment" --jq '.body')" = "$marker"
+          test "$(gh api "$pr" --jq '.head.sha')" = "$EXPECTED_SHA"
+          echo "Etiquetas y comentarios comprobados con el token de Actions; ninguna llamada a modelos."

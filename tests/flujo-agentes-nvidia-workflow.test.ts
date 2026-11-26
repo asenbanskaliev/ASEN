@@ -120,3 +120,25 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  assert.ok(windows.includes("unhealthy automatic rollback"));
  assert.ok(windows.includes("npm run typecheck"));
 });
+
+test("T06 el diagnóstico de permisos está aislado y no concede autorización de modelos",()=>{
+ const probe=readFileSync(new URL("../.github/workflows/t06-permission-probe.yml",import.meta.url),"utf8");
+ assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151'"));
+ assert.match(probe,/github\.event\.pull_request\.head\.repo\.full_name == github\.repository/u);
+ assert.match(probe,/issues: write\s+pull-requests: write/u);
+ assert.ok(probe.includes('gh api --method DELETE "$issue/labels/$label"'));
+ assert.ok(probe.includes('gh api --method POST "$issue/comments"'));
+ assert.match(probe,/asen-t06-diagnostico-permisos/u);
+ assert.doesNotMatch(probe,/secrets\.|NVIDIA_API_KEY|asen-t06-nvidia-una-vez|asen-t06-nvidia-consumido|asen-t06-nvidia-pi-consumido|checkout@|contents: write|id-token: write/u);
+ for(const name of ["t06-nvidia-free-api","t06-nvidia-pi-native"]){
+  const start=ci.indexOf("\n  "+name+":");
+  const end=ci.indexOf("\n  # T06:",start);
+  const fallbackEnd=ci.indexOf("\n\n  managed-update-windows:",start);
+  const job=ci.slice(start,end>start?end:fallbackEnd);
+  assert.match(job,/issues: write\s+pull-requests: write/u);
+  assert.match(job,/github\.event\.label\.name == 'asen-t06-nvidia-una-vez'/u);
+  assert.doesNotMatch(job,/asen-t06-permission-check/u);
+ }
+ const tui=ci.slice(ci.indexOf("\n  t12-real-pi-tui-dialog:"),ci.indexOf("\n  architecture:"));
+ assert.doesNotMatch(tui,/issues: write|pull-requests: write|group: t06-nvidia/u);
+});

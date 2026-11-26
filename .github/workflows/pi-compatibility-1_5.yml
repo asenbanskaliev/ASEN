@@ -20,7 +20,8 @@ jobs:
       (github.head_ref == 'feat/flujo-de-agentes-20261115' ||
        startsWith(github.head_ref, 'feat/asen-equipo-E-M2-') ||
        github.head_ref == 'feat/asen-equipo-E-M3-g2-continuidad-nativa-149' ||
-       github.head_ref == 'feat/asen-equipo-E-M3-g2-correlacion-pi-150')
+       github.head_ref == 'feat/asen-equipo-E-M3-g2-correlacion-pi-150' ||
+       github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:
