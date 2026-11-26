@@ -200,7 +200,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  return pi=>{
   const hostSettings=()=>{try{return typeof pi.getSettings==="function"?pi.getSettings():undefined;}catch{return undefined;}};
   const settingsFingerprint=(value:unknown)=>{try{return JSON.stringify(value)??"undefined";}catch{return "unserializable";}};
-  const observeHostStatus=(ctx:CommandContext,settings=hostSettings())=>projectHostStatus(ctx,undefined,typeof pi.getSettings==="function"?()=>settings:undefined);
+  const observeHostStatus=(ctx:CommandContext,settings:unknown)=>projectHostStatus(ctx,undefined,typeof pi.getSettings==="function"?()=>settings:undefined);
   const registerRaw=pi.registerCommand?.bind(pi);
   if(!registerRaw)throw new Error("ASEN extension requires Pi command registration");
   // UFC-M1-04: registered handlers are captured so keymap shortcuts can invoke the very
@@ -459,7 +459,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(pressureOnly&&!hostStatusSnapshot)return;
     const observed=pressureOnly?undefined:snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
-    if((pressureOnly&&(pressureGeneration!==hostPressureGeneration||observation!==hostObservationGeneration))||(!pressureOnly&&generation!==hostRefreshGeneration)||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    if((pressureOnly&&(pressureGeneration!==hostPressureGeneration||observation!==hostObservationGeneration))||(!pressureOnly&&generation!==hostRefreshGeneration)||(!pressureOnly&&hostStatusUI!==ctx.ui)||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const changes=pressureOnly?hostStatusSnapshot?.changes:observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
     const publishedHostStatus=observation===hostObservationGeneration?hostStatus:hostStatusSnapshot?.hostStatus??hostStatus;
     const publishedSettingsFingerprint=observation===hostObservationGeneration?settingsSnapshot:hostStatusSettingsFingerprint??settingsSnapshot;
@@ -516,7 +516,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const now=await sessionIdentity(ctx);assertCurrent();
    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("ASEN panel session changed");
    const integrationInspection=inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});
-   const hostStatus=observeHostStatus(ctx);assertCurrent();
+   const hostStatus=observeHostStatus(ctx,hostSettings());assertCurrent();
    let agentFlow:Awaited<ReturnType<typeof readAgentFlowPanelObservation>>|undefined,agentFlowUnavailable=false;
    if(todoStorePromise&&agentRuntimePromise)try{
     agentFlow=await readAgentFlowPanelObservation({
