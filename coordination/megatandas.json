@@ -130,8 +130,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-revision-t06-bloqueado",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M3-g2-permisos-t06-151",
+        "package": "M2-T06-permisos",
+        "base": "d5740d63ed190a7df8fbb353f6066738e15688a3",
+        "branch": "feat/asen-equipo-E-M3-g2-permisos-t06-151",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -176,7 +183,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #151 exacta, G01 RPC 36 celdas, G08 y G03; revisión independiente; cerrar T06 solo tras permiso válido. Continuar P04 sin repetir efectos.",
+      "next": "Comprobar autorización de etiquetas y comentarios con prueba aislada. Conservar excepción deshabilitada, sin ampliar PR autorizada.",
       "blocker": "El control previo de un solo uso devolvió 403 Resource not accessible by integration al desarmar la etiqueta. Falló cerrado antes de consultar o llamar a NVIDIA; no hubo solicitudes API ni sesiones Pi. La etiqueta se retiró mediante integración y no se repetirá automáticamente.",
       "generation": 2,
       "pr": 151,
@@ -572,7 +579,18 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "E-M3-g2-permisos-t06-151": {
+      "owner": "E",
+      "files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/pi-compatibility-1_5.yml",
+        ".github/workflows/t06-permission-probe.yml",
+        "tests/flujo-agentes-nvidia-workflow.test.ts"
+      ],
+      "reason": "Permisos específicos y diagnóstico aislado sin credenciales de modelos; no rearma autorización T06."
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
