@@ -152,7 +152,14 @@
           "src/cli.ts",
           "src/runtime/lifecycle/launcher.ts",
           "src/runtime/lifecycle/cli-usage.ts",
-          "tests/managed-update-stage-cli.test.ts"
+          "tests/managed-update-stage-cli.test.ts",
+          "tests/host-status-projection.test.ts",
+          "src/runtime/managed/managed-cli-version-probe.ts",
+          "src/runtime/managed/managed-maintenance-lock.ts",
+          "tests/managed-maintenance-lock.test.ts",
+          "tests/managed-cli-version-lock.test.ts",
+          "tests/managed-cli-version-probe-control.test.ts",
+          "tests/t09-lifecycle.test.ts"
         ],
         "startedAt": "2026-11-26T18:15:00Z"
       },
@@ -200,11 +207,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar Windows G08, pruebas de bloqueo, CI rápida/completa, Release Gate, Pi 1.2/1.6 y CodeRabbit sobre ddffab1. Solo después habilitar API y sesiones Pi acotadas.",
+      "next": "Completar validación exacta de b186e7d: CI completa, Release Gate, G08 Windows, Pi 1.2 y CodeRabbit completo. Revisar artefactos; solo después habilitar las dos fases NVIDIA acotadas.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "ddffab1cc6ea0354e4b1f800f1bc5dece544b6ca",
+      "sha": "b186e7d655824b0613959772b86651f93f2c8bf2",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -254,9 +261,16 @@
         }
       },
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
-      "reviewFindings": [],
+      "reviewFindings": [
+        4712713134,
+        4712713142,
+        4712713148,
+        4712713156,
+        4712769637,
+        4712769641
+      ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "El run Windows 45884612209 del SHA a3d9da5 identificó ROOT_CHANGED: el bloqueo rechazaba rutas temporales Windows cuyo realpath resuelve un alias 8.3 aunque identidad y directorio físico son los mismos. ddffab1 verifica lstat del alias y la ruta resuelta con identidad física, y agrega test Windows para 8.3 al job G08.",
+      "tests": "ddffab1 falló G08 Windows: la comprobación del marcador rechazaba realpath 8.3 de Windows, provocando LOCK_RETAINED, probes no ejecutados y cinco casos de upgrade sin probar. 9f5dbeb corrige identidad del marcador en alias y cierra cuatro hallazgos CodeRabbit; b186e7d actualiza tres aserciones de deriva detectadas por CodeRabbit. Puertas exactas b186e7 en ejecución; evidencia anterior no se atribuye a este SHA.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -268,12 +282,51 @@
         "tests/host-status-projection.test.ts",
         "src/runtime/managed/managed-cli-version-probe.ts",
         "src/runtime/managed/managed-maintenance-lock.ts",
-        "tests/managed-maintenance-lock.test.ts"
+        "tests/managed-maintenance-lock.test.ts",
+        "tests/managed-cli-version-lock.test.ts",
+        "tests/managed-cli-version-probe-control.test.ts",
+        "tests/t09-lifecycle.test.ts"
       ],
       "lastAttempt": {
         "pr": 144,
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
+      },
+      "reviewState": "corregidos-en-b186-pendientes-de-revision-y-pruebas-exactas",
+      "latestValidation": {
+        "sha": "b186e7d655824b0613959772b86651f93f2c8bf2",
+        "runs": [
+          {
+            "name": "CI rápida",
+            "id": 45885806432,
+            "state": "queued"
+          },
+          {
+            "name": "CI",
+            "id": 45885806137,
+            "state": "pending"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45885806257,
+            "state": "queued"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45885806252,
+            "state": "in_progress"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45885806311,
+            "state": "in_progress"
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 45885806354,
+            "state": "skipped"
+          }
+        ]
       }
     }
   },
@@ -996,5 +1049,6 @@
     "apiAuthorizationMarker": "asen-t06-nvidia-consumido:<SHA>",
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
-  "globalFull": false
+  "globalFull": false,
+  "updatedAt": "2026-11-26T19:50:00Z"
 }
