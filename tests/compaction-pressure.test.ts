@@ -129,7 +129,9 @@ test("G02 sincroniza el último estado publicado antes del siguiente sondeo",()=
  // La configuración vuelve a desactivada antes del siguiente sondeo.
  reading={state:"off"};pending?.();
  assert.equal(changes,1);
+ assert.equal(observer.active(),true);
  observer.stop();
+ assert.equal(observer.active(),false);
  assert.equal(observer.synchronize({state:"off"}),false,"un observador detenido no puede reutilizarse");
 });
 
