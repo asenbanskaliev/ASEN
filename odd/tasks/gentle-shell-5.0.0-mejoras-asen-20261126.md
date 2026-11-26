@@ -32,3 +32,18 @@ Fecha: 26/11/2026. Complemento aprobado por el usuario del plan rector #61. No r
 RPC de escritorio, credenciales, eventos de perfil, avisos de configuración, referencias de habilidades y Tower quedan como auditorías complementarias, no nuevos trabajos obligatorios. No copiar Go /v5 ni protocolos antiguos si no se consumen. Mantener bloqueo de entrega de ASEN; no copiar la conversión a simple aviso. Cualquier adopción se valida por comportamiento y no por igualdad de arquitectura.
 
 Registro de ejecución: [coordinación](https://github.com/asenbanskaliev/ASEN/blob/coordination/asen-megatandas-20261125/coordination/megatandas.json). Reservar solo escritura, liberar antes de CI; un propietario por archivo y pruebas del SHA exacto. G01–G08 no suman criterios a los 30 originales ni acreditan paridad automáticamente.
+
+## Orden operativo aprobado — seis megatandas (26/11/2026)
+
+Aplicar conjuntamente los 18 objetivos + 12 criterios de la matriz canónica, P01–P06, G01–G08 y CTX/E1–E4/F. Esta secuencia organiza, no sustituye los criterios ni amplía la autoridad de escritura. P06 y seguridad son transversales desde el primer cambio.
+
+| Tanda | Alcance y responsable | Salida exigida |
+|---|---|---|
+| M1 Estabilización | E: candidato #137, reconciliar #136 y pieza aislada #138; comprobar ancestros y no volver a integrar #127–135 | Un candidato de desarrollo con revisión independiente, CI y Release Gate exactos; ramas anteriores preservadas hasta verificar equivalencia |
+| M2 Modelos y compatibilidad | B/E: G01, G08, P02, perfiles, procedencia vigente antes de despacho, alternativas seguras | Pi compatible; versiones y tres sistemas comprobados, modelos observados sin inventar identidad; rollback aislado |
+| M3 Delegación y continuidad | A/B/E: E1/CTX-2, P04, G03, planificación, modos, Explorer, Writers y sucesoras | Dos raíces y 2+1; máximo dos Writers, permisos exactos, reinicios sin doble efecto, preguntas y avisos únicos |
+| M4 Calidad y seguridad | C/B/E: P01, G04–G06, Verifier, juicio independiente, Fix y escalado proporcional | Revisión y reparación del mismo candidato, sin permisos heredados ni rutas sensibles; pruebas negativas |
+| M5 Contexto y rendimiento | D/E: G02/G07, CTX, P05 y preparación E4 | Indicador conectado sin sustituir protecciones; métricas conservadoras; comparación 1/2 agentes y 3/4 solo si evidencia justifica |
+| M6 Aceptación | E con A–D: P03/P06, E4/F, 18+12, mejoras aplicables | Petición natural a entrega y sucesora real sobre mismo linaje; A/B controlada; 3 sistemas × 4 modos; revisión independiente y controles del SHA final |
+
+Ejecutar trabajos independientes de M2–M5 mientras M1 valida, con un propietario por archivo, máximo dos reservas de escritura simultáneas y E como dueño de archivos compartidos. No duplicar código ni iniciar CI completa de cada pieza si puede consolidarse de forma segura. No borrar ramas ni cerrar PR por antigüedad. No fusionar #61/#115 a sus bases ni main. No ejecutar modelos externos mientras el registro vigente lo prohíba; los ensayos reales quedan sujetos a autorización aplicable y presupuesto. No marcar globalFull:true por pruebas parciales, omitidas o de SHA distinto. Mantener las condiciones de consentimiento y aceptación del plan original.
