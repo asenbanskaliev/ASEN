@@ -145,7 +145,7 @@ test("G08 restaura la versión previa después de una interrupción",async()=>{
  const request={manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,protectedPaths:[path.join(f.root,"protected")],confirmed:true};
  await stageManagedAcquisitionUpdate(request);
  const journal=path.join(f.prefix,"install",".asen-acquisition-update.pending");
- await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",previousVersion:"1.0.0",targetVersion:"2.0.0"})+"\\n",{mode:0o600});
+ await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",previousVersion:"1.0.0",targetVersion:"2.0.0"})+"\n",{mode:0o600});
  await selectManagedVersion({prefix:f.prefix,version:"2.0.0",expectedCurrentVersion:"1.0.0",confirmed:true});
  const recovered=await recoverManagedAcquisitionUpdate({prefix:f.prefix,confirmed:true});
  assert.equal(recovered.status,"restored");assert.equal(recovered.previousVersion,"1.0.0");
