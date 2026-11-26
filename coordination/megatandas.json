@@ -65,8 +65,9 @@
         "sha": "043db67221ea589cc4c5f115ad15e5780bdd1ed8",
         "branch": "feat/asen-equipo-B-M2-g2-vigencia-perfil-142",
         "base": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
-        "state": "espera-ci",
-        "scope": "Explorer planificado: vigencia de alternativas antes de iniciar, sin ampliar autoridad"
+        "state": "fallo-ci",
+        "scope": "Explorer planificado: vigencia de alternativas antes de iniciar, sin ampliar autoridad",
+        "failure": "TS2379: exactOptionalPropertyTypes, plan-dispatcher.ts:127"
       }
     },
     "C": {
@@ -122,8 +123,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-consolidacion-141-142-143",
+        "package": "M1-M2",
+        "base": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
+        "branch": "feat/asen-equipo-E-M2-g2-consolidacion-141-142-143",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -168,7 +176,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #142, #143 y revisión #141; reconciliar los candidatos M2 solo tras admitir M1.",
+      "next": "Corregir métricas waiting→running y TS2379, combinar las tres piezas en candidato sin admisión; repetir CI y matriz.",
       "blocker": null,
       "generation": 2,
       "pr": 142,
@@ -492,7 +500,7 @@
       4705072726,
       4707849565
     ],
-    "status": "espera-ci-y-revision",
+    "status": "correccion-revision",
     "globalFull": false,
     "previousCandidate": {
       "pr": 140,
@@ -623,7 +631,10 @@
     },
     "review": {
       "confirmed": false,
-      "requestedCommentId": 7192496419
+      "requestedCommentId": 7192496419,
+      "findings": [
+        4708656296
+      ]
     },
     "ci": {
       "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
@@ -632,7 +643,7 @@
       "pi": 45822958212,
       "full": 45822958288,
       "releaseGate": 45822958279,
-      "conclusion": "in_progress",
+      "conclusion": "success",
       "piFreeSmoke": "skipped"
     },
     "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
