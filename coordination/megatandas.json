@@ -32,13 +32,21 @@
       "candidateSha": "ef3a91053b553f01e22e8d396ac3173a10357caf"
     },
     "B": {
-      "state": "espera-candidato",
-      "lease": null,
+      "state": "trabajo-en-curso",
+      "lease": {
+        "task": "Auditoría del cambio de alternativas después de iniciar una ejecución",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "base": "7b8163d1c539039d271ef7488be6fcefb9b2046b",
+        "files": [
+          "tests/asen-b-planned-fallback.test.ts"
+        ],
+        "startedAt": "2026-11-26T18:20:00Z"
+      },
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Pruebas de cola negativa y positiva implementadas en #148; verificar CI, no duplicar. Pendiente revocación durante intentos ya iniciados.",
+      "next": "Agregar regresión sin modelos que fija el snapshot de alternativas de un Explorer una vez iniciado y comparar el cambio posterior del perfil; validar en el SHA combinado.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -130,8 +138,18 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-revision",
-      "lease": null,
+      "state": "trabajo-en-curso",
+      "lease": {
+        "task": "G02 corrección final y validación",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "base": "7b8163d1c539039d271ef7488be6fcefb9b2046b",
+        "files": [
+          "extensions/asen.ts",
+          "src/runtime/ui/compaction-pressure.ts",
+          "tests/compaction-pressure.test.ts"
+        ],
+        "startedAt": "2026-11-26T18:15:00Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
