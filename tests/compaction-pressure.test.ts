@@ -84,19 +84,36 @@ test("G02 observa una sola vez el contexto y separa presión de ocupación",()=>
 
 test("G02 actualiza el estado al cambiar ajustes en ambos sentidos sin iniciar modelos",()=>{
  type FakeTimer={callback:()=>void;delay:number;cancelled:boolean};
- const timers:FakeTimer[]=[];let pressure=projectCompactionPressure({settings:{},model,usage}),refreshes=0;
+ const timers:FakeTimer[]=[];let pressure:ReturnType<typeof projectCompactionPressure>|undefined=projectCompactionPressure({settings:{},model,usage}),refreshes=0;
  const schedule=(callback:()=>void,delay:number)=>{
   const timer:FakeTimer={callback,delay,cancelled:false};timers.push(timer);
   return timer as unknown as ReturnType<typeof setTimeout>;
  };
  const cancel=(timer:ReturnType<typeof setTimeout>)=>{(timer as unknown as FakeTimer).cancelled=true;};
  const observer=createCompactionPressureObserver({
-  read:()=>pressure,current:()=>true,onChange:()=>{refreshes++;},
+  read:()=>pressure,initial:pressure,current:()=>true,onChange:()=>{refreshes++;},
   intervalMs:5000,schedule,cancel
  });
  assert.equal(timers[0]?.delay,5000);
  const tick=()=>{const timer=timers.shift();assert.ok(timer);if(!timer.cancelled)timer.callback();};
  pressure={state:"off"};tick();assert.equal(refreshes,1);
- pressure=projectCompactionPressure({settings:{},model,usage});tick();assert.equal(refreshes,2);
+ pressure=undefined;tick();assert.equal(refreshes,2);
+ pressure=projectCompactionPressure({settings:{},model,usage});tick();assert.equal(refreshes,3);
+ observer.stop();assert.equal(timers[0]?.cancelled,true);
+});
+test("G02 reconcilia el primer sondeo con el estado publicado antes de la espera",()=>{
+ type FakeTimer={callback:()=>void;delay:number;cancelled:boolean};
+ const timers:FakeTimer[]=[];let refreshes=0;
+ const schedule=(callback:()=>void,delay:number)=>{
+  const timer:FakeTimer={callback,delay,cancelled:false};timers.push(timer);
+  return timer as unknown as ReturnType<typeof setTimeout>;
+ };
+ const cancel=(timer:ReturnType<typeof setTimeout>)=>{(timer as unknown as FakeTimer).cancelled=true;};
+ const published=projectCompactionPressure({settings:{},model,usage});
+ const current=projectCompactionPressure({settings:{compaction:{enabled:false}},model,usage});
+ const observer=createCompactionPressureObserver({
+  read:()=>current,initial:published,current:()=>true,onChange:()=>{refreshes++;},schedule,cancel
+ });
+ assert.equal(refreshes,1);
  observer.stop();assert.equal(timers[0]?.cancelled,true);
 });

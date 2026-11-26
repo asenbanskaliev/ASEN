@@ -63,6 +63,7 @@ export function compactionPressureLabel(value:CompactionPressure):string{
 /** Sondeo acotado de ajustes efectivos. Solo lee ajustes/uso y avisa si cambia la presión. */
 export function createCompactionPressureObserver(options:Readonly<{
  read:()=>CompactionPressure|undefined;
+ initial?:CompactionPressure|undefined;
  current:()=>boolean;
  onChange:()=>void;
  intervalMs?:number;
@@ -74,24 +75,29 @@ export function createCompactionPressureObserver(options:Readonly<{
  const intervalMs=Math.max(1000,Math.min(30000,Math.floor(requested)));
  const schedule=options.schedule??((callback,delay)=>setTimeout(callback,delay));
  const cancel=options.cancel??(timer=>clearTimeout(timer));
- let stopped=false,timer:ReturnType<typeof setTimeout>|undefined,last:string|undefined;
+ const fingerprint=(value:CompactionPressure|undefined):string=>{
+  try{return JSON.stringify(value)??"undefined";}catch{return "unserializable";}
+ };
+ let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;
+ let initialized=Object.hasOwn(options,"initial");
+ let last=initialized?fingerprint(options.initial):"";
  const isCurrent=()=>{try{return options.current();}catch{return false;}};
  const stop=()=>{stopped=true;if(timer!==undefined)cancel(timer);timer=undefined;};
  const poll=()=>{
   if(stopped)return;
   if(!isCurrent()){stop();return;}
   try{
-   const value=options.read(),next=JSON.stringify(value);
-   if(last!==undefined&&next!==last){
+   const next=fingerprint(options.read());
+   if(initialized&&next!==last){
     last=next;
     try{options.onChange();}catch{/* Una vista de estado no puede interrumpir Pi. */}
-   }else last=next;
+   }else{last=next;initialized=true;}
   }catch{
    const next="read-error";
-   if(last!==undefined&&next!==last){
+   if(initialized&&next!==last){
     last=next;
     try{options.onChange();}catch{/* Una vista de estado no puede interrumpir Pi. */}
-   }else last=next;
+   }else{last=next;initialized=true;}
   }
   if(stopped||!isCurrent()){stop();return;}
   timer=schedule(()=>{timer=undefined;poll();},intervalMs);
