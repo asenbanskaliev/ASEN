@@ -714,7 +714,7 @@
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
-        "next": "Compatibilidad y cola comprobadas; M2 aún requiere identidad/independencia observada de modelos, G08 y revisión completa.",
+        "next": "Validar cambios de configuración en ejecución iniciada, identidad/independencia observada de modelos y G08 antes de cerrar M2.",
         "evidence": {
           "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
           "matrix": 45832618166,
@@ -930,8 +930,9 @@
       "g08": "pending",
       "limitations": [
         "No hay evidencia de identidad observada del modelo en ejecución ni independencia real de jueces; la matriz Pi es sin modelos.",
+        "La regresión #148 cubre cambio de alternativas durante espera en cola, pero no cambios de configuración después de iniciar un agente.",
         "G08 no tiene implementación/PR en la cadena auditada.",
-        "CI completa de #149 seguía en curso; la revisión CodeRabbit de #148/#149 estaba solicitada pero sin dictamen."
+        "CI completa y Release Gate de #149 al SHA actual continúan en curso; CodeRabbit debe revisar el SHA corregido."
       ]
     },
     "m3": {
