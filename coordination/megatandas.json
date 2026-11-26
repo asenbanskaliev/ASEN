@@ -88,7 +88,7 @@
       }
     },
     "D": {
-      "state": "correccion-asignada",
+      "state": "correccion-delegada-E",
       "lease": null,
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
@@ -101,7 +101,7 @@
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "tests": "Regresiones nuevas publicadas; CI completa y revisión pendientes.",
-      "blocker": "Automatización D desactivada; corrección aún no publicada.",
+      "blocker": "D desactivado; E asume únicamente esta corrección bajo propiedad temporal.",
       "generation": 2,
       "candidatePR": 135,
       "candidateSha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -112,8 +112,19 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "correccion-pendiente",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-g2-4705072726-1126",
+        "generation": 2,
+        "package": "E1",
+        "base": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
+        "branch": "feat/asen-equipo-E-E1-g2-metricas-4705072726",
+        "phase": "escritura",
+        "files": [
+          "src/runtime/agents/flow-metrics.ts",
+          "tests/asen-d-flow-usage.test.ts"
+        ]
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -433,7 +444,20 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "src/runtime/agents/flow-metrics.ts": {
+      "owner": "E",
+      "previousOwner": "D",
+      "leaseId": "E-g2-4705072726-1126",
+      "reason": "D desactivado; corrección acotada del hallazgo 4705072726"
+    },
+    "tests/asen-d-flow-usage.test.ts": {
+      "owner": "E",
+      "previousOwner": "D",
+      "leaseId": "E-g2-4705072726-1126",
+      "reason": "D desactivado; corrección acotada del hallazgo 4705072726"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
