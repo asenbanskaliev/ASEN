@@ -90,6 +90,10 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  assert.ok(job.includes("asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA"));
  assert.ok(job.includes("gh api --method POST"));
  assert.ok(job.includes("test \"$GITHUB_RUN_ATTEMPT\" = 1"));
+ const piNative=ci.slice(ci.indexOf("\\n  t06-nvidia-pi-native:"),ci.indexOf("\\n\\n  managed-update-windows:"));
+ assert.ok(piNative.includes("pull_request.number == 61"));
+ assert.ok(!piNative.includes("pull_request.number == 149"),"M2 solo autoriza las dos consultas NVIDIA acotadas");
+ assert.ok(job.includes('index("asen-t06-nvidia-una-vez")'));
  assert.ok(!job.includes("pull_request.number == 150"));
  const probe=readFileSync(new URL("../scripts/t06-nvidia-free-api-probe.mjs",import.meta.url),"utf8");
  for(const model of ["nvidia/nemotron-3.5-lightning-30b-a3b","nvidia/nemotron-3.5-super-vl-120b-a12b"])assert.ok(probe.includes(model));
