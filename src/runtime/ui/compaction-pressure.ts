@@ -62,14 +62,14 @@ export function compactionPressureLabel(value:CompactionPressure):string{
 
 /** Sondeo acotado de ajustes efectivos. Solo lee ajustes/uso y avisa si cambia la presión. */
 export function createCompactionPressureObserver(options:Readonly<{
- read:()=>CompactionPressure|undefined;
- initial?:CompactionPressure|undefined;
+ read:()=>unknown;
+ initial?:unknown;
  current:()=>boolean;
  onChange:()=>void;
  intervalMs?:number;
  schedule?:(callback:()=>void,delayMs:number)=>ReturnType<typeof setTimeout>;
  cancel?:(timer:ReturnType<typeof setTimeout>)=>void;
-}>):Readonly<{stop:()=>void;synchronize:(value:CompactionPressure|undefined)=>boolean}>{
+}>):Readonly<{stop:()=>void;active:()=>boolean;synchronize:(value:unknown)=>boolean}>{
  const requested=options.intervalMs??5000;
  if(!Number.isFinite(requested)||requested<0)throw new Error("G02: intervalo de observación no válido");
  const intervalMs=Math.max(1000,Math.min(30000,Math.floor(requested)));
@@ -105,5 +105,5 @@ export function createCompactionPressureObserver(options:Readonly<{
   timer.unref?.();
  };
  poll();
- return {stop,synchronize};
+ return {stop,active:()=>!stopped,synchronize};
 }
