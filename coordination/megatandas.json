@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "E coordina reparación conjunta B1: comprobar alternativas vigentes antes de encolar y ejecutar; no duplicar.",
+      "next": "PR #143 publicada: revalidación de alternativas antes de vincular y tras cola; validar CI y revisión antes de aceptar. Pendiente comprobar SDK y revocación durante intentos ya iniciados.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -59,6 +59,14 @@
       "audit": {
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
         "observation": "La procedencia scope/name está ligada al Todo, pero la comprobación usa una captura de perfiles; verificar cambio de perfil/alternativas tras captura y antes de iniciar. No se ha reproducido en ejecución."
+      },
+      "profileFreshness": {
+        "pr": 143,
+        "sha": "043db67221ea589cc4c5f115ad15e5780bdd1ed8",
+        "branch": "feat/asen-equipo-B-M2-g2-vigencia-perfil-142",
+        "base": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
+        "state": "espera-ci",
+        "scope": "Explorer planificado: vigencia de alternativas antes de iniciar, sin ampliar autoridad"
       }
     },
     "C": {
@@ -114,15 +122,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M2-g2-vigencia-perfil-142",
-        "package": "M2-B1",
-        "base": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
-        "branch": "feat/asen-equipo-B-M2-g2-vigencia-perfil-142",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -167,7 +168,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Preparar candidato independiente de B1 con extensión, despachador, runtime y pruebas; no admitir M1 hasta CI/revisión.",
+      "next": "Validar #142, #143 y revisión #141; reconciliar los candidatos M2 solo tras admitir M1.",
       "blocker": null,
       "generation": 2,
       "pr": 142,
