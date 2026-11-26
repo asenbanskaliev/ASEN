@@ -113,7 +113,7 @@ import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObs
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
-import {createCompactionPressureObserver,type CompactionPressure} from "../src/runtime/ui/compaction-pressure.js";
+import {createCompactionPressureObserver} from "../src/runtime/ui/compaction-pressure.js";
 import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps,prepareKeymapChange,writeKeymaps,keymapSavedNotice,resetKeymap,KEYMAP_RELOAD_NOTICE} from "../src/runtime/ui/keymaps.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/ui/integration-profile-inspection.js";
 import {integrationPanel} from "../src/runtime/ui/integrations-panel.js";
