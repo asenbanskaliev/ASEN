@@ -131,3 +131,6 @@ CodeRabbit completó una revisión anterior sobre 586f7a0 que encontró el desaj
 ### Endurecimiento del permiso T06 — SHA 472547ae — 26/11/2026
 
 La consulta del marcador de consumo ahora solo considera comentarios publicados por `github-actions[bot]`. Un comentario de otro usuario no puede reservar ni bloquear el permiso de una sola ejecución. La prueba negativa comprueba ambos lectores (API y Pi) y rechaza la consulta sin filtro de autor. El SHA 472547ae809be6e1a8f485ff404eed3bc5953688 vuelve a requerir CI completa, CI rápida, Release Gate, Phase 0, Pi 1.2 y revisión CodeRabbit exactas. La llamada NVIDIA/Pi permanece bloqueada hasta que todas pasen; Pi Free Smoke omitido no cuenta. #149 sigue abierta y sin fusionar; globalFull:false.
+
+
+La CI rápida de `472547ae` encontró una prueba general de ramas que rechazaba cualquier igualdad con comillas dobles, incluida la nueva comprobación del autor. Se restringió esa prueba a comparaciones de `github.head_ref` en `3eafc1951776d19c8a21d525904be95acded984b`. Todas las puertas y la revisión independiente se vuelven a exigir sobre este SHA. La autorización NVIDIA/Pi sigue bloqueada.
