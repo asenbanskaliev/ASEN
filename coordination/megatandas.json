@@ -138,32 +138,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "validacion-en-curso",
-      "lease": {
-        "task": "Cierre G02 y G08, revisión B1 y evidencia Pi 1.2/1.6; solo rama candidata",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "a68bc496a510243b64f9e0a424e52589ab97663b",
-        "files": [
-          "extensions/asen.ts",
-          "src/runtime/ui/compaction-pressure.ts",
-          "tests/compaction-pressure.test.ts",
-          ".github/workflows/ci.yml",
-          "tests/flujo-agentes-nvidia-workflow.test.ts",
-          "src/cli.ts",
-          "src/runtime/lifecycle/launcher.ts",
-          "src/runtime/lifecycle/cli-usage.ts",
-          "tests/managed-update-stage-cli.test.ts",
-          "tests/host-status-projection.test.ts",
-          "src/runtime/managed/managed-cli-version-probe.ts",
-          "src/runtime/managed/managed-maintenance-lock.ts",
-          "tests/managed-maintenance-lock.test.ts",
-          "tests/managed-cli-version-lock.test.ts",
-          "tests/managed-cli-version-probe-control.test.ts",
-          "tests/t09-lifecycle.test.ts",
-          "src/runtime/managed/managed-install.ts"
-        ],
-        "startedAt": "2026-11-26T18:15:00Z"
-      },
+      "state": "espera-validacion",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -208,7 +184,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Comprobar G08 sobre 59a0fda: selección de versión en rutas Windows 8.3, fallos de sonda, rollback e interrupción; cerrar CI completa y Release Gate, pedir revisión CodeRabbit exacta del SHA final y solo luego habilitar ensayos reales.",
+      "next": "Validar b186 y 59a0fda por SHA exacto; no reservar archivos durante CI o revisión. Después, cerrar solo los hallazgos comprobados y habilitar NVIDIA/Pi si pasan las puertas.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
@@ -308,6 +284,13 @@
         },
         "piFreeSmoke": "skipped",
         "globalFull": false
+      },
+      "validationOwner": {
+        "team": "E",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "sha": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
+        "phase": "CI y revisión",
+        "writeReservation": false
       }
     }
   },
