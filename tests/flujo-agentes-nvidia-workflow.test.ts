@@ -89,7 +89,7 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  assert.ok(job.includes("t06-nvidia-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}"));
  assert.ok(job.includes("asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA"));
  assert.ok(job.includes("gh api --method POST"));
- assert.ok(job.includes('gh api "$comments" --paginate --jq \'[].body\' > "$commentBodies"'));
+ assert.ok(job.includes('gh api "$comments" --paginate --jq \'.[].body\' > "$commentBodies"'));
  assert.ok(job.includes('if grep -Fqx -- "$marker" "$commentBodies"; then'));
  assert.doesNotMatch(job,/if gh api .*--paginate --jq/u,"La consulta fallida no puede habilitar el ensayo");
  assert.ok(job.includes("test \"$GITHUB_RUN_ATTEMPT\" = 1"));
@@ -97,7 +97,7 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  assert.ok(piNative.includes("pull_request.number == 61"));
  assert.ok(piNative.includes("pull_request.number == 149"));
  assert.ok(piNative.includes("asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA"));
- assert.ok(piNative.includes('gh api "$comments" --paginate --jq \'[].body\' > "$commentBodies"'));
+ assert.ok(piNative.includes('gh api "$comments" --paginate --jq \'.[].body\' > "$commentBodies"'));
  assert.ok(piNative.includes('if grep -Fqx -- "$marker" "$commentBodies"; then'));
  assert.doesNotMatch(piNative,/if gh api .*--paginate --jq/u,"La consulta fallida no puede habilitar las sesiones Pi");
  assert.ok(piNative.includes("maxConcurrency:2")===false,"La concurrencia se limita dentro del script Pi");
