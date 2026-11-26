@@ -200,11 +200,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Identificar en el Windows G08 exacto la etapa candidate-drift; corregir la causa en el motor, no relajar las pruebas. Revalidar todo en un único SHA y exigir CodeRabbit exacto.",
+      "next": "Ejecutar la CI exacta de a3d9da5; usar el motivo Windows para corregir el motor de G08. No habilitar NVIDIA ni marcar M2 cerrada hasta Windows, CI completa, Release Gate, Pi y CodeRabbit verdes.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "1a0d333f91f2c204aec5e9aa01e3a331057a4261",
+      "sha": "a3d9da5a3f915ead5842f484ed09cc4b441bb65a",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -256,7 +256,7 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "En curso sobre 1a0d333f91f2c204aec5e9aa01e3a331057a4261. En 4c1264a, CI rápida y Pi 1.2 pasaron; Phase 0 pasó. El trabajo G08 Windows falló en t09-lifecycle: el sondeo de la primera instalación devolvió candidate-drift antes de iniciar el CLI. Se añadieron razones por etapa para diagnosticar sin exponer rutas.",
+      "tests": "La prueba Windows de 1a0d333f91f2c204aec5e9aa01e3a331057a4261 volvió a fallar en t09-lifecycle, con candidate-drift antes de iniciar el CLI. El diagnóstico previo siguió demasiado genérico porque el bloqueo normaliza OWNED_ROOT_REQUIRED; este SHA diferencia rechazo por raíz no reconocida y raíz cambiada, sin revelar rutas.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -950,11 +950,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; validación Windows detectó candidate-drift en la ruta de instalación administrada; SHA 1a0d333f91f2c204aec5e9aa01e3a331057a4261 añade causa por etapa y está en validación exacta",
+    "m2": "abierta; G08 Windows aún falla candidate-drift; nuevo SHA a3d9da5a3f915ead5842f484ed09cc4b441bb65a añade clasificación segura del bloqueo y debe identificar la causa",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:33:00Z",
-    "g02Head": "1a0d333f91f2c204aec5e9aa01e3a331057a4261"
+    "updatedAt": "2026-11-26T19:36:00Z",
+    "g02Head": "a3d9da5a3f915ead5842f484ed09cc4b441bb65a"
   },
   "modelCallException": {
     "enabled": true,
