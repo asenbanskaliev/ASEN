@@ -112,7 +112,7 @@
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 137,
       "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-      "next": "Verificar recuento de intentos y consumo tras preguntas y reinicio en #144; preparar G07/P05.",
+      "next": "Verificar #149 indicador G02, mantener métricas separadas; no duplicar cálculo.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
@@ -130,15 +130,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M2-g2-compactacion-148",
-        "package": "G02",
-        "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-revision",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -183,7 +176,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Conectar G02 con API pública getSettings de Pi y una sola lectura de contexto; conservar avisos y desconocido.",
+      "next": "Comprobar revisión #148, CI y revisión #149 exactas; no admitir sin puertas completas. Preparar G03 recuperación de turnos.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -799,13 +792,21 @@
         }
       },
       "G02": {
-        "state": "espera-ci",
+        "state": "conectado-espera-ci",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
         "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
         "implemented": "Cálculo puro y cuatro pruebas; aún no conectado al indicador",
-        "next": "Validar #139; conectar tras comprobar SDK G01."
+        "next": "Validar #149 y paridad SDK, representación y revisión independiente.",
+        "connectionCandidate": {
+          "pr": 149,
+          "sha": "8acbfe56284077bb94c5396dfb3a12659d56fad4",
+          "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+          "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
+          "state": "espera-ci",
+          "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática."
+        }
       },
       "G03": {
         "state": "pendiente"
