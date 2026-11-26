@@ -65,11 +65,19 @@ async function ownMarker(root:string,rootIdentity:Stats,lock:string,fileIdentity
  try{
   await unchangedRoot(root,rootIdentity);
   const before=await lstat(lock,{bigint:true});
-  if(!before.isFile()||before.isSymbolicLink()||!sameManagedMaintenanceMarkerIdentity(before,fileIdentity)||canonical(await realpath(lock))!==canonical(lock))return false;
+  if(!before.isFile()||before.isSymbolicLink()||!sameManagedMaintenanceMarkerIdentity(before,fileIdentity))return false;
+  const resolvedBefore=await realpath(lock),rootPhysical=await realpath(root);
+  if(canonical(path.dirname(resolvedBefore))!==canonical(rootPhysical))return false;
+  const targetBefore=await lstat(resolvedBefore,{bigint:true});
+  if(!targetBefore.isFile()||targetBefore.isSymbolicLink()||!sameManagedMaintenanceMarkerIdentity(targetBefore,fileIdentity))return false;
   if(await readFile(lock,"utf8")!==bytes)return false;
-  const after=await lstat(lock,{bigint:true});
+  const after=await lstat(lock,{bigint:true}),resolvedAfter=await realpath(lock);
+  if(canonical(resolvedAfter)!==canonical(resolvedBefore))return false;
+  const targetAfter=await lstat(resolvedAfter,{bigint:true});
   await unchangedRoot(root,rootIdentity);
-  return after.isFile()&&!after.isSymbolicLink()&&sameManagedMaintenanceMarkerIdentity(after,fileIdentity)&&sameManagedMaintenanceMarkerIdentity(after,before);
+  return after.isFile()&&!after.isSymbolicLink()&&sameManagedMaintenanceMarkerIdentity(after,fileIdentity)
+   &&sameManagedMaintenanceMarkerIdentity(after,before)&&targetAfter.isFile()&&!targetAfter.isSymbolicLink()
+   &&sameManagedMaintenanceMarkerIdentity(targetAfter,fileIdentity)&&sameManagedMaintenanceMarkerIdentity(targetAfter,after);
  }catch{return false;}
 }
 

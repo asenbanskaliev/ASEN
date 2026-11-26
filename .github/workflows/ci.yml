@@ -799,7 +799,9 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1 || { echo "::error::No se permite repetir este ensayo"; exit 1; }
           marker="<!-- asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA -->"
           comments="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments"
-          if gh api "$comments" --paginate --jq '.[].body' | grep -Fqx "$marker"; then
+          commentBodies="$RUNNER_TEMP/asen-t06-comments.txt"
+          gh api "$comments" --paginate --jq '.[].body' > "$commentBodies"
+          if grep -Fqx -- "$marker" "$commentBodies"; then
             echo "::error::Este SHA ya consumió la autorización NVIDIA"
             exit 1
           fi
@@ -885,7 +887,9 @@ jobs:
           test "$GITHUB_RUN_ATTEMPT" = 1 || { echo "::error::No se permite repetir las sesiones Pi"; exit 1; }
           marker="<!-- asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA -->"
           comments="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments"
-          if gh api "$comments" --paginate --jq '.[].body' | grep -Fqx "$marker"; then
+          commentBodies="$RUNNER_TEMP/asen-t06-comments.txt"
+          gh api "$comments" --paginate --jq '.[].body' > "$commentBodies"
+          if grep -Fqx -- "$marker" "$commentBodies"; then
             echo "::error::Este SHA ya consumió la autorización de sesiones Pi"
             exit 1
           fi
@@ -943,8 +947,11 @@ jobs:
         shell: pwsh
         run: |
           node --import tsx --test tests/managed-install.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --import tsx --test tests/managed-maintenance-lock.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --import tsx --test --test-name-pattern="upgrade activates v2|fails its pre-activation|breaks only after activation|interrupted upgrade|unhealthy automatic rollback" tests/t09-lifecycle.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
   # Ensayo adicional exclusivamente por etiqueta manual de un solo evento,

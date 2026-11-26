@@ -432,7 +432,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostStatusSnapshot:AsenPanelSnapshot|undefined;
-  let hostRefreshGeneration=0,hostPressureGeneration=0;
+  let hostRefreshGeneration=0,hostPressureGeneration=0,hostObservationGeneration=0;
   let hostCompactionObserver:ReturnType<typeof createCompactionPressureObserver>|undefined;
   let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string;ctx:CommandContext}>|undefined;
   const stopHostCompactionObserver=()=>{
@@ -447,24 +447,27 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const refreshEpoch=panelEpoch;
    const generation=pressureOnly?hostRefreshGeneration:++hostRefreshGeneration;
    const pressureGeneration=pressureOnly?++hostPressureGeneration:0;
+   const observation=++hostObservationGeneration;
    if(hostStatusClosed||ctx?.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setStatus!=="function"||!ctx.sessionManager?.getSessionId?.()){
     clearHostStatus();return;
    }
    if(hostStatusUI&&hostStatusUI!==ctx.ui)clearHostStatus();
    hostStatusUI=ctx.ui;
    try{
-    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),settings=hostSettings(),settingsSnapshot=settingsFingerprint(settings),hostStatus=observeHostStatus(ctx,settings),tone=hostStatus.context.state;
+    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),settings=hostSettings(),settingsSnapshot=settingsFingerprint(settings),hostStatus=observeHostStatus(ctx,settings);
     if(pressureOnly&&!hostStatusSnapshot)return;
     const observed=pressureOnly?undefined:snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
-    if((pressureOnly?pressureGeneration!==hostPressureGeneration:generation!==hostRefreshGeneration)||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    if((pressureOnly&&(pressureGeneration!==hostPressureGeneration||observation!==hostObservationGeneration))||(!pressureOnly&&generation!==hostRefreshGeneration)||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const changes=pressureOnly?hostStatusSnapshot?.changes:observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
+    const publishedHostStatus=observation===hostObservationGeneration?hostStatus:hostStatusSnapshot?.hostStatus??hostStatus;
+    const tone=publishedHostStatus.context.state;
     const permission=permissionSession.mode(ctx);
     const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
     const review=live&&todoStorePromise?derivePanelReview({
      todos:live.todos,agents:live.agents,jobs:live.jobs,todosObserved:true
     }):undefined;
-    const info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus,
+    const info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus:publishedHostStatus,
      ...(review?.known&&review.pending?{review:{pending:review.pending}}:{}),
      ...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})};
     // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
@@ -476,7 +479,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     hostStatusSnapshot=info;
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
     ensureHostCompactionObserver(ctx,settingsSnapshot);
-   }catch{if(refreshEpoch===panelEpoch&&(pressureOnly?pressureGeneration===hostPressureGeneration:generation===hostRefreshGeneration)&&!hostStatusClosed)clearHostStatus();}
+   }catch{if(refreshEpoch===panelEpoch&&observation===hostObservationGeneration&&(pressureOnly?pressureGeneration===hostPressureGeneration:generation===hostRefreshGeneration)&&!hostStatusClosed)clearHostStatus();}
   };
   const ensureHostCompactionObserver=(ctx:CommandContext,initial:string):void=>{
    const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;

@@ -89,11 +89,17 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  assert.ok(job.includes("t06-nvidia-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}"));
  assert.ok(job.includes("asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA"));
  assert.ok(job.includes("gh api --method POST"));
+ assert.ok(job.includes('gh api "$comments" --paginate --jq \'[].body\' > "$commentBodies"'));
+ assert.ok(job.includes('if grep -Fqx -- "$marker" "$commentBodies"; then'));
+ assert.doesNotMatch(job,/if gh api .*--paginate --jq/u,"La consulta fallida no puede habilitar el ensayo");
  assert.ok(job.includes("test \"$GITHUB_RUN_ATTEMPT\" = 1"));
  const piNative=ci.slice(ci.indexOf("\n  t06-nvidia-pi-native:"),ci.indexOf("\n\n  managed-update-windows:"));
  assert.ok(piNative.includes("pull_request.number == 61"));
  assert.ok(piNative.includes("pull_request.number == 149"));
  assert.ok(piNative.includes("asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA"));
+ assert.ok(piNative.includes('gh api "$comments" --paginate --jq \'[].body\' > "$commentBodies"'));
+ assert.ok(piNative.includes('if grep -Fqx -- "$marker" "$commentBodies"; then'));
+ assert.doesNotMatch(piNative,/if gh api .*--paginate --jq/u,"La consulta fallida no puede habilitar las sesiones Pi");
  assert.ok(piNative.includes("maxConcurrency:2")===false,"La concurrencia se limita dentro del script Pi");
  assert.ok(job.includes('index("asen-t06-nvidia-una-vez")'));
  assert.ok(!job.includes("pull_request.number == 150"));
@@ -101,7 +107,7 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  for(const model of ["nvidia/nemotron-3.5-lightning-30b-a3b","nvidia/nemotron-3.5-super-vl-120b-a12b"])assert.ok(probe.includes(model));
  assert.ok(probe.includes("distinctModelIdsVerified"));assert.ok(probe.includes("retryCount:0"));
  const windowsStart=ci.indexOf("\n  managed-update-windows:");
- const windowsEnd=ci.indexOf("\\n  generated-code-docker-sandbox:",windowsStart);
+ const windowsEnd=ci.indexOf("\n  generated-code-docker-sandbox:",windowsStart);
  assert.ok(windowsStart>=0&&windowsEnd>windowsStart);
  const windows=ci.slice(windowsStart,windowsEnd);
  assert.ok(windows.includes("runs-on: windows-latest"));
