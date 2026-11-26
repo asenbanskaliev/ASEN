@@ -178,7 +178,8 @@ export async function probeManagedCliVersion(input:ManagedCliProbeRequest):Promi
   let reason="maintenance-unavailable";
   if(!attempts&&error instanceof ManagedMaintenanceLockError){
    if(error.code==="LOCK_CANCELLED")reason="cancelled-before-launch";
-   else if(error.code==="ROOT_CHANGED"||error.code==="OWNED_ROOT_REQUIRED")reason="candidate-drift";
+   else if(error.code==="ROOT_CHANGED")reason="candidate-drift-root-changed";
+   else if(error.code==="OWNED_ROOT_REQUIRED")reason="owned-installation-not-recognized";
   }
   const detail=errorText(error)+(attempts?`; prior reason: ${result.reason??"none"}; prior error: ${result.error??"none"}`:"");
   result={...result,launchAttempts:attempts,cliVersion:attempts?"ambiguous":"not-run",reason,error:errorText(detail),
