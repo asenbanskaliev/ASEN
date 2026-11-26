@@ -69,7 +69,7 @@ export function createCompactionPressureObserver(options:Readonly<{
  intervalMs?:number;
  schedule?:(callback:()=>void,delayMs:number)=>ReturnType<typeof setTimeout>;
  cancel?:(timer:ReturnType<typeof setTimeout>)=>void;
-}>):Readonly<{stop:()=>void;synchronize:(value:CompactionPressure|undefined)=>void}>{
+}>):Readonly<{stop:()=>void;synchronize:(value:CompactionPressure|undefined)=>boolean}>{
  const requested=options.intervalMs??5000;
  if(!Number.isFinite(requested)||requested<0)throw new Error("G02: intervalo de observación no válido");
  const intervalMs=Math.max(1000,Math.min(30000,Math.floor(requested)));
@@ -83,7 +83,7 @@ export function createCompactionPressureObserver(options:Readonly<{
  let last=initialized?fingerprint(options.initial):"";
  const isCurrent=()=>{try{return options.current();}catch{return false;}};
  const stop=()=>{stopped=true;if(timer!==undefined)cancel(timer);timer=undefined;};
- const synchronize=(value:CompactionPressure|undefined)=>{last=fingerprint(value);initialized=true;};
+ const synchronize=(value:CompactionPressure|undefined)=>{if(stopped)return false;last=fingerprint(value);initialized=true;return true;};
  const poll=()=>{
   if(stopped)return;
   if(!isCurrent()){stop();return;}

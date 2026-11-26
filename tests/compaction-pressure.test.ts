@@ -125,11 +125,12 @@ test("G02 sincroniza el último estado publicado antes del siguiente sondeo",()=
  const observer=createCompactionPressureObserver({initial:{state:"off"},read:()=>reading,current:()=>true,onChange:()=>{changes++;},
   schedule:callback=>{pending=callback;return 1 as unknown as ReturnType<typeof setTimeout>;},cancel:()=>{}});
  // Simula una publicación intermedia de presión disponible antes del siguiente sondeo.
- observer.synchronize({state:"available",usedTokens:1,windowTokens:10,reserveTokens:2,thresholdTokens:8,remainingTokens:7,percent:12.5,atOrAboveThreshold:false});
+ assert.equal(observer.synchronize({state:"available",usedTokens:1,windowTokens:10,reserveTokens:2,thresholdTokens:8,remainingTokens:7,percent:12.5,atOrAboveThreshold:false}),true);
  // La configuración vuelve a desactivada antes del siguiente sondeo.
  reading={state:"off"};pending?.();
  assert.equal(changes,1);
  observer.stop();
+ assert.equal(observer.synchronize({state:"off"}),false,"un observador detenido no puede reutilizarse");
 });
 
 
