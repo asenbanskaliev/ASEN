@@ -124,15 +124,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M2-g2-preparar-pi16-lock-144",
-        "package": "M2-G01",
-        "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-        "branch": "feat/asen-equipo-E-M2-g2-preparar-pi16-lock-144",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-revision",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -177,7 +170,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Preparar lock reproducible de Pi 1.6.0 con GitHub Actions de solo lectura y validar compilación; no admitir #144 sin revisión.",
+      "next": "Revisión exacta #144; comprobar generación de lock #145, incorporar solo manifiesto/lock verificados y adaptar matriz de desarrollo; no fusionar flujo experimental.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -711,7 +704,7 @@
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
-        "next": "Repetir matriz en #144; después alinear dependencias si procede.",
+        "next": "Comprobar evidencia de #145, aplicar manifiesto y lock reales a candidato nuevo, actualizar pruebas y repetir CI.",
         "evidence": {
           "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
           "matrix": 45832618166,
@@ -725,7 +718,15 @@
           "confirmed": false,
           "requestedCommentId": 7192497097
         },
-        "candidatePR": 144
+        "candidatePR": 144,
+        "lockPreparation": {
+          "pr": 145,
+          "sha": "de48e9181f4eeca3b4cb1afd53d279c2414b21ca",
+          "branch": "feat/asen-equipo-E-M2-g2-preparar-pi16-lock-144",
+          "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+          "state": "espera-ci",
+          "scope": "Experimento solo lectura: generar lock exacto Pi 1.6.0, conservar mínimo 1.2, instalar y comprobar compilación. No admitir ni fusionar flujo auxiliar."
+        }
       },
       "G02": {
         "state": "espera-ci",
