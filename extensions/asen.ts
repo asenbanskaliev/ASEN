@@ -198,7 +198,9 @@ function terminalColumns():number{const columns=Number.isSafeInteger(process.std
 export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>AsenExtensionFacade {
  const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;
  return pi=>{
-  const observeHostStatus=(ctx:CommandContext)=>projectHostStatus(ctx,undefined,typeof pi.getSettings==="function"?()=>pi.getSettings!():undefined);
+  const hostSettings=()=>{try{return typeof pi.getSettings==="function"?pi.getSettings():undefined;}catch{return undefined;}};
+  const settingsFingerprint=(value:unknown)=>{try{return JSON.stringify(value)??"undefined";}catch{return "unserializable";}};
+  const observeHostStatus=(ctx:CommandContext,settings=hostSettings())=>projectHostStatus(ctx,undefined,()=>settings);
   const registerRaw=pi.registerCommand?.bind(pi);
   if(!registerRaw)throw new Error("ASEN extension requires Pi command registration");
   // UFC-M1-04: registered handlers are captured so keymap shortcuts can invoke the very
@@ -450,7 +452,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(hostStatusUI&&hostStatusUI!==ctx.ui)clearHostStatus();
    hostStatusUI=ctx.ui;
    try{
-    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),hostStatus=observeHostStatus(ctx),tone=hostStatus.context.state;
+    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),settings=hostSettings(),settingsSnapshot=settingsFingerprint(settings),hostStatus=observeHostStatus(ctx,settings),tone=hostStatus.context.state;
     if(pressureOnly&&!hostStatusSnapshot)return;
     const observed=pressureOnly?undefined:snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
@@ -472,18 +474,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      renderAsenStatusLine(info,width);
     hostStatusSnapshot=info;
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
-    ensureHostCompactionObserver(ctx,hostStatus.compactionPressure);
+    ensureHostCompactionObserver(ctx,settingsSnapshot);
    }catch{if((pressureOnly?pressureGeneration===hostPressureGeneration:generation===hostRefreshGeneration)&&!hostStatusClosed)clearHostStatus();}
   };
-  const ensureHostCompactionObserver=(ctx:CommandContext,initial:CompactionPressure|undefined):void=>{
+  const ensureHostCompactionObserver=(ctx:CommandContext,initial:string):void=>{
    const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;
    if(typeof pi.getSettings!=="function"||ctx.mode!=="tui"||ctx.hasUI!==true||!sessionId||hostStatusClosed)return;
-   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui&&!hostCompactionOwner.ctx.signal?.aborted&&hostCompactionObserver?.synchronize(initial))return;
+   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui&&!hostCompactionOwner.ctx.signal?.aborted&&hostCompactionObserver?.active()){hostCompactionObserver.synchronize(initial);return;}
    stopHostCompactionObserver();
    hostCompactionOwner={sessionId,cwd,ui,ctx};
    hostCompactionObserver=createCompactionPressureObserver({
     initial,
-    read:()=>observeHostStatus(ctx).compactionPressure,
+    read:()=>settingsFingerprint(hostSettings()),
     current:()=>!hostStatusClosed&&!ctx.signal?.aborted&&hostStatusUI===ui&&ctx.mode==="tui"&&ctx.hasUI===true&&
      ctx.cwd===cwd&&ctx.sessionManager?.getSessionId?.()===sessionId,
     onChange:()=>{void refreshHostStatus(ctx,true);}
