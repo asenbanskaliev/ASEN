@@ -184,7 +184,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar la corrección de propiedad física G08 en el SHA 315fc98; repetir CI, Release Gate, Pi y CodeRabbit. Conservar globalFull false hasta el ensayo NVIDIA/Pi exacto.",
+      "next": "Validar SHA 315fc98: CI 45890471242, Release Gate 45890471359, Pi 1.2 45890471273 y CI rápida 45890472526; CodeRabbit solicitada en comentario 7202590244.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
@@ -270,16 +270,44 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "hallazgo-G08-physical-root-corregido-espera-ci-y-revision-exactas",
+      "reviewState": "CodeRabbit-full-review-solicitada-SHA-315fc98",
       "latestValidation": {
         "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
-        "state": "pendiente-inicio-GitHub",
-        "superseded": {
-          "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
-          "ci": 45888573325,
-          "releaseGate": 45888573368
-        },
-        "runs": [],
+        "state": "en-curso",
+        "runs": [
+          {
+            "name": "CI",
+            "id": 45890471242,
+            "status": "queued"
+          },
+          {
+            "name": "CI rápida",
+            "id": 45890472526,
+            "status": "in_progress"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45890471359,
+            "status": "in_progress"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45890471186,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45890471273,
+            "status": "in_progress"
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 45890475093,
+            "status": "completed",
+            "conclusion": "skipped"
+          }
+        ],
         "globalFull": false
       },
       "validationOwner": {
@@ -969,10 +997,10 @@
         "unresolved": 0
       }
     },
-    "m2": "M2 abierta: G02 corregido en 586f7a0; G08 alias de raíz física parcial corregido en 315fc98; CI/Release Gate/revisión exactos y NVIDIA/Pi real pendientes",
+    "m2": "M2 abierta: G02 y G08 corregidos en 315fc98; CI/Release Gate/Pi 1.2/quick y revisión CodeRabbit exactos en curso; ensayo NVIDIA/Pi real pendiente",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T21:25:00Z",
+    "updatedAt": "2026-11-26T21:30:00Z",
     "g02Head": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c"
   },
   "modelCallException": {
@@ -1014,5 +1042,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T21:25:00Z"
+  "updatedAt": "2026-11-26T21:30:00Z"
 }
