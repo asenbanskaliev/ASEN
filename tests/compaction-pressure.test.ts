@@ -117,3 +117,17 @@ test("G02 reconcilia el primer sondeo con el estado publicado antes de la espera
  assert.equal(refreshes,1);
  observer.stop();assert.equal(timers[0]?.cancelled,true);
 });
+
+
+test("G02 sincroniza el último estado publicado antes del siguiente sondeo",()=>{
+ let reading:ReturnType<typeof projectCompactionPressure>={state:"off"},changes=0;
+ let pending:(()=>void)|undefined;
+ const observer=createCompactionPressureObserver({initial:{state:"off"},read:()=>reading,current:()=>true,onChange:()=>{changes++;},
+  schedule:callback=>{pending=callback;return 1 as unknown as ReturnType<typeof setTimeout>;},cancel:()=>{}});
+ // Simula una publicación intermedia de presión disponible antes del siguiente sondeo.
+ observer.synchronize({state:"available",usedTokens:1,windowTokens:10,reserveTokens:2,thresholdTokens:8,remainingTokens:7,percent:12.5,atOrAboveThreshold:false});
+ // La configuración vuelve a desactivada antes del siguiente sondeo.
+ reading={state:"off"};pending?.();
+ assert.equal(changes,1);
+ observer.stop();
+});

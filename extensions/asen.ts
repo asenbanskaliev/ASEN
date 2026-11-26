@@ -473,7 +473,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const ensureHostCompactionObserver=(ctx:CommandContext,initial:CompactionPressure|undefined):void=>{
    const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;
    if(typeof pi.getSettings!=="function"||ctx.mode!=="tui"||ctx.hasUI!==true||!sessionId||hostStatusClosed)return;
-   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui)return;
+   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui){hostCompactionObserver?.synchronize(initial);return;}
    stopHostCompactionObserver();
    hostCompactionOwner={sessionId,cwd,ui};
    hostCompactionObserver=createCompactionPressureObserver({
