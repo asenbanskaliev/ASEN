@@ -43,9 +43,11 @@ function wait(ms:number,signal?:AbortSignal):Promise<void>{
  });
 }
 async function physicalRoot(root:string):Promise<Stats>{
- const info=await lstat(root);
- if(!info.isDirectory()||info.isSymbolicLink()||canonical(await realpath(root))!==canonical(root))fail("ROOT_CHANGED","Managed maintenance root is not a canonical regular directory");
- return info;
+ const lexical=path.resolve(root),info=await lstat(lexical);
+ if(!info.isDirectory()||info.isSymbolicLink())fail("ROOT_CHANGED","Managed maintenance root is not a regular directory");
+ const resolved=await realpath(lexical),resolvedInfo=await lstat(resolved);
+ if(!resolvedInfo.isDirectory()||resolvedInfo.isSymbolicLink()||!same(info,resolvedInfo))fail("ROOT_CHANGED","Managed maintenance root identity changed during canonicalization");
+ return resolvedInfo;
 }
 async function unchangedRoot(root:string,expected:Stats):Promise<void>{
  if(!same(expected,await physicalRoot(root)))fail("ROOT_CHANGED","Managed maintenance root identity changed");
