@@ -196,11 +196,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Esperar y resolver validaciones del SHA b25f1c97; revisar si G08 queda conectado a una ruta ejecutable de actualización; habilitar T06 solo con todas las puertas de ese SHA.",
+      "next": "Validar gates exactos de 6906e949; revisar G08 y hilos nuevos; ejecutar NVIDIA acotado solo después de CI completa, Pi 1.2/1.6, Windows y CodeRabbit sin bloqueos.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
-      "sha": "b25f1c9722e4eb58602b07164cfdbe0bf4096a32",
+      "sha": "6906e949781e268cdfe5e4742a66894fa18a2d33",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -252,7 +252,7 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "CI rápida, CI completa, Release Gate, Pi 1.2 y Windows pendientes para SHA b25f1c97; arquitectura correcta. Revisiones previas de CodeRabbit reparadas; revisión del SHA actual solicitada. El gate NVIDIA continúa sin etiqueta ni llamadas.",
+      "tests": "SHA b25f1c97 falló por el código de error compartido; corregido como error propio en 6906e949. Gates del nuevo SHA pendientes. CodeRabbit solicitado sobre el código actual.",
       "files": [
         "extensions/asen.ts"
       ],
@@ -938,11 +938,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; G02 mejorado y G08 con diario idempotente, bloqueo de PID activo, restauración y cancelación; validaciones exactas en curso; ensayo NVIDIA bloqueado por puertas",
+    "m2": "abierta; corrección del error G08 publicada en 6906e949; validaciones y revisión exactas pendientes; T06 no ejecutado",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:20:00Z",
-    "g02Head": "b25f1c9722e4eb58602b07164cfdbe0bf4096a32"
+    "updatedAt": "2026-11-26T19:25:00Z",
+    "g02Head": "6906e949781e268cdfe5e4742a66894fa18a2d33"
   },
   "modelCallException": {
     "enabled": true,
