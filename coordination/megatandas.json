@@ -124,8 +124,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-revision",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-pi16-dependencias-144",
+        "package": "M2-G01",
+        "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+        "branch": "feat/asen-equipo-E-M2-g2-pi16-dependencias-144",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -170,7 +177,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Revisión exacta #144; comprobar generación de lock #145, incorporar solo manifiesto/lock verificados y adaptar matriz de desarrollo; no fusionar flujo experimental.",
+      "next": "Recuperar manifiesto/lock de salida exacta y comprobar SHA256, adaptar expectativas de matriz, mantener candidato #144 sin admitir.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -724,8 +731,15 @@
           "sha": "de48e9181f4eeca3b4cb1afd53d279c2414b21ca",
           "branch": "feat/asen-equipo-E-M2-g2-preparar-pi16-lock-144",
           "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-          "state": "espera-ci",
-          "scope": "Experimento solo lectura: generar lock exacto Pi 1.6.0, conservar mínimo 1.2, instalar y comprobar compilación. No admitir ni fusionar flujo auxiliar."
+          "state": "prueba-superada",
+          "scope": "Experimento solo lectura: generar lock exacto Pi 1.6.0, conservar mínimo 1.2, instalar y comprobar compilación. No admitir ni fusionar flujo auxiliar.",
+          "evidence": {
+            "run": 45848775938,
+            "job": 140009311088,
+            "sha": "de48e9181f4eeca3b4cb1afd53d279c2414b21ca",
+            "result": "success",
+            "scope": "generación, instalación, check:fast y build en Linux"
+          }
         }
       },
       "G02": {
