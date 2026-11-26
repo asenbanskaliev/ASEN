@@ -138,8 +138,17 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "validando",
-      "lease": null,
+      "state": "corrigiendo-fallo-ci",
+      "lease": {
+        "id": "E-20261126T-github-actor-regex",
+        "task": "Ajustar prueba de admisión de ramas para tolerar comparación segura del autor del marcador T06",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "base": "472547ae809be6e1a8f485ff404eed3bc5953688",
+        "files": [
+          "tests/ci-specialized-gates.test.ts"
+        ],
+        "startedAt": "2026-11-26T22:40:00Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -184,7 +193,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Esperar CI completa, CI rápida, Release Gate, Phase 0, Pi 1.2 y CodeRabbit exactos del SHA 472547ae; solo con todo correcto se permite la única prueba NVIDIA/Pi.",
+      "next": "Corregir el alcance del regex de la prueba de ramas; repetir validación exact-SHA y revisión.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
