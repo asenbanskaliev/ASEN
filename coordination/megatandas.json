@@ -138,7 +138,7 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-validacion",
+      "state": "validacion-en-curso",
       "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
@@ -184,7 +184,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar el G08 Windows y la CI completa del SHA 762c9cb; mantener cerradas las llamadas NVIDIA hasta que CI, Release Gate y revisión exacta estén aprobados.",
+      "next": "Esperar resultado de G08 en CI exacta 762c9cb; auditar logs en cuanto acabe y revisar resto de puertas. CodeRabbit b186 no sustituye revisión del SHA final.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
@@ -273,16 +273,41 @@
       "reviewState": "corregidos-en-b186-pendientes-de-revision-y-pruebas-exactas",
       "latestValidation": {
         "sha": "762c9cb7bc46fb0da07f02cdd10afa4bc257bdea",
-        "state": "pendiente-de-ejecucion",
-        "previousSha": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
-        "previousEvidence": {
-          "ciQuick": "success",
-          "pi12": "success",
-          "architecture": "success",
-          "g08Windows": "failure",
-          "cause": "Comparador síncrono no coincidió con realpath asíncrono"
-        },
-        "piFreeSmoke": "skipped",
+        "state": "en-curso",
+        "runs": [
+          {
+            "name": "CI",
+            "id": 45886658455,
+            "status": "queued"
+          },
+          {
+            "name": "CI rápida",
+            "id": 45886658441,
+            "status": "in_progress"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45886658480,
+            "status": "in_progress"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45886658510,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45886658452,
+            "status": "in_progress"
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 45886658496,
+            "status": "completed",
+            "conclusion": "skipped"
+          }
+        ],
         "globalFull": false
       },
       "validationOwner": {
