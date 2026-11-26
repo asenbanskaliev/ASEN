@@ -429,6 +429,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
+  let hostStatusSnapshot:AsenPanelSnapshot|undefined;
   let hostRefreshGeneration=0;
   let hostCompactionObserver:ReturnType<typeof createCompactionPressureObserver>|undefined;
   let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string;ctx:CommandContext}>|undefined;
@@ -438,9 +439,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const clearHostStatus=()=>{
    stopHostCompactionObserver();
    try{hostStatusUI?.setStatus?.("asen:host",undefined);}catch{/* Optional presentation only. */}
-   hostStatusUI=undefined;
+   hostStatusUI=undefined;hostStatusSnapshot=undefined;
   };
-  const refreshHostStatus=async(ctx:CommandContext):Promise<void>=>{
+  const refreshHostStatus=async(ctx:CommandContext,pressureOnly=false):Promise<void>=>{
    const generation=++hostRefreshGeneration;
    if(hostStatusClosed||ctx?.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setStatus!=="function"||!ctx.sessionManager?.getSessionId?.()){
     clearHostStatus();return;
@@ -449,23 +450,27 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    hostStatusUI=ctx.ui;
    try{
     const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),hostStatus=observeHostStatus(ctx),tone=hostStatus.context.state;
-    const observed=snapshotWorkspaceRoots([identity.projectId])[0];
+    const previous=hostStatusSnapshot;
+    if(pressureOnly&&!previous)return;
+    const observed=pressureOnly?undefined:snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
     if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
-    const changes=observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
+    const changes=pressureOnly?previous?.changes:observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
     const permission=permissionSession.mode(ctx);
     const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
     const review=live&&todoStorePromise?derivePanelReview({
      todos:live.todos,agents:live.agents,jobs:live.jobs,todosObserved:true
     }):undefined;
-    const width=terminalColumns(),info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus,
+    const info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus,
      ...(review?.known&&review.pending?{review:{pending:review.pending}}:{}),
      ...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})};
     // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
     // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
+    const width=terminalColumns();
     const line=width<140?renderAsenT11CompactStatus(info,Math.max(1,width),
      {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable,agentFlowUnavailable:t11ChildFlowUnavailable}):
      renderAsenStatusLine(info,width);
+    hostStatusSnapshot=info;
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
     ensureHostCompactionObserver(ctx,hostStatus.compactionPressure);
    }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
@@ -481,7 +486,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     read:()=>observeHostStatus(ctx).compactionPressure,
     current:()=>!hostStatusClosed&&!ctx.signal?.aborted&&hostStatusUI===ui&&ctx.mode==="tui"&&ctx.hasUI===true&&
      ctx.cwd===cwd&&ctx.sessionManager?.getSessionId?.()===sessionId,
-    onChange:()=>{void refreshHostStatus(ctx);}
+    onChange:()=>{void refreshHostStatus(ctx,true);}
    });
   };
   // Immutable, session-scoped display data. Never performs an agent action.
