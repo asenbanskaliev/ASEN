@@ -1,0 +1,85 @@
+name: G01 preparar dependencias Pi 1.6
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/pi16-dependency-candidate.yml"
+permissions:
+  contents: read
+concurrency:
+  group: asen-pi16-lock-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  preparar:
+    if: >-
+      github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN' &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-preparar-pi16-lock-144'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "22.19.0"
+      - name: Generar candidato desde el archivo bloqueado actual
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm install --save-dev --save-prefix='^' --package-lock-only --ignore-scripts --no-audit --no-fund @earendil-works/pi-coding-agent@1.6.0
+          node --input-type=module <<'JS'
+          import assert from "node:assert/strict";
+          import {readFileSync,writeFileSync,mkdirSync,copyFileSync} from "node:fs";
+          import {execFileSync} from "node:child_process";
+          import {createHash} from "node:crypto";
+          const name="@earendil-works/pi-coding-agent";
+          const original=JSON.parse(execFileSync("git",["show","HEAD:package.json"],{encoding:"utf8"}));
+          const expected={...original,devDependencies:{...original.devDependencies,[name]:"^1.6.0"}};
+          const pkg=JSON.parse(readFileSync("package.json","utf8"));
+          const lock=JSON.parse(readFileSync("package-lock.json","utf8"));
+          assert.deepEqual(pkg,expected);
+          assert.equal(lock.packages[""].devDependencies[name],"^1.6.0");
+          assert.equal(lock.packages[""].peerDependencies[name],">=1.2.0");
+          assert.equal(lock.packages["node_modules/"+name].version,"1.6.0");
+          for(const [key,value] of Object.entries(lock.packages)){
+            if(!key)continue;
+            assert.ok(!value.link,"No admitir enlaces en el candidato");
+            if(value.resolved){
+              const url=new URL(value.resolved);
+              assert.equal(url.origin,"https://registry.npmjs.org");
+              assert.equal(url.username+url.password+url.search+url.hash,"");
+              assert.ok(typeof value.integrity==="string"&&value.integrity.startsWith("sha"),"Falta integridad: "+key);
+            }
+          }
+          mkdirSync("pi16-lock-evidence");
+          for(const file of ["package.json","package-lock.json"])copyFileSync(file,"pi16-lock-evidence/"+file);
+          const digest=file=>createHash("sha256").update(readFileSync(file)).digest("hex");
+          writeFileSync("pi16-lock-evidence/provenance.json",JSON.stringify({source:process.env.ASEN_EXPECTED_SHA,version:"1.6.0",node:process.version,manifest:digest("package.json"),lock:digest("package-lock.json"),scope:"candidate-only"},null,2)+"\n");
+          // Los dos archivos son públicos del repositorio. Emitir fragmentos
+          // JSON recuperables sin credenciales ni variables del entorno.
+          for(const file of ["package.json","package-lock.json"]){
+            const data=readFileSync(file,"utf8");
+            for(let i=0;i<data.length;i+=2000)console.log("ASEN_PI16_FILE "+file+" "+i+" "+JSON.stringify(data.slice(i,i+2000)));
+            console.log("ASEN_PI16_SHA256 "+file+" "+digest(file));
+          }
+          JS
+      - name: Instalar el candidato y comprobar código con Pi 1.6
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run check:fast
+          npm run build
+      - name: Conservar candidato y procedencia incluso si falla la compilación
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: asen-pi16-lock-${{ github.event.pull_request.head.sha }}
+          path: pi16-lock-evidence
+          if-no-files-found: error
+          retention-days: 14
