@@ -112,8 +112,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M1-g2-136-137-138",
+        "package": "M1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+        "branch": "feat/asen-equipo-E-M1-g2-consolidacion-136-137-138",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -501,7 +508,7 @@
   },
   "gentleShell5": {
     "planBranch": "feat/flujo-de-agentes-20261115",
-    "planSha": "780ce902a5935040f1b76eb08d8c76b7f9002d3b",
+    "planSha": "793cffb5b970674d7f4fe03e42cd0d355cc2b997",
     "planPath": "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
@@ -536,5 +543,18 @@
         "state": "pendiente"
       }
     }
+  },
+  "roadmap": {
+    "active": "M1",
+    "plan": "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
+    "order": [
+      "M1 Estabilización",
+      "M2 Modelos y compatibilidad",
+      "M3 Delegación y continuidad",
+      "M4 Calidad y seguridad",
+      "M5 Contexto y rendimiento",
+      "M6 Aceptación"
+    ],
+    "globalFull": false
   }
 }
