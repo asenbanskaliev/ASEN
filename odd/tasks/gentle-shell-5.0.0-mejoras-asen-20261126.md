@@ -59,7 +59,7 @@ Consulta realizada directamente en GitHub. Las evidencias quedan ligadas al SHA 
 - **M2/#148** — SHA `e1e225d1951f819a055ac597a798171b70a71b0f`: CI, matriz Pi, arquitectura, Release Gate, Pi 1.2 y CI rápida correctos. Pi Free Smoke quedó `skipped`. CodeRabbit recibió solicitud de revisión completa; aún no hay resultado de esa revisión.
 - **G02/#149** — SHA `8acbfe56284077bb94c5396dfb3a12659d56fad4`: arquitectura, Release Gate, Pi 1.2 y CI rápida correctos. La CI completa seguía en curso en el corte; Pi Free Smoke quedó `skipped`. La revisión CodeRabbit fue solicitada y está pendiente.
 - **G08 sigue pendiente:** no hay implementación de actualización Windows recuperable en la cadena auditada. Hace falta una PR aislada con bloqueo concurrente, rollback, cancelación, comprobación de integridad y versión, y pruebas exactas.
-- Por tanto, **M2 no está cerrada**. No se deben reutilizar los resultados de un SHA distinto ni contar un trabajo omitido como aprobado.
+- Por tanto, **M2 no está cerrada**. La matriz Pi sin modelos y la prueba de cola no acreditan la identidad efectiva ni la independencia de dos modelos ejecutados; esa evidencia continúa pendiente bajo `noModelCalls:true`. No se deben reutilizar resultados de un SHA distinto ni contar trabajos omitidos como aprobados.
 
 ### Auditoría de M3 sobre el código de #115
 
