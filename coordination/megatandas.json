@@ -138,18 +138,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-20261126T-t06-marker-authorship",
-        "task": "Vincular el consumo de permiso T06 a marcadores escritos por GitHub Actions y probar marcador ajeno",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
-        "files": [
-          ".github/workflows/ci.yml",
-          "tests/flujo-agentes-nvidia-workflow.test.ts"
-        ],
-        "startedAt": "2026-11-26T22:05:00Z"
-      },
+      "state": "validando",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -194,11 +184,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Proteger la lectura de marcadores T06 con identidad github-actions[bot] para no permitir bloqueo por comentario ajeno; añadir prueba negativa; validar nuevo SHA.",
+      "next": "Esperar CI completa, CI rápida, Release Gate, Phase 0, Pi 1.2 y CodeRabbit exactos del SHA 472547ae; solo con todo correcto se permite la única prueba NVIDIA/Pi.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
+      "sha": "472547ae809be6e1a8f485ff404eed3bc5953688",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -257,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "CI 45890471242 success en todos los shards/sistemas, matriz Pi y T02–T11; G08 Windows job 140151640110 success e incluyó la regresión de alias 8.3 con inventario alterado (log: test pass). CI rápida 45890472526, Phase0 45890471186, Pi1.2 45890471273 y Release Gate 45890471359 success. CodeRabbit exacta 315fc98 y ensayo NVIDIA/Pi aún pendientes.",
+      "tests": "El SHA 315fc98 tuvo CI/gates correctos y CodeRabbit sin hallazgos nuevos. SHA 472547ae añade filtro github-actions[bot] a la lectura de marcadores T06 y prueba negativa contra comentarios ajenos; se valida de nuevo desde cero.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -280,75 +270,58 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "hilos-previos-resueltos-full-review-CodeRabbit-315fc98-en-curso",
+      "reviewState": "pendiente-solicitar-revision-completa-SHA-472547ae",
       "latestValidation": {
-        "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
-        "state": "CI-y-gates-success-CodeRabbit-pendiente",
+        "sha": "472547ae809be6e1a8f485ff404eed3bc5953688",
+        "state": "en-curso-seguridad-T06; ensayo real bloqueado",
         "runs": [
           {
-            "name": "CI",
-            "id": 45890471242,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "CI rápida",
-            "id": 45890472526,
+            "name": "Phase 0 Architecture",
+            "id": 45892862337,
             "status": "completed",
             "conclusion": "success"
           },
           {
             "name": "Release Gate",
-            "id": 45890471359,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 45890471186,
-            "status": "completed",
-            "conclusion": "success"
+            "id": 45892862358,
+            "status": "in_progress",
+            "conclusion": null
           },
           {
             "name": "Pi 1.2 runtime evidence",
-            "id": 45890471273,
-            "status": "completed",
-            "conclusion": "success"
+            "id": 45892862379,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "CI rápida",
+            "id": 45892862400,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "CI",
+            "id": 45892862395,
+            "status": "queued",
+            "conclusion": null
           },
           {
             "name": "Pi Free Smoke",
-            "id": 45890475093,
+            "id": 45892862350,
             "status": "completed",
             "conclusion": "skipped"
           }
         ],
-        "piMatrix": {
-          "run": 45890471242,
-          "os": [
-            "ubuntu-24.04",
-            "macos-latest",
-            "windows-latest"
-          ],
-          "result": "success"
-        },
-        "g08": {
-          "job": 140151640110,
-          "run": 45890471242,
-          "result": "success",
-          "windowsAliasPartialInventory": "success"
-        },
         "globalFull": false,
         "review": {
-          "requestCommentId": 7202590244,
-          "requestedSha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
-          "status": "in_progress"
+          "status": "pendiente-solicitud-para-SHA-exacto"
         }
       },
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
-        "phase": "CI y revisión",
+        "sha": "472547ae809be6e1a8f485ff404eed3bc5953688",
+        "phase": "CI y revisión independiente",
         "writeReservation": false
       }
     }
@@ -1076,5 +1049,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T22:00:00Z"
+  "updatedAt": "2026-11-26T22:35:00Z"
 }
