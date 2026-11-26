@@ -114,8 +114,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M1-g2-archivo-139",
+        "package": "M1",
+        "base": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+        "branch": "feat/asen-equipo-E-M1-g2-recuperacion-archivo-139",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -160,7 +167,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #139 por SHA exacto y revisión independiente; no admitir hasta todas las puertas. B audita vigencia del perfil antes de despacho; G02 sigue sin conexión.",
+      "next": "Corregir lectura de raíces archivadas después del cierre atómico; preservar comprobaciones del candidato y permisos.",
       "blocker": null,
       "generation": 2,
       "pr": 139,
@@ -481,7 +488,7 @@
       4704551343,
       4705072726
     ],
-    "status": "espera-ci-y-revision",
+    "status": "correccion-ci",
     "globalFull": false,
     "previousCandidate": {
       "pr": 137,
@@ -530,7 +537,14 @@
       "confirmed": false
     },
     "ci": {
-      "conclusion": "pendiente"
+      "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+      "full": 45804701712,
+      "conclusion": "failure",
+      "quick": 45804701639,
+      "architecture": 45804701636,
+      "releaseGate": 45804702600,
+      "pi": 45804701792,
+      "piFreeSmoke": "skipped"
     }
   },
   "gentleShell5": {
