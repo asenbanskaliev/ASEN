@@ -78,3 +78,19 @@ La coordinación actual conserva `noModelCalls:true`. No se ejecutan modelos rea
 5. Actualizar esta tabla solo después de comprobar los resultados, no al publicar la PR.
 
 Registro: [coordination/megatandas.json](https://github.com/asenbanskaliev/ASEN/blob/coordination/asen-megatandas-20261125/coordination/megatandas.json). Última actualización del registro: `655b3940f15a7fcf7d4b696d44fcfcd37c55e6e7`.
+
+
+## Plan operativo actualizado para cerrar M2 — 26/11/2026
+
+La autoridad vigente mantiene `noModelCalls:true` para todo uso general y `globalFull:false`. Se autoriza solo una ejecución de validación NVIDIA en #149, en su rama y SHA exactos, con la etiqueta `asen-t06-nvidia-una-vez` y actor `asenbanskaliev`. La excepción admite como máximo dos solicitudes de 128 tokens: `nvidia/nemotron-3.5-lightning-30b-a3b` y `nvidia/nemotron-3.5-super-vl-120b-a12b`; sin reintentos, alternativas de proveedor, modelos de pago, herramientas Pi ni escrituras. Los dos identificadores aparecen en el catálogo oficial NVIDIA; la disponibilidad de endpoint debe confirmarse en la ejecución. La excepción no se activa hasta que CI completa, Release Gate y revisión completa de CodeRabbit pasen sobre el mismo SHA y las pruebas negativas de autorización estén verdes.
+
+### Puertas concretas de M2
+
+1. **Pi y cola:** aceptar #148 solo con compatibilidad 1.2/1.6, paquete y lock alineados, matriz, cola y pruebas de selección/snapshot en ejecución sobre SHA consolidado. Pi Free Smoke omitida no cuenta como prueba real.
+2. **Perfiles y modelos:** cerrar los hallazgos recientes de B1; añadir comprobación negativa de identidades iguales, registrar proveedor/modelo devueltos y verificar dos modelos NVIDIA distintos en sesiones independientes, sin herramientas ni escritura.
+3. **G02:** terminar CI y Release Gate del SHA exacto de #149; confirmar revisión completa sin hallazgos abiertos. Comprobar indicador de presión en cambios de ajuste, degradación de lectura y ausencia de Git síncrono.
+4. **G08:** implementar actualización transaccional: guardar versión previa, instalar en staging, verificar integridad, activar, y restaurar la previa ante error, cancelación o reinicio. Añadir pruebas Windows de fallo de sustitución, concurrencia, cancelación y recuperación; no tocar la instalación real del usuario.
+5. **Consolidación:** E prepara un candidato único basado en #144 y #148/#149, sin integrar dos veces ancestros. Ejecuta CI, matriz, Pi 1.2 y Release Gate exactos; solicita nueva revisión CodeRabbit para el SHA final.
+6. **Cierre:** registrar SHA, resultado y artefactos. Cerrar M2 solo si todas las puertas pasan. No fusionar ramas protegidas sin admisión y autorización; mantener `globalFull:false` hasta aceptación completa 18+12/P01–P06.
+
+Estado del corte: #149 `c6a2d47c83ab9fe61741f83ecae78ff74c2c82d6` tiene CI rápida, arquitectura, Pi 1.2 y Release Gate correctos; CI completa sigue en curso y CodeRabbit debe publicar la revisión solicitada para ese SHA. Sus resultados anteriores no sustituyen la revisión exacta actual. G08 y el ensayo de dos modelos siguen pendientes.
