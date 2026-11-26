@@ -47,8 +47,8 @@
       "tests": "CI rápida 45709504351, arquitectura 45709504258 y Pi runtime 45709504245 correctos; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 135,
-      "candidateSha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
+      "candidatePR": 137,
+      "candidateSha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179615
@@ -75,8 +75,8 @@
       "tests": "CI rápida 45709037207 y arquitectura 45709037157 correctas; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 135,
-      "candidateSha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
+      "candidatePR": 137,
+      "candidateSha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179608
@@ -88,23 +88,23 @@
       }
     },
     "D": {
-      "state": "correccion-asignada",
+      "state": "espera-candidato",
       "lease": null,
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
-      "pr": 135,
-      "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
-      "next": "4705072726: cleanReadOnly acepta respuesta correlacionada sin agent_end ni agent_settled; reproducible por inspección; falta regresión [message,ack]. Requerir agentEnds===1 en ruta sin settlement y conservar consumo observado separado de totales. Nueva rama D1 g2 desde correctionBase exacta; no reutilizar rama anterior. Entregar código y regresión a E.",
+      "pr": 137,
+      "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+      "next": "Corrección 4705072726 publicada por E; pendiente CI y revisión, no duplicar.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "tests": "Regresiones nuevas publicadas; CI completa y revisión pendientes.",
-      "blocker": "D desactivado; publicación no confirmada",
+      "blocker": null,
       "generation": 2,
-      "candidatePR": 135,
-      "candidateSha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
+      "candidatePR": 137,
+      "candidateSha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
       "correctionBase": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
       "reviewFindings": [
         4705072726
@@ -112,19 +112,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-g2-4705072726-retry-1126",
-        "generation": 2,
-        "package": "E1",
-        "base": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
-        "branch": "feat/asen-equipo-E-E1-g2-metricas-4705072726-r2",
-        "phase": "escritura",
-        "files": [
-          "src/runtime/agents/flow-metrics.ts",
-          "tests/asen-d-flow-usage.test.ts"
-        ]
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -169,11 +158,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Coordinar D1 desde #135 exacta; luego reconciliar #136 con cambios de B/C/D, validar nuevo candidato y revisión por SHA. Revisar riesgo B de perfil obsoleto en lanzamiento; asignar interfaz compartida tras reconciliación A.",
+      "next": "Validar CI completa y revisión exacta de #137; reconciliar #136 y el riesgo B de perfil obsoleto sin duplicar. No integrar hasta puertas superadas.",
       "blocker": null,
       "generation": 2,
-      "pr": 135,
-      "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
+      "pr": 137,
+      "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -232,9 +221,9 @@
         "extensions/asen.ts"
       ],
       "lastAttempt": {
-        "branch": "feat/asen-equipo-E-E1-g2-metricas-4705072726",
-        "codeSha": null,
-        "error": "Error: Reserva no vigente"
+        "pr": 137,
+        "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+        "result": "publicada"
       }
     }
   },
@@ -449,18 +438,7 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {
-    "src/runtime/agents/flow-metrics.ts": {
-      "owner": "E",
-      "previousOwner": "D",
-      "leaseId": "E-g2-4705072726-retry-1126"
-    },
-    "tests/asen-d-flow-usage.test.ts": {
-      "owner": "E",
-      "previousOwner": "D",
-      "leaseId": "E-g2-4705072726-retry-1126"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -479,15 +457,16 @@
     "sha": "ab17255d9569f874e196407ab12bd321ab827acc"
   },
   "consolidation": {
-    "pr": 135,
-    "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
+    "pr": 137,
+    "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
     "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
     "includes": [
       130,
       131,
       132,
       133,
-      134
+      134,
+      135
     ],
     "findings": [
       4701179590,
@@ -497,55 +476,18 @@
       4704551343,
       4705072726
     ],
-    "status": "correccion-requerida",
+    "status": "espera-ci-y-revision",
     "globalFull": false,
     "latestFinding": 4705072726,
-    "ci": {
-      "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
-      "checks": [
-        {
-          "name": "Pi Free Smoke",
-          "id": 45768465460,
-          "status": "completed",
-          "conclusion": "skipped"
-        },
-        {
-          "name": "Phase 0 Architecture",
-          "id": 45768465424,
-          "status": "completed",
-          "conclusion": "success"
-        },
-        {
-          "name": "CI rápida",
-          "id": 45768465490,
-          "status": "completed",
-          "conclusion": "success"
-        },
-        {
-          "name": "Pi 1.2 runtime evidence",
-          "id": 45768465398,
-          "status": "completed",
-          "conclusion": "success"
-        },
-        {
-          "name": "Release Gate",
-          "id": 45768465427,
-          "status": "completed",
-          "conclusion": "success"
-        },
-        {
-          "name": "CI",
-          "id": 45768465518,
-          "status": "completed",
-          "conclusion": "success"
-        }
-      ]
-    },
+    "ci": null,
     "review": {
-      "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
-      "state": "hallazgo-abierto",
-      "commentId": 4705072726,
-      "confirmed": false
+      "confirmed": false,
+      "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+      "previousFinding": 4705072726
+    },
+    "previousCandidate": {
+      "pr": 135,
+      "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
     }
   }
 }
