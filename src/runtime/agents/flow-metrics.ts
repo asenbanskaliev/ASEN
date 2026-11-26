@@ -39,7 +39,8 @@ export function summarizeParentFlow(entries:readonly unknown[]){
  * intentos de un agente. Un fallo, truncamiento o recuperación no puede
  * convertir el consumo observado en el consumo total de ese agente. */
 export function summarizeChildFlow(entry:{record:{id:string;role:string;state:string;createdAt:string;updatedAt:string};events:readonly {state:string;at:string}[];request?:{id:string;role:string;modelFallback?:{chain:readonly unknown[]}};result?:{output:string;id?:string;ok?:boolean}}){
- const starts=entry.events.filter(row=>row.state==="running");
+ // Una respuesta a una pregunta reanuda el mismo intento de ejecución.
+ const starts=entry.events.filter((row,index)=>row.state==="running"&&entry.events[index-1]?.state!=="waiting");
  const terminals=new Set(["completed","failed","cancelled","interrupted"]);
  const terminal=terminals.has(entry.record.state);
  const elapsed=starts.length&&terminal?Date.parse(entry.record.updatedAt)-Date.parse(starts[0]!.at):NaN;

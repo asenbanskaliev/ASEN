@@ -60,3 +60,15 @@ test("La lectura sin alternativas admite una respuesta correlacionada con cierre
  assert.equal(run([message,ended,ack],{...entry.request,id:"otro"}).completeInventory,false);
  assert.equal(run([message,ended,ack],{...entry.request,role:"worker"}).completeInventory,false);
 });
+
+test("Responder a preguntas no añade intentos ni invalida un inventario completo",()=>{
+ const events=[{state:"queued",at},{state:"running",at},{state:"waiting",at:end},
+  {state:"running",at:end},{state:"waiting",at:end},{state:"running",at:end},{state:"completed",at:end}];
+ const complete=build("completed",events,[message,settled]);
+ assert.equal(complete.observedAttempts,1);assert.equal(complete.elapsedMs,5000);
+ assert.equal(complete.completeInventory,true);assert.equal(complete.totalTokens,12);
+ assert.equal(complete.reportedCostUsd,0.01);
+ const interrupted=build("completed",[...events.slice(0,-1),{state:"interrupted",at:end},{state:"running",at:end},{state:"completed",at:end}],[message,settled]);
+ assert.equal(interrupted.observedAttempts,2);assert.equal(interrupted.completeInventory,false);assert.equal(interrupted.totalTokens,null);
+ assert.equal(interrupted.observedUsage.totalTokens,12);
+});

@@ -124,7 +124,8 @@ type ExplorerFallbackConfig=Pick<Parameters<typeof plannedExplorerFallback>[0],"
 /** No ampliar ni sustituir alternativas de una tarea ya seleccionada. */
 export async function assertPlannedExplorerFallbackCurrent(expected:AgentModelFallback,selection:Parameters<typeof plannedExplorerFallback>[0],readCurrent:()=>Promise<ExplorerFallbackConfig>):Promise<void>{
  const current=await readCurrent();
- const actual=plannedExplorerFallback({...selection,profiles:current.profiles,fallbacksByScope:current.fallbacksByScope});
+ const {profiles:_previousProfiles,fallbacksByScope:_previousFallbacks,...persistedSelection}=selection;
+ const actual=plannedExplorerFallback({...persistedSelection,...(current.profiles?{profiles:current.profiles}:{}),...(current.fallbacksByScope?{fallbacksByScope:current.fallbacksByScope}:{})});
  if(JSON.stringify(actual)!==JSON.stringify(expected))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
 }
 type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;profileFallbacksByScope?:Partial<Record<ExplorerProfileOrigin["scope"],ProfileFallbacksFile>>;
