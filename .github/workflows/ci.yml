@@ -753,6 +753,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      issues: write
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
