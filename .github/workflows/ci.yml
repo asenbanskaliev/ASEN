@@ -467,7 +467,7 @@ jobs:
       - name: Pack exact candidate
         shell: bash
         run: npm pack --silent > matrix-package.txt
-      - name: Run eight real Pi host cells
+      - name: Comprobar ocho celdas reales de Pi por sistema
         shell: bash
         run: npm run verify:pi-matrix -- "$(cat matrix-package.txt)" matrix-evidence
       - name: Record executed contract and host evidence
