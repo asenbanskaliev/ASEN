@@ -1044,3 +1044,18 @@ test("upgrade prepares signed version without execution or activation, rejects w
  stdout="";stderr="";assert.equal(await invoke(),0,stderr);assert.equal(JSON.parse(stdout).status,"unchanged");
  await assert.rejects(()=>fs.lstat(marker),{code:"ENOENT"});
 });
+
+test("upgrade stage-only conserva el resultado persistido aunque falle la salida",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("signed-stage-output");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ const args=["managed","upgrade","--manifest",v2.manifestPath,"--signature",v2.signaturePath,"--package-root",v2.dir,"--trust-anchor",v1.anchor,"--stage-only","--yes"];
+ let stderr="",writes=0;
+ const exit=await runAsen(args,{}, {homeDirectory:()=>path.dirname(prefix),stdout:()=>{writes++;throw new Error("salida cerrada");},stderr:text=>{stderr+=text;}});
+ assert.equal(exit,1);assert.equal(writes,1);
+ assert.match(stderr,/resultado staged; no se pudo emitir el informe/u);
+ assert.doesNotMatch(stderr,/refused/u);
+ const observed=await inspectManagedInstall({prefix});
+ assert.equal(observed.status,"owned");
+ if(observed.status==="owned"){assert.equal(observed.activeVersion,"1.0.0");assert.ok(observed.versions.some(x=>x.version==="2.0.0"));}
+});

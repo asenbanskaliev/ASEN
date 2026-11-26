@@ -124,6 +124,10 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
 test("T06 el diagnóstico de permisos está aislado y no concede autorización de modelos",()=>{
  const probe=readFileSync(new URL("../.github/workflows/t06-permission-probe.yml",import.meta.url),"utf8");
  assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151'"));
+ assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M2-g2-reparar-admision-152'"));
+ assert.ok(probe.includes("trap cleanup_on_exit EXIT"));
+ assert.ok(probe.includes("cleanup_label\n          test"));
+ assert.ok(probe.includes("exit \"$status\""));
  assert.match(probe,/github\.event\.pull_request\.head\.repo\.full_name == github\.repository/u);
  assert.match(probe,/issues: write\s+pull-requests: write/u);
  assert.ok(probe.includes('gh api --method DELETE "$issue/labels/$label"'));

@@ -143,8 +143,14 @@ export async function runLifecycleCommand(io:LifecycleCliIo):Promise<number|unde
   const result=action==="install"
    ?await installManaged({prefix,source,trustedKeyPath,protectedPaths,dataHome:path.resolve(dataHome.dir),launcherConfig,confirmed:true})
    :await upgradeManaged({prefix,source,trustedKeyPath,protectedPaths,allowDowngrade:flags.has("--allow-downgrade"),stageOnly:flags.has("--stage-only"),confirmed:true});
-  out(result);
-  return result.status==="installed"||result.status==="unchanged"||result.status==="upgraded"||result.status==="staged"?0:1;
+  const operationExit=result.status==="installed"||result.status==="unchanged"||result.status==="upgraded"||result.status==="staged"?0:1;
+  try{out(result);}catch(error){
+   // La operación ya terminó. Un fallo de salida no equivale a rechazo,
+   // ni autoriza repetir, deshacer o compensar el cambio persistido.
+   try{io.stderr(`ASEN managed ${action}: resultado ${result.status}; no se pudo emitir el informe [${scrub(error)}]. Inspeccionar antes de repetir.\n`);}catch{/* El canal de diagnóstico también puede estar cerrado. */}
+   return 1;
+  }
+  return operationExit;
  }catch(error){
   if(error instanceof ManagedLifecycleError&&error.report)out(error.report);
   const kind=error instanceof ManagedLifecycleError||error instanceof ManagedTrustError||error instanceof HomeBackupError?(error as {code:string}).code:"ERROR";
