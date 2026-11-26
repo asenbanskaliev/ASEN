@@ -45,7 +45,7 @@ test("F5 shellcheck corrections preserve branch cleanliness and provider-safe wo
  assert.match(pi,/export ASEN_RECOVERY_KEY/);
  assert.match(pi,/^  workflow_dispatch:/m);
  assert.doesNotMatch(pi,/^  (?:push|schedule):/m);
- assert.match(release,/throw new Error\("Expected Pi 1\.2\.0, got "\+p\.version\)/);
+ assert.match(release,/throw new Error\("Expected Pi 1\.6\.0, got "\+p\.version\)/);
  assert.match(release,/console\.log\("Using installed Pi "\+p\.version\)/);
  assert.doesNotMatch(release,/\$\{p\.version\}/);
 });

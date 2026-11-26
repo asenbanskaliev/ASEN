@@ -387,8 +387,12 @@ jobs:
             platform: darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
+    concurrency:
+      group: t06-nvidia-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
     permissions:
       contents: read
+      issues: write
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -467,7 +471,7 @@ jobs:
       - name: Pack exact candidate
         shell: bash
         run: npm pack --silent > matrix-package.txt
-      - name: Run eight real Pi host cells
+      - name: Comprobar ocho celdas reales de Pi por sistema
         shell: bash
         run: npm run verify:pi-matrix -- "$(cat matrix-package.txt)" matrix-evidence
       - name: Record executed contract and host evidence
@@ -728,16 +732,20 @@ jobs:
   # Ensayos autenticados solo cuando asenbanskaliev AÑADE el label de un uso
   # asen-t06-nvidia-una-vez. Un synchronize/push visual no consume proveedor.
   # El label persistente NO concede consentimiento Writer ni ejecuta en pushes.
-  # Prueba de API NVIDIA para la PR #61. No ejecuta herramientas Pi ni escribe
-  # código del proyecto. Dos solicitudes de prueba con 128 tokens de salida máximo.
-  # No se amplía la autorización del escenario T04/T05 ni se acepta un modelo de pago.
+  # Prueba NVIDIA solo para PR #61 o la autorización de una vez de #149.
+  # #149 se desarma por SHA antes de solicitar modelos; sin herramientas ni escrituras.
   t06-nvidia-free-api:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 61 &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'feat/flujo-de-agentes-20261115' &&
+      (
+       (github.event.pull_request.number == 61 &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.head_ref == 'feat/flujo-de-agentes-20261115') ||
+       (github.event.pull_request.number == 149 &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.head_ref == 'feat/asen-equipo-E-M2-g2-compactacion-148')
+      ) &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'asen-t06-nvidia-una-vez' &&
       github.actor == 'asenbanskaliev'
@@ -755,6 +763,18 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           node-version: "22.19.0"
+      - name: Desarmar la etiqueta única de M2
+        if: github.event.pull_request.number == 149
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          endpoint="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels"
+          present=$(gh api "$endpoint" --jq 'map(.name) | index($label) != null' --arg label 'asen-t06-nvidia-una-vez')
+          test "$present" = true
+          gh api --method DELETE "$endpoint/asen-t06-nvidia-una-vez" >/dev/null
       - name: Verificar candidato y pruebas negativas sin secretos
         shell: bash
         run: |
@@ -773,8 +793,7 @@ jobs:
             echo "::error::NVIDIA_API_KEY no existe en Secrets del repositorio; llamadas reales BLOQUEADAS"
             exit 1
           fi
-          # Usa únicamente nvidia/nemotron-3.5-lightning-30b-a3b, sin
-          # reintentos, sin fallback a proveedores de pago ni código privado.
+          # Usa solo los dos modelos autorizados, sin reintentos ni cambio de proveedor.
           node scripts/t06-nvidia-free-api-probe.mjs
       - name: Conservar informe acotado del SHA exacto
         if: always()
@@ -792,9 +811,14 @@ jobs:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 61 &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'feat/flujo-de-agentes-20261115' &&
+      (
+       (github.event.pull_request.number == 61 &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.head_ref == 'feat/flujo-de-agentes-20261115') ||
+       (github.event.pull_request.number == 149 &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.head_ref == 'feat/asen-equipo-E-M2-g2-compactacion-148')
+      ) &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'asen-t06-nvidia-una-vez' &&
       github.actor == 'asenbanskaliev'
@@ -839,6 +863,39 @@ jobs:
           path: ${{ runner.temp }}/asen-t06-nvidia-pi/receipt.json
           if-no-files-found: warn
           retention-days: 7
+
+
+  managed-update-windows:
+    name: G08 actualización administrada aislada (Windows)
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 149 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-compactacion-148'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instalar dependencias sin ejecutar scripts externos
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verificar SHA y tipos del candidato
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne $env:ASEN_EXPECTED_SHA) { throw "SHA de G08 no coincide" }
+          npm run typecheck
+      - name: Probar instalación aislada, rollback y cancelación
+        shell: pwsh
+        run: node --import tsx --test tests/managed-install.test.ts tests/managed-acquisition-update.test.ts
 
   # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
   # Ensayo adicional exclusivamente por etiqueta manual de un solo evento,

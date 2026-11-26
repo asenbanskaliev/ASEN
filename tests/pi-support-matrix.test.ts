@@ -3,12 +3,12 @@ import test from "node:test";
 // @ts-expect-error CI-only matrix planner.
 import {planPiSupportMatrix,validateCellObservation,supplementalPiVersions} from "../scripts/pi-support-matrix.mjs";
 
-test("support matrix selects exactly 12 distinct Pi 1.2.0 host cells",()=>{
+test("La matriz normal conserva Pi 1.2.0 y prueba la versión de desarrollo 1.6.0",()=>{
  const cells=planPiSupportMatrix();
- assert.equal(cells.length,12);
- assert.deepEqual([...new Set(cells.map((c:{version:string})=>c.version))],["1.2.0"]);
- assert.equal(new Set(cells.map((c:{id:string})=>c.id)).size,12);
- for(const platform of ["linux","win32","darwin"])assert.equal(cells.filter((c:{platform:string})=>c.platform===platform).length,4);
+ assert.equal(cells.length,24);
+ assert.deepEqual([...new Set(cells.map((c:{version:string})=>c.version))],["1.2.0","1.6.0"]);
+ assert.equal(new Set(cells.map((c:{id:string})=>c.id)).size,24);
+ for(const platform of ["linux","win32","darwin"])assert.equal(cells.filter((c:{platform:string})=>c.platform===platform).length,8);
 });
 
 test("support matrix derives its floor and development witnesses from the uncapped package contract",()=>{
@@ -73,7 +73,7 @@ test("La prueba de Pi adicional rechaza versiones ambiguas o inferiores",()=>{
 test("G01 conserva Pi 1.2 y añade 1.5.2 y 1.6.0 en los tres sistemas y cuatro modos",()=>{
  const versions=supplementalPiVersions({ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.5.2,1.6.0"});
  const cells=planPiSupportMatrix(undefined,versions);
- assert.deepEqual([...new Set(cells.map((cell:{version:string})=>cell.version))],["1.2.0","1.5.2","1.6.0"]);
+ assert.deepEqual([...new Set(cells.map((cell:{version:string})=>cell.version))].sort(),["1.2.0","1.5.2","1.6.0"]);
  assert.equal(cells.length,36);
  assert.equal(new Set(cells.map((cell:{id:string})=>cell.id)).size,36);
  for(const platform of ["linux","win32","darwin"])for(const version of ["1.2.0","1.5.2","1.6.0"])

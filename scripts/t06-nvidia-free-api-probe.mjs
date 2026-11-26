@@ -11,6 +11,7 @@ import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 
 export const NVIDIA_FREE_MODEL="nvidia/nemotron-3.5-lightning-30b-a3b";
+export const NVIDIA_FREE_MODELS=Object.freeze([NVIDIA_FREE_MODEL,"nvidia/nemotron-3.5-super-vl-120b-a12b"]);
 export const NVIDIA_FREE_URL="https://integrate.api.nvidia.com/v1/chat/completions";
 export const NVIDIA_MAX_TOKENS=128;
 const MAX_DURATION_MS=75_000;
@@ -27,16 +28,17 @@ export async function probeNvidiaFreeApi({
  apiKey,
  request=fetch,
  timeoutMs=MAX_DURATION_MS,
- model=NVIDIA_FREE_MODEL
+ models=NVIDIA_FREE_MODELS
 }={}){
- if(model!==NVIDIA_FREE_MODEL)throw Error("Modelo NVIDIA fuera de la lista gratuita permitida");
+ if(!Array.isArray(models)||models.length!==2||new Set(models).size!==2||models.some(model=>!NVIDIA_FREE_MODELS.includes(model)))throw Error("Modelos NVIDIA fuera de la lista gratuita permitida");
  if(!requiredString(apiKey))throw Error("NVIDIA_API_KEY no configurada: prueba real BLOQUEADA");
  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<100||timeoutMs>MAX_DURATION_MS)
   throw Error("Tiempo de espera NVIDIA fuera del límite autorizado");
  const startedAt=new Date().toISOString();
  // Dos llamadas creadas antes del primer await: los intervalos del recibo
  // permiten verificar concurrencia de peticiones, no ejecuciones de Pi.
- const tasks=TARGETS.map(async ({agent,marker})=>{
+ const tasks=TARGETS.map(async ({agent,marker},index)=>{
+  const model=models[index];
   const started=performance.now();
   let httpStatus=null,reportedModel=null;
   try{
@@ -96,9 +98,9 @@ export async function probeNvidiaFreeApi({
  const completed=results.length===2&&results.every(x=>x.status==="api-confirmed");
  return Object.freeze({
   schema:"asen.t06.nvidia.free-api-probe/v1",
-  status:completed&&overlapped?"AUTHENTICATED_API_PARALLEL":"BLOCKED",
+  status:completed&&overlapped&&models[0]!==models[1]?"AUTHENTICATED_API_PARALLEL":"BLOCKED",
   startedAt,finishedAt:new Date().toISOString(),
-  endpoint:"NVIDIA_BUILD_TRIAL",modelRequested:model,freeEndpointOnly:true,
+  endpoint:"NVIDIA_BUILD_TRIAL",modelsRequested:[...models],distinctModelIdsVerified:models[0]!==models[1],freeEndpointOnly:true,
   maxTokensPerRequest:NVIDIA_MAX_TOKENS,requestCount:2,retryCount:0,
   overlappingRequests:overlapped,results:results.map(({started,finished,...safe})=>({
    ...safe,durationMs:Math.max(0,Math.round(finished-started))
@@ -125,7 +127,7 @@ if(invoked){
   persistNvidiaProbeReport(report,reportFile);
   // Únicamente metadatos acotados, nunca respuestas crudas ni tokens secretos.
   process.stdout.write(JSON.stringify({
-   status:report.status,model:report.modelRequested,
+   status:report.status,models:report.modelsRequested,
    concurrent:report.overlappingRequests,
    httpCodes:report.results.map(x=>x.httpStatus),
    tokenCounts:report.results.map(x=>x.usage?.totalTokens??null),
