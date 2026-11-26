@@ -143,7 +143,7 @@ test("G02 oculta la presión si falta la API pública y la marca desconocida si 
  const absent=projectHostStatus({});
  assert.equal("compactionPressure" in absent,false);
  const failing=projectHostStatus({},undefined,()=>undefined);
- assert.deepEqual(failing.compactionPressure,{state:"unknown"});
+ assert.deepEqual(failing.compactionPressure,{state:"unknown",reason:"settings"});
  const extension=readFileSync(new URL("../extensions/asen.ts",import.meta.url),"utf8");
  assert.match(extension,/projectHostStatus\(ctx,undefined,typeof pi\.getSettings==="function"\?\(\)=>settings:undefined\)/u);
 });
