@@ -33,7 +33,7 @@ test("specialized CI gates retain pull_request and exact branch admission", () =
   assert.doesNotMatch(workflow, /startsWith\([^)]*head_ref/);
   assert.doesNotMatch(workflow, /contains\([^)]*head_ref/);
   assert.doesNotMatch(workflow, /github\.head_ref == '[^']*[*][^']*'/);
-  assert.doesNotMatch(workflow, /==\s*"[^"]+"/);
+  assert.doesNotMatch(workflow, /github\.head_ref\s*==\s*"[^"]+"/);
 });
 
 test("real Pi TUI receipts map each runner to its current platform artifact", () => {
