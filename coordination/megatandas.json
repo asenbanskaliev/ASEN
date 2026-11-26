@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Auditar vigencia de perfil y alternativas entre lectura inicial y despacho; preparar regresión independiente G01 sin tocar extensión ni dependencias hasta asignación E.",
+      "next": "Auditar vigencia de perfiles y contratos SDK Pi 1.6; G01 matriz #141 ya publicada, no duplicar.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -68,7 +68,7 @@
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 132,
       "sha": "23bc4ce17c5716df38dde3119e7653ed55125aee",
-      "next": "Auditar independencia y evidencia parcial de jueces P01/P02 en candidato #139; preparar pruebas aisladas G04–G06 sin tocar archivos de A.",
+      "next": "Auditar independencia y evidencia parcial de jueces sobre #140; preparar G04–G06 en archivos independientes.",
       "files": [
         "src/runtime/lifecycle/native-integration-review.ts",
         "tests/native-partition-flow.test.ts"
@@ -96,7 +96,7 @@
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 137,
       "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-      "next": "Auditar métricas de #139 y preparar G07/P05 sin llamadas externas; G02 pendiente de conexión tras comprobar SDK G01.",
+      "next": "Auditar métricas de #140 y preparar G07/P05 sin llamadas externas; G02 pendiente de SDK.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
@@ -114,15 +114,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M2-g2-pi16-matriz-140",
-        "package": "M2",
-        "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
-        "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-revision",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -167,7 +160,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Preparar matriz adicional G01 sin alterar base, versiones de desarrollo ni permisos.",
+      "next": "Esperar revisión independiente #140; comprobar resultados de #141 por SHA exacto. No integrar M2 ni elevar mínimo antes de M1.",
       "blocker": null,
       "generation": 2,
       "pr": 140,
@@ -596,10 +589,13 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "trabajando",
+        "state": "espera-ci",
+        "pr": 141,
+        "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
-        "scope": "Matriz Pi 1.5.2 y 1.6.0 sin modelos; preservar Pi 1.2."
+        "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
+        "next": "Comprobar resultados; luego alinear dependencias y contratos SDK si procede. No sustituye versión mínima."
       },
       "G02": {
         "state": "espera-ci",
