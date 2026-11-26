@@ -726,6 +726,8 @@ export class PiProcessRunner implements AgentRunner{
       continue;
      }
      if(response.type!=="response"||response.id!==preflightId)continue;
+     // Una respuesta repetida de inventario no puede autorizar un segundo prompt.
+     if(policyLoaded){stop({id:request.id,ok:false,output:"pi duplicate authority preflight response"});return;}
      const matches=response.data?.commands?.filter(item=>item.name==="asen-authority-status"&&item.source==="extension"&&item.sourceInfo?.path===policy)??[];
      if(response.success!==true||matches.length!==1){stop({id:request.id,ok:false,output:"pi ASEN policy extension was not loaded"});return;}
      const canonical=(path:string)=>{try{return realpathSync(path);}catch{return resolvePath(path);}};

@@ -125,3 +125,26 @@ process.stdin.on("data",chunk=>{
   }
  });
 }
+
+test("G03 inventario repetido no vuelve a autorizar el prompt",{timeout:30_000},async t=>{
+ const fixture=await createPiRpcFixture(t,`
+let buffer="";
+const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
+process.stdin.on("data",chunk=>{
+ buffer+=String(chunk);
+ let end;
+ while((end=buffer.indexOf("\\n"))>=0){
+  const line=buffer.slice(0,end);buffer=buffer.slice(end+1);
+  if(!line.trim())continue;
+  const record=JSON.parse(line);
+  if(record.type!=="prompt")continue;
+  const position=process.argv.indexOf("--extension");
+  emit({type:"response",id:"asen-policy:"+record.id,success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path:process.argv[position+1]}}]}});
+ }
+});
+`);
+ const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:10_000});
+ const result=await runner.run({id:"g03-duplicate-preflight",role:"explorer",prompt:"inspect",repository:fixture.repository});
+ assert.equal(result.ok,false,result.output);
+ assert.match(result.output,/duplicate authority preflight response/u);
+});

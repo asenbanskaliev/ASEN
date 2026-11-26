@@ -59,6 +59,17 @@ export function planPiSupportMatrix(metadata,additionalVersions=[]){
   ["tui","rpc","json","print"].map(mode=>({platform,version,mode,id:`${platform}-${version}-${mode}`}))));
 }
 
+// Solo se conserva evidencia acotada del estado RPC, no el estado completo,
+// rutas, modelos, credenciales ni contenido del anfitrión.
+export function observeMatrixRpcReply(records,id="matrix-state"){
+ const matches=records.filter(value=>value&&typeof value==="object"&&!Array.isArray(value)&&value.type==="response"&&value.id===id);
+ const reply=matches.length===1?matches[0]:undefined;
+ const state=reply?.data;
+ return {responseCount:matches.length,correlated:reply?.command==="get_state"&&reply.success===true&&
+  state!==null&&typeof state==="object"&&!Array.isArray(state)&&
+  typeof state.sessionId==="string"&&state.sessionId.length>0&&state.sessionId.length<=1024&&
+  state.isStreaming===false&&state.isCompacting===false&&state.pendingMessageCount===0};
+}
 export function validateCellObservation(cell,result){
  assert.equal(result.mode,cell.mode);
  assert.equal(typeof result.hasUI,"boolean");
@@ -72,6 +83,10 @@ export function validateCellObservation(cell,result){
  assert.equal(result.signal,null);
  assert.equal(result.timedOut,false,"forced shutdown is not natural exit");
  if(cell.mode==="tui")assert.equal(result.keyboardCommandObserved,true,"real Pi TUI must run the keyboard-submitted ASEN changes command");
+ if(cell.mode==="rpc"){
+  assert.equal(result.rpc?.responseCount,1,"Pi RPC debe responder exactamente una vez a la petición");
+  assert.equal(result.rpc?.correlated,true,"Pi RPC debe confirmar get_state de la sesión en reposo");
+ }
 }
 
 async function runCell(cell,cli,packageRoot,root){
@@ -106,6 +121,7 @@ async function runCell(cell,cli,packageRoot,root){
  const env={...createPiVerifierEnvironment(process.env),HOME:work,USERPROFILE:work,
   PI_CODING_AGENT_DIR:join(work,"agent"),ASEN_NO_SKILL_REGISTRY:"1",TERM:"xterm-256color"};
  let log="",timedOut=false,exitCode,signal=null,keyboardAcknowledged=false;
+ let rpcReplies=[],rpcMalformed=false;
  if(cell.mode==="tui"){
   prepareDarwinPtyHelper();
   const pty=await import("node-pty");
@@ -133,18 +149,42 @@ async function runCell(cell,cli,packageRoot,root){
   await new Promise((done,reject)=>{
    const timer=setTimeout(()=>{timedOut=true;child.kill();},60_000);
    const finalTimer=setTimeout(()=>{child.kill("SIGKILL");reject(Error("Process cleanup unconfirmed"));},65_000);
-   child.stdout.on("data",data=>{log=(log+data).slice(-1_000_000);});
+   let rpcBuffer="",rpcInputClosed=false;
+   child.stdout.setEncoding("utf8");
+   child.stdout.on("data",data=>{
+    log=(log+data).slice(-1_000_000);
+    if(cell.mode!=="rpc"||rpcMalformed)return;
+    rpcBuffer+=data;
+    let end;
+    while((end=rpcBuffer.indexOf("\n"))>=0){
+     const line=rpcBuffer.slice(0,end);rpcBuffer=rpcBuffer.slice(end+1);
+     if(!line.trim())continue;
+     if(line.length>1_000_000){rpcMalformed=true;child.kill();return;}
+     let record;try{record=JSON.parse(line);}catch{rpcMalformed=true;child.kill();return;}
+     if(record?.type==="response"&&record.id==="matrix-state"){
+      if(rpcReplies.length>=2){rpcMalformed=true;child.kill();return;}
+      rpcReplies.push(record);
+      // Mantener vivo el proceso hasta recibir la respuesta; cerrar stdin
+      // solo después de observarla para no confundir salida con respuesta.
+      if(!rpcInputClosed){rpcInputClosed=true;child.stdin.end();}
+     }
+     if(record?.type==="agent_start"){rpcMalformed=true;child.kill();return;}
+    }
+    if(rpcBuffer.length>1_000_000){rpcMalformed=true;child.kill();}
+   });
+   child.stdin.on("error",()=>{rpcMalformed=true;child.kill();});
    child.stderr.on("data",data=>{log=(log+data).slice(-1_000_000);});
    child.on("error",error=>{clearTimeout(timer);clearTimeout(finalTimer);reject(error);});
    child.on("close",(code,stop)=>{clearTimeout(timer);clearTimeout(finalTimer);exitCode=code;signal=stop;done();});
-   child.stdin.end(cell.mode==="rpc"?JSON.stringify({type:"get_state",id:"matrix-state"})+"\n":"");
+   if(cell.mode==="rpc")child.stdin.write(JSON.stringify({type:"get_state",id:"matrix-state"})+"\n");
+   else child.stdin.end();
   });
  }
  let observed;
  try{observed=JSON.parse(readFileSync(observation,"utf8"));}
  catch{observed={mode:null,hasUI:null,commands:[],tools:[],modelCalls:null};}
  assert.ok(!log.includes('"type":"agent_start"'),"host must not start an agent");
- return {...observed,...(cell.mode==="tui"?{keyboardCommandObserved:keyboardAcknowledged}:{}),exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),log};
+ return {...observed,...(cell.mode==="tui"?{keyboardCommandObserved:keyboardAcknowledged}:{}),...(cell.mode==="rpc"?{rpc:rpcMalformed?{responseCount:rpcReplies.length,correlated:false}:observeMatrixRpcReply(rpcReplies)}:{}),exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),log};
 }
 
 export async function main({tarball=process.argv[2],output=process.argv[3],candidate=process.env.ASEN_EXPECTED_SHA}={}){
