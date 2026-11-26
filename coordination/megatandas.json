@@ -32,20 +32,13 @@
       "candidateSha": "ef3a91053b553f01e22e8d396ac3173a10357caf"
     },
     "B": {
-      "state": "trabajando",
-      "lease": {
-        "id": "B-M3-g2-recuperacion-diario-152",
-        "package": "P04",
-        "base": "630adf5c11330ec3e2d8f5a55085db05dae9fb33",
-        "branch": "feat/asen-equipo-B-M3-g2-recuperacion-diario-152",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-ci-y-revision",
+      "lease": null,
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
-      "pr": 133,
-      "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Proteger reparación inicial de diario ante escritores activos, preservar recibos y no repetir agentes.",
+      "pr": 153,
+      "sha": "6a71abdbbccbe1479f6238da9d9712c78d88bdd8",
+      "next": "Validar regresiones P04 de reparación concurrente bajo bloqueo. Integrar solo tras CI y revisión, sin repetir agentes ni autorizar modelos.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -82,6 +75,13 @@
           "state": "ci-superada",
           "scope": "runtime, cola, diario y vínculos reales; ejecutor instrumentado"
         }
+      },
+      "recoveryCandidate": {
+        "pr": 153,
+        "sha": "6a71abdbbccbe1479f6238da9d9712c78d88bdd8",
+        "base": "630adf5c11330ec3e2d8f5a55085db05dae9fb33",
+        "state": "espera-ci",
+        "scope": "Apertura, reparación de recibos y cuarentena bajo bloqueo existente; dos regresiones concurrentes."
       }
     },
     "C": {
@@ -579,16 +579,7 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {
-    "B-M3-g2-recuperacion-diario-152": {
-      "owner": "B",
-      "files": [
-        "src/runtime/agents/agent-store.ts",
-        "tests/agent-store.test.ts"
-      ],
-      "reason": "P04: serializar lectura, reparación de recibos y cuarentena con el mismo bloqueo que escritura; no tocar candidato #152 ni permisos."
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -1308,7 +1299,7 @@
       }
     },
     "m2": "403 de permisos corregido y comprobado con alta/baja de etiqueta y comentario bot en #152; falta CI exacta, revisión y ensayo NVIDIA autorizado.",
-    "m3": "G03 parcial y correlación RPC heredados; pendiente recuperación persistente.",
+    "m3": "P04 recuperación del diario bajo bloqueo publicada en #153, sin modificar candidato #152 ni activar modelos.",
     "globalFull": false,
     "updatedAt": "2026-11-26T22:00:00Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
