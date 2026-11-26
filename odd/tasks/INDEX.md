@@ -1,6 +1,6 @@
 # ASEN — Índice ODD operativo
 
-**Actualizado:** 24/11/2026. **Ámbito:** flujo de agentes de la PR #61. No sustituye los planes generales de Pi, seguridad o instalación.
+**Actualizado:** 26/11/2026. **Ámbito:** flujo de agentes de la PR #61. No sustituye los planes generales de Pi, seguridad o instalación.
 
 ## Lectura mínima antes de trabajar
 
@@ -12,6 +12,8 @@
 
 6. [Refuerzo quirúrgico P01–P06](flujo-agentes-refuerzo-quirurgico-ab-20261124.md): ejecución B0/B+/C1/C2/C3, criterios de aceptación, dependencias, archivos y límites.
 7. [Matriz canónica 18+12](flujo-agentes-18-objetivos-12-puntos-aceptacion-20261123.md): evidencia vigente y pendientes sin duplicar requisitos.
+
+8. [Ampliación Gentle Shell 5.0.0 G01–G08](gentle-shell-5.0.0-mejoras-asen-20261126.md): mejoras aprobadas, orden, requisitos y pruebas; no reemplaza el plan actual.
 
 ## Corte comprobado · 24/11/2026
 

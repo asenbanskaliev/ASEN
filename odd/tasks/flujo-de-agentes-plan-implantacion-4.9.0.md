@@ -647,3 +647,8 @@ El informe describe equivocadamente como ausentes varias funciones que ASEN **ya
 Incorporado por petición del usuario: [subplan operativo P01–P06](flujo-agentes-refuerzo-quirurgico-ab-20261124.md). Es el complemento de ejecución y auditoría vigente para estos seis hallazgos; no añade objetivos a los 18+12 ni reemplaza CTX, E1–E4/F o los controles de seguridad. El cierre B0 y refuerzos B+/C1/C2/C3 son paquetes de trabajo, no equivalencias automáticas con los nombres históricos A–E.
 
 Secuencia: B0 (integración validada de alcance limitado) → B+ (P01/P02 y P06) → C1 (P04) → C2 (P03 y P06) → C3 (P05 condicionado a métricas) → F. Si aparece un defecto bloqueante, resolverlo antes de admitir B0. P06 es transversal desde el inicio. Mantener CTX-2 y las pruebas E1 pendientes como prerrequisitos reales, y CTX-3/CTX-4 condicionados. No duplicar motores ni ensayos ni ampliar concurrencia sin medición. Consultar #63 y verificar el SHA exacto antes de modificar. No fusionar main; globalFull:false.
+
+
+## 17. Ampliación Gentle Shell 5.0.0 (26/11/2026)
+
+Aprobada por el usuario: [subplan G01–G08](gentle-shell-5.0.0-mejoras-asen-20261126.md). Amplía la referencia a Gentle Shell 5.0.0 y Gentle AI 5.0.0 sin reemplazar los criterios anteriores. La estabilización actual mantiene prioridad; se permiten piezas independientes sin interferir con la integración. No duplicar trabajo ni rebajar seguridad. Verificar aceptación y SHA exactos; globalFull:false.
