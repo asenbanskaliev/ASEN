@@ -137,8 +137,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-coordinacion-fallback",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-rutas-vigentes-155",
+        "package": "M2-B1-G03-P04",
+        "base": "eaf3771b3ca1d093f8b8623ba7898d8213ec29cc",
+        "branch": "feat/asen-equipo-E-M2-g2-rutas-vigentes-155",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -579,7 +586,26 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "E-M2-g2-rutas-vigentes-155": {
+      "owner": "E",
+      "files": [
+        "src/agents/pi-agent-tools.ts",
+        "src/agents/agent-runtime.ts",
+        "src/agents/interrupted-explorer-continuation.ts",
+        "src/runtime/lifecycle/plan-dispatcher.ts",
+        "extensions/asen.ts",
+        "src/runtime/lifecycle/native-integration-successor.ts",
+        "tests/asen-b-planned-fallback.test.ts",
+        "tests/interrupted-explorer-continuation.test.ts",
+        "tests/native-partition-flow.test.ts",
+        ".github/workflows/ci.yml",
+        ".github/workflows/pi-compatibility-1_5.yml",
+        ".github/workflows/t06-permission-probe.yml"
+      ],
+      "reason": "Cerrar tres hallazgos pendientes específicos de #154: alternativas de rutas públicas y revalidación al recuperar, e inspección de partición cerrada. No incorporar #153 ni modificar ramas Work."
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
