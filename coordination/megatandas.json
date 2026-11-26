@@ -12,7 +12,7 @@
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
       "generation": 2,
-      "next": "Auditar cierre de dos raíces en #139; preparar pruebas de recuperación P04 sin editar archivos compartidos.",
+      "next": "Auditar recuperación de raíces archivadas en #140, casos negativos y bloqueo sin relanzar.",
       "blocker": null,
       "pr": 136,
       "sha": "a0caab2acf7eae6d1e4d8402f9e44ea06e12e4ff",
@@ -28,8 +28,8 @@
         "tests/native-partition-flow.test.ts"
       ],
       "tests": "CI rápida 45774877562, Pi 45774877646 y arquitectura 45774877744 correctos; CI completa y Release Gate omitidos por borrador.",
-      "candidatePR": 139,
-      "candidateSha": "39b67573cc73bc4f18615f332f35716f71cabe0a"
+      "candidatePR": 140,
+      "candidateSha": "a43151afb74207e9c553357a8d83b600c56e2d03"
     },
     "B": {
       "state": "espera-candidato",
@@ -49,8 +49,8 @@
       "tests": "CI rápida 45709504351, arquitectura 45709504258 y Pi runtime 45709504245 correctos; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 139,
-      "candidateSha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+      "candidatePR": 140,
+      "candidateSha": "a43151afb74207e9c553357a8d83b600c56e2d03",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179615
@@ -77,8 +77,8 @@
       "tests": "CI rápida 45709037207 y arquitectura 45709037157 correctas; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 139,
-      "candidateSha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+      "candidatePR": 140,
+      "candidateSha": "a43151afb74207e9c553357a8d83b600c56e2d03",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179608
@@ -105,8 +105,8 @@
       "tests": "Regresiones nuevas publicadas; CI completa y revisión pendientes.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 139,
-      "candidateSha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+      "candidatePR": 140,
+      "candidateSha": "a43151afb74207e9c553357a8d83b600c56e2d03",
       "correctionBase": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
       "reviewFindings": [
         4705072726
@@ -114,15 +114,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M1-g2-archivo-139",
-        "package": "M1",
-        "base": "39b67573cc73bc4f18615f332f35716f71cabe0a",
-        "branch": "feat/asen-equipo-E-M1-g2-recuperacion-archivo-139",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -167,11 +160,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Corregir lectura de raíces archivadas después del cierre atómico; preservar comprobaciones del candidato y permisos.",
+      "next": "Validar #140 y revisar recuperación de archivo, no admitir #139; comprobar otras observaciones de revisión antes de integrar.",
       "blocker": null,
       "generation": 2,
-      "pr": 139,
-      "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+      "pr": 140,
+      "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -224,14 +217,14 @@
       "reviewFindings": [
         4701179590
       ],
-      "branch": "feat/asen-equipo-E-M1-g2-consolidacion-136-137-138",
+      "branch": "feat/asen-equipo-E-M1-g2-recuperacion-archivo-139",
       "tests": "#134 superó CI, arquitectura, Pi runtime y Release Gate; hallazgo nuevo corregido en #135, pendiente de validación.",
       "files": [
         "extensions/asen.ts"
       ],
       "lastAttempt": {
-        "pr": 139,
-        "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+        "pr": 140,
+        "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "result": "publicada"
       }
     }
@@ -466,8 +459,8 @@
     "sha": "ab17255d9569f874e196407ab12bd321ab827acc"
   },
   "consolidation": {
-    "pr": 139,
-    "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+    "pr": 140,
+    "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
     "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
     "includes": [
       130,
@@ -478,7 +471,8 @@
       135,
       137,
       136,
-      138
+      138,
+      139
     ],
     "findings": [
       4701179590,
@@ -488,11 +482,11 @@
       4704551343,
       4705072726
     ],
-    "status": "correccion-ci",
+    "status": "espera-ci-y-revision",
     "globalFull": false,
     "previousCandidate": {
-      "pr": 137,
-      "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+      "pr": 139,
+      "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "includes": [
         130,
@@ -500,7 +494,10 @@
         132,
         133,
         134,
-        135
+        135,
+        137,
+        136,
+        138
       ],
       "findings": [
         4701179590,
@@ -510,42 +507,72 @@
         4704551343,
         4705072726
       ],
-      "status": "espera-ci-y-revision",
+      "status": "correccion-ci",
       "globalFull": false,
-      "latestFinding": 4705072726,
-      "ci": {
+      "previousCandidate": {
+        "pr": 137,
         "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-        "full": 45798838328,
-        "quick": 45798838411,
-        "architecture": 45798838365,
-        "releaseGate": 45798838489,
-        "pi": 45798838396,
-        "conclusion": "success",
-        "piFreeSmoke": "skipped"
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+        "includes": [
+          130,
+          131,
+          132,
+          133,
+          134,
+          135
+        ],
+        "findings": [
+          4701179590,
+          4701179598,
+          4701179608,
+          4701179615,
+          4704551343,
+          4705072726
+        ],
+        "status": "espera-ci-y-revision",
+        "globalFull": false,
+        "latestFinding": 4705072726,
+        "ci": {
+          "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+          "full": 45798838328,
+          "quick": 45798838411,
+          "architecture": 45798838365,
+          "releaseGate": 45798838489,
+          "pi": 45798838396,
+          "conclusion": "success",
+          "piFreeSmoke": "skipped"
+        },
+        "review": {
+          "confirmed": false,
+          "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+          "requestedCommentId": 7189696664
+        },
+        "previousCandidate": {
+          "pr": 135,
+          "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+        }
       },
       "review": {
-        "confirmed": false,
-        "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-        "requestedCommentId": 7189696664
+        "confirmed": false
       },
-      "previousCandidate": {
-        "pr": 135,
-        "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+      "ci": {
+        "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+        "full": 45804701712,
+        "conclusion": "failure",
+        "quick": 45804701639,
+        "architecture": 45804701636,
+        "releaseGate": 45804702600,
+        "pi": 45804701792,
+        "piFreeSmoke": "skipped"
       }
     },
     "review": {
       "confirmed": false
     },
     "ci": {
-      "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
-      "full": 45804701712,
-      "conclusion": "failure",
-      "quick": 45804701639,
-      "architecture": 45804701636,
-      "releaseGate": 45804702600,
-      "pi": 45804701792,
-      "piFreeSmoke": "skipped"
-    }
+      "conclusion": "pendiente"
+    },
+    "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
   },
   "gentleShell5": {
     "planBranch": "feat/flujo-de-agentes-20261115",
@@ -597,6 +624,6 @@
       "M6 Aceptación"
     ],
     "globalFull": false,
-    "candidate": 139
+    "candidate": 140
   }
 }
