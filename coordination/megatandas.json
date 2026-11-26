@@ -124,8 +124,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-pi16-cola-147",
+        "package": "M2-G01-B1",
+        "base": "d84660143a3130d2412e3a7be30b529fa6b4a93e",
+        "branch": "feat/asen-equipo-E-M2-g2-pi16-cola-147",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -170,7 +177,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #147 exacta y solicitar revisión; falta prueba de cola #144. No admitir #146 ni fusionar #145.",
+      "next": "Corregir comprobación F5 y añadir prueba de cola por runtime y despacho reales instrumentados.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -743,11 +750,20 @@
           "sha": "d84660143a3130d2412e3a7be30b529fa6b4a93e",
           "branch": "feat/asen-equipo-E-M2-g2-pi16-contratos-146",
           "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-          "state": "espera-ci",
+          "state": "fallo-ci",
           "includes": [
             146
           ],
-          "scope": "Alinear siete archivos de pruebas y publicación con Pi 1.6.0, mantener mínimo y pruebas 1.2.0"
+          "scope": "Alinear siete archivos de pruebas y publicación con Pi 1.6.0, mantener mínimo y pruebas 1.2.0",
+          "evidence": {
+            "matrix": 45857140142,
+            "matrixResult": "success",
+            "ci": 45857140375,
+            "releaseGate": 45857139924,
+            "releaseResult": "success",
+            "conclusion": "failure",
+            "reason": "F5 mantiene mensaje exacto de versión 1.2.0"
+          }
         },
         "previousDependencyCandidate": {
           "pr": 146,
