@@ -124,8 +124,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-preparar-pi16-lock-144",
+        "package": "M2-G01",
+        "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+        "branch": "feat/asen-equipo-E-M2-g2-preparar-pi16-lock-144",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -170,7 +177,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #144, incluida matriz 36 celdas, y revisión independiente; no integrar hasta todas las puertas. Alinear dependencias después.",
+      "next": "Preparar lock reproducible de Pi 1.6.0 con GitHub Actions de solo lectura y validar compilación; no admitir #144 sin revisión.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -498,7 +505,7 @@
       4707849565,
       4708656296
     ],
-    "status": "espera-ci-y-revision",
+    "status": "espera-revision",
     "globalFull": false,
     "previousCandidate": {
       "pr": 142,
@@ -675,10 +682,19 @@
       "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
     },
     "review": {
-      "confirmed": false
+      "confirmed": false,
+      "requestedCommentId": 7196188922
     },
     "ci": {
-      "conclusion": "pendiente"
+      "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+      "quick": 45832618271,
+      "architecture": 45832618249,
+      "pi": 45832618256,
+      "full": 45832618191,
+      "releaseGate": 45832618290,
+      "matrix": 45832618166,
+      "conclusion": "success",
+      "piFreeSmoke": "skipped"
     },
     "correction": "Contar intentos sin duplicar respuestas a preguntas; corregir TS2379; conservar matriz Pi adicional y ancestros."
   },
@@ -689,7 +705,7 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "matriz-anterior-superada-nueva-validacion",
+        "state": "matriz-consolidada-superada",
         "pr": 141,
         "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
@@ -697,13 +713,13 @@
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
         "next": "Repetir matriz en #144; después alinear dependencias si procede.",
         "evidence": {
-          "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
-          "matrix": 45811828713,
-          "ci": 45811828705,
-          "releaseGate": 45811828652,
-          "architecture": 45811828653,
+          "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+          "matrix": 45832618166,
+          "ci": 45832618191,
+          "releaseGate": 45832618290,
+          "architecture": 45832618249,
           "result": "success",
-          "scope": "arranque, interfaz, RPC/JSON/print y salida natural; cero modelos; no acredita flujo de agentes real"
+          "scope": "36 celdas de arranque, interfaz y salida sin modelos; no acredita flujo real"
         },
         "review": {
           "confirmed": false,
