@@ -12,7 +12,7 @@
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
       "generation": 2,
-      "next": "E: reconciliar cambios compartidos de #136 con candidato #137; validar nuevo SHA y revisión.",
+      "next": "Auditar cierre de dos raíces en #139; preparar pruebas de recuperación P04 sin editar archivos compartidos.",
       "blocker": null,
       "pr": 136,
       "sha": "a0caab2acf7eae6d1e4d8402f9e44ea06e12e4ff",
@@ -27,7 +27,9 @@
         "tests/odd-unit-partition.test.ts",
         "tests/native-partition-flow.test.ts"
       ],
-      "tests": "CI rápida 45774877562, Pi 45774877646 y arquitectura 45774877744 correctos; CI completa y Release Gate omitidos por borrador."
+      "tests": "CI rápida 45774877562, Pi 45774877646 y arquitectura 45774877744 correctos; CI completa y Release Gate omitidos por borrador.",
+      "candidatePR": 139,
+      "candidateSha": "39b67573cc73bc4f18615f332f35716f71cabe0a"
     },
     "B": {
       "state": "espera-candidato",
@@ -36,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Auditar vigencia del perfil y alternativas entre lectura inicial y lanzamiento, incluyendo segunda lectura automática. Caso concreto: extensions/asen.ts:684–708 conserva activeProfiles y profileFallbacksByScope; validateIdentity comprueba sesión/proyecto, no relectura de perfil. Preparar regresión sin tocar extensión/Todo hasta asignación E. No repetir #133.",
+      "next": "Auditar vigencia de perfil y alternativas entre lectura inicial y despacho; preparar regresión independiente G01 sin tocar extensión ni dependencias hasta asignación E.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -47,8 +49,8 @@
       "tests": "CI rápida 45709504351, arquitectura 45709504258 y Pi runtime 45709504245 correctos; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 137,
-      "candidateSha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+      "candidatePR": 139,
+      "candidateSha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179615
@@ -66,7 +68,7 @@
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 132,
       "sha": "23bc4ce17c5716df38dde3119e7653ed55125aee",
-      "next": "C1: revisar #135 por SHA y contrato de persistencia de jueces parciales, firma, cambio de política y no repetición tras intento incierto. Verificar separación entre consumo observado y juicio completo. No editar native-integration-review ni pruebas compartidas durante A1a. Si hay defecto, registrar caso y coordinar con E.",
+      "next": "Auditar independencia y evidencia parcial de jueces P01/P02 en candidato #139; preparar pruebas aisladas G04–G06 sin tocar archivos de A.",
       "files": [
         "src/runtime/lifecycle/native-integration-review.ts",
         "tests/native-partition-flow.test.ts"
@@ -75,8 +77,8 @@
       "tests": "CI rápida 45709037207 y arquitectura 45709037157 correctas; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 137,
-      "candidateSha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+      "candidatePR": 139,
+      "candidateSha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179608
@@ -94,7 +96,7 @@
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 137,
       "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-      "next": "Corrección 4705072726 publicada por E; pendiente CI y revisión, no duplicar.",
+      "next": "Auditar métricas de #139 y preparar G07/P05 sin llamadas externas; G02 pendiente de conexión tras comprobar SDK G01.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
@@ -103,8 +105,8 @@
       "tests": "Regresiones nuevas publicadas; CI completa y revisión pendientes.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 137,
-      "candidateSha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+      "candidatePR": 139,
+      "candidateSha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
       "correctionBase": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
       "reviewFindings": [
         4705072726
@@ -112,15 +114,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M1-g2-136-137-138",
-        "package": "M1",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-        "branch": "feat/asen-equipo-E-M1-g2-consolidacion-136-137-138",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -165,11 +160,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Prioridad: #137 con CI completa, arquitectura, Release Gate y Pi correctos; revisión CodeRabbit solicitada (7189696664), no integrar hasta revisión. Reconciliar #136 (CI rápida, Pi y arquitectura correctas; CI completa omitida) y perfil B. G02 #138 independiente pendiente CI y conexión posterior.",
+      "next": "Validar #139 por SHA exacto y revisión independiente; no admitir hasta todas las puertas. B audita vigencia del perfil antes de despacho; G02 sigue sin conexión.",
       "blocker": null,
       "generation": 2,
-      "pr": 137,
-      "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+      "pr": 139,
+      "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -222,14 +217,14 @@
       "reviewFindings": [
         4701179590
       ],
-      "branch": "feat/asen-equipo-E-E1-g2-consolidacion-131-133",
+      "branch": "feat/asen-equipo-E-M1-g2-consolidacion-136-137-138",
       "tests": "#134 superó CI, arquitectura, Pi runtime y Release Gate; hallazgo nuevo corregido en #135, pendiente de validación.",
       "files": [
         "extensions/asen.ts"
       ],
       "lastAttempt": {
-        "pr": 137,
-        "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+        "pr": 139,
+        "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
         "result": "publicada"
       }
     }
@@ -464,8 +459,8 @@
     "sha": "ab17255d9569f874e196407ab12bd321ab827acc"
   },
   "consolidation": {
-    "pr": 137,
-    "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+    "pr": 139,
+    "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
     "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
     "includes": [
       130,
@@ -473,7 +468,10 @@
       132,
       133,
       134,
-      135
+      135,
+      137,
+      136,
+      138
     ],
     "findings": [
       4701179590,
@@ -485,25 +483,54 @@
     ],
     "status": "espera-ci-y-revision",
     "globalFull": false,
-    "latestFinding": 4705072726,
-    "ci": {
+    "previousCandidate": {
+      "pr": 137,
       "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-      "full": 45798838328,
-      "quick": 45798838411,
-      "architecture": 45798838365,
-      "releaseGate": 45798838489,
-      "pi": 45798838396,
-      "conclusion": "success",
-      "piFreeSmoke": "skipped"
+      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "includes": [
+        130,
+        131,
+        132,
+        133,
+        134,
+        135
+      ],
+      "findings": [
+        4701179590,
+        4701179598,
+        4701179608,
+        4701179615,
+        4704551343,
+        4705072726
+      ],
+      "status": "espera-ci-y-revision",
+      "globalFull": false,
+      "latestFinding": 4705072726,
+      "ci": {
+        "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+        "full": 45798838328,
+        "quick": 45798838411,
+        "architecture": 45798838365,
+        "releaseGate": 45798838489,
+        "pi": 45798838396,
+        "conclusion": "success",
+        "piFreeSmoke": "skipped"
+      },
+      "review": {
+        "confirmed": false,
+        "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+        "requestedCommentId": 7189696664
+      },
+      "previousCandidate": {
+        "pr": 135,
+        "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+      }
     },
     "review": {
-      "confirmed": false,
-      "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-      "requestedCommentId": 7189696664
+      "confirmed": false
     },
-    "previousCandidate": {
-      "pr": 135,
-      "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+    "ci": {
+      "conclusion": "pendiente"
     }
   },
   "gentleShell5": {
@@ -522,7 +549,7 @@
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
         "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
         "implemented": "Cálculo puro y cuatro pruebas; aún no conectado al indicador",
-        "next": "Validar CI rápida; comprobar SDK real 1.6, conectar proyección y render tras estabilización sin duplicar P32."
+        "next": "Validar #139; conectar tras comprobar SDK G01."
       },
       "G03": {
         "state": "pendiente"
@@ -555,6 +582,7 @@
       "M5 Contexto y rendimiento",
       "M6 Aceptación"
     ],
-    "globalFull": false
+    "globalFull": false,
+    "candidate": 139
   }
 }
