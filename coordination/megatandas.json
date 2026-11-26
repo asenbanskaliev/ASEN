@@ -124,8 +124,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-revision",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-pi16-contratos-146",
+        "package": "M2-G01",
+        "base": "cd5367618ff92df691dff26994f69bad79655f88",
+        "branch": "feat/asen-equipo-E-M2-g2-pi16-contratos-146",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -170,7 +177,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar revisión #144 y CI/revisión #146; no admitir hasta puertas completas. No fusionar #145.",
+      "next": "Alinear pruebas y publicación con SDK de desarrollo 1.6; conservar pruebas independientes 1.2.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -675,8 +682,12 @@
       "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
     },
     "review": {
-      "confirmed": false,
-      "requestedCommentId": 7196188922
+      "confirmed": true,
+      "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+      "source": "CodeRabbit",
+      "actionable": 0,
+      "nitpick": 1,
+      "limitation": "Falta regresión de cola real; no equivale a aprobación humana ni admisión."
     },
     "ci": {
       "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
@@ -743,8 +754,16 @@
           "sourceJob": 140009311088,
           "manifestSha256": "4d4b03decb737b0b83c6ba4e2a96558e462dd20efc84433021e6ee5d137eb6b7",
           "lockSha256": "c020ee67503d50df3662c23a5687f440f34c85e04f20e63634961493ef34a321",
-          "state": "espera-ci",
-          "scope": "Pi 1.6.0 y siete paquetes relacionados alineados; mínimo 1.2.0 conservado"
+          "state": "fallo-ci",
+          "scope": "Pi 1.6.0 y siete paquetes relacionados alineados; mínimo 1.2.0 conservado",
+          "evidence": {
+            "matrix": 45849526741,
+            "matrixResult": "success",
+            "ci": 45849526608,
+            "releaseGate": 45849526583,
+            "conclusion": "failure",
+            "reason": "Comprobaciones de SDK instalado fijadas a 1.2.0"
+          }
         }
       },
       "G02": {
