@@ -147,8 +147,7 @@
           "extensions/asen.ts",
           "src/runtime/ui/compaction-pressure.ts",
           "tests/compaction-pressure.test.ts",
-          "src/runtime/managed/managed-acquisition-update.ts",
-          "tests/managed-acquisition-update.test.ts"
+          ".github/workflows/ci.yml"
         ],
         "startedAt": "2026-11-26T18:15:00Z"
       },
@@ -196,11 +195,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar gates exactos de 6906e949; revisar G08 y hilos nuevos; ejecutar NVIDIA acotado solo después de CI completa, Pi 1.2/1.6, Windows y CodeRabbit sin bloqueos.",
+      "next": "Validar el SHA 6385a5f6: PI 1.2/1.6, CI completa, Release Gate, Windows G08 del flujo real y revisión CodeRabbit exacta. Solo entonces activar etiqueta NVIDIA de una ejecución.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
-      "sha": "6906e949781e268cdfe5e4742a66894fa18a2d33",
+      "sha": "6385a5f6a7d0917a420063dc2db70275758def02",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -252,7 +251,7 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "SHA b25f1c97 falló por el código de error compartido; corregido como error propio en 6906e949. Gates del nuevo SHA pendientes. CodeRabbit solicitado sobre el código actual.",
+      "tests": "Se retiró el actualizador duplicado y las pruebas asociadas; G08 reutiliza upgradeManaged/rollbackManaged de managed-lifecycle.ts. CI exacta y el nuevo paso Windows con pruebas de interrupción/rollback están pendientes.",
       "files": [
         "extensions/asen.ts"
       ],
@@ -938,11 +937,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; corrección del error G08 publicada en 6906e949; validaciones y revisión exactas pendientes; T06 no ejecutado",
+    "m2": "abierta; G02/B1 consolidados; G08 vuelve al flujo upgradeManaged/rollbackManaged existente, se eliminó el motor duplicado; validaciones exactas pendientes",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:25:00Z",
-    "g02Head": "6906e949781e268cdfe5e4742a66894fa18a2d33"
+    "updatedAt": "2026-11-26T19:30:00Z",
+    "g02Head": "6385a5f6a7d0917a420063dc2db70275758def02"
   },
   "modelCallException": {
     "enabled": true,
