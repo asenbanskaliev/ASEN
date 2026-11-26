@@ -714,7 +714,7 @@
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
-        "next": "Validar #148 por SHA exacto y revisión independiente.",
+        "next": "Compatibilidad y cola comprobadas; M2 aún requiere identidad/independencia observada de modelos, G08 y revisión completa.",
         "evidence": {
           "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
           "matrix": 45832618166,
@@ -820,7 +820,13 @@
             "commentId": 7199342498,
             "confirmed": false
           }
-        }
+        },
+        "blockers": [
+          "CI completa #149 en curso",
+          "revisión CodeRabbit #149 en curso",
+          "identidad/independencia real de modelos no acreditada bajo noModelCalls:true",
+          "G08 actualización Windows recuperable pendiente"
+        ]
       },
       "G03": {
         "state": "pendiente-de-implementacion-y-aceptacion",
@@ -903,7 +909,12 @@
         "coderabbitReview": "triggered",
         "commentId": 7199342498
       },
-      "g08": "pending"
+      "g08": "pending",
+      "limitations": [
+        "No hay evidencia de identidad observada del modelo en ejecución ni independencia real de jueces; la matriz Pi es sin modelos.",
+        "G08 no tiene implementación/PR en la cadena auditada.",
+        "CI completa de #149 seguía en curso; la revisión CodeRabbit de #148/#149 estaba solicitada pero sin dictamen."
+      ]
     },
     "m3": {
       "state": "parcial-en-codigo-de-115-sin-aceptacion-integral",
