@@ -115,3 +115,38 @@ for(const changed of [true,false]){
   }
  });
 }
+
+
+test("B1 mantiene la alternativa capturada cuando el perfil cambia con la ejecución ya iniciada",{timeout:30_000},async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-b-ejecucion-iniciada-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const identity={sessionId:"b1-ejecucion-iniciada",projectId:await realpath(process.cwd())};
+ let enter!:()=>void,release!:()=>void;
+ const entered=new Promise<void>(resolve=>{enter=resolve;});
+ const hold=new Promise<void>(resolve=>{release=resolve;});
+ const seen:AgentRequest[]=[];
+ const agents=await AgentRuntime.open({storeFile:join(home,"agents.json"),maxConcurrency:1,runner:{run:async request=>{
+  seen.push(request);enter();await hold;return{id:request.id,ok:true,output:"Ejecución instrumentada sin modelos"};
+ }}});
+ const initial=plannedExplorerFallback({role:"explorer",model:primary,profiles,origin:{scope:"global",name:"perfil"},fallbacksByScope:{global:fallbacks}});
+ assert.deepEqual(initial,{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
+ const id=await agents.startReadOnly({role:"explorer",prompt:"Ejecución ya iniciada",session:identity,model:primary,modelFallback:initial});
+ try{
+  await entered;
+  const captured=seen.find(request=>request.id===id);assert.ok(captured);
+  assert.deepEqual(captured.modelFallback,initial);
+  assert.equal(Object.isFrozen(captured.modelFallback?.chain),true);
+  const changed=setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",[{model:"nvidia/modelo-c"}]);
+  const afterChange=plannedExplorerFallback({role:"explorer",model:primary,profiles,origin:{scope:"global",name:"perfil"},fallbacksByScope:{global:changed}});
+  assert.deepEqual(afterChange,{profile:"perfil",chain:[{model:"nvidia/modelo-c"}]});
+  assert.deepEqual(captured.modelFallback,initial,"La ejecución activa conserva su snapshot; el cambio solo afecta a nuevos lanzamientos");
+ }finally{release();}
+ const deadline=Date.now()+10_000;
+ while(Date.now()<deadline){
+  const current=await agents.query(id,identity);
+  if(current?.record.state==="completed")return;
+  if(current?.record.state==="failed")assert.fail(current.record.summary??"La ejecución falló");
+  await new Promise<void>(resolve=>setTimeout(resolve,10));
+ }
+ assert.fail("La ejecución iniciada no terminó");
+});
