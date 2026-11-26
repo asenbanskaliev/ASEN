@@ -36,7 +36,7 @@
       "lease": {
         "task": "B1 snapshot de configuración tras inicio, añadido a revisión combinada",
         "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "97ce0fff263290e084d34b4ae66388363bf0e9ab",
+        "base": "6eb7260b9482ac6f949e89ab75e51cff3e81aaff",
         "files": [
           "tests/asen-b-planned-fallback.test.ts"
         ],
@@ -142,7 +142,7 @@
       "lease": {
         "task": "G02 y B1 consolidados; esperar CI y revisión del SHA",
         "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "97ce0fff263290e084d34b4ae66388363bf0e9ab",
+        "base": "6eb7260b9482ac6f949e89ab75e51cff3e81aaff",
         "files": [
           "extensions/asen.ts",
           "src/runtime/ui/compaction-pressure.ts",
@@ -721,7 +721,7 @@
   },
   "gentleShell5": {
     "planBranch": "feat/flujo-de-agentes-20261115",
-    "planSha": "c3c71c96e91d0198b7a9a406757aad8c230eb91c",
+    "planSha": "b90158e238638e72d1c39d6a1fdc14d5775bcc9f",
     "planPath": "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
@@ -814,7 +814,7 @@
         }
       },
       "G02": {
-        "state": "correccion-baseline-publicado-espera-CI-y-revision-final",
+        "state": "espera-validacion-SHA-6eb7260",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
@@ -823,36 +823,39 @@
         "next": "Validar #149 y paridad SDK, representación y revisión independiente.",
         "connectionCandidate": {
           "pr": 149,
-          "sha": "97ce0fff263290e084d34b4ae66388363bf0e9ab",
+          "sha": "6eb7260b9482ac6f949e89ab75e51cff3e81aaff",
           "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
           "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "cambios-G02-y-B1-publicados-espera-validacion-exacta",
+          "state": "correccion-contexto-cancelado-publicada-espera-CI-y-revision",
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática. Se agrega prueba del snapshot alternativo durante ejecución activa.",
           "evidence": {
-            "ci": 45875132024,
-            "ciStatus": "in_progress",
-            "releaseGate": 45875132220,
+            "ci": 45875502842,
+            "ciStatus": "pending",
+            "releaseGate": 45875502797,
             "releaseStatus": "in_progress",
-            "architecture": 45875132136,
-            "architectureStatus": "success",
-            "quick": 45875131979,
-            "quickStatus": "success",
-            "piRuntime": 45875131990,
-            "piRuntimeStatus": "success",
+            "architecture": 45875502995,
+            "architectureStatus": "in_progress",
+            "quick": 45875502787,
+            "quickStatus": "in_progress",
+            "piRuntime": 45875502788,
+            "piRuntimeStatus": "in_progress",
             "piFreeSmoke": "skipped"
           },
           "review": {
             "triggered": true,
-            "commentId": 7200366045,
+            "commentId": 7200407067,
             "reviewState": "requested",
-            "headSha": "97ce0fff263290e084d34b4ae66388363bf0e9ab",
-            "previousFindingFixedInCode": true
+            "headSha": "6eb7260b9482ac6f949e89ab75e51cff3e81aaff",
+            "priorFindingsFixedInCode": [
+              "sincronizar estado publicado en mismo propietario",
+              "recrear observador tras abortar contexto"
+            ]
           }
         },
         "blockers": [
-          "CI y Release Gate del SHA exacto en curso",
-          "Revisión CodeRabbit posterior a la última corrección pendiente",
-          "Independencia e identidad real de modelos no acreditadas con noModelCalls:true"
+          "CI, Release Gate, arquitectura y Pi 1.2 del SHA actual en curso",
+          "Revisión CodeRabbit completa pendiente",
+          "Identidad e independencia de modelos reales no acreditadas bajo noModelCalls:true"
         ],
         "review": {
           "triggered": true,
