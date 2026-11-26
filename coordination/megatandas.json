@@ -138,17 +138,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "corrigiendo-fallo-ci",
-      "lease": {
-        "id": "E-20261126T-github-actor-regex",
-        "task": "Ajustar prueba de admisión de ramas para tolerar comparación segura del autor del marcador T06",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "472547ae809be6e1a8f485ff404eed3bc5953688",
-        "files": [
-          "tests/ci-specialized-gates.test.ts"
-        ],
-        "startedAt": "2026-11-26T22:40:00Z"
-      },
+      "state": "validando",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -193,11 +184,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Corregir el alcance del regex de la prueba de ramas; repetir validación exact-SHA y revisión.",
+      "next": "Validar CI completa, CI rápida, Release Gate, Phase 0, Pi 1.2 y CodeRabbit exactas de 3eafc195; después considerar la única prueba NVIDIA/Pi.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "472547ae809be6e1a8f485ff404eed3bc5953688",
+      "sha": "3eafc1951776d19c8a21d525904be95acded984b",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -256,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "El SHA 315fc98 tuvo CI/gates correctos y CodeRabbit sin hallazgos nuevos. SHA 472547ae añade filtro github-actions[bot] a la lectura de marcadores T06 y prueba negativa contra comentarios ajenos; se valida de nuevo desde cero.",
+      "tests": "El SHA 315fc98 tuvo CI/gates correctos y CodeRabbit sin hallazgos nuevos. SHA 472547ae añade filtro github-actions[bot] a la lectura de marcadores T06 y prueba negativa contra comentarios ajenos; se valida de nuevo desde cero. La CI rápida del SHA 472547ae detectó que tests/ci-specialized-gates.test.ts rechazaba cualquier comparación == con texto entre comillas; se acotó la regla a comparaciones de github.head_ref en 3eafc195. La aceptación automática y CodeRabbit deben repetirse sobre este SHA.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -279,57 +270,20 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "pendiente-solicitar-revision-completa-SHA-472547ae",
+      "reviewState": "pendiente-revision-completa-SHA-3eafc195",
       "latestValidation": {
-        "sha": "472547ae809be6e1a8f485ff404eed3bc5953688",
-        "state": "en-curso-seguridad-T06; ensayo real bloqueado",
-        "runs": [
-          {
-            "name": "Phase 0 Architecture",
-            "id": 45892862337,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Release Gate",
-            "id": 45892862358,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "Pi 1.2 runtime evidence",
-            "id": 45892862379,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "CI rápida",
-            "id": 45892862400,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "CI",
-            "id": 45892862395,
-            "status": "queued",
-            "conclusion": null
-          },
-          {
-            "name": "Pi Free Smoke",
-            "id": 45892862350,
-            "status": "completed",
-            "conclusion": "skipped"
-          }
-        ],
+        "sha": "3eafc1951776d19c8a21d525904be95acded984b",
+        "state": "validacion-reiniciada-tras-correccion-de-regresion; T06 bloqueado",
+        "runs": [],
         "globalFull": false,
         "review": {
-          "status": "pendiente-solicitud-para-SHA-exacto"
+          "status": "pendiente-solicitar-tras-confirmar-runs"
         }
       },
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "sha": "472547ae809be6e1a8f485ff404eed3bc5953688",
+        "sha": "3eafc1951776d19c8a21d525904be95acded984b",
         "phase": "CI y revisión independiente",
         "writeReservation": false
       }
@@ -1058,5 +1012,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T22:35:00Z"
+  "updatedAt": "2026-11-26T22:45:00Z"
 }
