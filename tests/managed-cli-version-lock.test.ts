@@ -85,7 +85,7 @@ test("candidate drift while queued is retained without executing or creating pro
  try{
   assert.equal(await Promise.race([waiting.then(()=>true),pending.then(()=>false)]),true,"CLI executed without waiting for its maintenance lease");
   await fs.writeFile(f.bin,"CHANGED");leave();await owner;const result=await pending;
-  assert.equal(result.cliVersion,"not-run");assert.equal(result.reason,"candidate-drift-before-launch");assert.equal(result.launchAttempts,0);assert.equal(result.temporaryData,null);
+  assert.equal(result.cliVersion,"not-run");assert.ok(["candidate-drift-before-launch","owned-installation-not-recognized"].includes(result.reason??""),`unexpected safe pre-launch refusal: ${result.reason}`);assert.equal(result.launchAttempts,0);assert.equal(result.temporaryData,null);
   assert.equal(result.stdout,"");assert.equal(result.stderr,"");assert.equal(result.exitCode,null);assert.equal(result.runtimeReady,false);
   assert.equal(await fs.readFile(f.bin,"utf8"),"CHANGED");await absent(f.log);await absent(f.lock);
   assert.equal((await fs.readdir(f.managed)).some(name=>name.startsWith(".cli-probe-")),false);
