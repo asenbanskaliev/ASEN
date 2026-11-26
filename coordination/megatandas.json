@@ -130,8 +130,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-bloqueo-permisos-t06",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M3-g2-correlacion-pi-150",
+        "package": "G01-G03",
+        "base": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
+        "branch": "feat/asen-equipo-E-M3-g2-correlacion-pi-150",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -176,7 +183,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #150 CI, matriz Pi 36 celdas, G08 Windows y revisión exacta. No admitir ni rearmar T06 hasta que propietario resuelva 403 y se revise autorización. M3: continuar G03/P04 y prueba integral.",
+      "next": "Añadir evidencia RPC correlacionada y rechazo de preflight duplicado sin reenviar peticiones; no admitir hasta CI exacta.",
       "blocker": "El control previo de un solo uso devolvió 403 Resource not accessible by integration al desarmar la etiqueta. Falló cerrado antes de consultar o llamar a NVIDIA; no hubo solicitudes API ni sesiones Pi. La etiqueta se retiró mediante integración y no se repetirá automáticamente.",
       "generation": 2,
       "pr": 150,
@@ -572,7 +579,20 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "E-M3-g2-correlacion-pi-150": {
+      "owner": "E",
+      "files": [
+        "scripts/pi-support-matrix.mjs",
+        "tests/pi-support-matrix.test.ts",
+        "src/agents/pi-process-runner.ts",
+        "tests/pi-process-runner-no-fallback-settlement.test.ts",
+        ".github/workflows/pi-compatibility-1_5.yml",
+        ".github/workflows/ci.yml"
+      ],
+      "reason": "Cerrar correlación RPC real de G01 y evitar prompt repetido por preflight duplicado G03"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -848,7 +868,15 @@
       "confirmed": false
     },
     "ci": {
-      "conclusion": "pendiente"
+      "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
+      "quick": 45899268570,
+      "architecture": 45899268656,
+      "pi": 45899268631,
+      "releaseGate": 45899268689,
+      "g08Windows": 140180749738,
+      "full": 45899268567,
+      "matrix": 45899268559,
+      "conclusion": "parcial-superado-espera-ci"
     },
     "audit": {
       "workPr": 149,
