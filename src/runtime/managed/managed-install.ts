@@ -540,7 +540,7 @@ function sameCanonicalPath(actual:string,expected:string):boolean {
  if(process.platform!=="win32")return false;
  // Windows puede entregar la ruta temporal con alias 8.3; aceptar el alias solo
  // si realpath lo resuelve al mismo destino físico observado en el inventario.
- try{return normalized(actual)===normalized(realpathSync(expected));}catch{return false;}
+ try{return normalized(actual)===normalized(realpathSync.native(expected));}catch{return false;}
 }
 function catalogFileAt(value:ManagedPathMetadata|undefined,file:string):value is ManagedPathMetadata&{kind:"file";identity:string;size:number} {
  return value?.kind==="file"&&value.identity!==undefined&&typeof value.size==="number"&&sameCanonicalPath(value.canonicalPath,file);
