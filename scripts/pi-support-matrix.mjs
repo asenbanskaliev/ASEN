@@ -40,6 +40,19 @@ export function piVersionAnchors(metadata=packageMetadata(),additionalVersions=[
  return [...new Set([minimum,development,...valid])];
 }
 
+// Mantener la opción singular histórica y aceptar una lista acotada explícita.
+export function supplementalPiVersions(env=process.env){
+ const single=env.ASEN_PI_MATRIX_EXTRA_VERSION,multiple=env.ASEN_PI_MATRIX_EXTRA_VERSIONS;
+ assert.ok(single===undefined||multiple===undefined,"No combinar las opciones de versiones adicionales de Pi");
+ const raw=multiple??single;
+ if(raw===undefined)return [];
+ assert.ok(typeof raw==="string"&&raw.length>0,"Versiones adicionales de Pi vacías");
+ const versions=multiple===undefined?[raw]:raw.split(",");
+ piVersionAnchors(packageMetadata(),versions); // mismo límite y validación exacta
+ assert.equal(new Set(versions).size,versions.length,"Versiones adicionales de Pi duplicadas");
+ return versions;
+}
+
 export function planPiSupportMatrix(metadata,additionalVersions=[]){
  const versions=piVersionAnchors(metadata,additionalVersions);
  return ["linux","win32","darwin"].flatMap(platform=>versions.flatMap(version=>
@@ -146,8 +159,7 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
  const results=[];
  // La versión adicional solo se prueba cuando una ejecución concreta la solicita.
  // No sustituye el Pi principal ni se usan proveedores o modelos.
- const additionalVersions=process.env.ASEN_PI_MATRIX_EXTRA_VERSION?
-  [process.env.ASEN_PI_MATRIX_EXTRA_VERSION]:[];
+ const additionalVersions=supplementalPiVersions();
  const versions=piVersionAnchors(packageMetadata(),additionalVersions);
  const npmCli=process.env.npm_execpath;
  assert.ok(npmCli,"Run through npm run verify:pi-matrix");

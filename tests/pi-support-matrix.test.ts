@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 // @ts-expect-error CI-only matrix planner.
-import {planPiSupportMatrix,validateCellObservation} from "../scripts/pi-support-matrix.mjs";
+import {planPiSupportMatrix,validateCellObservation,supplementalPiVersions} from "../scripts/pi-support-matrix.mjs";
 
 test("support matrix selects exactly 12 distinct Pi 1.2.0 host cells",()=>{
  const cells=planPiSupportMatrix();
@@ -68,4 +68,23 @@ test("La prueba de Pi adicional rechaza versiones ambiguas o inferiores",()=>{
  };
  for(const invalid of [["1.1.0"],["latest"],["1.5.x"],["1.5.2","1.5.3","1.5.4"]])
   assert.throws(()=>planPiSupportMatrix(metadata,invalid),/Supplemental Pi version/u);
+});
+
+test("G01 conserva Pi 1.2 y añade 1.5.2 y 1.6.0 en los tres sistemas y cuatro modos",()=>{
+ const versions=supplementalPiVersions({ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.5.2,1.6.0"});
+ const cells=planPiSupportMatrix(undefined,versions);
+ assert.deepEqual([...new Set(cells.map((cell:{version:string})=>cell.version))],["1.2.0","1.5.2","1.6.0"]);
+ assert.equal(cells.length,36);
+ assert.equal(new Set(cells.map((cell:{id:string})=>cell.id)).size,36);
+ for(const platform of ["linux","win32","darwin"])for(const version of ["1.2.0","1.5.2","1.6.0"])
+  assert.deepEqual(cells.filter((cell:{platform:string;version:string})=>cell.platform===platform&&cell.version===version).map((cell:{mode:string})=>cell.mode),["tui","rpc","json","print"]);
+ assert.deepEqual(supplementalPiVersions({ASEN_PI_MATRIX_EXTRA_VERSION:"1.5.2"}),["1.5.2"]);
+ assert.deepEqual(supplementalPiVersions({}),[]);
+});
+test("G01 rechaza solicitudes de versiones duplicadas, ambiguas o excesivas",()=>{
+ for(const env of [{ASEN_PI_MATRIX_EXTRA_VERSIONS:""},{ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.6.0,"},
+  {ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.6.0,1.6.0"},{ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.5.2, 1.6.0"},
+  {ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.4.0,1.5.2,1.6.0"},{ASEN_PI_MATRIX_EXTRA_VERSION:"latest"},
+  {ASEN_PI_MATRIX_EXTRA_VERSION:"1.5.2",ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.6.0"}])
+  assert.throws(()=>supplementalPiVersions(env));
 });
