@@ -114,8 +114,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-revision",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M1-g2-reconciliar-archivo-140",
+        "package": "M1",
+        "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
+        "branch": "feat/asen-equipo-E-M1-g2-reconciliar-archivo-140",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -160,7 +167,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Esperar revisión independiente #140; comprobar resultados de #141 por SHA exacto. No integrar M2 ni elevar mínimo antes de M1.",
+      "next": "Resolver hallazgo 4707849565 con reconciliación bajo bloqueo y lectura coherente de ambas ubicaciones; probar interrupción tras guardar archivo.",
       "blocker": null,
       "generation": 2,
       "pr": 140,
@@ -482,7 +489,7 @@
       4704551343,
       4705072726
     ],
-    "status": "espera-revision",
+    "status": "correccion-revision",
     "globalFull": false,
     "previousCandidate": {
       "pr": 139,
@@ -568,7 +575,10 @@
     },
     "review": {
       "confirmed": false,
-      "requestedCommentId": 7190886973
+      "requestedCommentId": 7190886973,
+      "findings": [
+        4707849565
+      ]
     },
     "ci": {
       "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
@@ -589,13 +599,22 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "espera-ci",
+        "state": "matriz-superada-revision-pendiente",
         "pr": 141,
         "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
-        "next": "Comprobar resultados; luego alinear dependencias y contratos SDK si procede. No sustituye versión mínima."
+        "next": "Comprobar resultados; luego alinear dependencias y contratos SDK si procede. No sustituye versión mínima.",
+        "evidence": {
+          "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
+          "matrix": 45811828713,
+          "ci": 45811828705,
+          "releaseGate": 45811828652,
+          "architecture": 45811828653,
+          "result": "success",
+          "scope": "arranque, interfaz, RPC/JSON/print y salida natural; cero modelos; no acredita flujo de agentes real"
+        }
       },
       "G02": {
         "state": "espera-ci",
