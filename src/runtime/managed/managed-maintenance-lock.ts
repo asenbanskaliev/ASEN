@@ -57,7 +57,7 @@ async function stillOwned(prefix:string,root:string,expected:Stats,allowPartialI
  const inventory=await inspectManagedInstall({prefix});
  if(allowPartialInventory){
   const records=await readManagedOwnershipRecords(root);
-  if(!records||canonical(records.canonicalManagedRoot)!==canonical(root))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires valid ownership records");
+  if(!records||canonical(records.canonicalManagedRoot)!==canonical(await realpath(root)))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires valid ownership records");
  }else if(inventory.status!=="owned"||canonical(inventory.managedRoot)!==canonical(root))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires an existing owned installation");
  await unchangedRoot(root,expected);
 }
@@ -91,7 +91,7 @@ export async function withManagedMaintenanceLock<T>(request:ManagedMaintenanceLo
  const inventory=await inspectManagedInstall({prefix});
  const ownership=request.allowPartialInventory?await readManagedOwnershipRecords(root):undefined;
  if(request.allowPartialInventory
-  ?!ownership||canonical(ownership.canonicalManagedRoot)!==canonical(root)
+  ?!ownership||canonical(ownership.canonicalManagedRoot)!==canonical(await realpath(root))
   :inventory.status!=="owned"||canonical(inventory.managedRoot)!==canonical(root)){
   fail("OWNED_ROOT_REQUIRED",request.allowPartialInventory?"Managed maintenance requires valid ownership records":"Managed maintenance requires an existing owned installation");
  }
