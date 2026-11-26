@@ -88,7 +88,7 @@
       }
     },
     "D": {
-      "state": "correccion-delegada-E",
+      "state": "correccion-asignada",
       "lease": null,
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
@@ -101,7 +101,7 @@
       ],
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "tests": "Regresiones nuevas publicadas; CI completa y revisión pendientes.",
-      "blocker": "D desactivado; E asume únicamente esta corrección bajo propiedad temporal.",
+      "blocker": "D desactivado; publicación no confirmada",
       "generation": 2,
       "candidatePR": 135,
       "candidateSha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -112,19 +112,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-g2-4705072726-1126",
-        "generation": 2,
-        "package": "E1",
-        "base": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
-        "branch": "feat/asen-equipo-E-E1-g2-metricas-4705072726",
-        "phase": "escritura",
-        "files": [
-          "src/runtime/agents/flow-metrics.ts",
-          "tests/asen-d-flow-usage.test.ts"
-        ]
-      },
+      "state": "correccion-pendiente",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -170,7 +159,7 @@
         "openReviewThreads": 0
       },
       "next": "Coordinar D1 desde #135 exacta; luego reconciliar #136 con cambios de B/C/D, validar nuevo candidato y revisión por SHA. Revisar riesgo B de perfil obsoleto en lanzamiento; asignar interfaz compartida tras reconciliación A.",
-      "blocker": null,
+      "blocker": "Error: Reserva no vigente",
       "generation": 2,
       "pr": 135,
       "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -230,7 +219,12 @@
       "tests": "#134 superó CI, arquitectura, Pi runtime y Release Gate; hallazgo nuevo corregido en #135, pendiente de validación.",
       "files": [
         "extensions/asen.ts"
-      ]
+      ],
+      "lastAttempt": {
+        "branch": "feat/asen-equipo-E-E1-g2-metricas-4705072726",
+        "codeSha": null,
+        "error": "Error: Reserva no vigente"
+      }
     }
   },
   "packages": {
@@ -444,20 +438,7 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {
-    "src/runtime/agents/flow-metrics.ts": {
-      "owner": "E",
-      "previousOwner": "D",
-      "leaseId": "E-g2-4705072726-1126",
-      "reason": "D desactivado; corrección acotada del hallazgo 4705072726"
-    },
-    "tests/asen-d-flow-usage.test.ts": {
-      "owner": "E",
-      "previousOwner": "D",
-      "leaseId": "E-g2-4705072726-1126",
-      "reason": "D desactivado; corrección acotada del hallazgo 4705072726"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
