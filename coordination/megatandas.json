@@ -184,7 +184,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar el SHA 586f7a0 en CI, Release Gate, matriz Pi y CodeRabbit. Los dos hallazgos G02 de 1d44a76 ya están corregidos; mantener el ensayo NVIDIA/Pi bloqueado hasta que pasen todas las puertas exactas.",
+      "next": "Esperar CI completa, Release Gate, Pi1.2 y revisión completa CodeRabbit del SHA 586f7a0. Si hay nuevos hallazgos, corregir; solo entonces consumir una vez el permiso NVIDIA/Pi.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
@@ -270,16 +270,44 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "dos-observaciones-G02-corregidas-en-586f7a0-espera-revision-exacta",
+      "reviewState": "full-review-CodeRabbit-solicitada-SHA-586f7a0",
       "latestValidation": {
         "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
-        "state": "pendiente-inicio-GitHub",
-        "runs": [],
-        "superseded": {
-          "sha": "1d44a763b12703ad2e597b450087c977faf66143",
-          "ci": 45887494675,
-          "releaseGate": 45887494540
-        },
+        "state": "en-curso",
+        "runs": [
+          {
+            "name": "CI",
+            "id": 45888573325,
+            "status": "pending"
+          },
+          {
+            "name": "CI rápida",
+            "id": 45888573633,
+            "status": "in_progress"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45888573368,
+            "status": "in_progress"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45888573361,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45888573274,
+            "status": "in_progress"
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 45888573500,
+            "status": "completed",
+            "conclusion": "skipped"
+          }
+        ],
         "globalFull": false
       },
       "validationOwner": {
@@ -968,10 +996,10 @@
         "unresolved": 0
       }
     },
-    "m2": "M2 abierta: G08 Windows y pruebas integradas pasaron en SHA previo; CodeRabbit detectó dos problemas G02, ambos corregidos con pruebas estructurales en 586f7a0; puertas exactas y ensayo NVIDIA/Pi pendientes",
+    "m2": "M2 abierta: correcciones G02 de CodeRabbit publicadas en 586f7a0; CI, Release Gate, Pi 1.2 y revisión exactos en curso; NVIDIA/Pi real pendiente; globalFull:false",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T20:45:00Z",
+    "updatedAt": "2026-11-26T20:52:00Z",
     "g02Head": "586f7a0b08bb544c71cc7a873da13c99560ac23c"
   },
   "modelCallException": {
@@ -1013,5 +1041,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T20:45:00Z"
+  "updatedAt": "2026-11-26T20:52:00Z"
 }
