@@ -138,8 +138,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "bloqueado-permisos-github-para-consumir-t06",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M3-g2-continuidad-nativa-149",
+        "package": "M1-M2-M3-G03",
+        "base": "3eafc1951776d19c8a21d525904be95acded984b",
+        "branch": "feat/asen-equipo-E-M3-g2-continuidad-nativa-149",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -184,7 +191,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "No repetir el ensayo ni exponer NVIDIA/Pi hasta que el propietario habilite al GITHUB_TOKEN de Actions permisos issues:write para esta PR. Tras resolver el permiso, revisar autorización restante antes de rearmar una ejecución única.",
+      "next": "Preservar ruta firmada G08, registrar pérdida de staging separado; implementar continuidad G03 explícita sin reemitir prompt; candidato sobre #149 con base #115, sin admisión.",
       "blocker": "El control previo de un solo uso devolvió 403 Resource not accessible by integration al desarmar la etiqueta. Falló cerrado antes de consultar o llamar a NVIDIA; no hubo solicitudes API ni sesiones Pi. La etiqueta se retiró mediante integración y no se repetirá automáticamente.",
       "generation": 2,
       "pr": 149,
@@ -566,7 +573,16 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "E-M3-g2-continuidad-nativa-149": {
+      "owner": "E",
+      "files": [
+        "src/agents/pi-process-runner.ts",
+        "tests/pi-process-runner-no-fallback-settlement.test.ts"
+      ],
+      "reason": "G03 aislado; no comparte archivo de reserva B1"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -1033,11 +1049,11 @@
         "unresolved": 0
       }
     },
-    "m2": "M2: CI completa y puertas de plataforma pasadas en 315fc98; hilos CodeRabbit previos resueltos; revisión completa exacta en curso; ensayo único NVIDIA/Pi pendiente",
-    "m3": "base-auditoria-continua",
+    "m2": "CI sin modelos exacta superada, ensayo T06 bloqueado 403; falta admisión",
+    "m3": "implementación parcial G03 sin modelo",
     "globalFull": false,
     "updatedAt": "2026-11-26T22:00:00Z",
-    "g02Head": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c"
+    "g02Head": "3eafc1951776d19c8a21d525904be95acded984b"
   },
   "modelCallException": {
     "enabled": false,
