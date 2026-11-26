@@ -129,6 +129,7 @@ test("B1 mantiene la alternativa capturada cuando el perfil cambia con la ejecuc
   seen.push(request);enter();await hold;return{id:request.id,ok:true,output:"Ejecución instrumentada sin modelos"};
  }}});
  const initial=plannedExplorerFallback({role:"explorer",model:primary,profiles,origin:{scope:"global",name:"perfil"},fallbacksByScope:{global:fallbacks}});
+ assert.ok(initial);
  assert.deepEqual(initial,{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
  const id=await agents.startReadOnly({role:"explorer",prompt:"Ejecución ya iniciada",session:identity,model:primary,modelFallback:initial});
  try{
