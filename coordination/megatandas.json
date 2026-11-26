@@ -138,7 +138,7 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "validando",
+      "state": "bloqueado-permisos-github-para-consumir-t06",
       "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
@@ -184,8 +184,8 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar CI completa, CI rápida, Release Gate, Phase 0, Pi 1.2 y CodeRabbit exactas de 3eafc195; después considerar la única prueba NVIDIA/Pi.",
-      "blocker": null,
+      "next": "No repetir el ensayo ni exponer NVIDIA/Pi hasta que el propietario habilite al GITHUB_TOKEN de Actions permisos issues:write para esta PR. Tras resolver el permiso, revisar autorización restante antes de rearmar una ejecución única.",
+      "blocker": "El control previo de un solo uso devolvió 403 Resource not accessible by integration al desarmar la etiqueta. Falló cerrado antes de consultar o llamar a NVIDIA; no hubo solicitudes API ni sesiones Pi. La etiqueta se retiró mediante integración y no se repetirá automáticamente.",
       "generation": 2,
       "pr": 149,
       "sha": "3eafc1951776d19c8a21d525904be95acded984b",
@@ -247,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "El SHA 315fc98 tuvo CI/gates correctos y CodeRabbit sin hallazgos nuevos. SHA 472547ae añade filtro github-actions[bot] a la lectura de marcadores T06 y prueba negativa contra comentarios ajenos; se valida de nuevo desde cero. La CI rápida del SHA 472547ae detectó que tests/ci-specialized-gates.test.ts rechazaba cualquier comparación == con texto entre comillas; se acotó la regla a comparaciones de github.head_ref en 3eafc195. La aceptación automática y CodeRabbit deben repetirse sobre este SHA. CodeRabbit full review sobre 3eafc195 completada sin hilos abiertos.",
+      "tests": "El SHA 315fc98 tuvo CI/gates correctos y CodeRabbit sin hallazgos nuevos. SHA 472547ae añade filtro github-actions[bot] a la lectura de marcadores T06 y prueba negativa contra comentarios ajenos; se valida de nuevo desde cero. La CI rápida del SHA 472547ae detectó que tests/ci-specialized-gates.test.ts rechazaba cualquier comparación == con texto entre comillas; se acotó la regla a comparaciones de github.head_ref en 3eafc195. La aceptación automática y CodeRabbit deben repetirse sobre este SHA. CodeRabbit full review sobre 3eafc195 completada sin hilos abiertos. Validación exacta 3eafc195 completa, CodeRabbit cero hilos abiertos. Intento acotado T06 run 45895263733/job 140167464412 detenido antes de llamadas por 403 al retirar la etiqueta con GITHUB_TOKEN. NVIDIA API requests=0; Pi sessions=0; etiqueta retirada manualmente.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -273,13 +273,13 @@
       "reviewState": "full-review-CodeRabbit-3eafc195-completa-cero-hilos-abiertos",
       "latestValidation": {
         "sha": "3eafc1951776d19c8a21d525904be95acded984b",
-        "state": "CI-rapida-Phase0-Pi1.2-ReleaseGate-y-CodeRabbit-correctos; CI-completa-en-curso; NVIDIA/Pi-bloqueado",
+        "state": "validaciones-tecnicas-correctas; intento-T06-fallo-seguro-403-sin-llamada-externa",
         "runs": [
           {
             "name": "CI",
             "id": 45893102399,
-            "status": "in_progress",
-            "conclusion": null
+            "status": "completed",
+            "conclusion": "success"
           },
           {
             "name": "CI rápida",
@@ -310,19 +310,41 @@
             "id": 45893102410,
             "status": "completed",
             "conclusion": "skipped"
+          },
+          {
+            "name": "CI por etiqueta",
+            "id": 45895263733,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Release Gate por etiqueta",
+            "id": 45895263836,
+            "status": "in_progress",
+            "conclusion": null
           }
         ],
         "g08": {
           "run": 45893102399,
           "result": "success"
         },
-        "globalFull": false,
         "review": {
           "requestCommentId": 7203013283,
           "status": "completed",
           "openThreads": 0,
           "sha": "3eafc1951776d19c8a21d525904be95acded984b"
-        }
+        },
+        "modelAttempt": {
+          "run": 45895263733,
+          "job": 140167464412,
+          "step": "Desarmar la etiqueta única de M2",
+          "result": "failure",
+          "error": "403 Resource not accessible by integration",
+          "apiCalls": 0,
+          "piSessions": 0,
+          "labelRemovedManually": true
+        },
+        "globalFull": false
       },
       "validationOwner": {
         "team": "E",
@@ -1018,8 +1040,8 @@
     "g02Head": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c"
   },
   "modelCallException": {
-    "enabled": true,
-    "state": "autorizada-acotada-pendiente-de-puertas-exactas",
+    "enabled": false,
+    "state": "bloqueada-por-403-permisos-de-github-actions-sin-llamadas-externas",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 149,
     "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
@@ -1053,8 +1075,15 @@
     "globalPolicyStillNoModels": true,
     "globalFull": false,
     "apiAuthorizationMarker": "asen-t06-nvidia-consumido:<SHA>",
-    "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
+    "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>",
+    "attempt": {
+      "run": 45895263733,
+      "job": 140167464412,
+      "apiRequests": 0,
+      "piSessions": 0,
+      "labelRemoved": true
+    }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T23:18:00Z"
+  "updatedAt": "2026-11-26T23:50:00Z"
 }
