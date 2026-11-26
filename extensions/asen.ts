@@ -200,7 +200,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
  return pi=>{
   const hostSettings=()=>{try{return typeof pi.getSettings==="function"?pi.getSettings():undefined;}catch{return undefined;}};
   const settingsFingerprint=(value:unknown)=>{try{return JSON.stringify(value)??"undefined";}catch{return "unserializable";}};
-  const observeHostStatus=(ctx:CommandContext,settings=hostSettings())=>projectHostStatus(ctx,undefined,()=>settings);
+  const observeHostStatus=(ctx:CommandContext,settings=hostSettings())=>projectHostStatus(ctx,undefined,typeof pi.getSettings==="function"?()=>settings:undefined);
   const registerRaw=pi.registerCommand?.bind(pi);
   if(!registerRaw)throw new Error("ASEN extension requires Pi command registration");
   // UFC-M1-04: registered handlers are captured so keymap shortcuts can invoke the very
