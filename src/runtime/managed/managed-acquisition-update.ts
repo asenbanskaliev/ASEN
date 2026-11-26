@@ -1,6 +1,7 @@
 import path from "node:path";
 import {createManagedUpdatePreview} from "./managed-update-preview.js";
 import {ManagedInstallError,inspectManagedInstall,selectManagedVersion,stageAdditionalManagedVersion,type ManagedInstallFile} from "./managed-install.js";
+import {withManagedMaintenanceLock} from "./managed-maintenance-lock.js";
 
 export interface ManagedAcquisitionUpdateRequest{
  readonly manifestPath:string;
@@ -26,6 +27,7 @@ function installError(code:"CONFIRMATION_REQUIRED"|"INVALID_ABSOLUTE_PATH"|"FORE
 /** Freshly previews then stages declared local bytes; it never selects, activates, or executes them. */
 export async function stageManagedAcquisitionUpdate(request:ManagedAcquisitionUpdateRequest):Promise<ManagedAcquisitionUpdateReport>{
  if(request.confirmed!==true)installError("CONFIRMATION_REQUIRED","Managed acquisition update requires explicit confirmation");
+ await recoverManagedAcquisitionUpdate({prefix:request.prefix,confirmed:true});
  for(const [noun,value] of [["manifest",request.manifestPath],["package root",request.packageRoot],["installation prefix",request.prefix],...request.protectedPaths.map(value=>["protected path",value] as const)] as const)if(typeof value!=="string"||!path.isAbsolute(value))installError("INVALID_ABSOLUTE_PATH",`Managed ${noun} must be absolute`);
  const preview=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix:request.prefix});
  if(preview.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
@@ -62,6 +64,7 @@ export async function activateManagedAcquisitionUpdate(
 ):Promise<ManagedAcquisitionActivationReport>{
  if(typeof activate!=="function")throw new TypeError("Managed acquisition update requires an activation verifier");
  const prefix=path.resolve(request.prefix);
+ await recoverManagedAcquisitionUpdate({prefix,confirmed:request.confirmed});
  const before=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix});
  if(before.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
  const previousVersion=before.managed.activeVersion;
@@ -72,23 +75,24 @@ export async function activateManagedAcquisitionUpdate(
   runtimeReady:false,error:null};
  if(staged.version===previousVersion)return freezeActivation({...base,status:"staged"});
  if(signal?.aborted)return freezeActivation({...base,status:"staged",error:"CANCELLED_BEFORE_SELECTION"});
- let selection;
+ const journal=await writePendingManagedUpdate(prefix,previousVersion,staged.version);
  try{
-  selection=await selectManagedVersion({prefix,version:staged.version,expectedCurrentVersion:previousVersion,confirmed:true});
+  const selected=await selectManagedVersion({prefix,version:staged.version,expectedCurrentVersion:previousVersion,confirmed:true});
+  if(selected.status!=="selected"&&selected.status!=="unchanged")throw new Error("SELECTOR_UNCERTAIN");
  }catch{
   const current=await inspectManagedInstall({prefix}).catch(()=>undefined);
-  if(current?.status==="owned"&&current.activeVersion===previousVersion)
-   return freezeActivation({...base,status:"staged",error:null});
+  if(current?.status==="owned"&&current.activeVersion===previousVersion){
+   try{await removePendingManagedUpdate(prefix,journal);return freezeActivation({...base,status:"staged"});}catch{/* La recuperación posterior conserva el selector anterior. */}
+  }
   return freezeActivation({...base,status:"ambiguous",selection:"uncertain",error:"ROLLBACK_UNCERTAIN"});
  }
- if(selection.status!=="selected"&&selection.status!=="unchanged")
-  return freezeActivation({...base,status:"ambiguous",selection:"uncertain",error:"ROLLBACK_UNCERTAIN"});
  try{
   if(signal?.aborted)throw Error("CANCELLED_DURING_ACTIVATION");
   await activate(staged.version,signal);
   if(signal?.aborted)throw Error("CANCELLED_DURING_ACTIVATION");
   const current=await inspectManagedInstall({prefix});
   if(current.status!=="owned"||current.activeVersion!==staged.version)throw Error("ACTIVATION_FAILED");
+  await removePendingManagedUpdate(prefix,journal);
   return freezeActivation({...base,status:"activated",selection:"selected",activation:"verified",runtimeReady:true});
  }catch(error){
   const cancelled=signal?.aborted===true||(error instanceof Error&&error.message==="CANCELLED_DURING_ACTIVATION");
@@ -102,6 +106,8 @@ export async function activateManagedAcquisitionUpdate(
    }
    const final=await inspectManagedInstall({prefix});
    if(final.status!=="owned"||final.activeVersion!==previousVersion)throw Error("ROLLBACK_UNCERTAIN");
+   try{await removePendingManagedUpdate(prefix,journal);}
+   catch{return freezeActivation({...base,status:"ambiguous",selection:"uncertain",activation:"failed",error:"ROLLBACK_UNCERTAIN"});}
    return freezeActivation({...base,status:"rolled-back",selection:"restored",activation:"failed",
     error:cancelled?"CANCELLED_DURING_ACTIVATION":"ACTIVATION_FAILED"});
   }catch{

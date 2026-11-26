@@ -6,7 +6,7 @@ import path from "node:path";
 import {performance} from "node:perf_hooks";
 import {syncBuiltinESMExports} from "node:module";
 import {inspectManagedInstall,selectManagedVersion,stageManagedInstall} from "../src/runtime/managed/managed-install.js";
-import {activateManagedAcquisitionUpdate,stageManagedAcquisitionUpdate} from "../src/runtime/managed/managed-acquisition-update.js";
+import {activateManagedAcquisitionUpdate,recoverManagedAcquisitionUpdate,stageManagedAcquisitionUpdate} from "../src/runtime/managed/managed-acquisition-update.js";
 import {MANAGED_ACQUISITION_COPY_DEADLINE_MS} from "../src/runtime/managed/managed-acquisition-copy.js";
 
 const sha=(bytes:string|Buffer)=>createHash("sha256").update(bytes).digest("hex");
@@ -137,4 +137,19 @@ test("G08 cancelación antes de selección deja intacta la versión activa",asyn
   protectedPaths:[path.join(f.root,"protected")],confirmed:true},async()=>{calls++;},controller.signal);
  assert.equal(report.status,"staged");assert.equal(report.selection,"not-run");assert.equal(report.error,"CANCELLED_BEFORE_SELECTION");
  assert.equal(calls,0);assert.equal((await inspectManagedInstall({prefix:f.prefix})).activeVersion,"1.0.0");
+});
+
+
+test("G08 restaura la versión previa después de una interrupción",async()=>{
+ const f=await fixture();await selectInitialVersion(f);
+ const request={manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,protectedPaths:[path.join(f.root,"protected")],confirmed:true};
+ await stageManagedAcquisitionUpdate(request);
+ const journal=path.join(f.prefix,"install",".asen-acquisition-update.pending");
+ await fs.writeFile(journal,JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",previousVersion:"1.0.0",targetVersion:"2.0.0"})+"\\n",{mode:0o600});
+ await selectManagedVersion({prefix:f.prefix,version:"2.0.0",expectedCurrentVersion:"1.0.0",confirmed:true});
+ const recovered=await recoverManagedAcquisitionUpdate({prefix:f.prefix,confirmed:true});
+ assert.equal(recovered.status,"restored");assert.equal(recovered.previousVersion,"1.0.0");
+ assert.equal((await inspectManagedInstall({prefix:f.prefix})).activeVersion,"1.0.0");
+ await assert.rejects(()=>fs.lstat(journal),{code:"ENOENT"});
+ assert.equal(await fs.readFile(path.join(f.prefix,"install","versions","2.0.0","dist","cli.js"),"utf8"),f.bytes);
 });
