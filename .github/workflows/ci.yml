@@ -893,9 +893,11 @@ jobs:
         run: |
           if ((git rev-parse HEAD).Trim() -ne $env:ASEN_EXPECTED_SHA) { throw "SHA de G08 no coincide" }
           npm run typecheck
-      - name: Probar instalación aislada, rollback y cancelación
+      - name: Probar instalación y actualización real con rollback en Windows
         shell: pwsh
-        run: node --import tsx --test tests/managed-install.test.ts tests/managed-acquisition-update.test.ts
+        run: |
+          node --import tsx --test tests/managed-install.test.ts
+          node --import tsx --test --test-name-pattern="upgrade activates v2|fails its pre-activation|breaks only after activation|interrupted upgrade|unhealthy automatic rollback" tests/t09-lifecycle.test.ts
 
   # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
   # Ensayo adicional exclusivamente por etiqueta manual de un solo evento,
