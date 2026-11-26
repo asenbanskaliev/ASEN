@@ -229,18 +229,18 @@ export class SessionTodoStore{
   * El nuevo plan debe existir y depender de las dos raíces; así un fallo previo
   * no libera la sucesora. No se registra ningún lanzamiento de agente padre. */
  async acceptIntegratedPartition(input:{context:TodoContext;roots:readonly (TodoItem&{current:TaskEvent})[];
-  superseded:TodoItem&{current:TaskEvent};replacementRequestId:string;commit:string;
+  superseded?:TodoItem&{current:TaskEvent};replacementRequestId?:string;commit:string;
   verify:()=>Promise<void>;signal?:AbortSignal}):Promise<void>{
   const {context,roots,superseded,commit}=input;
   if(roots.length!==2||new Set(roots.map(row=>row.taskId)).size!==2||
    !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(commit)||
-   !identity(input.replacementRequestId)||superseded.dependsOn?.length!==2||
-   roots.some(root=>!superseded.dependsOn?.includes(root.taskId)||root.dependsOn?.length||
-    root.current.state!=="planned"||root.plan?.role!=="worker"||!root.plan.writerAuthorizationBasis)||
-   superseded.current.state!=="planned"||superseded.plan?.role!=="worker")
+   roots.some(root=>root.dependsOn?.length||root.current.state!=="planned"||root.plan?.role!=="worker"||!root.plan.writerAuthorizationBasis)||
+   (superseded?(!identity(input.replacementRequestId)||superseded.dependsOn?.length!==2||
+    roots.some(root=>!superseded.dependsOn?.includes(root.taskId))||superseded.current.state!=="planned"||superseded.plan?.role!=="worker"):
+    input.replacementRequestId!==undefined))
    throw new Error("Invalid exact integrated partition replacement");
   await this.#mutate(context,async data=>{
-   const expected=[...roots,superseded];
+   const expected=superseded?[...roots,superseded]:[...roots];
    const items=expected.map(row=>{
     const item=data.items.find(value=>value.taskId===row.taskId);
     const original=structuredClone(row);delete (original as {current?:TaskEvent}).current;
@@ -249,11 +249,14 @@ export class SessionTodoStore{
      throw new Error("Source partition changed during integration acceptance");
     return item;
    });
+   if(superseded){
    const replacement=data.items.find(row=>row.requestId===input.replacementRequestId);
    if(!replacement||replacement.plan?.role!=="worker"||replacement.plan.candidate?.revision!==commit||
     replayTask(replacement.events)?.state!=="planned"||
     replacement.dependsOn?.length!==2||roots.some(root=>!replacement.dependsOn?.includes(root.taskId)))
     throw new Error("Fresh dependent plan has not been persisted with exact predecessors");
+   }else if(data.items.some(row=>row.dependsOn?.some(id=>roots.some(root=>root.taskId===id))))
+    throw new Error("Unexpected dependent task in a root-only partition");
    await input.verify();
    const at=this.now();
    for(const item of items.slice(0,2)){
@@ -261,8 +264,10 @@ export class SessionTodoStore{
     const running=applyTaskEvent(previous,{...previous,revision:previous.revision+1,state:"running",at,reason:"Verifying accepted child integration "+commit});
     item.events.push(running,applyTaskEvent(running,{...running,revision:running.revision+1,state:"done",at,reason:"Child results integrated and verified at "+commit}));
    }
-   const old=items[2]!,previous=replayTask(old.events)!;
-   old.events.push(applyTaskEvent(previous,{...previous,revision:previous.revision+1,state:"cancelled",at,reason:"Superseded by a new candidate-bound ODD plan"}));
+   if(superseded){
+    const old=items[2]!,previous=replayTask(old.events)!;
+    old.events.push(applyTaskEvent(previous,{...previous,revision:previous.revision+1,state:"cancelled",at,reason:"Superseded by a new candidate-bound ODD plan"}));
+   }
   },input.signal);
  }
  async update(taskId:string,context:TodoContext,expectedRevision:number,state:TaskState,reason?:string,signal?:AbortSignal,validateContext?:()=>void):Promise<TodoItem>{

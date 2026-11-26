@@ -205,3 +205,14 @@ test("Pi guarda las tres unidades en el diario real y no despacha la raíz en la
   await rm(directory,{recursive:true,force:true});
  }
 });
+
+ test("Dos raíces sin sucesora se materializan sin permisos y mantienen ámbitos separados",()=>{
+ const taskUnits=units.filter(unit=>!unit.dependsOn.length),all=taskUnits.flatMap(unit=>unit.writePaths!);
+ const {repositoryIdentity,...facts}=request({taskUnits,scope:{kind:"known",expectedPaths:all},writes:all.map(path=>({path,changeKind:"behavior"}))});
+ const candidate={id:"candidate",repository:repo,revision:"a".repeat(40),createdAt:"2026-11-24T00:00:00.000Z"};
+ const result=JSON.parse(controlledInstructionPlanCommand(JSON.stringify({instruction:"Completar dos unidades independientes",...facts}),repo,candidate));
+ assert.equal(result.partitionExecution,"supervised-worktrees-required");
+ assert.equal(result.executablePlan.tasks.length,2);
+ assert.ok(result.executablePlan.tasks.every((task:{role:string;dependsOn:string[];status:string})=>task.role==="worker"&&task.dependsOn.length===0&&task.status==="ready"));
+ assert.deepEqual(result.execution,{started:false,authorized:false});
+});

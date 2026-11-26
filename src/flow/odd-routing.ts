@@ -268,10 +268,10 @@ export function canMaterializeOddPartition(facts:OddDerivedFacts):boolean{
   (facts.risk==="low"||facts.risk==="medium")&&!facts.namedRisks.length&&
   !facts.riskOperations.length&&!facts.unresolvedDecisions.length&&
   facts.review.kind==="none"&&facts.testing.kind==="required"&&
-  facts.taskUnits.length===3&&facts.taskUnits.every(unit=>!!unit.writePaths?.length&&
+  (facts.taskUnits.length===2||facts.taskUnits.length===3)&&facts.taskUnits.every(unit=>!!unit.writePaths?.length&&
    unit.writePaths.every(surface=>!/\u2028|\u2029/u.test(surface)))&&
   facts.independentUnits===2&&facts.taskUnits.filter(unit=>!unit.dependsOn.length).length===2&&
-  facts.taskUnits.some(unit=>unit.dependsOn.length===2&&facts.taskUnits.filter(root=>!root.dependsOn.length).every(root=>unit.dependsOn.includes(root.id)));
+  (facts.taskUnits.length===2||facts.taskUnits.some(unit=>unit.dependsOn.length===2&&facts.taskUnits.filter(root=>!root.dependsOn.length).every(root=>unit.dependsOn.includes(root.id))));
 }
 
 /** Deriva una candidatura de unidad a partir de la partición original validada.

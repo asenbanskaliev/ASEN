@@ -2677,7 +2677,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(completed){
       // Una petición natural de continuación puede solicitar permiso NUEVO para
       // una sucesora todavía planificada. Nunca relanzar una ya reclamada.
-      if(completed.todoState!=="planned")return completed;
+      if(completed.status==="partition-already-closed"||completed.todoState!=="planned")return completed;
       validate();const execution=await advancePlan(ctx,undefined,completed.todoId,signal);
       return {...completed,execution};
      }

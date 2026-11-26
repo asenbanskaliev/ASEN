@@ -127,6 +127,11 @@ export async function inspectPartitionPolicy(candidate:NativeIntegrationCandidat
     JSON.stringify(first.basis.partitionOrigin)!==JSON.stringify(second.basis.partitionOrigin)||
     !candidate.paths.every(path=>bindings.some(binding=>binding.writeSurfaces.includes(path))))
   throw Error("Las raíces y el ámbito no pertenecen a la misma partición ODD.");
+ if(first.parsed.parentFacts.taskUnits.length===2){
+  if(rows.some(row=>row.dependsOn?.some(id=>candidate.sourceTodoIds.includes(id))))throw Error("La partición sin sucesora contiene dependencias ajenas.");
+  return {fingerprint:JSON.stringify(roots.map(root=>root.row)),risk:first.parsed.parentFacts.risk,
+   requirements:roots.map(root=>root.row.description!).join("\n")};
+ }
  const successor=rows.filter(row=>row.current.state==="planned"&&row.plan?.role==="worker"&&
   row.plan.candidate?.revision===candidate.baseCommit&&row.dependsOn?.length===2&&
   candidate.sourceTodoIds.every(id=>row.dependsOn!.includes(id)));
