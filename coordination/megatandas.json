@@ -114,8 +114,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-pi16-matriz-140",
+        "package": "M2",
+        "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
+        "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -160,7 +167,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #140 y revisar recuperación de archivo, no admitir #139; comprobar otras observaciones de revisión antes de integrar.",
+      "next": "Preparar matriz adicional G01 sin alterar base, versiones de desarrollo ni permisos.",
       "blocker": null,
       "generation": 2,
       "pr": 140,
@@ -482,7 +489,7 @@
       4704551343,
       4705072726
     ],
-    "status": "espera-ci-y-revision",
+    "status": "espera-revision",
     "globalFull": false,
     "previousCandidate": {
       "pr": 139,
@@ -567,10 +574,18 @@
       }
     },
     "review": {
-      "confirmed": false
+      "confirmed": false,
+      "requestedCommentId": 7190886973
     },
     "ci": {
-      "conclusion": "pendiente"
+      "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+      "full": 45809299223,
+      "conclusion": "success",
+      "quick": 45809299532,
+      "architecture": 45809299238,
+      "releaseGate": 45809299460,
+      "pi": 45809299270,
+      "piFreeSmoke": "skipped"
     },
     "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
   },
@@ -581,7 +596,10 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "pendiente"
+        "state": "trabajando",
+        "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
+        "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
+        "scope": "Matriz Pi 1.5.2 y 1.6.0 sin modelos; preservar Pi 1.2."
       },
       "G02": {
         "state": "espera-ci",
