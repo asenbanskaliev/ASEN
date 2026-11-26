@@ -90,7 +90,7 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  const probe=readFileSync(new URL("../scripts/t06-nvidia-free-api-probe.mjs",import.meta.url),"utf8");
  for(const model of ["nvidia/nemotron-3.5-lightning-30b-a3b","nvidia/nemotron-3.5-super-vl-120b-a12b"])assert.ok(probe.includes(model));
  assert.ok(probe.includes("distinctModelIdsVerified"));assert.ok(probe.includes("retryCount:0"));
- const windowsStart=ci.indexOf("\\n  managed-update-windows:");
+ const windowsStart=ci.indexOf("\n  managed-update-windows:");
  const windowsEnd=ci.indexOf("\\n  generated-code-docker-sandbox:",windowsStart);
  assert.ok(windowsStart>=0&&windowsEnd>windowsStart);
  const windows=ci.slice(windowsStart,windowsEnd);
