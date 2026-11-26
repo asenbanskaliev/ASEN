@@ -88,3 +88,34 @@ test("EF-202 only four observed read queries trigger one suggestion after reject
  assert.equal(tracker.snapshot().recommendationIssued,true);
 });
 
+
+test("MEGA-A3 una respuesta de lectura defectuosa no interrumpe Pi ni consume presupuesto",()=>{
+ const tracker=new ExplorerBudgetTelemetry();
+ const corrupt=[
+  {...observation("propiedad","read"),result:{get content(){throw new Error("respuesta dañada");}}},
+  {...observation("bloque","read"),result:{content:[{get text(){throw new Error("texto dañado");}}]}},
+  {...observation("operacion","codegraph"),args:{get operation(){throw new Error("petición dañada");}}},
+  {...observation("resultado","codegraph"),args:{operation:"query"},result:{get details(){throw new Error("informe dañado");}}},
+ ];
+ for(const item of corrupt)assert.doesNotThrow(()=>tracker.observe(item));
+ assert.equal(tracker.snapshot().queries,0);
+ assert.equal(tracker.snapshot().outputBytes,0);
+ assert.equal(tracker.claimBudgetExplorer(),false);
+ assert.equal(tracker.snapshot().recommendationIssued,false);
+ for(let i=0;i<4;i++)tracker.observe(observation("lectura-"+i));
+ assert.equal(tracker.snapshot().queries,4,"Los avisos siguen activándose con datos válidos");
+ assert.equal(tracker.claimBudgetExplorer(),true);
+ assert.equal(tracker.claimBudgetExplorer(),false);
+});
+
+test("G49-A2 un solo consumo tras el aviso y sin duplicar Explorer",()=>{
+ const tracker=new ExplorerBudgetTelemetry();
+ assert.equal(tracker.claimBudgetExplorer(),false,"no hay permiso antes del agotamiento");
+ for(let n=0;n<4;n++)tracker.observe(observation(`budget-${n}`));
+ assert.equal(tracker.snapshot().delegationClaimed,false);
+ assert.equal(tracker.claimBudgetExplorer(),true);
+ assert.equal(tracker.snapshot().delegationClaimed,true);
+ assert.equal(tracker.claimBudgetExplorer(),false);
+ assert.equal(tracker.observe(observation("budget-4")),false);
+ assert.equal(tracker.snapshot().recommendationIssued,true);
+});

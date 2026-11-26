@@ -1,12 +1,17 @@
 name: Release Gate
 on:
+  # En PR, solo para PR listas y cada SHA final; las PR en borrador no lo ejecutan.
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   push:
     branches: [main, "release/**"]
 permissions:
   contents: read
 jobs:
   package:
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.action == 'labeled' || github.event.pull_request.draft == false)
     strategy:
       matrix:
         os: [ubuntu-24.04, windows-latest, macos-latest]

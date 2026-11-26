@@ -3,9 +3,9 @@ import {PiProcessRunner} from "./pi-process-runner.js";
 
 const lifecycleArtifactKind:Record<string,string>={"context-init":"project-context",explore:"exploration",proposal:"proposal",specification:"specification",design:"design",tasks:"task-plan",apply:"apply-result",verify:"verification-report",archive:"archive-report"};
 
-export function bindPiArtifactIdentity(output:string,request:AgentRequest):string{
+export function bindPiArtifactIdentity(output:string,request:AgentRequest,options:Readonly<{requireFinalSettlement?:boolean}>={}):string{
  if(!request.candidate||request.repository!==request.candidate.repository)throw new Error("Pi artifact provenance requires an exact candidate repository");
- const body=extractPiArtifact(output,request.id);
+ const body=options.requireFinalSettlement?extractSettledPiArtifact(output,request.id):extractPiArtifact(output,request.id);
  let parsed:unknown;
  try{parsed=JSON.parse(body);}catch{parsed=undefined;}
  const record=parsed&&typeof parsed==="object"&&!Array.isArray(parsed)?parsed as Record<string,unknown>:{};
@@ -60,17 +60,102 @@ export function extractPiArtifact(output:string,requestId:string):string{
  return body;
 }
 
+
+/**
+ * Strict, opt-in artifact recovery for an authenticated, no-tools Pi read-only
+ * run. An agent_end is not final: verify each attempt and the single terminal
+ * agent_settled before reusing the existing one-artifact parser.
+ * This function does not authorize retries or any filesystem operations.
+ */
+export function extractSettledPiArtifact(output:string,requestId:string):string{
+ if(typeof output!=="string"||!output.trim()||output.length>512_000)
+  throw new Error("Pi settled artifact stream is empty or oversized");
+ let raw:unknown[];
+ try{
+  const lines=output.trim().split(/\r?\n/u);
+  if(lines.length>2048)throw Error("too many records");
+  raw=lines.map(line=>JSON.parse(line) as unknown);
+ }catch{throw new Error("Pi settled artifact RPC stream is malformed");}
+ const isRecord=(value:unknown):value is Record<string,unknown>=>
+  value!==null&&typeof value==="object"&&!Array.isArray(value);
+ if(raw.some(record=>!isRecord(record)||typeof record.type!=="string"))
+  throw new Error("Pi settled artifact has invalid RPC records");
+ const events=raw as Record<string,unknown>[];
+ if(events.some(row=>
+  typeof row.type==="string"&&(
+   row.type.startsWith("tool_execution_")||
+   row.type.startsWith("toolcall_")||
+   row.type.startsWith("bash_execution_")||
+   ["tool_call","tool_result","tool_use"].includes(row.type)
+  )))throw new Error("Pi settled artifact cannot contain tool activity");
+ const positions=(type:string)=>events.flatMap((row,index)=>row.type===type?[index]:[]);
+ const starts=positions("agent_start"),ends=positions("agent_end"),
+  messages=events.flatMap((row,index)=>row.type==="message_end"&&isRecord(row.message)&&
+   row.message.role==="assistant"?[index]:[]);
+ const settlements=positions("agent_settled");
+ const ack=events.flatMap((row,index)=>row.type==="response"&&row.id===requestId?[index]:[]);
+ if(ack.length!==1||events[ack[0]!]!.success!==true)
+  throw new Error("Pi settled artifact lacks one successful correlated response");
+ if(settlements.length!==1||events[settlements[0]!]!.aborted===true)
+  throw new Error("Pi settled artifact lacks one non-aborted final settlement");
+ const settledAt=settlements[0]!;
+ if(starts.length<1||starts.length>8||starts.length!==ends.length||
+  starts.length!==messages.length||ack[0]!>=starts[0]!)
+  throw new Error("Pi settled artifact has ambiguous attempts");
+ for(let i=0;i<starts.length;i++){
+  const start=starts[i]!,message=messages[i]!,end=ends[i]!,
+   previous=i===0?ack[0]!:ends[i-1]!;
+  if(start<=previous||message<=start||end<=message||end>=settledAt)
+   throw new Error("Pi settled artifact attempt order is invalid");
+  const retry=events[end]!.willRetry;
+  if(i<starts.length-1&&retry!==true||i===starts.length-1&&retry!==false)
+   throw new Error("Pi settled artifact attempt lacks an explicit retry or terminal marker");
+  const assistant=events[message]!.message as Record<string,unknown>;
+  if(Array.isArray(assistant.content)&&assistant.content.some(item=>
+   isRecord(item)&&["toolCall","tool_call"].includes(String(item.type))))
+   throw new Error("Pi settled artifact assistant attempted tools");
+ }
+ const permittedAfter=new Set(["response","extension_ui_request"]);
+ if(events.slice(ends[ends.length-1]!+1,settledAt).some(row=>
+  !permittedAfter.has(String(row.type)))||
+  events.slice(settledAt+1).some(row=>!permittedAfter.has(String(row.type))))
+  throw new Error("Pi settled artifact contains activity outside the final attempt");
+ const finalMessage=events[messages[messages.length-1]!]!;
+ // Reuse the original parser for the final text, error and tool checks.
+ // Earlier failed attempts can never supply content or a success proof.
+ return extractPiArtifact([
+  JSON.stringify({type:"response",id:requestId,success:true}),
+  JSON.stringify(finalMessage),
+  JSON.stringify({type:"agent_end"})
+ ].join("\n"),requestId);
+}
+
 const issuedArtifactProofs=new WeakSet<object>();
 export function isIssuedAgentArtifactProof(value:unknown):value is AgentArtifactProof{return typeof value==="object"&&value!==null&&issuedArtifactProofs.has(value);}
 function issueArtifactProof(request:AgentRequest):AgentArtifactProof{const proof=Object.freeze({requestId:request.id,role:request.role,repository:request.repository,...(request.candidate?{candidateId:request.candidate.id,candidateRevision:request.candidate.revision}:{}),skillPaths:Object.freeze([...(request.skillPaths??[])])});issuedArtifactProofs.add(proof);return proof;}
 
 /** The lifecycle receives a Pi-produced artifact, never the raw RPC envelope. */
 export class PiArtifactRunner implements AgentRunner{
- constructor(private readonly pi:PiProcessRunner){}
- async run(request:AgentRequest):Promise<AgentResult>{
-  const response=await this.pi.run(request);
+ constructor(
+  private readonly pi:PiProcessRunner,
+  private readonly options:Readonly<{allowSettledReadOnlyRecovery?:boolean}>={}
+ ){}
+ async run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>{
+  const recovery=this.options.allowSettledReadOnlyRecovery===true;
+  if(recovery&&(
+   request.role==="worker"||request.writeSurfaces?.length||
+   request.runnerWriteReceiver!==undefined||request.phaseGrant!==undefined||
+   request.modelFallback?.chain.length||
+   this.pi.supportsStrictReadOnlySettlement?.()!==true
+  ))return {id:request.id,ok:false,
+   output:"Pi artifact recovery requires a strict, no-tools read-only process without fallback"};
+  // El Dispatcher es dueño de la cancelación. El adaptador de artefactos
+  // debe transmitirla al mismo proceso Pi, no esperar a que termine solo.
+  const response=await this.pi.run(request,signal);
+  if(signal?.aborted)return {id:request.id,ok:false,output:"Pi artifact cancellation requested"};
   if(!response.ok||response.id!==request.id)return {...response,ok:false};
-  try{return {id:request.id,ok:true,output:bindPiArtifactIdentity(response.output,request),artifactProof:issueArtifactProof(request)};}
+  try{return {id:request.id,ok:true,output:bindPiArtifactIdentity(response.output,request,
+   {requireFinalSettlement:recovery}),artifactProof:issueArtifactProof(request)};}
   catch(error){return {id:request.id,ok:false,output:String(error)};}
  }
 }

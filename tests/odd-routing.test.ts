@@ -46,6 +46,51 @@ test("issues every route with deterministic precedence", () => {
   assert.equal(route({ scope: { kind: "known", expectedPaths: ["a", "b", "c", "d"] }, writes: [] }).route, "direct");
 });
 
+test("E1: delega por unidades sustanciales independientes, no por número de archivos",()=>{
+ const units=[
+  {id:"api",objective:"Implementar contrato de API",estimatedMinutes:45,dependsOn:[]},
+  {id:"ui",objective:"Implementar vista independiente",estimatedMinutes:40,dependsOn:[]}
+ ];
+ assert.equal(route({taskUnits:units}).route,"orchestrate");
+ assert.deepEqual(route({taskUnits:units}).reasons,["independent-substantial-task-units"]);
+ assert.equal(route({taskUnits:units.map(u=>({...u,estimatedMinutes:5}))}).route,"direct");
+ assert.equal(route({taskUnits:[units[0]!,{...units[1]!,dependsOn:["api"]}]}).route,"direct");
+ assert.equal(route({scope:{kind:"known",expectedPaths:Array.from({length:20},(_,i)=>`f${i}`)},writes:[]}).route,"direct");
+ const decision=route({taskUnits:units});
+ assert.equal(decision.requiresSingleWriter,true);
+ assert.equal(JSON.stringify(decision).includes("permission"),false);
+});
+test("E1B: dos raíces independientes se pueden planificar aunque haya sucesoras dependientes",()=>{
+ const roots=[
+  {id:"api",objective:"Implementar contrato de API",estimatedMinutes:45,dependsOn:[]},
+  {id:"ui",objective:"Implementar vista independiente",estimatedMinutes:40,dependsOn:[]},
+ ];
+ const dependent={id:"integracion",objective:"Integrar la API tras probarla",estimatedMinutes:30,dependsOn:["api"]};
+ const facts=deriveOddFacts(request({taskUnits:[...roots,dependent]}));
+ assert.equal(facts.independentUnits,2);
+ const decision=planOddRoute(facts);
+ assert.equal(decision.route,"orchestrate");
+ assert.deepEqual(decision.reasons,["independent-substantial-task-units"]);
+ // Si solo hay una raíz preparada, debe respetarse la dependencia y no recomendar paralelo.
+ assert.equal(route({taskUnits:[roots[0]!,dependent]}).route,"direct");
+ // Las decisiones pendientes y el riesgo alto prevalecen; nunca se eluden por tener dos raíces.
+ assert.equal(route({taskUnits:[...roots,dependent],unresolvedDecisions:["Confirmar alcance"]}).route,"plan");
+ assert.equal(route({taskUnits:[...roots,dependent],riskOperations:["security_boundary"]}).route,"plan");
+ // El dictamen no concede autorización ni crea agentes por sí mismo.
+ assert.equal(JSON.stringify(decision).includes("permission"),false);
+});
+
+test("E1: rechaza unidades falsas, dependencias rotas y datos no declarados",()=>{
+ const valid={id:"a",objective:"Trabajo acotado",estimatedMinutes:40,dependsOn:[]};
+ for(const taskUnits of [
+  [valid,valid],[{...valid,dependsOn:["b"]}],[{...valid,dependsOn:["a"]}],
+  [{...valid,estimatedMinutes:-1}],[{...valid,objective:""}],
+  [{...valid,extra:true}],
+  [{...valid,id:"a",dependsOn:["b"]},{...valid,id:"b",dependsOn:["a"]}],
+  [{...valid,id:"a",dependsOn:["b"]},{...valid,id:"b",dependsOn:["c"]},{...valid,id:"c",dependsOn:["a"]}],
+  Array.from({length:33},(_,i)=>({...valid,id:String(i)}))
+ ])assert.throws(()=>deriveOddFacts(request({taskUnits:taskUnits as NonNullable<OddRoutingRequest["taskUnits"]>})));
+});
 test("routes by uncertainty, actual risk, and explicit independent review", () => {
   assert.equal(route({ session: { estimatedMinutes: 59, continuation: false } }).route, "direct");
   assert.equal(route({ session: { estimatedMinutes: 600, continuation: false } }).route, "direct");
@@ -118,4 +163,43 @@ test("facts plan once and decisions claim once; structural forgeries stay invali
   assert.throws(() => claimOddRouteDecision({ ...decision }));
   claimOddRouteDecision(decision);
   assert.throws(() => claimOddRouteDecision(decision));
+});
+
+
+test("un riesgo nombrado obliga a verificador independiente sin conceder permisos",()=>{
+ for(const item of [1,2,3,4,5,6] as const){
+  const decision=route({namedRisks:[{item,reason:"Riesgo comprobado de la categoría "+item}]});
+  assert.equal(decision.route,"orchestrate");
+  assert.equal(decision.verification,"independent");
+  assert.ok(decision.reasons.includes("named-risk-"+item));
+ }
+ assert.equal(route({namedRisks:[{item:4,reason:"Concurrencia"}],writes:[]}).route,"direct");
+ assert.equal(route({namedRisks:[{item:2,reason:"Seguridad"}],riskOperations:["security_boundary"]}).route,"plan");
+});
+
+test("esquema y migración infieren verificación; cambios sencillos mantienen ruta directa",()=>{
+ for(const [kind,item] of [["schema",3],["migration",1]] as const){
+  const facts=deriveOddFacts(request({writes:[{path:"src/a.ts",changeKind:kind}]}));
+  assert.ok(facts.namedRisks.some(risk=>risk.item===item));
+  const decision=planOddRoute(facts);
+  assert.equal(decision.route,"orchestrate");
+  assert.equal(decision.verification,"independent");
+ }
+ assert.equal(route().route,"direct");
+ assert.equal(route({writes:[{path:"src/a.ts",changeKind:"documentation"}]}).verification,"structural");
+ const missing=route({testing:{kind:"n_a",reason:"Sin pruebas disponibles"}});
+ assert.equal(missing.route,"orchestrate");
+ assert.equal(missing.verification,"independent");
+});
+
+test("riesgos mal formados y duplicados no permiten plan ni autorizaciones",()=>{
+ for(const risks of [
+  [{item:0,reason:"No autorizado"}],
+  [{item:7,reason:"No autorizado"}],
+  [{item:4,reason:"Duplicado"},{item:4,reason:"Duplicado"}],
+  [{item:1,reason:" "}],
+  [{item:3,reason:"X".repeat(501)}],
+  [{item:2,reason:"Válido",other:true}],
+  Array.from({length:7},(_,i)=>({item:i+1,reason:"Exceso"}))
+ ])assert.throws(()=>deriveOddFacts(request({namedRisks:risks as NonNullable<OddRoutingRequest["namedRisks"]>})));
 });

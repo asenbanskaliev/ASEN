@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 // @ts-expect-error CI-only package execution evidence.
-import {admitPackageJourneyResult} from "../scripts/ecosystem-package-receipts.mjs";
+import {admitPackageJourneyResult,expectedPackageExportCount} from "../scripts/ecosystem-package-receipts.mjs";
 function fixture(patch:Record<string,unknown>={}){
  const journey={installedPiPackageVerified:true,childAuthorityAutoLoaded:false,visibleRpcCommands:11,modelInvocations:0,
   sessionRestartVerified:true,crossSessionProjectionVerified:true,naturalProcessExits:3,
   publicHost:{mode:"rpc",canonicalCommands:11,canonicalTools:17,hasUI:true,toolsEnabled:true},...patch};
- const pack={packedInstallVerified:true,publicExports:28,files:243,integrity:"sha512-"+"A".repeat(86)+"=="};
+ const pack={packedInstallVerified:true,publicExports:expectedPackageExportCount(),files:243,integrity:"sha512-"+"A".repeat(86)+"=="};
  return {status:0,signal:null,stdout:JSON.stringify(journey)+"\n"+JSON.stringify(pack)+"\nPACK_ENV_BOUNDARY_PASS\n"};
 }
 
 test("package receipt admission requires actual completed package and three-process journey summaries",()=>{
  const result=admitPackageJourneyResult(fixture());
- assert.equal(result.journey.naturalProcessExits,3);assert.equal(result.pack.publicExports,28);
+ assert.equal(result.journey.naturalProcessExits,3);assert.equal(result.pack.publicExports,expectedPackageExportCount());
 });
 
 test("old forced-exit package observations cannot prove restart or cross-session receipts",()=>{
@@ -27,4 +27,14 @@ test("partial or duplicated summaries never produce executed package receipts",(
  for(const result of [{...fixture(),status:124},{...fixture(),signal:"SIGTERM"},{...fixture(),error:Error("timeout")},
   {...fixture(),stdout:fixture().stdout+fixture().stdout},{...fixture(),stdout:JSON.stringify({installedPiPackageVerified:true})}])
   assert.throws(()=>admitPackageJourneyResult(result));
+});
+
+test("un paquete con menos o más exports que el catálogo fuente no se admite",()=>{
+ const valid=fixture();
+ const count=expectedPackageExportCount();
+ for(const wrong of [count-1,count+1]){
+  const changed={...valid,stdout:valid.stdout.replace(
+   `"publicExports":${count}`,`"publicExports":${wrong}`)};
+  assert.throws(()=>admitPackageJourneyResult(changed));
+ }
 });

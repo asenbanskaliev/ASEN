@@ -1,0 +1,137 @@
+# ASEN actual frente a Gentle Shell 4.9.0 — auditoría técnica del flujo de agentes
+
+**Fecha de comparación:** 19 de noviembre de 2026. **Alcance:** coordinación de agentes, modelos, ODD, errores, revisión y continuidad. No se evalúa Desktop ni Tower, porque no forman parte del objetivo del flujo. **Rama ASEN:** `feat/flujo-de-agentes-20261115`, PR #61, fuente de código `fc3a837d5a7732e5a1f0bf31686028e3e2fc618b` (puede tener un commit documental posterior). **Referencia:** Gentle Shell v4.9.0, `ce64a9a708e50c0ca899c8023140e63f29f293e1`, última versión publicada el 18/11/2026, Gentle AI v4.6.0 incluido.
+
+**Regla de evidencia:** `FUENTE` = lectura del código; `TEST SIMULADO` = prueba sin proveedor; `CI` = resultado GitHub de un SHA concreto; `REAL` = proceso Pi con proveedor autenticado y efectos observados; `PARIDAD` = ensayo A/B con las mismas condiciones. **No confundirlas.** `globalFull:false`, sin cambios de permisos de pago ni fusiones.
+
+## 1. Cierre de la Megatanda D: causa raíz
+
+**Antecedente exacto:** el CI del commit `4066b274b111b8c8cf1a9e743d7f6eb4b040d978` (ejecución [44491345879](https://github.com/asenbanskaliev/ASEN/actions/runs/44491345879)) pasó el bloque integrado D, Pi 1.2, arquitectura y las cinco pruebas generales de Linux/macOS y grupos de Windows, pero falló `test (windows-latest shard 2)`. La prueba `workspace history serializes concurrent appends from independent store instances` registró `Timed out waiting for private store lock` en `src/io/exclusive-file-lock.ts:96`, durante 40 escrituras concurrentes. El control de cobertura incompleta falló correctamente como consecuencia.
+
+**Intervención D:** `src/runtime/workspace-store.ts` incorpora una cola de escrituras **por identidad canónica de fichero y dentro del mismo proceso**: espera al predecesor, escribe con `withExclusiveFileLock` original y libera la cola también al fallar. La operación entre procesos **sigue usando el candado atómico, 30 s de tiempo máximo por adquisición y reglas de dueño/estado**. No se roba un candado vivo, no se ignora un error ni se sube el límite de 30 s. La prueba de 40 escrituras con dos instancias ya existente demuestra ausencia de pérdida y revisiones consecutivas; las pruebas independientes de candado cubren carreras, permisos y cancelación.
+
+**Limitación:** el CI del SHA que incluye el arreglo debe acabar en verde en Windows, macOS y Linux, con paquete, Pi y seguridad. No basta con que la prueba local o el bloque integrado D pasen. Ver estado del SHA del encabezado de PR #61. Hasta que el CI final sea verde, no declarar `D_CERTIFICADA`.
+
+## 2. Diferencias funcionales comprobadas y decisión propuesta
+
+Las rutas fuente siguientes son enlaces a líneas **del tag 4.9.0** y a **ASEN en la rama auditada**, no al estado mutable de main.
+
+| Nº | Supuesto A / B y comportamiento de Gentle 4.9.0 | ASEN actual y diferencia observada | Evaluación y prioridad |
+| --- | --- | --- | --- |
+| **01 · Trabajo pequeño / grande** | Si la petición se entiende, tiene riesgo acotado y se puede reanudar con petición + diferencia Git, el padre trabaja directamente; el número de archivos no obliga a delegar. En caso contrario registra ODD, pero tampoco delega solo por tamaño. | `odd-routing.ts` distingue direct/plan/verify/incident/orchestrate, y A añadió reglas en `request-guidance.ts`. La norma del test de reanudación vive sobre todo en el **mensaje del modelo**, no en una política exhaustiva ejecutada por el host. | **PARCIAL — P1.** Medir decisiones con Pi real antes de reescribir rutas. |
+| **02 · Modo del orquestador** | El perfil ofrece `organic` y `full-delegation`; el segundo envía **toda** escritura a Worker. El modo cambia en el siguiente turno y la vista del prompt elimina reglas incompatibles. | `profiles.ts` admite por rol `model/thinking`, no un `workflow.orchestratorMode` equivalente. ASEN no dispone de ese cambio funcional por perfil; actualmente usa la ruta controlada única. | **FALTA — P1.** Crear modo opcional solo si hay Writer admitido y no cambia permisos; por defecto conservar el modo actual. |
+| **03 · Presupuesto de Explorer** | Tras una tanda corta de lecturas (~3 consultas, ~10 000 tokens), se delega una investigación acotada con referencias `ruta:línea`, resumen ~2 000 tokens y una comprobación puntual. | A2 incorpora contador real: 3 lecturas o 40 KiB; `budgetExplorer:true` exige modelo con cuatro tarifas cero, presupuesto de la sesión y un solo lanzamiento. El umbral y el modelo de coste son distintos; el lanzamiento lo decide el modelo, no es obligatorio. | **PARCIAL INTENCIONAL — P2.** Medir exceso de contexto y calidad; conservar control de coste y deduplicación. |
+| **04 · Cuándo lanzar Writer** | Exige motivo: al menos dos unidades de comportamiento independientes, de varios minutos, o límite de contexto. Cada unidad lleva **código + pruebas + documentación**. | ASEN valida ODD, candidato y superficies; `planOddRoute` no deriva automáticamente una delegación Writer solo porque existan dos unidades: `orchestrate` está ligado a la revisión dual explícita. El supervisor de T06 es otro acceso controlado. | **BRECHA DE ENRUTAMIENTO — P1.** Conectar una evaluación de independencia a la ruta ODD existente; no generar permisos nuevos. |
+| **05 · Paralelismo de Writers** | Si las superficies no se pisan, el padre lanza las unidades en un mismo turno y los agentes Pi trabajan en segundo plano. Superficies dependientes esperan. | `parallel-parent-supervisor.ts` exige sesiones Pi hijas **previamente adjuntadas**, diarios y confirmación individual. B continúa tras rechazos inequívocos. Existen pruebas y experiencias T06 de Workers reales acotados, pero no está demostrada la misma experiencia autónoma de dos nuevas sesiones lanzadas desde un solo turno del padre. | **PARCIAL — P0 para equivalencia de flujo.** No confundir dos `await` con prueba de ejecución secuencial: medir solapamiento real e inicio sin preparación manual. |
+| **06 · Superficies ampliadas** | El padre puede ajustar las superficies necesarias dentro del objetivo autorizado; el hijo jamás amplía su propia autoridad. | ASEN exige alcance ODD, candidato/SHA y consentimiento por Worker, de modo que puede detenerse más por revisiones o cambios de ámbito. | **ASEN MÁS ESTRICTO — MANTENER.** Solo mejorar propuestas exactas de alcance, sin concesiones tácitas. |
+| **07 · Avisos de segundo plano** | `agent_end` no demuestra fin: el padre espera `agent_settled`, recibe mensaje único, despierta sin consultar continuamente y reduce resultados de más de 90 s. | ASEN usa su `AgentRuntime.subscribeTerminal`, diario propio, mensaje de Pi, aislamiento por sesión/proyecto y caducidad a 90 s. Es sólido, pero **no es el mismo evento nativo `agent_settled`** de Gentle y no se ha demostrado su equivalencia de reanudación con Pi real. | **PARCIAL — P1.** Pruebas de interrupción, compactación, cambio de turno, entrega tardía y consulta de resultado. |
+| **08 · Fallos y otras unidades** | El padre identifica la causa; puede continuar unidades independientes ya autorizadas y se detiene si el permiso o resultado de escritura es incierto. | B permite seguir solo una lectura independiente, pendiente y con precio cero, y continuar Workers tras rechazo **explícito sin efecto**. No relanza escrituras dudosas; la continuación automática de otras escrituras es más conservadora. | **INTENCIONAL — P2.** Conservar fail-closed y estudiar continuidad de trabajos que ya tienen una autorización válida, sin repetir ni cambiar permisos. |
+| **09 · Modelos de sustitución** | Cadena seleccionada, clasificación de fallos, cooldown de 30 min (cuota) y 2 min (transitorios), sin bucles; puede considerar límites por proveedor/modelo y su lectura de consumo. | ASEN tiene un máximo de ocho, clasificación, temporizadores y control del consentimiento; en A2/A4 el modelo de catálogo requiere precio exactamente cero, bloqueando desconocidos. La misma sustitución real en hijos y padre, bajo cuota/error, no está acreditada comparativamente. | **MUY PARECIDO — P2.** Conservar seguridad, realizar pruebas reales gratuitas y medir proveedor, modelo y razones de descarte. |
+| **10 · Modelo inicial del padre** | Sesión nueva elegible adopta el modelo del perfil sin reconfigurar globalmente Pi; sesiones reanudadas no se alteran. | A4 añade `startup-orchestrator-model.ts` ligado a Pi: rechaza reanudación/hija/historial y precio desconocido o positivo. Gentle no impone ese filtro obligatorio de cero coste para todos los perfiles. | **PARCIAL SEGURO — P2.** Verificar modelo efectivo en host con credenciales y coste consentido, no relajar filtro automáticamente. |
+| **11 · Verificación proporcional** | Worker siempre ejecuta sus pruebas. Verificador adicional solo si se nombra uno de seis riesgos graves; tras trabajo paralelo el padre comprueba las uniones y ejecuta una suite completa. | La política `review-assessment-policy.ts` ahora llega como orientación a revisión ordinaria; no concede autoridad de verificador. Hay verificaciones y CI, pero no un paso equivalente obligatorio de revisión de uniones en tiempo de ejecución del supervisor. | **BRECHA — P1.** Conectar riesgo nombrado con verificación vinculante; un solo chequeo de uniones y CI exacto. |
+| **12 · Revisión ordinaria en un flujo** | `gentle_review_run` utiliza transiciones del proveedor, devuelve decisiones faltantes y preserva consentimiento, estado y uso/coste sin inventar pasos. | ASEN tiene `ordinary-review-command.ts` con Pi y controles propios, pero no se ha demostrado una coordinación de una sola llamada semánticamente equivalente a `gentle_review_run` con transiciones y métricas reales. | **PARCIAL — P1/P2.** Reutilizar controlador real, no crear motor duplicado. |
+| **13 · Dos jueces y correcciones** | Judgment Day emplea ledger congelado, dos jueces, un lote de corrección y como máximo dos nuevas rondas; no convierte dictámenes en autoaceptación. | ASEN tiene dos jueces Pi distintos, revisados de forma **secuencial** en `judgment-day.ts`, y límite de dos rondas en `dual-rejudgment.ts`; C conserva hallazgos aunque ambos digan pass. El Fix termina en propuesta ODD y consentimiento nuevo, no una ejecución autónoma genuina de extremo a extremo. | **PARCIAL — P1.** Prueba autenticada de los dos juicios, Fix autorizado, rondas y recibo de verificación. |
+| **14 · Preguntas de bloqueo** | Ofrece opciones completas, texto libre en decisiones normales y conserva intacta la pregunta de consentimiento o proveedor; no resume autorización opaca. | ASEN exige aprobación Pi exactamente `true`, lo que es más seguro para gastos y aceptación. No se ha demostrado paridad de elección normal completa con texto libre y posterior reanudación sin perder opciones. | **DESCONOCIDO — P2.** Crear ensayo negativo y positivo sin tocar consentimiento de coste/escritura. |
+| **15 · Git y recuperación** | La ejecución sigue sesiones y ámbitos, revisa Git y bloquea si hay cambios fuera del objetivo. | ASEN usa ODD duradero, SHA/candidato exacto, grant por fase, límites de superficies, diarios de enlace e intento único, y prohíbe merge automático. D conserva el bloqueo entre procesos y reparó una congestión de 40 escrituras locales. | **FORTALEZA DE ASEN — CONSERVAR.** Más controles no implican mayor velocidad; optimizar solo donde hay medición. |
+| **16 · Medición de coste y rendimiento** | Gentle publica un ensayo concreto de modo orgánico frente a delegación completa, con tiempos/costes estimados por modelo y condiciones declaradas. | ASEN cuenta con `agent-flow-ab-comparison.ts`, que solo acepta observaciones comparables, pero sus pruebas usan datos construidos. No existe aquí una serie **ASEN vs Gentle 4.9.0** con mismo proyecto, prompts, modelos, acceso, pruebas y coste real verificable. | **NO DEMOSTRADO — P0.** Ejecutar T09 con presupuesto consentido; sin factura/uso válido, coste `unknown`. |
+| **17 · Aceptación real del flujo** | Los resultados pasan por entrega, validación de riesgos, revisión y un cierre condicionado al estado verdadero. | D añadió una prueba con un host Pi simulado: Explorer → Verifier → recibo firmado → confirmación humana. Prueba las barreras de ASEN, **no** dos Workers reales simultáneos ni la misma calidad que Gentle. | **E2E SIMULADO — P0.** T06/T08/T09/T10 deben constar por separado antes de `FULL`. |
+| **18 · Dependencias entre runtimes** | Gentle Shell 4.9.0 empaqueta su runtime Gentle AI v4.6.0 y el conjunto de herramientas correspondiente. | ASEN declara Pi opcional `@earendil-works/pi-coding-agent >=1.2.0`, usa su propia extensión y comprueba Pi 1.2. La coincidencia de conceptos **no** certifica contratos nativos idénticos. | **DIFERENCIA DE ARQUITECTURA — P1.** Realizar matriz de capacidades del host, no replicar funciones dependientes de otra versión. |
+
+## 3. Fuentes de código exactas
+
+**Gentle 4.9.0:** [orquestador](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/assets/orchestrator.md), [delegación y espera](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/assets/orchestrator-delegation-reference.md), [Writer](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/assets/orchestrator-writer.md), [perfil orgánico/completo](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/lib/orchestrator-mode-policy.ts), [segundo plano y caducidad](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/lib/agents-completion-delivery.ts), [ejecución Pi](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/lib/agents-runner.ts), [verificación](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/assets/orchestrator-verification.md), [coordinador de revisión](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/docs/review-coordinator.md), [dos juicios y correcciones](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/lib/review-policy-judgment-day.ts), [sustitución de modelos](https://github.com/Gentleman-Programming/gentle-shell/blob/ce64a9a708e50c0ca899c8023140e63f29f293e1/lib/model-fallback-policy.ts).
+
+**ASEN auditado:** [ruta ODD](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/flow/odd-routing.ts), [orientación de ruta](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/runtime/ui/request-guidance.ts), [perfiles](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/runtime/lifecycle/profiles.ts), [Explorer](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/runtime/agents/explorer-budget.ts), [supervisor Writer](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/runtime/agents/parallel-parent-supervisor.ts), [aviso terminal](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/runtime/agents/agent-terminal-delivery.ts), [modelos](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/runtime/lifecycle/startup-orchestrator-model.ts), [revisión](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/review/ordinary-review-command.ts), [Judgment Day](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/review/judgment-day.ts), [comparación A/B](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/review/agent-flow-ab-comparison.ts), [historial y bloqueo Windows](https://github.com/asenbanskaliev/ASEN/blob/fc3a837d5a7732e5a1f0bf31686028e3e2fc618b/src/runtime/workspace-store.ts).
+
+**Sesgo y límites:** esta auditoría inspecciona el código fuente del tag y el candidato GitHub; no observa las decisiones internas de un modelo auténtico, permisos de una máquina ajena, credenciales reales ni facturación de terceros. No asignar porcentajes de paridad sin una muestra comparable y criterios de calidad.
+
+## 4. Prioridad de las siguientes acciones
+
+**E-01 (bloqueante):** terminar CI Windows/macos/Linux y Gate del SHA definitivo de D. Corregir nuevas causas, no dar por bueno un SHA anterior.
+
+**E-02 (muy alta):** ensayo real y consentido del padre con **dos Workers independientes** en dos sesiones Pi (inicio, autorización por cada uno, solapamiento observado, ámbitos separados, prueba de uniones, validación de resultados y rechazo de fusiones). Sin aprobación humana, no ejecutar escrituras reales.
+
+**E-03 (muy alta):** validar decisión de Writer por unidades, modo opcional de delegación completa y verificación proporcional en el punto de entrada Pi, sin cambiar modelo o ampliar permisos silenciosamente.
+
+**E-04 (alta):** comparar A/B igualando versión de proyecto, prompt, contexto, pruebas, permisos, modelo y esfuerzo; registrar tiempo, consumo, coste conocido y resultado funcional. Si no se dispone de métricas, registrar `UNKNOWN`, nunca cero.
+
+**F-01 (auditoría independiente final):** revisar los hallazgos anteriores con otro revisor, pruebas negativas, regresiones de seguridad, recuperación, costes y aceptación exacta del SHA. Solo con todos los controles y pruebas reales aprobar la paridad.
+
+**Conclusión provisional:** ASEN no puede declararse «menos eficaz» o «igual de eficaz» sin el ensayo A/B. Es **más estricto** en admisión de escrituras, versión y costes. Sigue siendo **menos automático** que Gentle Shell 4.9.0 en el cambio de modo, inicio de Workers, continuación integral y verificación condicionada al riesgo. A-D corrigen partes sustanciales, pero `globalFull:false` es el estado correcto hasta disponer de evidencia real.
+
+---
+
+## 5. Decisiones tras investigación avanzada (19-11-2026)
+
+**Estado:** plan propuesto y revisado contra código, NO ejecutado. ASEN PR #61, código base dcb68a67a5801ee672523206235273ac72e7a7cc. Referencia 4.9.0 SHA ce64a9a708e50c0ca899c8023140e63f29f293e1. Megatanda D: CI verde. E y auditoría F: pendientes. globalFull:false.
+
+### Correcciones esenciales al informe
+
+1. La referencia SÍ dispone de modos organic y full-delegation por perfil (lib/orchestrator-mode-policy.ts). ASEN aún no ofrece modo equivalente.
+2. ASEN SÍ tiene dos jueces de Pi, actualmente ejecutados de forma secuencial (src/review/judgment-day.ts).
+3. ASEN SÍ tiene sustitución de modelos, máximo ocho alternativas y esperas de 30/2 minutos (src/runtime/lifecycle/model-fallback-policy.ts). No crear un segundo mecanismo.
+4. ASEN YA conserva tareas ODD, ámbitos autorizados, SHA, diarios y pruebas integradas con ejecutor simulado. No imponer git stash, reset, push o merge automáticos como alternativa superior.
+5. Prueba simulada no equivale a dos agentes reales, factura verificada o paridad con el producto de referencia.
+
+### Comparación y decisión final de los 18 puntos
+
+A = ASEN actual; B = referencia 4.9.0; C = diseño híbrido. Las decisiones son propuestas; las mejoras no están implementadas.
+
+| Nº / Función | Gentle (B) | ASEN actual (A) | Propuesta final | Elección |
+| --- | --- | --- | --- | --- |
+| 01 Decisión directo/delegar | Directo salvo motivo de delegación | Ruta ODD existente; decisión parcialmente en instrucciones | Decisión del anfitrión con motivo verificable y ruta directa por defecto | C |
+| 02 Dos modos de trabajo | Orgánico y delegación completa por perfil | Perfil por modelo y rol, sin modo equivalente | Dos modos compatibles; delegación completa prohíbe toda escritura directa del padre | C |
+| 03 Explorer | Presupuesto acumulado, resumen acotado | Tres lecturas/40 KiB, gratuito y un lanzamiento | Medir lecturas y tokens reales cuando Pi permita; mantener seguridad y evitar duplicados | C |
+| 04 Unidades independientes | Dos o más unidades grandes, cada una con código, pruebas y documentación | ODD y ámbitos detallados, menos detección automática | Deducir unidades por dependencias y superficies; no dividir por número de archivos | C |
+| 05 Writers en paralelo | Lanzamiento conjunto de independientes | Supervisor seguro con sesiones hijas preparadas | Preparación desde padre si el host lo permite; límite inicial dos y permisos individuales | C |
+| 06 Ampliación de ámbitos | Superficies editables acotadas | SHA, superficies y aprobación por Worker más estrictos | Mantener ASEN; proponer ampliación exacta solo con autorización nueva | A+ |
+| 07 Entrega de agentes | Resultado asentado y entrega única | Diario propio, evento terminal e identidad de sesión | Unificar semántica de asentado, recibido y consumido, con aviso una sola vez | C |
+| 08 Continuación tras fallos | Otras unidades independientes pueden avanzar | Continuación limitada a lecturas seguras y rechazos inequívocos | Continuar trabajos ya admitidos e independientes, nunca repetir escrituras dudosas | C |
+| 09 Sustitución de modelos | Cadena, categorías, esperas | Ya tiene cadena de hasta ocho, esperas y permisos de coste | Conservar; verificar uso real en padre e hijos sin duplicar mecanismo | A+ |
+| 10 Modelo inicial por perfil | Se resuelve para sesión elegible | Pi inicial con modelo gratuito verificado | Aplicar modelo autorizado de perfil sin alterar sesión reanudada o hijos activos | C |
+| 11 Verificación por riesgo | Seis clases de alto riesgo exigen verificador | Política proporcional aún informativa | Convertir condición de riesgo en obligación ejecutada, conservando pruebas/CI | C |
+| 12 Revisión coordinada | Revisión del candidato exacto | Revisión Pi ordinaria ya existe | Coordinar un solo ciclo persistente sobre candidato congelado y controles vigentes | C |
+| 13 Dos jueces | Juicios independientes, control de rondas | Dos jueces reales secuenciales, hallazgos y límite de rondas | Paralelos si Pi lo permite y hay consentimiento; ledger congelado y Fix ODD nuevo | C |
+| 14 Preguntas | Una pregunta focalizada, después continuar | Clarifier y confirmación Pi estricta | Registrar decisión, alternativas y reanudación; texto libre jamás autoriza gasto/escritura | C |
+| 15 Git y permisos | Control de alcance y cambios | SHA, recibos, bloqueo, diarios y sin fusión automática | Conservar la seguridad adicional de ASEN; corregir solo bloqueos demostrados | A |
+| 16 Medición | Ejemplos de tiempos, turnos y costes | Comparador existente con observaciones simuladas | A/B repetible con calidad, tiempo, modelo efectivo, consumo y coste observado | C |
+| 17 Prueba de todo el flujo | Ensayos del runtime, algunos con proveedor simulado | Prueba integrada Pi simulada, recibo firmado | Pruebas CI simuladas más ensayos auténticos con dos Writers y errores reales | C |
+| 18 Contratos Pi | Runtime y capacidades propias | Extensión Pi y comprobación v1.2 | Matriz de capacidades y degradación segura, no fingir eventos que no existan | C |
+
+### Plan quirúrgico con dependencias
+
+| Tanda | Puntos | Archivos principales que deben reutilizarse | Criterio de salida |
+| --- | --- | --- | --- |
+| **E1 Orquestador** | 01, 02, 03, 04, 10, 14 | profiles.ts, session-profile-binding.ts, orchestrator.ts, odd-routing.ts, explorer-budget.ts, request-guidance.ts, extensions/asen.ts | Dos modos realmente distintos; ruta elegida y justificada; pequeño directo; Explorer sin duplicado |
+| **E2 Ejecución** | 05, 06, 07, 08, 09, 15, 18 | parallel-parent-supervisor.ts, parallel-worktrees.ts, plan-dispatcher.ts, agent-terminal-delivery.ts, diarios, agente Pi | Dos procesos hijos realmente solapados; rechazo y cancelación seguros; entrega única; no gastos ni escrituras sin permiso |
+| **E3 Revisión y corrección** | 11, 12, 13 | review-assessment-policy.ts, ordinary-review-command.ts, judgment-day.ts, dual-rejudgment.ts, review-acceptance.ts | Riesgo alto obliga revisión; dos jueces distintos; hallazgos no ocultos; corrección solo tras autorización |
+| **E4 Equivalencia** | 16, 17, pruebas transversales | agent-flow-ab-comparison.ts, pruebas end-to-end de Pi, GitHub Actions | Escenarios A/B con mismo contexto y modelos autorizados; tiempo, calidad y costes conocidos o desconocidos explícitos; CI exacto |
+| **F Auditoría independiente** | Todos | Código, pruebas, permisos, CI y evidencias reales | Sin hallazgos graves, aprobación humana, evidencia de casos extremos y decisión final sobre paridad |
+
+**Orden:** E1 → E2 → E3 → E4 → F. Crear antes las pruebas que muestran el fallo de comportamiento, luego cambiar el mínimo código en la ruta productiva Pi y repetir todo el CI sobre el SHA exacto.
+
+### Requisitos no negociables y pruebas de aceptación
+
+- En modo delegación completa el padre no modifica código, pruebas ni documentación; si no hay Worker autorizado, la ejecución se bloquea.
+- Dos tareas que comparten archivos nunca arrancan dos Writers sobre esos mismos archivos sin aislamiento. Una tarea dependiente espera realmente a su predecesora.
+- Un rechazo de autorización, cambio de sesión, SHA diferente o resultado de escritura incierto no provoca reintentos ni permisos implícitos.
+- El aviso de fin se entrega una vez. Respuesta vacía, evento parcial o aviso encolado no equivalen a aceptación.
+- El modelo real, el coste y la duración se registran cuando hay evidencia. Dato ausente = unknown, nunca coste cero supuesto.
+- Riesgo de datos, seguridad, contratos públicos, concurrencia, despliegue o fallo no detectable exige la revisión definida.
+- Dos jueces distintos, observaciones congeladas, como máximo dos rondas; cualquier Fix necesita consentimiento nuevo.
+- Integración y fusión de ramas requieren aprobación humana. Prohibido añadir auto-merge o rebajar los controles de Git.
+- Prueba de la misma versión en Linux, macOS y Windows, arquitectura, Pi y publicación del mismo SHA.
+- Un ensayo con ejecutor simulado demuestra conexiones, no la paridad de comportamiento con un proveedor real.
+
+### Experimentos mínimos antes de declarar equivalencia
+
+1. Misma tarea pequeña y mismo modelo autorizado: comparar directo frente a delegación completa y comprobar la ruta elegida.
+2. Dos unidades independientes y una dependiente: observar dos sesiones Pi con solapamiento real, bloqueos y resultados aislados.
+3. Fallos controlados de proveedor, cuota y cancelación: comprobar continuación independiente sin duplicación ni gasto.
+4. Cambios de riesgo normal y alto: verificar coste de revisión, tasa de hallazgos y que ningún riesgo alto pasa sin verificador.
+5. Tareas de tres tamaños repetidas con condiciones comparables: medir tiempo, turnos, calidad y consumo. Sin datos de facturación, coste unknown.
+
+**Decisiones a medir, no inventar:** límite óptimo de concurrencia (comenzar con dos), umbral del Explorer, ventaja mínima para dividir, modelos exactos y necesidad de doble juicio en riesgo medio.
+
+**Resultado recomendado:** usar C para automatización y coordinación; conservar A para seguridad, permisos, integridad Git y límites de coste. No afirmar que la propuesta es más rápida antes de medir.
+

@@ -1,3 +1,4 @@
+import {execFileSync} from "node:child_process";
 // Explicitly bounded upstream provenance and wire-schema exceptions.
 // These do not authorize executable upstream imports, new paths or native review.
 const providerTerm="gen"+"tle";
@@ -9,6 +10,11 @@ const approvedWireIds=Object.freeze([
   wirePrefix+".review-assessment/v1",
 ]);
 const exactProvenanceDocs=new Set([
+  // Estudios humanos de procedencia P16/CTX (no conceden excepciones a código).
+  "docs/audit/opt-contexto-skills-asen-2026-11-20.md",
+  "docs/audit/p16-"+providerTerm+"-4.9.0-18-sesiones-2026-11-20.md",
+  "docs/audit/plan-final-opt-investigacion-avanzada-2026-11-20.md",
+  "docs/plan-final-opt-contexto-y-agentes-2026-11-20.md",
   "docs/portable-checkpoint.md",
   "docs/remote-continuation.md",
   // Pinned human-readable Shell architecture study; not executable or imported source.
@@ -21,6 +27,35 @@ const exactProvenanceDocs=new Set([
   "odd/evidence/asen-4.8.0-comparison/"+providerTerm+"-shell-4.8.0-steady.txt",
   "odd/evidence/portable-checkpoint-evidence.json",
   "odd/evidence/portable-checkpoint-manifest.json",
+  // Exact ODD comparison dossier; textual provenance only, never executable code.
+  // Archivos documentales antiguos; cada ruta conserva su excepción exacta.
+  // No se permite ningún directorio completo ni código ejecutable archivado.
+  "odd/archive/2026-11/flujo-de-agentes.md",
+  "odd/archive/2026-11/flujo-de-agentes-continuidad.md",
+  "odd/archive/2026-11/flujo-de-agentes-auditoria-plan-2026-11-19.md",
+  "odd/archive/2026-11/flujo-agentes-18-puntos-cierre-20261119.md",
+  "odd/tasks/flujo-de-agentes.md",
+  // G49-A: exact human-readable comparison dossier. No runtime or test exception.
+  "odd/tasks/flujo-de-agentes-"+providerTerm+"-shell-4.9.0-investigacion.md",
+  // Auditoría comparativa humana exacta; no incluye código ejecutable o excepciones por prefijo.
+  "odd/tasks/flujo-de-agentes-comparativa-actual-4.9.0.md",
+  // Plan rector exacto: trazabilidad documental, nunca una excepción de código ejecutable.
+  "odd/tasks/flujo-de-agentes-plan-implantacion-4.9.0.md",
+  // Auditoría documental exacta de las 18 tareas; no permite código ni directorios completos.
+  "odd/tasks/flujo-de-agentes-auditoria-plan-2026-11-19.md",
+  // Estado documental exacto de los 18 objetivos; no abre permisos a otros archivos.
+  "odd/tasks/flujo-de-agentes-estado-18-objetivos.md",
+  // Registro de cierre exacto de los 18 puntos; documento humano, no código.
+  "odd/tasks/flujo-agentes-18-puntos-cierre-20261119.md",
+  // Plan de ejecución de megatandas de PR #61; documento humano, no código.
+  "odd/tasks/pr61-18-puntos-megatandas-a-e.md",
+  // Matriz de equivalencia previa, documento exacto de planificación, nunca código.
+  "odd/tasks/flujo-de-agentes-equivalencia-operativa-4.9.0.md",
+  // T11: trazabilidad humana de layout, no código ejecutable ni un import.
+  "odd/tasks/flujo-de-agentes-continuidad.md",
+  "odd/tasks/flujo-de-agentes-t11-layout-"+providerTerm+"-shell-4.8.0.md",
+  // Pinned static product objective; never exempts runtime sources.
+  "odd/tasks/flujo-de-agentes-objetivo.md",
   "odd/tasks/asen-focus-experience.md",
   "odd/tasks/asen-integral-runtime-architecture-stability-audit.md",
   "odd/tasks/asen-"+providerTerm+"-shell-equivalence-audit.md",
@@ -126,7 +161,14 @@ const encodedCompatibilityLines = new Map([
    " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
    " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({nqq:[\"terc\",\"ernq\"],erzbir:[\"ernq\"]}));",
    " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
-   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({erzbir:[\"ernq\"]}));"
+   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({erzbir:[\"ernq\"]}));",
+   // Dos pruebas de permisos reutilizan el esquema de configuración heredado.
+   // Solo estos renglones exactos de fixtures son compatibles; no son un bypass
+   // para referencias nuevas en código de producción.
+   " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
+   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({",
+   " njnvg zxqve(wbva(q,\".cv\",\"tragyr-nv\"),{erphefvir:gehr});",
+   " njnvg jevgrSvyr(wbva(q,\".cv\",\"tragyr-nv\",\"gbbyf.wfba\"),WFBA.fgevatvsl({"
   ]
  ],
  [
@@ -238,4 +280,22 @@ export function maskApprovedWireSchemas(path,content){
     remaining=remaining.replace(property,'$1<approved-native-wire-schema>$2');
   }
   return remaining;
+}
+
+
+// Calcula la huella Git del contenido SIN modificar el árbol real.
+// El mismo comprobador se usa en la auditoría y en las pruebas negativas.
+export function coincideHuellaGit(bytes,expectedSha,path,root=process.cwd()){
+ if(!Buffer.isBuffer(bytes)||typeof expectedSha!=="string"||!/^[a-f0-9]{40}$/u.test(expectedSha)||
+  typeof path!=="string"||!path||! /^[a-zA-Z0-9._/-]+$/u.test(path)||
+  path.startsWith("/")||path.includes(".."))return false;
+ try{
+  // La opción --path aplica exactamente los filtros Git del archivo:
+  // en Windows convierte CRLF del árbol de trabajo al blob original.
+  // El contenido alterado se pasa por stdin: no escribimos nunca en disco.
+  const actual=execFileSync("git",["hash-object","--path="+path,"--stdin"],{
+   cwd:root,input:bytes,encoding:"utf8",timeout:10_000,windowsHide:true
+  }).trim();
+  return actual===expectedSha;
+ }catch{return false;}
 }

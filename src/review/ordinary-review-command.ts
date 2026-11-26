@@ -1,8 +1,21 @@
 import {realpathSync} from "node:fs";
+import {execFileSync} from "node:child_process";
 import {tmpdir} from "node:os";
 import {prepareOrdinaryReview,claimOrdinaryReviewRequest,bindOrdinaryReviewCheckout,type OrdinaryReviewInput,type OrdinaryReviewRequest,type OrdinaryReviewCheckout} from "./ordinary-review-controller.js";
 import type {WorkUnitReviewCandidate} from "../delivery/work-unit-review-candidate.js";
-import {availableIndependentPiReviewers,runIndependentPiReview,type PiReviewRegistry,type PiReviewerModel} from "./pi-model-reviewer.js";
+import {availableIndependentPiReviewers,runIndependentPiReview,runPiLensReview,type PiReviewRegistry,type PiReviewerModel} from "./pi-model-reviewer.js";
+import {REVIEW_LENSES} from "./review-lens-contracts.js";
+import {consolidatePiLensReviews} from "./review-results.js";
+import {selectAdaptiveReviewLenses} from "./review-lens-selection.js";
+import {runJudgmentDay} from "./judgment-day.js";
+import {projectOddReviewHandoff,proposeJudgmentFixHandoff,type ScopedOddTodo,type JudgmentFixHandoff} from "./odd-agent-review-flow.js";
+import type {StoredJudgmentFixProposal} from "./judgment-fix-proposal-journal.js";
+import {draftOddFromStoredFix} from "./judgment-fix-odd-draft.js";
+import {inspectFixOddRecovery} from "./judgment-fix-odd-recovery.js";
+import {inspectLiveFixCandidate} from "./judgment-fix-odd-preflight.js";
+import {validateFreshFixOddRequest} from "./judgment-fix-odd-planning.js";
+import type {RouteChoice} from "../runtime/lifecycle/profiles.js";
+import {sameWorkspaceIdentityPath} from "../runtime/workspace-store.js";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "./workspace-review-session.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "./native-rdd-result.js";
 import {openBoundedCorrection,validateBoundedCorrection,type CorrectionRequest,type CorrectionValidation} from "./bounded-correction.js";
@@ -14,6 +27,7 @@ import {hasSensitiveName} from "../security/primary-tool-policy.js";
 import {prepareReviewPanelDescriptor,renderReviewPanel} from "../runtime/ui/review-panel.js";
 import {createNativeRddControl,type NativeRddControl,type NativeRddObservation} from "./native-rdd-control.js";
 import type {ReviewLens,ReviewRiskInput} from "./review-risk.js";
+import {assessReviewPolicy,type ReviewAssessmentPolicyResult} from "./review-assessment-policy.js";
 
 interface CandidateReviewComponent{render(width:number):string[];invalidate():void;handleInput(data:string):void}
 interface CandidateReviewBindings{matches(data:string,action:"tui.select.cancel"|"tui.select.confirm"):boolean}
@@ -62,6 +76,10 @@ async function showPreparedReviewCandidate(context:ReviewCommandContext,checkout
  }finally{scope.signal?.removeEventListener("abort",abort);closeModal=undefined;}
  if(descriptor()===null)throw unavailable();
  return complete();
+}
+interface BoundOddReview{
+ readonly writeSurfaces:readonly string[];readonly requirements:string;
+ readonly revalidate:()=>Promise<void>;
 }
 interface CorrectionState{
  readonly request:CorrectionRequest;readonly repository:string;readonly sessionId:string;readonly priorRevision:string;readonly priorReviewerId:string;
@@ -146,14 +164,25 @@ export function reviewRiskFromNativeAssessment(observation:NativeRddObservation|
  const reason=truncateClaim([DEFAULT_REVIEW_RISK.reason,parts.join("; ")].join("; "),REVIEW_RISK_REASON_MAX_BYTES).text;
  return {riskId:DEFAULT_REVIEW_RISK.riskId,reason:reason||DEFAULT_REVIEW_RISK.reason,severity:risk==="high"?"high":"low",lenses};
 }
-/** Silent read-only observation: the explicit `native assess` command keeps its own notification, this one only informs the plan. */
-async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:ReviewCommandContext):Promise<ReviewRiskInput>{
- try{
-  const observation=await nativeRdd.observe("assess",{cwd:context.cwd,sessionManager:context.sessionManager,ui:{notify:()=>{}},...(context.signal?{signal:context.signal}:{})});
-  return reviewRiskFromNativeAssessment(observation);
- }catch{return reviewRiskFromNativeAssessment(undefined);}
+/** La política es observación, nunca permiso. Los códigos nativos no se transforman
+ * en una escalada autorizada: esa decisión requiere evidencia independiente. */
+export function verificationAdviceFromNativeAssessment(observation:NativeRddObservation|undefined):ReviewAssessmentPolicyResult{
+ const raw=observation?.status==="available"?assessmentText(observation.data.risk).toLowerCase():"";
+ const nativeRisk=raw==="passive"||raw==="medium"||raw==="high"?raw:"unassessable";
+ const due=observation?.status==="available"?observation.data.review_due:undefined;
+ // Native assess no acredita por sí mismo que el modo RDD esté activo.
+ return assessReviewPolicy({nativeRisk,mode:"unavailable",
+  ...(typeof due==="boolean"?{reviewDue:due}:{})});
 }
-async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string):Promise<unknown>{
+/** Una sola lectura real de evaluación, compartida por la revisión y el aviso proporcional. */
+async function assessWorkspaceReviewRisk(nativeRdd:NativeRddControl,context:ReviewCommandContext):Promise<Readonly<{risk:ReviewRiskInput;policy:ReviewAssessmentPolicyResult}>>{
+ let observation:NativeRddObservation|undefined;
+ try{
+  observation=await nativeRdd.observe("assess",{cwd:context.cwd,sessionManager:context.sessionManager,ui:{notify:()=>{}},...(context.signal?{signal:context.signal}:{})});
+ }catch{/* Sin lectura verificable, se conserva la revisión conservadora existente. */}
+ return Object.freeze({risk:reviewRiskFromNativeAssessment(observation),policy:verificationAdviceFromNativeAssessment(observation)});
+}
+async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeRddControl,correctionId?:string,fourR=false,resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,adaptive=false,judgmentDay=false,boundOdd?:BoundOddReview,persistFixProposal?:(context:ReviewCommandContext,proposal:JudgmentFixHandoff)=>Promise<{id:string}>):Promise<unknown>{
  const sessionId=context.sessionManager?.getSessionId?.(),registry=context.modelRegistry,author=context.model;
  if(!context.hasUI||!sessionId||!registry||!author||!context.ui.select||!context.ui.editor||!context.ui.confirm){
   const unavailable="Revisión independiente no disponible: se requiere una sesión Pi interactiva, modelo autor conocido y un modelo revisor autenticado distinto.";
@@ -176,8 +205,10 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   try{if(context.sessionManager.getSessionId()!==sessionId||realpathSync(context.cwd)!==projectRoot)throw new Error();assertReviewRepositoryBinding(projectBinding);}
   catch{if(correction)retireCorrection=true;throw new Error("Review session or project changed; start a new review");}
  };
+ const assertOddCurrent=async()=>{if(boundOdd){await boundOdd.revalidate();assertContextCurrent();}};
  try{
  assertCorrectionReserved();
+ await assertOddCurrent();
  const reviewers=availableIndependentPiReviewers(registry,author).filter(model=>!correction||"pi-model:"+model.provider+"/"+model.id!==correction.priorReviewerId),labels=reviewers.map(model=>model.provider+"/"+model.id);
  if(!reviewers.length){const unavailable="Revisión independiente no disponible: no hay otro modelo Pi autenticado en el registro.";context.ui.notify(unavailable,"error");return {status:"unavailable",reason:unavailable};}
  const selected=await context.ui.select("Selecciona un modelo revisor independiente",labels,context.signal?{signal:context.signal}:undefined);
@@ -185,12 +216,16 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  if(!selected)return {status:"cancelled"};
  const model=reviewers[labels.indexOf(selected)];
  if(!model)throw new Error("El modelo revisor seleccionado ya no está disponible");
- const requirements=correction?.requirements??await context.ui.editor("Requisitos que debe comprobar el revisor","Revisar el cambio completo, alcance autorizado, errores funcionales, riesgos de seguridad, regresiones y pruebas ausentes.");
+ const requirements=correction?.requirements??await context.ui.editor("Requisitos que debe comprobar el revisor",boundOdd?.requirements??"Revisar el cambio completo, alcance autorizado, errores funcionales, riesgos de seguridad, regresiones y pruebas ausentes.");
  assertContextCurrent();
  if(!requirements?.trim())return {status:"cancelled"};
  let reviewPaths:readonly string[];
  if(correction)reviewPaths=correction.reviewPaths;
- else{
+ else if(boundOdd){
+  reviewPaths=validatePortableReviewPaths([...boundOdd.writeSurfaces]);
+  assertNoSensitiveReviewPaths(reviewPaths);
+  await assertOddCurrent();
+ }else{
   const reviewPathsText=await context.ui.editor("Rutas exactas incluidas en esta revisión (JSON array; incluye archivos eliminados)","[]");
   assertContextCurrent();
   if(!reviewPathsText)return {status:"cancelled"};
@@ -216,16 +251,64 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   if(!untrackedText)return {status:"cancelled"};
   try{
    const parsed:unknown=JSON.parse(untrackedText);if(!Array.isArray(parsed))throw new Error();
-   const validated=validatePortableReviewPaths(parsed);assertNoSensitiveReviewPaths(validated);intendedUntracked=[...validated];
+   const validated=validatePortableReviewPaths(parsed);assertNoSensitiveReviewPaths(validated);
+   if(boundOdd&&validated.some(path=>!boundOdd.writeSurfaces.includes(path)))
+    throw new Error("ODD review cannot add untracked paths outside the frozen task scope");
+   intendedUntracked=[...validated];
   }catch(error){
    if(error instanceof Error&&error.message.startsWith("La revisión independiente no puede incluir rutas sensibles"))throw error;
    throw new Error("El alcance untracked debe ser un array JSON válido y no incluir rutas sensibles");
   }
  }
  assertNoSensitiveReviewPaths([...reviewPaths,...intendedUntracked]);
- const risk=await assessWorkspaceReviewRisk(nativeRdd,context);
+ await assertOddCurrent();
+ const observed=await assessWorkspaceReviewRisk(nativeRdd,context);
+ const assessed=observed.risk,verificationAdvice=observed.policy;
+ const selectedLenses:readonly ReviewLens[]=fourR?[...REVIEW_LENSES]:adaptive?selectAdaptiveReviewLenses(assessed).lenses:[];
+ const specialized=fourR||adaptive;
+ const risk:ReviewRiskInput=specialized?{...assessed,lenses:[...selectedLenses]}:assessed;
+ const lensModels=new Map<ReviewLens,PiReviewerModel>();
+ if(specialized){
+  for(const lens of selectedLenses){
+   const route=await resolveLensRoute?.(context,lens);
+   assertContextCurrent();
+   // The in-process provider interface has no verified per-call effort override.
+   // Refuse it rather than silently advertising an effort that was not used.
+   if(route?.thinking!==undefined)throw new Error("Specialized review thinking is configured but the current Pi review API cannot prove applying it; remove this effort or use a supported agent route");
+   const chosen=route?.model;
+   const selectedModel=chosen===undefined?model:reviewers.find(entry=>entry.provider+"/"+entry.id===chosen);
+   if(!selectedModel)throw new Error("Configured specialized lens model is unavailable, unauthenticated or the same as author: "+lens);
+   lensModels.set(lens,selectedModel);
+  }
+ }
  assertContextCurrent();
- const reviewerId="pi-model:"+model.provider+"/"+model.id;
+ let judges:readonly [PiReviewerModel,PiReviewerModel]|undefined;
+ if(judgmentDay){
+  const modelId=(candidate:PiReviewerModel)=>candidate.provider+"/"+candidate.id;
+  const routeA=await resolveLensRoute?.(context,"jd-judge-a");
+  assertContextCurrent();
+  const routeB=await resolveLensRoute?.(context,"jd-judge-b");
+  assertContextCurrent();
+  if(routeA?.thinking!==undefined||routeB?.thinking!==undefined)
+   throw new Error("Judgment Day thinking is configured but the in-process Pi review API cannot prove applying it");
+  const judgeA=routeA?.model===undefined?model:reviewers.find(candidate=>modelId(candidate)===routeA.model);
+  if(!judgeA)throw new Error("Judgment Day Judge A model is not authenticated or differs from available Pi models");
+  const candidates=reviewers.filter(candidate=>modelId(candidate)!==modelId(judgeA));
+  if(candidates.length===0)throw new Error("Judgment Day requires a second independent authenticated reviewer model");
+  let judgeB:PiReviewerModel|undefined;
+  if(routeB?.model!==undefined){
+   judgeB=candidates.find(candidate=>modelId(candidate)===routeB.model);
+  }else{
+   const choice=await context.ui.select("Selecciona segundo modelo independiente para Judgment Day",candidates.map(modelId),context.signal?{signal:context.signal}:{});
+   assertContextCurrent();
+   if(!choice)return {status:"cancelled",reason:"No second judge selected"};
+   judgeB=candidates.find(candidate=>modelId(candidate)===choice);
+  }
+  if(!judgeB)throw new Error("Judgment Day Judge B must be different, authenticated and available");
+  judges=[judgeA,judgeB];
+ }
+ await assertOddCurrent();
+ const reviewerId="pi-model:"+(judges?judges[0].provider+"/"+judges[0].id:model.provider+"/"+model.id);
  let workspace:ReturnType<typeof openWorkspaceReview>;
  try{workspace=openWorkspaceReview({repositoryRoot:projectRoot,intendedUntracked,sessionId,reviewerId,viewParent:tmpdir(),
   risk},{reviewPaths},correction?{previousProjection:correction.priorProjection,allowedPaths:correction.allowedPaths}:undefined);}
@@ -272,21 +355,95 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    }
   }
   if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
-  const consent=await context.ui.confirm("Enviar el diff al modelo revisor?",[
-   "Pi enviará el diff completo del candidato a:",
+  const consent=await context.ui.confirm(judgmentDay?"Autorizar dos jueces independientes Judgment Day?":fourR?"Autorizar cuatro solicitudes de revisión 4R?":adaptive?`Autorizar ${selectedLenses.length} revisiones proporcionales?`:"Enviar el diff al modelo revisor?",[
+   judgmentDay?"Pi enviará el mismo diff en DOS llamadas separadas a dos modelos independientes (posible coste por llamada):":fourR?"Pi enviará el mismo diff en CUATRO llamadas separadas a los modelos indicados abajo (posible coste por llamada):":adaptive?`Pi enviará el mismo diff en ${selectedLenses.length} llamadas separadas (posible coste por llamada):`:"Pi enviará el diff completo del candidato a:",
    reviewerId,
    "",
+   ...(specialized?["Lentes y modelos verificados: "+selectedLenses.map(lens=>lens+" = "+lensModels.get(lens)!.provider+"/"+lensModels.get(lens)!.id).join("; "),"Estas revisiones son análisis; no conceden autorización RDD ni de escritura."]:[]),
+   ...(judgmentDay?["Judge A: "+judges![0].provider+"/"+judges![0].id,"Judge B: "+judges![1].provider+"/"+judges![1].id,"Judgment Day NO inicia Fix Agent ni autoriza escrituras o integración."]:[]),
    "Candidato: "+evidence.candidate.treeIdentity,
    "Archivos: "+(paths.join(", ")||"(sin cambios)"),
    "El índice real no se modifica. No se ejecutan pruebas en la vista.",
   ].join("\n"));
-  assertContextCurrent();assertReviewSessionOpen(workspace.session);
-  if(!consent)return {status:"cancelled",requestId:workspace.requestId,candidate:evidence.candidate};
+  assertContextCurrent();await assertOddCurrent();assertReviewSessionOpen(workspace.session);
+  if(consent!==true)return {status:"cancelled",requestId:workspace.requestId,candidate:evidence.candidate};
   assertCorrectionReserved();
   assertNoSensitiveReviewPaths([...evidence.modifiedFiles.map(file=>file.path),...evidence.candidateFiles.map(file=>file.path)]);
   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+  if(judgmentDay){
+   assertContextCurrent();await assertOddCurrent();assertReviewSessionOpen(workspace.session);
+   const report=await runJudgmentDay({registry,author,judgeA:judges![0],judgeB:judges![1],evidence,requirements,...(context.signal?{signal:context.signal}:{}),validateBeforeJudge:async()=>{await assertOddCurrent();assertContextCurrent();assertReviewSessionOpen(workspace.session);revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});}});
+   await assertOddCurrent();
+   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+   assertContextCurrent();
+   let fixProfile:RouteChoice|undefined,fixProfileUnavailable=false;
+   if(report.status!=="analysis-complete"){
+    try{fixProfile=await resolveLensRoute?.(context,"jd-fix-agent");}
+    catch{fixProfileUnavailable=true;}
+   }
+   await assertOddCurrent();assertContextCurrent();
+   const fixHandoff=proposeJudgmentFixHandoff({
+    report,evidence,...(fixProfile?{fixProfile}:{}),fixProfileUnavailable
+   });
+   let fixStorage:"not-required"|"stored"|"unavailable"="not-required";
+   let fixProposalId:string|undefined;
+   if(fixHandoff.status==="fix-planning-required"||
+    fixHandoff.status==="manual-triage-required"){
+    fixStorage="unavailable";
+    if(persistFixProposal)try{
+     await assertOddCurrent();assertContextCurrent();
+     const receipt=await persistFixProposal(context,fixHandoff);
+     await assertOddCurrent();assertContextCurrent();
+     if(!/^[a-f0-9]{64}$/u.test(receipt.id))throw new Error("Invalid Fix proposal journal receipt");
+     fixProposalId=receipt.id;fixStorage="stored";
+    }catch{
+     await assertOddCurrent();assertContextCurrent();
+     // La revisión auténtica sigue visible; ningún fallo de diario concede Writer.
+    }
+   }
+   const visible=report.findings.slice(0,40).map(({judge,reviewerId,finding})=>({judge,reviewerId,...finding}));
+   const result=Object.freeze({
+    status:report.status,requestId:report.requestId,candidate:evidence.candidate,judges:report.judges,
+    findings:visible,omittedFindings:report.findings.length-visible.length,
+    acceptance:report.acceptance,deliveryAuthority:report.deliveryAuthority,autoMerge:report.autoMerge,
+    fixAgent:report.fixAgent,fixHandoff,fixStorage,...(fixProposalId?{fixProposalId}:{}),nativeRddAdmission:"not-attempted",verificationAdvice
+   });
+   closeWorkspace();
+   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+   assertContextCurrent();context.ui.notify(JSON.stringify(result,null,2),report.status==="analysis-complete"?"info":"error");
+   return result;
+  }
+  if(specialized){
+   const reports=[];
+   for(const lens of selectedLenses){
+    assertCorrectionReserved();assertContextCurrent();await assertOddCurrent();assertReviewSessionOpen(workspace.session);
+    revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+    reports.push(await runPiLensReview({registry,model:lensModels.get(lens)!,author,evidence,requirements,lens,...(context.signal?{signal:context.signal}:{})}));
+   }
+   await assertOddCurrent();
+   const bundle=consolidatePiLensReviews({
+    requestId:evidence.requestId,sessionId:evidence.sessionId,
+    candidateTreeIdentity:evidence.candidate.treeIdentity,candidateRevision:evidence.candidate.revision,
+    lenses:selectedLenses
+   },reports);
+   const visible=bundle.findings.slice(0,40).map(({lens,reviewerId,finding})=>({lens,reviewerId,...finding}));
+   const result=Object.freeze({
+    status:bundle.status==="fail"?(fourR?"4r-findings-require-review":"adaptive-findings-require-review"):(fourR?"4r-analysis-complete":"adaptive-analysis-complete"),
+    requestId:bundle.requestId,candidate:evidence.candidate,reviewerId,
+    lenses:bundle.lenses,reviews:bundle.reports.map(report=>({lens:report.lens,reviewerId:report.reviewerId,
+      verdict:report.verdict,findingsCount:report.findings.length})),
+    findings:visible,omittedFindings:bundle.findings.length-visible.length,
+    acceptance:"not-accepted",deliveryAuthority:false,nativeRddAdmission:"not-attempted",
+    ...(adaptive?{independentVerification:assessed.severity==="high"?"required-not-run":"not-required"}:{}),verificationAdvice
+   });
+   closeWorkspace();
+   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
+   assertContextCurrent();context.ui.notify(JSON.stringify(result,null,2),bundle.status==="fail"?"error":"info");
+   return result;
+  }
+  await assertOddCurrent();
   const verdict=await runIndependentPiReview({registry,model,author,evidence,requirements,...(context.signal?{signal:context.signal}:{})});
-  assertCorrectionReserved();assertContextCurrent();
+  assertCorrectionReserved();assertContextCurrent();await assertOddCurrent();
   if(context.signal?.aborted)throw new Error("Independent review was cancelled");
   const rddProbe={schemaVersion:1,requestId:evidence.requestId,sessionId:evidence.sessionId,revision:evidence.candidate.revision,
    treeIdentity:evidence.candidate.treeIdentity,parentIdentity:evidence.candidate.parentIdentity,reviewerId:verdict.reviewerId,
@@ -315,7 +472,7 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
   const result=Object.freeze({status,requestId:bound.requestId,resultId:bound.resultId,candidate:evidence.candidate,reviewerId:bound.reviewerId,
    verdict:bound.verdict,risk:evidence.risks,summary:verdict.summary,findings:verdict.findings,tests:evidence.tests,
    ...(correctionValidation?{correction:correctionValidation}:{}),...(correctionNext?{correctionId:correctionNext,allowedCorrectionPaths:workspaceCorrections.get(correctionNext)?.allowedPaths}:{}),
-   acceptance:"not-accepted",deliveryAuthority:false});
+   acceptance:"not-accepted",deliveryAuthority:false,verificationAdvice});
   closeWorkspace();
   revalidateWorkspaceReviewProjection(workspace.projection,{repositoryRoot:workspace.projection.repositoryRoot,intendedUntracked:workspace.projection.intendedUntracked});
   assertContextCurrent();
@@ -336,16 +493,229 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  }
 }
 /** Registro propio de ASEN: prepara el traspaso; no emite dictamen ni autorización RDD. */
-export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl()):OrdinaryReviewCommandController{
+export function registerOrdinaryReviewCommand(register:(name:string,command:ReviewCommand)=>void,nativeRdd:NativeRddControl=createNativeRddControl(),resolveLensRoute?:(context:ReviewCommandContext,lens:ReviewLens|"jd-judge-a"|"jd-judge-b"|"jd-fix-agent")=>Promise<RouteChoice|undefined>,readOddTodos?:(context:ReviewCommandContext)=>Promise<readonly ScopedOddTodo[]>,fixProposals?:Readonly<{
+ record:(context:ReviewCommandContext,proposal:JudgmentFixHandoff)=>Promise<{id:string}>;
+ list:(context:ReviewCommandContext)=>Promise<readonly StoredJudgmentFixProposal[]>;
+ plan?:(context:ReviewCommandContext,raw:string,source:Readonly<{proposalId:string;treeIdentity:string}>)=>Promise<string>;
+}>,readArchivedOddTodos?:(context:ReviewCommandContext)=>Promise<readonly ScopedOddTodo[]>):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
   if(command==="native status"||command==="native assess")return nativeRdd.observe(command==="native status"?"status":"assess",context);
+  if(command==="fixes"){
+   if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
+   return fixProposals.list(context);
+  }
+  const fixPlanMatch=/^fix-plan ([a-f0-9]{64})(?: (verify|save|status))?$/u.exec(command);
+  if(fixPlanMatch){
+   if(!fixProposals)return Promise.resolve({status:"unavailable",reason:"Fix proposal journal is not configured"});
+   return (async()=>{
+    const manager=context.sessionManager,sessionId=manager?.getSessionId?.();
+    if(!manager||!sessionId||!context.cwd||context.signal?.aborted)
+     throw new Error("Fix ODD draft requires the original live Pi session");
+    const projectId=realpathSync(context.cwd),identity={sessionId,projectId};
+    const validate=()=>{
+     if(context.signal?.aborted||context.sessionManager!==manager||
+      manager.getSessionId()!==sessionId||realpathSync(context.cwd)!==projectId)
+      throw new Error("Fix ODD draft session changed; new inspection required");
+    };
+    const original=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
+    validate();
+    if(!original)return {status:"blocked" as const,reason:"The original Fix proposal is not available to this Pi session"};
+    const first=JSON.stringify(original);
+    const draft=draftOddFromStoredFix({proposal:original,identity});
+    const current=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
+    validate();
+    if(!current||JSON.stringify(current)!==first)
+     throw new Error("Fix proposal changed during ODD draft preparation");
+    if(fixPlanMatch[2]==="status"){
+     if(!readOddTodos)return {status:"unavailable" as const,reason:"ODD Todo store is not enabled"};
+     const workerRequest="asen-plan:fix-"+draft.sourceProposalId.slice(0,24)+":worker";
+     const relevant=(rows:readonly ScopedOddTodo[])=>rows.filter(row=>
+      row.requestId===workerRequest||row.plan?.fixSource?.proposalId===draft.sourceProposalId);
+     const firstTodos=relevant(await readOddTodos(context));
+     validate();
+     const firstArchived=readArchivedOddTodos?relevant(await readArchivedOddTodos(context)):[];
+     validate();
+     const secondTodos=relevant(await readOddTodos(context));
+     validate();
+     const secondArchived=readArchivedOddTodos?relevant(await readArchivedOddTodos(context)):[];
+     validate();
+     if(JSON.stringify(firstTodos)!==JSON.stringify(secondTodos)||
+      JSON.stringify(firstArchived)!==JSON.stringify(secondArchived))
+      throw new Error("Fix Todo journal changed during recovery; do not retry any dispatch");
+     const finalProposal=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
+     validate();
+     if(!finalProposal||JSON.stringify(finalProposal)!==first)
+      throw new Error("Fix proposal changed during Todo recovery");
+     const result=inspectFixOddRecovery({draft,identity,todos:secondTodos,archivedTodos:secondArchived});
+     context.ui.notify(JSON.stringify(result,null,2),result.status==="inconsistent"?"error":"info");
+     return result;
+    }
+    if(fixPlanMatch[2]==="save"){
+     if(draft.status!=="draft-only")
+      return {status:"blocked" as const,reason:"Fix disagreement requires human triage first"};
+     if(!fixProposals.plan||!readOddTodos||!context.hasUI||!context.ui.editor||!context.ui.confirm)
+      return {status:"unavailable" as const,reason:"Saving Fix ODD requires a live Pi editor, a bounded Todo planner and a readable Todo store"};
+     const baseline=inspectLiveFixCandidate(draft);
+     const seed={
+      instruction:"",taskIdentity:"fix-"+draft.sourceProposalId.slice(0,24),
+      intent:"defect",scope:{kind:"known",expectedPaths:[...draft.writeSurfaces]},
+      writes:draft.writeSurfaces.map(path=>({path,changeKind:"ELEGIR_TIPO_DE_CAMBIO"})),
+      riskOperations:[],session:{estimatedMinutes:30,continuation:false},
+      testing:{kind:"required"},review:{kind:"dual_explicit",estimatedMinutes:15},
+      unresolvedDecisions:[]
+     };
+     const edited=await context.ui.editor("Nueva instrucción y datos ODD: rellenar y comprobar",JSON.stringify(seed,null,2));
+     validate();
+     if(!edited)return {status:"cancelled" as const,reason:"User did not provide fresh ODD facts"};
+     const prepared=validateFreshFixOddRequest(draft,edited);
+     const revalidate=async()=>{
+      validate();
+      const latest=(await fixProposals.list(context)).find(row=>row.id===fixPlanMatch[1]);
+      validate();
+      if(!latest||JSON.stringify(latest)!==first)
+       throw new Error("Stored Fix proposal changed before planning; no automatic retry");
+      const live=inspectLiveFixCandidate(draft);
+      if(live.repositoryHead!==baseline.repositoryHead||
+       live.candidateTreeIdentity!==baseline.candidateTreeIdentity)
+       throw new Error("Fix Git candidate changed during planning; no agent launched");
+     };
+     await revalidate();
+     const approved=await context.ui.confirm(
+      "Guardar un plan ODD nuevo, sin ejecutar agentes ni conceder permisos",
+      "Origen Fix: "+draft.sourceProposalId+"; ámbito exacto: "+
+      draft.writeSurfaces.join(", ")+". Se guardará un plan nuevo; el permiso Writer se pedirá aparte."
+     );
+     if(!approved)return {status:"cancelled" as const,reason:"User declined new ODD plan persistence"};
+     await revalidate();
+     const stored=await fixProposals.plan(context,prepared.raw,{
+      proposalId:draft.sourceProposalId,treeIdentity:draft.sourceCandidateTree
+     });
+     await revalidate();
+     const outcome:unknown=JSON.parse(stored);
+     if(!outcome||typeof outcome!=="object"||
+      !("persistence" in outcome)||!outcome.persistence||
+      typeof outcome.persistence!=="object"||!("status" in outcome.persistence)||
+      outcome.persistence.status!=="saved"||
+      !("execution" in outcome)||!outcome.execution||
+      typeof outcome.execution!=="object"||
+      !("started" in outcome.execution)||outcome.execution.started!==false||
+      !("authorized" in outcome.execution)||outcome.execution.authorized!==false||
+      !("executablePlan" in outcome)||!outcome.executablePlan||
+      typeof outcome.executablePlan!=="object"||
+      !("route" in outcome.executablePlan)||outcome.executablePlan.route!=="orchestrate"||
+      !("persistedTasks" in outcome)||!Array.isArray(outcome.persistedTasks))
+      throw new Error("Fix ODD could not prove a saved, non-running plan; inspect Todos before any retry");
+     // La confirmación del planificador no acredita un Todo guardado.
+     // Comprobar el Worker persistido y la propuesta original antes de afirmar éxito.
+     const observed1=await readOddTodos(context);
+     validate();
+     const archived1=readArchivedOddTodos?await readArchivedOddTodos(context):[];
+     validate();
+     const observed2=await readOddTodos(context);
+     validate();
+     const archived2=readArchivedOddTodos?await readArchivedOddTodos(context):[];
+     validate();
+     if(JSON.stringify(observed1)!==JSON.stringify(observed2)||
+      JSON.stringify(archived1)!==JSON.stringify(archived2))
+      throw new Error("Fix ODD Todo changed during save verification; inspect the journal, no retry");
+     const recovered=inspectFixOddRecovery({
+      draft,identity,todos:observed2,archivedTodos:archived2
+     });
+     const receiptIds=outcome.persistedTasks.flatMap(item=>
+      item&&typeof item==="object"&&"todoId" in item&&
+      typeof item.todoId==="string"?[item.todoId]:[]);
+     const actualWorker=observed2.find(row=>row.taskId===recovered.workerTodoId);
+     if(recovered.status!=="worker-observed"||recovered.workerState!=="planned"||
+      !actualWorker||new Set(receiptIds).size!==receiptIds.length||
+      !receiptIds.includes(actualWorker.taskId)||
+      !actualWorker.plan?.writerAuthorizationBasis||
+      !actualWorker.plan.candidate||
+      actualWorker.plan.candidate.revision!==baseline.repositoryHead||
+      !sameWorkspaceIdentityPath(actualWorker.plan.candidate.repository,projectId))
+      throw new Error("Fix ODD plan not confirmed in its Todo store; inspect original records before retrying");
+     await revalidate();
+     const result=Object.freeze({
+      status:"plan-saved-no-dispatch" as const,sourceProposalId:draft.sourceProposalId,
+      plannedTaskCount:outcome.persistedTasks.length,
+      candidateTreeIdentity:draft.sourceCandidateTree,
+      instructionFromHuman:true as const,requiresFreshWriterConsent:true as const,
+      authorized:false as const,writerAuthority:false as const,
+      autoLaunch:false as const,autoMerge:false as const,
+      acceptance:"not-accepted" as const
+     });
+     context.ui.notify(JSON.stringify(result,null,2),"info");
+     return result;
+    }
+    // 'verify' reads the live Git candidate, without issuing write authority.
+    const result=fixPlanMatch[2]==="verify"?
+     Object.freeze({draft,candidateCheck:inspectLiveFixCandidate(draft)}):draft;
+    validate();
+    context.ui.notify(JSON.stringify(result,null,2),draft.status==="manual-triage-required"?"error":"info");
+    return result;
+   })();
+  }
+  const oddMatch=/^todo (todo-[a-f0-9-]{36})(?: (adaptive|4r|judgment-day))?$/u.exec(command);
+  if(oddMatch){
+   if(!readOddTodos)return Promise.resolve({status:"unavailable",reason:"ODD Todo store is not enabled"});
+   return (async()=>{
+    const manager=context.sessionManager,sessionId=manager?.getSessionId?.(),cwd=context.cwd;
+    if(!sessionId||!context.hasUI||!cwd||context.signal?.aborted)
+     throw new Error("ODD review needs the active Pi UI session");
+    const projectId=realpathSync(cwd),identity={sessionId,projectId};
+    const validate=()=>{
+     if(context.signal?.aborted||context.sessionManager!==manager||
+      manager.getSessionId()!==sessionId||realpathSync(context.cwd)!==projectId)
+      throw new Error("ODD review session changed; fresh inspection required");
+    };
+    const gitHead=()=>execFileSync("git",["rev-parse","HEAD"],{
+     cwd:projectId,encoding:"utf8",timeout:2000,windowsHide:true,
+     stdio:["ignore","pipe","ignore"]}).trim();
+    const first=(await readOddTodos(context)).find(row=>row.taskId===oddMatch[1]);
+    validate();
+    if(!first)throw new Error("The requested ODD Todo is absent from the owning session");
+    const head=gitHead();
+    const lenses=["risk","resilience","reliability","readability"] as const;
+    const profiles=await Promise.all(lenses.map(async lens=>{
+     const choice=await resolveLensRoute?.(context,lens);
+     return {lens,...(choice?{choice}:{})};
+    }));
+    validate();
+    const current=(await readOddTodos(context)).find(row=>row.taskId===oddMatch[1]);
+    validate();
+    if(!current||JSON.stringify(current)!==JSON.stringify(first)||head!==gitHead())
+     throw new Error("ODD Todo or Git candidate changed while preparing review");
+    const result=projectOddReviewHandoff({identity,todo:current,currentHead:head,profiles});
+    if(oddMatch[2]&&result.status==="review-setup-required"){
+     const snapshot=JSON.stringify(current);
+     const revalidate=async()=>{
+      validate();
+      const latest=(await readOddTodos(context)).find(row=>row.taskId===oddMatch[1]);
+      validate();
+      if(!latest||JSON.stringify(latest)!==snapshot||gitHead()!==head)
+       throw new Error("ODD Todo or Git HEAD changed; review cancelled before model use");
+     };
+     await revalidate();
+     return runWorkspaceReview(context,nativeRdd,undefined,oddMatch[2]==="4r",resolveLensRoute,
+      oddMatch[2]==="adaptive",oddMatch[2]==="judgment-day",{
+      writeSurfaces:result.writeSurfaces,
+      requirements:(current.description??current.title).slice(0,2048),
+      revalidate
+     },oddMatch[2]==="judgment-day"?fixProposals?.record:undefined);
+    }
+    context.ui.notify(JSON.stringify(result,null,2),result.status==="blocked"?"error":"info");
+    return result;
+   })();
+  }
   if(command==="workspace")return runWorkspaceReview(context,nativeRdd);
+  if(command==="workspace 4r")return runWorkspaceReview(context,nativeRdd,undefined,true,resolveLensRoute);
+  if(command==="workspace adaptive")return runWorkspaceReview(context,nativeRdd,undefined,false,resolveLensRoute,true);
+  if(command==="workspace judgment-day")return runWorkspaceReview(context,nativeRdd,undefined,false,resolveLensRoute,false,true,undefined,fixProposals?.record);
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review todo <id> 4r | /asen-review todo <id> judgment-day | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review fix-plan <id> status | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");

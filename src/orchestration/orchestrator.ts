@@ -9,7 +9,7 @@ import {
 } from "../flow/odd-routing.js";
 import {selectSkills,validateSkillSelectionProfile,type SkillId,type SkillPhase,type SkillSelectionContext} from "../skills/registry.js";
 import {issueSkillContext,type IssuedSkillContext} from "../skills/context.js";
-import {isThinking,resolveRuntimeRoute,type ProfileLayer} from "../runtime/lifecycle/profiles.js";
+import {isThinking,resolveRuntimeRoute,resolveRuntimeDelegationMode,type ProfileLayer} from "../runtime/lifecycle/profiles.js";
 
 export interface OrchestrationInput extends Pick<SkillSelectionContext,"selectionProfile"> {
   taskId:string; repository:string; prompt:string; writeSurfaces?:string[];
@@ -119,7 +119,22 @@ export function buildOrchestrationPlan(input:OrchestrationInput, decision:OddRou
   const primary=contextFor("worker",requestedPhase,decision.verification==="independent");
   const skills=primary.skills;
   const agents:AgentRequest[]=[];
-  if(decision.route==="direct") return planned({decision,agents,skills,skillContext:primary.context});
+  if(decision.route==="direct"){
+    // Una tarea directa de lectura sigue siendo directa. En delegación total,
+    // la edición requiere Writer separado, candidato real y rutas exactas.
+    if(resolveRuntimeDelegationMode(input.runtimeProfiles??{}).mode==="full-delegation"&&facts.writes.length){
+      if(!input.candidate||!input.writeSurfaces?.length||
+        input.writeSurfaces.length!==facts.writes.length||
+        input.writeSurfaces.some((file,index)=>file!==facts.writes[index]?.path))
+        throw new Error("Full delegation requires an exact candidate and unchanged Writer scope");
+      const worker:AgentRequest={id:`${input.taskId}:worker`,role:"worker",...base,
+        skillContext:primary.context,skillPaths:primary.skillPaths,
+        writeSurfaces:[...input.writeSurfaces],candidate:input.candidate};
+      agents.push(applyRuntimeProfile(worker,input.runtimeProfiles));
+      return planned({decision,agents,skills});
+    }
+    return planned({decision,agents,skills,skillContext:primary.context});
+  }
   if(decision.route==="plan") return planned({decision,agents,skills});
   if(decision.route==="verify"){
     const verifier=contextFor("verify","verify",true);

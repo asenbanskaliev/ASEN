@@ -1,6 +1,6 @@
-/** U2: unused-in-production, descriptive planning only; never start/collect/ack or consent.
- * Reference: lib/review-risk-assessment.ts verificationRisk/verificationPlan and
- * assets/orchestrator-verification.md. No model/profile heuristics or native bindings.
+/** Diagnóstico proporcional consumido por la revisión real de Pi.
+ * Sigue siendo solo lectura: no inicia revisores, no permite aceptar código,
+ * no sustituye pruebas ni concede autorización para corregir o publicar.
  */
 export type ObservedRisk = "passive" | "medium" | "high" | "unassessable";
 /** Unresolved/unknown observations must be represented as unavailable, never on. */

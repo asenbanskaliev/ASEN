@@ -119,12 +119,17 @@ test("EF-604 authentic Pi RPC host restart, forced process death and durable iso
  const piEntrypoint=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
  const binary=join(dirname(piEntrypoint),"bundle","cli.js");
  const env=scrubEnv(home,trace);
+ // Windows cold-starts the pinned Pi bundle plus a TypeScript probe extension.
+ // The full suite runs several native Pi hosts concurrently, so a healthy
+ // start can exceed the single-test budget: keep a strict, finite watchdog
+ // without confusing startup load with a failed restart/isolation invariant.
+ const nativePiWatchdogMs=process.platform==="win32"?60_000:35_000;
  const run=(file:string)=>{
   const cmd={id:"native-restart-state",type:"get_state"};
   const child=spawnSync(process.execPath,[binary,"--mode","rpc","--session",file,
    "--no-extensions","--extension",probe,"--no-skills","--no-builtin-tools"],{
    cwd:project,env,encoding:"utf8",input:JSON.stringify(cmd)+"\n",
-   timeout:35000,maxBuffer:128*1024,windowsHide:true,
+   timeout:nativePiWatchdogMs,maxBuffer:128*1024,windowsHide:true,
   });
   assert.equal(child.error,undefined,"Pi native process could not start");
   assert.equal(child.status,0,"Pi native RPC failed: "+child.stderr.slice(0,550));

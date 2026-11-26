@@ -56,6 +56,42 @@ test("a clear multi-file change stays in the primary session",()=>{
  assert.equal(executable.tasks[0]?.role,"primary");assert.equal(executable.tasks[0]?.status,"ready");
 });
 
+test("E1B: la ruta directa conserva los modos de perfil y el modelo del Writer sin autorización implícita",()=>{
+ const change={paths:["src/a.ts"],writes:[{path:"src/a.ts",changeKind:"behavior" as const}]};
+ const profile=(mode:"organic"|"full-delegation")=>({global:{schema:ASEN_PROFILES_SCHEMA,active:"activo",profiles:[{
+  name:"activo",mode,routes:{worker:{model:"cloud/modelo-configurado",thinking:"high" as const}},
+ }]}});
+ const normalDecision=issueOddDecision({taskId:"e1b-organic",repository:"r",...change});
+ const normal=buildOrchestrationPlan({taskId:"e1b-organic",repository:"r",prompt:"Modificar función",candidate,
+  writeSurfaces:["src/a.ts"],runtimeProfiles:profile("organic")},normalDecision);
+ assert.equal(normalDecision.route,"direct");
+ assert.deepEqual(normal.agents,[],"El modo normal no crea un Worker por una tarea pequeña");
+ const fullDecision=issueOddDecision({taskId:"e1b-full",repository:"r",...change});
+ const full=buildOrchestrationPlan({taskId:"e1b-full",repository:"r",prompt:"Modificar función",candidate,
+  writeSurfaces:["src/a.ts"],runtimeProfiles:profile("full-delegation")},fullDecision);
+ assert.equal(fullDecision.route,"direct");
+ assert.deepEqual(full.agents.map(agent=>agent.role),["worker"]);
+ const worker=full.agents[0]!;
+ assert.equal(worker.model,"cloud/modelo-configurado");
+ assert.equal(worker.thinking,"high");
+ assert.deepEqual(worker.writeSurfaces,["src/a.ts"]);
+ assert.equal(Object.hasOwn(worker,"writerAdmission"),false);
+ assert.equal(Object.hasOwn(worker,"runnerWriteReceiver"),false);
+ for(const invalid of [
+  {taskId:"e1b-no-candidate",writeSurfaces:["src/a.ts"]},
+  {taskId:"e1b-no-scope",candidate,writeSurfaces:[]},
+  {taskId:"e1b-other-scope",candidate,writeSurfaces:["src/other.ts"]},
+ ]){
+  const decision=issueOddDecision({taskId:invalid.taskId,repository:"r",...change});
+  assert.throws(()=>buildOrchestrationPlan({repository:"r",prompt:"Modificar función",runtimeProfiles:profile("full-delegation"),...invalid},decision),
+   /Full delegation requires an exact candidate and unchanged Writer scope/);
+ }
+ const reading=issueOddDecision({taskId:"e1b-full-read",repository:"r",paths:["src/a.ts"],writes:[]});
+ assert.deepEqual(buildOrchestrationPlan({taskId:"e1b-full-read",repository:"r",prompt:"Leer función",
+  runtimeProfiles:profile("full-delegation")},reading).agents,[],
+  "La lectura no exige crear un Writer");
+});
+
 test("time and ordinary review do not trigger delegation",()=>{
  const long=buildOrchestrationPlan({taskId:"long-only",repository:"r",prompt:"p",candidate},issueOddDecision({taskId:"long-only",repository:"r",estimatedMinutes:90}));
  assert.deepEqual(long.agents.map(agent=>agent.role),[]);
@@ -65,7 +101,7 @@ test("time and ordinary review do not trigger delegation",()=>{
 });
 
 test("multiple writes alone do not launch a redundant exploration agent",()=>{
- const decision=issueOddDecision({taskId:"broad-writes",repository:"r",paths:["src/a.ts","src/b.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"schema"}]});
+ const decision=issueOddDecision({taskId:"broad-writes",repository:"r",paths:["src/a.ts","src/b.ts"],writes:[{path:"src/a.ts",changeKind:"behavior"},{path:"src/b.ts",changeKind:"behavior"}]});
  const plan=buildOrchestrationPlan({taskId:"broad-writes",repository:"r",prompt:"p",writeSurfaces:["src/a.ts","src/b.ts"],candidate},decision);
  assert.equal(plan.decision.route,"direct");assert.deepEqual(plan.agents,[]);
  const graph=materializeExecutablePlan(plan,"Make the coordinated change");assert.equal(graph.tasks[0]?.role,"primary");assert.deepEqual(graph.tasks[0]?.dependsOn,[]);
@@ -351,4 +387,16 @@ test("EF-401 high-risk incident retains independent Verifier and an explicit ver
  const intentional=issueOddDecision({taskId:"verify-explicit",repository:"r",intent:"verification"});
  const plan=buildOrchestrationPlan({taskId:"verify-explicit",repository:"r",prompt:"Verify the original acceptance"},intentional);
  assert.deepEqual(plan.agents.map(agent=>agent.role),["verifier"]);
+});
+
+
+test("E3: el plan ODD con riesgo contractual añade Worker y Verifier vinculados",()=>{
+ const decision=issueOddDecision({taskId:"riesgo-contrato",repository:"r",paths:["src/api.ts"],writes:[{path:"src/api.ts",changeKind:"schema"}]});
+ assert.equal(decision.route,"orchestrate");
+ assert.equal(decision.verification,"independent");
+ const plan=buildOrchestrationPlan({taskId:"riesgo-contrato",repository:"r",prompt:"Cambiar contrato",writeSurfaces:["src/api.ts"],candidate},decision);
+ assert.deepEqual(plan.agents.map(agent=>agent.role),["worker","verifier"]);
+ const tasks=materializeExecutablePlan(plan,"Cambiar contrato");
+ assert.deepEqual(tasks.tasks.map(task=>task.role),["worker","verifier"]);
+ assert.deepEqual(tasks.tasks[1]?.dependsOn,[tasks.tasks[0]?.id]);
 });

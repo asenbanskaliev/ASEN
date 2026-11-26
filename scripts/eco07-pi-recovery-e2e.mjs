@@ -18,7 +18,7 @@ const {provider,model,apiKey,credential,extension}=resolveEco07Provider(process.
 let piPackage;
 try{piPackage=JSON.parse(await readFile(new URL("../node_modules/@earendil-works/pi-coding-agent/package.json",import.meta.url),"utf8"));}
 catch{throw new Error("ECO-07 installed Pi package metadata is unavailable or malformed");}
-assert.equal(piPackage.version,"1.1.0","ECO-07 provider run must use Pi 1.1.0");
+assert.equal(piPackage.version,"1.2.0","ECO-07 provider run must use the supported Pi 1.2.0 runtime");
 
 const evidenceDir=path.join(repository,"eco07-pi-evidence");
 await mkdir(evidenceDir,{recursive:true});
@@ -109,7 +109,7 @@ function startPi(label){
       }
       if(value.type==="extension_ui_request"&&value.method==="confirm"){
         const titleText=String(value.title??"");const message=String(value.message??"");
-        if(titleText!=="Resume blocked ASEN task?"||!message.includes(title)||!message.includes("explicit review is required")){
+        if(titleText!=="Resume blocked ASEN task?"||!message.includes(title)||!message.includes("explicit review required")){
           void controller.stop("SIGKILL");continue;
         }
         // This is the affirmative test-user response to ASEN's explicit resume dialog; no release authority is requested or granted.
@@ -200,7 +200,7 @@ try{
   await second.send("get_commands");
   let recovered=await currentItem();
   assert.deepEqual(recovered.events.map(event=>event.state),["planned","running","blocked"],"Pi restart must preserve history and block interrupted work");
-  assert.match(recovered.events.at(-1).reason,/explicit review is required/u);
+  assert.match(recovered.events.at(-1).reason,/explicit review required/u);
   await record("task-recovered",{taskId:recovered.taskId,sessionId,projectId:repository,events:recovered.events.map(({revision,state,at,reason})=>({revision,state,at,reason}))});
 
   phase="identity-isolation";

@@ -4,7 +4,7 @@ import {mkdtemp,rm} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {registerAsenPlanRequestTool,ASEN_PLAN_REQUEST_TOOL} from "../src/runtime/lifecycle/natural-plan-tool.js";
-import {controlledInstructionPlanCommand} from "../src/runtime/lifecycle/route-command.js";
+import {controlledInstructionPlanCommand,routePreviewCommand} from "../src/runtime/lifecycle/route-command.js";
 import {addAsenRequestGuidance,ASEN_REQUEST_GUIDANCE_SECTION} from "../src/runtime/ui/request-guidance.js";
 import {createAsenExtension} from "../extensions/asen.js";
 import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
@@ -34,6 +34,60 @@ test("natural-plan tool generates internal identity and hides machine fields fro
  assert.match(visible,/archivos propuestos: src\/form\.ts/u);assert.match(visible,/No se ha iniciado ningún trabajo/u);
  assert.doesNotMatch(visible,/private-task-id|task-generated-by-asen|\{"/u);
  assert.equal(result.details.task,"private-task-id");
+});
+
+test("la entrada natural conecta unidades funcionales independientes con la ruta ODD",async()=>{
+ const units=[
+  {id:"api",objective:"Implementar contrato del formulario",estimatedMinutes:45,dependsOn:[]},
+  {id:"ui",objective:"Implementar vista independiente del formulario",estimatedMinutes:40,dependsOn:[]},
+ ];
+ let tool:any,received="";
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  received=args;return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units");
+ const actual=await tool.execute("call",{...request(),taskUnits:units},undefined,undefined,{cwd:"/repo"});
+ const issued=JSON.parse(received);
+ assert.equal(tool.parameters.required.includes("taskUnits"),false);
+ assert.deepEqual(tool.parameters.properties.taskUnits.items.required,["id","objective","estimatedMinutes","dependsOn"]);
+ assert.deepEqual(issued.taskUnits,units);
+ assert.equal(actual.details.route,"orchestrate");
+ assert.deepEqual(actual.details.reasons,["independent-substantial-task-units"]);
+ assert.equal(actual.details.requiresIsolatedChild,true);
+ assert.deepEqual(actual.details.execution,{started:false,authorized:false});
+ const {instruction,...previewFacts}=request();
+ const preview=routePreviewCommand(JSON.stringify({...previewFacts,taskIdentity:"natural-units-preview",taskUnits:units}),"/repo");
+ assert.match(preview,/route: orchestrate/u);
+ assert.match(preview,/independent-substantial-task-units/u);
+});
+
+test("la entrada natural rechaza unidades mal formadas sin preparar una ruta",async()=>{
+ let tool:any,calls=0;
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  calls++;return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units-invalid");
+ const malformed={id:"api",objective:"Implementar contrato del formulario",estimatedMinutes:45,dependsOn:["missing"]};
+ await assert.rejects(()=>tool.execute("call",{...request(),taskUnits:[malformed]},undefined,undefined,{cwd:"/repo"}),/invalid dependencies/u);
+ assert.equal(calls,1);
+ await assert.rejects(()=>tool.execute("call",{...request(),taskUnits:[],extra:true},undefined,undefined,{cwd:"/repo"}),/incomplete/u);
+ assert.equal(calls,1);
+});
+
+test("la entrada natural conserva unidades válidas que superan el límite anterior",async()=>{
+ const units=Array.from({length:32},(_,index)=>({
+  id:"unidad-"+index,objective:"x".repeat(500),estimatedMinutes:30,dependsOn:[],
+ }));
+ const facts={...request(),taskUnits:units};
+ const {instruction,...previewFacts}=facts;
+ const previewInput=JSON.stringify({...previewFacts,taskIdentity:"natural-units-max"});
+ assert.ok(previewInput.length>16_384);
+ const preview=routePreviewCommand(previewInput,"/repo");
+ assert.match(preview,/route: orchestrate/u);
+ let tool:any;
+ registerAsenPlanRequestTool({registerTool:value=>{tool=value;}},async args=>{
+  return controlledInstructionPlanCommand(args,"/repo");
+ },()=>"natural-units-max");
+ const actual=await tool.execute("call",facts,undefined,undefined,{cwd:"/repo"});
+ assert.equal(actual.details.route,"orchestrate");
 });
 
 test("registered natural intake preserves controlled command routing and instructions",async t=>{
@@ -111,11 +165,11 @@ test("Pi prompt guidance removes user-authored ODD JSON and explains safe automa
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/exact one-run Pi approval/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Group related unresolved decisions into that same message/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/does not need another confirmation dialog/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/continúa.*reanuda.*¿qué queda?/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/continúa.*reanuda.*qué queda/iu);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Do not ask the user to run slash commands or copy task IDs/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/explicitly says to stop, cancel, or replace work/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Preserve completed work and unrelated plans/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Do not treat an unrelated new request as cancellation/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/explícitamente dice detener, cancelar o sustituir trabajo/iu);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Conserva trabajo terminado y planes no relacionados/iu);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/No trates una petición nueva no relacionada como cancelación/iu);
  const disabled:{sections:Record<string,string>}={sections:{existing:"preserved"}};addAsenRequestGuidance(disabled,false);assert.deepEqual(disabled,{sections:{existing:"preserved"}});
 });
 
@@ -135,16 +189,19 @@ test("Pi guidance keeps explicitly scoped read-only parallelism proportional and
  });
 });
 
-test("ASEN registers the natural-language planning tool and injects its guidance into Pi turns",async()=>{
+test("ASEN anuncia el planificador sin sugerir agentes no disponibles",async()=>{
  const events=new Map<string,(...args:any[])=>unknown>(),tools=new Map<string,unknown>();
  const pi={registerCommand(){},registerTool(tool:{name:string}){tools.set(tool.name,tool);},on(name:string,handler:(...args:any[])=>unknown){events.set(name,handler);}};
  createAsenExtension({enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false})(pi);
  assert.ok(tools.has(ASEN_PLAN_REQUEST_TOOL));
- const options={sections:{} as Record<string,string>};await events.get("before_agent_start")?.({systemPromptOptions:options},{});
+ const options={sections:{} as Record<string,string>,selectedTools:[...tools.keys()]};
+ assert.equal(tools.has("asen_agent_start"),false,"El motor de agentes está desactivado");
+ await events.get("before_agent_start")?.({systemPromptOptions:options},{});
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/ordinary language/u);
  assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/Never ask the user to write JSON/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_todo_inspect_interrupted_write/u);
- assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/fresh plan plus a new explicit write authorization/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_plan_request/u);
+ assert.doesNotMatch(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/asen_agent_start|asen_todo_inspect_interrupted_write/u);
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/la planificación no concede permiso de escritura/iu);
 });
 
 test("natural-language plan request persists the real planner output without authorizing a write",async()=>{
@@ -243,4 +300,65 @@ test("risk-based natural plan keeps two blind reviewers but does not invent inde
  assert.deepEqual(actual.requiredAgentRoles,["worker","reviewer","reviewer"]);
  assert.equal(actual.executablePlan.tasks.some((entry:{role:string})=>entry.role==="verifier"),false);
  assert.equal(actual.verification,"tests");
+});
+
+test("Megatanda B: el modo capturado conserva modelos y no modifica los perfiles",async()=>{
+ const {ASEN_PROFILES_SCHEMA,resolveRuntimeDelegationMode,resolveRuntimeRoute,withCapturedDelegationMode}=await import("../src/runtime/lifecycle/profiles.js");
+ const layers:import("../src/runtime/lifecycle/profiles.js").ProfileLayer={project:{schema:ASEN_PROFILES_SCHEMA,active:"proyecto",profiles:[{name:"proyecto",mode:"organic" as const,routes:{worker:{model:"nvidia/worker"}}}]},
+ global:{schema:ASEN_PROFILES_SCHEMA,active:"global",profiles:[{name:"global",routes:{explorer:{model:"nvidia/explorer"}}}]}};
+ const changed=withCapturedDelegationMode(layers,"full-delegation");
+ assert.equal(resolveRuntimeDelegationMode(changed).mode,"full-delegation");
+ assert.equal(resolveRuntimeDelegationMode(layers).mode,"organic");
+ for(const role of ["worker","explorer","verifier"])assert.deepEqual(resolveRuntimeRoute(changed,role),resolveRuntimeRoute(layers,role));
+ const removed=withCapturedDelegationMode({},"full-delegation");
+ assert.equal(resolveRuntimeDelegationMode(removed).mode,"full-delegation");
+ assert.deepEqual(resolveRuntimeRoute(removed,"worker"),{source:"default"});
+});
+
+test("Megatanda B: el modo completo no da instrucciones contradictorias ni obliga a explorar",()=>{
+ const options={sections:{} as Record<string,string>};
+ const tools={plan:true,agent:true,todo:true};
+ addAsenRequestGuidance(options,tools,false,{delegationMode:"full-delegation",activePlan:false});
+ const full=options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!;
+ assert.match(full,/Toda modificación, incluso pequeña/u);
+ assert.match(full,/un único Explorer de solo lectura/u);
+ assert.match(full,/consultas simples de solo lectura/u);
+ assert.doesNotMatch(full,/Resuélvela directamente aunque afecte|keep the work inline in the primary Pi session/u);
+ addAsenRequestGuidance(options,tools,false,{delegationMode:"organic"});
+ assert.match(options.sections[ASEN_REQUEST_GUIDANCE_SECTION]!,/keep the work inline in the primary Pi session/u);
+});
+
+test("Megatanda B: la entrada natural respeta la captura del turno, mantiene lectura directa y conserva bloqueos",async()=>{
+ const directory=await mkdtemp(path.join(os.tmpdir(),"asen-natural-full-delegation-"));
+ try{
+  const tools=new Map<string,any>();
+  const todos=await SessionTodoStore.open(path.join(directory,"todos.json"));
+  let mode:"organic"|"full-delegation"="full-delegation";
+  const pi={registerCommand(){},registerTool(tool:any){tools.set(tool.name,tool);},on(){}};
+  createAsenExtension({homeDir:()=>directory,resolveParentDelegationMode:async()=>mode,enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,todoStoreFactory:async()=>todos})(pi);
+  const context={cwd:process.cwd(),sessionManager:{getSessionId:()=>"natural-captured-mode"},ui:{notify(){}}};
+  const execute=(facts:unknown)=>tools.get(ASEN_PLAN_REQUEST_TOOL).execute("call",facts,undefined,undefined,context);
+  const delegated=await execute(request());
+  assert.deepEqual(delegated.details.requiredAgentRoles,["worker"]);
+  assert.equal(delegated.details.requiresIsolatedChild,true);
+  assert.equal(delegated.details.requiresSingleWriter,true);
+  assert.equal(delegated.details.inlineContinuation,undefined);
+  assert.equal(delegated.details.execution.authorized,false);
+  assert.match(delegated.content[0].text,/cambio delegado a un agente/u);
+  const reading=await execute({...request(),intent:"analysis",writes:[],testing:{kind:"n_a",reason:"Solo lectura"}});
+  assert.equal(reading.details.inlineContinuation,true);
+  assert.deepEqual(reading.details.requiredAgentRoles,[]);
+  const unclear=await execute({...request(),unresolvedDecisions:["Confirmar regla de negocio"]});
+  assert.equal(unclear.details.inlineClarification,true);
+  const risky=await execute({...request(),riskOperations:["security_boundary"]});
+  assert.equal(risky.details.inlineClarification,true);
+  assert.equal(risky.details.execution.started,false);
+  mode="organic";
+  const normal=await execute(request());
+  assert.equal(normal.details.inlineContinuation,true);
+  const persisted=await todos.list({sessionId:"natural-captured-mode",projectId:process.cwd()});
+  assert.equal(persisted.length,1);
+  assert.equal(persisted[0]?.plan?.role,"worker");
+  assert.equal(persisted[0]?.current.state,"planned");
+ }finally{await rm(directory,{recursive:true,force:true});}
 });

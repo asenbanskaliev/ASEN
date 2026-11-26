@@ -39,7 +39,7 @@ await test("public ODD-only registration and discovery retire only the SDD selec
  assert.equal(implementedCommands().filter(name=>name==="asen-task-agents").length,1);
  assert.deepEqual([...commands.keys()].sort(),implementedCommands().filter(name=>name!=="asen-authority-status").sort());
  const hub=await commands.get("asen-customize")!.handler("",context("").ctx) as {customize_surfaces:{name:string}[]};
- assert.deepEqual(hub.customize_surfaces.map(row=>row.name),["asen-profiles","asen-persona","asen-mode","asen-history","asen-usage","asen-stats","asen-keymaps"]);
+ assert.deepEqual(hub.customize_surfaces.map(row=>row.name),["asen-profiles","asen-persona","asen-mode","asen-history","asen-usage","asen-stats","asen-keymaps","asen-customize appearance","asen-customize position","asen-customize density","asen-customize header","asen-customize surface"]);
 });
 
 await test("public ODD-only production factory registers without a host SDD command",async t=>{
@@ -52,7 +52,7 @@ await test("public ODD-only production factory registers without a host SDD comm
   createPiExtension({homeDir:()=>root,packageRoot:root,registryLifecycle:{watch:()=>({close(){}})},enableAgentRuntime:false,enableTodoRuntime:false,enableWorkspaceRuntime:false,enableMemoryRuntime:false})(pi as never);
   await events.get("session_start")![0]!({},ctx);
   assert.equal(commands.has("asen-workflow"),false);
-  assert.equal(commands.size,36);
+  assert.equal(commands.size,37,"including the consent-only asen-worktrees command");
   const rows=await commands.get("asen-commands")!.handler("",ctx);
   assert.equal(rows,undefined,"production handlers notify rather than returning internal DTOs");
   for(const name of ["asen-profiles","asen-persona","asen-plan","asen-route","asen-review"])assert.ok(commands.has(name));

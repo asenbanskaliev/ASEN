@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {C01_PROMPT,gradeRealC01} from "../scripts/r4-two-pi-beam-c01.mjs";
+import {C01_PROMPT,gradeRealC01,assertC01SupportedRef} from "../scripts/r4-two-pi-beam-c01.mjs";
 import {createHash} from "node:crypto";
 const sha="a".repeat(40),ref="1f74e9e24473e7e121a96b1680444ae0196d3009";
 const digest=x=>createHash("sha256").update(x).digest("hex");
@@ -47,4 +47,15 @@ test("R4-04 cannot count a third runtime or skip the exact Pi source identity",(
  assert.throws(()=>grade(both(),{candidateSha:"invalid"}));
  assert.throws(()=>grade(both(),{runId:"0"}));
  assert.throws(()=>grade(both(),{referenceSha:"b".repeat(40)}));
+});
+
+test("R4-04 admite únicamente las dos ramas explícitas del flujo C01",()=>{
+ for(const ref of [
+  "refs/heads/feat/t12-integrated-acceptance-merge",
+  "refs/heads/integration/megatanda-1-3-20261123"
+ ])assert.doesNotThrow(()=>assertC01SupportedRef(ref));
+ for(const ref of [
+  undefined,"refs/heads/main","refs/heads/integration/otra-rama",
+  "refs/tags/v1","refs/pull/103/merge",""
+ ])assert.throws(()=>assertC01SupportedRef(ref),/rama de aceptación no autorizada/u);
 });

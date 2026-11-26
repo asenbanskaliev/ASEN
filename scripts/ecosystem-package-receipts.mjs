@@ -1,10 +1,21 @@
 import assert from "node:assert/strict";
 import {spawnSync,execFileSync} from "node:child_process";
-import {readFileSync,writeFileSync,mkdirSync} from "node:fs";
+import {readFileSync,writeFileSync,mkdirSync,readdirSync,existsSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {createHash} from "node:crypto";
 const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
+
+/** El número de exports públicos debe seguir el catálogo real del paquete,
+ * sin fijarlo a 28 cuando se añaden o eliminan skills de forma autorizada. */
+export function expectedPackageExportCount(){
+ const pkg=JSON.parse(readFileSync(new URL("../package.json",import.meta.url),"utf8"));
+ assert.equal(pkg.exports?.["./skills/*"],"./skills/*/SKILL.md");
+ const dirs=readdirSync(new URL("../skills/",import.meta.url),{withFileTypes:true});
+ const skillCount=dirs.filter(entry=>entry.isDirectory()&&
+  existsSync(new URL(`../skills/${entry.name}/SKILL.md`,import.meta.url))).length;
+ return Object.keys(pkg.exports).filter(key=>key!=="./skills/*").length+skillCount;
+}
 
 /** Admits completed observations only. Log consistency is not independent execution authenticity. */
 export function admitPackageJourneyResult(result){
@@ -22,7 +33,9 @@ export function admitPackageJourneyResult(result){
  assert.equal(journey.publicHost?.mode,"rpc");assert.equal(typeof journey.publicHost?.hasUI,"boolean");
  assert.equal(journey.publicHost?.canonicalCommands,11);assert.equal(journey.publicHost?.canonicalTools,17);
  assert.equal(journey.publicHost?.toolsEnabled,true);
- assert.equal(pack.packedInstallVerified,true);assert.equal(pack.publicExports,28);
+ assert.equal(pack.packedInstallVerified,true);const expectedExports=expectedPackageExportCount();
+ assert.ok(expectedExports>=28,"Unexpected reduction of the public package surface");
+ assert.equal(pack.publicExports,expectedExports);
  assert.ok(Number.isInteger(pack.files)&&pack.files>0);assert.match(pack.integrity??"",/^sha512-[A-Za-z0-9+/]{86}==$/);
  assert.ok(stdout.split(/\r?\n/).includes("PACK_ENV_BOUNDARY_PASS"));
  return {journey,pack};

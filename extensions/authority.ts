@@ -6,7 +6,7 @@ import {PersistentWorkspaceStore} from "../src/runtime/workspace-store.js";
 import { canonicalPathSync, hasSensitiveName } from "../src/security/path-safety.js";
 
 export interface ExactWriteReceipt{path:string;fileSha256:string;barrierFile?:string;}
-export interface ToolAuthority{repository:string;role:"explorer"|"worker"|"reviewer"|"verifier";writeSurfaces:readonly string[];agentId?:string;sessionId?:string;attributionFile?:string;exactWriteReceipt?:ExactWriteReceipt;}
+export interface ToolAuthority{repository:string;role:"explorer"|"worker"|"reviewer"|"verifier";writeSurfaces:readonly string[];agentId?:string;sessionId?:string;attributionFile?:string;exactWriteReceipt?:ExactWriteReceipt;oneShotWritePath?:string;oneShotClaimFile?:string;}
 function inside(base:string,target:string):boolean{
  const rest=relative(base,target);
  return rest===""||rest!==".."&&!rest.startsWith(`..${process.platform==="win32"?"\\":"/"}`)&&!isAbsolute(rest);
@@ -55,9 +55,21 @@ function persistBarrier(file:string,record:Record<string,unknown>):void{
 
 export default function(pi:ExtensionAPI):void{
  let authority:ToolAuthority;const pending=new Map<string,{path:string;operation:"create"|"modify"}>(),claimedReceiptPaths=new Set<string>();
+ // El primer write consume el permiso antes de ejecutarse; no hay reintentos.
+ let oneShotWriteClaimed=false;
  try{
   const parsed=JSON.parse(process.env.ASEN_PI_AUTHORITY??"null") as ToolAuthority;
-  if(!parsed||typeof parsed.repository!=="string"||!(["explorer","worker","reviewer","verifier"] as unknown[]).includes(parsed.role)||!Array.isArray(parsed.writeSurfaces)||parsed.writeSurfaces.some(x=>typeof x!=="string")||Object.keys(parsed).some(key=>!["repository","role","writeSurfaces","agentId","sessionId","attributionFile","exactWriteReceipt"].includes(key))||(parsed.agentId!==undefined&&(typeof parsed.agentId!=="string"||!parsed.agentId.trim()))||(parsed.sessionId!==undefined&&(typeof parsed.sessionId!=="string"||!parsed.sessionId.trim()))||(parsed.attributionFile!==undefined&&(typeof parsed.attributionFile!=="string"||!isAbsolute(parsed.attributionFile)))||(parsed.exactWriteReceipt!==undefined&&!validExactWriteReceipt(parsed.exactWriteReceipt,parsed)))throw new Error("Invalid Pi authority");
+  if(!parsed||typeof parsed.repository!=="string"||!(["explorer","worker","reviewer","verifier"] as unknown[]).includes(parsed.role)||!Array.isArray(parsed.writeSurfaces)||parsed.writeSurfaces.some(x=>typeof x!=="string")||Object.keys(parsed).some(key=>!["repository","role","writeSurfaces","agentId","sessionId","attributionFile","exactWriteReceipt","oneShotWritePath","oneShotClaimFile"].includes(key))||(parsed.agentId!==undefined&&(typeof parsed.agentId!=="string"||!parsed.agentId.trim()))||(parsed.sessionId!==undefined&&(typeof parsed.sessionId!=="string"||!parsed.sessionId.trim()))||(parsed.attributionFile!==undefined&&(typeof parsed.attributionFile!=="string"||!isAbsolute(parsed.attributionFile)))||(parsed.exactWriteReceipt!==undefined&&!validExactWriteReceipt(parsed.exactWriteReceipt,parsed))||
+  (parsed.oneShotWritePath!==undefined&&(
+   typeof parsed.oneShotWritePath!=="string"||parsed.role!=="worker"||
+   parsed.writeSurfaces.length!==1||parsed.writeSurfaces[0]!==parsed.oneShotWritePath||
+   !authorizeToolCall(parsed,"write",{path:parsed.oneShotWritePath})||
+   (parsed.exactWriteReceipt!==undefined&&parsed.exactWriteReceipt.path!==parsed.oneShotWritePath)||
+   typeof parsed.attributionFile!=="string"||!isAbsolute(parsed.attributionFile)||
+   parsed.oneShotClaimFile!==parsed.attributionFile+".t06-claim"
+  ))||
+  (parsed.oneShotWritePath===undefined&&parsed.oneShotClaimFile!==undefined)
+  )throw new Error("Invalid Pi authority");
   authority=parsed;
  }catch{authority={repository:"",role:"explorer",writeSurfaces:[]};}
  pi.on("tool_call",event=>{
@@ -66,6 +78,24 @@ export default function(pi:ExtensionAPI):void{
   if(!authority.agentId||!authority.sessionId||!authority.attributionFile)return {block:true,reason:"ASEN writer attribution is not configured"};
   const repo=realpathSync(authority.repository),target=canonicalTarget(resolve(repo,event.input.path as string)),path=workspacePath(relative(repo,target)),receipt=authority.exactWriteReceipt;
   if(!path||path==="."||path.startsWith("..")||isAbsolute(path))return {block:true,reason:"ASEN writer attribution path is invalid"};
+  if(authority.oneShotWritePath!==undefined){
+   if(event.toolName!=="write"||path!==authority.oneShotWritePath)
+    return {block:true,reason:"ASEN T06 one-shot only permits one exact write"};
+   if(oneShotWriteClaimed)return {block:true,reason:"ASEN T06 one-shot write already consumed"};
+   // Reserva persistente y exclusiva ANTES de tocar el archivo. Sin resultado
+   // concluyente no se recupera el permiso, tampoco tras reiniciar Pi.
+   try{
+    persistBarrier(authority.oneShotClaimFile!,{
+     schemaVersion:1,agentId:authority.agentId,sessionId:authority.sessionId,
+     toolName:event.toolName,toolCallId:event.toolCallId,path,
+     status:"claimed-not-verified",claimedAt:new Date().toISOString()
+    });
+   }catch{
+    oneShotWriteClaimed=true;
+    return {block:true,reason:"ASEN T06 one-shot persistent claim unavailable or already consumed"};
+   }
+   oneShotWriteClaimed=true;
+  }
   if(receipt&&path===receipt.path){if(event.toolName!=="write")return {block:true,reason:"ASEN exact write receipt requires the write tool"};if(claimedReceiptPaths.has(path))return {block:true,reason:"ASEN exact write receipt already consumed"};claimedReceiptPaths.add(path);}
   pending.set(event.toolCallId,{path,operation:existsSync(target)?"modify":"create"});
  });

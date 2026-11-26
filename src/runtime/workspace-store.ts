@@ -8,6 +8,26 @@ import {preparePrivateFile} from "../io/private-file.js";
 import {recordWorkspaceChange,type WorkspaceChange} from "./workspace-attribution.js";
 
 const SCHEMA="asen.workspace/v1" as const,MAX_CHANGES=20000;
+/**
+ * Serializa escrituras al mismo historial dentro de un proceso.
+ * Evita la avalancha de reclamaciones sobre el mismo candado en Windows.
+ * El candado entre procesos sigue siendo obligatorio en cada operación.
+ */
+const pendingAppends=new Map<string,Promise<void>>();
+async function serializeLocalAppend<T>(file:string,operation:()=>Promise<T>):Promise<T>{
+ const key=workspaceIdentityPathKey(path.resolve(file));
+ const previous=pendingAppends.get(key);
+ let release!:()=>void;
+ const current=new Promise<void>(resolve=>{release=resolve;});
+ pendingAppends.set(key,current);
+ try{
+  if(previous)await previous;
+  return await operation();
+ }finally{
+  if(pendingAppends.get(key)===current)pendingAppends.delete(key);
+  release();
+ }
+}
 export interface StoredWorkspaceChange{revision:number;id:string;change:WorkspaceChange}
 export interface WorkspaceFile{schema:typeof SCHEMA;revision:number;changes:StoredWorkspaceChange[]}
 export interface WorkspaceIdentity{sessionId:string;projectId:string;worktree:string}
@@ -46,6 +66,20 @@ export class PersistentWorkspaceStore{
  private constructor(readonly path:string,private readonly quarantined?:string){}
  static async open(path:string):Promise<PersistentWorkspaceStore>{await preparePrivateFile(path,true);let quarantined:string|undefined;try{await read(path);}catch(error){if(!(error instanceof SyntaxError)&&!(error instanceof Error&&["Invalid ASEN workspace store","Invalid ASEN workspace revision"].includes(error.message)))throw error;quarantined=`${path}.corrupt-${Date.now()}-${randomUUID()}`;await rename(path,quarantined);}return new PersistentWorkspaceStore(path,quarantined);}
  diagnostics(){return this.quarantined?{quarantined:this.quarantined}:undefined;}
- async append(change:WorkspaceChange):Promise<StoredWorkspaceChange>{const checked=recordWorkspaceChange(change);let saved:StoredWorkspaceChange|undefined;await preparePrivateFile(this.path,true);await withExclusiveFileLock(this.path,async()=>{const current=await read(this.path);if(current.changes.length>=MAX_CHANGES)throw new Error("ASEN workspace history has reached its limit");saved={revision:current.revision+1,id:`change-${randomUUID()}`,change:checked};const next=parseWorkspaceFile(JSON.stringify({schema:SCHEMA,revision:current.revision+1,changes:[...current.changes,saved]}));await write(this.path,next);});return structuredClone(saved!);}
+ async append(change:WorkspaceChange):Promise<StoredWorkspaceChange>{
+  const checked=recordWorkspaceChange(change);
+  return serializeLocalAppend(this.path,async()=>{
+   let saved:StoredWorkspaceChange|undefined;
+   await preparePrivateFile(this.path,true);
+   await withExclusiveFileLock(this.path,async()=>{
+    const current=await read(this.path);
+    if(current.changes.length>=MAX_CHANGES)throw new Error("ASEN workspace history has reached its limit");
+    saved={revision:current.revision+1,id:`change-${randomUUID()}`,change:checked};
+    const next=parseWorkspaceFile(JSON.stringify({schema:SCHEMA,revision:current.revision+1,changes:[...current.changes,saved]}));
+    await write(this.path,next);
+   });
+   return structuredClone(saved!);
+  });
+ }
  async list(identity:WorkspaceIdentity):Promise<readonly StoredWorkspaceChange[]>{const value=await read(this.path);return value.changes.filter(item=>item.change.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(item.change.projectId,identity.projectId)&&sameWorkspaceIdentityPath(item.change.worktree,identity.worktree)).map(item=>structuredClone(item));}
 }

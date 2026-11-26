@@ -1,6 +1,7 @@
 import {AgentProjectAccess} from "./agent-project-access.js";
 import {execFileSync} from "node:child_process";
 import {realpath} from "node:fs/promises";
+import {realpathSync} from "node:fs";
 import {isAbsolute,resolve} from "node:path";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
 import type {AgentRuntime} from "./agent-runtime.js";
@@ -10,7 +11,7 @@ import {CONFIRMED_FAILED_READ_ONLY_RETRY_REASON,type TrustedTaskAgentBinder} fro
 import type {AgentNotificationJournal} from "../runtime/agents/agent-notification-journal.js";
 import type {TaskAgentLinkStore} from "../runtime/agents/task-agent-link-store.js";
 import type {SessionTodoStore,TodoPlanMetadata} from "../runtime/lifecycle/todo-store.js";
-import {runtimeRoutingMetadata,type RouteChoice} from "../runtime/lifecycle/profiles.js";
+import {runtimeRoutingMetadata,type RouteChoice,type ProfileLayer} from "../runtime/lifecycle/profiles.js";
 import {selectSkills,type SkillSelectionContext} from "../skills/registry.js";
 import {dispatchNextPlanTask} from "../runtime/lifecycle/plan-dispatcher.js";
 import {inspectInterruptedWrite} from "../runtime/lifecycle/interrupted-write-inspection.js";
@@ -21,6 +22,13 @@ const text={type:"string",minLength:1,maxLength:32000};
 const rootSchema={type:"string",minLength:1,maxLength:4096};
 const idSchema={type:"string",minLength:1,maxLength:1024};
 const MAX_VISIBLE_AGENT_INSTRUCTION=4096;
+/** A clock rollback, invalid timestamp or expiry never revives an old notice inspection.
+ * Callers must pass monotonic readings: elapsed inspection lifetime never depends on the
+ * wall clock, which is recorded only as metadata. */
+export function isFreshAgentInspection(at:number,now:number,windowMs=300_000):boolean{
+ return Number.isSafeInteger(at)&&Number.isSafeInteger(now)&&Number.isSafeInteger(windowMs)&&
+  windowMs>0&&at>=0&&now>=at&&now-at<=windowMs;
+}
 /** A public Todo launch cannot bypass the candidate-bound planned dispatcher. */
 function assertCurrentReadOnlyCandidate(plan:TodoPlanMetadata,projectId:string):void{
  const expected=plan.candidateRevision;
@@ -32,10 +40,10 @@ function assertCurrentReadOnlyCandidate(plan:TodoPlanMetadata,projectId:string):
 }
 function cancelled():Error{const error=new Error("Agent task cancelled");error.name="AbortError";return error;}
 function throwIfCancelled(signal?:AbortSignal):void{if(signal?.aborted)throw cancelled();}
-async function confirmWithAbort(confirm:(signal?:AbortSignal)=>Promise<boolean>,signal?:AbortSignal):Promise<boolean>{
- throwIfCancelled(signal);if(!signal)return confirm();let onAbort!:()=>void;
+export async function confirmWithAbort(confirm:(signal?:AbortSignal)=>Promise<boolean>,signal?:AbortSignal):Promise<boolean>{
+ throwIfCancelled(signal);if(!signal)return (await confirm())===true;let onAbort!:()=>void;
  const aborted=new Promise<never>((_resolve,reject)=>{onAbort=()=>reject(cancelled());signal.addEventListener("abort",onAbort,{once:true});if(signal.aborted)onAbort();});
- try{const result=await Promise.race([Promise.resolve().then(()=>confirm(signal)),aborted]);throwIfCancelled(signal);return result;}finally{signal.removeEventListener("abort",onAbort);}
+ try{const result=await Promise.race([Promise.resolve().then(()=>confirm(signal)),aborted]);throwIfCancelled(signal);return result===true;}finally{signal.removeEventListener("abort",onAbort);}
 }
 const result=(value:unknown)=>({content:[{type:"text" as const,text:JSON.stringify(value)}],details:value});
 async function identity(context:any):Promise<AgentSessionIdentity>{
@@ -45,18 +53,21 @@ async function identity(context:any):Promise<AgentSessionIdentity>{
 }
 export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent_status","asen_agent_ack","asen_agent_cancel","asen_agent_continue","asen_agent_retry","asen_plan_dispatch_next","asen_todo_inspect_interrupted_write"] as const);
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
-export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal):()=>void{
+export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal,claimBudgetExplorer?:(identity:AgentSessionIdentity)=>boolean,loadProfiles?:(identity:AgentSessionIdentity)=>Promise<ProfileLayer>,monotonicNow:()=>number=()=>performance.now()):()=>void{
  const access=new AgentProjectAccess();
  // An exact status query records only a short-lived coordinator inspection
  // attempt; it is neither Pi model consumption nor approval for further work.
- const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number}>();
+ const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number;monoAt:number}>();
  const INSPECTION_WINDOW_MS=300_000;
+ const monotonicTick=()=>Math.floor(monotonicNow());
  const selectedIdentity=async(root:unknown,context:any,launch:boolean,signal?:AbortSignal)=>access.resolve(root,context,await identity(context),launch,()=>confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize another project?",`Start a read-only ASEN agent in ${String(root)}? Access applies only to this live session and project.`,dialogSignal?{signal:dialogSignal}:undefined),signal),signal);
- pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated, read-only Pi agent task in the current session and project.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema}},execute:async(_id,params,signal,_update,context)=>{
+ pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated read-only Pi Explorer. With budgetExplorer=true, require real same-session exhaustion and the exact Explorer model configured in the active profile, without writing.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema,budgetExplorer:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
   const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
   const todoId=(params as {todoId?:unknown}).todoId;
+  const budgetExplorer=(params as {budgetExplorer?:unknown}).budgetExplorer===true;
+  if(budgetExplorer&&todoId!==undefined)throw new Error("Budget Explorer cannot reuse a planned Todo or its authority");
   let dispatchRole:"explorer"|"reviewer"|"verifier"="explorer";
   let planSkillSelection:SkillSelectionContext|undefined,persistedPlan:TodoPlanMetadata|undefined;
   let todoSnapshot:Awaited<ReturnType<SessionTodoStore["list"]>>[number]|undefined;
@@ -72,6 +83,19 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const requested:RouteChoice=persistedPlan?{...(persistedPlan.model!==undefined?{model:persistedPlan.model}:{}),...(persistedPlan.thinking!==undefined?{thinking:persistedPlan.thinking}:{})}:{};
   let resolved:RouteChoice,routeSource:"session"|"project"|"global"|"default"|"persisted-plan",modelFallback:AgentModelFallback|undefined;
   if(persistedPlan){resolved={...requested};routeSource="persisted-plan";}else{const directExplorer=todoId===undefined&&dispatchRole==="explorer";const route=resolveRouting?await resolveRouting(dispatchRole,session,directExplorer):{source:"default" as const};resolved=route.choice??{};routeSource=route.source;if(directExplorer)modelFallback=route.modelFallback;}
+  if(budgetExplorer){
+   // Sin modelo explícito de perfil, no se utiliza el modelo del padre por accidente.
+   // El precio del modelo configurado no concede derechos adicionales.
+   const reference=routeSource!=="default"?resolved.model:undefined;
+   const sep=typeof reference==="string"?reference.indexOf("/"):-1;
+   const model=sep>0&&sep<reference!.length-1?
+    context?.modelRegistry?.find?.(reference!.slice(0,sep),reference!.slice(sep+1)):undefined;
+   if(!model||`${model.provider}/${model.id}`!==reference)
+    throw new Error("Budget Explorer requires the exact configured Explorer model in the current Pi catalog; no agent was launched");
+   if(prompt.length>2048)throw new Error("Budget Explorer instruction exceeds the read-only handoff limit");
+   resolved={...resolved,model:reference!};
+   modelFallback=undefined;
+  }
   const routing=runtimeRoutingMetadata(requested,resolved,routeSource);
   throwIfCancelled(signal);
   // Fresh starts of both planned and legacy Todos require the exact saved
@@ -88,7 +112,14 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
     await (await todoLink!.binder()).launchExact(todoSnapshot,agentId,session,enqueue,dispatch,validate);
    },
   }:{};
-  const active=await runtime(),taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback}:{}),...binding},signal);
+  const active=await runtime();
+  if(budgetExplorer){
+   const current=await identity(context);throwIfCancelled(signal);
+   if(current.sessionId!==session.sessionId||current.projectId!==session.projectId||
+      !claimBudgetExplorer?.(session))
+    throw new Error("Budget Explorer was not authorized by one fresh, same-session read budget");
+  }
+  const taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback}:{}),...binding},signal);
   return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema,includeNotices:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
@@ -111,7 +142,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
      if(row){
       if(inspected.size>=64)inspected.delete(inspected.keys().next().value!);
       inspected.set(row.eventId,{sessionId:session.sessionId,projectId:session.projectId,
-       agentId:row.agentId,state:row.state,at:Date.now()});
+       agentId:row.agentId,state:row.state,at:Date.now(),monoAt:monotonicTick()});
      }
     }catch{/* Corrupted journal does not prevent a read-only status query. */}
    }
@@ -138,24 +169,48 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const eventId=(params as {eventId?:unknown})?.eventId;
   if(typeof eventId!=="string"||!/^asen:agent:[0-9a-f]{64}:terminal$/u.test(eventId))
    throw new Error("Invalid durable agent notice ID");
+  // Registrar el gestor original para revalidar identidad después del bloqueo.
+  const originalSessionManager=context.sessionManager;
   const session=await identity(context),rows=await notificationJournal.list(session);
   const row=rows.find(entry=>entry.eventId===eventId);
   if(!row)throw new Error("Agent notice is not available to this Pi session and project");
   const inspection=inspected.get(row.eventId);
-  if(!inspection||inspection.sessionId!==session.sessionId||
-     !sameWorkspaceIdentityPath(inspection.projectId,session.projectId)||
-     inspection.agentId!==row.agentId||inspection.state!==row.state||
-     Date.now()-inspection.at>INSPECTION_WINDOW_MS)
-   throw new Error("Inspect this exact terminal agent with asen_agent_status before acknowledging it");
+  const inspectionError="Inspect this exact terminal agent with asen_agent_status before acknowledging it";
+  // Expiry is measured on the monotonic clock; the recorded wall-clock stamp is
+  // metadata only, so a system clock adjustment can neither revive nor extend it.
+  const inspectionIsFresh=():boolean=>{
+   if(!inspection||inspection.sessionId!==session.sessionId||
+      !sameWorkspaceIdentityPath(inspection.projectId,session.projectId)||
+      inspection.agentId!==row.agentId||inspection.state!==row.state)return false;
+   if(!Number.isSafeInteger(inspection.at)||inspection.at<=0)return false;
+   return isFreshAgentInspection(inspection.monoAt,monotonicTick(),INSPECTION_WINDOW_MS);
+  };
+  if(!inspectionIsFresh())throw new Error(inspectionError);
   const entry=await (await runtime()).query(row.agentId,session);
   if(!entry||entry.record.id!==row.agentId||entry.record.state!==row.state||
      entry.record.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(entry.record.projectId,session.projectId))
    throw new Error("Agent notice does not match an authenticated durable terminal agent");
   throwIfCancelled(signal);
+  // The durable query can cross the inspection boundary; revalidate it before acknowledging.
+  if(!inspectionIsFresh())throw new Error(inspectionError);
   const current=await identity(context);
+  throwIfCancelled(signal); // Cancellation may arrive while Pi resolves its current workspace.
   if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId))
    throw new Error("Pi coordinator session or project changed before acknowledgement");
-  const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state);
+  if(!inspectionIsFresh())throw new Error(inspectionError);
+  const acknowledged=await notificationJournal.acknowledge(row.eventId,session,row.agentId,row.state,signal,()=>{
+   // Tras el bloqueo, una sesión o carpeta nueva no puede reconocer el aviso anterior.
+   if(context.sessionManager!==originalSessionManager||
+      context.sessionManager?.getSessionId?.()!==session.sessionId||
+      typeof context.cwd!=="string"||!isAbsolute(context.cwd))
+    throw new Error("Pi coordinator session or project changed during acknowledgement");
+   let currentProject:string;
+   try{currentProject=realpathSync(resolve(context.cwd));}
+   catch{throw new Error("Pi coordinator project is unavailable during acknowledgement");}
+   if(!sameWorkspaceIdentityPath(currentProject,session.projectId))
+    throw new Error("Pi coordinator session or project changed during acknowledgement");
+   if(!inspectionIsFresh())throw new Error(inspectionError);
+  });
   return result({eventId:row.eventId,agentId:row.agentId,state:row.state,acknowledged,
    evidence:"COORDINATOR_ACTION_ONLY",humanReadConfirmed:false,writerAuthorized:false});
  }});
@@ -192,8 +247,12 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   throwIfCancelled(signal);const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
   if(!todoLink)throw new Error("ASEN plan dispatch requires the session Todo and durable task-agent link stores");
   const [todos,links,runtimeValue]=await Promise.all([todoLink.todos(),todoLink.links(),runtime()]);
-  const validateIdentity=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)throw new Error("Pi session or project changed before plan task dispatch");};
-  const dispatched=await dispatchNextPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,autoApproveReadOnly:true,confirm:async task=>{if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function")return false;return confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize scoped ASEN write?",`${task.title} (${task.role})\n\n${task.instruction}\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces!.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal);}});
+  const validateIdentity=async()=>{const current=await identity(context);if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId)||signal?.aborted)throw new Error("Pi session or project changed before plan task dispatch");};
+  // Usamos la misma fuente de perfiles que usó el planificador, con la sesión
+  // vinculada. Sin esta fuente no se deduce autorización para un Writer directo.
+  const runtimeProfiles=loadProfiles?await loadProfiles(session):undefined;
+  await validateIdentity();
+  const dispatched=await dispatchNextPlanTask({todos,agents:runtimeValue,links,identity:session,validateIdentity,autoApproveReadOnly:true,...(runtimeProfiles?{runtimeProfiles}:{}),confirm:async task=>{if(context?.hasUI!==true||typeof context?.ui?.confirm!=="function")return false;return confirmWithAbort(dialogSignal=>context.ui.confirm("Authorize scoped ASEN write?",`${task.title} (${task.role})\n\n${task.instruction}\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces!.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`,dialogSignal?{signal:dialogSignal}:undefined),signal);}});
   return result(dispatched);
  }});
  pi.registerTool?.({name:"asen_todo_inspect_interrupted_write",label:"Inspect interrupted ASEN write",description:"Read-only inspection for one interrupted linked writer in the active Pi session and project. Compares its saved Git candidate and exact file scope with current Git state; never edits files, resumes work, or restores permission. A fresh plan and explicit new authorization are required.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["agentId"],properties:{agentId:idSchema,root:rootSchema}},execute:async(_id,params,signal,_update,context)=>{

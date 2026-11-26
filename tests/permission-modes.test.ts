@@ -236,14 +236,14 @@ test("Explicit mode UI selections and user-global defaults are distinct authoriz
  };
  const customize=(arg:string)=>commands.get("asen-customize")!.handler(arg,ctx) as Promise<any>;
  assert.equal((await customize("permissions")).session,"super-yolo");
- assert.ok(indicators.includes("asen:host=ASEN │ SUPER-YOLO │ selected ? │ responding ? │ ctx ? │ cost/sub ?"),"elevated mode composes the single asen:host row: "+indicators.join("\n"));
+ assert.ok(indicators.includes("asen:host=modo SUPER-YOLO · modelo ? · ctx ? · respuesta ? · coste/uso ? · /asen-panel"),"elevated mode composes the single asen:host row: "+indicators.join("\n"));
  selected="Default: auto";
  const state=await customize("permissions");
  assert.equal(state.savedDefault,"auto");
  assert.equal(state.session,"super-yolo","Saving a global default never switches the live session");
  selected="Session: normal";
  assert.equal((await customize("permissions")).session,"normal");
- assert.equal(indicators.at(-1),"asen:host=ASEN │ selected ? │ responding ? │ ctx ? │ cost/sub ?","Normal keeps the truthful cost/sub unknown on the host path and drops only the banner segment");
+ assert.equal(indicators.at(-1),"asen:host=modelo ? · ctx ? · respuesta ? · coste/uso ? · /asen-panel","Normal keeps the truthful cost/sub unknown on the host path and drops only the banner segment");
  selected="Session: unknown";
  await assert.rejects(()=>customize("permissions"),/unknown choice/);
  const rpc={...ctx,mode:"rpc"};

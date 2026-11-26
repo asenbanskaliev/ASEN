@@ -46,7 +46,7 @@ test("public persona command exposes the professional default in one dedicated p
  assert.equal(await exists(f.globalFile),false);assert.equal(await exists(f.projectFile),false,"status must not create persona state");
  const existing={security_boundary:"permission sentinel"};
  const sections=await promptSections(host.events,context(f.project),existing);
- assert.equal(sections.security_boundary,existing.security_boundary);assert.equal(typeof sections.asen_request_handling,"string");
+ assert.equal(sections.security_boundary,existing.security_boundary);assert.equal(sections.asen_request_handling,undefined,"Sin selección efectiva de Pi no debe aparecer una guía de herramientas");
  const repeated=await promptSections(host.events,context(f.project),existing);
  assert.deepEqual(Object.fromEntries(Object.entries(repeated).filter(([key])=>key!=="asen_persona_style")),Object.fromEntries(Object.entries(sections).filter(([key])=>key!=="asen_persona_style")));
  assert.equal(sections.asen_persona_style,professional);

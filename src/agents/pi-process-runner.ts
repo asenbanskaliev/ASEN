@@ -13,7 +13,12 @@ import {authorityAssets} from "./pi-authority-assets.js";
 import {isThinking} from "../runtime/lifecycle/profiles.js";
 import {classifyAssistantError,getProcessModelFallbackCooldown,pickFallbackModel,shouldFallback,type TerminalErrorCategory} from "../runtime/lifecycle/model-fallback-policy.js";
 import {applyToolOverlay,loadToolOverlays} from "./tool-overlay.js";
+import {summarizePiInvalidRequest,type PiInvalidRequestFacts} from "../runtime/agents/pi-provider-request-diagnostic.js";
 
+/** Eventos Pi de revisión sin texto, archivos, prompts ni credenciales. */
+export type PiNativeReviewEvent=
+ |Readonly<{type:"assistant_end";stopReason:"stop"|"error"|"length"|"toolUse"|"unknown";textBlocks:number}>
+ |Readonly<{type:"agent_settled"}>;
 export interface PiProcessOptions{
  command?:string;
  rpcArgs?:string[];
@@ -25,6 +30,12 @@ export interface PiProcessOptions{
  signal?:AbortSignal;
  providerExtension?:string;
  noTools?:boolean;
+ /** Esperar agent_settled cuando Pi pueda continuar después de agent_end.
+  * Activar solo para revisiones con evidencia de fin de sesión. */
+ requireFinalSettlement?:boolean;
+ /** Exigir get_state de Pi con el modelo exacto antes de enviar el prompt.
+  * Es un control de admisión, no un permiso para usar herramientas o escribir. */
+ requireChildModelBeforePrompt?:boolean;
  attributionFile?:string;
  /**
   * Binds a worker turn to one exact file result.  The authority extension
@@ -34,16 +45,22 @@ export interface PiProcessOptions{
   * are durable, before Pi is allowed to process the tool result.
   */
  exactWriteReceipt?:Readonly<{path:string;fileSha256:string;barrierFile?:string}>;
+ /** Límite optativo exclusivo del ensayo T06, no de los Writers normales. */
+ oneShotWritePath?:string;
  policyRoot?:string;
  validateRuntimeVersion?:boolean;
  minimumRuntimeVersion?:string;
  providerCredential?:PiProviderCredential;
  onProcessStart?:(pid:number)=>void;
  onProcessClose?:(details:{code:number|null;signal:NodeJS.Signals|null;stderr:string})=>void;
+ /** Solo categoría, parámetro de lista cerrada y estado HTTP; sin datos libres. */
+ onInvalidRequest?:(facts:PiInvalidRequestFacts)=>void;
  onToolExecution?:(event:Readonly<{type:"tool_execution_start"|"tool_execution_end";pid:number;toolName?:string;toolCallId?:string;isError?:boolean}>)=>void;
  /** Optional bounded native streaming witness. Never supplies model text or
   * authority; cancellation from a listener uses the existing AbortSignal. */
  onAssistantTextDelta?:(event:Readonly<{pid:number;requestId:string;observedCharacters:number}>)=>void;
+ /** Observador sin autoridad: recibe eventos sanitizados antes de terminar Pi. */
+ onNativeReviewEvent?:(event:PiNativeReviewEvent)=>void;
  /** Emitted only after this child accepts a configured model switch. */
  onModelFallback?:AgentFallbackListener;
 }
@@ -96,9 +113,18 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
-const authorityDigest="35731adec8525b6043dec7e06d8c35406388bd5d61f6fc2b9ace5c6528b199dd";
+const authorityDigest="a79b0c1a50cc3d049eaeccf3c674989e2106a52b71b430bac56a0b398bc70b1b";
 
 
+function oneShotWritePath(value:PiProcessOptions["oneShotWritePath"],request:AgentRequest):string|undefined{
+ if(value===undefined)return undefined;
+ if(request.role!=="worker"||request.writeSurfaces?.length!==1||
+  typeof value!=="string"||!value||value!==value.trim()||isAbsolute(value)||
+  value.includes("\\")||value.split("/").some(part=>!part||part==="."||part==="..")||
+  request.writeSurfaces[0]!==value)
+  throw new Error("T06 one-shot write requires one exact Worker write surface");
+ return value;
+}
 function exactWriteReceipt(value:PiProcessOptions["exactWriteReceipt"],request:AgentRequest):{path:string;fileSha256:string;barrierFile?:string}|undefined{
  if(value===undefined)return undefined;
  if(request.role!=="worker"||!request.writeSurfaces?.length)throw new Error("Exact write receipt requires a worker with write authority");
@@ -182,6 +208,11 @@ export class PiProcessRunner implements AgentRunner{
  readonly #fallbackSubscriptions=new Set<Readonly<{listener:AgentFallbackListener}>>();
  #runtimeVerified=false;
  constructor(private readonly options:PiProcessOptions={}){}
+ /** Capability only: request-level fallback still fails closed in run(). */
+ supportsStrictReadOnlySettlement():boolean{
+  return this.options.requireFinalSettlement===true&&this.options.noTools===true&&
+   this.options.exactWriteReceipt===undefined;
+ }
  subscribeModelFallback(listener:AgentFallbackListener):()=>void{if(typeof listener!=="function")throw new TypeError("Model fallback observer must be a function");const subscription=Object.freeze({listener});this.#fallbackSubscriptions.add(subscription);return()=>{this.#fallbackSubscriptions.delete(subscription);};}
  /** Optional, nonpersistent selection reports; subscription replacement never revives old launches. */
  subscribeChildSelection(listener:ChildSelectionListener):()=>void{
@@ -198,6 +229,9 @@ export class PiProcessRunner implements AgentRunner{
   }
   if(this.options.onModelFallback||fallbackSubscriptions.length){const taskId=request.id,sessionId=request.isolationKey??"default",projectId=request.repository;if(selectionText(taskId,1024)&&selectionText(sessionId,1024)&&selectionText(projectId,32768))fallbackOwner=Object.freeze({taskId,sessionId,projectId});}
   const receiverValid=request.runnerWriteReceiver!==undefined&&consumeRunnerWriteReceiver(request.runnerWriteReceiver,request);
+  const strictModelPreflight=this.options.requireChildModelBeforePrompt===true;
+  if(strictModelPreflight&&(!selectionOwner||!selectionSubscriptions.length||typeof request.model!=="string"))
+   return Promise.resolve({id:request.id,ok:false,output:"Pi model preflight requires a selected model and an identified child observer"});
   if(request.runnerWriteReceiver!==undefined&&!receiverValid)return Promise.resolve({id:request.id,ok:false,output:"Pi write tools require an exact dispatcher receiver"});
   if(request.candidate&&(!request.skillContext||!request.skillPaths))return Promise.resolve({id:request.id,ok:false,output:"Candidate-bound Pi execution requires issued skill context and exact paths"});
   if(request.skillContext){
@@ -207,6 +241,10 @@ export class PiProcessRunner implements AgentRunner{
    if(requiredPhase&&request.skillContext.phase!==requiredPhase)return Promise.resolve({id:request.id,ok:false,output:"Pi skill context phase does not match agent role"});
   }
   if(request.writeSurfaces?.length&&request.skillContext?.phase!=="apply")return Promise.resolve({id:request.id,ok:false,output:"Pi write authority requires issued apply phase"});
+  // El receptor de escritura se consume arriba incluso si la tarea se canceló.
+  // No comprobar versiones, crear archivos temporales ni abrir Pi tras cancelar.
+  if(runSignal?.aborted||this.options.signal?.aborted)
+   return Promise.resolve({id:request.id,ok:false,output:"pi process cancelled"});
   const command=this.options.command??"pi";
   if (this.options.validateRuntimeVersion && !this.#runtimeVerified) {
    const minimumRuntimeVersion = this.options.minimumRuntimeVersion ?? "1.2.0";
@@ -243,8 +281,20 @@ export class PiProcessRunner implements AgentRunner{
    message
   ].join("\n");
   let routeArgs:string[],fallbackConfig:AgentRequest["modelFallback"];try{routeArgs=piRuntimeRouteArgs(request);fallbackConfig=snapshotAgentModelFallback(request.modelFallback);}catch(error){return Promise.resolve({id:request.id,ok:false,output:String(error)});}
-  let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined;
-  try{receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);}catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
+  // Un fallback no puede desactivar silenciosamente el cierre estricto.
+  // Rechazar antes de iniciar el proceso o consumir cuota.
+  if(this.options.requireFinalSettlement&&fallbackConfig?.chain.length)
+   return Promise.resolve({id:request.id,ok:false,
+    output:"Pi strict settlement cannot combine with automatic fallback"});
+  let receipt:{path:string;fileSha256:string;barrierFile?:string}|undefined,oneShot:string|undefined;
+  try{
+   receipt=exactWriteReceipt(this.options.exactWriteReceipt,request);
+   oneShot=oneShotWritePath(this.options.oneShotWritePath,request);
+   if(oneShot&&receipt&&receipt.path!==oneShot)throw new Error("T06 one-shot and receipt paths differ");
+   if(oneShot&&fallbackConfig?.chain.length)throw new Error("T06 one-shot cannot use model fallback");
+   if(oneShot&&(!this.options.attributionFile||!isAbsolute(this.options.attributionFile)))
+    throw new Error("T06 one-shot requires an absolute private attribution file for its durable claim");
+  }catch(error){return Promise.resolve({id:request.id,ok:false,output:error instanceof Error?error.message:String(error)});}
   const providerExtension=this.options.providerExtension;
   if(providerExtension!==undefined&&!trustedProviderExtensions.has(providerExtension))return Promise.resolve({id:request.id,ok:false,output:"untrusted Pi provider extension"});
   const policyRoot=this.options.policyRoot??request.repository,candidatePolicy=resolvePath(policyRoot,"extensions/authority.ts");
@@ -269,7 +319,10 @@ export class PiProcessRunner implements AgentRunner{
   const policy=join(policyDirectory,"extensions","authority.ts");
   const configHome=childEnvironment.PI_CODING_AGENT_DIR??join(childEnvironment.HOME??childEnvironment.USERPROFILE??request.repository,".pi","agent");
   const baseTools=writer?["read","edit","write"]:["read"];
-  const effectiveTools=applyToolOverlay(baseTools,loadToolOverlays(configHome,request.repository));
+  // Los complementos pueden retirar herramientas, pero no dar acceso a
+  // comandos que la autoridad Pi bloquearía después de anunciarlos al modelo.
+  const requestedTools=applyToolOverlay(baseTools,loadToolOverlays(configHome,request.repository));
+  const effectiveTools=requestedTools.filter(tool=>baseTools.includes(tool));
   const toolArgs=this.options.noTools||effectiveTools.length===0?["--no-tools"]:["--tools",effectiveTools.join(",")];
   const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,
    "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...toolArgs,...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
@@ -285,7 +338,7 @@ export class PiProcessRunner implements AgentRunner{
    try{
     child=spawnContained(command,args,{
      cwd:request.repository,
-     env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{})})},
+     env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{}),...(oneShot?{oneShotWritePath:oneShot,oneShotClaimFile:this.options.attributionFile!+".t06-claim"}:{})})},
      stdio:["pipe","pipe","pipe"],
      detached:process.platform!=="win32"
     }) as ChildProcessWithoutNullStreams;
@@ -299,12 +352,16 @@ export class PiProcessRunner implements AgentRunner{
    if(child.pid!==undefined){try{this.options.onProcessStart?.(child.pid);}catch{/* Evidence observers cannot alter Pi execution. */}}
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
    const fallbackChain=fallbackConfig?.chain??[],fallbackEnabled=fallbackChain.length>0,triedModels=new Set<string>(),cooldown=getProcessModelFallbackCooldown();
-   // Settlement contract (pinned by tests/pi-process-runner-no-fallback-settlement.test.ts):
-   // without a fallback chain a correlated response plus a clean exit completes the
-   // run; with a fallback chain the turn must also settle, because the runner may
-   // otherwise replace the turn with another model.
-   const settlementRequired=fallbackEnabled;
+   // Compatibilidad: la ruta antigua sin fallback conserva su contrato.
+   // T08 puede exigir agent_settled incluso sin cambiar de modelo: agent_end
+   // solo cierra una tentativa de Pi y puede preceder a una recuperación.
+   const strictNativeSettlement=this.options.requireFinalSettlement===true&&!fallbackEnabled;
+   const settlementRequired=fallbackEnabled||strictNativeSettlement;
    let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!settlementRequired,rpcSequence=0,currentModel=request.model;
+   // Solo se usan marcadores del hijo Pi, nunca texto del modelo como prueba
+   // de cierre. La respuesta RPC debe pertenecer a la petición actual.
+   let strictPromptAck=false,strictMessageEnd=false,strictAgentEnd=false,
+    strictAgentWillRetry=false;
    // A correlated continuation RPC response and its completion events can
    // arrive together in one stdout chunk, before the sendRpc await resumes.
    // Hold only a *validated* new-turn completion until the transition commits.
@@ -353,7 +410,12 @@ export class PiProcessRunner implements AgentRunner{
    // One serialized writer keeps RPC order and honors stdin backpressure.
    let writeChain:Promise<void>=Promise.resolve();
    const writeLine=(line:string):Promise<void>=>{
-    const next=writeChain.then(()=>writeStdinLine(child.stdin,line)).catch(()=>{/* stdin errors stop the run through the stdin error handler */});
+    // Comprobar de nuevo al despachar: la cancelación puede llegar cuando
+    // el comando ya está en cola, incluso tras confirmar get_state.
+    const next=writeChain.then(()=>{
+     if(!alive())return;
+     return writeStdinLine(child.stdin,line);
+    }).catch(()=>{/* stdin errors stop the run through the stdin error handler */});
     writeChain=next;
     return next;
    };
@@ -439,23 +501,71 @@ export class PiProcessRunner implements AgentRunner{
    };
    const onAbort=()=>{triedModels.clear();stop({id:request.id,ok:false,output:"pi process cancelled"});};
    child.stdout.on("data",data=>{
+    // Tras solicitar parada, no procesar ni publicar sucesos que queden
+    // en este mismo bloque de salida o lleguen mientras termina el hijo.
+    if(stopResult||settled||signal?.aborted)return;
     streamBytes+=Buffer.byteLength(data);
     if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}
     buffer+=String(data);
     let end;while((end=buffer.indexOf("\n"))>=0){
+     if(stopResult||settled||signal?.aborted)return;
      const line=buffer.slice(0,end).trim();buffer=buffer.slice(end+1);
      let record:unknown;try{record=JSON.parse(line);}catch{record=line;}
      const response=(record&&typeof record==="object"?record:{}) as {type?:string;id?:string;command?:string;success?:boolean;toolName?:unknown;toolCallId?:unknown;isError?:unknown;data?:{commands?:Array<{name:string;source:string;sourceInfo?:{path:string}}>;} };
      const type=response.type;
+     // La salida final de Pi puede reemplazarse por un error. Conservar antes
+     // SOLO hechos enumerados y contadores; jamás el mensaje ni su contenido.
+     if(policyLoaded&&this.options.noTools&&this.options.onNativeReviewEvent){
+      if(type==="agent_settled"){
+       try{this.options.onNativeReviewEvent(Object.freeze({type:"agent_settled"}));}
+       catch{/* Observadores no pueden alterar la ejecución. */}
+      }else if(type==="message_end"){
+       const message=(record as {message?:unknown}).message;
+       if(message&&typeof message==="object"&&!Array.isArray(message)){
+        const assistant=message as {role?:unknown;stopReason?:unknown;content?:unknown};
+        if(assistant.role==="assistant"){
+         const reason=assistant.stopReason;
+         const stopReason=reason==="stop"||reason==="error"||reason==="length"||reason==="toolUse"?
+          reason:"unknown";
+         let textBlocks=0;
+         if(Array.isArray(assistant.content))for(const block of assistant.content){
+          if(block&&typeof block==="object"&&!Array.isArray(block)&&
+           (block as {type?:unknown}).type==="text"&&++textBlocks>=64)break;
+         }
+         try{this.options.onNativeReviewEvent(
+          Object.freeze({type:"assistant_end",stopReason,textBlocks}));}
+         catch{/* Los observadores tampoco conceden permisos. */}
+        }
+       }
+      }
+     }
      if(type==="response"&&typeof response.id==="string"){
       const pending=pendingRpc.get(response.id);if(pending){
        if(response.id===continuationPromptId)continuationAcked=response.success===true;
        pendingRpc.delete(response.id);pending.resolve(record as Record<string,unknown>);continue;
       }
      }
+     if(strictNativeSettlement&&type==="response"&&response.id===request.id&&
+        response.success===true)strictPromptAck=true;
+     if(strictNativeSettlement&&type==="agent_start"){
+      agentEnded=false;
+      strictMessageEnd=false;strictAgentEnd=false;strictAgentWillRetry=false;
+     }
+     if(strictNativeSettlement&&type==="message_end"&&
+        (record as {message?:{role?:unknown}}).message?.role==="assistant")
+      strictMessageEnd=true;
+     if(strictNativeSettlement&&type==="agent_end"){
+      strictAgentEnd=true;
+      strictAgentWillRetry=(record as {willRetry?:unknown}).willRetry===true;
+     }
      if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant"&&
         (!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
-      lastAssistantFailure=classifyAssistantError((record as {message?:Parameters<typeof classifyAssistantError>[0]}).message);
+      const assistant=(record as {message?:Parameters<typeof classifyAssistantError>[0]}).message;
+      lastAssistantFailure=classifyAssistantError(assistant);
+      if(lastAssistantFailure==="invalid_request"&&this.options.onInvalidRequest){
+       const facts=summarizePiInvalidRequest(assistant);
+       if(facts)try{this.options.onInvalidRequest(facts);}catch{/* Observadores sin autoridad. */}
+      }
       if(continuationTurnPending&&continuationAcked)continuationMessageEnded=true;
      }
      // Pi 1.2 RPC wire strips cumulative message from message_update; bind
@@ -491,14 +601,34 @@ export class PiProcessRunner implements AgentRunner{
       if(selectionRequested&&!selectionResponded&&response.id===selectionId&&policyLoaded&&!settled&&!stopResult&&!agentEnded&&!signal?.aborted){
        selectionResponded=true;
        const observation=response.success===true&&response.command==="get_state"?childSelection(selectionOwner,response.data):undefined;
+       if(strictModelPreflight){
+        const expected=request.model!,slash=expected.indexOf("/"),selected=observation?.model;
+        if(slash<=0||slash===expected.length-1||!selected||
+           selected.provider!==expected.slice(0,slash)||
+           selected.id!==expected.slice(slash+1)&&selected.id!==expected){
+         stop({id:request.id,ok:false,output:"Pi child model selection was not confirmed before prompt"});
+         return;
+        }
+       }
        if(observation)for(const subscription of selectionSubscriptions){
         if(!this.#selectionSubscriptions.has(subscription))continue;
         try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}
        }
+       if(strictModelPreflight){
+        // Un observador de selección puede cancelar de forma síncrona.
+        // Esa cancelación no debe permitir una llamada al proveedor.
+        if(!alive())return;
+        armPhase("turn");
+        void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+       }
       }
       continue; // Raw state is never part of the retained execution output.
      }
-     const keep=typeof record==="string"||agentEnded||type==="agent_end"||type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
+     // En revisiones estrictas, un evento parcial posterior a agent_end
+     // nunca se guarda como evidencia ni se expone al controlador.
+     const keep=typeof record==="string"||(agentEnded&&!strictNativeSettlement)||
+      type==="agent_end"||strictNativeSettlement&&(type==="agent_settled"||type==="agent_start")||
+      type==="message_end"&&((record as {message?:{role?:string}}).message?.role==="assistant")||type==="response"&&(response.id===preflightId||response.id===request.id)||typeof type==="string"&&type.startsWith("tool_execution_");
      if(keep){
       const retained=line+"\n";retainedBytes+=Buffer.byteLength(retained);
       if(retainedBytes>max){overflow=true;stop({id:request.id,ok:false,output:`pi retained output exceeded ${max} bytes`});return;}
@@ -509,7 +639,22 @@ export class PiProcessRunner implements AgentRunner{
       if(continuationTurnPending&&continuationAcked)continuationAgentEnded=true;
      }
      if(response.type==="tool_execution_start"&&this.options.noTools){toolAttempted=true;stop({id:request.id,ok:false,output:"pi model attempted a tool while tools were disabled"});return;}
-     if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled){child.stdin.end();continue;}
+     if(response.type==="agent_end"&&policyLoaded&&!fallbackEnabled&&
+        !strictNativeSettlement){child.stdin.end();continue;}
+     if(type==="agent_settled"&&policyLoaded&&strictNativeSettlement){
+      if((record as {aborted?:unknown}).aborted===true){
+       stop({id:request.id,ok:false,output:"pi agent_settled reported an aborted run"});
+       return;
+      }
+      if(!strictPromptAck||!strictMessageEnd||!strictAgentEnd||strictAgentWillRetry){
+       stop({id:request.id,ok:false,
+        output:"pi agent_settled without a completed final assistant turn"});
+       return;
+      }
+      finalAgentSettled=true;
+      closeSettled(lastAssistantFailure);
+      continue;
+     }
      if(response.type==="agent_settled"&&policyLoaded&&settlementRequired){
       if(fallbackInProgress){
        // Before the correlated continuation response this may be a stale
@@ -535,13 +680,17 @@ export class PiProcessRunner implements AgentRunner{
      if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
      if(selectionOwner&&selectionSubscriptions.length&&!selectionRequested){selectionRequested=true;void writeLine(JSON.stringify({id:selectionId,type:"get_state"})+"\n");}
-     armPhase("turn");
-     void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+     if(!strictModelPreflight){
+      armPhase("turn");
+      void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n");
+     }
     }
     if(Buffer.byteLength(buffer)>maxRecord){overflow=true;stop({id:request.id,ok:false,output:`pi RPC record exceeded ${maxRecord} bytes`});}
    });
    child.stderr.on("data",data=>{streamBytes+=Buffer.byteLength(data);if(streamBytes>maxStream){overflow=true;stop({id:request.id,ok:false,output:`pi stream exceeded ${maxStream} bytes`});return;}stderr=(stderr+String(data)).slice(-16_384);});
-   child.on("error",error=>{if(!stopResult)finish({id:request.id,ok:false,output:`pi process error: ${String(error)}`});});
+   // Un error posterior a spawn debe terminar también los descendientes,
+   // no resolver el resultado dejando un proceso hijo sin limpiar.
+   child.on("error",error=>{if(!stopResult)stop({id:request.id,ok:false,output:`pi process error: ${String(error)}`});});
    child.on("close",code=>{
     try{this.options.onProcessClose?.({code,signal:child.signalCode,stderr});}catch{/* Evidence observers cannot alter Pi execution. */}
     if(stopResult)return;
@@ -556,6 +705,10 @@ export class PiProcessRunner implements AgentRunner{
       const envelope=responses[0];
       if(envelope.success!==true)return finish({id:request.id,ok:false,output:"pi correlated response failed"});
       if(settlementRequired&&!finalAgentSettled)return finish({id:request.id,ok:false,output:`pi child exited before final agent_settled${rpcFailure?` (${rpcFailure})`:""}`});
+      // Sin fallback ni cierre estricto, el código de salida 0 de Pi no
+      // convierte un mensaje terminal del proveedor con error en éxito.
+      if(!settlementRequired&&lastAssistantFailure)
+       return finish({id:request.id,ok:false,output:`pi assistant failed: ${lastAssistantFailure}`});
       if(finalFailure)return finish({id:request.id,ok:false,output:`pi assistant failed: ${finalFailure}${rpcFailure?` (${rpcFailure})`:""}`});
      }catch{
       return finish({id:request.id,ok:false,output:"pi response envelope invalid"});

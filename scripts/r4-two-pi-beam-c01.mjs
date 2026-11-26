@@ -16,6 +16,11 @@ const SHA=/^[0-9a-f]{40}$/u;
 const hash=v=>createHash("sha256").update(v).digest("hex");
 const SOURCES=["SHELL","ASEN"];
 export const C01_PROMPT="En una frase breve, ¿cuánto es 2 + 3? Responde directamente. No utilices herramientas, no delegues y no modifiques archivos.";
+export function assertC01SupportedRef(ref){
+ assert.ok(ref==="refs/heads/feat/t12-integrated-acceptance-merge"||
+  ref==="refs/heads/integration/megatanda-1-3-20261123",
+  "C01: rama de aceptación no autorizada");
+}
 const short=record=>({source:record.source,outputDigest:record.outputDigest,
  answerDigest:record.answerDigest,answerSample:record.answerSample,
  answerChars:record.answerChars,toolCalls:record.toolCalls,agentStarts:record.agentStarts,
@@ -151,7 +156,7 @@ async function runOne({source,work,shell,binary,candidateSha,referenceSha,model,
 async function main(){
  assert.equal(process.env.GITHUB_ACTIONS,"true");
  assert.equal(process.env.GITHUB_EVENT_NAME,"push");
- assert.equal(process.env.GITHUB_REF,"refs/heads/feat/t12-integrated-acceptance-merge");
+ assertC01SupportedRef(process.env.GITHUB_REF);
  assert.equal(process.env.GITHUB_REPOSITORY,"asenbanskaliev/ASEN");
  const sha=process.env.ASEN_EXPECTED_SHA,model=process.env.ASEN_SELECTED_MODEL,key=process.env.ASEN_OLLAMA_API_KEY;
  assert.match(sha??"",SHA);

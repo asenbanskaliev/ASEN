@@ -9,6 +9,8 @@ import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js
 import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 import {acceptIndependentReview,parseReviewVerdict} from "../src/runtime/lifecycle/review-acceptance.js";
+import {createReviewReceiptSigned,loadReceiptSigningKey,writeReviewReceipt} from "../src/evidence/review-receipt.js";
+import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {selectSkills,type SkillSelectionContext} from "../src/skills/registry.js";
 
 const good=JSON.stringify({verdict:"pass",evidence:["Test passed on the scoped candidate","Reviewed the exact Git revision"]});
@@ -21,6 +23,12 @@ async function makeFixture(t:import("node:test").TestContext,role:"reviewer"|"ve
  execFileSync("git",["-C",root,"add","README.md"]);
  execFileSync("git",["-C",root,"-c","user.name=AsenTest","-c","user.email=test@example.invalid","commit","-q","-m","base"]);
  const sha=execFileSync("git",["-C",root,"rev-parse","HEAD"],{encoding:"utf8"}).trim();
+ const treeSha=execFileSync("git",["-C",root,"rev-parse","HEAD^{tree}"],{encoding:"utf8"}).trim();
+ const receiptDir=join(home,"receipts");
+ const key=await loadReceiptSigningKey(receiptDir);
+ await writeReviewReceipt(receiptDir,createReviewReceiptSigned({commitSha:sha,treeSha,oddTask:"odd/tasks/test-review.md",
+  testSuite:{total:1,passed:1,failed:0,durationMs:1,runner:"node --test"},verdict:"PASSED"},key));
+ const receipts=new ReceiptVerifierService(receiptDir);
  const identity={sessionId:"review-session",projectId:root},todos=await SessionTodoStore.open(join(home,"todos.json"));
  const links=new TaskAgentLinkStore(join(home,"links.json"));
  const phase=role==="reviewer"?"adversarial-review":"verify";
@@ -40,7 +48,7 @@ async function makeFixture(t:import("node:test").TestContext,role:"reviewer"|"ve
  if(options.link!==false)await links.bind({taskId:task!.taskId,agentId:id,sessionId:identity.sessionId,projectId:identity.projectId,createdAt:new Date().toISOString()});
  await terminal;
  if(options.link!==false)await new TaskAgentTodoReconciler(todos,agents,links).reconcile(identity);
- return{home,root,sha,identity,todos,links,agents,task:task!,agentId:id};
+ return{home,root,sha,identity,todos,links,agents,task:task!,agentId:id,receipts};
 }
 test("EF-502 strict evidence parser requires pass/fail, bounded findings and no hidden controls",()=>{
  assert.deepEqual(parseReviewVerdict(good),{verdict:"pass",evidence:["Test passed on the scoped candidate","Reviewed the exact Git revision"]});
@@ -84,6 +92,18 @@ test("EF-502 denial leaves blocked review unchanged without a second agent",asyn
  assert.deepEqual(await f.todos.history(f.task.taskId,f.identity),before);
  assert.equal((await f.agents.list(f.identity)).length,1);
 });
+test("G49-C: ni texto afirmativo ni objetos de confirmación aceptan el código",async t=>{
+ const f=await makeFixture(t);
+ const initial=await f.todos.history(f.task.taskId,f.identity);
+ for(const ambiguous of ["sí",{accepted:true},1,undefined]){
+  const response=await acceptIndependentReview({...f,taskId:f.task.taskId,
+   validateIdentity:async()=>{},confirm:async()=>(ambiguous as unknown as boolean)});
+  assert.equal(response.status,"blocked");
+  assert.deepEqual(await f.todos.history(f.task.taskId,f.identity),initial);
+ }
+ assert.equal((await f.agents.list(f.identity)).length,1);
+});
+
 test("EF-503 malformed or failing Reviewer verdict cannot ask for approval or unlock dependency",async t=>{
  const f=await makeFixture(t,"reviewer",JSON.stringify({verdict:"fail",evidence:["Defect detected"]}));
  let prompts=0;

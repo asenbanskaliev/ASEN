@@ -35,6 +35,10 @@ const terminal=new Set(["completed","failed","cancelled"]);
 const modes=new Set(["pending","attempted","enqueued","acknowledged"]);
 const valid=(s:unknown):s is string=>typeof s==="string"&&s.length>0&&s.length<=1024&&s===s.trim()&&s===s.normalize("NFC")&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(s);
 const validDate=(s:unknown):s is string=>typeof s==="string"&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString()===s;
+/** A cancelled coordinator must never persist a journal transition it abandoned. */
+const throwIfAborted=(signal?:AbortSignal):void=>{
+ if(signal?.aborted){const error=new Error("Agent notice journal access cancelled");error.name="AbortError";throw error;}
+};
 const keys=(v:unknown,wanted:readonly string[])=>v!==null&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype&&Object.keys(v).sort().join("|")===([...wanted].sort().join("|"));
 function validateSubject(value:AgentNoticeSubject):void{
  if(!value||!valid(value.id)||!valid(value.sessionId)||!valid(value.projectId)||!terminal.has(value.state))throw new Error("Invalid terminal agent notice identity");
@@ -79,15 +83,34 @@ function sameScope(row:AgentNoticeRow,scope:AgentNoticeScope):boolean{
  return row.sessionId===scope.sessionId&&sameWorkspaceIdentityPath(row.projectId,scope.projectId);
 }
 export class AgentNotificationJournal{
- constructor(readonly path:string){if(!isAbsolute(path))throw new Error("Agent notice journal path must be absolute");}
- async #change<T>(transaction:(file:File)=>{result:T;changed:boolean}):Promise<T>{
+ constructor(readonly path:string,private readonly clock:()=>string=()=>new Date().toISOString()){
+  if(!isAbsolute(path))throw new Error("Agent notice journal path must be absolute");
+ }
+ /** El reloj de Windows puede retroceder tras sincronizar la hora.
+  * No persistir jamás una transición anterior a la fecha guardada. */
+ #now(previous?:string):string{
+  const observed=this.clock();
+  if(!validDate(observed))throw new Error("Invalid agent notice clock");
+  return previous&&observed<previous?previous:observed;
+ }
+ async #change<T>(transaction:(file:File)=>{result:T;changed:boolean},signal?:AbortSignal,validate?:()=>void):Promise<T>{
+  throwIfAborted(signal);
   // Lock across multiple independent Pi processes; never rewrite a newer row.
   await preparePrivateFile(this.path,true);
   return withExclusiveFileLock(this.path,async()=>{
-   const file=await read(this.path),value=transaction(file);
+   // A cancellation that arrives while journal access is pending must never
+   // persist a state transition the coordinator already abandoned.
+   throwIfAborted(signal);
+   const file=await read(this.path);
+   // Reading yields while holding the lock; cancellation may arrive at that boundary.
+   throwIfAborted(signal);
+   // Revalidar bajo el bloqueo antes de cambiar el estado persistido.
+   validate?.();
+   throwIfAborted(signal);
+   const value=transaction(file);
    if(value.changed){file.revision++;await write(this.path,file);}
    return value.result;
-  });
+  },30_000,signal);
  }
  /** Record a verified terminal observation before trying the Pi transport. */
  async record(subject:AgentNoticeSubject):Promise<AgentNoticeRow>{
@@ -102,7 +125,7 @@ export class AgentNotificationJournal{
    if(file.entries.some(x=>x.agentId===subject.id&&sameScope(x,subject)))
     throw new Error("Conflicting terminal outcome for owned agent; refusing duplicate notification");
    if(file.entries.length===MAX_ENTRIES)throw new Error("Agent notice journal capacity exceeded");
-   const now=new Date().toISOString(),row:AgentNoticeRow={
+   const now=this.#now(),row:AgentNoticeRow={
     eventId,agentId:subject.id,sessionId:subject.sessionId,projectId:subject.projectId,
     state:subject.state as AgentNoticeTerminalState,delivery:"pending",createdAt:now,updatedAt:now,
    };
@@ -117,7 +140,7 @@ export class AgentNotificationJournal{
    if(!row||!sameScope(row,scope))throw new Error("Agent notice is unavailable in this session and project");
    if(row.delivery!=="pending")return{result:false,changed:false};
    (row as {delivery:AgentNoticeDelivery}).delivery="attempted";
-   (row as {updatedAt:string}).updatedAt=new Date().toISOString();
+   (row as {updatedAt:string}).updatedAt=this.#now(row.updatedAt);
    return{result:true,changed:true};
   });
  }
@@ -130,13 +153,13 @@ export class AgentNotificationJournal{
    if(row.delivery==="enqueued"||row.delivery==="acknowledged")return{result:false,changed:false};
    if(row.delivery!=="attempted")throw new Error("Agent notice must be claimed before enqueue");
    (row as {delivery:AgentNoticeDelivery}).delivery="enqueued";
-   (row as {updatedAt:string}).updatedAt=new Date().toISOString();
+   (row as {updatedAt:string}).updatedAt=this.#now(row.updatedAt);
    return{result:true,changed:true};
   });
  }
  /** Explicit Pi coordinator acknowledgement, not a human-read or UI-consumption proof.
   * Cannot replay an uncertain send or grant additional permissions. */
- async acknowledge(eventId:string,scope:AgentNoticeScope,agentId:string,state:AgentNoticeTerminalState):Promise<boolean>{
+ async acknowledge(eventId:string,scope:AgentNoticeScope,agentId:string,state:AgentNoticeTerminalState,signal?:AbortSignal,validate?:()=>void):Promise<boolean>{
   if(!valid(eventId)||!valid(scope.sessionId)||!valid(scope.projectId)||!valid(agentId)||!terminal.has(state))
    throw new Error("Invalid agent notice acknowledgement");
   return this.#change(file=>{
@@ -146,9 +169,9 @@ export class AgentNotificationJournal{
    if(row.delivery==="acknowledged")return{result:false,changed:false};
    if(row.delivery!=="enqueued")throw new Error("Agent notice must be enqueued before coordinator acknowledgement");
    (row as {delivery:AgentNoticeDelivery}).delivery="acknowledged";
-   (row as {updatedAt:string}).updatedAt=new Date().toISOString();
+   (row as {updatedAt:string}).updatedAt=this.#now(row.updatedAt);
    return{result:true,changed:true};
-  });
+  },signal,validate);
  }
  /** Only pending results may auto-enqueue after restart; attempted stays uncertain. */
  async list(scope:AgentNoticeScope):Promise<readonly AgentNoticeRow[]>{

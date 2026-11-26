@@ -99,11 +99,11 @@ test("native edit two independent hosts conflict instead of lost update",async t
  a.queue.push(...editChoices());await a.run("asen-profiles");const bytes=await readFile(a.file,"utf8"),count=b.notices.length;release();
  await assert.rejects(losing,/Saved profile changed or disappeared/);assert.equal(await readFile(a.file,"utf8"),bytes);assert.equal(b.notices.length,count);
 });
-test("native edit lists selected scope only and existing known own roles",async t=>{
+test("native edit lists selected scope and safe routable destinations without exposing custom keys",async t=>{
  const f=await editFixture(t),local=path.join(f.project,".asen","profiles.json");
  await writeFile(local,JSON.stringify({schema:ASEN_PROFILES_SCHEMA,profiles:[{name:"Local",routes:{custom:{},worker:{}}}]}));
  f.queue.push("Edit saved profile","Project","Profile: Local","Back");await f.run("asen-profiles");
- assert.deepEqual(f.screens[2]!.choices,["Profile: Local","Back"]);assert.deepEqual(f.screens[3]!.choices,["Role: worker","Back"]);
+ assert.deepEqual(f.screens[2]!.choices,["Profile: Local","Back"]);assert.deepEqual(f.screens[3]!.choices,["Role: explorer","Role: worker","Role: reviewer","Role: verifier","Role: review-risk","Role: review-resilience","Role: review-reliability","Role: review-readability","Role: jd-judge-a","Role: jd-judge-b","Role: jd-fix-agent","Delegation mode","Back"]);
  await writeFile(local,JSON.stringify({schema:ASEN_PROFILES_SCHEMA,profiles:[]}));
  f.queue.push("Edit saved profile","Project","Back");await f.run("asen-profiles");assert.deepEqual(f.screens.at(-1)!.choices,["Back"]);
 });
@@ -157,11 +157,14 @@ for(const drift of ["manager","session","cwd","epoch","abort"])test(`native edit
  const gate=new Promise<void>(r=>{release=r;}),locked=new Promise<void>(r=>{ready=r;}),saving=new Promise<void>(r=>{saved=r;});
  const select=f.ctx.ui.select;f.ctx.ui.select=async(...args:any[])=>{const value=await select(...args);if(value==="Save profile")saved();return value;};
  const holder=withExclusiveFileLock(f.target,async()=>{ready();await gate;});await locked;
- f.queue.push(...editChoices());let settled=false;const pending=f.run("asen-profiles").finally(()=>{settled=true;});await saving;
+ f.queue.push(...editChoices());let settled=false;const pending=f.run("asen-profiles").finally(()=>{settled=true;});
+ // Registrar el rechazo inmediatamente: Node no debe interpretar un fallo esperado como
+ // un rechazo sin gestionar mientras se espera la liberación del bloqueo real.
+ const rejection=assert.rejects(pending,/changed|cancelled/i);await saving;
  await new Promise(r=>setTimeout(r,40));assert.equal(settled,false);
  if(drift==="manager")f.ctx.sessionManager={getSessionId:()=>"session-a"};if(drift==="session")f.setId("other");
  if(drift==="cwd")f.ctx.cwd=f.home;if(drift==="epoch")await f.emit("session_shutdown");if(drift==="abort")abort.abort();release();await holder;
- await assert.rejects(pending,/changed|cancelled/i);assert.equal(await readFile(f.target,"utf8"),bytes);assert.equal(f.notices.length,count);
+ await rejection;assert.equal(await readFile(f.target,"utf8"),bytes);assert.equal(f.notices.length,count);
 });
 test("native edit suppresses stale publication after persistence without rollback",async t=>{
  const f=await editFixture(t),count=f.notices.length;let persisted=false;
@@ -315,12 +318,12 @@ for(const drift of ["abort","session","cwd","manager","epoch"])test(`create guar
  f.queue.push(...createChoices());const select=f.ctx.ui.select;
  let waiting!:()=>void;const saved=new Promise<void>(r=>{waiting=r;});
  f.ctx.ui.select=async(...args:any[])=>{const choice=await select(...args);if(choice==="Save profile")waiting();return choice;};
- let settled=false;const saving=f.run("asen-profiles").finally(()=>{settled=true;});await saved;
+ let settled=false;const saving=assert.rejects(f.run("asen-profiles").finally(()=>{settled=true;}),/cancelled|changed/);await saved;
  await new Promise(r=>setTimeout(r,40));assert.equal(settled,false,"save must wait behind the store lock");
  if(drift==="abort")abort.abort();if(drift==="session")f.setId("other");if(drift==="cwd")f.ctx.cwd=f.home;
  if(drift==="manager")f.ctx.sessionManager={getSessionId:()=>"session-a"};if(drift==="epoch")await f.emit("session_shutdown");
  release();await holder;
- await assert.rejects(saving,/cancelled|changed/);assert.equal(await readFile(f.file,"utf8"),bytes);assert.equal(f.notices.length,count);
+ await saving;assert.equal(await readFile(f.file,"utf8"),bytes);assert.equal(f.notices.length,count);
 });
 
 test("create suppresses stale publication after persistence; saved bytes cannot be rolled back",async t=>{

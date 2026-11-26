@@ -199,3 +199,67 @@ test("publication and merge preflight cannot be bypassed by pass, Auto, Super YO
  assert.equal(await routine(event("bash",{command:"git push origin feat/test"}),ctx),undefined,
   "explicitly scoped YOLO feature-branch exception remains intact");
 });
+
+
+test("E1B: el modo delegación completa bloquea toda edición directa del padre",async()=>{
+ const handler=createPrimaryToolPolicyHandler({getDelegationMode:()=>"full-delegation"});
+ const ctx=context(process.cwd());
+ for(const name of ["write","edit","bash","bash_background","monitor","powershell","asen_background_start"]){
+  const decision=await handler(event(name,name==="write"||name==="edit"?{path:"src/app.ts",content:"x"}:{command:"echo x > src/app.ts"}),ctx);
+  assert.equal(decision?.block,true,name);
+  assert.match(decision?.reason??"",/full delegation/u);
+ }
+ for(const [name,input] of [["asen_code_intelligence",{operation:"init"}],["unknown_writer",{path:"src/app.ts"}]] as const){
+  const decision=await handler(event(name,input),ctx);
+  assert.equal(decision?.block,true,name);
+ }
+});
+
+test("E1B: el padre conserva lecturas y delegación controlada",async()=>{
+ const handler=createPrimaryToolPolicyHandler({getDelegationMode:async()=>("full-delegation" as const)});
+ const ctx=context(process.cwd());
+ for(const [name,input] of [["read",{path:"package.json"}],["asen_agent_start",{prompt:"Investigar"}],["asen_plan_request",{instruction:"Preparar un plan"}],["asen_plan_dispatch_next",{todoId:"tarea"}],["asen_code_intelligence",{operation:"query"}]] as const){
+  assert.equal(await handler(event(name,input),ctx),undefined,name);
+ }
+ const denied=await createPrimaryToolPolicyHandler({getDelegationMode:()=>Promise.reject(new Error("Perfil no disponible"))})(event("write",{path:"src/a.ts"}),ctx);
+ assert.equal(denied?.block,true);
+});
+
+
+test("T18 el cambio de turno invalida las autorizaciones todavía pendientes",async()=>{
+ let epoch=0;let release!:(mode:"organic")=>void;
+ const gated=createPrimaryToolPolicyHandler({
+  getDelegationMode:()=>new Promise<"organic">(resolve=>{release=resolve;}),
+  modeEpoch:()=>`modo:${epoch}`,
+ });
+ const ctx=context(process.cwd());
+ const pending=gated(event("write",{path:"fuente.ts"}),ctx);
+ epoch++;
+ release("organic");
+ const result=await pending;
+ assert.equal(result?.block,true,"El permiso del turno anterior no puede admitir escritura");
+ assert.match(result?.reason??"",/turn changed/u);
+});
+
+test("T18 el cambio de turno durante una consulta automática invalida la autorización",async()=>{
+ let epoch=2;let release!:(approved:boolean)=>void;
+ const gated=createPrimaryToolPolicyHandler({
+  getMode:()=>"auto",modeEpoch:()=>`modo:${epoch}`,
+  reviewAuto:async()=>new Promise<boolean>(resolve=>{release=resolve;}),
+ });
+ const pending=gated(event("custom_extension_tool",{query:"estado"}),context(process.cwd()));
+ // La revisión comienza en el turno original y termina después de su reemplazo.
+ await new Promise<void>(resolve=>setImmediate(resolve));
+ assert.equal(typeof release,"function");
+ epoch++;
+ release(true);
+ const decision=await pending;
+ assert.equal(decision?.block,true,"Un revisor anterior no puede autorizar en un turno nuevo");
+});
+
+test("T18 una orden estable sigue siendo válida sin cambio de turno",async()=>{
+ let epoch=1;const guarded=createPrimaryToolPolicyHandler({modeEpoch:()=>`estado:${epoch}`,getDelegationMode:async()=>("organic" as const)});
+ assert.equal(await guarded(event("read",{path:"archivo-normal.txt"}),context(process.cwd())),undefined);
+ epoch++;
+ assert.equal(await guarded(event("read",{path:"archivo-normal.txt"}),context(process.cwd())),undefined);
+});

@@ -3,7 +3,7 @@ import {existsSync,readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {loadCheckedInMemoryParity,validateMemoryParity} from "./audit-memory-parity.mjs";
 import {additionalParityFixturePaths} from "./memory-parity/additional-slices.mjs";
-import {isPinnedReferenceDocument,maskApprovedReferenceTokens} from "./upstream-reference-policy.mjs";
+import {isPinnedReferenceDocument,maskApprovedReferenceTokens,coincideHuellaGit} from "./upstream-reference-policy.mjs";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const memoryManifestPath="registry/parity/memory-upstream-v3.json";
@@ -61,14 +61,38 @@ const pinnedParityPlanDocs=new Set([
  "odd/evidence/"+"gen"+"tle-shell-v4.8.0-delta-reconciliation.md",
  "odd/tasks/asen-startup-and-conversation-view.md",
  "odd/tasks/asen-command-registry-and-review-receipts.md",
+ // Matriz canónica de aceptación de los 18 objetivos y 12 puntos: documento
+ // de auditoría, sin importación por el código de ejecución.
+ "odd/tasks/flujo-agentes-18-objetivos-12-puntos-aceptacion-20261123.md",
  // INDEX.md only enumerates parity-document filenames already pinned above; a
  // catalog of references is not itself an upstream dependency.
+ "odd/archive/2026-11/INDEX-inventario-2026-11-14.md",
  "odd/tasks/INDEX.md",
  // This scanner necessarily embeds the forbidden pattern it enforces.
  "scripts/audit-upstream-boundary.mjs",
 ]);
+
+// Excepción estricta para una comprobación pública de referencias P16.
+// Solo estos bytes ya auditados pueden citar la referencia externa; cambiar
+// cualquier archivo invalida su huella y bloquea CI hasta nueva auditoría.
+const pinnedBenchmarkBlobs=new Map([
+ // P16 ya existente: solo estos dos blobs exactos están aprobados.
+ // Cualquier cambio de un solo byte debe bloquear arquitectura y revisarse.
+ [".github/workflows/asen-p16-comparacion-real.yml","78c829c5ab1f626cf9c09887c9b76893e7aaecdb"],
+ ["scripts/p16-comparacion-real.mjs","82b2885600f9dcf41ea7c02685d3aac5e9db7ee9"],
+ [".github/workflows/asen-p16-gentle-referencia.yml","e72ea4bdacc0e058f18062200d388d6f858f50bb"],
+ ["scripts/p16-comprobar-referencia.mjs","6a61fed8d97817b93aba0fa00ce8bf4e164e32d8"],
+ ["tests/p16-comprobar-referencia.test.mjs","380c7da9159ba85b18d24ed642a2a0a20bb0d55e"]
+]);
+
 const violations=[];
 for(const path of paths){
+ const expectedBenchmarkBlob=pinnedBenchmarkBlobs.get(path);
+ if(expectedBenchmarkBlob){
+  const bytes=readFileSync(new URL(`../${path.split("/").map(encodeURIComponent).join("/")}`,import.meta.url));
+  if(!coincideHuellaGit(bytes,expectedBenchmarkBlob,path,root))violations.push(path);
+  continue;
+ }
  if(pinnedParityPlanDocs.has(path)||isPinnedReferenceDocument(path))continue;
  if(forbidden.test(path)){violations.push(path);continue;}
  if(provenanceAllowlist.has(path))continue;

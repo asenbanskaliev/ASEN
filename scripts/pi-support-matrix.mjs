@@ -19,7 +19,9 @@ function compareVersions(left,right){
  return 0;
 }
 
-export function piVersionAnchors(metadata=packageMetadata()){
+export function piVersionAnchors(metadata=packageMetadata(),additionalVersions=[]){
+ assert.ok(Array.isArray(additionalVersions)&&additionalVersions.length<=2,
+  "Supplemental Pi versions must be bounded");
  const peerRange=metadata?.peerDependencies?.[piPackageName];
  const developmentRange=metadata?.devDependencies?.[piPackageName];
  const peerMatch=typeof peerRange==="string"&&/^>=(\d+\.\d+\.\d+)$/.exec(peerRange);
@@ -29,11 +31,17 @@ export function piVersionAnchors(metadata=packageMetadata()){
  const minimum=peerMatch[1],development=developmentMatch[1];
  assert.ok(compareVersions(development,minimum)>=0,
   "Pi development version must be at or above the declared peer dependency floor");
- return [...new Set([minimum,development])];
+ const valid=additionalVersions.map(version=>{
+  assert.ok(typeof version==="string"&&/^\d+\.\d+\.\d+$/.test(version),
+   "Supplemental Pi version must be exact");
+  assert.ok(compareVersions(version,minimum)>=0,"Supplemental Pi version is below peer floor");
+  return version;
+ });
+ return [...new Set([minimum,development,...valid])];
 }
 
-export function planPiSupportMatrix(metadata){
- const versions=piVersionAnchors(metadata);
+export function planPiSupportMatrix(metadata,additionalVersions=[]){
+ const versions=piVersionAnchors(metadata,additionalVersions);
  return ["linux","win32","darwin"].flatMap(platform=>versions.flatMap(version=>
   ["tui","rpc","json","print"].map(mode=>({platform,version,mode,id:`${platform}-${version}-${mode}`}))));
 }
@@ -136,7 +144,11 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
  const baseline=JSON.parse(readFileSync(new URL("../registry/parity/ecosystem-sources-v1.json",import.meta.url),"utf8"));
  const root=mkdtempSync(join(tmpdir(),"asen-pi-matrix-"));
  const results=[];
- const versions=piVersionAnchors();
+ // La versión adicional solo se prueba cuando una ejecución concreta la solicita.
+ // No sustituye el Pi principal ni se usan proveedores o modelos.
+ const additionalVersions=process.env.ASEN_PI_MATRIX_EXTRA_VERSION?
+  [process.env.ASEN_PI_MATRIX_EXTRA_VERSION]:[];
+ const versions=piVersionAnchors(packageMetadata(),additionalVersions);
  const npmCli=process.env.npm_execpath;
  assert.ok(npmCli,"Run through npm run verify:pi-matrix");
  try{
@@ -149,7 +161,7 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
    const peer=join(host,"node_modules","@earendil-works","pi-coding-agent");
    const metadata=JSON.parse(readFileSync(join(peer,"package.json"),"utf8"));assert.equal(metadata.version,version);
    const cli=join(peer,typeof metadata.bin==="string"?metadata.bin:metadata.bin.pi);
-   for(const cell of planPiSupportMatrix().filter(c=>c.platform===process.platform&&c.version===version)){
+   for(const cell of planPiSupportMatrix(packageMetadata(),additionalVersions).filter(c=>c.platform===process.platform&&c.version===version)){
     let record={...cell,candidate,sourceCommit:baseline.commit,artifactSha256,result:"FAIL"};
     try{const observation=await runCell(cell,cli,join(host,"node_modules","asen"),root);
      writeFileSync(join(out,`${cell.id}.log`),observation.log);delete observation.log;

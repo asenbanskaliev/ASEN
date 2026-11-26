@@ -10,6 +10,8 @@ import {decideLifecycleApplicability,type LifecycleApplicability,type LifecycleA
 import type {OddRouteDecision} from "../src/flow/odd-routing.js";
 import type {ExecutablePlan} from "../src/orchestration/executable-plan.js";
 import {registerOrdinaryReviewCommand,type OrdinaryReviewCommandController} from "../src/review/ordinary-review-command.js";
+import {JudgmentFixProposalJournal} from "../src/review/judgment-fix-proposal-journal.js";
+import {inspectStoredFixSourceTree} from "../src/review/judgment-fix-odd-preflight.js";
 import {createNativeRddControl,type NativeRddOptions} from "../src/review/native-rdd-control.js";
 import {deriveOddExecutionContract,type OddExecutionContract} from "../src/flow/odd-execution-contract.js";
 import {trackOddTask,resumeOddTask,appendOddTaskEvent,type OddProgress} from "../src/flow/odd-task-tracking.js";
@@ -33,7 +35,8 @@ import {readProfilesFile,mutateProfilesFile} from "../src/runtime/lifecycle/prof
 import {readProfileFallbacksFile,resolveProfileFallbackChain,updateProfileFallbacksFile,setProfileFallbackChain,renameProfileFallbacks,removeProfileFallbacks,writeProfileFallbacksFile,MAX_PROFILE_FALLBACK_CHAIN_LENGTH} from "../src/runtime/lifecycle/profile-fallback-store.js";
 import {createParentModelFallback,type ParentCatalogModel} from "../src/runtime/lifecycle/parent-model-fallback.js";
 import {formatModelFallbackFailureNotice,formatModelFallbackNotice} from "../src/runtime/lifecycle/model-fallback-notice.js";
-import {globalRuntimeRoutingFacts,resolveRuntimeRoute,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking} from "../src/runtime/lifecycle/profiles.js";
+import {globalRuntimeRoutingFacts,resolveRuntimeRoute,resolveRuntimeDelegationMode,withCapturedDelegationMode,setActiveProfile,upsertProfile,renameProfile,removeProfile,type RuntimeProfile,type ProfileLayer,type RuntimeProfilesFile,type Thinking,type DelegationMode} from "../src/runtime/lifecycle/profiles.js";
+import {AGENT_PROFILE_TARGETS,isAgentProfileTarget,resolveAgentProfileTarget} from "../src/runtime/lifecycle/agent-profile-targets.js";
 import {canonicalProfilePartition,captureSessionProfile,readSessionProfile,clearSessionProfiles,selectSessionProfile,resetSessionProfile,type ProfileSessionIdentity,type SessionProfileSnapshot} from "../src/runtime/lifecycle/session-profile-binding.js";
 import {ASEN_PERSONA_STYLE_SECTION,ASEN_PERSONA_USAGE,isPersonaStyle,personaConfigPaths,personaStyleText,resolvePersonaStyle,selectPersonaStyle,type PersonaStyle} from "../src/runtime/lifecycle/persona.js";
 import {parseHistoryStore,emptyHistoryStore} from "../src/runtime/lifecycle/history-store.js";
@@ -57,16 +60,22 @@ import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconcil
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {registerParallelWorktreeCommand} from "../src/runtime/lifecycle/parallel-worktree-command.js";
+import {readAgentFlowPanelObservation} from "../src/runtime/ui/agent-flow-panel-source.js";
 import {registerTodoTools,ASEN_TODO_TOOL_NAMES} from "../src/runtime/agents/pi-todo-tools.js";
 import {PersistentWorkspaceStore,sameWorkspaceIdentityPath} from "../src/runtime/workspace-store.js";
 import {todoProgressSummary,todoProgressWidget,todoStatusRows} from "../src/runtime/ui/todo-presentation.js";
-import {addAsenRequestGuidance} from "../src/runtime/ui/request-guidance.js";
+import {activeAsenRequestTools,addAsenRequestGuidance} from "../src/runtime/ui/request-guidance.js";
 import {ASEN_PLAN_REQUEST_TOOL,registerAsenPlanRequestTool} from "../src/runtime/lifecycle/natural-plan-tool.js";
 import {formatActivePlanContext} from "../src/runtime/lifecycle/plan-context.js";
 import {createPrimaryToolPolicyHandler} from "../src/security/primary-tool-policy.js";
 import {agentParentRoute,agentTerminalWakeOptions,agentTerminalNoticeContent} from "../src/runtime/agents/agent-terminal-delivery.js";
 import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
+import {diagnoseAgentTerminal} from "../src/runtime/agents/agent-terminal-diagnostic.js";
 import {ExplorerBudgetTelemetry} from "../src/runtime/agents/explorer-budget.js";
+import {applyStartupOrchestratorModel} from "../src/runtime/lifecycle/startup-orchestrator-model.js";
+import {DelegationTurnLatch} from "../src/runtime/lifecycle/delegation-turn-latch.js";
+import {PlanAdvanceQueue} from "../src/runtime/lifecycle/plan-advance-queue.js";
 import {BackgroundJobRegistry,backgroundJobTerminalNotification,pendingBackgroundJobNotifications,type BackgroundJobExecutor,type BackgroundJobSnapshot} from "../src/runtime/agents/background-jobs.js";
 import {BackgroundJobJournal} from "../src/runtime/agents/background-job-journal.js";
 import {PiNotificationProjection} from "../src/runtime/lifecycle/notification-projection.js";
@@ -76,13 +85,21 @@ import {SharedSessionDirectory} from "../src/runtime/lifecycle/shared-session-di
 import {discoverWorkspaceWorktrees,snapshotWorkspaceRoots,captureWorkspaceRootIdentity,assertWorkspaceRootIdentity,type WorkspaceRootIdentity} from "../src/runtime/workspace-snapshot.js";
 import {prepareWorkspaceCorrection,applyWorkspaceCorrection} from "../src/runtime/workspace-resolution.js";
 import {hostContentColumns,layoutMode,sanitizeTerminalText,truncateForTerminal} from "../src/runtime/responsive-layout.js";
-import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ui/ide-panel.js";
+import {ASEN_PANEL_SECTIONS,renderAsenPanel,renderAsenPanelSection,renderAsenWorkRow,renderAsenStatusLine,derivePanelReview,type AsenPanelSnapshot,type AsenPanelSection} from "../src/runtime/ui/ide-panel.js";
 import {createNativeWorkPanel} from "../src/runtime/ui/native-work-panel.js";
 import {createNativeCommandPalette} from "../src/runtime/ui/native-command-palette.js";
 import {createAsenFocusTheme} from "../src/runtime/ui/focus-theme.js";
-import {renderAsenFocusHeader} from "../src/runtime/ui/focus-chrome.js";
+import {renderAsenFocusHeader,t11ChromeParts} from "../src/runtime/ui/focus-chrome.js";
+import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
+import {createT11ActivityCache} from "../src/runtime/ui/t11-activity-cache.js";
+import {createT11GitObservationCache} from "../src/runtime/ui/t11-git-observation.js";
+import {readT11Chrome,writeT11Chrome,validT11Header,validT11Surface,type T11HeaderPlacement,type T11Surface} from "../src/runtime/ui/t11-chrome-settings.js";
+import {installAsenNativeRail,type AsenRailHandle} from "../src/runtime/ui/t11-native-rail.js";
+import {readAsenAppearance,saveAsenAppearance,isAsenAppearancePreset,type AsenAppearancePreset} from "../src/runtime/ui/t11-appearance.js";
+import {readT11Layout,writeT11Layout,validT11Position,validT11Density,type T11Position,type T11Density} from "../src/runtime/ui/t11-layout-settings.js";
+import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObserver,isCurrentT11TodoWidgetRead,observeT11ChildAvailability,shouldObserveT11Surface,unavailableT11RailSnapshot,type T11RailObserver} from "../src/runtime/ui/t11-rail-observer.js";
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
-import {createM1SurfaceCache} from "../src/runtime/ui/m1-readonly-rail.js";
+import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
 import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps,prepareKeymapChange,writeKeymaps,keymapSavedNotice,resetKeymap,KEYMAP_RELOAD_NOTICE} from "../src/runtime/ui/keymaps.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/ui/integration-profile-inspection.js";
@@ -99,15 +116,15 @@ import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
 type CreateProfileCatalogModel=ParentCatalogModel&{reasoning?:boolean|undefined;thinkingLevelMap?:Partial<Record<Thinking,string|null|undefined>>|undefined};
-type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
+type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string;getEntries?:()=>readonly unknown[]};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
 type PiLike={getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
 const activationRegistryRoot=globalThis as typeof globalThis&{[activationRegistryKey]?:WeakSet<object>};
 const activatedPiHosts=activationRegistryRoot[activationRegistryKey]??(activationRegistryRoot[activationRegistryKey]=new WeakSet<object>());
-export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];autoPermissionStatus?:()=>{calls:number;totalTokens:number;totalCost:number;pending:boolean};homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;profileFallbacksFile?:string;profileFallbacksReader?:typeof readProfileFallbacksFile;fallbackClock?:()=>number;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string;nativeRdd?:NativeRddOptions}
-export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
+export interface AsenExtensionDependencies {permissionSession?:AsenPermissionSession;resolveParentDelegationMode?:(ctx:Pick<CommandContext,"cwd"|"sessionManager"|"signal">)=>Promise<DelegationMode>;autoPermissionReview?:PrimaryModeOptions["reviewAuto"];autoPermissionStatus?:()=>{calls:number;totalTokens:number;totalCost:number;pending:boolean};homeDir?:()=>string;packageRoot?:string;refresh?:Refresh;mirror?:SkillRegistryMirror;interactionTimeoutMs?:number;codeIntelligence?:CodeIntelligenceOptions;registryLifecycle?:Pick<RegistryLifecycleOptions,"watch"|"debounceMs">;status?:()=>AsenStatusInput;doctor?:()=>Parameters<typeof doctorChecks>[0];agents?:()=>readonly PublicAgentRecord[];changes?:()=>readonly WorkspaceChange[];profilesFile?:string;profileFallbacksFile?:string;profileFallbacksReader?:typeof readProfileFallbacksFile;fallbackClock?:()=>number;deferSessionStart?:boolean;autoAdvancePlans?:boolean;enableAgentRuntime?:boolean;agentStoreFile?:string;agentRunner?:AgentRunner;agentProviderCredential?:PiProviderCredential;agentMaxConcurrency?:number;agentRuntimeFactory?:()=>Promise<AgentRuntime>;enableTodoRuntime?:boolean;todoStoreFile?:string;todoStoreFactory?:()=>Promise<SessionTodoStore>;enableWorkspaceRuntime?:boolean;workspaceStoreFile?:string;workspaceStoreFactory?:()=>Promise<PersistentWorkspaceStore>;enableMemoryRuntime?:boolean;memoryStoreFile?:string;memoryStoreFactory?:()=>Promise<PiMemoryStore>;backgroundExecutor?:BackgroundJobExecutor;backgroundJobJournalFile?:string;historyShortcutKey?:string;nativeRdd?:NativeRddOptions}
+export interface AsenExtensionFacade {review:OrdinaryReviewCommandController;startSession(context:CommandContext,event?:{reason?:unknown}):Promise<void>;decideLifecycleApplicability(decision:OddRouteDecision,input:LifecycleApplicabilityInput):LifecycleApplicability;deriveOddExecutionContract(decision:OddRouteDecision):OddExecutionContract;trackOddTask(contract:OddExecutionContract,context:MemoryContext,documentPath:string,input:OddProgress):ReturnType<typeof trackOddTask>;resumeOddTask(contract:OddExecutionContract,store:Pick<MemoryStore,"get">,context:MemoryContext):ReturnType<typeof resumeOddTask>;appendOddTaskEvent(contract:OddExecutionContract,context:MemoryContext,store:Pick<MemoryStore,"get">,event:TaskEvent):ReturnType<typeof appendOddTaskEvent>}
 
 const usage="Usage: /asen-skill-registry refresh";
 const longValidationNoticeMs=10_000;
@@ -230,6 +247,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let explorerBudget:Readonly<{sessionId:string;projectId:string;telemetry:ExplorerBudgetTelemetry}>|undefined;
   let agentParentRunActive=false,agentWakeOwed:{sessionId:string;projectId:string}|undefined;
   let agentWakeTimer:ReturnType<typeof setTimeout>|undefined;
+  let heldNoticeBoundaryTimer:ReturnType<typeof setTimeout>|undefined;
   let flushPendingAgentNotices:((ctx:CommandContext)=>Promise<void>)|undefined;
   let scheduleAgentWakeAtBoundary:(()=>void)|undefined;
   let unsubscribeAgentDelivery:(()=>void)|undefined;
@@ -327,6 +345,14 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(chosen.source==="explicit-session") return hasProject?{session:chosen.file,project}:{session:chosen.file};
    return hasProject?{project,global:chosen.file}:{global:chosen.file};
   };
+  const parentProfileLayer=async(ctx:CommandContext,identity:ProfileSessionIdentity):Promise<ProfileLayer>=>{
+   const mode=await dependencies.resolveParentDelegationMode?.(ctx);
+   const layers=await profileLayer(identity);
+   const current=await sessionIdentity(ctx);
+   if(ctx.signal?.aborted||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+    throw new Error("Pi session or project changed or was cancelled before plan persistence");
+   return mode===undefined?layers:withCapturedDelegationMode(layers,mode);
+  };
   // A missing file differs from a failed read; never turn a malformed file into defaults.
   const projectProfiles=async(projectId:string):Promise<{project?:RuntimeProfilesFile;projectState:LoadedProfileInspection["projectState"]}>=>{
    const projectFile=path.join(projectId,".asen","profiles.json");
@@ -349,10 +375,40 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }catch{return undefined;}
   };
   let panelEpoch=0,hostStatusClosed=false;
+  let t11Rail:AsenRailHandle|undefined,t11Snapshot:AsenPanelSnapshot|undefined;
+  let t11Preset:AsenAppearancePreset="neutral",t11Position:T11Position="auto",t11Density:T11Density="comfortable";
+  let t11Header:T11HeaderPlacement="top",t11Surface:T11Surface="transparent";
+  let t11ChromeInfo:{asenVersion:string;piVersion:string}|undefined,t11ChromeTheme:Theme|undefined;
+  let t11Observer:T11RailObserver|undefined;
+  let t11ChildExpiry:ReturnType<typeof createT11ChildExpiryController>|undefined;
   const panelScope=(ctx:CommandContext)=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd,epoch=panelEpoch;
    return ()=>{if(epoch!==panelEpoch||ctx.sessionManager!==manager||manager?.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("ASEN panel session changed");};
   };
+  const t11ActivityCache=createT11ActivityCache();
+  const t11GitObservation=createT11GitObservationCache();
+  // Las lecturas antiguas no pueden resucitar datos tras una invalidación.
+  let gitObservationGeneration=0,t11ActivityInvalidationVersion=0;
+  let t11LocalPublicationVersion=0,t11ChildPublicationVersion=0;
+  type T11Version={invalid:number;local:number;child:number};
+  const t11ObserverVersions=new WeakMap<AsenPanelSnapshot,T11Version>();
+  let t11ObserverReadVersion:T11Version={invalid:0,local:0,child:0};
+  type T11ManualVersion=T11Version & {git:number};
+  const t11ManualVersions=new WeakMap<AsenPanelSnapshot,T11ManualVersion>();
+  class T11SnapshotSuperado extends Error{}
+  const t11ManualActual=(snapshot:AsenPanelSnapshot):boolean=>{
+   const token=t11ManualVersions.get(snapshot);
+   return !token||token.git===gitObservationGeneration&&
+    token.invalid===t11ActivityInvalidationVersion&&
+    token.local===t11LocalPublicationVersion&&
+    token.child===t11ChildPublicationVersion;
+  };
+  const restoreT11Git=(ctx:CommandContext,snapshot:AsenPanelSnapshot):AsenPanelSnapshot=>{
+   try{return t11GitObservation.restore(ctx.sessionManager?.getSessionId?.()??"",
+    realpathSync(path.resolve(ctx.cwd)),snapshot);}
+   catch{t11GitObservation.clear();return snapshot;}
+  };
+  let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostRefreshGeneration=0;
   const clearHostStatus=()=>{
@@ -373,58 +429,203 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const changes=observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
     const permission=permissionSession.mode(ctx);
-    const line=renderAsenStatusLine({todos:[],agents:[],jobs:[],hostStatus,...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})},terminalColumns());
+    const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
+    const review=live&&todoStorePromise?derivePanelReview({
+     todos:live.todos,agents:live.agents,jobs:live.jobs,todosObserved:true
+    }):undefined;
+    const width=terminalColumns(),info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus,
+     ...(review?.known&&review.pending?{review:{pending:review.pending}}:{}),
+     ...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})};
+    // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
+    // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
+    const line=width<140?renderAsenT11CompactStatus(info,Math.max(1,width),
+     {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable,agentFlowUnavailable:t11ChildFlowUnavailable}):
+     renderAsenStatusLine(info,width);
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
    }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
   };
   // Immutable, session-scoped display data. Never performs an agent action.
-  const getPanelSnapshot=async(ctx:CommandContext):Promise<AsenPanelSnapshot>=>{
+  const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual",onReadStarted?:()=>void):Promise<AsenPanelSnapshot>=>{
+   const gitGeneration=mode==="manual"?++gitObservationGeneration:0;
+   const startInvalid=t11ActivityInvalidationVersion,startLocal=t11LocalPublicationVersion,startChild=t11ChildPublicationVersion;
    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx);assertCurrent();
+   onReadStarted?.(); // Capturar el inicio efectivo de lectura.
    const [todos,agents]=await Promise.all([
     todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
     agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve((dependencies.agents?.()??[]).filter(record=>record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(record.projectId,identity.projectId))),
    ]);
    const jobs=backgroundJobs.list(identity.sessionId,identity.projectId);
    // Git is consulted on explicit panel inspection, never on mouse movement.
-   const root=snapshotWorkspaceRoots([identity.projectId])[0];
+   const root=mode==="manual"?snapshotWorkspaceRoots([identity.projectId])[0]:undefined;
    const changes=root&&!root.error?{branch:root.branch,files:root.files.length}:undefined;
    const profiles=await panelProfiles(identity);assertCurrent();
    const now=await sessionIdentity(ctx);assertCurrent();
    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("ASEN panel session changed");
    const integrationInspection=inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});
    const hostStatus=projectHostStatus(ctx);assertCurrent();
-   return {todos,todosObserved:!!todoStorePromise,agents,jobs,...(changes?{changes}:{}),hostStatus,integrationInspection,permission:permissionSession.mode(ctx)};
+   let agentFlow:Awaited<ReturnType<typeof readAgentFlowPanelObservation>>|undefined,agentFlowUnavailable=false;
+   if(todoStorePromise&&agentRuntimePromise)try{
+    agentFlow=await readAgentFlowPanelObservation({
+     identity,journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
+     ...(mode==="observer"?{nonBlockingWorktreeInspection:true}:{}),
+     sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
+     planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
+     supervisorClaimsFile:path.join(home(),".asen","parallel-parent-supervisor-claims.json"),
+     observationFile:path.join(home(),".asen","parallel-worker-observations.json"),
+     loadTodos:async owner=>(await todoStorePromise).list(owner),
+     ...(taskAgentLinks?{
+      loadChildAgentRecords:async owner=>(await agentRuntimePromise).list(owner),
+      loadChildTaskAgentLinks:async owner=>taskAgentLinks.list(owner)
+     }:{})
+    });
+    assertCurrent();
+   }catch{agentFlowUnavailable=true;}
+   const actual=await sessionIdentity(ctx);assertCurrent();
+   if(actual.sessionId!==identity.sessionId||actual.projectId!==identity.projectId)
+    throw new Error("ASEN panel scope changed while reading worktree flow");
+   // Solo el panel manual guarda la última observación Git comprobada.
+   // Un Git fallido o ausente la retira; la lectura periódica no la modifica.
+   if(mode==="manual"&&(gitGeneration!==gitObservationGeneration||
+      startInvalid!==t11ActivityInvalidationVersion||
+      startLocal!==t11LocalPublicationVersion||startChild!==t11ChildPublicationVersion))
+    throw new T11SnapshotSuperado("ASEN: observación del panel superada");
+   const snapshot:AsenPanelSnapshot={todos,todosObserved:!!todoStorePromise,agents,jobs,
+    ...(changes?{changes}:{}),hostStatus,integrationInspection,
+    permission:permissionSession.mode(ctx),
+    ...(agentFlow?{agentFlow}:{}),...(agentFlowUnavailable?{agentFlowUnavailable:true}:{})};
+   if(mode==="manual"){
+    t11GitObservation.remember(identity.sessionId,identity.projectId,changes);
+    t11ManualVersions.set(snapshot,{git:gitGeneration,invalid:startInvalid,local:startLocal,child:startChild});
+   }
+   return snapshot;
   };
-  const m1Cache=createM1SurfaceCache();
-  let workRowGeneration=0;
+  const readCurrentManualPanel=async(ctx:CommandContext):Promise<AsenPanelSnapshot|undefined>=>{
+   try{
+    const snapshot=await getPanelSnapshot(ctx);
+    return t11ManualActual(snapshot)?snapshot:undefined;
+   }catch(error){if(error instanceof T11SnapshotSuperado)return undefined;throw error;}
+  };
+  // La observación de hijos se hace SOLO cuando se abre el panel.
+  // No consultar Git ni diarios externos en cada refresco del editor.
+  let workRowGeneration=0,todoWidgetGeneration=0;
+  const invalidateT11LocalActivity=async(ctx:CommandContext):Promise<void>=>{
+   ++workRowGeneration;++todoWidgetGeneration;
+   ++t11ActivityInvalidationVersion;++gitObservationGeneration;
+   t11ActivityCache.clear();t11GitObservation.clear();
+   t11ActivityUnavailable=true;t11ChildFlowUnavailable=true;
+   t11ChildObservedAt=0;t11ChildExpiry?.clear();
+   t11Snapshot=unavailableT11RailSnapshot();t11Rail?.refresh();
+   for(const [widget,placement] of [
+    ["asen-todo-progress","belowEditor"],
+    ["asen:m1-rail","aboveEditor"],
+    ["asen-live-work","aboveEditor"]
+   ] as const)try{ctx.ui?.setWidget?.(widget,undefined,{placement});}catch{}
+   await refreshHostStatus(ctx);
+  };
+  const publishInspectedWorkRow=(ctx:CommandContext,snapshot:AsenPanelSnapshot):void=>{
+   if(!t11ManualActual(snapshot))return;
+   const observed=restoreT11Git(ctx,observeT11ChildAvailability(snapshot));
+   const localMissing=observed.activityUnavailable===true;
+   const childrenMissing=observed.agentFlowUnavailable===true;
+   const recovered=t11ActivityUnavailable&&!localMissing;
+   const changed=t11ActivityUnavailable!==localMissing||t11ChildFlowUnavailable!==childrenMissing;
+   if(localMissing){
+    ++workRowGeneration;++todoWidgetGeneration;++t11ActivityInvalidationVersion;
+     ++gitObservationGeneration;t11ActivityCache.clear();t11GitObservation.clear();
+    try{ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});}catch{}
+   }
+   t11ActivityUnavailable=localMissing;t11ChildFlowUnavailable=childrenMissing;
+   // No renovar la antigüedad de hijos con refrescos solo locales.
+   if(localMissing||childrenMissing){
+    t11ChildObservedAt=0;t11ChildExpiry?.clear();
+   }else if(observed.agentFlow){
+    t11ChildObservedAt=Date.now();t11ChildExpiry?.renew();
+   }
+   t11Snapshot=observed;++t11ChildPublicationVersion;t11Rail?.refresh();
+   if(!localMissing&&t11ManualVersions.has(snapshot)){
+    ++t11LocalPublicationVersion;
+    try{
+     const sessionId=ctx.sessionManager?.getSessionId?.()??"";
+     const projectId=realpathSync(path.resolve(ctx.cwd));
+     t11ActivityCache.put(sessionId,projectId,observed);
+    }catch{/* La interfaz no puede publicar datos de otro proyecto. */}
+   }
+   // La pérdida de datos invalida la barra; al recuperar, solo otra lectura
+   // local fresca puede volver a publicar sus contadores.
+   if(recovered)void refreshWorkRow(ctx);
+   else if(changed)void refreshHostStatus(ctx);
+   if(ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
+   const width=terminalColumns();
+   if(t11Rail?.active()||t11Position==="hidden"||
+     (t11Position==="auto"&&t11Preset==="light")){
+    ctx.ui.setWidget("asen-live-work",undefined,{placement:"aboveEditor"});return;
+   } // Nunca fingir un lateral a la derecha en el modo no compatible.
+   ctx.ui.setWidget("asen-live-work",[renderT11CompactFallback(observed,width)],{placement:"aboveEditor"});
+  };
   const refreshWorkRow=async(ctx:CommandContext):Promise<void>=>{
    if(ctx?.mode!=="tui"||ctx.hasUI!==true||!ctx.ui?.setWidget)return;
-   const generation=++workRowGeneration;
+   const generation=++workRowGeneration,todoReadGeneration=++todoWidgetGeneration,
+    startedLocal=t11LocalPublicationVersion,guard=panelScope(ctx);
    try{
-    const identity=await sessionIdentity(ctx);
+    const identity=await sessionIdentity(ctx);guard();
     const [todos,agents]=await Promise.all([
      todoStorePromise?(await todoStorePromise).list(identity):Promise.resolve([]),
      agentRuntimePromise?(await agentRuntimePromise).list(identity):Promise.resolve((dependencies.agents?.()??[]).filter(record=>record.sessionId===identity.sessionId&&sameWorkspaceIdentityPath(record.projectId,identity.projectId))),
     ]);
     const jobs=backgroundJobs.list(identity.sessionId,identity.projectId);
-    const now=await sessionIdentity(ctx);
-    if(generation!==workRowGeneration||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    const now=await sessionIdentity(ctx);guard();
+    if(generation!==workRowGeneration||todoReadGeneration!==todoWidgetGeneration||
+       startedLocal!==t11LocalPublicationVersion||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const width=terminalColumns(),snapshot={todos,agents,jobs};
-    const surface=m1Cache.next(snapshot,width,identity.sessionId+"|"+identity.projectId);
-    if(surface)ctx.ui.setWidget("asen:m1-rail",surface.mode==="rail"?[...surface.lines]:undefined,{placement:"aboveEditor"});
-    const line=width>=140?undefined:renderAsenWorkRow(snapshot,width);
-    ctx.ui.setWidget("asen-live-work",line?[line]:undefined,{placement:"aboveEditor"});
-   }catch{/* Presentation must not block the host or confer permission. */}
+    // Solo la lectura más reciente al iniciarse puede publicar progreso en Pi.
+    ++t11LocalPublicationVersion;
+    ctx.ui.setWidget("asen-todo-progress",todoStorePromise?
+     todoProgressWidget(todos,3,activeValidationTask(identity.sessionId,identity.projectId),width):undefined,
+     {placement:"belowEditor"});
+    t11ActivityCache.put(identity.sessionId,identity.projectId,snapshot);
+    t11ActivityUnavailable=false;
+    // Un refresco local nunca debe convertir hijos observados en un falso cero.
+    const childFresh=t11ChildObservedAt>0&&Date.now()-t11ChildObservedAt<=12000;
+    const displayed=restoreT11Git(ctx,combineT11LocalWithChild(snapshot,t11Snapshot,childFresh));
+    t11Snapshot=displayed;t11ChildFlowUnavailable=displayed.agentFlowUnavailable===true;
+    t11Rail?.sync();t11Rail?.refresh();
+    // En terminal estrecha o host sin layoutRoot la única alternativa es
+    // una fila compacta. Una lista aboveEditor no ocupa el lateral real.
+    const compactAllowed=t11Position!=="hidden"&&
+      !(t11Position==="auto"&&t11Preset==="light")&&t11Rail?.active()!==true;
+    ctx.ui.setWidget("asen:m1-rail",undefined,{placement:"aboveEditor"});
+    ctx.ui.setWidget("asen-live-work",
+      compactAllowed?[renderT11CompactFallback(displayed,width)]:undefined,{placement:"aboveEditor"});
+    await refreshHostStatus(ctx);
+   }catch{
+    if(generation!==workRowGeneration||startedLocal!==t11LocalPublicationVersion||hostStatusClosed)return;
+    try{guard();}catch{return;}
+    // El proveedor falló: invalidar todas las vistas y lecturas anteriores.
+    await invalidateT11LocalActivity(ctx);
+   }
   };
   const refreshTodoWidget=async(ctx:CommandContext):Promise<void>=>{
    if(!ctx?.ui?.setWidget)return;
+   const generation=++todoWidgetGeneration,startedLocal=t11LocalPublicationVersion,guard=panelScope(ctx);
    try{
-    if(!todoStorePromise){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});await refreshWorkRow(ctx);return;}
+    if(!todoStorePromise){
+     guard();if(!isCurrentT11TodoWidgetRead(generation,todoWidgetGeneration,startedLocal,t11LocalPublicationVersion))return;
+     ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});
+     await refreshWorkRow(ctx);return;
+    }
     const identity=await sessionIdentity(ctx),rows=await (await todoStorePromise).list(identity),current=await sessionIdentity(ctx);
-    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId){ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;}
+    guard();if(!isCurrentT11TodoWidgetRead(generation,todoWidgetGeneration,startedLocal,t11LocalPublicationVersion))return;
+    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId){
+     ctx.ui.setWidget("asen-todo-progress",undefined,{placement:"belowEditor"});return;
+    }
     ctx.ui.setWidget("asen-todo-progress",todoProgressWidget(rows,3,activeValidationTask(identity.sessionId,identity.projectId),terminalColumns()),{placement:"belowEditor"});
     await refreshWorkRow(ctx);
-   }catch{/* The progress display is optional and never blocks task work. */}
+   }catch{
+    if(!isCurrentT11TodoWidgetRead(generation,todoWidgetGeneration,startedLocal,t11LocalPublicationVersion)||hostStatusClosed)return;
+    try{guard();}catch{return;}
+    // Error de lectura tras actualizar Todo: ningún contador previo sigue vigente.
+    await invalidateT11LocalActivity(ctx);
+   }
   };
   if(todoStorePromise)registerTodoTools(pi,async()=>todoStorePromise,taskAgentLinks&&agentRuntimePromise?async(taskId,identity)=>{
    const [links,runtime]=await Promise.all([taskAgentLinks.list(identity),agentRuntimePromise]);
@@ -437,52 +638,235 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const profile=(route.source==="default"?layers.session??layers.project??layers.global:layers[route.source])?.active;
    const chain=resolveProfileFallbackChain(await readProfileFallbacksFile(profileFallbacksFile),profile,role);
    return {...route,...(profile&&chain.length?{modelFallback:{profile,chain}}:{})};
-  },agentNoticeJournal):undefined;
+  },agentNoticeJournal,identity=>{
+   const budget=explorerBudget;
+   return !!budget&&budget.sessionId===identity.sessionId&&
+    budget.projectId===identity.projectId&&budget.telemetry.claimBudgetExplorer();
+  },async identity=>profileLayer(identity)):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
-  const advancingPlans=new Set<string>();
-  const advancePlan=async(ctx:CommandContext):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
+  const planAdvanceQueue=new PlanAdvanceQueue();
+  const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
    if(dependencies.autoAdvancePlans===false)return {started:false,authorized:false,reason:"Automatic plan dispatch is disabled."};
    if(!todoStorePromise||!agentRuntimePromise||!taskAgentLinks)return {started:false,authorized:false,reason:"The local plan dispatcher is unavailable."};
-   const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;if(advancingPlans.has(key))return {started:false,authorized:false,reason:"ASEN is already advancing this plan."};advancingPlans.add(key);
+   const generation=parentBindingGeneration,manager=ctx.sessionManager;
+   if(hostStatusClosed||ctx.signal?.aborted)
+    return {started:false,authorized:false,reason:"La sesión Pi ha terminado; no se reanuda un trabajo antiguo."};
+   const identity=await sessionIdentity(ctx),key=`${identity.sessionId}\0${identity.projectId}`;
+   if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
+    return {started:false,authorized:false,reason:"La sesión Pi cambió antes de tomar el trabajo."};
+   if(!planAdvanceQueue.enter(key,independentBlockedTodoId))
+    return {started:false,authorized:false,reason:"El avance ya está ocupado; se comprobará de nuevo cuando termine."};
    try{
     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
-    const result=await dispatchNextPlanTask({todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,runtimeProfiles:await profileLayer(identity),validateIdentity:async()=>{const current=await sessionIdentity(ctx);if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw new Error("Pi session or project changed during automatic plan advancement");},confirm:async task=>{
+    // Una tanda no puede superar dos agentes vivos en el mismo proyecto y sesión.
+    // Un agente interrumpido no se relanza; solo el código de recuperación lo inspecciona.
+    const enCurso=(await agents.list(identity)).filter(agent=>agent.state==="queued"||agent.state==="running").length;
+    if(enCurso>=2)return {started:false,authorized:false,reason:"Ya existen dos agentes activos; las tareas restantes conservan su estado y se revisarán al recibir un resultado."};
+    const activeProfiles=await parentProfileLayer(ctx,identity);
+    const verifiedConfiguredModel=(role:string,ref:string):boolean=>{
+     if(resolveRuntimeRoute(activeProfiles,role).choice?.model!==ref)return false;
+     const slash=ref.indexOf("/");
+     if(slash<=0||slash===ref.length-1)return false;
+     const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
+     return !!model&&`${model.provider}/${model.id}`===ref;
+    };
+    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,
+     ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
+     runtimeProfiles:activeProfiles,validateIdentity:async()=>{
+      if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||ctx.signal?.aborted)
+       throw new Error("La sesión Pi terminó durante el avance: no se lanzará ningún agente");
+      const current=await sessionIdentity(ctx);
+      if(ctx.signal?.aborted)
+       throw new Error("La sesión Pi terminó durante el avance: no se lanzará ningún agente");
+      if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||
+         current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+       throw new Error("Pi session or project changed during automatic plan advancement");
+     },confirm:async task=>{
      if(task.role==="clarifier")return false;
      if(!task.writeSurfaces)return true;
      if(ctx.hasUI!==true||typeof ctx.ui.confirm!=="function")return false;
      return ctx.ui.confirm("Authorize scoped ASEN write?",`${task.title} (${task.role})\n\n${task.instruction}\n\nCandidate: ${task.candidateRevision}\nAuthorized write surfaces (only): ${task.writeSurfaces.join(", ")}\nFailure rule: stop without commit or merge; leave scoped changes for review.\n\nAuthorize this single worker run in the current session and project?`);
-    }});
+    }} satisfies Parameters<typeof dispatchNextPlanTask>[0];
+    const result=await dispatchNextPlanTask(dispatchOptions);
     const dispatched=result.status==="dispatched",title=dispatched?(await todos.list(identity)).find(task=>task.taskId===result.todoId)?.title:undefined;
-    if(dispatched){const labels:Record<string,string>={explorer:"la exploración",worker:"el cambio autorizado",reviewer:"la revisión",verifier:"la verificación"};ctx.ui.notify(`ASEN ha iniciado ${labels[result.role]??"la tarea siguiente"}${title?`: ${title}`:""}.`,"info");}
+    let lecturasIniciadas=dispatched&&result.role!=="worker"?1:0;
+    // Segunda unidad únicamente si la primera es de lectura y la siguiente
+    // está lista por sus propias dependencias. El supervisor nunca adelanta un Writer.
+    if(lecturasIniciadas===1&&!independentBlockedTodoId&&!ctx.signal?.aborted)try{
+     const activos=(await agents.list(identity)).filter(agent=>agent.state==="queued"||agent.state==="running").length;
+     if(activos<2){
+      const rows=await todos.list(identity),byId=new Map(rows.map(row=>[row.taskId,row]));
+      const next=rows.filter(row=>row.requestId?.startsWith("asen-plan:")&&row.current.state==="planned"&&
+       ["explorer","reviewer","verifier"].includes(row.plan?.role??"")&&
+       (row.dependsOn??[]).every(dep=>["done","succeeded"].includes(byId.get(dep)?.current.state??"")))
+       .sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-(b.plan?.priority??Number.MAX_SAFE_INTEGER))[0];
+      if(next){
+       const segundo=await dispatchNextPlanTask({...dispatchOptions,readOnlyWave:true,expectedTodoId:next.taskId});
+       if(segundo.status==="dispatched"&&segundo.role!=="worker")lecturasIniciadas=2;
+      }
+     }
+    }catch{
+     // La primera tarea ya puede estar en marcha: no se pierde ni se reintenta.
+     ctx.ui.notify("La segunda lectura no pudo iniciarse; se conserva el estado de las tareas para su comprobación.","warning");
+    }
+    if(dispatched){
+     const labels:Record<string,string>={explorer:"la exploración",worker:"el cambio autorizado",reviewer:"la revisión",verifier:"la verificación"};
+     ctx.ui.notify(lecturasIniciadas===2?"ASEN ha iniciado dos tareas independientes de lectura.":`ASEN ha iniciado ${labels[result.role]??"la tarea siguiente"}${title?`: ${title}`:""}.`,"info");
+    }
     await refreshTodoWidget(ctx);
     return dispatched?{started:true,authorized:result.role==="worker",role:result.role,...(title?{title}:{})}:{started:false,authorized:false,...(result.status==="blocked"?{reason:result.reason}:{})};
-   }finally{advancingPlans.delete(key);}
+   }finally{
+    const queued=planAdvanceQueue.release(key);
+    if(queued.length){
+     // Un avance posterior vuelve a consultar el diario, el estado de los
+     // agentes y las autorizaciones. No es un reintento de ejecución Writer.
+     void (async()=>{
+      for(const blockedId of queued){
+       try{
+        const now=await sessionIdentity(ctx);
+        if(hostStatusClosed||parentBindingGeneration!==generation||ctx.sessionManager!==manager||
+           now.sessionId!==identity.sessionId||now.projectId!==identity.projectId||ctx.signal?.aborted)break;
+        await advancePlan(ctx,blockedId);
+       }catch{
+        try{ctx.ui.notify("ASEN no pudo recuperar un aviso de avance. Las tareas siguen guardadas; no se repitieron escrituras.","error");}catch{}
+       }
+      }
+     })();
+    }
+   }
   };
-  const startSession=async(ctx:CommandContext)=>{
+  /** Una sola cabecera: arriba, debajo del editor o repartida, nunca duplicada. */
+  const publishT11Chrome=(ctx:CommandContext):void=>{
+   if(ctx.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setWidget!=="function")return;
+   const part=t11ChromeParts(t11Header).bottom;
+   const lines=part!=="none"&&t11ChromeInfo&&t11ChromeTheme?
+    renderAsenFocusHeader(t11ChromeInfo,terminalColumns(),t11ChromeTheme,{part,surface:t11Surface}):undefined;
+   ctx.ui.setWidget("asen:t11-chrome",lines?.length?lines:undefined,{placement:"belowEditor"});
+  };
+  const startSession=async(ctx:CommandContext,event?:{reason?:unknown})=>{
+   t11Observer?.stop();t11Observer=undefined;
+   t11ChildExpiry?.stop();t11ChildExpiry=undefined;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
+   t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
+   t11Preset=readAsenAppearance(home()).preset;
+   const layout=readT11Layout(home());t11Position=layout.position;t11Density=layout.density;
+   const chrome=readT11Chrome(home());t11Header=chrome.header;t11Surface=chrome.surface;
    const preference=permissionDefault();
    permissionSession.initialize(preference.malformed?"normal":preference.mode==="auto"&&
     typeof dependencies.autoPermissionReview!=="function"?"normal":preference.mode,ctx);
-   if(ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.theme instanceof Theme&&typeof ctx.ui.setTheme==="function"){
+   // El lateral no puede depender de `instanceof Theme`: Pi 1.2 puede
+   // entregar una fachada del tema que no comparte el prototipo exportado.
+   // Solo cambiar la paleta necesita la instancia concreta; la cabecera
+   // y el lateral usan la `theme` real suministrada por el host Pi.
+   if(ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.setHeader==="function"){
     try{
      let asenVersion="unavailable";
-     try{const metadata=JSON.parse(await readFile(path.join(productionPackageRoot,"package.json"),"utf8"));if(typeof metadata.version==="string"&&metadata.version.trim())asenVersion=metadata.version;}catch{/* Unknown metadata is not a fabricated version. */}
-     if(parentGeneration===parentBindingGeneration&&ctx.mode==="tui"&&ctx.hasUI===true&&ctx.ui.theme instanceof Theme){
-      // A Theme instance is runtime-only: never persist a named theme or steal the transcript root.
+     try{const metadata=JSON.parse(await readFile(path.join(productionPackageRoot,"package.json"),"utf8"));if(typeof metadata.version==="string"&&metadata.version.trim())asenVersion=metadata.version;}catch{/* Metadatos no disponibles. */}
+     let allowed=true;
+     if(ctx.ui.theme instanceof Theme&&typeof ctx.ui.setTheme==="function"){
       const applied=ctx.ui.setTheme(createAsenFocusTheme(ctx.ui.theme));
-      if(applied.success&&typeof ctx.ui.setHeader==="function")ctx.ui.setHeader((_tui,theme)=>({
-       render(width:number){return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,ctx.ui.theme instanceof Theme?ctx.ui.theme:theme);},
-       invalidate(){},
-      }));
+      allowed=applied.success===true;
      }
-    }catch{/* Optional presentation must not interrupt startup or confer authority. */}
+     // Si el cambio de tema fue rechazado, preservar la cabecera existente.
+     // Una fachada sin Theme sí admite diseño y nunca concede herramientas.
+     if(allowed&&parentGeneration===parentBindingGeneration){
+      ctx.ui.setHeader((tui,theme)=>{
+       t11ChromeInfo={asenVersion,piVersion:VERSION};t11ChromeTheme=theme;
+       t11Rail?.dispose();
+       t11Rail=installAsenNativeRail(tui,theme,()=>t11Snapshot,()=>t11Preset,()=>t11Position,()=>t11Density,undefined,()=>t11Surface);
+       return {
+        render(width:number){
+         t11Rail?.sync();
+         return renderAsenFocusHeader({asenVersion,piVersion:VERSION},width,theme,{part:t11ChromeParts(t11Header).top,surface:t11Surface});
+        },invalidate(){},
+       };
+      });
+     }
+    }catch{/* La interfaz opcional no debe impedir el inicio. */}
    }
    await refreshHostStatus(ctx);
+   // Lecturas de los dos agentes Pi hijos cada cinco segundos, solo con lateral
+   // realmente visible. Cualquier error retira los estados antiguos.
+   if(parentGeneration===parentBindingGeneration&&!hostStatusClosed&&!ctx.signal?.aborted&&ctx.mode==="tui"&&ctx.hasUI===true){
+    const guard=panelScope(ctx);
+    t11ChildExpiry=createT11ChildExpiryController(()=>{
+     try{guard();}catch{return;}
+     if(!t11Snapshot?.agentFlow||!t11ChildObservedAt)return;
+     // El plazo vence incluso si el usuario no escribe ni Pi emite eventos.
+     // Solo invalida presentación: sin consultas, modelos ni acciones Writer.
+     // exactOptionalPropertyTypes: quitar la propiedad, no asignar undefined.
+     // Solo se modifica esta copia del snapshot de presentación.
+     const unknown={...t11Snapshot,agentFlowUnavailable:true};
+     Reflect.deleteProperty(unknown,"agentFlow");
+     publishInspectedWorkRow(ctx,unknown);
+    });
+    t11Observer=createT11RailObserver({
+     // El modo compacto visible también observa hijos, no solo el lateral ancho.
+     active:()=>shouldObserveT11Surface({
+      railActive:t11Rail?.active()===true,
+      compactWidget:typeof ctx.ui?.setWidget==="function",
+      position:t11Position,preset:t11Preset
+     }),
+     current:()=>{try{guard();return true;}catch{return false;}},
+     read:async()=>{
+      const started:T11Version={invalid:t11ActivityInvalidationVersion,
+       local:t11LocalPublicationVersion,child:t11ChildPublicationVersion};
+      t11ObserverReadVersion=started;
+      const snapshot=await getPanelSnapshot(ctx,"observer");
+      t11ObserverVersions.set(snapshot,started);
+      return snapshot;
+     },
+     onSnapshot:snapshot=>{
+      const started=t11ObserverVersions.get(snapshot);
+      if(!started||started.invalid!==t11ActivityInvalidationVersion||started.child!==t11ChildPublicationVersion)return;
+      let observed=snapshot;
+      if(started.local!==t11LocalPublicationVersion){
+       // Conservar la observación hija, pero nunca recuperar el Todo local viejo.
+       if(t11ActivityUnavailable||!t11Snapshot||t11Snapshot.activityUnavailable)return;
+       observed={...snapshot,todos:t11Snapshot.todos,
+        agents:t11Snapshot.agents,jobs:t11Snapshot.jobs};
+      }
+      publishInspectedWorkRow(ctx,observed);
+     },
+     onUnavailable:()=>{
+      if(t11ObserverReadVersion.invalid!==t11ActivityInvalidationVersion||
+         t11ObserverReadVersion.local!==t11LocalPublicationVersion||t11ObserverReadVersion.child!==t11ChildPublicationVersion)return;
+      publishInspectedWorkRow(ctx,unavailableT11RailSnapshot());
+     },
+    });
+   }
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.()){
     const identity=await sessionIdentity(ctx);await inheritedProfile(identity);const current=await sessionIdentity(ctx);
-    if(parentGeneration===parentBindingGeneration&&current.sessionId===identity.sessionId&&current.projectId===identity.projectId)parentFallback.activate(identity);
+    const sessionManager=ctx.sessionManager,originalCwd=ctx.cwd;
+    const owned=()=>parentGeneration===parentBindingGeneration&&
+     ctx.sessionManager===sessionManager&&ctx.cwd===originalCwd&&
+     sessionManager?.getSessionId?.()===identity.sessionId;
+    if(owned()&&current.sessionId===identity.sessionId&&current.projectId===identity.projectId){
+     parentFallback.activate(identity);
+     // Solo las sesiones propias nuevas pueden adoptar el modelo inicial del perfil.
+     try{
+      const layers=await profileLayer(identity);
+      const choice=resolveRuntimeRoute(layers,"orchestrator").choice;
+      const outcome=await applyStartupOrchestratorModel({
+       reason:event?.reason,isChild:!!process.env.ASEN_PI_AUTHORITY,
+       entries:()=>sessionManager?.getEntries?.(),...(choice?{choice}:{}),
+       currentModel:()=>ctx.model,
+       findModel:(provider,id)=>ctx.modelRegistry?.find(provider,id),
+       ...(pi.setModel?{setModel:(model:ParentCatalogModel)=>pi.setModel!(model)}:{}),
+       ...(pi.setThinkingLevel?{setThinking:(level:Thinking)=>pi.setThinkingLevel!(level)}:{}),
+       stillOwned:owned,
+      });
+      if(choice?.model&&["model-missing","credentials-refused","host-accepted-unverified"].includes(outcome)&&owned()){
+       const warning=outcome==="host-accepted-unverified"?
+        "ASEN: Pi aceptó la selección del modelo principal, pero no se pudo comprobar cuál quedó activo. Verifícalo en Pi antes de continuar.":
+        `ASEN: no se pudo aplicar el modelo principal configurado (${outcome}). Comprueba el perfil y el modelo activo en Pi.`;
+       ctx.ui?.notify?.(warning,"warning");
+      }
+     }catch{/* Si faltan datos del perfil o del host, se conserva el modelo actual. */}
+    }
    }
    try {
     const startupSnapshot = dependencies.status?.();
@@ -491,7 +875,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    } catch {/* Best effort only; never interrupt Pi startup. */}
    validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
-   if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   if(heldNoticeBoundaryTimer){clearTimeout(heldNoticeBoundaryTimer);heldNoticeBoundaryTimer=undefined;}
+   if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   publishT11Chrome(ctx);
    if(ctx.sessionManager?.getSessionId?.()){
     agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
     try{
@@ -510,7 +896,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     if(memoryStorePromise){const identity=await sessionIdentity(ctx),store=await memoryStorePromise;activeMemory=createPiMemoryBinding(store,identity.projectId,identity.sessionId);memoryFirstRequest=true;}
    }catch(error){activeMemory=undefined;try{ctx.ui.notify(`ASEN no pudo activar la memoria local del proyecto: ${safeErrorMessage(error)}`,"error");}catch{/* Memory remains unavailable without interrupting Pi startup. */}}
    let identity:{sessionId:string;projectId:string}|undefined;const todos=todoStorePromise?await todoStorePromise:undefined;
-   if(todos){try{identity=await sessionIdentity(ctx);await todos.recover(identity);}catch{ctx.ui.notify("ASEN no pudo recuperar el estado de las tareas; no ha repetido ninguna.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN aisló un archivo de tareas dañado; no inició ninguna tarea guardada.","error");if(identity){const interrupted=(await todos.list(identity)).filter(item=>item.current.state==="blocked"&&/restarted|session ended|interrupted/iu.test(item.current.reason??""));if(interrupted.length)ctx.ui.notify(todoProgressSummary(interrupted),"info");}}
+   if(todos){try{identity=await sessionIdentity(ctx);if(agentRuntimePromise&&taskAgentLinks)await new TaskAgentTodoReconciler(todos,await agentRuntimePromise,taskAgentLinks).reconcile(identity);await todos.recover(identity);}catch{ctx.ui.notify("ASEN no pudo recuperar el estado de las tareas; no ha repetido ninguna.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN aisló un archivo de tareas dañado; no inició ninguna tarea guardada.","error");if(identity){const interrupted=(await todos.list(identity)).filter(item=>item.current.state==="blocked"&&/restarted|session ended|interrupted/iu.test(item.current.reason??""));if(interrupted.length)ctx.ui.notify(todoProgressSummary(interrupted),"info");}}
    await refreshTodoWidget(ctx);
    if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN detectó y aisló datos de atribución dañados.","error");}
    if(agentRuntimePromise){const runtime=await agentRuntimePromise;identity??=await sessionIdentity(ctx);agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
@@ -533,9 +919,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     /** One event-driven wake per idle completion burst. The content is already
      * enqueued and cannot be replayed just because a wake fails. */
     const requestAgentWake=(context:CommandContext,scope:{sessionId:string;projectId:string}):void=>{
-     if(!pi.sendMessage||agentDeliveryContext!==context||agentDeliveryIdentity?.sessionId!==scope.sessionId||
+     if(agentDeliveryContext!==context||agentDeliveryIdentity?.sessionId!==scope.sessionId||
         agentDeliveryIdentity.projectId!==scope.projectId)return;
+     // Conservar la deuda incluso si el transporte Pi falta al programar el despertar.
      agentWakeOwed={...scope};
+     if(typeof pi.sendMessage!=="function")return;
      if(agentWakeTimer)return;
      agentWakeTimer=setTimeout(()=>{
       agentWakeTimer=undefined;
@@ -559,7 +947,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         return;
        }
        try{
-        pi.sendMessage?.({customType:"asen.agent.wake",
+        // El anfitrión puede perder sendMessage entre la programación y el turno.
+        // Si no hay transporte real, conservar el aviso pendiente para el próximo límite de turno.
+        if(typeof pi.sendMessage!=="function")return;
+        pi.sendMessage({customType:"asen.agent.wake",
          content:"[ASEN-generated coordinator wake: review the previously enqueued agent outcome; this is not a user request or permission to write.]",
          display:false,details:{sessionId:owed.sessionId,projectId:owed.projectId,trusted:false}},options);
         agentWakeOwed=undefined;
@@ -572,6 +963,22 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     };
     scheduleAgentWakeAtBoundary=()=>{const owed=agentWakeOwed,owner=agentDeliveryContext;
      if(owed&&owner)requestAgentWake(owner,owed);
+    };
+    // El reintento diferido nunca puede volver a programarse a sí mismo.
+    // Otro límite real del ciclo de vida podrá intentar entregar el aviso pendiente.
+    let heldNoticeRetryInProgress=false;
+    const retryHeldNoticeAtCommandBoundary=(context:CommandContext):void=>{
+     if(agentParentRunActive||heldNoticeBoundaryTimer||heldNoticeRetryInProgress||!flushPendingAgentNotices)return;
+     heldNoticeBoundaryTimer=setTimeout(()=>{
+      heldNoticeBoundaryTimer=undefined;
+      const flush=flushPendingAgentNotices;
+      if(!flush)return;
+      heldNoticeRetryInProgress=true;
+      void flush(context).catch(()=>{
+       try{context.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}
+       catch{/* Un fallo del aviso no puede detener Pi ni autorizar escrituras. */}
+      }).finally(()=>{heldNoticeRetryInProgress=false;});
+     },100);
     };
     const sendAgentNotice=async(record:PublicAgentRecord,context:CommandContext,wake:boolean):Promise<boolean>=>{
      const scope={sessionId:record.sessionId,projectId:record.projectId};
@@ -589,7 +996,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      // Compaction (hold) and headless/RPC (headless) both retain pending.
      // A headless Pi host must NEVER mark an undelivered event as enqueued.
      const route=agentParentRoute(context,scope,agentParentRunActive);
-     if(route!=="run"&&route!=="idle")return false;
+     if(route!=="run"&&route!=="idle"){
+      if(route==="hold")retryHeldNoticeAtCommandBoundary(context);
+      return false;
+     }
      // A route can change across the journal I/O and identity checks.
      // Never claim a notice using a stale Pi parent TUI state.
      if(!await matches()||agentParentRoute(context,scope,agentParentRunActive)!==route)return false;
@@ -650,7 +1060,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
           latest.sessionManager?.getSessionId?.()!==owner.sessionId)return;
        // The Pi message is queued before visible completion so tests and UI see a consistent transition.
        await sendAgentNotice(record,latest,wake);
-       if(!quiet)latest.ui.notify(completed?`ASEN terminó ${labels[record.role]??"una tarea"}; comprobará el resultado antes de cerrar el plan.`:failed?`ASEN no pudo completar ${labels[record.role]??"una tarea"}. Si quieres reintentarlo, di «continúa» y revisaré el estado primero.`:`ASEN pausó ${labels[record.role]??"una tarea"}. Di «continúa» cuando quieras que revise cómo retomarla.`,completed?"info":"error");
+       const diagnostic=diagnoseAgentTerminal(record);
+       if(!quiet)latest.ui.notify(completed?`ASEN terminó ${labels[record.role]??"una tarea"}; comprobará el resultado antes de cerrar el plan.`:failed?`ASEN no pudo completar ${labels[record.role]??"una tarea"}. Código: ${diagnostic.code}. No se repetirá automáticamente; si quieres revisar la causa y la posible continuación, di «continúa».`:`ASEN pausó ${labels[record.role]??"una tarea"}. Código: ${diagnostic.code}. Di «continúa» cuando quieras que revise cómo retomarla.`,completed?"info":"error");
        notificationProjection.publish({sessionId:record.sessionId,projectId:record.projectId},latest.ui,"agent",
         `asen:agent:${record.id}:${record.state}`,`Agent ${record.role}: ${record.state}`);
       };
@@ -663,8 +1074,19 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
         await notifyTerminal();
         await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(owner);
         const latest=agentDeliveryContext,identity=agentDeliveryIdentity;
-        if(latest&&identity&&owner.sessionId===identity.sessionId&&owner.projectId===identity.projectId)
+        if(latest&&identity&&owner.sessionId===identity.sessionId&&owner.projectId===identity.projectId&&
+           latest.sessionManager?.getSessionId?.()===identity.sessionId){
+         // G49-B: un fallo no debe relanzarse. Solo otra tarea ODD que YA
+         // estuviera lista, sea de lectura y tenga modelo de coste cero
+         // comprobado puede avanzar en su propia autorización.
+         if(record.state==="failed"){
+          const [links,rows]=await Promise.all([taskAgentLinks.list(owner),store.list(owner)]);
+          const matches=links.filter(link=>link.agentId===record.id);
+          const blocked=matches.length===1?rows.find(row=>row.taskId===matches[0]?.taskId):undefined;
+          if(blocked?.current.state==="blocked")await advancePlan(latest,blocked.taskId);
+         }
          await refreshTodoWidget(latest);
+        }
         return;
        }
        await new TaskAgentTodoReconciler(store,agents!,taskAgentLinks).reconcile(owner);
@@ -702,7 +1124,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    }
    try{await incrementUsageFile(usageFile,"sessions");}catch{try{ctx.ui.notify("ASEN no pudo guardar el uso local.","error");}catch{/* Notification is best-effort when the UI is unavailable. */}}
   };
-  if(!dependencies.deferSessionStart)pi.on?.("session_start",async(_event,ctx)=>startSession(ctx));
+  if(!dependencies.deferSessionStart)pi.on?.("session_start",async(event,ctx)=>startSession(ctx,event));
   // This is a temporary UI projection only: it records no validation evidence and never changes task state.
   pi.on?.("tool_execution_start",async(event,ctx)=>{
    if(!todoStorePromise||!validationCommand(event?.toolName,event?.args)||typeof event?.toolCallId!=="string"||!event.toolCallId||event.toolCallId.length>512)return;
@@ -740,7 +1162,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{await flushPendingAgentNotices?.(ctx);}
    catch{try{ctx.ui.notify("ASEN no pudo entregar los avisos pendientes; sus resultados continúan guardados.","error");}catch (error) { void error; }}
    const pending=agentWakeOwed,owner=agentDeliveryContext,active=agentDeliveryIdentity;
-   if(settled&&pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId)
+   // Si el transporte volvió durante una compactación o fin de turno y el
+   // padre está libre, recuperar únicamente el despertar pendiente (no el resultado).
+   if(pending&&owner&&active&&pending.sessionId===active.sessionId&&pending.projectId===active.projectId&&
+      (settled||agentTerminalWakeOptions(owner,pending,agentParentRunActive)!==undefined))
     scheduleAgentWakeAtBoundary?.();
   };
   pi.on?.("agent_settled",async(event,ctx)=>{
@@ -755,6 +1180,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   for(const event of ["model_select","thinking_level_select","session_compact","session_compact_failed","session_tree","turn_end","agent_settled"])
    pi.on?.(event,async(_event,ctx)=>{await refreshHostStatus(ctx as CommandContext);});
   pi.on?.("session_shutdown",async(_event,ctx)=>{
+   t11Observer?.stop();t11Observer=undefined;
+   t11ChildExpiry?.stop();t11ChildExpiry=undefined;
+   t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
+   t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    traceVerifierShutdown("session-start");
    const endingSession=ctx?.sessionManager?.getSessionId?.();
@@ -765,7 +1194,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(endingSession){sessionDirectory.remove(endingSession);clearSessionProfiles(await profilePartition(),endingSession);}
    for(const [id,activity] of validationActivities)if(activity.sessionId===endingSession)validationActivities.delete(id);
    if(agentDeliveryIdentity&&agentDeliveryIdentity.sessionId===endingSession)notificationProjection.deactivate(agentDeliveryIdentity);
-   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;workRowGeneration++;ctx?.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});m1Cache.reset();ctx?.ui?.setStatus?.("asen:workspace",undefined);resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
+   agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;explorerBudget=undefined;workRowGeneration++;todoWidgetGeneration++;ctx?.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx?.ui?.setWidget?.("asen:t11-chrome",undefined,{placement:"belowEditor"});ctx?.ui?.setStatus?.("asen:workspace",undefined);resetAgentProjectAccess?.();unsubscribeAgentDelivery?.();unsubscribeAgentDelivery=undefined;
    if(todoStorePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("todo-recovery-start");await (await todoStorePromise).recover(await sessionIdentity(ctx),"shutdown");traceVerifierShutdown("todo-recovery-done");}catch{try{ctx.ui.notify("ASEN could not safely block running Todo tasks when the session ended.","error");}catch{/* Shutdown must continue after best-effort recovery. */}}
    if(agentRuntimePromise&&ctx?.sessionManager?.getSessionId?.()&&ctx?.cwd)try{traceVerifierShutdown("agent-cancel-start");const runtime=await agentRuntimePromise;await runtime.cancelSessionProjects(ctx.sessionManager.getSessionId());traceVerifierShutdown("agent-cancel-done");}catch{/* Lifecycle shutdown still runs after best-effort agent cancellation. */}
    traceVerifierShutdown("delivery-drain-start");while(agentDeliveryTasks.size)await Promise.all([...agentDeliveryTasks]);traceVerifierShutdown("delivery-drain-done");
@@ -802,7 +1231,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   });
   if(pi.registerTool)pi.registerTool({name:"asen_session_consult",label:"Consult minimal session metadata",description:"With one explicit confirmation, read only the label and classification of another live Pi session in the same project. Prompts, transcripts and credentials are never shared.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["targetSessionId"],properties:{targetSessionId:{type:"string",minLength:1,maxLength:256}}},execute:async(_id:any,params:any,signal:any,_update:any,host:any)=>{if(signal?.aborted)throw new Error("Session consultation cancelled");const value=params as {targetSessionId?:unknown};if(typeof value.targetSessionId!=="string")throw new Error("Invalid target session");const requester=await sessionIdentity(host as CommandContext),targetSessionId=value.targetSessionId,target=sessionDirectory.list(requester.projectId).find(row=>row.sessionId===targetSessionId);if(!target||targetSessionId===requester.sessionId)return {content:[{type:"text" as const,text:"Target session is unavailable."}],details:{status:"unavailable"}};if(host?.hasUI!==true||typeof host?.ui?.confirm!=="function")return {content:[{type:"text" as const,text:"Cross-session consultation requires the interactive Pi UI."}],details:{status:"consent-required"}};const accepted=await host.ui.confirm("Allow one-time session metadata access?",`Read only the session label and activity classification for ${targetSessionId} in this project? No prompts, transcripts, files or credentials will be shared.`);if(signal?.aborted)throw new Error("Session consultation cancelled");if(!accepted)return {content:[{type:"text" as const,text:"Session consultation declined."}],details:{status:"declined"}};const currentRequester=await sessionIdentity(host as CommandContext);if(signal?.aborted)throw new Error("Session consultation cancelled");const currentTarget=sessionDirectory.list(currentRequester.projectId).find(row=>row.sessionId===targetSessionId);if(currentRequester.sessionId!==requester.sessionId||currentRequester.projectId!==requester.projectId||!currentTarget) return {content:[{type:"text" as const,text:"Session consultation is unavailable after the consent prompt."}],details:{status:"unavailable"}};const consent=sessionDirectory.issueConsent({requesterSessionId:requester.sessionId,targetSessionId,projectId:requester.projectId}),record=sessionDirectory.consult(consent.token,requester.sessionId,targetSessionId,requester.projectId);return {content:[{type:"text" as const,text:JSON.stringify({status:"consulted",scope:"session-metadata",sessionId:record.sessionId,subject:record.subject,classification:record.classification,updatedAt:record.updatedAt})}],details:{status:"consulted",scope:"session-metadata",sessionId:record.sessionId,subject:record.subject,classification:record.classification,updatedAt:record.updatedAt}};}} as any);
   pi.on?.("before_agent_start",async(event,ctx)=>{
-   const options=(event as {systemPromptOptions?:{sections?:Record<string,string>}}|undefined)?.systemPromptOptions;
+   const options=(event as {systemPromptOptions?:{sections?:Record<string,string>;selectedTools?:readonly string[]}}|undefined)?.systemPromptOptions;
    if(options?.sections){
     delete options.sections[ASEN_PERSONA_STYLE_SECTION];
     try{const files=await personaFiles(ctx as CommandContext),selection=await resolvePersonaStyle(files.globalFile,files.projectFile);options.sections[ASEN_PERSONA_STYLE_SECTION]=personaStyleText(selection.style);}
@@ -816,13 +1245,49 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     delete options.sections.asen_project_memory;
     delete options.sections.asen_project_memory_context;
     delete options.sections.asen_active_plan;
-    addAsenRequestGuidance(options,!!pi.registerTool);
+    // EF-202 / G49-A2: el presupuesto observado llega al mensaje de Pi
+    // solo si sigue perteneciendo a la misma sesión y proyecto.
+    // Es orientativo: no lanza agentes ni concede permisos.
+    let explorationOverBudget=false;
+    const budget=explorerBudget;
+    if(budget?.telemetry.snapshot().overBudget&&!budget.telemetry.snapshot().delegationClaimed&&
+       (ctx as CommandContext|undefined)?.sessionManager?.getSessionId?.()===budget.sessionId){
+     try{
+      const current=await sessionIdentity(ctx as CommandContext);
+      explorationOverBudget=explorerBudget===budget&&
+       current.sessionId===budget.sessionId&&current.projectId===budget.projectId;
+     }catch{/* Una identidad cambiada nunca expone el presupuesto de otra sesión. */}
+    }
+    let turnDelegationMode:DelegationMode|undefined;
+    delete options.sections.asen_delegation_mode;
+    try{
+     const owner=await sessionIdentity(ctx as CommandContext);
+     const mode=dependencies.resolveParentDelegationMode
+      ?await dependencies.resolveParentDelegationMode(ctx as CommandContext)
+      :resolveRuntimeDelegationMode(await profileLayer(owner)).mode;
+     const current=await sessionIdentity(ctx as CommandContext);
+     if(current.sessionId!==owner.sessionId||current.projectId!==owner.projectId)
+      throw new Error("Profile owner changed");
+     turnDelegationMode=mode;
+     if(mode==="full-delegation")
+      options.sections.asen_delegation_mode="Modo delegación completa: el padre solo investiga, prepara, coordina y verifica. Nunca edita archivos ni ejecuta comandos de terminal. Envía cambios mediante el planificador y agentes Writer con autorización comprobable; si no hay Writer autorizado, informa del bloqueo sin escribir.";
+    }catch{
+     options.sections.asen_delegation_mode="No se pudo verificar el modo del perfil; no supongas permiso adicional para escribir ni delegar.";
+    }
+    const modeGuidance=turnDelegationMode?{delegationMode:turnDelegationMode}:{};
+    addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,modeGuidance);
     if(memoryStorePromise){options.sections[ASEN_MEMORY_GUIDANCE_SECTION]=ASEN_MEMORY_GUIDANCE;try{const binding=await currentMemoryBinding(ctx);const context=projectMemoryContext(binding,(event as {prompt?:string}).prompt??"",memoryFirstRequest,4096);memoryFirstRequest=false;if(context)options.sections.asen_project_memory_context=context;}catch{/* Missing or mismatched session identity never exposes stored context or blocks the requested turn. */}}
     if(todoStorePromise)try{
-     const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),rows=await (await todoStorePromise).list(identity);
+     const context=ctx as CommandContext,manager=context.sessionManager,cwd=context.cwd,identity=await sessionIdentity(context),store=await todoStorePromise,rows=await store.list(identity);
      if(context.sessionManager===manager&&manager?.getSessionId?.()===identity.sessionId&&context.cwd===cwd){
       const current=await sessionIdentity(context);
-      if(current.sessionId===identity.sessionId&&current.projectId===identity.projectId){const planContext=formatActivePlanContext(rows);if(planContext)options.sections.asen_active_plan=planContext;}
+      if(current.sessionId===identity.sessionId&&current.projectId===identity.projectId){
+       const planContext=formatActivePlanContext(rows);
+       // Un almacén en cuarentena no demuestra ausencia de plan: conservar guía de recuperación.
+       if(planContext||!store.diagnostics()?.quarantined)
+        addAsenRequestGuidance(options,activeAsenRequestTools(options.selectedTools),explorationOverBudget,{...modeGuidance,activePlan:Boolean(planContext)});
+       if(planContext)options.sections.asen_active_plan=planContext;
+      }
      }
     }catch{/* Task context is read-only and optional; identity or storage failures never block the user's turn. */}
    }
@@ -931,7 +1396,77 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return {error:"Use /asen presentation status, /asen presentation compact or /asen presentation complete"};
   }});
 
-  registerData("asen-customize",{description:"Show ASEN customization surfaces or choose current/default permission modes with /asen-customize permissions",handler:async(raw:string|undefined,ctx:CommandContext)=>{
+  registerData("asen-customize",{description:"Show ASEN visual preferences and primary permission modes",handler:async(raw:string|undefined,ctx:CommandContext)=>{
+   const visualParts=String(raw??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
+   if(visualParts[0]==="header"||visualParts[0]==="surface"){
+    const setting=visualParts[0],stored=readT11Chrome(home());
+    const choices=setting==="header"?["top","below-input","split"]:["transparent","tinted"];
+    if(visualParts.length>2)return {error:"Use /asen-customize "+setting+" "+choices.join("|")};
+    let selected=visualParts[1];
+    if(!selected&&ctx?.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui?.select==="function"){
+     const guard=panelScope(ctx),identity=await sessionIdentity(ctx);guard();
+     const picked=await ctx.ui.select("ASEN "+setting,[...choices,"Cancelar"],ctx.signal?{signal:ctx.signal}:undefined);
+     guard();const now=await sessionIdentity(ctx);guard();
+     if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw Error("La sesión cambió durante la personalización T11");
+     if(ctx.signal?.aborted||!picked||picked==="Cancelar")return {cancelled:true,...stored};
+     if(!choices.includes(picked))throw Error("Opción visual inesperada");
+     selected=picked;
+    }
+    if(!selected||selected==="status")return {...stored,note:"Use /asen-customize "+setting+" "+choices.join("|")};
+    if(setting==="header"&&!validT11Header(selected)||setting==="surface"&&!validT11Surface(selected))
+     return {error:"Opción visual no válida; use "+choices.join("|")};
+    const next={header:setting==="header"?selected as T11HeaderPlacement:stored.header,
+     surface:setting==="surface"?selected as T11Surface:stored.surface};
+    writeT11Chrome(home(),next);t11Header=next.header;t11Surface=next.surface;
+    publishT11Chrome(ctx);t11Rail?.refresh();
+    return {...next,source:"saved",scope:"user",note:"Solo presentación; permisos, agentes y modelos sin cambios."};
+   }
+   if(visualParts[0]==="position"||visualParts[0]==="density"){
+    const setting=visualParts[0];
+    if(visualParts.length>2)return {error:"Use /asen-customize position auto|right|bottom|hidden or density comfortable|compact|minimal"};
+    const stored=readT11Layout(home());
+    const choices=setting==="position"?["auto","right","bottom","hidden"]:["comfortable","compact","minimal"];
+    let selected=visualParts[1];
+    if(!selected&&ctx?.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui?.select==="function"){
+     const guard=panelScope(ctx),identity=await sessionIdentity(ctx);guard();
+     const picked=await ctx.ui.select("ASEN "+setting,[...choices,"Cancel"],ctx.signal?{signal:ctx.signal}:undefined);
+     guard();const now=await sessionIdentity(ctx);guard();
+     if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw Error("ASEN visual preferences session changed");
+     if(ctx.signal?.aborted||!picked||picked==="Cancel")return {cancelled:true,...stored};
+     if(!choices.includes(picked))throw Error("Unknown ASEN visual preference");
+     selected=picked;
+    }
+    if(!selected||selected==="status")return {...stored,note:"Use /asen-customize "+setting+" "+choices.join("|")};
+    if(setting==="position"&&!validT11Position(selected)||setting==="density"&&!validT11Density(selected))
+     return {error:"Invalid ASEN "+setting+"; expected "+choices.join("|")};
+    const next={position:setting==="position"?selected as T11Position:stored.position,
+     density:setting==="density"?selected as T11Density:stored.density};
+    writeT11Layout(home(),next);
+    t11Position=next.position;t11Density=next.density;t11Rail?.refresh();
+    if(ctx?.mode==="tui"&&ctx.hasUI===true)await refreshWorkRow(ctx);
+    return {...next,source:"saved",scope:"user",note:"Only visual preferences changed. No permission or model changes."};
+   }
+   const appearanceArgs=String(raw??"").trim().toLowerCase().split(/\s+/u).filter(Boolean);
+   if(appearanceArgs[0]==="appearance"){
+    if(appearanceArgs.length>2)return {error:"Use /asen-customize appearance [light|neutral|power|status]"};
+    const saved=readAsenAppearance(home());
+    let choice=appearanceArgs[1];
+    if(!choice&&ctx?.mode==="tui"&&ctx?.hasUI===true&&typeof ctx.ui?.select==="function"){
+     const guard=panelScope(ctx),identity=await sessionIdentity(ctx);guard();
+     const picked=await ctx.ui.select("ASEN visual preset",["Light","Neutral","Power","Cancel"],ctx.signal?{signal:ctx.signal}:undefined);
+     guard();const current=await sessionIdentity(ctx);guard();
+     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw Error("ASEN appearance session changed");
+     if(ctx.signal?.aborted||picked===undefined||picked==="Cancel")return {cancelled:true,...saved};
+     if(!["Light","Neutral","Power"].includes(picked))throw Error("Unknown ASEN appearance choice");
+     choice=picked.toLowerCase();
+    }
+    if(!choice||choice==="status")return {...saved,note:"Use /asen-customize appearance light|neutral|power (presentation only)."};
+    if(!isAsenAppearancePreset(choice))return {error:"Use /asen-customize appearance [light|neutral|power|status]"};
+    saveAsenAppearance(home(),choice);
+    t11Preset=choice;t11Rail?.refresh();
+    if(ctx?.mode==="tui"&&ctx.hasUI===true)await refreshWorkRow(ctx);
+    return {preset:choice,source:"saved",scope:"user",note:"Presentation only; model and permissions unchanged."};
+   }
    if(String(raw??"").trim()!=="permissions")return {customize_surfaces:[
     {name:"asen-profiles",role:"model and routing profiles"},
     {name:"asen-persona",role:"reply tone and persona"},
@@ -939,7 +1474,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     {name:"asen-history",role:"local task/session history"},
     {name:"asen-usage",role:"runtime usage and accounting"},
     {name:"asen-stats",role:"Pi history aggregates"},
-    {name:"asen-keymaps",role:"keyboard shortcut bindings"}],
+    {name:"asen-keymaps",role:"keyboard shortcut bindings"},
+    {name:"asen-customize appearance",role:"Light/Neutral/Power visual presets"},
+    {name:"asen-customize position",role:"auto/right/bottom/hidden layout position"},
+    {name:"asen-customize density",role:"comfortable/compact/minimal panel density"},
+    {name:"asen-customize header",role:"top/below-input/split ASEN header"},
+    {name:"asen-customize surface",role:"transparent/tinted interface surface"}],
     implemented:true,note:"Use /asen-customize permissions for the live primary selection menu. Use /asen-customize keymaps to edit shortcuts."};
    if(String(raw??"").trim()==="keymaps"){
     if(ctx?.mode!=="tui"||ctx?.hasUI!==true||typeof ctx.ui.select!=="function")return "Keymap editing requires interactive TUI.";
@@ -1018,15 +1558,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const checks=doctorChecks(input);return {exitCode:doctorExitCode(checks),checks};
   }});
   registerData("asen-route",{description:"Read-only ODD route diagnostic; complexity never selects SDD; ordinary requests belong in chat",handler:async(args:string|undefined,ctx:CommandContext)=>{if(!ctx.sessionManager?.getSessionId?.())throw new Error("ASEN route preview requires the active Pi session");let project:string;try{project=await realpath(ctx.cwd);}catch{throw new Error("ASEN route preview requires an existing active project");}return routePreviewCommand(args??"",project);}});
-  const preparePlan=async(args:string|undefined,ctx:CommandContext,conversational=false):Promise<string>=>{
+  const preparePlan=async(args:string|undefined,ctx:CommandContext,conversational=false,deferChildLaunch=false,fixSource?:Readonly<{proposalId:string;treeIdentity:string}>):Promise<string>=>{
    const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.(),cwd=ctx.cwd;if(!manager||!sessionId)throw new Error("ASEN planning requires the active Pi session");
-   const validateContext=()=>{if(ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed before plan persistence");};
+   const validateContext=()=>{if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed or was cancelled before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
    let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
-   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await profileLayer({sessionId,projectId:project}))) as typeof output;}
+   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await (deferChildLaunch?profileLayer({sessionId,projectId:project}):parentProfileLayer(ctx,{sessionId,projectId:project})))) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
-   if(output.executablePlan.route==="direct"){
+   if(output.executablePlan.route==="direct"&&!output.executablePlan.tasks.some(task=>task.role==="worker")){
     output.persistence={status:"not-needed",reason:"A bounded direct request stays in the current Pi conversation; no Todo record is needed"};
     output.execution={started:false,authorized:false};
     output.inlineContinuation=true;
@@ -1043,11 +1583,20 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
    const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>(),ordered=output.executablePlan.topologicalOrder.map(taskId=>{const task=output.executablePlan!.tasks.find(item=>item.id===taskId);if(!task)throw new Error("ASEN executable plan order references an unknown task");return task;});
    validateContext();if(identity.sessionId!==sessionId||identity.projectId!==project)throw new Error("Pi session or project changed while preparing the plan");
-    const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.model?{model:task.model}:{}),...(task.thinking?{thinking:task.thinking}:{}),...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{})}})),identity,undefined,validateContext);
+    const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.model?{model:task.model}:{}),...(task.thinking?{thinking:task.thinking}:{}),...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{}),...(fixSource&&task.role==="worker"?{fixSource}:{})}})),identity,undefined,validateContext);
    validateContext();
    for(const item of persisted)todoIds.set(item.requestId!.slice("asen-plan:".length),item.taskId);
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
    output.persistence={status:"saved",sessionId:identity.sessionId,projectId:identity.projectId};
+   if(deferChildLaunch){
+    // A source-supervised child must persist its own ODD without starting
+    // any Pi agent here. The parent will authorize the independent Worker
+    // through the existing dispatcher; no inherited grants or double launch.
+    output.execution={started:false,authorized:false,reason:fixSource?"deferred-to-new-writer-consent":"deferred-to-source-supervisor"};
+    output.notice=fixSource?"A new Fix ODD was saved without starting any agent. Its reviewed Git tree is pinned and must still match when the plan is dispatched. The original Pi session must request a fresh, exact Writer consent. No model call, inherited permission or merge occurred.":"Child ODD was saved without starting any agent. The original Pi session may use its own authorized plan dispatcher, or the attached source /asen-worktrees supervise may launch a dependency-ready Worker after separate Pi confirmation. No model call, Writer admission or merge occurred during planning.";
+    await refreshTodoWidget(ctx);
+    return JSON.stringify(output,null,2);
+   }
    const execution=await advancePlan(ctx);
    output.execution=execution;
    output.notice=execution.started?(execution.authorized?"The plan was saved and the exact scoped writer was started after Pi approval. Independent review and verification will continue automatically.":"The plan was saved and its first dependency-ready read-only task started automatically. A writer still requires exact Pi approval; completion requires a passing independent verifier."): `The plan was saved, but no task started: ${execution.reason??"automatic dispatch did not report a runnable task"} Explain the next step in ordinary language. Do not ask the user to inspect Todo state or run commands.`;
@@ -1065,19 +1614,59 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     // A real Pi TUI overlay is preferred to message-only selection.
     // It is modal and read-only; it does not replace the persistent fullscreen rail.
     if(!view&&ctx.mode==="tui"&&ctx.hasUI===true&&typeof ctx.ui.custom==="function"){
-     const snapshot=await getPanelSnapshot(ctx),before=ctx.cwd;assertCurrent();
-     const action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
-      const close=()=>done(undefined);
-      return createNativeWorkPanel(snapshot,{
-       requestRender:()=>tui.requestRender(),close,
-       openChanges:()=>done("ASEN_OPEN_CHANGES_VIEW"),
-       ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
-       terminalRows:()=>Math.max(1,Number(tui.terminal?.rows??24)),
-       availableRows:()=>Math.max(1,Math.floor(Number(tui.terminal?.rows??24)*.9)),
-       ...(_theme instanceof Theme?{theme:_theme}:{}),
-       stillCurrent:()=>{try{assertCurrent();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
-      });
-     },{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+     const snapshot=await readCurrentManualPanel(ctx);
+     if(!snapshot)return ["ASEN: una lectura más reciente sustituyó la observación del panel."];
+     const before=ctx.cwd;assertCurrent();
+     if(!t11ManualActual(snapshot))
+      return ["ASEN: otra observación del panel es más reciente."];
+     publishInspectedWorkRow(ctx,snapshot);
+     let nativePanel:ReturnType<typeof createNativeWorkPanel>|undefined;
+     let modalGitGeneration=0,modalInvalid=0,modalLocal=0,modalChild=0;
+     let action:unknown;
+     try{
+      action=await ctx.ui.custom((tui:{terminal?:{rows?:number};requestRender:()=>void},_theme:unknown,bindings:Pick<KeybindingsManager,"matches">|undefined,done:(value:unknown)=>void)=>{
+       const close=()=>done(undefined);
+       nativePanel=createNativeWorkPanel(snapshot,{
+        requestRender:()=>tui.requestRender(),close,
+        openChanges:()=>done("ASEN_OPEN_CHANGES_VIEW"),
+        // Los hijos Pi pueden vivir en otro proceso. Sus registros se vuelven
+        // a leer del disco SOLO mientras la ventana está abierta.
+        refresh:async()=>{
+         assertCurrent();
+         const current=await sessionIdentity(ctx);assertCurrent();
+         if(ctx.cwd!==before||current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
+          throw new Error("La sesión de origen cambió durante la observación T06/T07");
+         // Versiones al empezar la lectura efectiva, no antes de resolver identidad.
+         modalGitGeneration=gitObservationGeneration+1;
+         modalInvalid=t11ActivityInvalidationVersion;
+         modalLocal=t11LocalPublicationVersion;
+         modalChild=t11ChildPublicationVersion;
+         return getPanelSnapshot(ctx,"manual",()=>{
+          modalGitGeneration=gitObservationGeneration;
+          modalInvalid=t11ActivityInvalidationVersion;
+          modalLocal=t11LocalPublicationVersion;
+          modalChild=t11ChildPublicationVersion;
+         });
+        },
+        autoRefreshMs:5000,
+        acceptSnapshot:t11ManualActual,
+        ignoreReadFailure:error=>error instanceof T11SnapshotSuperado||
+         modalGitGeneration!==gitObservationGeneration||
+         modalInvalid!==t11ActivityInvalidationVersion||
+         modalLocal!==t11LocalPublicationVersion||modalChild!==t11ChildPublicationVersion,
+        onRefreshed:fresh=>publishInspectedWorkRow(ctx,fresh),
+        // El modal y el lateral comparten la misma observación de sesión.
+        // Si falla la lectura no conservar hijos activos antiguos.
+        onUnavailable:unknown=>publishInspectedWorkRow(ctx,unknown),
+        ...(typeof bindings?.matches==="function"?{keybindings:bindings}:{}),
+        terminalRows:()=>Math.max(1,Number(tui.terminal?.rows??24)),
+        availableRows:()=>Math.max(1,Math.floor(Number(tui.terminal?.rows??24)*.9)),
+        ...(_theme instanceof Theme?{theme:_theme}:{}),
+        stillCurrent:()=>{try{assertCurrent();return ctx.cwd===before&&ctx.sessionManager?.getSessionId?.()===identity.sessionId;}catch{return false;}},
+       });
+       return nativePanel;
+      },{overlay:true,overlayOptions:{width:"100%",maxHeight:"90%"}});
+     }finally{nativePanel?.dispose();}
      if(action==="ASEN_OPEN_CHANGES_VIEW"){
       // The modal only returns a selection. Recheck scope before invoking the
       // existing guarded, read-only viewer, including its own root identity guard.
@@ -1104,7 +1693,12 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const current=await sessionIdentity(ctx);
     if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
      return ["ASEN panel scope changed. No action performed."];
-    const snapshot=await getPanelSnapshot(ctx),width=Math.max(12,terminalColumns());assertCurrent();
+    const snapshot=await readCurrentManualPanel(ctx);
+    if(!snapshot)return ["ASEN: una nueva lectura sustituyó esta consulta."];
+    const width=Math.max(12,terminalColumns());assertCurrent();
+    if(!t11ManualActual(snapshot))
+     return ["ASEN: la consulta ya tiene una lectura más reciente."];
+    publishInspectedWorkRow(ctx,snapshot);
     if(section)return [...renderAsenPanelSection(snapshot,section,width)];
     if(view==="STATUS")return [renderAsenStatusLine(snapshot,width)];
     return [...renderAsenPanel(snapshot,width)];
@@ -1527,7 +2121,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const profile:RuntimeProfile={name,routes:{}};
    // Validate identifiers with the existing schema, without reading a stale destination snapshot.
    upsertProfile({schema:"asen.runtime-profiles/v1",profiles:[]},profile);
-   const target=await nativeChoice(ctx,"Route target — parent/orchestrator routing is separate",["Unspecified defaults","Role: explorer","Role: worker","Role: reviewer","Role: verifier","Back"],guard);
+   const target=await nativeChoice(ctx,"Route target — parent/orchestrator routing is separate",["Unspecified defaults",...AGENT_PROFILE_TARGETS.map(role=>"Role: "+role),"Back"],guard);
    if(target===undefined||target==="Back")return {cancelled:true};
    if(target!=="Unspecified defaults"){
     const picked=await pickSavedRoute(ctx,name,guard);
@@ -1546,7 +2140,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return {saved:true,scope,name,active:"unchanged",sessionProfile:"unchanged",parentModel:"unchanged"};
   };
   // Parsed valid profiles only: own roles sorted; absent fields differ from absent roles.
-  const savedProfileSignature=(profile:RuntimeProfile)=>JSON.stringify([profile.name,
+  const savedProfileSignature=(profile:RuntimeProfile)=>JSON.stringify([profile.name,profile.mode??"organic",
    Object.keys(profile.routes).sort().map(role=>[role,profile.routes[role]!.model??null,profile.routes[role]!.thinking??null])]);
   const editSavedProfile=async(ctx:CommandContext,guard:()=>void)=>{
    const projectId=path.normalize(realpathSync(path.resolve(ctx.cwd)));guard();
@@ -1558,9 +2152,22 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(selected===undefined||selected==="Back")return {cancelled:true};
    const name=selected.slice("Profile: ".length),original=structuredClone(inventory.profiles.find(profile=>profile.name===name)!);
    const signature=savedProfileSignature(original);
-   const roles=["explorer","worker","reviewer","verifier"].filter(role=>Object.hasOwn(original.routes,role));
-   const target=await nativeChoice(ctx,"Replace one existing role route",[...roles.map(role=>"Role: "+role),"Back"],guard);
+   const roles=[...AGENT_PROFILE_TARGETS].filter(role=>isAgentProfileTarget(role));
+   const target=await nativeChoice(ctx,"Edit role or delegation mode",[...roles.map(role=>"Role: "+role),"Delegation mode","Back"],guard);
    if(target===undefined||target==="Back")return {cancelled:true};
+   if(target==="Delegation mode"){
+    const choice=await nativeChoice(ctx,"Parent orchestration mode",["Organic (normal)","Full delegation (agents only)","Back"],guard);
+    if(choice===undefined||choice==="Back")return {cancelled:true};
+    const mode=choice==="Full delegation (agents only)"?"full-delegation":"organic";
+    const save=await nativeChoice(ctx,`Save mode for ${scope} profile ${name}: ${mode}. Active sessions keep their captured profile.`,["Save profile","Back"],guard);
+    if(save===undefined||save==="Back")return {cancelled:true};
+    guard();await mutateProfilesFile(file,current=>{
+     guard();const saved=current.profiles.find(profile=>profile.name===name);
+     if(!saved||savedProfileSignature(saved)!==signature)throw new Error("Saved profile changed; reopen Edit.");
+     return upsertProfile(current,{...saved,mode});
+    });guard();
+    return {saved:true,scope,name,mode,active:"unchanged",sessionProfile:"unchanged"};
+   }
    const role=target.slice("Role: ".length),picked=await pickSavedRoute(ctx,name,guard);
    if(!picked.route)return picked;
    const route=picked.route;
@@ -1805,7 +2412,124 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     ctx.ui.notify(message,"info");return message;
    }catch(error){ctx.ui.notify(`ASEN skill registry refresh failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd));
+  registerParallelWorktreeCommand(register,{
+   journalFile:path.join(home(),".asen","parallel-todo-worktrees.json"),
+   sessionLinksFile:path.join(home(),".asen","parallel-worktree-sessions.json"),
+   planClaimsFile:path.join(home(),".asen","parallel-child-plan-claims.json"),
+   observationFile:path.join(home(),".asen","parallel-worker-observations.json"),
+   supervisorClaimsFile:path.join(home(),".asen","parallel-parent-supervisor-claims.json"),
+   ...(agentRuntimePromise&&taskAgentLinks?{
+    loadChildAgentRecords:async identity=>(await agentRuntimePromise).list(identity),
+    loadChildTaskAgentLinks:async identity=>taskAgentLinks.list(identity)
+   }:{}),
+   planChildTodo:async(input,context)=>preparePlan(input,context as CommandContext,false,true),
+   childProfiles:async identity=>profileLayer(identity),
+   ...(agentRuntimePromise&&todoStorePromise&&taskAgentLinks?{
+    launchChildWorker:async(unit,confirm,validateParent)=>{
+     await validateParent();
+     const identity={sessionId:unit.childSessionId,projectId:unit.childProjectId};
+     const [todos,agents]=await Promise.all([todoStorePromise,agentRuntimePromise]);
+     // Native ASEN ODD dispatcher is the sole Writer admission and launch path.
+     // The parent controls confirmation, not the child agent identity or scope.
+     const result=await dispatchNextPlanTask({
+      todos,agents,links:taskAgentLinks,identity,
+      expectedTodoId:unit.childTodoId,
+      runtimeProfiles:await profileLayer(identity),
+      validateIdentity:async()=>{
+       await validateParent();
+       // A child identity is a previously persisted TUI attachment, NEVER
+       // an implicitly minted session or inherited source Writer grant.
+       const childRows=await todos.list(identity);
+       if(!childRows.some(t=>t.taskId===unit.childTodoId&&
+        t.current.sessionId===identity.sessionId&&
+        sameWorkspaceIdentityPath(t.current.projectId,identity.projectId)))
+        throw new Error("Child ODD Todo identity changed before Pi dispatch");
+       await validateParent();
+      },
+      confirm:async task=>{
+       await validateParent();
+       const accepted=await confirm(task);
+       await validateParent();
+       return accepted===true;
+      }
+     });
+     if(result.status==="dispatched"&&result.role==="worker"&&
+      result.todoId===unit.childTodoId)return result;
+     return {status:"blocked" as const,reason:result.status==="blocked"?
+      result.reason:"Pi child dispatcher did not start the exact authorized Worker"};
+    }
+   }:{}),
+   ...(todoStorePromise?{loadTodos:async identity=>(await todoStorePromise).list(identity)}:{}),
+   ...(agentRuntimePromise?{loadChildAgents:async identity=>(await agentRuntimePromise).list(identity)}:{})
+  });
+  const fixJournal=new JudgmentFixProposalJournal(path.join(home(),".asen","judgment-fix-proposals.json"));
+  const review=registerOrdinaryReviewCommand(register,createNativeRddControl(dependencies.nativeRdd),async(context,lens)=>{
+   const sessionId=context.sessionManager.getSessionId(),projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+   const target=lens==="jd-judge-a"||lens==="jd-judge-b"||lens==="jd-fix-agent"?lens:`review-${lens}` as const;
+   return resolveAgentProfileTarget(await profileLayer({sessionId,projectId}),target).choice;
+  },todoStorePromise?async context=>{
+   const manager=context.sessionManager,sessionId=manager.getSessionId(),
+    projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+   const rows=await (await todoStorePromise).list({sessionId,projectId});
+   if(manager.getSessionId()!==sessionId||
+    path.normalize(realpathSync(path.resolve(context.cwd)))!==projectId||
+    context.signal?.aborted)throw new Error("ODD review session changed during Todo retrieval");
+   return rows;
+  }:undefined,{
+   record:async(context,proposal)=>{
+    const manager=context.sessionManager,sessionId=manager.getSessionId(),
+     projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+    if(proposal.sessionId!==sessionId||
+     !sameWorkspaceIdentityPath(proposal.repositoryRoot,projectId)||
+     context.signal?.aborted)
+     throw new Error("Fix proposal belongs to another Pi session or Git candidate");
+    const row=await fixJournal.record(proposal);
+    if(manager.getSessionId()!==sessionId||
+     !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+     context.signal?.aborted)
+     throw new Error("Fix proposal session changed while persisting");
+    return {id:row.id};
+   },
+   list:async context=>{
+    const manager=context.sessionManager,sessionId=manager.getSessionId(),
+     projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+    const rows=await fixJournal.list({sessionId,projectId});
+    if(manager.getSessionId()!==sessionId||
+     !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+     context.signal?.aborted)throw new Error("Fix proposal session changed while reading");
+    return rows;
+   },
+   plan:async(context,raw,source)=>{
+    const manager=context.sessionManager,sessionId=manager.getSessionId(),
+     projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+    if(context.signal?.aborted)throw new Error("Fix ODD planning was cancelled");
+    const existing=(await fixJournal.list({sessionId,projectId}))
+     .find(row=>row.id===source.proposalId);
+    if(context.sessionManager!==manager||manager.getSessionId()!==sessionId||
+     !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+     context.signal?.aborted)
+     throw new Error("Fix ODD planning scope changed while reading the source proposal");
+    if(!existing||existing.requiredAction!=="new-odd-plan"||
+     existing.candidateTreeIdentity!==source.treeIdentity)
+     throw new Error("Fix ODD source proposal is unavailable or in dispute");
+    inspectStoredFixSourceTree(projectId,existing.paths,source.treeIdentity);
+    const result=await preparePlan(raw,context as unknown as CommandContext,false,true,source);
+    if(manager.getSessionId()!==sessionId||
+     !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+     context.signal?.aborted)
+     throw new Error("Fix ODD session changed; inspect saved Todos before any retry");
+    return result;
+   }
+  },todoStorePromise?async context=>{
+   const manager=context.sessionManager,sessionId=manager.getSessionId(),
+    projectId=path.normalize(realpathSync(path.resolve(context.cwd)));
+   if(context.signal?.aborted)throw new Error("Fix ODD archived read was cancelled");
+   const rows=await (await todoStorePromise).archived({sessionId,projectId});
+   if(manager.getSessionId()!==sessionId||
+    !sameWorkspaceIdentityPath(path.normalize(realpathSync(path.resolve(context.cwd))),projectId)||
+    context.signal?.aborted)throw new Error("Fix ODD archived session changed during retrieval");
+   return rows;
+  }:undefined);
   // Public work is ODD-only. Legacy selection/recovery remains in lifecycle modules,
   // not a product command or an implicit conversion into fresh write authority.
   return Object.freeze({review,startSession,deriveOddExecutionContract,trackOddTask,resumeOddTask,appendOddTaskEvent,decideLifecycleApplicability});
@@ -1825,26 +2549,50 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
  const permissionSession=dependencies.permissionSession??new AsenPermissionSession();
  const autoPermission=new AsenAutoPermissionReviewer(()=>pi.getAllTools?.()??[]);
  const autoReview=dependencies.autoPermissionReview??autoPermission.review.bind(autoPermission);
- pi.on("input",(event,ctx)=>autoPermission.capture(event,ctx));
+ const delegationTurn=new DelegationTurnLatch();
+ // La guía y el guardia deben compartir la misma captura del turno, incluso
+ // si el perfil del proyecto cambia antes de la primera herramienta.
+ const resolveParentDelegationMode:NonNullable<AsenExtensionDependencies["resolveParentDelegationMode"]>=async ctx=>{
+   const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd;
+   if(!sessionId||!cwd)throw new Error("No active Pi session for delegation authority");
+   const projectId=await canonical(cwd);
+   const verify=async()=>{
+    if(ctx.signal?.aborted||ctx.sessionManager?.getSessionId?.()!==sessionId||
+       ctx.cwd!==cwd||await canonical(ctx.cwd)!==projectId)
+     throw new Error("Profile session changed");
+   };
+   return delegationTurn.mode({sessionId,projectId},async()=>{
+    const file=dependencies.profilesFile??path.join(dependencies.homeDir?.()??homedir(),".asen","profiles.json");
+    const partition=await canonicalProfilePartition(file);
+    const captured=await readSessionProfile(partition,{sessionId,projectId});
+    const global=captured?.file??await readProfilesFile(file);
+    const project=await readProfilesFile(path.join(projectId,".asen","profiles.json"));
+    const layers:ProfileLayer=captured?.source==="explicit-session"?{session:global,project}:{global,project};
+    return resolveRuntimeDelegationMode(layers).mode;
+   },verify);
+ };
+ pi.on("input",(event,ctx)=>{delegationTurn.nextTurn();autoPermission.capture(event,ctx);});
  pi.on("tool_call",createPrimaryToolPolicyHandler({
   getMode:ctx=>permissionSession.mode(ctx),
-  modeEpoch:()=>permissionSession.epoch,
+  getDelegationMode:resolveParentDelegationMode,
+  modeEpoch:()=>`${permissionSession.epoch}:${delegationTurn.epoch}`,
   reviewAuto:autoReview,
   protectedStateDirs:[path.join(dependencies.homeDir?.() ?? homedir(),".asen")],
  }));
  const commandNames=ASEN_COMMAND_CATALOG.filter(command=>command.implemented&&command.owner!=="extensions/authority.ts").map(command=>command.name);
  const toolNames=[...ALL_INTERACTION_TOOL_NAMES,ASEN_CODEGRAPH_TOOL_NAME,ASEN_PLAN_REQUEST_TOOL,...ASEN_SESSION_TOOL_NAMES,...(dependencies.enableAgentRuntime===false?[]:ASEN_AGENT_TOOL_NAMES),...(dependencies.enableTodoRuntime===false?[]:ASEN_TODO_TOOL_NAMES),...(dependencies.enableMemoryRuntime===false&&!dependencies.memoryStoreFactory?[]:ASEN_MEMORY_TOOL_NAMES)];
- let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext)=>Promise<void>)|undefined;
- pi.on("session_start",async(_event,ctx)=>{
+ let attempted=false,registrationsReady=false,generation=0,sessionStart:((context:CommandContext,event?:{reason?:unknown})=>Promise<void>)|undefined;
+ pi.on("session_start",async(event,ctx)=>{
+  delegationTurn.nextTurn();
   autoPermission.revoke();
-  if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx);}return;}
+  if(attempted){if(registrationsReady){validatePiExecutionContext(ctx);await sessionStart?.(ctx,event);}return;}
   attempted=true;
   const token=++generation;let publicWrites=0;
   try{
    validatePiExecutionContext(ctx);
    // Pi's public inventory methods can exist before their runtime is initialized; read them only here.
    validatePiRegistrationCollisions(pi,commandNames,toolNames);
-   const facade=createAsenExtension({...dependencies,permissionSession,autoPermissionReview:autoReview,
+   const facade=createAsenExtension({...dependencies,permissionSession,resolveParentDelegationMode,autoPermissionReview:autoReview,
     autoPermissionStatus:()=>autoPermission.status(),backgroundExecutor,enableAgentRuntime:dependencies.enableAgentRuntime??true,enableTodoRuntime:dependencies.enableTodoRuntime??true,enableWorkspaceRuntime:dependencies.enableWorkspaceRuntime??true,enableMemoryRuntime:dependencies.enableMemoryRuntime??true,deferSessionStart:true})({
     on:(event,handler)=>pi.on(event as any,(...args:any[])=>{
      if(token!==generation||!registrationsReady)return undefined;
@@ -1878,7 +2626,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
    });
    registrationsReady=true;
    sessionStart=facade.startSession;
-   await sessionStart(ctx);
+   await sessionStart(ctx,event);
   }catch(error){
    registrationsReady=false;
    if(publicWrites===0){attempted=false;generation++;}

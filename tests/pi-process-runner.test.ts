@@ -370,7 +370,7 @@ test("Pi RPC adapter supplies selected routes as native Pi flags",async()=>{
  assert.match(response.args[2],/[\\/]asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/);
  assert.deepEqual([response.args[0],response.args[1],...response.args.slice(3)],["--no-extensions","--extension","--no-skills","--tools","read",...paths.flatMap(path=>["--skill",path])]);
 });
-test("workspace tool overlay is applied after role selection and before Pi launch",async t=>{
+test("workspace tool overlay cannot advertise tools denied by Pi authority",async t=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
  t.after(()=>rm(d,{recursive:true,force:true}));
  await mkdir(join(d,".pi","gentle-ai"),{recursive:true});
@@ -378,7 +378,23 @@ test("workspace tool overlay is applied after role selection and before Pi launc
  const r=await runner(p).run({id:"overlay",role:"explorer",prompt:"inspect",repository:d});
  assert.equal(r.ok,true,r.output);
  const args=JSON.parse(r.output.trim().split(/\r?\n/).at(-1)!).args as string[];
- assert.equal(args[args.indexOf("--tools")+1],"grep");
+ assert.ok(args.includes("--no-tools"),"La retirada de read no permite anunciar grep");
+ assert.equal(args.includes("--tools"),false);
+ assert.equal(args.includes("grep"),false);
+});
+test("read-only Pi conserva read pero rechaza bash y herramientas añadidas por un complemento",async t=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ await mkdir(join(d,".pi","gentle-ai"),{recursive:true});
+ await writeFile(join(d,".pi","gentle-ai","tools.json"),JSON.stringify({
+  add:["bash","grep","read"],remove:[]
+ }));
+ const result=await runner(p).run({id:"overlay-denegado",role:"explorer",prompt:"Solo lectura",repository:d});
+ assert.equal(result.ok,true,result.output);
+ const args=JSON.parse(result.output.trim().split(/\r?\n/).at(-1)!).args as string[];
+ assert.equal(args[args.indexOf("--tools")+1],"read");
+ assert.equal(args.includes("bash"),false);
+ assert.equal(args.includes("grep"),false);
 });
 test("workspace overlay removing every role tool emits no-tools",async t=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,args:process.argv.slice(2)}));});');
@@ -409,6 +425,18 @@ test("Pi runner exposes bounded tool lifecycle observations without raw tool dat
   {type:"tool_execution_end",pid:0,toolName:"read",toolCallId:"call-1",isError:false},
  ]);
 });
+test("Pi deja de publicar eventos en cuanto un observador solicita cancelar",{timeout:20_000},async()=>{
+ const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());process.stdout.write([{type:"tool_execution_start",toolName:"read",toolCallId:"primero"},{type:"tool_execution_end",toolName:"read",toolCallId:"primero",isError:false},{type:"response",id:f.id,success:true},{type:"agent_end"}].map(JSON.stringify).join("\\n")+"\\n");});');
+ const controller=new AbortController(),events:string[]=[];
+ const result=await runner(p,{timeoutMs:5_000,onToolExecution:event=>{
+  events.push(event.type);
+  if(events.length===1)controller.abort();
+ }}).run({id:"sin-eventos-tardios",role:"explorer",prompt:"prueba",repository:d},controller.signal);
+ assert.equal(result.ok,false);
+ assert.match(result.output,/cancelled/u);
+ assert.deepEqual(events,["tool_execution_start"],"el segundo evento no debe publicarse tras la cancelación");
+});
+
 test("read-only Pi runner fails closed when a model attempts a tool",{timeout:process.platform==="win32"?45_000:5_000},async t=>{
  const marker=join(tmpdir(),`asen-denied-tool-${process.pid}-${Date.now()}`);t.after(()=>rm(marker,{force:true}));
  const {d,p}=await fixture(`import {writeFileSync} from "node:fs";const marker=${JSON.stringify(marker)};let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{JSON.parse(x.trim());console.log(JSON.stringify({type:"tool_execution_start",toolName:"write",toolCallId:"forbidden"}));setTimeout(()=>writeFileSync(marker,"tool side effect"),1500);});`);
@@ -503,6 +531,10 @@ test("read-only Pi roles do not receive restricted writer guidance",async()=>{
 test("organic writer reaches Pi adapter through one exact Dispatcher receiver without SDD",async t=>{
  const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,success:true,message:f.message,args:process.argv.slice(2),authority:JSON.parse(process.env.ASEN_PI_AUTHORITY)}));});');
  t.after(()=>rm(d,{recursive:true,force:true}));
+ await mkdir(join(d,".pi","gentle-ai"),{recursive:true});
+ await writeFile(join(d,".pi","gentle-ai","tools.json"),JSON.stringify({
+  add:["bash","grep","read","edit","write"],remove:[]
+ }));
  await mkdir(join(d,"src"),{recursive:true});await writeFile(join(d,"src/a"),"fixture\n");await assertOwnedFixturePath(d);execFileSync("git",["-C",d,"init","--template=","-q"]);execFileSync("git",["-C",d,"config","--local","user.name","ASEN tests"]);execFileSync("git",["-C",d,"config","--local","user.email","asen-tests@example.invalid"]);execFileSync("git",["-C",d,"add","."]);execFileSync("git",["-C",d,"commit","-qm","fixture"]);
  const {issueOddDecision}=await import("./helpers/odd-routing.js"),{buildOrchestrationPlan}=await import("../src/orchestration/orchestrator.js"),{decideLifecycleApplicability}=await import("../src/lifecycle/applicability.js"),{issueOrganicWriterAdmission}=await import("../src/lifecycle/skill-lifecycle.js");
  const candidate={id:"organic",repository:d,revision:execFileSync("git",["-C",d,"rev-parse","HEAD"],{encoding:"utf8"}).trim(),createdAt:"now"},decision=issueOddDecision({taskId:"organic",repository:d,paths:["src/a"],writes:[{path:"src/a",changeKind:"behavior"}]});
@@ -564,23 +596,24 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
  for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(join(root,source),target);}
  await writeFile(p,`import {writeFileSync} from "node:fs";import {resolve} from "node:path";
-const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true};let buffer="",turn=0,commands=[];
+const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true},initialSuccess=${options.initialSuccess===true};let buffer="",turn=0,commands=[],stateReady=false;
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands}));
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
- if(request.type==="get_state"){emit({type:"response",id:request.id,command:"get_state",success:true,data:{model:{provider:"provider",id:"primary"},thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}});continue;}
+ if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:stateModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
  if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
  if(request.type==="set_thinking_level"){emit({type:"response",id:request.id,command:"set_thinking_level",success:!refuseThinking,...(refuseThinking?{error:"PRIVATE_THINKING_REJECTION"}:{})});continue;}
  if(request.type==="prompt"){
+  if(stateRequired&&!stateReady){emit({type:"response",id:request.id,command:"prompt",success:false});emit({type:"agent_end"});continue;}
   turn++;
   const reply={type:"response",id:request.id,command:"prompt",success:turn===1||!rejectContinuation};
-  if(turn===1){emit(reply);const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}
+  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"respuesta de prueba completada"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
   else if(coalesceSecondTurn){
    const records=[reply];
    if(duplicateContinuationResponse)records.push({...reply});
@@ -595,6 +628,98 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
  }});process.stdin.on("end",()=>process.exit(0));`);
  return {d,p,log};
 }
+
+test("T06: el prompt se envía solo después de recibir get_state del mismo Pi",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({stateDelayMs:80,stateRequiredBeforePrompt:true,initialSuccess:true,
+  stateModel:{provider:"nvidia",id:"nvidia/nemotron-3.5-lightning-30b-a3b"}});
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ const observations:unknown[]=[],child=runner(p,{timeoutMs:process.env.CI==="true"?10_000:5_000,
+  requireChildModelBeforePrompt:true,noTools:true});
+ child.subscribeChildSelection(observation=>observations.push(observation));
+ const result=await child.run({id:"seleccion-pi",role:"explorer",prompt:"Prueba sin herramientas",
+  repository:d,model:"nvidia/nemotron-3.5-lightning-30b-a3b"});
+ assert.equal(result.ok,true,result.output);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.deepEqual(trace.commands.slice(0,3).map((command:{type:string})=>command.type),
+  ["get_commands","get_state","prompt"]);
+ assert.equal(observations.length,1);
+ assert.deepEqual((observations[0] as {model:unknown}).model,
+  {provider:"nvidia",id:"nvidia/nemotron-3.5-lightning-30b-a3b"});
+});
+
+test("T06: cancelar durante la selección o antes del envío no llama al modelo",async t=>{
+ for(const mode of ["inmediata","en-cola"] as const){
+  const {d,p,log}=await fallbackRpcFixture({
+   initialSuccess:true,stateRequiredBeforePrompt:true
+  });
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const controller=new AbortController(),seen:unknown[]=[];
+  const child=runner(p,{timeoutMs:process.env.CI==="true"?10_000:5_000,
+   requireChildModelBeforePrompt:true,noTools:true});
+  child.subscribeChildSelection(observation=>{
+   seen.push(observation);
+   if(mode==="inmediata")controller.abort();
+   else queueMicrotask(()=>controller.abort());
+  });
+  const result=await child.run({
+   id:"seleccion-cancelada",role:"explorer",prompt:"No se debe enviar",
+   repository:d,model:"provider/primary"
+  },controller.signal);
+  assert.equal(result.ok,false,"Una selección cancelada no se acepta");
+  assert.match(result.output,/cancelled/u);
+  assert.equal(seen.length,1,"Se recibió get_state del mismo proceso");
+  const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.deepEqual(trace.commands.map((command:{type:string})=>command.type),
+   ["get_commands","get_state"],
+   "No se puede enviar prompt ni gastar proveedor después de cancelar");
+ }
+});
+
+test("T06: selección errónea o get_state rechazado impiden enviar el prompt",async t=>{
+ for(const options of [
+  {stateModel:{provider:"otro",id:"nemotron-3.5-lightning-30b-a3b"}},
+  {stateModel:{provider:"nvidia",id:"otro-modelo"}},
+  {stateAccepted:false}
+ ]){
+  const {d,p,log}=await fallbackRpcFixture(options);
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const child=runner(p,{timeoutMs:process.env.CI==="true"?10_000:5_000,
+   requireChildModelBeforePrompt:true,noTools:true});
+  child.subscribeChildSelection(()=>{});
+  const result=await child.run({id:"modelo-rechazado",role:"explorer",prompt:"No debe ejecutarse",
+   repository:d,model:"nvidia/nemotron-3.5-lightning-30b-a3b"});
+  assert.equal(result.ok,false,result.output);
+  assert.match(result.output,/selection was not confirmed before prompt/u);
+  const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.deepEqual(trace.commands.map((command:{type:string})=>command.type),
+   ["get_commands","get_state"]);
+ }
+});
+test("T06: sin observador Pi no se inicia el ensayo de modelo",async t=>{
+ const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ const result=await runner(p,{requireChildModelBeforePrompt:true,noTools:true}).run({
+  id:"sin-observador",role:"explorer",prompt:"No debe ejecutarse",repository:d,model:"nvidia/modelo"});
+ assert.equal(result.ok,false);
+ assert.match(result.output,/requires a selected model and an identified child observer/u);
+ await assert.rejects(readFile(log,"utf8"),{code:"ENOENT"});
+});
+
+test("Pi sin alternativas no presenta errores reales del proveedor como ejecución correcta",async t=>{
+ for(const category of ["rate_limit","context_length"] as const){
+  const {d,p,log}=await fallbackRpcFixture({category});
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const result=await runner(p,{timeoutMs:process.env.CI==="true"?10_000:5_000}).run({
+   id:"pi-error-sin-alternativa",role:"explorer",prompt:"Consultar sin escribir",
+   repository:d,model:"provider/primary"
+  });
+  assert.equal(result.ok,false,"El código de salida 0 no valida un error terminal del proveedor");
+  assert.equal(result.output,"pi assistant failed: "+category,
+   "Solo se informa la categoría controlada, nunca datos privados del proveedor");
+  const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.deepEqual(trace.commands.map((row:{type:string})=>row.type),
+   ["get_commands","prompt"],"La corrección no repite solicitudes ni cambia el modelo");
+ }
+});
 
 for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undefined] as const){
  test(`effort runtime parity scripted args RPC and child selection preserve ${thinking??"omission"}`,async t=>{
@@ -615,7 +740,7 @@ for(const thinking of ["off","minimal","low","medium","high","xhigh","max",undef
 test("effort runtime parity rejects invalid args and drops invalid child effort",async t=>{
  for(const thinking of ["extreme","HIGH","inherit","",null,7]){
   assert.throws(()=>piRuntimeRouteArgs({thinking:thinking as import("../src/runtime/lifecycle/profiles.js").Thinking}),/Invalid routed Pi thinking/);
-  const {d,p}=await fallbackRpcFixture({selectionThinking:thinking});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],child=runner(p,{timeoutMs:5000});child.subscribeChildSelection(value=>seen.push(value));
+  const {d,p}=await fallbackRpcFixture({selectionThinking:thinking,initialSuccess:true});t.after(()=>rm(d,{recursive:true,force:true}));const seen:unknown[]=[],child=runner(p,{timeoutMs:5000});child.subscribeChildSelection(value=>seen.push(value));
   const result=await child.run({id:"invalid-observation",role:"explorer",prompt:"inspect",repository:d});assert.equal(result.ok,true,result.output);assert.deepEqual(seen,[]);
  }
 });
@@ -677,7 +802,7 @@ test("fallback-thinking-refusal omits an effort level rejected by RPC",async t=>
 });
 
 test("fallback-child preserves the ordinary no-chain process path",async t=>{
- const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-no-chain",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary"});assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-no-chain",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary"});assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
 });
 
 test("fallback-child does not continue for a noneligible final failure",async t=>{
@@ -686,4 +811,46 @@ test("fallback-child does not continue for a noneligible final failure",async t=
 
 test("fallback-child aborts before settled without sending a continuation RPC",async t=>{
  const {d,p,log}=await fallbackRpcFixture({settleDelayMs:250});t.after(()=>rm(d,{recursive:true,force:true}));const controller=new AbortController(),pending=runner(p,{timeoutMs:10_000}).run({id:"fallback-abort",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}},controller.signal);for(let i=0;i<100;i++){try{const trace=JSON.parse(await readFile(log,"utf8"));if(trace.commands.some((command:any)=>command.type==="prompt"))break;}catch{/* Wait for the scripted child to create its trace. */}await new Promise(resolve=>setTimeout(resolve,5));}controller.abort();const result=await pending;assert.equal(result.ok,false);assert.match(result.output,/cancelled/u);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.some((command:any)=>command.type==="set_model"),false);
+});
+
+test("T06 rechaza one-shot en agente de lectura sin lanzar una operación Writer",async()=>{
+ const {d,p}=await fixture('console.log(JSON.stringify({type:"response",id:"falso",success:true}));');
+ const result=await runner(p,{oneShotWritePath:"solo.mjs"}).run({
+  id:"t06-solo-lectura",role:"explorer",prompt:"leer",repository:d
+ });
+ assert.equal(result.ok,false);
+ assert.match(result.output,/one-shot.*Worker/u);
+});
+
+
+test("T06 conserva eventos sanitizados aunque Pi reemplace la salida al fallar",async t=>{
+ const privateData="NVIDIA_API_KEY=clave-que-jamas-debe-guardarse";
+ const scenario=[
+  'let input="";process.stdin.on("data",chunk=>input+=chunk);',
+  'process.stdin.on("end",()=>{',
+  'const req=JSON.parse(input.trim());',
+  'console.log(JSON.stringify({type:"response",id:req.id,command:"prompt",success:true}));',
+  'console.log(JSON.stringify({type:"message_end",message:{role:"assistant",stopReason:"error",content:[{type:"text",text:'+JSON.stringify(privateData)+'}]}}));',
+  'console.log(JSON.stringify({type:"agent_settled"}));',
+  'process.exitCode=1;',
+  '});'
+ ].join("\n");
+ const {d,p}=await fixture(scenario);
+ t.after(()=>rm(d,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+ const safeEvents:Array<{type:string;stopReason?:string;textBlocks?:number}>=[];
+ const request={id:"t06-observacion-fallida",role:"reviewer" as const,prompt:"revisar",repository:d};
+ const failed=await runner(p,{noTools:true,timeoutMs:5_000,
+  onNativeReviewEvent:event=>safeEvents.push(event)}).run(request);
+ assert.equal(failed.ok,false);
+ assert.match(failed.output,/pi process exited with code 1/u);
+ assert.deepEqual(safeEvents,[
+  {type:"assistant_end",stopReason:"error",textBlocks:1},
+  {type:"agent_settled"}
+ ]);
+ assert.doesNotMatch(failed.output,/NVIDIA_API_KEY|clave-que-jamas/u);
+ assert.doesNotMatch(JSON.stringify(safeEvents),/NVIDIA_API_KEY|clave-que-jamas/u);
+ const outside:Array<unknown>=[];
+ await runner(p,{noTools:false,timeoutMs:5_000,
+  onNativeReviewEvent:event=>outside.push(event)}).run({...request,id:"t06-sin-restriccion-de-lectura"});
+ assert.deepEqual(outside,[],"No se anuncia un revisor sin modo noTools");
 });

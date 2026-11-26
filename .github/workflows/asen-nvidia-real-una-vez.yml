@@ -1,0 +1,146 @@
+name: NVIDIA real ASEN sin validaciones manuales (una vez)
+# Autorización expresa del propietario. SOLO el push exacto con mensaje único
+# y modificación de este archivo activa la prueba. Nunca en PR ni en CI normal.
+# Ejecución única posterior a la prueba HTTP positiva: dos sesiones Pi sin escritura.
+on:
+  push:
+    branches:
+      - feat/flujo-de-agentes-20261115
+    paths:
+      - .github/workflows/asen-nvidia-real-una-vez.yml
+permissions:
+  contents: read
+concurrency:
+  group: asen-nvidia-real-una-vez-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  preparar:
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.actor == 'asenbanskaliev' &&
+      github.ref == 'refs/heads/feat/flujo-de-agentes-20261115' &&
+      github.run_attempt == 1 &&
+      github.run_id == 44790981792 &&
+      github.sha == '08c484560fac6e0d599e3872e366993c1e07cba0' &&
+      github.event.head_commit.message == 'ci(asen): ejecutar prueba única NVIDIA autorizada'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ASEN_NVIDIA_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_NVIDIA_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      ASEN_NVIDIA_COST_ACK: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Confirmar permiso único del propietario y candidato exacto
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_NVIDIA_EXPECTED_SHA"
+          node scripts/autorizar-nvidia-una-vez.mjs
+      - name: Probar código antes de gastar en proveedor
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          node --test tests/nvidia-una-vez-guard.test.mjs
+          node --import tsx --test tests/t06-pi-receipt-validator.test.ts tests/t06-read-only-git-fixture.test.ts
+          test -z "$(git status --porcelain=v1)"
+  nvidia-api:
+    needs: [preparar]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      ASEN_NVIDIA_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_NVIDIA_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      ASEN_NVIDIA_COST_ACK: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Dos peticiones reales NVIDIA limitadas y sin reintentos
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_NVIDIA_PROBE_REPORT: ${{ runner.temp }}/asen-nvidia-real/resultado-api.json
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_NVIDIA_EXPECTED_SHA"
+          node scripts/autorizar-nvidia-una-vez.mjs
+          test -n "$NVIDIA_API_KEY"
+          timeout 180s node scripts/t06-nvidia-free-api-probe.mjs
+      - name: Conservar informe de respuestas HTTP sin claves
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-nvidia-api-una-vez-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-nvidia-real/resultado-api.json
+          if-no-files-found: warn
+          retention-days: 14
+  nvidia-pi:
+    needs: [nvidia-api]
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'push' &&
+      github.run_attempt == 1
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ASEN_NVIDIA_EXPECTED_SHA: ${{ github.sha }}
+      ASEN_NVIDIA_HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+      ASEN_NVIDIA_COST_ACK: "1"
+      ASEN_T06_MODEL: nvidia/nemotron-3.5-lightning-30b-a3b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Preparar dos sesiones Pi de solo lectura
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ASEN_NVIDIA_EXPECTED_SHA"
+          node scripts/autorizar-nvidia-una-vez.mjs
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install -g --ignore-scripts @earendil-works/pi-coding-agent@1.2.0
+          test "$(pi --version | tr -d '\r')" = "1.2.0"
+      - name: Validar dos agentes Pi reales con el mismo modelo NVIDIA
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-nvidia-real/resultado-pi.json
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-nvidia-real/pi-config
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          node scripts/autorizar-nvidia-una-vez.mjs
+          mkdir -p "$PI_CODING_AGENT_DIR" "$(dirname "$ASEN_NVIDIA_PI_REPORT")"
+          node scripts/t12-pi-retry-settings.mjs
+          timeout 280s node --import tsx scripts/t06-nvidia-pi-concurrent.ts
+      - name: Guardar las identidades y resultados Pi sin exponer textos privados
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: asen-nvidia-pi-una-vez-${{ github.sha }}-${{ github.run_id }}
+          path: ${{ runner.temp }}/asen-nvidia-real/resultado-pi.json
+          if-no-files-found: warn
+          retention-days: 14

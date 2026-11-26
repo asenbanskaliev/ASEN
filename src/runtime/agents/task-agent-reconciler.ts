@@ -85,6 +85,8 @@ export class TaskAgentTodoReconciler{
      "Read-only exploration completed with a saved result"):
     succeeded&&(task.plan?.role==="reviewer"||task.plan?.role==="verifier")?
      "Linked review result requires explicit user acceptance":
+    latest.state==="interrupted"?
+     "Linked agent was interrupted before completion; explicit review is required before continuing":
     task.plan?"Linked agent did not return a valid successful result; review before continuing":
      "Linked agent finished; independent verification is required before completing this Todo";
    try{await this.todos.update(task.taskId,identity,task.current.revision,nextState,reason);if(nextState==="blocked")blocked.push(task.taskId);}catch(error){

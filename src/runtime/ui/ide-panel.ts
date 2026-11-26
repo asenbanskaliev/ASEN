@@ -6,6 +6,7 @@ import {projectJobMetadata,jobInspectionLabel,isObservedActiveJob} from "../agen
 import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "../responsive-layout.js";
 import type {HostStatusProjection} from "./host-status-projection.js";
 import type {IntegrationProfileInspection} from "./integration-profile-inspection.js";
+import type {AgentFlowPanelObservation} from "./agent-flow-panel-source.js";
 
 /** Read-only Pi UI projection: never grants a role, launches an agent, or replays a message. */
 export const ASEN_PANEL_SECTIONS=["TODOS","JOBS","AGENTS","CHANGES","REVIEW","INTEGRATIONS"] as const;
@@ -13,9 +14,11 @@ export type AsenPanelSection=(typeof ASEN_PANEL_SECTIONS)[number];
 export interface AsenPanelSnapshot{
  readonly todos:readonly (TodoItem&{current:TaskEvent})[];
  readonly todosObserved?:boolean;
+ /** La lectura viva falló: nunca representar listas vacías como cero confirmado. */
+ readonly activityUnavailable?:boolean;
  readonly agents:readonly PublicAgentRecord[];
  readonly jobs:readonly BackgroundJobSnapshot[];
- readonly changes?:{readonly branch:string;readonly files:number};
+ readonly changes?:{readonly branch:string;readonly files:number;readonly lastInspected?:true};
  readonly profile?:string;
  readonly permission?:string;
  readonly model?:string;
@@ -28,6 +31,9 @@ export interface AsenPanelSnapshot{
  readonly subscription?:boolean;
  readonly integrationStates?:readonly string[];
  readonly review?:{readonly pending:number;readonly label?:string};
+ /** Optional bounded observation, absent is not evidence of zero work. */
+ readonly agentFlow?:AgentFlowPanelObservation;
+ readonly agentFlowUnavailable?:boolean;
 }
 const clean=(value:string,max=200)=>sanitizeTerminalText(value).replace(/\s+/gu," ").trim().slice(0,max);
 const fit=(value:string,width:number)=>truncateForTerminal(value,Math.max(1,width));
@@ -44,6 +50,8 @@ export const ASEN_PERMISSION_MODE_MEANINGS:Readonly<Record<string,string>>=Objec
  "super-yolo":"no routine permission prompts · sensitive-path and critical guards remain",
 });
 export function derivePanelReview(snapshot:AsenPanelSnapshot):{pending:number;known:boolean}{
+ // Un recibo de revisión anterior no demuestra que la lectura presente siga viva.
+ if(snapshot.activityUnavailable)return {pending:0,known:false};
  const explicit=snapshot.review?.pending;
  if(typeof explicit==="number"&&Number.isSafeInteger(explicit)&&explicit>=0)return {pending:explicit,known:true};
  if(snapshot.todosObserved!==true)return {pending:0,known:false};
@@ -51,12 +59,28 @@ export function derivePanelReview(snapshot:AsenPanelSnapshot):{pending:number;kn
   todo.current.state==="blocked"&&todo.current.reason==="Linked review result requires explicit user acceptance").length,known:true};
 }
 function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
+ if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"))return "unavailable";
+ const trustedFlow=snapshot.agentFlowUnavailable?undefined:snapshot.agentFlow;
+ const linked=trustedFlow?.overview.totalTasks??0;
+ const childRunning=trustedFlow?.overview.tasks.filter(t=>t.workerObserved==="active").length??0;
+ // Desconocer el estado de los hijos no equivale a observar cero hijos.
+ const childUnknown=snapshot.agentFlowUnavailable===true;
  switch(section){
-  case "TODOS":return snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length;
+  case "TODOS":return snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length+
+   (childUnknown?" local · hijos no disponibles":linked?" local · "+linked+" linked":"");
   case "JOBS":return snapshot.jobs.filter(isObservedActiveJob).length+" running";
-  case "AGENTS":return snapshot.agents.filter(a=>a.state==="running").length+" running";
-  case "CHANGES":return snapshot.changes?snapshot.changes.files+" files":"unavailable";
-  case "REVIEW":{const review=derivePanelReview(snapshot);return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";}
+  case "AGENTS":return snapshot.agents.filter(a=>a.state==="running").length+
+   (childUnknown?" local activos · hijos no disponibles":linked?" local running · "+childRunning+" child observed":" running");
+  case "CHANGES":return (snapshot.changes?(snapshot.changes.lastInspected?"última consulta · ":"")+snapshot.changes.files+" files":"unavailable")+
+   (childUnknown?" · cambios hijos no disponibles":linked?" · "+linked+" linked worktree tasks":"");
+  case "REVIEW":{
+   const review=derivePanelReview(snapshot),children=trustedFlow?.overview.stages["manual-review-required"]??0;
+   const local=review.known?review.pending+" local":"unverified local";
+   if(childUnknown)return local+" · hijos no disponibles";
+   if(children)return (trustedFlow?.limited?"parcial · ":"")+local+" · "+children+" child needs review";
+   if(trustedFlow?.limited)return "parcial · "+local+" · revisión hijos parcial";
+   return review.known?(review.pending?review.pending+" needs review":"no pending results"):"unverified";
+  }
   case "INTEGRATIONS":return snapshot.integrationInspection?"observed":snapshot.integrationStates?.length?snapshot.integrationStates.length+" reported":"unknown";
  }
 }
@@ -68,22 +92,38 @@ function count(snapshot:AsenPanelSnapshot,section:AsenPanelSection):string{
 export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPanelSection,width=72,detail=false):readonly string[]{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const out:string[]=[];
+ // No combinar un error fresco de origen con observaciones anteriores de hijos.
+ const trustedFlow=snapshot.agentFlowUnavailable?undefined:snapshot.agentFlow;
+ if(snapshot.activityUnavailable&&(section==="TODOS"||section==="JOBS"||section==="AGENTS"||section==="REVIEW"))
+  return Object.freeze([fit("  Actividad no disponible · datos pendientes de nueva lectura",width)]);
  const itemLimit=detail?100:12,secondaryLimit=detail?100:8;
  switch(section){
   case "TODOS":{
    const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
-   if(!snapshot.todos.length)out.push("No tasks in this session");
+   if(!snapshot.todos.length)out.push(snapshot.agentFlowUnavailable?
+    "No hay tareas locales · estado de tareas hijas no disponible":trustedFlow?.overview.totalTasks?
+    "No local Todos · linked worktree tasks observed":"No tasks in this session");
    for(const item of open.slice(0,itemLimit)){
     const state=item.current.state==="succeeded"?"awaiting independent review":item.current.state;
     out.push(glyph(item.current.state)+" "+clean(item.title,240)+" ["+state+"]");
     if(item.current.state==="blocked"||item.current.state==="succeeded")
      out.push("  └ "+clean(item.current.reason||"Review required",200));
+    if(item.current.state==="succeeded"&&item.plan?.role==="worker")
+     out.push("  ↳ /asen-review todo "+clean(item.taskId,100)+" adaptive · consent required");
    }
    const done=snapshot.todos.filter(t=>t.current.state==="done").length;
    const cancelled=snapshot.todos.filter(t=>t.current.state==="cancelled").length;
    if(done)out.push("✓ "+done+" done");
    if(cancelled)out.push("✕ "+cancelled+" cancelled");
    if(open.length>itemLimit)out.push("… "+(open.length-itemLimit)+" more · /asen-todos");
+   const flow=trustedFlow;
+   if(flow?.overview.totalTasks){
+    out.push("Linked source Todos: "+flow.overview.totalTasks+
+     (flow.limited?" (latest worktree batches only)":""));
+    for(const task of flow.overview.tasks.slice(0,detail?12:3))
+     out.push("  ↳ "+clean(task.taskId,56)+" · "+task.stage+" · next "+task.nextAction);
+    out.push("Read-only source worktree flow · /asen-worktrees status");
+   }
    break;
   }
   case "JOBS":{
@@ -100,16 +140,48 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
   case "AGENTS":{
    const priority:Record<string,number>={interrupted:0,running:1,queued:2,failed:3,cancelled:4,completed:5};
    const agents=[...snapshot.agents].sort((a,b)=>(priority[a.state]??9)-(priority[b.state]??9)||b.updatedAt.localeCompare(a.updatedAt));
-   if(!agents.length)out.push("No agents · /asen-agents");
+   if(!agents.length)out.push(snapshot.agentFlowUnavailable?
+    "Sin agentes locales · estado de agentes hijos no disponible":trustedFlow?.overview.totalTasks?
+    "Sin agentes locales · tareas hijas vinculadas (ejecución sin acreditar)":"No agents · /asen-agents");
    for(const agent of agents.slice(0,secondaryLimit))out.push(glyph(agent.state)+" "+clean(agent.role,30)+" · "+agent.state+(agent.state==="interrupted"?" · inspect first":""));
    if(agents.length>secondaryLimit)out.push("… "+(agents.length-secondaryLimit)+" more · /asen-agents");
    // No real tokens/prices/model on the durable public agent record: never fabricate.
+   if(trustedFlow?.overview.totalTasks){
+    const flow=trustedFlow!.overview;
+    out.push("Worktree Workers: "+flow.tasks.filter(task=>task.workerObserved==="active").length+" active observed · "+
+     flow.stages["manual-review-required"]+" awaiting human review · "+
+     flow.stages.blocked+" blocked");
+    const queued=flow.tasks.filter(task=>task.workerObserved==="queued").length;
+    if(queued)out.push("Agentes hijos observados en cola: "+queued);
+    if(flow.stages["launch-unverified"])
+     out.push("Lanzamientos sin verificar: "+flow.stages["launch-unverified"]+
+      " · revisar registros e hijos · sin reintentos");
+    const pinned=flow.tasks.filter(task=>task.modelRequested!=="unknown");
+    if(pinned.length){
+     out.push("Requested child models: "+pinned.length+" · actual still unknown");
+     for(const task of pinned.slice(0,detail?6:2))
+      out.push("  ↳ "+clean(task.taskId,48)+" · requested "+clean(task.modelRequested,85)+" · actual unknown");
+    }
+    const attempts=flow.tasks.filter(task=>task.supervisorClaimed===true).length;
+    const collected=flow.tasks.filter(task=>task.receiptRecorded===true).length;
+    if(attempts)out.push("Supervisor attempts recorded: "+attempts+" tasks · no automatic retry");
+    if(collected)out.push("Collected Worker receipts: "+collected+" · human review required");
+    out.push("Worktree actual model: unknown (no authenticated model receipt)");
+   }
    break;
   }
   case "CHANGES":{
    const status=snapshot.changes;
-   out.push(status?("Git "+clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")):"Git state unavailable");
+   out.push(status?("Git "+(status.lastInspected?"última consulta (puede haber cambiado) · ":"")+
+    clean(status.branch,48)+" · "+(status.files?status.files+" files":"clean")):"Git state unavailable");
    out.push(status&&status.files>0?"Panel: CHANGES + Enter to pick a file and preview its diff · /asen-changes-view":"Inspect read-only diffs with /asen-changes-view");
+   if(snapshot.agentFlowUnavailable)out.push("Cambios de worktrees hijos: no disponibles · refrescar antes de revisar");
+   if(trustedFlow?.overview.totalTasks){
+    const flow=trustedFlow!.overview;
+    const changed=flow.tasks.filter(task=>task.changeEvidence!=="clean").length;
+    out.push("Linked worktrees: "+changed+"/"+flow.totalTasks+" with unverified changes or provenance");
+    out.push("Inspect and reconcile manually · /asen-worktrees review · no auto-merge");
+   }
    break;
   }
   case "REVIEW":{
@@ -118,12 +190,33 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
    // result still needs review; no request, candidate, acknowledgement or
    // human-read state is inferred here.
    const {pending,known}=derivePanelReview(snapshot);
-   out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:"No pending review results observed");
+   const childReviews=trustedFlow?.overview.stages["manual-review-required"]??0;
+   const partial=trustedFlow?.limited===true;
+   out.push(!known?"Review state unverified · /asen-review":pending?"Results awaiting review · "+pending:
+    childReviews||partial||snapshot.agentFlowUnavailable?"No pending local review results observed":"No pending review results observed");
+   if(childReviews)out.push("Linked child results awaiting human review: "+childReviews+" · /asen-worktrees review · no auto-merge");
+   if(partial)out.push("Linked child reviews: partial, latest batches only · /asen-worktrees review");
+   else if(snapshot.agentFlowUnavailable)out.push("Linked child reviews: unavailable · refresh before deciding");
+   out.push("Fix proposals: /asen-review fixes · read-only, no Writer authority");
    if(snapshot.review?.label)out.push(clean(snapshot.review.label,140));
    else if(pending)out.push(`${pending} stored Todo result${pending===1?"":"s"} awaiting review`);
+   const oddWorkers=snapshot.todos.filter(todo=>todo.current.state==="succeeded"&&todo.plan?.role==="worker");
+   if(oddWorkers.length){
+    out.push("ODD Workers awaiting inspection: "+oddWorkers.length+" · actual model unknown");
+    for(const todo of oddWorkers.slice(0,detail?8:3)){
+     out.push("  /asen-review todo "+clean(todo.taskId,100)+" adaptive · needs consent");
+     if(detail)out.push("  /asen-review todo "+clean(todo.taskId,100)+" 4r | judgment-day · new consent");
+    }
+    out.push("4R/JD: /asen-review workspace adaptive | judgment-day");
+    out.push("Fix findings require new /asen-plan and fresh Writer consent");
+   }
    break;
   }
   case "INTEGRATIONS":{
+   if(trustedFlow?.overview.totalTasks)
+    out.push("Cross-session ODD: linked flow observed · actual child model unknown");
+   else if(snapshot.agentFlowUnavailable)
+    out.push("Cross-session ODD: unavailable (no verified journal projection)");
    const inspection=snapshot.integrationInspection;
    if(inspection){
     const profiles=inspection.profiles,frozen=profiles.snapshot;
@@ -152,13 +245,13 @@ export function renderAsenPanelSection(snapshot:AsenPanelSnapshot,section:AsenPa
  }
  return Object.freeze(out.map(value=>fit("  "+value,width)));
 }
-export function renderAsenPanel(snapshot:AsenPanelSnapshot,width=72,collapsed:readonly AsenPanelSection[]=[]):readonly string[]{
+export function renderAsenPanel(snapshot:AsenPanelSnapshot,width=72,collapsed:readonly AsenPanelSection[]=[],detail=false):readonly string[]{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const lines:string[]=[];
  for(const section of ASEN_PANEL_SECTIONS){
   const open=!collapsed.includes(section);
   lines.push(fit((open?"▾ ":"▸ ")+section+" · "+count(snapshot,section),width));
-  if(open)lines.push(...renderAsenPanelSection(snapshot,section,width));
+  if(open)lines.push(...renderAsenPanelSection(snapshot,section,width,detail));
  }
  return Object.freeze(lines);
 }
@@ -172,29 +265,55 @@ export interface PanelLayoutResult{
  groups:readonly PanelSectionGroup[];
  loose:readonly number[];
 }
-export function renderAsenPanelWithLayout(snapshot:AsenPanelSnapshot,width=72,collapsed:readonly AsenPanelSection[]=[]):PanelLayoutResult{
+export function renderAsenPanelWithLayout(snapshot:AsenPanelSnapshot,width=72,collapsed:readonly AsenPanelSection[]=[],detail=false):PanelLayoutResult{
  if(!Number.isSafeInteger(width)||width<12||width>1000)throw new Error("Invalid ASEN panel width");
  const lines:string[]=[],groups:PanelSectionGroup[]=[],loose:number[]=[];
  for(const section of ASEN_PANEL_SECTIONS){
   const open=!collapsed.includes(section);
   const start=lines.length;
   lines.push(fit((open?"▾ ":"▸ ")+section+" · "+count(snapshot,section),width));
-  if(open)lines.push(...renderAsenPanelSection(snapshot,section,width));
+  if(open)lines.push(...renderAsenPanelSection(snapshot,section,width,detail));
   groups.push({section,start,end:lines.length});
  }
  return Object.freeze({lines:Object.freeze(lines),groups:Object.freeze(groups),loose:Object.freeze(loose)});
 }
 export function renderAsenWorkRow(snapshot:AsenPanelSnapshot,width=80):string|undefined{
+ // No reutilizar cuentas antiguas tras una lectura fallida de la sesión.
+ if(snapshot.activityUnavailable)return fit("! actividad no disponible · /asen-panel",width);
+ const trustedFlow=snapshot.agentFlowUnavailable?undefined:snapshot.agentFlow;
+ const childUnknown=snapshot.agentFlowUnavailable===true;
  const open=snapshot.todos.filter(t=>unfinishedTodo.has(t.current.state));
  const running=snapshot.agents.filter(a=>a.state==="running").length;
  const attention=snapshot.agents.filter(a=>a.state==="interrupted"||a.state==="failed").length;
  const jobs=snapshot.jobs.filter(isObservedActiveJob).length;
- if(!open.length&&!running&&!attention&&!jobs)return undefined;
+ const childActive=trustedFlow?.overview.tasks.filter(t=>t.workerObserved==="active").length??0;
+ const childQueued=trustedFlow?.overview.tasks.filter(t=>t.workerObserved==="queued").length??0;
+ const childLaunchUnverified=trustedFlow?.overview.stages["launch-unverified"]??0;
+ const childReview=trustedFlow?.overview.stages["manual-review-required"]??0;
+ const childBlocked=trustedFlow?.overview.stages.blocked??0;
+ if(!open.length&&!running&&!attention&&!jobs&&!childActive&&!childQueued&&
+  !childLaunchUnverified&&!childReview&&!childBlocked&&!childUnknown)return undefined;
  const parts:string[]=[];
- if(running)parts.push("◐ "+running+" agents");
+ if(childUnknown)parts.push("! hijos no disponibles");
+ // T11/T07: el estado más crítico debe quedar visible en ancho estrecho.
+ // Un Worker bloqueado no puede quedar detrás de uno activo o en cola.
+ if(childBlocked)parts.push("! "+childBlocked+" child tasks blocked");
+ if(childLaunchUnverified)parts.push("! "+childLaunchUnverified+" lanzamientos sin verificar");
  if(attention)parts.push("! "+attention+" inspect");
+ if(childReview)parts.push("◇ "+childReview+" child review pending");
+ if(running)parts.push("◐ "+running+" agents");
  if(jobs)parts.push("⧗ "+jobs+" jobs");
+ if(childActive)parts.push("◐ "+childActive+" child Workers observed");
+ if(childQueued)parts.push("○ "+childQueued+" hijos en cola");
  if(snapshot.todos.length)parts.push(snapshot.todos.filter(t=>t.current.state==="done").length+"/"+snapshot.todos.length+" todos");
+ if(childUnknown){
+  // Ante pérdida de hijos, conservar el aviso y el acceso al detalle aunque
+  // una terminal estrecha deba retirar los indicadores locales secundarios.
+  const candidate=()=> "▸ "+parts.join(" · ")+" · /asen-panel";
+  while(parts.length>1&&visibleWidth(candidate())>width)parts.pop();
+  if(visibleWidth(candidate())<=width)return candidate();
+  return fit(width>=24?"! hijos ? · /asen-panel":"! /asen-panel",width);
+ }
  return fit("▸ "+parts.join(" · ")+" · /asen-panel",width);
 }
 /** No unsupported runtime model, context, pricing or quota claims. */

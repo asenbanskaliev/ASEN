@@ -12,7 +12,7 @@ import {isThinking,type Thinking} from "./profiles.js";
 
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
 export type TodoPlanRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
-export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;}
+export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;fixSource?:Readonly<{proposalId:string;treeIdentity:string}>;}
 export interface TodoPlanDraft{title:string;requestId:string;dependsOn:readonly string[];description:string;plan:TodoPlanMetadata;}
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
@@ -47,7 +47,7 @@ const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&
 const identity=(v:unknown)=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function validPlan(value:unknown):value is TodoPlanMetadata{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
- const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),hasModel=Object.hasOwn(value,"model"),hasThinking=Object.hasOwn(value,"thinking"),hasCandidate=Object.hasOwn(value,"candidate"),hasCandidateRevision=Object.hasOwn(value,"candidateRevision"),hasWriteSurfaces=Object.hasOwn(value,"writeSurfaces"),hasAuthorizationBasis=Object.hasOwn(value,"writerAuthorizationBasis"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[]),...(hasModel?["model"]:[]),...(hasThinking?["thinking"]:[]),...(hasCandidate?["candidate"]:[]),...(hasCandidateRevision?["candidateRevision"]:[]),...(hasWriteSurfaces?["writeSurfaces"]:[]),...(hasAuthorizationBasis?["writerAuthorizationBasis"]:[])];
+ const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),hasModel=Object.hasOwn(value,"model"),hasThinking=Object.hasOwn(value,"thinking"),hasCandidate=Object.hasOwn(value,"candidate"),hasCandidateRevision=Object.hasOwn(value,"candidateRevision"),hasWriteSurfaces=Object.hasOwn(value,"writeSurfaces"),hasAuthorizationBasis=Object.hasOwn(value,"writerAuthorizationBasis"),hasFixSource=Object.hasOwn(value,"fixSource"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[]),...(hasModel?["model"]:[]),...(hasThinking?["thinking"]:[]),...(hasCandidate?["candidate"]:[]),...(hasCandidateRevision?["candidateRevision"]:[]),...(hasWriteSurfaces?["writeSurfaces"]:[]),...(hasAuthorizationBasis?["writerAuthorizationBasis"]:[]),...(hasFixSource?["fixSource"]:[])];
  if(!exact(value,keys)||!(["primary","explorer","worker","reviewer","verifier","clarifier"] as unknown[]).includes(value.role)||!Array.isArray(value.skillPaths)||value.skillPaths.some(p=>typeof p!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/u.test(p))||new Set(value.skillPaths).size!==value.skillPaths.length)return false;
  if(hasPriority&&(!Number.isSafeInteger(value.priority)||Number(value.priority)<1||Number(value.priority)>100))return false;
  if(hasModel&&(typeof value.model!=="string"||!value.model||value.model!==value.model.trim()||value.model.length>256||/[\u0000-\u001f\u007f]/u.test(value.model)))return false;
@@ -56,6 +56,15 @@ function validPlan(value:unknown):value is TodoPlanMetadata{
  if(hasCandidate){const candidate=value.candidate;if(!candidate||typeof candidate!=="object"||Array.isArray(candidate)||!exact(candidate,["id","repository","revision","createdAt"])||!identity(candidate.id)||!identity(candidate.repository)||typeof candidate.revision!=="string"||!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(candidate.revision)||typeof candidate.createdAt!=="string"||!Number.isFinite(Date.parse(candidate.createdAt)))return false;}
  if(hasWriteSurfaces){const surfaces=value.writeSurfaces;if(!Array.isArray(surfaces)||surfaces.length<1||surfaces.length>256||surfaces.some(surface=>typeof surface!=="string"||!surface||surface!==surface.trim()||surface.startsWith("/")||surface.includes("\\")||surface.includes(":")||surface.split("/").some(part=>!part||part==="."||part===".."))||new Set(surfaces).size!==surfaces.length)return false;}
  if(hasAuthorizationBasis){if(typeof value.writerAuthorizationBasis!=="string"||!value.writerAuthorizationBasis||value.writerAuthorizationBasis.length>16_384)return false;try{const basis=JSON.parse(value.writerAuthorizationBasis);if(!basis||typeof basis!=="object"||Array.isArray(basis)||Object.getPrototypeOf(basis)!==Object.prototype)return false;}catch{return false;}}
+ if(hasFixSource){
+  const source=value.fixSource;
+  if(value.role!=="worker"||!hasCandidate||!hasWriteSurfaces||!hasAuthorizationBasis||
+   !exact(source,["proposalId","treeIdentity"])||
+   typeof source.proposalId!=="string"||!/^[a-f0-9]{64}$/u.test(source.proposalId)||
+   typeof source.treeIdentity!=="string"||
+   !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(source.treeIdentity))
+   return false;
+ }
  const writerMetadata=hasCandidate||hasWriteSurfaces||hasAuthorizationBasis;if(writerMetadata&&(value.role!=="worker"||!hasCandidate||!hasWriteSurfaces||!hasAuthorizationBasis||!hasSelection||(value.skillSelection as SkillSelectionContext).phase!=="apply"))return false;
  if(!hasSelection)return value.role==="primary"||value.role==="clarifier";
  const selectionRaw=value.skillSelection;if(!selectionRaw||typeof selectionRaw!=="object"||Array.isArray(selectionRaw)||Object.getPrototypeOf(selectionRaw)!==Object.prototype)return false;const selection=selectionRaw as SkillSelectionContext,role=value.role as TodoPlanRole;
@@ -69,10 +78,17 @@ function validPlan(value:unknown):value is TodoPlanMetadata{
  if(role==="clarifier"||expectedPhase[role]!==undefined&&expectedPhase[role]!==selection.phase)return false;
  return true;
 }
+/** Una propuesta Fix no es autoridad, pero su referencia debe coincidir con
+ * el ID de la tarea Worker, también al recuperar datos de disco. */
+function validFixTaskIdentity(requestId:unknown,plan:TodoPlanMetadata|undefined):boolean{
+ if(!plan?.fixSource)return true;
+ return typeof requestId==="string"&&
+  requestId===`asen-plan:fix-${plan.fixSource.proposalId.slice(0,24)}:worker`;
+}
 function validItem(value:unknown):value is TodoItem{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
  const optionalKeys=["requestId","dependsOn","description","plan"],keys=["taskId","title","events",...optionalKeys.filter(key=>Object.hasOwn(value,key))];
- if(!exact(value,keys)||!identity(value.taskId)||("requestId" in value&&!identity(value.requestId))||("plan" in value&&(!validPlan(value.plan)||typeof value.requestId!=="string"||!value.requestId.startsWith("asen-plan:")))||("dependsOn" in value&&(!Array.isArray(value.dependsOn)||value.dependsOn.some(id=>!identity(id))||new Set(value.dependsOn).size!==value.dependsOn.length||value.dependsOn.includes(value.taskId)))||("description" in value&&(typeof value.description!=="string"||!value.description.trim()||value.description.length>8192||value.description!==value.description.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(value.description)))||typeof value.title!=="string"||!value.title.trim()||value.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(value.title)||!Array.isArray(value.events)||value.events.length<1||value.events.length>MAX_EVENTS)return false;
+ if(!exact(value,keys)||!identity(value.taskId)||("requestId" in value&&!identity(value.requestId))||("plan" in value&&(!validPlan(value.plan)||typeof value.requestId!=="string"||!value.requestId.startsWith("asen-plan:")))||("dependsOn" in value&&(!Array.isArray(value.dependsOn)||value.dependsOn.some(id=>!identity(id))||new Set(value.dependsOn).size!==value.dependsOn.length||value.dependsOn.includes(value.taskId)))||("plan" in value&&!validFixTaskIdentity(value.requestId,value.plan as TodoPlanMetadata))||("description" in value&&(typeof value.description!=="string"||!value.description.trim()||value.description.length>8192||value.description!==value.description.trim()||/[\u0000-\u001f\u007f-\u009f]/u.test(value.description)))||typeof value.title!=="string"||!value.title.trim()||value.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(value.title)||!Array.isArray(value.events)||value.events.length<1||value.events.length>MAX_EVENTS)return false;
  try{let state:TaskEvent|undefined;for(const event of value.events){if(event.taskId!==value.taskId) return false;state=applyTaskEvent(state,event);}return !!state;}catch{return false;}
 }
 export function parseTodoFile(raw:string):TodoFile{
@@ -157,10 +173,18 @@ export class SessionTodoStore{
   await write(file,emptyTodoFile(snapshot.revision+1));await rm(markerFile,{force:true});
  }
  async #readSnapshot(context:TodoContext):Promise<TodoFile>{const file=this.#file(context);await preparePrivateFile(file,true);return read(file);}
- async #archivedItems(file:string,context:TodoContext):Promise<(TodoItem&{current:TaskEvent})[]>{const directory=path.join(path.dirname(file),"archive");let names:string[]=[];try{names=await readdir(directory);}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return [];throw error;}const items:(TodoItem&{current:TaskEvent})[]=[];for(const name of names.filter(value=>/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(value)).sort()){const data=await read(path.join(directory,name));items.push(...data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];}));}return items;}
+ async #archivedItems(file:string,context:TodoContext):Promise<(TodoItem&{current:TaskEvent})[]>{const directory=path.join(path.dirname(file),"archive");let names:string[]=[];try{names=await readdir(directory);}catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return [];throw error;}const items:(TodoItem&{current:TaskEvent})[]=[];for(const name of names.filter(value=>/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(value)).sort()){
+  const file=path.join(directory,name);
+  await preparePrivateFile(file,true);
+  const raw=await readFile(file,"utf8"),digest=createHash("sha256").update(raw).digest("hex");
+  if(!name.endsWith(`-${digest.slice(0,12)}.json`))
+   throw new Error("ASEN Todo archived snapshot checksum mismatch; no recovery result is trusted");
+  const data=parseTodoFile(raw);
+  if(!allTerminal(data))throw new Error("ASEN Todo archive has nonterminal tasks; no recovery result is trusted");
+  items.push(...data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];}));}return items;}
  async add(title:string,context:TodoContext,signal?:AbortSignal,validateContext?:()=>void,requestId?:string,dependsOn:readonly string[]=[],description?:string,plan?:TodoPlanMetadata):Promise<TodoItem>{
   throwIfCancelled(signal);
-  if(typeof title!=="string"||!title.trim()||title!==title.trim()||title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(title)||!identity(context.sessionId)||!identity(context.projectId)||(requestId!==undefined&&!identity(requestId))||!Array.isArray(dependsOn)||dependsOn.some(id=>!identity(id))||new Set(dependsOn).size!==dependsOn.length||(description!==undefined&&(typeof description!=="string"||!description||description!==description.trim()||description.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(description)))||(plan!==undefined&&!validPlan(plan))||(plan!==undefined&&(requestId===undefined||!requestId.startsWith("asen-plan:"))))throw new Error("Invalid ASEN Todo task");
+  if(typeof title!=="string"||!title.trim()||title!==title.trim()||title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(title)||!identity(context.sessionId)||!identity(context.projectId)||(requestId!==undefined&&!identity(requestId))||!Array.isArray(dependsOn)||dependsOn.some(id=>!identity(id))||new Set(dependsOn).size!==dependsOn.length||(description!==undefined&&(typeof description!=="string"||!description||description!==description.trim()||description.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(description)))||(plan!==undefined&&!validPlan(plan))||(plan!==undefined&&(requestId===undefined||!requestId.startsWith("asen-plan:")||!validFixTaskIdentity(requestId,plan))))throw new Error("Invalid ASEN Todo task");
   const taskId=`todo-${randomUUID()}`,event:TaskEvent={taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()},item:TodoItem={taskId,title,events:[event],...(requestId?{requestId}:{}),...(dependsOn.length?{dependsOn:[...dependsOn]}:{}),...(description?{description}:{}),...(plan?{plan:structuredClone(plan)}:{})};let result:TodoItem|undefined;
   await this.#mutate(context,data=>{validateContext?.();
    if(requestId){const existing=data.items.find(candidate=>candidate.requestId===requestId);if(existing){const owner=existing.events[0];if(owner?.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(owner.projectId,context.projectId))throw new Error("Todo request id belongs to another session or project");if(existing.title!==title||JSON.stringify(existing.dependsOn??[])!==JSON.stringify(dependsOn)||existing.description!==description||JSON.stringify(existing.plan??null)!==JSON.stringify(plan??null))throw new Error("Todo request id conflicts with the existing task");result=structuredClone(existing);return false;}}
@@ -173,7 +197,7 @@ export class SessionTodoStore{
   if(!Array.isArray(drafts)||drafts.length<1||drafts.length>100||!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo plan");
   const seen=new Set<string>();
   for(const draft of drafts){
-   if(!draft||typeof draft!=="object"||typeof draft.title!=="string"||!draft.title.trim()||draft.title!==draft.title.trim()||draft.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(draft.title)||!identity(draft.requestId)||!draft.requestId.startsWith("asen-plan:")||seen.has(draft.requestId)||!Array.isArray(draft.dependsOn)||draft.dependsOn.some((id:string)=>!identity(id))||new Set(draft.dependsOn).size!==draft.dependsOn.length||typeof draft.description!=="string"||!draft.description.trim()||draft.description!==draft.description.trim()||draft.description.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(draft.description)||!validPlan(draft.plan))throw new Error("Invalid ASEN Todo plan task");
+   if(!draft||typeof draft!=="object"||typeof draft.title!=="string"||!draft.title.trim()||draft.title!==draft.title.trim()||draft.title.length>2048||/[\u0000-\u001f\u007f-\u009f]/u.test(draft.title)||!identity(draft.requestId)||!draft.requestId.startsWith("asen-plan:")||seen.has(draft.requestId)||!Array.isArray(draft.dependsOn)||draft.dependsOn.some((id:string)=>!identity(id))||new Set(draft.dependsOn).size!==draft.dependsOn.length||typeof draft.description!=="string"||!draft.description.trim()||draft.description!==draft.description.trim()||draft.description.length>8192||/[\u0000-\u001f\u007f-\u009f]/u.test(draft.description)||!validPlan(draft.plan)||!validFixTaskIdentity(draft.requestId,draft.plan))throw new Error("Invalid ASEN Todo plan task");
    seen.add(draft.requestId);
   }
   const ids=new Map(drafts.map(draft=>[draft.requestId,`todo-${randomUUID()}`]));let result:TodoItem[]=[];

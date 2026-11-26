@@ -3,6 +3,7 @@ import test from "node:test";
 import {mkdtemp,realpath,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {withExclusiveFileLock} from "../src/io/exclusive-file-lock.js";
 import {AgentNotificationJournal} from "../src/runtime/agents/agent-notification-journal.js";
 import {registerAgentTools} from "../src/agents/pi-agent-tools.js";
 test("EF-601 Pi ack only confirms an authenticated coordinator action in the same TUI session",async t=>{
@@ -41,6 +42,84 @@ test("EF-601 Pi ack only confirms an authenticated coordinator action in the sam
   r.details.evidence==="COORDINATOR_ACTION_ONLY"));
  assert.equal((await new AgentNotificationJournal(join(root,"notices.json")).list(identity))[0]?.delivery,"acknowledged");
  await assert.rejects(()=>ack("asen:agent:"+"0".repeat(64)+":terminal"),/not available/u);
+});
+
+test("EF-605 la caducidad de una inspección se mide con reloj monótono, no con la hora del equipo",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-pi-ack-monotonic-"));
+ t.after(()=>rm(root,{recursive:true,force:true,maxRetries:6,retryDelay:100}));
+ const identity={sessionId:"monotonic-session",projectId:await realpath(process.cwd())};
+ const journal=new AgentNotificationJournal(join(root,"notices.json"));
+ const row=await journal.record({id:"monotonic-agent",state:"completed",...identity});
+ await journal.claim(row.eventId,identity);await journal.markEnqueued(row.eventId,identity);
+ let mono=1_000;
+ let duringQuery:()=>void=()=>{};
+ const runtime={list:async()=>[],query:async(id:string,scope:typeof identity)=>{
+  duringQuery();
+  return id==="monotonic-agent"&&scope.sessionId===identity.sessionId
+   ?{record:{id,role:"explorer",state:"completed",...identity}}:null;
+ }};
+ const tools=new Map<string,any>();
+ registerAgentTools({registerTool:(tool:any)=>tools.set(tool.name,tool)} as never,async()=>runtime as never,
+  undefined,undefined,journal,undefined,undefined,()=>mono);
+ const ctx={mode:"tui",hasUI:true,cwd:identity.projectId,sessionManager:{getSessionId:()=>identity.sessionId},ui:{notify:()=>{}}};
+ const status=(id:string)=>tools.get("asen_agent_status").execute("status",{id},
+  new AbortController().signal,()=>{},ctx);
+ const ack=(eventId:string)=>tools.get("asen_agent_ack").execute("ack",{eventId},
+  new AbortController().signal,()=>{},ctx);
+ const delivery=async()=>(await journal.list(identity)).find(x=>x.eventId===row.eventId)?.delivery;
+ // El reloj de pared no transcurre: solo el reloj monótono puede caducar la inspección.
+ await status("monotonic-agent");
+ mono+=300_001;
+ await assert.rejects(()=>ack(row.eventId),/Inspect this exact terminal agent/u,
+  "Una inspección caducada por tiempo monótono no puede reconocerse aunque la hora de pared no cambie");
+ assert.equal(await delivery(),"enqueued","La inspección caducada no toca el diario");
+ // Un reloj monótono que retrocede tampoco revive la inspección.
+ mono=1_000;
+ await status("monotonic-agent");
+ mono=999;
+ await assert.rejects(()=>ack(row.eventId),/Inspect this exact terminal agent/u,
+  "Un reloj monótono invertido no puede revivir la inspección");
+ assert.equal(await delivery(),"enqueued");
+ // Caducidad durante la validación asíncrona: se revalida antes de reconocer.
+ mono=2_000;
+ await status("monotonic-agent");
+ duringQuery=()=>{mono+=300_001;};
+ await assert.rejects(()=>ack(row.eventId),/Inspect this exact terminal agent/u,
+  "La caducidad ocurrida durante la consulta durable también debe impedir el reconocimiento");
+ duringQuery=()=>{};
+ assert.equal(await delivery(),"enqueued","Una validación lenta no puede persistir el reconocimiento");
+ // Dentro de la ventana, la inspección sigue siendo válida.
+ mono=3_000;
+ await status("monotonic-agent");
+ const confirmed=await ack(row.eventId);
+ assert.equal(confirmed.details.acknowledged,true);
+ assert.equal(await delivery(),"acknowledged");
+});
+
+test("EF-606 una cancelación durante el acceso al diario no persiste el reconocimiento",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-pi-ack-cancel-"));
+ t.after(()=>rm(root,{recursive:true,force:true,maxRetries:6,retryDelay:100}));
+ const identity={sessionId:"cancel-session",projectId:await realpath(process.cwd())};
+ const journal=new AgentNotificationJournal(join(root,"notices.json"));
+ const row=await journal.record({id:"cancel-agent",state:"completed",...identity});
+ await journal.claim(row.eventId,identity);await journal.markEnqueued(row.eventId,identity);
+ const aborted=new AbortController();
+ aborted.abort();
+ await assert.rejects(
+  ()=>journal.acknowledge(row.eventId,identity,"cancel-agent","completed",aborted.signal),
+  (error:any)=>error?.name==="AbortError",
+  "Una señal ya cancelada no puede escribir en el diario");
+ assert.equal((await journal.list(identity))[0]?.delivery,"enqueued");
+ // Una cancelación que llega mientras se prepara el diario tampoco reconoce.
+ const pending=new AbortController();
+ queueMicrotask(()=>pending.abort());
+ await assert.rejects(
+  ()=>journal.acknowledge(row.eventId,identity,"cancel-agent","completed",pending.signal),
+  (error:any)=>error?.name==="AbortError");
+ assert.equal((await journal.list(identity))[0]?.delivery,"enqueued",
+  "La cancelación durante el acceso al diario no persiste un estado reconocido");
+ // Sin señal, el reconocimiento explícito sigue funcionando.
+ assert.equal(await journal.acknowledge(row.eventId,identity,"cancel-agent","completed"),true);
 });
 
 test("EF-604 re-registering Pi tools after a restart discards earlier inspection authority",async t=>{
@@ -84,4 +163,42 @@ test("EF-604 re-registering Pi tools after a restart discards earlier inspection
  assert.equal(confirmed.details.writerAuthorized,false);
  assert.equal(confirmed.details.humanReadConfirmed,false);
  assert.equal((await journal.list(owner)).find(x=>x.eventId===row.eventId)?.delivery,"acknowledged");
+});
+
+test("EF-605 CodeRabbit: una inspección caducada mientras espera el bloqueo no se reconoce",async t=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-ack-locked-expiry-"));
+ t.after(()=>rm(root,{recursive:true,force:true,maxRetries:6,retryDelay:100}));
+ const owner={sessionId:"ack-expiry-session",projectId:await realpath(process.cwd())};
+ const journal=new AgentNotificationJournal(join(root,"notices.json"));
+ const row=await journal.record({id:"expiry-agent",state:"completed",...owner});
+ await journal.claim(row.eventId,owner);
+ await journal.markEnqueued(row.eventId,owner);
+ let now=1_000;
+ const registered=new Map<string,any>();
+ const runtime={list:async()=>[],query:async(id:string)=>({
+  record:{id,role:"explorer",state:"completed",...owner}
+ })};
+ registerAgentTools({registerTool:(tool:any)=>registered.set(tool.name,tool)} as never,
+  async()=>runtime as never,undefined,undefined,journal,undefined,undefined,()=>now);
+ const context={mode:"tui",hasUI:true,cwd:owner.projectId,
+  sessionManager:{getSessionId:()=>owner.sessionId},ui:{notify:()=>{}}};
+ const call=(name:string,params:object)=>registered.get(name).execute(name,params,
+  new AbortController().signal,()=>{},context);
+ await call("asen_agent_status",{id:"expiry-agent"});
+ let entered!:()=>void;
+ const reached=new Promise<void>(resolve=>{entered=resolve;});
+ const original=journal.acknowledge.bind(journal);
+ journal.acknowledge=async(...args:Parameters<typeof original>)=>{
+  entered();
+  return original(...args);
+ };
+ let pending!:Promise<unknown>;
+ await withExclusiveFileLock(journal.path,async()=>{
+  pending=call("asen_agent_ack",{eventId:row.eventId});
+  // La herramienta ya validó la inspección, pero el diario espera el bloqueo.
+  await reached;
+  now+=300_001;
+ });
+ await assert.rejects(pending,/Inspect this exact terminal agent/u);
+ assert.equal((await journal.list(owner))[0]?.delivery,"enqueued");
 });

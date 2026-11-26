@@ -5,7 +5,7 @@ const READ_TOOLS=new Set(["read","grep","find","ls","codegraph","asen_code_intel
 export interface ExplorerBudgetObservation{toolCallId:string;toolName:string;args?:unknown;result?:unknown;content?:unknown;}
 export interface ExplorerBudgetSnapshot{
  readonly queries:number;readonly outputBytes:number;readonly firstTool:string|undefined;
- readonly overBudget:boolean;readonly recommendationIssued:boolean;
+ readonly overBudget:boolean;readonly recommendationIssued:boolean;readonly delegationClaimed:boolean;
 }
 function bytesObserved(event:ExplorerBudgetObservation):number{
  const result=event.result as {content?:unknown}|undefined;
@@ -23,11 +23,16 @@ function bytesObserved(event:ExplorerBudgetObservation):number{
 export class ExplorerBudgetTelemetry{
  readonly #seen=new Set<string>();
  #queries=0;#bytes=0;#firstTool:string|undefined;
- #recommendationIssued=false;
+ #recommendationIssued=false;#delegationClaimed=false;
  snapshot():ExplorerBudgetSnapshot{
   return Object.freeze({queries:this.#queries,outputBytes:this.#bytes,firstTool:this.#firstTool,
    overBudget:this.#queries>EXPLORER_QUERY_LIMIT||this.#bytes>EXPLORER_OUTPUT_LIMIT_BYTES,
-   recommendationIssued:this.#recommendationIssued});
+   recommendationIssued:this.#recommendationIssued,delegationClaimed:this.#delegationClaimed});
+ }
+ /** El aviso solo puede consumirse una vez. Consumirlo no inicia un modelo. */
+ claimBudgetExplorer():boolean{
+  if(!this.#recommendationIssued||this.#delegationClaimed)return false;
+  this.#delegationClaimed=true;return true;
  }
  /** A single signal on query 4 or byte 40961; no model is launched. */
  observe(event:ExplorerBudgetObservation):boolean{
@@ -37,18 +42,25 @@ export class ExplorerBudgetTelemetry{
   // The canonical CodeGraph tool also exposes init/sync (index writes).
   // Never misclassify those as Explorer read-only research.
   if(event.toolName==="codegraph"||event.toolName==="asen_code_intelligence"){
-   const input=event.args as {operation?:unknown}|undefined;
-   const output=event.result as {details?:{operation?:unknown}}|undefined;
+   let requested:unknown,observed:unknown;
+   try{
+    const input=event.args as {operation?:unknown}|undefined;
+    const output=event.result as {details?:{operation?:unknown}}|undefined;
+    requested=input?.operation;observed=output?.details?.operation;
+   }catch{return false;} // Una herramienta dañada no bloquea el turno de Pi.
    // Either the requested or the observed operation may reveal a write.
    // Do not let an untrusted "query" argument mask an actual sync/init
    // response, and never treat an unknown CodeGraph operation as read-only.
-   const requested=input?.operation,observed=output?.details?.operation;
    if([requested,observed].some(op=>op!==undefined&&op!=="query"))return false;
   }
+  // El contenido recibido puede tener propiedades defectuosas: medirlo
+  // nunca debe interrumpir la sesión ni generar una sugerencia falsa.
+  let outputBytes:number;
+  try{outputBytes=bytesObserved(event);}catch{return false;}
   this.#seen.add(event.toolCallId);
   this.#firstTool??=event.toolName;
   this.#queries++;
-  this.#bytes+=bytesObserved(event);
+  this.#bytes+=outputBytes;
   const exceeded=this.#queries>EXPLORER_QUERY_LIMIT||this.#bytes>EXPLORER_OUTPUT_LIMIT_BYTES;
   if(exceeded)this.#recommendationIssued=true;
   return exceeded;
