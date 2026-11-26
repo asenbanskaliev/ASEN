@@ -28,7 +28,7 @@ const git=(cwd,...args)=>execFileSync("git",["-C",cwd,...args],{
 assert.equal(git(repo,"rev-parse","HEAD"),expected);
 const require=createRequire(import.meta.url),pty=require("node-pty");
 const piMeta=JSON.parse(readFileSync(join(repo,"node_modules","@earendil-works","pi-coding-agent","package.json"),"utf8"));
-assert.equal(piMeta.version,"1.2.0");
+assert.equal(piMeta.version,"1.6.0");
 const piBin=join(repo,"node_modules","@earendil-works","pi-coding-agent",
  typeof piMeta.bin==="string"?piMeta.bin:piMeta.bin.pi);
 const temp=realpathSync(mkdtempSync(join(tmpdir(),"asen-t07-pi-live-")));

@@ -7,7 +7,7 @@ import {fileURLToPath} from "node:url";
 import {createPiVerifierEnvironment} from "../scripts/gsp06-pi-free-environment.mjs";
 
 const PACKAGE_NAME="@earendil-works/pi-coding-agent";
-const EXPECTED_VERSION="1.2.0";
+const EXPECTED_VERSION="1.6.0";
 const OUTPUT_LIMIT=100*1024;
 const WHOLE_WATCHDOG_MS=20_000;
 const SHUTDOWN_MS=5_000;
