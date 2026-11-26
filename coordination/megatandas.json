@@ -72,7 +72,7 @@
         "queueRegression": {
           "pr": 148,
           "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "espera-ci",
+          "state": "ci-superada",
           "scope": "runtime, cola, diario y vínculos reales; ejecutor instrumentado"
         }
       }
@@ -130,8 +130,15 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-M2-g2-compactacion-148",
+        "package": "G02",
+        "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "generation": 2,
+        "phase": "escritura"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -176,7 +183,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #148 exacta, incluida cola y matriz 36 celdas; revisión independiente antes de admisión. Después G02/G03.",
+      "next": "Conectar G02 con API pública getSettings de Pi y una sola lectura de contexto; conservar avisos y desconocido.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -708,7 +715,7 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "correccion-f5-cola-espera-ci",
+        "state": "pruebas-superadas-espera-revision",
         "pr": 141,
         "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
@@ -749,12 +756,26 @@
           "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
           "branch": "feat/asen-equipo-E-M2-g2-pi16-cola-147",
           "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-          "state": "espera-ci",
+          "state": "espera-revision",
           "includes": [
             146,
             147
           ],
-          "scope": "Corregir F5 y cubrir cola real de agentes con ejecutor instrumentado sin modelos"
+          "scope": "Corregir F5 y cubrir cola real de agentes con ejecutor instrumentado sin modelos",
+          "evidence": {
+            "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
+            "ci": 45860285935,
+            "releaseGate": 45860285884,
+            "matrix": 45860285639,
+            "architecture": 45860286007,
+            "quick": 45860285633,
+            "conclusion": "success",
+            "piFreeSmoke": "skipped"
+          },
+          "review": {
+            "confirmed": false,
+            "requestedCommentId": 7199127636
+          }
         },
         "previousDependencyCandidate": {
           "pr": 147,
