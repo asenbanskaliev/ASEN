@@ -79,3 +79,15 @@ test("T08: el ensayo de reparación sigue requiriendo controles separados",()=>{
  assert.match(work,/cost_acknowledged/u);
  assert.doesNotMatch(flow,/\bauto-merge\b|\bauto-fix\b/u);
 });
+
+
+test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
+ const start=ci.indexOf("\n  t06-nvidia-free-api:"),end=ci.indexOf("\n  # T06: dos sesiones Pi RPC",start);
+ assert.ok(start>=0&&end>start);
+ const job=ci.slice(start,end);
+ for(const required of ["pull_request.number == 149","feat/asen-equipo-E-M2-g2-compactacion-148","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","gh api --method DELETE","ASEN_EXPECTED_SHA"]){assert.ok(job.includes(required),"Falta puerta NVIDIA M2: "+required);}
+ assert.ok(!job.includes("pull_request.number == 150"));
+ const probe=readFileSync(new URL("../scripts/t06-nvidia-free-api-probe.mjs",import.meta.url),"utf8");
+ for(const model of ["nvidia/nemotron-3.5-lightning-30b-a3b","nvidia/nemotron-3.5-super-vl-120b-a12b"])assert.ok(probe.includes(model));
+ assert.ok(probe.includes("distinctModelIdsVerified"));assert.ok(probe.includes("retryCount:0"));
+});
