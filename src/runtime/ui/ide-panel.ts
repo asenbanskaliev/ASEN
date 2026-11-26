@@ -1,3 +1,4 @@
+import {compactionPressureLabel} from "./compaction-pressure.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TodoItem} from "../lifecycle/todo-store.js";
 import type {TaskEvent} from "../task-replay.js";
@@ -329,6 +330,7 @@ export function renderAsenStatusLine(snapshot:AsenPanelSnapshot,width=80):string
   parts.push("responding "+identity(host.respondingModel));
   parts.push("ctx "+(host.context.percent===null?"?":Math.round(host.context.percent)+"%")+
    (host.context.state==="warning"||host.context.state==="error"?" "+host.context.state:""));
+  if(host.compactionPressure)parts.push(compactionPressureLabel(host.compactionPressure));
   // UI-08 cost/sub truthful unknown: the public projection publishes only "unavailable"
   // for cost/subscription/quota today (host-status-projection.ts:20-22,67), so the host
   // path states the unknown instead of omitting the segment entirely.

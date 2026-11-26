@@ -129,7 +129,7 @@ import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
 type CreateProfileCatalogModel=ParentCatalogModel&{reasoning?:boolean|undefined;thinkingLevelMap?:Partial<Record<Thinking,string|null|undefined>>|undefined};
 type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string;getEntries?:()=>readonly unknown[]};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
-type PiLike={getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
+type PiLike={getSettings?:()=>unknown;getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
@@ -197,6 +197,7 @@ function terminalColumns():number{const columns=Number.isSafeInteger(process.std
 export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>AsenExtensionFacade {
  const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;
  return pi=>{
+  const observeHostStatus=(ctx:CommandContext)=>projectHostStatus(ctx,undefined,typeof pi.getSettings==="function"?()=>pi.getSettings!():undefined);
   const registerRaw=pi.registerCommand?.bind(pi);
   if(!registerRaw)throw new Error("ASEN extension requires Pi command registration");
   // UFC-M1-04: registered handlers are captured so keymap shortcuts can invoke the very
@@ -440,7 +441,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(hostStatusUI&&hostStatusUI!==ctx.ui)clearHostStatus();
    hostStatusUI=ctx.ui;
    try{
-    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),hostStatus=projectHostStatus(ctx),tone=hostStatus.context.state;
+    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),hostStatus=observeHostStatus(ctx),tone=hostStatus.context.state;
     const observed=snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
     if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
@@ -479,7 +480,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const now=await sessionIdentity(ctx);assertCurrent();
    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("ASEN panel session changed");
    const integrationInspection=inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});
-   const hostStatus=projectHostStatus(ctx);assertCurrent();
+   const hostStatus=observeHostStatus(ctx);assertCurrent();
    let agentFlow:Awaited<ReturnType<typeof readAgentFlowPanelObservation>>|undefined,agentFlowUnavailable=false;
    if(todoStorePromise&&agentRuntimePromise)try{
     agentFlow=await readAgentFlowPanelObservation({
@@ -2926,6 +2927,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
      return handler(...args);
     }),
     getFlag:name=>pi.getFlag(name),
+    ...(typeof pi.getSettings==="function"?{getSettings:pi.getSettings.bind(pi)}:{}),
     ...(typeof pi.getCommands==="function"?{getCommands:pi.getCommands.bind(pi)}:{}),
     ...(typeof pi.getAllTools==="function"?{getAllTools:pi.getAllTools.bind(pi)}:{}),
     ...(pi.sendMessage?{sendMessage:(message:Parameters<NonNullable<PiLike["sendMessage"]>>[0],options?:Parameters<NonNullable<PiLike["sendMessage"]>>[1])=>pi.sendMessage!(message,options)}:{}),

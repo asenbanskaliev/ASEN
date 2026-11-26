@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {projectCompactionPressure} from "../src/runtime/ui/compaction-pressure.js";
+import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
+import {renderAsenStatusLine} from "../src/runtime/ui/ide-panel.js";
+import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
+import {SettingsManager} from "@earendil-works/pi-coding-agent";
 
 const model={provider:"proveedor",id:"modelo"};
 const usage={tokens:40_000,contextWindow:100_000};
@@ -41,4 +45,39 @@ test("G02 falla de forma informativa si no existe configuración verificable",()
   assert.deepEqual(projectCompactionPressure({settings:{},usage:bad}),{state:"unknown",reason:"usage"});
  }
  assert.deepEqual(projectCompactionPressure({settings:{get compaction(){throw Error("No disponible");}},usage}),{state:"unknown",reason:"settings"});
+});
+
+test("G02 coincide con la reserva efectiva del SDK Pi instalado",()=>{
+ const settings={compaction:{reserveTokens:20_000,keepRecentTokens:3_000,modelOverrides:{
+  "proveedor/modelo":{reserveTokens:50_000}}}};
+ const manager=SettingsManager.inMemory(settings);
+ for(const current of [model,{provider:"otro",id:"modelo"}]){
+  const expected=manager.getCompactionSettings(current);
+  const pressure=projectCompactionPressure({settings,model:current,usage});
+  assert.equal(pressure.state,"available");
+  if(pressure.state==="available")assert.equal(pressure.reserveTokens,expected.reserveTokens);
+ }
+});
+test("G02 observa una sola vez el contexto y separa presión de ocupación",()=>{
+ let calls=0,reads=0;
+ let settings:unknown={compaction:{reserveTokens:50_000}},current:unknown={...usage,percent:40};
+ const host={model,getContextUsage(){calls++;assert.equal(this,host);return current;}};
+ const read=()=>{reads++;return settings;};
+ const snapshot=()=>({todos:[],agents:[],jobs:[],hostStatus:projectHostStatus(host,undefined,read)});
+ const first=snapshot();
+ assert.equal(calls,1);assert.equal(reads,1);
+ assert.deepEqual(first.hostStatus.context,{percent:40,state:"normal"});
+ assert.equal(first.hostStatus.compactionPressure?.state,"available");
+ for(const render of [renderAsenStatusLine,renderAsenT11CompactStatus]){
+  const line=render(first,139);
+  assert.match(line,/ctx 40%/u);assert.match(line,/compact\. 80%/u);
+ }
+ current={tokens:50_000,contextWindow:100_000,percent:50};
+ assert.match(renderAsenT11CompactStatus(snapshot(),139),/! compact\. 100%/u);
+ settings={compaction:{enabled:false}};
+ assert.match(renderAsenT11CompactStatus(snapshot(),139),/compact\. desact\./u);
+ settings={};current={tokens:null,contextWindow:100_000,percent:null};
+ assert.match(renderAsenT11CompactStatus(snapshot(),139),/compact\. \?/u);
+ assert.deepEqual(projectHostStatus(host,undefined,()=>{throw Error("secreto");}).compactionPressure,{state:"unknown",reason:"settings"});
+ assert.equal(projectHostStatus(host).compactionPressure,undefined);
 });

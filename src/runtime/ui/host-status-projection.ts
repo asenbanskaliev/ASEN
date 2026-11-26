@@ -1,4 +1,5 @@
 import {sanitizeTerminalText,truncateForTerminal} from "../responsive-layout.js";
+import {projectCompactionPressure,type CompactionPressure} from "./compaction-pressure.js";
 
 /** Public observation boundary; fields remain unknown until runtime validation. */
 export interface HostStatusInput {
@@ -17,6 +18,7 @@ export interface HostStatusProjection {
  readonly respondingModel: {readonly provider:string;readonly model:string} | null;
  readonly effectiveThinking: string | null;
  readonly context: {readonly percent:number|null;readonly state:"normal"|"warning"|"error"|"unknown"};
+ readonly compactionPressure?:CompactionPressure;
  readonly cost: "unavailable";
  readonly subscription: "unavailable";
  readonly quota: "unavailable";
@@ -39,7 +41,7 @@ function identity(provider:unknown,model:unknown):HostStatusProjection["selected
 }
 
 /** Stateless, read-only derivation. No history scan, host registry, or execution. */
-export function projectHostStatus(host:HostStatusInput={},response?:HostResponseObservation):HostStatusProjection {
+export function projectHostStatus(host:HostStatusInput={},response?:HostResponseObservation,readSettings?:()=>unknown):HostStatusProjection {
  const selectedModel=observe(()=>{
   const model=host.model;
   return record(model)?identity(model.provider,model.id):null;
@@ -50,9 +52,11 @@ export function projectHostStatus(host:HostStatusInput={},response?:HostResponse
   const level=host.thinkingLevel;
   return typeof level==="string"&&thinkingLevels.has(level)?level:null;
  });
- const percent=observe(()=>{
+ const usage=observe(()=>{
   const getUsage=host.getContextUsage;
-  const usage=typeof getUsage==="function"?getUsage.call(host):undefined;
+  return typeof getUsage==="function"?getUsage.call(host):undefined;
+ });
+ const percent=observe(()=>{
   if(!record(usage))return null;
   const tokens=usage.tokens,window=usage.contextWindow;
   if(typeof tokens!=="number"||!Number.isFinite(tokens)||tokens<0||
@@ -63,6 +67,7 @@ export function projectHostStatus(host:HostStatusInput={},response?:HostResponse
  return {
   selectedModel,respondingModel,effectiveThinking,
   context:{percent,state:percent===null?"unknown":percent>=95?"error":percent>=80?"warning":"normal"},
+  ...(readSettings?{compactionPressure:projectCompactionPressure({settings:observe(readSettings),model:observe(()=>host.model),usage})}:{}),
   // Assistant-only totals omit other usage categories and are not billing evidence.
   cost:"unavailable",subscription:"unavailable",quota:"unavailable",
  };

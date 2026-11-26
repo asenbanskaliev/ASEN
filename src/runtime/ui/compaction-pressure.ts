@@ -52,3 +52,10 @@ export function projectCompactionPressure(input:Readonly<{
    percent:Math.min(100,100*(usage.tokens/threshold)),atOrAboveThreshold:usage.tokens>=threshold});
  }catch{return unknown("settings");}
 }
+
+/** Indica cercanía al umbral, nunca una compactación en curso ni una orden. */
+export function compactionPressureLabel(value:CompactionPressure):string{
+ if(value.state==="unknown")return "compact. ?";
+ if(value.state==="off")return "compact. desact.";
+ return (value.atOrAboveThreshold?"! ":"")+"compact. "+Math.round(value.percent)+"%";
+}
