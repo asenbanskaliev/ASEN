@@ -138,8 +138,18 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "validacion-en-curso",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-20261126T-t06-marker-authorship",
+        "task": "Vincular el consumo de permiso T06 a marcadores escritos por GitHub Actions y probar marcador ajeno",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "base": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
+        "files": [
+          ".github/workflows/ci.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts"
+        ],
+        "startedAt": "2026-11-26T22:05:00Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -184,7 +194,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Esperar y cerrar full review CodeRabbit exacta 315fc98. Si no hay nuevos hallazgos, activar etiqueta de permiso único y validar evidencia NVIDIA/Pi; si hay, corregir y repetir solo las puertas afectadas, manteniendo seguridad.",
+      "next": "Proteger la lectura de marcadores T06 con identidad github-actions[bot] para no permitir bloqueo por comentario ajeno; añadir prueba negativa; validar nuevo SHA.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
