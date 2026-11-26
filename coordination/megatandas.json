@@ -829,25 +829,24 @@
           "state": "cambios-G02-y-B1-publicados-espera-validacion-exacta",
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática. Se agrega prueba del snapshot alternativo durante ejecución activa.",
           "evidence": {
-            "ci": 140100174450,
+            "ci": 45875132024,
             "ciStatus": "in_progress",
-            "releaseGate": 140100209839,
+            "releaseGate": 45875132220,
             "releaseStatus": "in_progress",
-            "architecture": 140100172998,
+            "architecture": 45875132136,
             "architectureStatus": "success",
-            "quick": "check:comprobar",
-            "quickStatus": "in_progress",
-            "piRuntime": 140100172234,
-            "piRuntimeStatus": "in_progress",
+            "quick": 45875131979,
+            "quickStatus": "success",
+            "piRuntime": 45875131990,
+            "piRuntimeStatus": "success",
             "piFreeSmoke": "skipped"
           },
           "review": {
             "triggered": true,
-            "commentId": 7200238560,
-            "actionablePrior": 1,
-            "priorThreadFixedInCode": true,
-            "newShaReviewPending": true,
-            "headSha": "97ce0fff263290e084d34b4ae66388363bf0e9ab"
+            "commentId": 7200366045,
+            "reviewState": "requested",
+            "headSha": "97ce0fff263290e084d34b4ae66388363bf0e9ab",
+            "previousFindingFixedInCode": true
           }
         },
         "blockers": [
