@@ -7,8 +7,24 @@
   "maximumWriters": 2,
   "teams": {
     "A": {
-      "state": "listo",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "A1a-g2-cierre-dos-raices-1126",
+        "generation": 2,
+        "package": "A1a",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+        "branch": "feat/asen-equipo-A-A1a-g2-cierre-dos-raices-1126",
+        "phase": "publicacion",
+        "files": [
+          "src/flow/odd-routing.ts",
+          "src/runtime/lifecycle/native-integration-review.ts",
+          "src/runtime/lifecycle/todo-store.ts",
+          "src/runtime/lifecycle/native-integration-successor.ts",
+          "extensions/asen.ts",
+          "tests/odd-unit-partition.test.ts",
+          "tests/native-partition-flow.test.ts"
+        ]
+      },
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
       "generation": 2,
