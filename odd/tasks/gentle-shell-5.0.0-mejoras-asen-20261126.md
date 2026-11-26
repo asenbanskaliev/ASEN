@@ -93,7 +93,11 @@ La política general conserva `noModelCalls:true` y `globalFull:false`. Sigue vi
 5. **T06:** conservar permisos mínimos y marcadores no repetibles para API y sesiones Pi. Ejecutar después de CI completa, Release Gate y CodeRabbit exactos.
 6. **Cierre:** registrar resultados y SHA final. No fusionar ramas protegidas sin admisión y autorización.
 
-La ejecución Windows de `a3d9da5a3f915ead5842f484ed09cc4b441bb65a` identificó la causa del bloqueo G08: el control de mantenimiento comparaba la ruta temporal con `realpath` y rechazaba un alias corto 8.3 de Windows, aunque ambos nombres correspondían al mismo directorio e identidad física. El SHA `ddffab1cc6ea0354e4b1f800f1bc5dece544b6ca` ahora verifica la identidad de ambas rutas y añade una regresión específica de 8.3 a la puerta Windows. CI, Windows G08 y CodeRabbit exactos de este SHA están pendientes; todavía no se ha demostrado la actualización en Windows.
+La prueba Windows del SHA `ddffab1cc6ea0354e4b1f800f1bc5dece544b6ca` falló: `ownMarker` exigía que la ruta lexical del marcador coincidiera con `realpath`. En Windows, la ruta temporal podía resolverse mediante alias 8.3; el bloqueo devolvía `LOCK_RETAINED`, por lo que el verificador no iniciaba el CLI y cinco regresiones de actualización no llegaban a probar rollback.
 
-La observación CodeRabbit sobre `getSettings` ausente se corrigió en `4c1264a` y su hilo quedó resuelto. La revisión completa del SHA actual está pendiente. #149 permanece abierta y sin fusionar. Pi Free Smoke omitido no cuenta como prueba real.
+El SHA `9f5dbeb2bd710ba169e9446d55899b621378c354` corrige el bloqueo comparando la identidad física del archivo lexical y resuelto y comprobando que ambos siguen dentro del directorio de instalación. También corrige los cuatro hallazgos CodeRabbit de ese corte: orden de publicación G02, consultas fallidas del marcador NVIDIA/Pi, límites del bloque Windows en su prueba y propagación de fallos PowerShell. La revisión automática posterior identificó tres aserciones de pruebas que aún esperaban el diagnóstico antiguo de deriva; `b186e7d655824b0613959772b86651f93f2c8bf2` actualiza esas aserciones sin relajar los controles.
+
+Para `b186e7d` están ejecutándose CI completa, Release Gate, Pi 1.2 y Phase 0; CI rápida está en cola. G08 Windows todavía debe confirmar que el alias de ruta y las cinco pruebas de recuperación pasan. Pi Free Smoke figura omitido y no acredita ensayo real. La revisión completa CodeRabbit del último SHA y el ensayo acotado de los dos modelos NVIDIA y las dos sesiones Pi siguen pendientes. #149 permanece abierta y sin fusionar.
+
+La observación sobre `getSettings` ausente se corrigió en `4c1264a` y su hilo quedó resuelto.
 
