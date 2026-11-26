@@ -138,8 +138,17 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-validacion",
-      "lease": null,
+      "state": "corrigiendo-hallazgo",
+      "lease": {
+        "id": "E-20261126T200200Z-windows-canonical",
+        "task": "Corregir la comparación física del inventario G08 tras fallo Windows en 59a0fda",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "base": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
+        "files": [
+          "src/runtime/managed/managed-install.ts"
+        ],
+        "startedAt": "2026-11-26T20:02:00Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -184,7 +193,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar b186 y 59a0fda por SHA exacto; no reservar archivos durante CI o revisión. Después, cerrar solo los hallazgos comprobados y habilitar NVIDIA/Pi si pasan las puertas.",
+      "next": "Validar diagnóstico de ruta alias Windows y liberar la reserva antes de CI.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
