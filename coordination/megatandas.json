@@ -147,7 +147,8 @@
           "extensions/asen.ts",
           "src/runtime/ui/compaction-pressure.ts",
           "tests/compaction-pressure.test.ts",
-          ".github/workflows/ci.yml"
+          ".github/workflows/ci.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts"
         ],
         "startedAt": "2026-11-26T18:15:00Z"
       },
@@ -195,11 +196,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar el SHA 6385a5f6: PI 1.2/1.6, CI completa, Release Gate, Windows G08 del flujo real y revisión CodeRabbit exacta. Solo entonces activar etiqueta NVIDIA de una ejecución.",
+      "next": "Validar SHA dba4ce63; CodeRabbit exacta; CI/Release/Pi 1.2/1.6 y paso Windows G08. Solo después ejecutar las dos llamadas NVIDIA acotadas autorizadas.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
-      "sha": "6385a5f6a7d0917a420063dc2db70275758def02",
+      "sha": "dba4ce63e069220fa1fbc63c840c392147df0bea",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -251,7 +252,7 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "Se retiró el actualizador duplicado y las pruebas asociadas; G08 reutiliza upgradeManaged/rollbackManaged de managed-lifecycle.ts. CI exacta y el nuevo paso Windows con pruebas de interrupción/rollback están pendientes.",
+      "tests": "Se retiró el módulo de actualización duplicado; Windows apunta al flujo managed-lifecycle (instalación, fallo previo/posterior a activar, interrupción y diario). Se concedió issues:write únicamente al paso etiquetado para retirar el permiso de una sola vez; static gate actualizado. Gates del SHA actual pendientes.",
       "files": [
         "extensions/asen.ts"
       ],
@@ -937,11 +938,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; G02/B1 consolidados; G08 vuelve al flujo upgradeManaged/rollbackManaged existente, se eliminó el motor duplicado; validaciones exactas pendientes",
+    "m2": "abierta; G08 consolidado sobre managed-lifecycle existente, etiqueta T06 desechable con issues:write limitado al job; nuevo SHA dba4ce63 a validar",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:30:00Z",
-    "g02Head": "6385a5f6a7d0917a420063dc2db70275758def02"
+    "updatedAt": "2026-11-26T19:40:00Z",
+    "g02Head": "dba4ce63e069220fa1fbc63c840c392147df0bea"
   },
   "modelCallException": {
     "enabled": true,
