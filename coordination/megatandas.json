@@ -138,8 +138,18 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "validacion-en-curso",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-20261126T-g08-physical-root-gate",
+        "task": "Alinear con la identidad física las dos comprobaciones de raíz parcial tras alias 8.3",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "base": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
+        "files": [
+          "src/runtime/managed/managed-maintenance-lock.ts",
+          "tests/managed-maintenance-lock.test.ts"
+        ],
+        "startedAt": "2026-11-26T21:15:00Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -184,7 +194,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Esperar CI completa, Release Gate, Pi1.2 y revisión completa CodeRabbit del SHA 586f7a0. Si hay nuevos hallazgos, corregir; solo entonces consumir una vez el permiso NVIDIA/Pi.",
+      "next": "Corregir ambos gates de propiedad parcial para comparar la raíz física; probar recuperación con inventario parcial bajo alias Windows 8.3; liberar y validar nuevo SHA.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
