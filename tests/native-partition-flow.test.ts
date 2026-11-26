@@ -31,7 +31,7 @@ import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-nativ
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 
-for(const mode of ["approved","approved-legacy","declined","changed","child-declined"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
+for(const mode of ["approved","approved-legacy","approved-roots","declined","changed","child-declined"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
  const base=await realpath(await mkdtemp(join(tmpdir(),"asen-native-odd-"))),project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:isolatedGitEnvironment()}).trim();
  let launched=0,partialObserved=false;
@@ -61,7 +61,7 @@ const terminalErrors:unknown[]=[];
    launched++;
    assert.equal(request.role,"worker");assert.equal(request.writeSurfaces?.length,1);
    assert.ok(["a.txt","b.txt"].includes(request.writeSurfaces![0]!));
-   if((mode==="approved"||mode==="approved-legacy")&&request.writeSurfaces![0]==="b.txt"){
+   if((mode==="approved"||mode==="approved-legacy"||mode==="approved-roots")&&request.writeSurfaces![0]==="b.txt"){
     let timer:ReturnType<typeof setTimeout>|undefined;
     try{await Promise.race([siblingGate,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("No se guardó el recibo parcial de A")),15000);})]);}
     finally{if(timer)clearTimeout(timer);}
@@ -82,7 +82,7 @@ const terminalErrors:unknown[]=[];
   agents.subscribeTerminal(record=>{terminalWork.push((async()=>{
    const owned={sessionId:record.sessionId,projectId:record.projectId};
    const row=(await todos.list(owned)).find(item=>item.plan?.role==="worker");
-   const first=(mode==="approved"||mode==="approved-legacy")&&record.state==="completed"&&row?.plan?.writeSurfaces?.[0]==="a.txt";
+   const first=(mode==="approved"||mode==="approved-legacy"||mode==="approved-roots")&&record.state==="completed"&&row?.plan?.writeSurfaces?.[0]==="a.txt";
    try{
     // El resultado ya quedó firmado en AgentStore. Restaurar el archivo
     // antes de recoger el recibo no debe sustituir ese árbol inmutable.
@@ -124,6 +124,7 @@ const terminalErrors:unknown[]=[];
     {id:"b",objective:"Preparar B",estimatedMinutes:40,dependsOn:[],writePaths:["b.txt"]},
     {id:"c",objective:"Integración",estimatedMinutes:40,dependsOn:["a","b"],writePaths:["c.txt"]}
    ]};
+  if(mode==="approved-roots"){params.instruction="Completar dos archivos independientes";params.scope.expectedPaths.pop();params.writes.pop();params.taskUnits.pop();}
   const result=await tools.get("asen_plan_request").execute("call",params,undefined,undefined,context);
   const detail=result.details;
   assert.equal(detail.persistence.status,"saved");
@@ -151,7 +152,7 @@ const terminalErrors:unknown[]=[];
    assert.equal(SessionManager.open(child.sessionFile).getSessionId(),child.sessionId);
    assert.equal(SessionManager.open(child.sessionFile).getCwd(),child.projectId);
   }
-  if((mode==="approved"||mode==="approved-legacy")){
+  if((mode==="approved"||mode==="approved-legacy"||mode==="approved-roots")){
    assert.equal(detail.supervisedLaunch.status,"started");
    assert.equal(detail.supervisedLaunch.started.length,2);
    expectedTerminals=2;
@@ -221,12 +222,12 @@ const terminalErrors:unknown[]=[];
    assert.equal((await observations.listSource(identity,await sessionJournal.listSource(identity))).length,0);
   }
   const rows=await todos.list(identity);
-  assert.equal(rows.length,3);
-  assert.equal(rows.find(row=>row.dependsOn?.length===2)?.current.state,"planned");
+  assert.equal(rows.length,mode==="approved-roots"?2:3);
+  if(mode!=="approved-roots")assert.equal(rows.find(row=>row.dependsOn?.length===2)?.current.state,"planned");
   assert.equal(await readFile(join(project,"a.txt"),"utf8"),"original");
   assert.equal(await readFile(join(project,"b.txt"),"utf8"),"original");
   assert.equal(git("status","--porcelain"),"");
-  if((mode==="approved"||mode==="approved-legacy")){
+  if((mode==="approved"||mode==="approved-legacy"||mode==="approved-roots")){
    const batch=(await sourceJournal.list(identity)).at(-1)!;
    const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
    // Jueces simulados: ejercicio de contratos, no prueba independiente real.
@@ -346,6 +347,24 @@ const terminalErrors:unknown[]=[];
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("show",candidate.commit+":sin-cambios.txt"),"texto sin cambios\nsegunda línea");
    assert.equal(await readFile(join(project,"sin-cambios.txt"),"utf8"),"texto sin cambios\r\nsegunda línea\r\n");
+   if(mode==="approved-roots"){
+    let verifications=0;
+    await assert.rejects(()=>persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{},
+     validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(jointProof);if(++verifications===2)throw Error("interrupción simulada");}}),/interrupción simulada/u);
+    assert.ok((await todos.list(identity)).every(row=>row.current.state==="planned"));
+    const restartFile=fileURLToPath(new URL("./fixtures/native-partition-restart.ts",import.meta.url));
+    const restart=(phase:string)=>JSON.parse(execFileSync(process.execPath,["--import","tsx",restartFile,phase,privateDir,JSON.stringify(identity),batch.id],{
+     encoding:"utf8",timeout:45000,windowsHide:true,stdio:["ignore","pipe","pipe"]}).trim());
+    const closed=restart("resume");
+    assert.equal(closed.status,"partition-closed");assert.equal(closed.authorizations,2);
+    const recovered=restart("inspect");
+    assert.equal(recovered.status,"partition-already-closed");assert.equal(recovered.authorizations,0);
+    assert.equal(recovered.writerAuthority,false);assert.equal(recovered.autoRetry,false);
+    const closedRows=await todos.list(identity);
+    assert.equal(closedRows.length,2);assert.ok(closedRows.every(row=>row.current.state==="done"));
+    assert.equal(launched,2);
+    return;
+   }
    // Un plan histórico conserva sus revisores, incluso después de actualizar.
    if(mode==="approved-legacy"){
     const roots=candidate.sourceTodoIds.map(id=>rows.find(row=>row.taskId===id)!);
