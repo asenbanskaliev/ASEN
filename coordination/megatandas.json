@@ -578,9 +578,16 @@
       "owner": "E",
       "files": [
         "src/agents/pi-process-runner.ts",
-        "tests/pi-process-runner-no-fallback-settlement.test.ts"
+        "tests/pi-process-runner-no-fallback-settlement.test.ts",
+        "src/runtime/managed/managed-lifecycle.ts",
+        "src/runtime/lifecycle/lifecycle-cli.ts",
+        "src/runtime/lifecycle/cli-usage.ts",
+        "tests/t09-lifecycle.test.ts",
+        "docs/installation.md",
+        ".github/workflows/ci.yml",
+        ".github/workflows/pi-compatibility-1_5.yml"
       ],
-      "reason": "G03 aislado; no comparte archivo de reserva B1"
+      "reason": "G03 y G08: recuperación de preparación firmada, pruebas y puertas de solo lectura; sin solape con B1."
     }
   },
   "jointCorrection": {
