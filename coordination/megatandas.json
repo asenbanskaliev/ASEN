@@ -138,18 +138,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-20261126T-g02-cr-review-fix-471291",
-        "task": "Corregir dos observaciones G02: captura única de ajustes y rechazo de refresco tras perder propiedad",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "1d44a763b12703ad2e597b450087c977faf66143",
-        "files": [
-          "extensions/asen.ts",
-          "tests/host-status-projection.test.ts"
-        ],
-        "startedAt": "2026-11-26T20:35:00Z"
-      },
+      "state": "validacion-en-curso",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -194,11 +184,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Corregir los dos hallazgos G02 de CodeRabbit 4712914863 y 4712914868, añadir regresiones de estructura y liberar la reserva antes de repetir CI.",
+      "next": "Validar el SHA 586f7a0 en CI, Release Gate, matriz Pi y CodeRabbit. Los dos hallazgos G02 de 1d44a76 ya están corregidos; mantener el ensayo NVIDIA/Pi bloqueado hasta que pasen todas las puertas exactas.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "1d44a763b12703ad2e597b450087c977faf66143",
+      "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -257,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "G08 Windows pasó en 762c9cb y en ccada704 (job 140140299346); la suite completa de ccada detectó diferencia de diagnóstico en Windows. El SHA 1d44a76 ajusta la prueba a ambos rechazos seguros con cero ejecución y cero temporales; validación exacta nueva aún no aparece en GitHub.",
+      "tests": "La CI de 1d44a76 confirma quick, Phase0, Pi1.2, T02–T11, G08 Windows, Linux y macOS parte de la matriz; el resto sigue en curso y la revisión encontró dos fallos G02 que ahora se corrigieron en 586f7a0. Se repite toda puerta sobre este SHA.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -280,52 +270,22 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "revision-completa-solicitada-SHA-1d44a76",
+      "reviewState": "dos-observaciones-G02-corregidas-en-586f7a0-espera-revision-exacta",
       "latestValidation": {
-        "sha": "1d44a763b12703ad2e597b450087c977faf66143",
-        "state": "en-curso",
-        "runs": [
-          {
-            "name": "CI",
-            "id": 45887494675,
-            "status": "in_progress"
-          },
-          {
-            "name": "CI rápida",
-            "id": 45887494469,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Release Gate",
-            "id": 45887494540,
-            "status": "in_progress"
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 45887494439,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Pi 1.2 runtime evidence",
-            "id": 45887494398,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Pi Free Smoke",
-            "id": 45887494647,
-            "status": "completed",
-            "conclusion": "skipped"
-          }
-        ],
+        "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
+        "state": "pendiente-inicio-GitHub",
+        "runs": [],
+        "superseded": {
+          "sha": "1d44a763b12703ad2e597b450087c977faf66143",
+          "ci": 45887494675,
+          "releaseGate": 45887494540
+        },
         "globalFull": false
       },
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "sha": "1d44a763b12703ad2e597b450087c977faf66143",
+        "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
         "phase": "CI y revisión",
         "writeReservation": false
       }
@@ -882,7 +842,7 @@
         }
       },
       "G02": {
-        "state": "correccion-G02-y-G08-publicada-espera-validacion-exacta",
+        "state": "observaciones-de-settings-y-propiedad-corregidas-espera-validacion",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
@@ -911,8 +871,8 @@
           }
         },
         "blockers": [
-          "CI completa, matriz Pi, Release Gate y revisión CodeRabbit del SHA 1d44a763b12703ad2e597b450087c977faf66143",
-          "Ensayo acotado NVIDIA/Pi real tras puertas exactas"
+          "CI completa, Release Gate, matriz Pi y revisión CodeRabbit del SHA 586f7a0b08bb544c71cc7a873da13c99560ac23c",
+          "Ensayo real NVIDIA/Pi acotado y no repetible tras las puertas exactas"
         ],
         "review": {
           "triggered": true,
@@ -1008,11 +968,11 @@
         "unresolved": 0
       }
     },
-    "m2": "M2 abierta: corrección Windows publicada en 1d44a76; CI completa y Release Gate en curso, rápida/arquitectura/Pi 1.2 success; CodeRabbit revisión exacta solicitada; NVIDIA/Pi real pendiente",
+    "m2": "M2 abierta: G08 Windows y pruebas integradas pasaron en SHA previo; CodeRabbit detectó dos problemas G02, ambos corregidos con pruebas estructurales en 586f7a0; puertas exactas y ensayo NVIDIA/Pi pendientes",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T20:25:00Z",
-    "g02Head": "1d44a763b12703ad2e597b450087c977faf66143"
+    "updatedAt": "2026-11-26T20:45:00Z",
+    "g02Head": "586f7a0b08bb544c71cc7a873da13c99560ac23c"
   },
   "modelCallException": {
     "enabled": true,
@@ -1053,5 +1013,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T20:25:00Z"
+  "updatedAt": "2026-11-26T20:45:00Z"
 }
