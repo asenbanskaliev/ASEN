@@ -138,8 +138,17 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "validacion-en-curso",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "E-20261126T-current-windows-regression",
+        "task": "Corregir expectativa del caso de deriva bajo espera en Windows y documentar evidencia exacta",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "base": "ccada704cbf029632d9c2cf914e2d95c39de2c23",
+        "files": [
+          "tests/managed-cli-version-lock.test.ts"
+        ],
+        "startedAt": "2026-11-26T20:05:00Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -184,7 +193,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Esperar CI rápida, PI1.2, G08/CI completa y Release Gate de ccada704. Pedir revisión completa de CodeRabbit sobre este SHA; después de sus hallazgos corregidos, ejecutar NVIDIA/Pi real bajo autorización única.",
+      "next": "Publicar corrección mínima del resultado de deriva que Windows rechaza antes de ejecutar; liberar reserva y validar SHA exacto.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
