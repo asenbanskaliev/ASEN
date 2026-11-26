@@ -703,7 +703,7 @@
   },
   "gentleShell5": {
     "planBranch": "feat/flujo-de-agentes-20261115",
-    "planSha": "9e6b79ddb5f17878da59da3e48fb185ec00b1aa6",
+    "planSha": "90a16fea05a9fcb624736408eb024119d6570613",
     "planPath": "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
@@ -769,8 +769,9 @@
           },
           "review": {
             "fullReviewRequested": true,
-            "commentId": 7199407376,
-            "confirmed": false
+            "completed": true,
+            "actionable": 0,
+            "coverageNote": "La revisión indicó que package-lock.json quedó excluido por filtros de ruta; tratar como revisión parcial de rutas, aunque CI completa del SHA pasó."
           }
         },
         "previousDependencyCandidate": {
@@ -795,7 +796,7 @@
         }
       },
       "G02": {
-        "state": "correccion-publicada-espera-ci-completa-y-respuesta-coderabbit",
+        "state": "correccion-baseline-publicado-espera-CI-y-revision-final",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
@@ -804,38 +805,38 @@
         "next": "Validar #149 y paridad SDK, representación y revisión independiente.",
         "connectionCandidate": {
           "pr": 149,
-          "sha": "8e7f71d805967e6668e5a7ed50153301a8ed5401",
+          "sha": "7b8163d1c539039d271ef7488be6fcefb9b2046b",
           "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
           "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "correccion-para-reconciliar-estado-persistente-espera-CI-y-revision-final",
+          "state": "correccion-baseline-publicado-en-misma-sesion-espera-validacion",
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática.",
           "evidence": {
-            "ci": 45872179990,
+            "ci": 45874436382,
             "ciStatus": "in_progress",
-            "releaseGate": 45872179912,
+            "releaseGate": 45874437293,
             "releaseStatus": "in_progress",
-            "architecture": 45872179971,
+            "architecture": 45874436435,
             "architectureStatus": "success",
-            "quick": 45872179876,
+            "quick": 45874438451,
             "quickStatus": "success",
-            "piRuntime": 45872180063,
-            "piRuntimeStatus": "success",
+            "piRuntime": 45874436348,
+            "piRuntimeStatus": "in_progress",
             "piFreeSmoke": "skipped"
           },
           "review": {
             "triggered": true,
-            "reviewState": "COMMENTED",
+            "commentId": 7200238560,
             "actionable": 1,
             "openThread": true,
-            "headSha": "8e7f71d805967e6668e5a7ed50153301a8ed5401",
-            "note": "CodeRabbit conserva observación sobre estado persistente; se verificará que cubra el sondeo y callback actuales."
+            "headSha": "7b8163d1c539039d271ef7488be6fcefb9b2046b",
+            "note": "Corrección de sincronización publicada; CodeRabbit solicitado para el nuevo SHA."
           }
         },
         "blockers": [
-          "CI y Release Gate exactos aún en curso",
-          "Revisar contra código final la observación CodeRabbit sobre publicación del estado",
-          "Identidad/independencia real de modelos no acreditada bajo noModelCalls:true",
-          "Cambio de perfil tras inicio de agente no cubierto"
+          "CI, Release Gate y Pi 1.2 exactos en curso",
+          "Revisión CodeRabbit del SHA 7b8163d pendiente",
+          "Independencia e identidad efectiva de modelos no acreditadas con noModelCalls:true",
+          "Cambio de configuración después del inicio del agente no cubierto"
         ],
         "review": {
           "triggered": true,
