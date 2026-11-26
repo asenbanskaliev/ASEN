@@ -12,7 +12,7 @@
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
       "generation": 2,
-      "next": "A1 independiente: inspectCompletedNativePartition y persistNativePartitionSuccessor exigen una única sucesora; comprobar contrato de cierre atómico de raíces sin sucesora y pruebas; desarrollar variante acotada en rama g2 sobre #115, sin alterar contratos compartidos sin E.",
+      "next": "A1a ejecutable: dos raíces sin sucesora, extremo a extremo, rama nueva g2 desde la base admitida #115. Comprobar canMaterializeOddPartition (hoy exige 3 unidades), inspectPartitionPolicy (exige sucesora), cierre atómico Todo, recuperación y consumidores en extensions/asen.ts. Autorizar temporalmente los archivos de la asignación A1a. No ampliar otros grafos. Pruebas de dos raíces sin sucesora, 2+1 histórico, solape, rechazo, recibo alterado y reinicio. Publicar un borrador único y liberar reserva.",
       "blocker": null
     },
     "B": {
@@ -22,7 +22,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Comprobar candidato #135 y hallazgos de su ámbito; no duplicar.",
+      "next": "B1: revisar #135 por SHA, comprobar código de procedencia global/proyecto/sesión, vigencia de perfil tras consentimiento, alias y recuperación. No tocar Todo/extension durante A1a; identificar casos concretos y preparar parches de ámbito propio si E los asigna; no repetir PR #133.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -48,7 +48,7 @@
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 132,
       "sha": "23bc4ce17c5716df38dde3119e7653ed55125aee",
-      "next": "Comprobar candidato #135 y hallazgos de su ámbito; no duplicar.",
+      "next": "C1: revisar #135 por SHA y contrato de persistencia de jueces parciales, firma, cambio de política y no repetición tras intento incierto. Verificar separación entre consumo observado y juicio completo. No editar native-integration-review ni pruebas compartidas durante A1a. Si hay defecto, registrar caso y coordinar con E.",
       "files": [
         "src/runtime/lifecycle/native-integration-review.ts",
         "tests/native-partition-flow.test.ts"
@@ -72,7 +72,7 @@
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 135,
       "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
-      "next": "Comprobar CI y CodeRabbit del SHA exacto de #135, sin duplicar.",
+      "next": "D1: validar #135; revisar que lectura sin fallback conserva totales solo con respuesta correlacionada y resultado limpio; abortos, duplicados, inventario incompleto, múltiples intentos y límites UTF-8. Mientras espera, preparar pruebas/fixtures independientes E1/E2A/CTX en scripts propios si E asigna; no repetir CI.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
@@ -136,32 +136,57 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar SHA exacto de #135; integrar solo con CI y revisión requeridas, sin repetir #134.",
+      "next": "E1: #135 es el único candidato activo; comprobar SHA/base, CI completa, Release Gate, arquitectura, Pi runtime y revisión pertinente. Si hay hallazgo, asignar corrección exacta al dueño; si todo pasa, integrar solo en rama #115 y validar nuevo HEAD. A1a independiente con propiedad temporal; no escribir archivos de A durante reserva. Auditar compatibilidad de A1a con B/C/D, admitir un candidato por vez. Tras admisión, archivar PR #127–134 como sustituidas solo si ancestros o cambios exactos comprobados y no hay trabajo único.",
       "blocker": null,
       "generation": 2,
       "pr": 135,
       "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
       "verifiedCandidate": {
-        "pr": 130,
-        "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+        "pr": 135,
+        "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
         "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-        "includes": [
-          127,
-          128,
-          129
+        "checks": [
+          {
+            "name": "Pi Free Smoke",
+            "id": 45768465460,
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45768465427,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45768465424,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "CI",
+            "id": 45768465518,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "CI rápida",
+            "id": 45768465490,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45768465398,
+            "status": "completed",
+            "conclusion": "success"
+          }
         ],
-        "checks": {
-          "ci": 45700279185,
-          "quick": 45700279200,
-          "architecture": 45700279342,
-          "releaseGate": 45700279334,
-          "piRuntime": 45700279202,
-          "conclusion": "success",
-          "piFreeSmoke": "skipped"
-        },
         "review": {
-          "state": "solicitada-no-validada",
-          "commentId": 7175214564
+          "submissions": [],
+          "openThreads": 0,
+          "confirmed": false
         }
       },
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
@@ -199,7 +224,9 @@
     "ownership": "Cada equipo trabaja solo dentro de ownership. Cualquier archivo no asignado o interfaz compartida requiere asignación expresa de E registrada con CAS. E coordina las modificaciones en extensión y workflows. Evitar modificaciones simultáneas al mismo archivo, incluso en ramas distintas.",
     "generationFence": "Ramas nuevas de escritura feat/asen-equipo-<equipo>-<paquete>-g<generacion>-<id>, nunca reutilizar ramas de reservas revocadas. #127–130 son instantáneas anteriores: no modificar ni aceptar cambios tardíos sin auditoría, SHA exacto y nueva admisión. Solo E integra tras comprobar base/candidato y vigencia de generación; si cambia HEAD, detener integración y revalidar.",
     "workflow": "Revisión o CI en curso = estado de espera sin reserva de escritura. Cada tarea revisa cambios materiales y realiza unidad independiente si existe. No repetir pruebas, solicitudes de revisión, comentarios ni commits sin cambios. No considerar skipped como éxito; globalFull false hasta evidencia real.",
-    "corrections": "B/C/D/E pueden corregir hallazgos asignados desde correctionBase exacta de #130 no admitida, exclusivamente en ramas nuevas g2 de reparación. Esta excepción no admite ni fusiona #130 ni permite otros cambios dependientes. E compone nuevo candidato y exige todas las puertas de nuevo. A sigue independiente desde #115."
+    "corrections": "B/C/D/E pueden corregir hallazgos asignados desde correctionBase exacta de #130 no admitida, exclusivamente en ramas nuevas g2 de reparación. Esta excepción no admite ni fusiona #130 ni permite otros cambios dependientes. E compone nuevo candidato y exige todas las puertas de nuevo. A sigue independiente desde #115.",
+    "activeCandidate": "Usar consolidation.pr/sha dinámicos, no números históricos. Las PR incluidas son antecedentes, no nuevas unidades; nunca integrar dos veces. Registrar checks y revisión con SHA exacto. Pi Free Smoke omitido no acredita ensayo real; no impide fase solo código si no es puerta requerida de esa fase.",
+    "failureRecovery": "Antes de finalizar, liberar reserva propia incluso ante error; ante fallo de herramienta, reintentar CAS hasta tres veces. Si no es posible, informar ID/HEAD y E aísla unidad; no pausar equipos independientes. Si ejecución falla o se desactiva, E informa estado y siguiente unidad, sin simular éxito."
   },
   "ownership": {
     "A": [
@@ -384,7 +411,23 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "A1a": {
+      "team": "A",
+      "generation": 2,
+      "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "files": [
+        "src/runtime/lifecycle/todo-store.ts",
+        "tests/todo-store.test.ts",
+        "src/runtime/lifecycle/native-integration-review.ts",
+        "extensions/asen.ts",
+        "tests/native-partition-flow.test.ts",
+        "src/runtime/lifecycle/parallel-native-child-plans.ts"
+      ],
+      "scope": "Solo cierre y admisión de partición de dos raíces sin sucesora, recuperación y pruebas. No tocar lógica de alternativas ni jueces/registro de consumo. Exclusivo de A durante su reserva; B/C/E no editar estos archivos mientras A escribe. E reconcilia cambios no solapados con candidato vigente por comparación de tres versiones; no sobrescribir.",
+      "release": "Al publicar PR A1a o cancelar unidad, E revoca o reasigna propiedad temporal mediante CAS."
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -423,6 +466,46 @@
     "status": "espera-ci-y-revision",
     "globalFull": false,
     "latestFinding": 4704551343,
-    "ci": "CI completa, rápida, arquitectura, Pi runtime y Release Gate correctos; Pi Free Smoke omitido"
+    "ci": {
+      "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
+      "checks": [
+        {
+          "name": "Pi Free Smoke",
+          "id": 45768465460,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Release Gate",
+          "id": 45768465427,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Phase 0 Architecture",
+          "id": 45768465424,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "CI",
+          "id": 45768465518,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "CI rápida",
+          "id": 45768465490,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Pi 1.2 runtime evidence",
+          "id": 45768465398,
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
   }
 }
