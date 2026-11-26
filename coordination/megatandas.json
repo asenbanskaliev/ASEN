@@ -138,17 +138,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "corrigiendo-hallazgo",
-      "lease": {
-        "id": "E-20261126T200200Z-windows-canonical",
-        "task": "Corregir la comparación física del inventario G08 tras fallo Windows en 59a0fda",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
-        "files": [
-          "src/runtime/managed/managed-install.ts"
-        ],
-        "startedAt": "2026-11-26T20:02:00Z"
-      },
+      "state": "espera-validacion",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -193,11 +184,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar diagnóstico de ruta alias Windows y liberar la reserva antes de CI.",
+      "next": "Validar el G08 Windows y la CI completa del SHA 762c9cb; mantener cerradas las llamadas NVIDIA hasta que CI, Release Gate y revisión exacta estén aprobados.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
+      "sha": "762c9cb7bc46fb0da07f02cdd10afa4bc257bdea",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -256,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "G08 ddff falló por alias 8.3 del marcador. En b186, las 12 pruebas del bloqueo Windows pasaron, pero cinco pruebas T09 fallaron porque selección de versión comparaba ruta física realpath con la ruta temporal alias, produciendo FOREIGN_MANAGED_ROOT. 59a0fda permite comparación física por realpath en Windows solo tras validar que el inventario es archivo/directorio ordinario; validación exacta en curso. Los hallazgos de CodeRabbit sobre el SHA b186 se corrigieron, pero falta revisión final del nuevo SHA.",
+      "tests": "G08 ddff falló por alias 8.3 del marcador. En b186, las 12 pruebas del bloqueo Windows pasaron, pero cinco pruebas T09 fallaron porque selección de versión comparaba ruta física realpath con la ruta temporal alias, produciendo FOREIGN_MANAGED_ROOT. 59a0fda permite comparación física por realpath en Windows solo tras validar que el inventario es archivo/directorio ordinario; validación exacta en curso. Los hallazgos de CodeRabbit sobre el SHA b186 se corrigieron, pero falta revisión final del nuevo SHA. La corrección de 59a0fda no bastó: G08 volvió a pasar las 12 pruebas del bloqueo, pero falló las cinco pruebas T09 al rechazar el alias durante selección. 762c9cb usa realpathSync.native para comparar con la canonicalización nativa asíncrona; nueva validación exacta pendiente.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -281,15 +272,15 @@
       },
       "reviewState": "corregidos-en-b186-pendientes-de-revision-y-pruebas-exactas",
       "latestValidation": {
-        "sha": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
+        "sha": "762c9cb7bc46fb0da07f02cdd10afa4bc257bdea",
         "state": "pendiente-de-ejecucion",
-        "previousSha": "b186e7d655824b0613959772b86651f93f2c8bf2",
+        "previousSha": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
         "previousEvidence": {
           "ciQuick": "success",
           "pi12": "success",
           "architecture": "success",
           "g08Windows": "failure",
-          "cause": "SelectionEpoch rechazó alias 8.3; regresiones T09: FOREIGN_MANAGED_ROOT"
+          "cause": "Comparador síncrono no coincidió con realpath asíncrono"
         },
         "piFreeSmoke": "skipped",
         "globalFull": false
