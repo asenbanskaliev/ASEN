@@ -10,7 +10,7 @@ import path from "node:path";
 import {createServer,type Server} from "node:http";
 import {DatabaseSync} from "node:sqlite";
 import {buildManagedManifest,generateManagedSigningKeyPair,parseManagedTrustAnchor,signManagedManifest,verifyManagedManifestSignature} from "../src/runtime/managed/managed-trust.js";
-import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,type ManagedAcquisitionSource} from "../src/runtime/managed/managed-lifecycle.js";
+import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,finishStageOnlyAcquisition,type ManagedAcquisitionSource} from "../src/runtime/managed/managed-lifecycle.js";
 import {inspectManagedInstall} from "../src/runtime/managed/managed-install.js";
 import {createHomeBackup,restoreHomeBackup,verifyHomeBackup,HomeBackupError} from "../src/runtime/lifecycle/home-backup.js";
 import {requestBrowserConsent} from "../src/runtime/ui/browser-assistant.js";
@@ -1055,6 +1055,24 @@ test("upgrade stage-only conserva el resultado persistido aunque falle la salida
  assert.equal(exit,1);assert.equal(writes,1);
  assert.match(stderr,/resultado staged; no se pudo emitir el informe/u);
  assert.doesNotMatch(stderr,/refused/u);
+ const observed=await inspectManagedInstall({prefix});
+ assert.equal(observed.status,"owned");
+ if(observed.status==="owned"){assert.equal(observed.activeVersion,"1.0.0");assert.ok(observed.versions.some(x=>x.version==="2.0.0"));}
+});
+
+test("upgrade stage-only mantiene el informe firmado ante fallo de limpieza",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("signed-stage-cleanup");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ let attempts=0;
+ const cleanup=async()=>{attempts++;throw new Error("ruta temporal ocupada");};
+ const first=await finishStageOnlyAcquisition(()=>upgradeManaged({...base,source:v2.source,stageOnly:true}),cleanup);
+ assert.equal(first.status,"staged");assert.equal(first.cleanupWarning,"ACQUISITION_CLEANUP_FAILED");assert.equal(first.activeVersion,"1.0.0");
+ const second=await finishStageOnlyAcquisition(()=>upgradeManaged({...base,source:v1.source,stageOnly:true}),cleanup);
+ assert.equal(second.status,"unchanged");assert.equal(second.cleanupWarning,"ACQUISITION_CLEANUP_FAILED");
+ const original=new Error("fallo original de operación");
+ await assert.rejects(()=>finishStageOnlyAcquisition(async()=>{throw original;},cleanup),error=>error===original);
+ assert.equal(attempts,3);
  const observed=await inspectManagedInstall({prefix});
  assert.equal(observed.status,"owned");
  if(observed.status==="owned"){assert.equal(observed.activeVersion,"1.0.0");assert.ok(observed.versions.some(x=>x.version==="2.0.0"));}

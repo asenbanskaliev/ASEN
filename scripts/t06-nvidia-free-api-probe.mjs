@@ -30,7 +30,8 @@ export async function probeNvidiaFreeApi({
  timeoutMs=MAX_DURATION_MS,
  models=NVIDIA_FREE_MODELS
 }={}){
- if(!Array.isArray(models)||models.length!==2||new Set(models).size!==2||models.some(model=>!NVIDIA_FREE_MODELS.includes(model)))throw Error("Modelos NVIDIA fuera de la lista gratuita permitida");
+ const modelList=Array.isArray(models)?[...models]:models;
+ if(!Array.isArray(modelList)||modelList.length!==2||new Set(modelList).size!==2||modelList.some(model=>!NVIDIA_FREE_MODELS.includes(model)))throw Error("Modelos NVIDIA fuera de la lista gratuita permitida");
  if(!requiredString(apiKey))throw Error("NVIDIA_API_KEY no configurada: prueba real BLOQUEADA");
  if(!Number.isSafeInteger(timeoutMs)||timeoutMs<100||timeoutMs>MAX_DURATION_MS)
   throw Error("Tiempo de espera NVIDIA fuera del límite autorizado");
@@ -38,7 +39,7 @@ export async function probeNvidiaFreeApi({
  // Dos llamadas creadas antes del primer await: los intervalos del recibo
  // permiten verificar concurrencia de peticiones, no ejecuciones de Pi.
  const tasks=TARGETS.map(async ({agent,marker},index)=>{
-  const model=models[index];
+  const model=modelList[index];
   const started=performance.now();
   let httpStatus=null,reportedModel=null;
   try{
@@ -98,9 +99,9 @@ export async function probeNvidiaFreeApi({
  const completed=results.length===2&&results.every(x=>x.status==="api-confirmed");
  return Object.freeze({
   schema:"asen.t06.nvidia.free-api-probe/v1",
-  status:completed&&overlapped&&models[0]!==models[1]?"AUTHENTICATED_API_PARALLEL":"BLOCKED",
+  status:completed&&overlapped&&modelList[0]!==modelList[1]?"AUTHENTICATED_API_PARALLEL":"BLOCKED",
   startedAt,finishedAt:new Date().toISOString(),
-  endpoint:"NVIDIA_BUILD_TRIAL",modelsRequested:[...models],distinctModelIdsVerified:models[0]!==models[1],freeEndpointOnly:true,
+  endpoint:"NVIDIA_BUILD_TRIAL",modelsRequested:[...modelList],distinctModelIdsVerified:modelList[0]!==modelList[1],freeEndpointOnly:true,
   maxTokensPerRequest:NVIDIA_MAX_TOKENS,requestCount:2,retryCount:0,
   overlappingRequests:overlapped,results:results.map(({started,finished,...safe})=>({
    ...safe,durationMs:Math.max(0,Math.round(finished-started))

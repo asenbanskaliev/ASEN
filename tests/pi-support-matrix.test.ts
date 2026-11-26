@@ -96,6 +96,9 @@ test("G01 RPC exige una respuesta correlacionada de una sesión en reposo",()=>{
  const reply={type:"response",id:"matrix-state",command:"get_state",success:true,data:{sessionId:"private-session",isStreaming:false,isCompacting:false,pendingMessageCount:0}};
  const observed=observeMatrixRpcReply([reply]);
  assert.deepEqual(observed,{responseCount:1,correlated:true});
+ assert.deepEqual(observeMatrixRpcReply([reply],"matrix-state"," \r\t"),observed);
+ assert.deepEqual(observeMatrixRpcReply([reply],"matrix-state",JSON.stringify(reply)),{responseCount:1,correlated:false});
+ assert.deepEqual(observeMatrixRpcReply([reply],"matrix-state","{incompleto"),{responseCount:1,correlated:false});
  assert.doesNotThrow(()=>validateCellObservation(cell,{...valid,rpc:observed}));
  for(const records of [[],[reply,reply],[{...reply,id:"other"}],[{...reply,command:"prompt"}],[{...reply,success:false}],[{...reply,data:null}],
   [{...reply,data:{...reply.data,isStreaming:true}}],[{...reply,data:{...reply.data,isCompacting:true}}],[{...reply,data:{...reply.data,pendingMessageCount:1}}],

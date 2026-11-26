@@ -94,3 +94,19 @@ test("T06 NVIDIA: informe privado sin claves, prompts ni sobrescritura",async t=
  assert.match(saved,/AUTHENTICATED_API_PARALLEL/u);
  assert.throws(()=>persistNvidiaProbeReport(report,file),/EEXIST/u);
 });
+
+test("T06 conserva el orden de modelos enviado aunque cambie la lista del llamante",async()=>{
+ const models=[...NVIDIA_FREE_MODELS],sent=[];
+ let release;
+ const gate=new Promise(resolve=>{release=resolve;});
+ const pending=probeNvidiaFreeApi({apiKey:"test-secret",models,timeoutMs:900,request:async(_,options)=>{
+  sent.push(JSON.parse(options.body).model);await gate;return mockResponse(options);
+ }});
+ models.reverse();release();
+ const result=await pending;
+ assert.equal(result.status,"AUTHENTICATED_API_PARALLEL");
+ assert.deepEqual(result.modelsRequested,sent);
+ assert.deepEqual(result.results.map(x=>x.modelRequested),sent);
+ assert.deepEqual(sent,[...NVIDIA_FREE_MODELS]);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:null,request:async()=>assert.fail("No debe llamar a red")}),/fuera de la lista/u);
+});

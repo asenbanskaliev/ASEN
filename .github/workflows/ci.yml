@@ -923,7 +923,8 @@ jobs:
        github.head_ref == 'feat/asen-equipo-E-M3-g2-continuidad-nativa-149' ||
        github.head_ref == 'feat/asen-equipo-E-M3-g2-correlacion-pi-150' ||
        github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151' ||
-       github.head_ref == 'feat/asen-equipo-E-M2-g2-reparar-admision-152')
+       github.head_ref == 'feat/asen-equipo-E-M2-g2-reparar-admision-152' ||
+       github.head_ref == 'feat/asen-equipo-E-M2-g2-limites-154')
     runs-on: windows-latest
     timeout-minutes: 20
     permissions:
@@ -952,7 +953,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --import tsx --test tests/managed-maintenance-lock.test.ts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --import tsx --test --test-name-pattern="upgrade prepares signed version|upgrade activates v2|fails its pre-activation|breaks only after activation|interrupted upgrade|unhealthy automatic rollback" tests/t09-lifecycle.test.ts
+          node --import tsx --test --test-name-pattern="upgrade prepares signed version|upgrade stage-only|upgrade activates v2|fails its pre-activation|breaks only after activation|interrupted upgrade|unhealthy automatic rollback" tests/t09-lifecycle.test.ts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.

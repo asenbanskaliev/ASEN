@@ -357,6 +357,8 @@ export interface ManagedLifecycleReport{
  readonly status:"installed"|"unchanged"|"upgraded"|"rolled-back"|"not-activated"|"ambiguous"|"staged";
  readonly staging?:ManagedAdditionalStageReport;
  readonly runtimeReady?:false;
+ /** No altera el resultado persistido ni permite repetir la operación. */
+ readonly cleanupWarning?:"ACQUISITION_CLEANUP_FAILED";
  readonly version:string;
  readonly previousVersion:string|null;
  readonly activeVersion:string|null;
@@ -479,6 +481,17 @@ async function selectOrReconcile(prefix:string,to:string,from:string):Promise<Re
  }
 }
 
+/** Conserva el resultado de preparación aunque falle la limpieza temporal. */
+export async function finishStageOnlyAcquisition(operation:()=>Promise<ManagedLifecycleReport>,cleanup:()=>Promise<void>):Promise<ManagedLifecycleReport>{
+ let result:ManagedLifecycleReport;
+ try{result=await operation();}catch(error){
+  try{await cleanup();}catch{/* Conservar el fallo original, no sustituirlo por limpieza. */}
+  throw error;
+ }
+ try{await cleanup();}catch{return Object.freeze({...result,cleanupWarning:"ACQUISITION_CLEANUP_FAILED" as const});}
+ return result;
+}
+
 /** Upgrade: stage beside the active version, probe, activate by compare-and-set, re-probe, roll back on failure. */
 export async function upgradeManaged(request:ManagedUpgradeRequest):Promise<ManagedLifecycleReport>{
  if(request.confirmed!==true)fail("CONFIRMATION_REQUIRED","Managed upgrade requires explicit confirmation");
@@ -490,14 +503,15 @@ export async function upgradeManaged(request:ManagedUpgradeRequest):Promise<Mana
  const from=inspection.activeVersion;
  if(!from)return fail("NOT_INSTALLED","The installation has no active version; use managed install");
  const acquired=await acquire(request.source,request.trustedKeyPath,prefix);
- try{
+ const perform=async():Promise<ManagedLifecycleReport>=>{
   const {manifest}=acquired,to=manifest.version,signerKeyId=acquired.authenticity.keyId;
   if(to===from){
    if(request.stageOnly){
-    const observed=await inspectManagedInstall({prefix});
-    const retained=observed.status==="owned"?observed.versions.find(item=>item.version===to):undefined;
-    const matches=observed.status==="owned"&&observed.activeVersion===from&&inventoryMatches(retained,manifest)&&!await readJournal(prefix);
-    return report({operation:"upgrade",status:matches?"unchanged":"ambiguous",version:to,previousVersion:from,activeVersion:observed.status==="owned"?observed.activeVersion:null,signerKeyId,reason:matches?null:"No se pudo confirmar la versión activa y su inventario firmado",runtimeReady:false});
+    const observed=await inspectManagedInstall({prefix}).catch(()=>undefined);
+    const retained=observed?.status==="owned"?observed.versions.find(item=>item.version===to):undefined;
+    const noJournal=await readJournal(prefix).then(value=>!value,()=>false);
+    const matches=observed?.status==="owned"&&observed.activeVersion===from&&inventoryMatches(retained,manifest)&&noJournal;
+    return report({operation:"upgrade",status:matches?"unchanged":"ambiguous",version:to,previousVersion:from,activeVersion:observed?.status==="owned"?observed.activeVersion:null,signerKeyId,reason:matches?null:"No se pudo confirmar la versión activa y su inventario firmado",runtimeReady:false});
    }
    const health=await probe(prefix,to);
    return report({operation:"upgrade",status:health.ok?"unchanged":"ambiguous",version:to,previousVersion:from,activeVersion:from,signerKeyId,reason:health.reason});
@@ -547,7 +561,9 @@ export async function upgradeManaged(request:ManagedUpgradeRequest):Promise<Mana
   }catch(error){
    return report({operation:"upgrade",status:"ambiguous",version:to,previousVersion:from,activeVersion:to,signerKeyId,reason:`${postReason}; automatic rollback failed: ${text(error)}; journal retained`});
   }
- }finally{await acquired.cleanup();}
+ };
+ if(request.stageOnly)return finishStageOnlyAcquisition(perform,()=>acquired.cleanup());
+ try{return await perform();}finally{await acquired.cleanup();}
 }
 
 export interface ManagedRollbackRequest extends CommonRequest{
