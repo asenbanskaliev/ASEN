@@ -725,8 +725,11 @@
           "scope": "36 celdas de arranque, interfaz y salida sin modelos; no acredita flujo real"
         },
         "review": {
-          "confirmed": false,
-          "requestedCommentId": 7192497097
+          "fullReviewRequested": true,
+          "commentId": 7199407376,
+          "completed": true,
+          "actionable": 0,
+          "unresolvedThreads": 0
         },
         "candidatePR": 144,
         "lockPreparation": {
@@ -792,7 +795,7 @@
         }
       },
       "G02": {
-        "state": "conexion-implementada-espera-ci-completa-y-revision",
+        "state": "correccion-publicada-espera-ci-completa-y-revision",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
@@ -801,30 +804,39 @@
         "next": "Validar #149 y paridad SDK, representación y revisión independiente.",
         "connectionCandidate": {
           "pr": 149,
-          "sha": "8acbfe56284077bb94c5396dfb3a12659d56fad4",
+          "sha": "493ac1f23cec7a335a655b633e8b9039624b36fc",
           "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
           "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "checks-parciales-correctos-ci-completa-en-curso-revision-disparada",
+          "state": "correccion-G02-publicada-espera-validacion-exact-SHA",
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática.",
           "evidence": {
-            "ci": 45868544978,
+            "ci": 45871105174,
             "ciStatus": "in_progress",
-            "releaseGate": 45868545480,
-            "architecture": 45868545473,
-            "quick": 45868545426,
-            "piRuntime": 45868545029,
+            "releaseGate": 45871105214,
+            "releaseStatus": "in_progress",
+            "architecture": 45871105310,
+            "architectureStatus": "in_progress",
+            "quick": 45871105152,
+            "quickStatus": "in_progress",
+            "piRuntime": 45871105164,
+            "piRuntimeStatus": "in_progress",
             "piFreeSmoke": "skipped"
           },
           "review": {
             "triggered": true,
-            "commentId": 7199342498,
-            "confirmed": false
+            "commentId": 7199758239,
+            "actionable": 1,
+            "correction": {
+              "finding": 4711841262,
+              "commit": "493ac1f23cec7a335a655b633e8b9039624b36fc",
+              "state": "pending-CI-and-review"
+            }
           }
         },
         "blockers": [
-          "CI completa #149 en curso",
-          "revisión CodeRabbit #149 en curso",
-          "identidad/independencia real de modelos no acreditada bajo noModelCalls:true",
+          "Validar SHA 493ac1f23cec7a335a655b633e8b9039624b36fc en CI, Release Gate, arquitectura y Pi 1.2 exactos",
+          "Revisar la corrección de actualización del estado con CodeRabbit",
+          "Identidad/independencia real de modelos no acreditada bajo noModelCalls:true",
           "G08 actualización Windows recuperable pendiente"
         ]
       },
@@ -865,7 +877,7 @@
     "candidate": 144
   },
   "currentSnapshot": {
-    "capturedAt": "2026-11-26T17:40Z",
+    "capturedAt": "2026-11-26",
     "source": "GitHub",
     "stabilization": {
       "pr": 144,
@@ -895,19 +907,25 @@
         "quick": "success",
         "piRuntime": "success",
         "piFreeSmoke": "skipped",
-        "coderabbitFullReview": "triggered",
-        "commentId": 7199407376
+        "coderabbitFullReview": "completed-no-actionable-comments",
+        "commentId": 7199407376,
+        "openThreads": 0
       },
       "pr149": {
-        "sha": "8acbfe56284077bb94c5396dfb3a12659d56fad4",
+        "sha": "493ac1f23cec7a335a655b633e8b9039624b36fc",
+        "previousSha": "8acbfe56284077bb94c5396dfb3a12659d56fad4",
         "ci": "in_progress",
-        "releaseGate": "success",
-        "architecture": "success",
-        "quick": "success",
-        "piRuntime": "success",
+        "releaseGate": "in_progress",
+        "architecture": "in_progress",
+        "quick": "in_progress",
+        "piRuntime": "in_progress",
         "piFreeSmoke": "skipped",
-        "coderabbitReview": "triggered",
-        "commentId": 7199342498
+        "coderabbit": {
+          "finding": 4711841262,
+          "correctionCommitted": true,
+          "reviewRequested": true,
+          "reviewCommentId": 7199758239
+        }
       },
       "g08": "pending",
       "limitations": [
