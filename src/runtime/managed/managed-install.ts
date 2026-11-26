@@ -1,4 +1,5 @@
 import {createHash,randomUUID} from "node:crypto";
+import {realpathSync} from "node:fs";
 import {lstat,mkdir,readFile,readdir,realpath,rename,rm,rmdir,writeFile} from "node:fs/promises";
 import path from "node:path";
 import {types as utilTypes} from "node:util";
@@ -534,11 +535,18 @@ function parseVersionCatalog(value:unknown,canonicalRoot:string,legacy:Receipt):
  const anchor=versions.find(item=>item.version===legacy.version);
  return anchor&&JSON.stringify(anchor.files)===JSON.stringify(legacy.files)?versions:undefined;
 }
+function sameCanonicalPath(actual:string,expected:string):boolean {
+ if(normalized(actual)===normalized(expected))return true;
+ if(process.platform!=="win32")return false;
+ // Windows puede entregar la ruta temporal con alias 8.3; aceptar el alias solo
+ // si realpath lo resuelve al mismo destino físico observado en el inventario.
+ try{return normalized(actual)===normalized(realpathSync(expected));}catch{return false;}
+}
 function catalogFileAt(value:ManagedPathMetadata|undefined,file:string):value is ManagedPathMetadata&{kind:"file";identity:string;size:number} {
- return value?.kind==="file"&&value.identity!==undefined&&typeof value.size==="number"&&normalized(value.canonicalPath)===normalized(file);
+ return value?.kind==="file"&&value.identity!==undefined&&typeof value.size==="number"&&sameCanonicalPath(value.canonicalPath,file);
 }
 function catalogDirectoryAt(value:ManagedPathMetadata|undefined,directory:string):value is ManagedPathMetadata&{kind:"directory";identity:string} {
- return value?.kind==="directory"&&value.identity!==undefined&&normalized(value.canonicalPath)===normalized(directory);
+ return value?.kind==="directory"&&value.identity!==undefined&&sameCanonicalPath(value.canonicalPath,directory);
 }
 function sameCatalogFile(before:ManagedPathMetadata,after:ManagedPathMetadata|undefined,file:string):boolean {
  return catalogFileAt(after,file)&&before.identity===after.identity&&before.canonicalPath===after.canonicalPath&&before.size===after.size;
