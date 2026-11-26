@@ -138,17 +138,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-20261126T-current-windows-regression",
-        "task": "Corregir expectativa del caso de deriva bajo espera en Windows y documentar evidencia exacta",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "ccada704cbf029632d9c2cf914e2d95c39de2c23",
-        "files": [
-          "tests/managed-cli-version-lock.test.ts"
-        ],
-        "startedAt": "2026-11-26T20:05:00Z"
-      },
+      "state": "validacion-en-curso",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -193,11 +184,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Publicar corrección mínima del resultado de deriva que Windows rechaza antes de ejecutar; liberar reserva y validar SHA exacto.",
+      "next": "Esperar las validaciones exactas del nuevo SHA 1d44a76; resolver los hallazgos que aparezcan y pedir revisión CodeRabbit completa. Solo tras gates y revisión, ejecutar el ensayo único NVIDIA/Pi.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "ccada704cbf029632d9c2cf914e2d95c39de2c23",
+      "sha": "1d44a763b12703ad2e597b450087c977faf66143",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -256,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "G08 Windows pasó en el SHA exacto 762c9cb: typecheck y las pruebas de bloqueo, instalación, upgrade/rollback, pre-sonda, fallo tras activar, interrupción y diario terminaron success. CodeRabbit encontró además en la revisión de b186 una prueba T06 con jq distinto y una asociación obsoleta entre estado G02 y fingerprint; corregidas en ccada704. CI y nueva revisión exacta pendientes.",
+      "tests": "G08 Windows pasó en 762c9cb y en ccada704 (job 140140299346); la suite completa de ccada detectó diferencia de diagnóstico en Windows. El SHA 1d44a76 ajusta la prueba a ambos rechazos seguros con cero ejecución y cero temporales; validación exacta nueva aún no aparece en GitHub.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -279,50 +270,17 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "corregidos-en-b186-pendientes-de-revision-y-pruebas-exactas",
+      "reviewState": "correcciones-publicadas-espera-CI-y-revision-exactas",
       "latestValidation": {
-        "sha": "ccada704cbf029632d9c2cf914e2d95c39de2c23",
-        "state": "en-curso",
-        "runs": [
-          {
-            "name": "CI",
-            "id": 45886986897,
-            "status": "pending"
-          },
-          {
-            "name": "CI rápida",
-            "id": 45886986894,
-            "status": "in_progress"
-          },
-          {
-            "name": "Release Gate",
-            "id": 45886986970,
-            "status": "in_progress"
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 45886986905,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Pi 1.2 runtime evidence",
-            "id": 45886986917,
-            "status": "in_progress"
-          },
-          {
-            "name": "Pi Free Smoke",
-            "id": 45886986923,
-            "status": "completed",
-            "conclusion": "skipped"
-          }
-        ],
+        "sha": "1d44a763b12703ad2e597b450087c977faf66143",
+        "state": "esperando-inicio-GitHub",
+        "runs": [],
         "globalFull": false
       },
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "sha": "59a0fdab58d0301120f4f0c262f26e172954d1ca",
+        "sha": "1d44a763b12703ad2e597b450087c977faf66143",
         "phase": "CI y revisión",
         "writeReservation": false
       }
@@ -879,7 +837,7 @@
         }
       },
       "G02": {
-        "state": "espera-validacion-SHA-c6a2d47",
+        "state": "correccion-G02-y-G08-publicada-espera-validacion-exacta",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
@@ -888,23 +846,16 @@
         "next": "Validar #149 y paridad SDK, representación y revisión independiente.",
         "connectionCandidate": {
           "pr": 149,
-          "sha": "c6a2d47c83ab9fe61741f83ecae78ff74c2c82d6",
+          "sha": "1d44a763b12703ad2e597b450087c977faf66143",
           "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
           "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "observador-reiniciable-y-refresco-sin-Git-espera-validacion",
+          "state": "candidato-con-indicador-G02-cola-y-correccion-windows-espera-CI",
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática. Se agrega prueba del snapshot alternativo durante ejecución activa.",
           "evidence": {
-            "ci": 45877154113,
-            "ciStatus": "in_progress",
-            "releaseGate": 45877154174,
-            "releaseStatus": "success",
-            "architecture": 45877154327,
-            "architectureStatus": "success",
-            "quick": 45877154130,
-            "quickStatus": "success",
-            "piRuntime": 45877154118,
-            "piRuntimeStatus": "success",
-            "piFreeSmoke": "skipped"
+            "sha": "1d44a763b12703ad2e597b450087c977faf66143",
+            "previousExactG08": "ccada704cbf029632d9c2cf914e2d95c39de2c23/job-140140299346",
+            "latestCommit": "1d44a763b12703ad2e597b450087c977faf66143",
+            "result": "espera-validacion-exacta"
           },
           "review": {
             "triggered": true,
@@ -915,10 +866,8 @@
           }
         },
         "blockers": [
-          "CI completa del SHA actual #149 en curso; no reutilizar SHA de revisión anterior",
-          "CodeRabbit debe completar revisión del SHA exacto y resolver hallazgos B1",
-          "G08 no restaura aún la versión activa ante fallo o cancelación",
-          "La identidad e independencia reales requieren probar dos identidades NVIDIA acotadas; aún no ejecutado"
+          "CI completa, matriz Pi, Release Gate y revisión CodeRabbit del SHA 1d44a763b12703ad2e597b450087c977faf66143",
+          "Ensayo acotado NVIDIA/Pi real tras puertas exactas"
         ],
         "review": {
           "triggered": true,
@@ -947,7 +896,7 @@
         "state": "pendiente"
       },
       "G08": {
-        "state": "implementacion-parcial-en-cadena-pi16-validacion-de-rollback-pendiente",
+        "state": "implementacion-windows-y-rollback-validada-espera-suite-exacta",
         "next": "Completar reversión transaccional de actualización activa con cancelación segura y pruebas de fallo/reinicio Windows; mantener versión anterior hasta verificar integridad de la nueva.",
         "evidence": {
           "candidatePR": 148,
@@ -963,7 +912,18 @@
             "acquisitionUpdate": 13
           },
           "validatedOnCandidate": "CI/Release Gate/arquitectura/Pi1.2 correctos; Pi Free Smoke omitido",
-          "limitation": "La composición deja selección/activación en not-run; falta rollback de actualización activa, cancelación y prueba Windows completa."
+          "limitation": "La suite completa del SHA ccada falló una expectativa de diagnóstico de deriva en Windows; G08 fue success. El SHA 1d44a76 ajusta la expectativa, pendiente de CI exacta.",
+          "latestExactG08": {
+            "sha": "ccada704cbf029632d9c2cf914e2d95c39de2c23",
+            "run": 45886986897,
+            "job": 140140299346,
+            "result": "success"
+          },
+          "previousFullG08": {
+            "sha": "762c9cb7bc46fb0da07f02cdd10afa4bc257bdea",
+            "run": 45886658455,
+            "result": "success"
+          }
         }
       }
     }
@@ -1003,11 +963,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; causa Windows de G08 identificada como rechazo falso de alias 8.3; corrección y prueba en ddffab1 pendiente de validación exacta",
+    "m2": "M2 sigue abierta: G08 pasó; ajuste menor de expectativa de rechazo seguro Windows publicado en 1d44a76; CI exacta, revisión CodeRabbit final y NVIDIA/Pi real pendientes",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:38:00Z",
-    "g02Head": "ddffab1cc6ea0354e4b1f800f1bc5dece544b6ca"
+    "updatedAt": "2026-11-26T20:20:00Z",
+    "g02Head": "1d44a763b12703ad2e597b450087c977faf66143"
   },
   "modelCallException": {
     "enabled": true,
@@ -1048,5 +1008,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T19:50:00Z"
+  "updatedAt": "2026-11-26T20:20:00Z"
 }
