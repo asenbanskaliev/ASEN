@@ -200,11 +200,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Ejecutar la CI exacta de a3d9da5; usar el motivo Windows para corregir el motor de G08. No habilitar NVIDIA ni marcar M2 cerrada hasta Windows, CI completa, Release Gate, Pi y CodeRabbit verdes.",
+      "next": "Validar Windows G08, pruebas de bloqueo, CI rápida/completa, Release Gate, Pi 1.2/1.6 y CodeRabbit sobre ddffab1. Solo después habilitar API y sesiones Pi acotadas.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "a3d9da5a3f915ead5842f484ed09cc4b441bb65a",
+      "sha": "ddffab1cc6ea0354e4b1f800f1bc5dece544b6ca",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -256,7 +256,7 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "La prueba Windows de 1a0d333f91f2c204aec5e9aa01e3a331057a4261 volvió a fallar en t09-lifecycle, con candidate-drift antes de iniciar el CLI. El diagnóstico previo siguió demasiado genérico porque el bloqueo normaliza OWNED_ROOT_REQUIRED; este SHA diferencia rechazo por raíz no reconocida y raíz cambiada, sin revelar rutas.",
+      "tests": "El run Windows 45884612209 del SHA a3d9da5 identificó ROOT_CHANGED: el bloqueo rechazaba rutas temporales Windows cuyo realpath resuelve un alias 8.3 aunque identidad y directorio físico son los mismos. ddffab1 verifica lstat del alias y la ruta resuelta con identidad física, y agrega test Windows para 8.3 al job G08.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -266,7 +266,9 @@
         ".github/workflows/ci.yml",
         "tests/flujo-agentes-nvidia-workflow.test.ts",
         "tests/host-status-projection.test.ts",
-        "src/runtime/managed/managed-cli-version-probe.ts"
+        "src/runtime/managed/managed-cli-version-probe.ts",
+        "src/runtime/managed/managed-maintenance-lock.ts",
+        "tests/managed-maintenance-lock.test.ts"
       ],
       "lastAttempt": {
         "pr": 144,
@@ -950,11 +952,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; G08 Windows aún falla candidate-drift; nuevo SHA a3d9da5a3f915ead5842f484ed09cc4b441bb65a añade clasificación segura del bloqueo y debe identificar la causa",
+    "m2": "abierta; causa Windows de G08 identificada como rechazo falso de alias 8.3; corrección y prueba en ddffab1 pendiente de validación exacta",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:36:00Z",
-    "g02Head": "a3d9da5a3f915ead5842f484ed09cc4b441bb65a"
+    "updatedAt": "2026-11-26T19:38:00Z",
+    "g02Head": "ddffab1cc6ea0354e4b1f800f1bc5dece544b6ca"
   },
   "modelCallException": {
     "enabled": true,
