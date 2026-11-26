@@ -121,3 +121,9 @@ Las validaciones del SHA 1d44a76 quedan supersedidas para la admisión: CI compl
 CodeRabbit detectó en el SHA 586f7a0 que dos gates de recuperación parcial comparaban la ruta física guardada en el recibo con la ruta lexical solicitada. En Windows, un alias 8.3 válido podía causar rechazo seguro antes de recuperar. El SHA 315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c alinea ambos gates con realpath(root) y amplía la prueba Windows: alias 8.3, inventario alterado, recuperación parcial, callback ejecutado una sola vez y marcador retirado con seguridad.
 
 Este cambio vuelve a invalidar como evidencia de cierre la CI anterior. G08 había pasado en sus pruebas dedicadas, pero la nueva regresión requiere CI completa y revisión CodeRabbit sobre 315fc98. Solo después de ambas, y del Release Gate y Pi exactos, se consumirá la única autorización NVIDIA/Pi. globalFull:false.
+
+### Evidencia exacta de CI G02/G08 — SHA 315fc98 — 26/11/2026
+
+El SHA 315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c pasó CI completa (run 45890471242), CI rápida (45890472526), Release Gate (45890471359), Phase 0 (45890471186), Pi 1.2 runtime (45890471273) y la matriz Pi de Linux, macOS y Windows. El job Windows G08 140151640110 ejecutó typecheck, 34 pruebas de instalación, 12 del bloqueo, 5 de upgrade/rollback/interrupción y la prueba de alias 8.3 con inventario alterado; todas pasaron. Pi Free Smoke quedó omitido y no se cuenta.
+
+CodeRabbit completó una revisión anterior sobre 586f7a0 que encontró el desajuste de raíz física; 315fc98 lo corrige y la prueba Windows exacta lo cubre. La revisión completa para 315fc98 está en curso. Las puertas automáticas aún muestran el permiso real NVIDIA/Pi como omitido; ese ensayo acotado solo se ejecutará después de que CodeRabbit cierre el SHA exacto sin hallazgos accionables abiertos. #149 sigue abierta y sin fusionar; globalFull:false.
