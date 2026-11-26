@@ -708,7 +708,7 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "pruebas-superadas-espera-revision",
+        "state": "validacion-pi16-pasada-revision-completa-pendiente",
         "pr": 141,
         "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
@@ -749,25 +749,25 @@
           "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
           "branch": "feat/asen-equipo-E-M2-g2-pi16-cola-147",
           "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-          "state": "espera-revision",
+          "state": "ci-matriz-y-gates-superados-revision-completa-solicitada",
           "includes": [
             146,
             147
           ],
           "scope": "Corregir F5 y cubrir cola real de agentes con ejecutor instrumentado sin modelos",
           "evidence": {
-            "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
             "ci": 45860285935,
             "releaseGate": 45860285884,
             "matrix": 45860285639,
             "architecture": 45860286007,
             "quick": 45860285633,
-            "conclusion": "success",
-            "piFreeSmoke": "skipped"
+            "piFreeSmoke": "skipped",
+            "conclusion": "success"
           },
           "review": {
-            "confirmed": false,
-            "requestedCommentId": 7199127636
+            "fullReviewRequested": true,
+            "commentId": 7199407376,
+            "confirmed": false
           }
         },
         "previousDependencyCandidate": {
@@ -792,7 +792,7 @@
         }
       },
       "G02": {
-        "state": "conectado-espera-ci",
+        "state": "conexion-implementada-espera-ci-completa-y-revision",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
@@ -804,12 +804,27 @@
           "sha": "8acbfe56284077bb94c5396dfb3a12659d56fad4",
           "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
           "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "espera-ci",
-          "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática."
+          "state": "checks-parciales-correctos-ci-completa-en-curso-revision-disparada",
+          "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática.",
+          "evidence": {
+            "ci": 45868544978,
+            "ciStatus": "in_progress",
+            "releaseGate": 45868545480,
+            "architecture": 45868545473,
+            "quick": 45868545426,
+            "piRuntime": 45868545029,
+            "piFreeSmoke": "skipped"
+          },
+          "review": {
+            "triggered": true,
+            "commentId": 7199342498,
+            "confirmed": false
+          }
         }
       },
       "G03": {
-        "state": "pendiente"
+        "state": "pendiente-de-implementacion-y-aceptacion",
+        "next": "Auditar turnos Pi abiertos y diseñar G03 sobre el runner existente; no repetir llamadas de resultado incierto. Requiere prueba real de correlación/terminalidad y reinicio."
       },
       "G04": {
         "state": "pendiente"
@@ -824,7 +839,8 @@
         "state": "pendiente"
       },
       "G08": {
-        "state": "pendiente"
+        "state": "pendiente-sin-codigo-ni-PR-en-la-cadena-auditada",
+        "next": "Reservar y desarrollar actualización Windows recuperable en rama aislada; rollback, bloqueo, cancelación e integridad/versionado deben superar pruebas antes de integrar."
       }
     }
   },
@@ -841,5 +857,71 @@
     ],
     "globalFull": false,
     "candidate": 144
+  },
+  "currentSnapshot": {
+    "capturedAt": "2026-11-26T17:40Z",
+    "source": "GitHub",
+    "stabilization": {
+      "pr": 144,
+      "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+      "ci": "success",
+      "releaseGate": "success",
+      "architecture": "success",
+      "quick": "success",
+      "piRuntime": "success",
+      "piFreeSmoke": "skipped",
+      "coderabbit": {
+        "actionable": 0,
+        "nitpick": 1
+      },
+      "reviewThreads": {
+        "resolved": 0,
+        "unresolved": 0
+      }
+    },
+    "m2": {
+      "pr148": {
+        "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
+        "ci": "success",
+        "releaseGate": "success",
+        "architecture": "success",
+        "matrix": "success",
+        "quick": "success",
+        "piRuntime": "success",
+        "piFreeSmoke": "skipped",
+        "coderabbitFullReview": "triggered",
+        "commentId": 7199407376
+      },
+      "pr149": {
+        "sha": "8acbfe56284077bb94c5396dfb3a12659d56fad4",
+        "ci": "in_progress",
+        "releaseGate": "success",
+        "architecture": "success",
+        "quick": "success",
+        "piRuntime": "success",
+        "piFreeSmoke": "skipped",
+        "coderabbitReview": "triggered",
+        "commentId": 7199342498
+      },
+      "g08": "pending"
+    },
+    "m3": {
+      "state": "parcial-en-codigo-de-115-sin-aceptacion-integral",
+      "pr": 115,
+      "sha": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+      "ci": "success",
+      "reviewThreads": {
+        "resolved": 94,
+        "unresolved": 0
+      },
+      "limitations": [
+        "No se ha acreditado recorrido natural completo en un único ensayo del SHA actual",
+        "G03: continuidad de turnos abiertos del proveedor pendiente",
+        "P04: recuperación de proceso en todos los cortes y sin doble efecto pendiente",
+        "La continuidad de tareas dependientes mantiene autorización explícita; no se declara ejecución autónoma aceptada"
+      ],
+      "modelsAllowed": false
+    },
+    "globalFull": false
   }
 }
