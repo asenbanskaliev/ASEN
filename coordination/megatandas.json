@@ -184,7 +184,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Esperar revisión completa CodeRabbit del SHA 315fc98, resolver/justificar todos sus hilos. Tras revisión sin accionables y hilos anteriores conciliados, ejecutar una sola vez NVIDIA API + dos sesiones Pi nativas acotadas.",
+      "next": "Esperar y cerrar full review CodeRabbit exacta 315fc98. Si no hay nuevos hallazgos, activar etiqueta de permiso único y validar evidencia NVIDIA/Pi; si hay, corregir y repetir solo las puertas afectadas, manteniendo seguridad.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
@@ -270,7 +270,7 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "review-completa-CodeRabbit-exacta-pendiente-SHA-315fc98",
+      "reviewState": "hilos-previos-resueltos-full-review-CodeRabbit-315fc98-en-curso",
       "latestValidation": {
         "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
         "state": "CI-y-gates-success-CodeRabbit-pendiente",
@@ -327,7 +327,12 @@
           "result": "success",
           "windowsAliasPartialInventory": "success"
         },
-        "globalFull": false
+        "globalFull": false,
+        "review": {
+          "requestCommentId": 7202590244,
+          "requestedSha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
+          "status": "in_progress"
+        }
       },
       "validationOwner": {
         "team": "E",
@@ -1016,10 +1021,10 @@
         "unresolved": 0
       }
     },
-    "m2": "M2: CI completa, G08 Windows con alias e inventario parcial, matriz Pi linux/macOS/Windows, quick, arquitectura, Pi1.2 y Release Gate pasaron en 315fc98; revisión CodeRabbit exacta y NVIDIA/Pi real pendientes; globalFull:false",
+    "m2": "M2: CI completa y puertas de plataforma pasadas en 315fc98; hilos CodeRabbit previos resueltos; revisión completa exacta en curso; ensayo único NVIDIA/Pi pendiente",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T21:50:00Z",
+    "updatedAt": "2026-11-26T22:00:00Z",
     "g02Head": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c"
   },
   "modelCallException": {
@@ -1061,5 +1066,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T21:50:00Z"
+  "updatedAt": "2026-11-26T22:00:00Z"
 }
