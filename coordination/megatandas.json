@@ -273,11 +273,54 @@
       "reviewState": "pendiente-revision-completa-SHA-3eafc195",
       "latestValidation": {
         "sha": "3eafc1951776d19c8a21d525904be95acded984b",
-        "state": "validacion-reiniciada-tras-correccion-de-regresion; T06 bloqueado",
-        "runs": [],
+        "state": "CI-rapida-Phase0-Pi1.2-ReleaseGate-correctos; CI-completa-en-curso; CodeRabbit-full-review-activada; T06-no-ejecutado",
+        "runs": [
+          {
+            "name": "CI",
+            "id": 45893102399,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "CI rápida",
+            "id": 45893102387,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45893102463,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45893102390,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45893102439,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 45893102410,
+            "status": "completed",
+            "conclusion": "skipped"
+          }
+        ],
+        "g08": {
+          "run": 45893102399,
+          "result": "success"
+        },
         "globalFull": false,
         "review": {
-          "status": "pendiente-solicitar-tras-confirmar-runs"
+          "requestCommentId": 7203013283,
+          "status": "triggered",
+          "openThreads": 0
         }
       },
       "validationOwner": {
@@ -1012,5 +1055,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T22:45:00Z"
+  "updatedAt": "2026-11-26T23:00:00Z"
 }
