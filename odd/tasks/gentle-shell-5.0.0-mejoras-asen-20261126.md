@@ -108,3 +108,10 @@ La observación sobre `getSettings` ausente se corrigió en `4c1264a` y su hilo 
 La suite completa del SHA ccada704cbf029632d9c2cf914e2d95c39de2c23 detectó una diferencia de diagnóstico en Windows al alterar el binario mientras la sonda esperaba el bloqueo. El proceso no se ejecutó y no creó datos temporales; Windows rechazó el inventario como owned-installation-not-recognized, mientras otras plataformas informaron candidate-drift-before-launch. La regresión ahora acepta ambos motivos de rechazo seguro y conserva las comprobaciones de cero intentos, salida vacía, ningún temporal y bloqueo eliminado.
 
 La corrección se publicó como SHA 1d44a763b12703ad2e597b450087c977faf66143 en #149. La actualización segura G08 ya pasó en Windows en el SHA ccada704 (job 140140299346) y en 762c9cb (run 45886658455). Esas pruebas no reemplazan la CI completa del nuevo SHA. La validación de 1d44a76, la revisión completa CodeRabbit y el ensayo acotado NVIDIA/Pi siguen pendientes; Pi Free Smoke omitido no cuenta como evidencia real. #149 permanece abierta y sin fusionar. globalFull:false.
+
+
+### Correcciones CodeRabbit G02 — 26/11/2026
+
+En la revisión completa del SHA 1d44a763b12703ad2e597b450087c977faf66143, CodeRabbit señaló que una captura de ajustes con valor undefined podía disparar una segunda lectura y que un refresco completo antiguo podía publicar después de perder la propiedad del estado. Ambos hallazgos (comentarios 4712914863 y 4712914868) se corrigieron en el SHA 586f7a0b08bb544c71cc7a873da13c99560ac23c. Se eliminó el valor predeterminado que releía ajustes, se hizo explícita la captura en los dos puntos de observación, y se añadió al control de publicación la comprobación de que el mismo UI conserva la propiedad. Las pruebas de G02 exigen estas garantías.
+
+Las validaciones del SHA 1d44a76 quedan supersedidas para la admisión: CI completa/Release Gate del SHA nuevo deben volver a pasar. G08 Windows y T02–T11 sí habían pasado en el SHA anterior, pero no se atribuyen al nuevo. La nueva revisión independiente exacta también queda pendiente. No ejecutar el permiso NVIDIA/Pi hasta cerrar esas puertas. globalFull:false.
