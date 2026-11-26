@@ -51,13 +51,14 @@ test("an owned maintenance lease returns the result and removes only its own mar
 });
 
 
-test("Windows 8.3 root aliases preserve the owned maintenance lock",async t=>{
+test("Windows 8.3 root aliases preserve partial-recovery maintenance lock",async t=>{
  if(process.platform!=="win32"){t.skip("Comprobación de alias 8.3 exclusiva de Windows");return;}
  const {withManagedMaintenanceLock}=await api(),f=await fixture(t);
  const lexical=path.resolve(f.root),canonical=await realpath(lexical),normalize=(value:string)=>path.normalize(value).toLowerCase();
  if(normalize(lexical)===normalize(canonical)){t.skip("Este ejecutor no expone un alias 8.3 distinto");return;}
+ await fs.writeFile(path.join(f.root,"versions","1.0.0","fixture.txt"),"alterado\n");
  let calls=0;
- const result=await withManagedMaintenanceLock({prefix:f.prefix,confirmed:true},async()=>++calls);
+ const result=await withManagedMaintenanceLock({prefix:f.prefix,confirmed:true,allowPartialInventory:true},async()=>++calls);
  assert.equal(result,1);assert.equal(calls,1);
  await assert.rejects(()=>fs.stat(f.lock),{code:"ENOENT"});
 });
