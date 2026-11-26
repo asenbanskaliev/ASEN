@@ -23,14 +23,26 @@ function assertIntegratedCheckout(candidate:NativeIntegrationCandidate,identity:
  * No reconstituye AcceptedNativeIntegration, no autoriza el Writer, no ejecuta
  * herramientas, no modifica el diario ni reintenta un agente incierto. */
 export async function inspectCompletedNativePartition(input:{
- candidate:NativeIntegrationCandidate;identity:TodoContext;todos:Pick<SessionTodoStore,"list">;receipts:ReviewReceiptReader;
+ candidate:NativeIntegrationCandidate;identity:TodoContext;todos:Pick<SessionTodoStore,"list"|"archived">;receipts:ReviewReceiptReader;
  validate:()=>Promise<void>;
 }){
  const {candidate,identity,todos}=input;
  if(!isIssuedNativeIntegrationCandidate(candidate)||identity.projectId!==candidate.repository||candidate.sourceBindings?.length!==2)
   throw Error("La recuperación requiere el lote original auténtico");
  await input.validate();
- const rows=await todos.list(identity);
+ // El cierre de las dos raíces puede archivar el diario completo. Leer las
+ // dos ubicaciones por la misma identidad, sin recuperar autoridad de escritura.
+ // Un solape entre instantáneas indica una transición o una historia ambigua:
+ // bloquear en lugar de elegir arbitrariamente una versión de la tarea.
+ const readRows=async()=>{
+  const active=await todos.list(identity);
+  const archived=await todos.archived(identity);
+  const all=[...active,...archived];
+  if(new Set(all.map(row=>row.taskId)).size!==all.length)
+   throw Error("El diario activo y archivado se solapan; consultar sin repetir");
+  return all;
+ };
+ const rows=await readRows();
  await input.validate();
  const bindings=candidate.sourceBindings;
  const roots=bindings.map(binding=>{
@@ -66,7 +78,7 @@ export async function inspectCompletedNativePartition(input:{
   readNativeIntegrationDiff(candidate);
   const receipt=await exactPassingReceipt(candidate,input.receipts);
   await input.validate();assertIntegratedCheckout(candidate,identity);
-  const latest=await todos.list(identity);
+  const latest=await readRows();
   if(roots.some(row=>JSON.stringify(row)!==JSON.stringify(latest.find(item=>item.taskId===row.taskId)))||
    latest.some(row=>row.dependsOn?.some(id=>candidate.sourceTodoIds.includes(id))))
    throw Error("El estado cambió durante la recuperación; consultar el diario sin repetir");
@@ -111,7 +123,7 @@ export async function inspectCompletedNativePartition(input:{
  // Si ya se ejecutó, su resultado puede haber cambiado el worktree; aquí
  // se informa de su estado sin restaurar permisos ni aceptar esos cambios.
  if(task.current.state==="planned")assertIntegratedCheckout(candidate,identity);
- const latest=await todos.list(identity);
+ const latest=await readRows();
  const relevant=[...roots,old,task,...rows.filter(row=>row.requestId==="asen-plan:"+id+":reviewer"||row.requestId==="asen-plan:"+id+":reviewer:2")];
  if(relevant.some(row=>JSON.stringify(row)!==JSON.stringify(latest.find(item=>item.taskId===row.taskId))))
   throw Error("El estado cambió durante la recuperación; consultar el diario sin repetir");

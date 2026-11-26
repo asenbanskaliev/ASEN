@@ -399,8 +399,13 @@ const terminalErrors:unknown[]=[];
     const recovered=restart("inspect");
     assert.equal(recovered.status,"partition-already-closed");assert.equal(recovered.authorizations,0);
     assert.equal(recovered.writerAuthority,false);assert.equal(recovered.autoRetry,false);
-    const closedRows=await todos.list(identity);
+    const closedRows=await todos.archived(identity);
+    assert.equal((await todos.list(identity)).length,0);
     assert.equal(closedRows.length,2);assert.ok(closedRows.every(row=>row.current.state==="done"));
+    assert.deepEqual(closedRows.map(row=>row.taskId).sort(),[...candidate.sourceTodoIds].sort());
+    const inspectInput={candidate,identity,todos,receipts,validate:async()=>{}};
+    await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{list:async()=>closedRows,archived:async()=>closedRows}}),/solapan/u);
+    await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{list:async()=>[],archived:async()=>closedRows.slice(0,1)}}),/raíces originales/u);
     assert.equal(launched,2);
     return;
    }
