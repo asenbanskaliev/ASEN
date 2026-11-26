@@ -689,12 +689,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
      return !!model&&`${model.provider}/${model.id}`===ref;
     };
-    const [globalFallbacks,projectFallbacks]=await Promise.all([
-     profileFallbacksReader(profileFallbacksFile).catch(()=>undefined),
-     profileFallbacksReader(path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>undefined)
-    ]);
-    const profileFallbacksByScope={...(globalFallbacks?{global:globalFallbacks}:{}),...(projectFallbacks?{project:projectFallbacks}:{})};
-    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,profileFallbacksByScope,...(signal?{signal}:{}),
+    const readFallbacksByScope=async()=>{
+     const [globalFallbacks,projectFallbacks]=await Promise.all([
+      profileFallbacksReader(profileFallbacksFile).catch(()=>undefined),
+      profileFallbacksReader(path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>undefined)
+     ]);
+     return {...(globalFallbacks?{global:globalFallbacks}:{}),...(projectFallbacks?{project:projectFallbacks}:{})};
+    };
+    const profileFallbacksByScope=await readFallbacksByScope();
+    const readCurrentExplorerFallbackConfig=async()=>({
+     profiles:await parentProfileLayer(ctx,identity),fallbacksByScope:await readFallbacksByScope()
+    });
+    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,profileFallbacksByScope,readCurrentExplorerFallbackConfig,...(signal?{signal}:{}),
      ...(expectedTodoId?{expectedTodoId}:{}),
      ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
      runtimeProfiles:activeProfiles,validateIdentity:async()=>{

@@ -120,7 +120,15 @@ export function plannedExplorerFallback(input:{role:string;model?:string;profile
  });
  return chain.length?{profile,chain}:undefined;
 }
+type ExplorerFallbackConfig=Pick<Parameters<typeof plannedExplorerFallback>[0],"profiles"|"fallbacksByScope">;
+/** No ampliar ni sustituir alternativas de una tarea ya seleccionada. */
+export async function assertPlannedExplorerFallbackCurrent(expected:AgentModelFallback,selection:Parameters<typeof plannedExplorerFallback>[0],readCurrent:()=>Promise<ExplorerFallbackConfig>):Promise<void>{
+ const current=await readCurrent();
+ const actual=plannedExplorerFallback({...selection,profiles:current.profiles,fallbacksByScope:current.fallbacksByScope});
+ if(JSON.stringify(actual)!==JSON.stringify(expected))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
+}
 type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;profileFallbacksByScope?:Partial<Record<ExplorerProfileOrigin["scope"],ProfileFallbacksFile>>;
+ readCurrentExplorerFallbackConfig?:()=>Promise<ExplorerFallbackConfig>;
  /** Solo el coordinador interno puede reservar una plaza de lectura.
   * Nunca es permiso para iniciar un Writer ni eludir las selecciones hijas. */
  readOnlyWave?:boolean;
@@ -410,9 +418,18 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed while awaiting exploration approval; rebuild the plan against the current candidate."};}
  await validateReadOnlyLaunch();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
- const modelFallback=plannedExplorerFallback({role:readRole,...(task.plan.model?{model:task.plan.model}:{}),...(input.runtimeProfiles?{profiles:input.runtimeProfiles}:{}),...(task.plan.explorerProfileOrigin?{origin:task.plan.explorerProfileOrigin}:{}),...(input.profileFallbacksByScope?{fallbacksByScope:input.profileFallbacksByScope}:{}),independentRecovery:!!independence});
+ const fallbackSelection={role:readRole,...(task.plan.model?{model:task.plan.model}:{}),...(input.runtimeProfiles?{profiles:input.runtimeProfiles}:{}),...(task.plan.explorerProfileOrigin?{origin:task.plan.explorerProfileOrigin}:{}),...(input.profileFallbacksByScope?{fallbacksByScope:input.profileFallbacksByScope}:{}),independentRecovery:!!independence};
+ const modelFallback=plannedExplorerFallback(fallbackSelection);
+ const validateFallback=async()=>{
+  if(!modelFallback)return;
+  if(!input.readCurrentExplorerFallbackConfig)throw Error("No se puede comprobar la vigencia de las alternativas del perfil");
+  await input.validateIdentity();
+  await assertPlannedExplorerFallbackCurrent(modelFallback,fallbackSelection,input.readCurrentExplorerFallbackConfig);
+  await input.validateIdentity();
+ };
+ try{await validateFallback();}catch{return {status:"blocked",reason:"Las alternativas del perfil ya no son verificables; actualizar el plan antes de ejecutar"};}
  try{
-  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),...(modelFallback?{modelFallback}:{}),onPrepared:async(id,enqueue,dispatch)=>{await validateReadOnlyLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateReadOnlyLaunch);}},input.signal);
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),...(modelFallback?{modelFallback,validateStart:validateFallback}:{}),onPrepared:async(id,enqueue,dispatch)=>{const validateLaunch=async()=>{await validateReadOnlyLaunch();await validateFallback();};await validateLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateLaunch);}},input.signal);
   return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
  }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }

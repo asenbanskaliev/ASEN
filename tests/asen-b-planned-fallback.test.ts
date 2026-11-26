@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {plannedExplorerFallback,plannedExplorerProfileOrigin} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {plannedExplorerFallback,plannedExplorerProfileOrigin,assertPlannedExplorerFallbackCurrent} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {emptyProfileFallbacks,setProfileFallbackChain} from "../src/runtime/lifecycle/profile-fallback-store.js";
 import type {ProfileLayer} from "../src/runtime/lifecycle/profiles.js";
 const primary="nvidia/nvidia/modelo-a";
@@ -29,3 +29,16 @@ test("Las alternativas del Explorer planificado no cambian permisos ni independe
  const {origin:legacyOrigin,...legacy}=input;assert.equal(plannedExplorerFallback(legacy),undefined);
  assert.equal(plannedExplorerProfileOrigin("explorer",primary,{session:global,global}),undefined);
  });
+
+test("B1 comprueba nuevamente las alternativas del perfil antes de ejecutar",async()=>{
+ const selection={role:"explorer",model:primary,profiles,origin:{scope:"global" as const,name:"perfil"},fallbacksByScope:{global:fallbacks}};
+ const expected=plannedExplorerFallback(selection)!;
+ assert.ok(expected);
+ await assert.doesNotReject(()=>assertPlannedExplorerFallbackCurrent(expected,selection,async()=>({profiles,fallbacksByScope:{global:fallbacks}})));
+ for(const current of [{profiles:{},fallbacksByScope:{global:fallbacks}},
+  {profiles:{...profiles,project:profiles.global!},fallbacksByScope:{global:fallbacks}},
+  {profiles,fallbacksByScope:{}},
+  {profiles,fallbacksByScope:{global:setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",[{model:"nvidia/otro"}])}}])
+  await assert.rejects(()=>assertPlannedExplorerFallbackCurrent(expected,selection,async()=>current),/alternativas del perfil cambiaron/u);
+ await assert.rejects(()=>assertPlannedExplorerFallbackCurrent(expected,selection,async()=>{throw Error("lectura fallida");}),/lectura fallida/u);
+});
