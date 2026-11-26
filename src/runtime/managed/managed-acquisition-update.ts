@@ -23,13 +23,14 @@ export interface ManagedAcquisitionUpdateReport{
  readonly producerAuthenticity:"not-established";
  readonly runtimeReady:false;
 }
-function installError(code:"CONFIRMATION_REQUIRED"|"INVALID_ABSOLUTE_PATH"|"FOREIGN_MANAGED_ROOT"|"VERSION_CONFLICT"|"RECOVERY_REQUIRED",message:string):never{throw new ManagedInstallError(code,message);}
+function installError(code:"CONFIRMATION_REQUIRED"|"INVALID_ABSOLUTE_PATH"|"FOREIGN_MANAGED_ROOT"|"VERSION_CONFLICT",message:string):never{throw new ManagedInstallError(code,message);}
+class ManagedAcquisitionRecoveryError extends Error{readonly code="RECOVERY_REQUIRED";constructor(message:string){super(message);this.name="ManagedAcquisitionRecoveryError";}}
 
 /** Freshly previews then stages declared local bytes; it never selects, activates, or executes them. */
 export async function stageManagedAcquisitionUpdate(request:ManagedAcquisitionUpdateRequest):Promise<ManagedAcquisitionUpdateReport>{
  if(request.confirmed!==true)installError("CONFIRMATION_REQUIRED","Managed acquisition update requires explicit confirmation");
  const recovery=await recoverManagedAcquisitionUpdate({prefix:request.prefix,confirmed:true});
- if(recovery.status==="ambiguous")installError("RECOVERY_REQUIRED","Managed acquisition recovery is unresolved; update was not staged");
+ if(recovery.status==="ambiguous")(()=>{throw new ManagedAcquisitionRecoveryError("Managed acquisition recovery is unresolved; update was not staged");})();
  for(const [noun,value] of [["manifest",request.manifestPath],["package root",request.packageRoot],["installation prefix",request.prefix],...request.protectedPaths.map(value=>["protected path",value] as const)] as const)if(typeof value!=="string"||!path.isAbsolute(value))installError("INVALID_ABSOLUTE_PATH",`Managed ${noun} must be absolute`);
  const preview=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix:request.prefix});
  if(preview.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
@@ -100,7 +101,7 @@ export async function activateManagedAcquisitionUpdate(
  if(typeof activate!=="function")throw new TypeError("Managed acquisition update requires an activation verifier");
  const prefix=path.resolve(request.prefix);
  const recovery=await recoverManagedAcquisitionUpdate({prefix,confirmed:request.confirmed});
- if(recovery.status==="ambiguous")installError("RECOVERY_REQUIRED","Managed acquisition recovery is unresolved; activation was not started");
+ if(recovery.status==="ambiguous")(()=>{throw new ManagedAcquisitionRecoveryError("Managed acquisition recovery is unresolved; activation was not started");})();
  const before=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix});
  if(before.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
  const previousVersion=before.managed.selectedVersion;
