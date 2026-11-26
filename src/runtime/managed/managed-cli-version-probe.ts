@@ -144,20 +144,20 @@ export async function probeManagedCliVersion(input:ManagedCliProbeRequest):Promi
  let bound:ManagedCliCandidateBinding;
  try{bound=await bindCandidate(input);}catch(error){return refuse("metadata-unverified",errorText(error));}
  if(input.signal?.aborted)return refuse("cancelled-before-launch");
- if(!await sameDirectory(bound.managed))return refuse("candidate-drift");
+ if(!await sameDirectory(bound.managed))return refuse("candidate-drift-before-lock");
  let root:string|null=null,result=base,attempts:0|1=0;
  const known:DirectoryClaim[]=[];
  try{
   await withManagedMaintenanceLock({prefix:input.prefix,confirmed:true,...(input.signal?{signal:input.signal}:{})},async()=>{
    if(input.signal?.aborted){result=refuse("cancelled-before-launch");return;}
-   if(!await stableCandidate(input,bound)){result=refuse("candidate-drift");return;}
+   if(!await stableCandidate(input,bound)){result=refuse("candidate-drift-before-launch");return;}
    if(input.signal?.aborted){result=refuse("cancelled-before-launch");return;}
    try{
   root=await mkdtemp(path.join(bound.managed.canonical,".cli-probe-"));known.push(await directoryClaim(root));
   if(!await sameDirectory(bound.managed))throw new Error("Managed root changed during temporary preparation");
   const environment=await privateEnvironment(root,known);
   if(input.signal?.aborted)result={...base,reason:"cancelled-before-launch"};
-  else if(!await stableCandidate(input,bound))result={...base,reason:"candidate-drift"};
+  else if(!await stableCandidate(input,bound))result={...base,reason:"candidate-drift-after-preparation"};
   else if(input.signal?.aborted)result={...base,reason:"cancelled-before-launch"};
   else{
    attempts=1;const execution=await observe(bound,root,environment,input,timeoutMs,maxOutputBytes);
@@ -168,7 +168,7 @@ export async function probeManagedCliVersion(input:ManagedCliProbeRequest):Promi
    else if(execution.stderr!=="")result={...result,cliVersion:"failed",reason:"stderr-not-empty"};
    else if(execution.stdout!==input.version+"\n")result={...result,cliVersion:"failed",reason:"version-mismatch"};
    else result={...result,cliVersion:"observed",reason:null};
-   if(!await stableCandidate(input,bound))result={...result,cliVersion:"ambiguous",reason:"candidate-drift"};
+   if(!await stableCandidate(input,bound))result={...result,cliVersion:"ambiguous",reason:"candidate-drift-after-launch"};
   }
    }catch(error){result={...result,launchAttempts:attempts,cliVersion:attempts?"ambiguous":"not-run",reason:attempts?"launch-failed":"preparation-failed",error:errorText(error)};}
    const temporaryData=root?await disposeTemporary(root,known,bound.managed,result.cliVersion==="ambiguous"):null;
@@ -178,7 +178,8 @@ export async function probeManagedCliVersion(input:ManagedCliProbeRequest):Promi
   let reason="maintenance-unavailable";
   if(!attempts&&error instanceof ManagedMaintenanceLockError){
    if(error.code==="LOCK_CANCELLED")reason="cancelled-before-launch";
-   else if(error.code==="ROOT_CHANGED"||error.code==="OWNED_ROOT_REQUIRED")reason="candidate-drift";
+   else if(error.code==="ROOT_CHANGED")reason="candidate-drift-root-changed";
+   else if(error.code==="OWNED_ROOT_REQUIRED")reason="owned-installation-not-recognized";
   }
   const detail=errorText(error)+(attempts?`; prior reason: ${result.reason??"none"}; prior error: ${result.error??"none"}`:"");
   result={...result,launchAttempts:attempts,cliVersion:attempts?"ambiguous":"not-run",reason,error:errorText(detail),

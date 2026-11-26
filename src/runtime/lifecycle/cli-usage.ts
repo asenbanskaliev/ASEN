@@ -10,7 +10,6 @@ export const ASEN_CLI_USAGE:readonly CliUsageRow[]=Object.freeze([
  Object.freeze({syntax:"asen [--link|--isolated|--home PATH] managed run <version> -- [Pi arguments]",note:"Current-user execution; publisher unverified"}),
  Object.freeze({syntax:"asen [--link|--isolated|--home PATH] managed select <version> --expected-current <version>",note:"Select retained metadata only; no activation"}),
  Object.freeze({syntax:"asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run",note:"Observe only; software prefix remains OS home/.asen"}),
- Object.freeze({syntax:"asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes",note:"Stage local bytes only; no selection or execution"}),
  Object.freeze({syntax:"asen [--link|--isolated|--home PATH] [--package-root PATH] doctor"}),
  Object.freeze({syntax:"asen managed install|upgrade|rollback|uninstall|release …",note:"Signed install lifecycle (see docs/installation.md)"}),
  Object.freeze({syntax:"asen backup home --destination <absolute-file> | backup verify --file <file> | restore home --backup <file> --target-home <dir> --yes"}),

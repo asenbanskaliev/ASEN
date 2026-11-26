@@ -113,6 +113,7 @@ import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObs
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
+import {createCompactionPressureObserver} from "../src/runtime/ui/compaction-pressure.js";
 import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps,prepareKeymapChange,writeKeymaps,keymapSavedNotice,resetKeymap,KEYMAP_RELOAD_NOTICE} from "../src/runtime/ui/keymaps.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/ui/integration-profile-inspection.js";
 import {integrationPanel} from "../src/runtime/ui/integrations-panel.js";
@@ -129,7 +130,7 @@ import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
 type CreateProfileCatalogModel=ParentCatalogModel&{reasoning?:boolean|undefined;thinkingLevelMap?:Partial<Record<Thinking,string|null|undefined>>|undefined};
 type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string;getEntries?:()=>readonly unknown[]};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
-type PiLike={getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
+type PiLike={getSettings?:()=>unknown;getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
@@ -197,6 +198,9 @@ function terminalColumns():number{const columns=Number.isSafeInteger(process.std
 export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>AsenExtensionFacade {
  const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;
  return pi=>{
+  const hostSettings=()=>{try{return typeof pi.getSettings==="function"?pi.getSettings():undefined;}catch{return undefined;}};
+  const settingsFingerprint=(value:unknown)=>{try{return JSON.stringify(value)??"undefined";}catch{return "unserializable";}};
+  const observeHostStatus=(ctx:CommandContext,settings:unknown)=>projectHostStatus(ctx,undefined,typeof pi.getSettings==="function"?()=>settings:undefined);
   const registerRaw=pi.registerCommand?.bind(pi);
   if(!registerRaw)throw new Error("ASEN extension requires Pi command registration");
   // UFC-M1-04: registered handlers are captured so keymap shortcuts can invoke the very
@@ -427,39 +431,72 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
-  let hostRefreshGeneration=0;
-  const clearHostStatus=()=>{
-   try{hostStatusUI?.setStatus?.("asen:host",undefined);}catch{/* Optional presentation only. */}
-   hostStatusUI=undefined;
+  let hostStatusSnapshot:AsenPanelSnapshot|undefined;
+  let hostRefreshGeneration=0,hostPressureGeneration=0,hostObservationGeneration=0;
+  let hostStatusSettingsFingerprint:string|undefined;
+  let hostCompactionObserver:ReturnType<typeof createCompactionPressureObserver>|undefined;
+  let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string;ctx:CommandContext}>|undefined;
+  const stopHostCompactionObserver=()=>{
+   hostCompactionObserver?.stop();hostCompactionObserver=undefined;hostCompactionOwner=undefined;
   };
-  const refreshHostStatus=async(ctx:CommandContext):Promise<void>=>{
-   const generation=++hostRefreshGeneration;
+  const clearHostStatus=()=>{
+   stopHostCompactionObserver();
+   try{hostStatusUI?.setStatus?.("asen:host",undefined);}catch{/* Optional presentation only. */}
+   hostStatusUI=undefined;hostStatusSnapshot=undefined;hostStatusSettingsFingerprint=undefined;
+  };
+  const refreshHostStatus=async(ctx:CommandContext,pressureOnly=false):Promise<void>=>{
+   const refreshEpoch=panelEpoch;
+   const generation=pressureOnly?hostRefreshGeneration:++hostRefreshGeneration;
+   const pressureGeneration=pressureOnly?++hostPressureGeneration:0;
+   const observation=++hostObservationGeneration;
    if(hostStatusClosed||ctx?.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setStatus!=="function"||!ctx.sessionManager?.getSessionId?.()){
     clearHostStatus();return;
    }
    if(hostStatusUI&&hostStatusUI!==ctx.ui)clearHostStatus();
    hostStatusUI=ctx.ui;
    try{
-    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),hostStatus=projectHostStatus(ctx),tone=hostStatus.context.state;
-    const observed=snapshotWorkspaceRoots([identity.projectId])[0];
+    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),settings=hostSettings(),settingsSnapshot=settingsFingerprint(settings),hostStatus=observeHostStatus(ctx,settings);
+    if(pressureOnly&&!hostStatusSnapshot)return;
+    const observed=pressureOnly?undefined:snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
-    if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
-    const changes=observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
+    if((pressureOnly&&(pressureGeneration!==hostPressureGeneration||observation!==hostObservationGeneration))||(!pressureOnly&&generation!==hostRefreshGeneration)||(!pressureOnly&&hostStatusUI!==ctx.ui)||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    const changes=pressureOnly?hostStatusSnapshot?.changes:observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
+    const publishedHostStatus=observation===hostObservationGeneration?hostStatus:hostStatusSnapshot?.hostStatus??hostStatus;
+    const publishedSettingsFingerprint=observation===hostObservationGeneration?settingsSnapshot:hostStatusSettingsFingerprint??settingsSnapshot;
+    const tone=publishedHostStatus.context.state;
     const permission=permissionSession.mode(ctx);
     const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
     const review=live&&todoStorePromise?derivePanelReview({
      todos:live.todos,agents:live.agents,jobs:live.jobs,todosObserved:true
     }):undefined;
-    const width=terminalColumns(),info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus,
+    const info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus:publishedHostStatus,
      ...(review?.known&&review.pending?{review:{pending:review.pending}}:{}),
      ...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})};
     // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
     // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
+    const width=terminalColumns();
     const line=width<140?renderAsenT11CompactStatus(info,Math.max(1,width),
      {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable,agentFlowUnavailable:t11ChildFlowUnavailable}):
      renderAsenStatusLine(info,width);
+    if(observation===hostObservationGeneration)hostStatusSettingsFingerprint=settingsSnapshot;
+    hostStatusSnapshot=info;
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
-   }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
+    ensureHostCompactionObserver(ctx,publishedSettingsFingerprint);
+   }catch{if(refreshEpoch===panelEpoch&&observation===hostObservationGeneration&&(pressureOnly?pressureGeneration===hostPressureGeneration:generation===hostRefreshGeneration)&&!hostStatusClosed)clearHostStatus();}
+  };
+  const ensureHostCompactionObserver=(ctx:CommandContext,initial:string):void=>{
+   const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;
+   if(typeof pi.getSettings!=="function"||ctx.mode!=="tui"||ctx.hasUI!==true||!sessionId||hostStatusClosed)return;
+   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui&&!hostCompactionOwner.ctx.signal?.aborted&&hostCompactionObserver?.active()){hostCompactionObserver.synchronize(initial);return;}
+   stopHostCompactionObserver();
+   hostCompactionOwner={sessionId,cwd,ui,ctx};
+   hostCompactionObserver=createCompactionPressureObserver({
+    initial,
+    read:()=>settingsFingerprint(hostSettings()),
+    current:()=>!hostStatusClosed&&!ctx.signal?.aborted&&hostStatusUI===ui&&ctx.mode==="tui"&&ctx.hasUI===true&&
+     ctx.cwd===cwd&&ctx.sessionManager?.getSessionId?.()===sessionId,
+    onChange:()=>{void refreshHostStatus(ctx,true);}
+   });
   };
   // Immutable, session-scoped display data. Never performs an agent action.
   const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual",onReadStarted?:()=>void):Promise<AsenPanelSnapshot>=>{
@@ -479,7 +516,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const now=await sessionIdentity(ctx);assertCurrent();
    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("ASEN panel session changed");
    const integrationInspection=inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});
-   const hostStatus=projectHostStatus(ctx);assertCurrent();
+   const hostStatus=observeHostStatus(ctx,hostSettings());assertCurrent();
    let agentFlow:Awaited<ReturnType<typeof readAgentFlowPanelObservation>>|undefined,agentFlowUnavailable=false;
    if(todoStorePromise&&agentRuntimePromise)try{
     agentFlow=await readAgentFlowPanelObservation({
@@ -2926,6 +2963,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
      return handler(...args);
     }),
     getFlag:name=>pi.getFlag(name),
+    ...(typeof pi.getSettings==="function"?{getSettings:pi.getSettings.bind(pi)}:{}),
     ...(typeof pi.getCommands==="function"?{getCommands:pi.getCommands.bind(pi)}:{}),
     ...(typeof pi.getAllTools==="function"?{getAllTools:pi.getAllTools.bind(pi)}:{}),
     ...(pi.sendMessage?{sendMessage:(message:Parameters<NonNullable<PiLike["sendMessage"]>>[0],options?:Parameters<NonNullable<PiLike["sendMessage"]>>[1])=>pi.sendMessage!(message,options)}:{}),

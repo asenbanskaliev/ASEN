@@ -1,3 +1,4 @@
+import {compactionPressureLabel} from "./compaction-pressure.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TodoItem} from "../lifecycle/todo-store.js";
 import type {TaskEvent} from "../task-replay.js";
@@ -329,6 +330,7 @@ export function renderAsenStatusLine(snapshot:AsenPanelSnapshot,width=80):string
   parts.push("responding "+identity(host.respondingModel));
   parts.push("ctx "+(host.context.percent===null?"?":Math.round(host.context.percent)+"%")+
    (host.context.state==="warning"||host.context.state==="error"?" "+host.context.state:""));
+  if(host.compactionPressure)parts.push(compactionPressureLabel(host.compactionPressure));
   // UI-08 cost/sub truthful unknown: the public projection publishes only "unavailable"
   // for cost/subscription/quota today (host-status-projection.ts:20-22,67), so the host
   // path states the unknown instead of omitting the segment entirely.
@@ -355,6 +357,15 @@ export function renderAsenStatusLine(snapshot:AsenPanelSnapshot,width=80):string
   const gauge="▰".repeat(filled)+"▱".repeat(8-filled);
   const candidate=[...parts];const index=candidate.findIndex(part=>part.startsWith("ctx "));
   if(index>=0){candidate[index]+=" "+gauge;const row=candidate.join(" │ ");if(visibleWidth(row)<=width)return fit(row,width);}
+ }
+ if(host?.compactionPressure?.state==="available"&&host.compactionPressure.atOrAboveThreshold){
+  const urgent=compactionPressureLabel(host.compactionPressure);
+  const retained=["ASEN",urgent];
+  for(const part of parts.slice(1).filter(value=>value!==urgent)){
+   const candidate=[...retained,part].join(" │ ");
+   if(visibleWidth(candidate)<=width)retained.push(part);
+  }
+  return fit(retained.join(" │ "),width);
  }
  return fit(parts.join(" │ "),width);
 }

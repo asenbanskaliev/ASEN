@@ -1,3 +1,4 @@
+import {compactionPressureLabel} from "./compaction-pressure.js";
 /** T11-C: una sola línea compacta, con prioridad a estados verificables.
  * No sustituye el pie de Pi, ni lee permisos, modelos o credenciales.
  */
@@ -43,6 +44,7 @@ export function renderAsenT11CompactStatus(
    (host.effectiveThinking?" · "+clean(host.effectiveThinking,12):""),priority:2});
   if(ctx?.state!=="warning"&&ctx?.state!=="error")
    items.push({text:"ctx "+(ctx?.percent===null||ctx===undefined?"?":Math.round(ctx.percent)+"%"),priority:3});
+  if(host.compactionPressure)items.push({text:compactionPressureLabel(host.compactionPressure),priority:host.compactionPressure.state==="available"&&host.compactionPressure.atOrAboveThreshold?0:3.5});
   items.push({
    text:"respuesta "+(host.respondingModel?clean(host.respondingModel.provider+"/"+host.respondingModel.model,32):"?"),
    priority:4

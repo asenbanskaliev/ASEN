@@ -751,8 +751,12 @@ jobs:
       github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    concurrency:
+      group: t06-nvidia-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
     permissions:
       contents: read
+      issues: write
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -772,7 +776,7 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels"
-          present=$(gh api "$endpoint" --jq 'map(.name) | index($label) != null' --arg label 'asen-t06-nvidia-una-vez')
+          present=$(gh api "$endpoint" --jq 'map(.name) | index("asen-t06-nvidia-una-vez") != null')
           test "$present" = true
           gh api --method DELETE "$endpoint/asen-t06-nvidia-una-vez" >/dev/null
       - name: Verificar candidato y pruebas negativas sin secretos
@@ -782,6 +786,26 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           node --test tests/t06-nvidia-free-api-probe.test.mjs
+      - name: Consumir autorización única del SHA antes de llamar a NVIDIA
+        if: github.event.pull_request.number == 149
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY ausente; no se consume la autorización"; exit 1; }
+          test "$GITHUB_RUN_ATTEMPT" = 1 || { echo "::error::No se permite repetir este ensayo"; exit 1; }
+          marker="<!-- asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA -->"
+          comments="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments"
+          commentBodies="$RUNNER_TEMP/asen-t06-comments.txt"
+          gh api "$comments" --paginate --jq '.[] | select(.user.login == "github-actions[bot]") | .body' > "$commentBodies"
+          if grep -Fqx -- "$marker" "$commentBodies"; then
+            echo "::error::Este SHA ya consumió la autorización NVIDIA"
+            exit 1
+          fi
+          gh api --method POST "$comments" -f body="$marker" >/dev/null
       - name: NVIDIA gratuita — dos solicitudes reales en paralelo
         shell: bash
         env:
@@ -812,20 +836,26 @@ jobs:
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
       (
-       (github.event.pull_request.number == 61 &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.head_ref == 'feat/flujo-de-agentes-20261115') ||
-       (github.event.pull_request.number == 149 &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.head_ref == 'feat/asen-equipo-E-M2-g2-compactacion-148')
+       (
+        (github.event.pull_request.number == 61 &&
+         github.event.pull_request.head.repo.full_name == github.repository &&
+         github.head_ref == 'feat/flujo-de-agentes-20261115') ||
+        (github.event.pull_request.number == 149 &&
+         github.event.pull_request.head.repo.full_name == github.repository &&
+         github.head_ref == 'feat/asen-equipo-E-M2-g2-compactacion-148')
+       )
       ) &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'asen-t06-nvidia-una-vez' &&
       github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 9
+    concurrency:
+      group: t06-nvidia-pi-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
     permissions:
       contents: read
+      issues: write
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -844,6 +874,26 @@ jobs:
           test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
           pi --version
+      - name: Consumir autorización única de sesiones Pi del SHA
+        if: github.event.pull_request.number == 149
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY ausente; no se consume autorización Pi"; exit 1; }
+          test "$GITHUB_RUN_ATTEMPT" = 1 || { echo "::error::No se permite repetir las sesiones Pi"; exit 1; }
+          marker="<!-- asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA -->"
+          comments="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments"
+          commentBodies="$RUNNER_TEMP/asen-t06-comments.txt"
+          gh api "$comments" --paginate --jq '.[] | select(.user.login == "github-actions[bot]") | .body' > "$commentBodies"
+          if grep -Fqx -- "$marker" "$commentBodies"; then
+            echo "::error::Este SHA ya consumió la autorización de sesiones Pi"
+            exit 1
+          fi
+          gh api --method POST "$comments" -f body="$marker" >/dev/null
       - name: Explorer y Verifier Pi simultáneos con NVIDIA (solo lectura)
         shell: bash
         env:
@@ -893,9 +943,15 @@ jobs:
         run: |
           if ((git rev-parse HEAD).Trim() -ne $env:ASEN_EXPECTED_SHA) { throw "SHA de G08 no coincide" }
           npm run typecheck
-      - name: Probar instalación aislada, rollback y cancelación
+      - name: Probar instalación y actualización real con rollback en Windows
         shell: pwsh
-        run: node --import tsx --test tests/managed-install.test.ts tests/managed-acquisition-update.test.ts
+        run: |
+          node --import tsx --test tests/managed-install.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --import tsx --test tests/managed-maintenance-lock.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --import tsx --test --test-name-pattern="upgrade activates v2|fails its pre-activation|breaks only after activation|interrupted upgrade|unhealthy automatic rollback" tests/t09-lifecycle.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
   # Ensayo adicional exclusivamente por etiqueta manual de un solo evento,

@@ -445,3 +445,16 @@ test("T07 REVIEW presenta revisión de hijos y no la confunde con cero resultado
  assert.match(body,/Linked child reviews: unavailable/u);
  assert.doesNotMatch(body,/^[ \t]*No pending review results observed/mu);
 });
+
+
+test("G02 mantiene visible el umbral de compactación en una fila ancha saturada",()=>{
+ const pressure={state:"available" as const,usedTokens:100,windowTokens:100,reserveTokens:0,
+  thresholdTokens:100,remainingTokens:0,percent:100,atOrAboveThreshold:true};
+ const model="m".repeat(55);
+ const host={selectedModel:{provider:"nvidia",model},respondingModel:{provider:"nvidia",model},
+  effectiveThinking:"high",context:{percent:100,state:"error" as const},compactionPressure:pressure,
+  cost:"unavailable" as const,subscription:"unavailable" as const,quota:"unavailable" as const};
+ const row=renderAsenStatusLine(snapshot({changes:{branch:"b".repeat(45),files:0},hostStatus:host}),140);
+ assert.ok(visibleWidth(row)<=140);
+ assert.match(row,/! compact\. 100%/u);
+});

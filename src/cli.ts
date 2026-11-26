@@ -5,7 +5,7 @@ import {readFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
 import {homedir} from "node:os";
-import {parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs,parseManagedUpdatePreviewArgs,parseManagedUpdateStageArgs,parseProjectMemoryBackupPreviewArgs,readAsenLauncherConfig,resolveAsenHome,resolvePiRuntime} from "./runtime/lifecycle/launcher.js";
+import {parseAsenArgs,parseDoctorArgs,parseManagedRunArgs,parseManagedSelectArgs,parseManagedUpdatePreviewArgs,parseProjectMemoryBackupPreviewArgs,readAsenLauncherConfig,resolveAsenHome,resolvePiRuntime} from "./runtime/lifecycle/launcher.js";
 import {composeInstallationDoctor} from "./runtime/managed/installation-doctor.js";
 import {createProjectMemoryBackupPreview} from "./runtime/lifecycle/project-memory-backup-preview.js";
 
@@ -23,11 +23,10 @@ export function resolveChildExit(code:number|null,signal:string|null|undefined):
  return code??1;
 }
 import {createSetupMaintenancePlan} from "./runtime/managed/maintenance-plan.js";
-import {ManagedAdditionalStageError,ManagedVersionSelectionError,selectManagedVersion} from "./runtime/managed/managed-install.js";
+import {ManagedVersionSelectionError,selectManagedVersion} from "./runtime/managed/managed-install.js";
 import {launchManagedSelectedVersion} from "./runtime/managed/managed-selected-launch.js";
 import {createManagedUpdatePreview} from "./runtime/managed/managed-update-preview.js";
 import {runLifecycleCommand} from "./runtime/lifecycle/lifecycle-cli.js";
-import {stageManagedAcquisitionUpdate} from "./runtime/managed/managed-acquisition-update.js";
 import {renderCliUsage} from "./runtime/lifecycle/cli-usage.js";
 import {renderStartupFlow} from "./runtime/lifecycle/startup-flow.js";
 
@@ -40,8 +39,6 @@ const STARTUP_USAGE="Unsupported ASEN startup command. Expected: asen startup.\n
 const MANAGED_SELECT_USAGE="Unsupported ASEN managed select command. Expected: managed select <exact-target-version> --expected-current <exact-current-version>.\n";
 const MANAGED_SELECT_NOT_CONFIRMED="Managed version selection is not confirmed; inspect the reported state before retrying.\n";
 const MANAGED_UPDATE_USAGE="Unsupported ASEN managed update command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run.\n";
-const MANAGED_STAGE_USAGE="Unsupported ASEN managed update staging command. Expected: managed update --manifest <absolute-json> --package-root <absolute-dir> --stage --yes.\n";
-const MANAGED_STAGE_NOT_CONFIRMED="Managed update staging is not confirmed; inspect the reported state before retrying.\n";
 const safeOperationalMessage=(error:unknown)=>{
  const raw=error instanceof Error?error.message:String(error),scrubbed=raw.replace(/[\u0000-\u001f\u007f-\u009f]/gu," ").slice(0,512);
  return scrubbed||"Operation failed";
@@ -57,11 +54,9 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
  const stdout=dependencies.stdout??((text:string)=>{process.stdout.write(text);}),stderr=dependencies.stderr??((text:string)=>{process.stderr.write(text);});
  const lifecycle=await runLifecycleCommand({argv,env,homeDirectory:dependencies.homeDirectory??homedir,stdout,stderr,version:"0.1.0"});
  if(lifecycle!==undefined)return lifecycle;
- const stage=parseManagedUpdateStageArgs(argv);
- if(stage.kind==="invalid"){stderr(MANAGED_STAGE_USAGE);return 2;}
- const update=stage.kind==="none"?parseManagedUpdatePreviewArgs(argv):{kind:"none" as const};
+ const update=parseManagedUpdatePreviewArgs(argv);
  if(update.kind==="invalid"){stderr(MANAGED_UPDATE_USAGE);return 2;}
- const hasUpdate=stage.kind!=="none"||update.kind!=="none";
+ const hasUpdate=update.kind!=="none";
  const preview=!hasUpdate?parseProjectMemoryBackupPreviewArgs(argv):{kind:"none" as const};
  if(preview.kind==="invalid"){stderr(BACKUP_PREVIEW_USAGE);return 2;}
  const doctor=!hasUpdate&&preview.kind==="none"?parseDoctorArgs(argv):{kind:"none" as const};
@@ -73,8 +68,7 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
   stderr("Unsupported ASEN managed command. Expected: managed run <exact-version> -- <Pi arguments>.\n");return 2;
  }
  let selectorArgs:readonly string[]=argv;
- if(stage.kind==="stage")selectorArgs=stage.selectorArgs;
- else if(update.kind==="preview")selectorArgs=update.selectorArgs;
+ if(update.kind==="preview")selectorArgs=update.selectorArgs;
  else if(preview.kind==="preview")selectorArgs=preview.selectorArgs;
  else if(doctor.kind==="doctor")selectorArgs=doctor.selectorArgs;
  else if(selection.kind==="select")selectorArgs=selection.selectorArgs;
@@ -111,21 +105,6 @@ export async function runAsen(argv=process.argv.slice(2),env:Record<string,strin
   try{plan=createSetupMaintenancePlan({packageRoot,prefix:path.join(homeDirectory,".asen"),home:home.dir});}
   catch(error){stderr((error instanceof Error?error.message:"Unable to create ASEN setup preview")+"\n");return 2;}
   stdout(JSON.stringify(plan,null,2)+"\n");return 0;
- }
- if(stage.kind==="stage"){
-  const homeDirectory=path.resolve((dependencies.homeDirectory??homedir)());
-  let report:Awaited<ReturnType<typeof stageManagedAcquisitionUpdate>>;
-  try{
-   const config=await readAsenLauncherConfig(homeDirectory);
-   const dataHome=resolveAsenHome({args:parsed,env,homedir:homeDirectory,...(config?{config}:{})});
-   report=await stageManagedAcquisitionUpdate({manifestPath:stage.manifestPath,packageRoot:stage.packageRoot,
-    prefix:path.join(homeDirectory,".asen"),protectedPaths:[path.resolve(dataHome.dir),path.join(homeDirectory,".asen","agent"),path.join(homeDirectory,".pi","agent")],confirmed:true});
-  }catch(error){
-   if(error instanceof ManagedAdditionalStageError){stdout(JSON.stringify(error.report,null,2)+"\n");stderr(MANAGED_STAGE_NOT_CONFIRMED);return 1;}
-   stderr("Managed update staging refused: "+safeOperationalMessage(error)+"\n");return 1;
-  }
-  // Output failure must not reclassify a completed mutation as a preflight refusal.
-  stdout(JSON.stringify(report,null,2)+"\n");return 0;
  }
  if(update.kind==="preview"){
   const homeDirectory=(dependencies.homeDirectory??homedir)();

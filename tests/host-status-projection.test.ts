@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {readFileSync} from "node:fs";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
 import {sanitizeTerminalText,truncateForTerminal,visibleWidth} from "../src/runtime/responsive-layout.js";
 
@@ -136,4 +137,20 @@ test("runtime-invalid public boundary values fail closed without coercion",()=>{
  for(const host of [null,42,"host",{getContextUsage:42}]) {
   assert.deepEqual(projectHostStatus(host as unknown as HostStatusInput),unavailable);
  }
+});
+
+test("G02 oculta la presión si falta la API pública y la marca desconocida si falla",()=>{
+ const absent=projectHostStatus({});
+ assert.equal("compactionPressure" in absent,false);
+ const failing=projectHostStatus({},undefined,()=>undefined);
+ assert.deepEqual(failing.compactionPressure,{state:"unknown",reason:"settings"});
+ const extension=readFileSync(new URL("../extensions/asen.ts",import.meta.url),"utf8");
+ assert.match(extension,/projectHostStatus\(ctx,undefined,typeof pi\.getSettings==="function"\?\(\)=>settings:undefined\)/u);
+ assert.match(extension,/let hostStatusSettingsFingerprint:string\|undefined;/u);
+ assert.match(extension,/publishedSettingsFingerprint=observation===hostObservationGeneration\?settingsSnapshot:hostStatusSettingsFingerprint\?\?settingsSnapshot/u);
+ assert.match(extension,/if\(observation===hostObservationGeneration\)hostStatusSettingsFingerprint=settingsSnapshot/u);
+ assert.match(extension,/ensureHostCompactionObserver\(ctx,publishedSettingsFingerprint\)/u);
+ assert.ok(extension.includes("const observeHostStatus=(ctx:CommandContext,settings:unknown)=>"),"captured undefined must not trigger a second settings read");
+ assert.ok(extension.includes("const hostStatus=observeHostStatus(ctx,hostSettings());assertCurrent();"),"explicit panel inspection must capture settings once");
+ assert.ok(extension.includes("(!pressureOnly&&hostStatusUI!==ctx.ui)||hostStatusClosed"),"a stale full refresh must not republish after ownership clears");
 });
