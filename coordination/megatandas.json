@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Añadir regresión de cola real señalada por CodeRabbit #144, comprobar que el runner no recibe alternativa obsoleta; control positivo. Coordinar con #147.",
+      "next": "Pruebas de cola negativa y positiva implementadas en #148; verificar CI, no duplicar. Pendiente revocación durante intentos ya iniciados.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -68,7 +68,13 @@
         "state": "corregido-espera-ci",
         "scope": "Explorer planificado: vigencia de alternativas antes de iniciar, sin ampliar autoridad",
         "failure": "TS2379: exactOptionalPropertyTypes, plan-dispatcher.ts:127",
-        "candidatePR": 144
+        "candidatePR": 144,
+        "queueRegression": {
+          "pr": 148,
+          "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
+          "state": "espera-ci",
+          "scope": "runtime, cola, diario y vínculos reales; ejecutor instrumentado"
+        }
       }
     },
     "C": {
@@ -124,15 +130,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M2-g2-pi16-cola-147",
-        "package": "M2-G01-B1",
-        "base": "d84660143a3130d2412e3a7be30b529fa6b4a93e",
-        "branch": "feat/asen-equipo-E-M2-g2-pi16-cola-147",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -177,7 +176,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Corregir comprobación F5 y añadir prueba de cola por runtime y despacho reales instrumentados.",
+      "next": "Validar #148 exacta, incluida cola y matriz 36 celdas; revisión independiente antes de admisión. Después G02/G03.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -709,13 +708,13 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "correccion-contratos-espera-ci",
+        "state": "correccion-f5-cola-espera-ci",
         "pr": 141,
         "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
-        "next": "Validar CI y matriz exactas #147; revisión independiente; no elevar mínimo.",
+        "next": "Validar #148 por SHA exacto y revisión independiente.",
         "evidence": {
           "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
           "matrix": 45832618166,
@@ -746,6 +745,18 @@
           }
         },
         "dependencyCandidate": {
+          "pr": 148,
+          "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
+          "branch": "feat/asen-equipo-E-M2-g2-pi16-cola-147",
+          "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+          "state": "espera-ci",
+          "includes": [
+            146,
+            147
+          ],
+          "scope": "Corregir F5 y cubrir cola real de agentes con ejecutor instrumentado sin modelos"
+        },
+        "previousDependencyCandidate": {
           "pr": 147,
           "sha": "d84660143a3130d2412e3a7be30b529fa6b4a93e",
           "branch": "feat/asen-equipo-E-M2-g2-pi16-contratos-146",
@@ -763,26 +774,6 @@
             "releaseResult": "success",
             "conclusion": "failure",
             "reason": "F5 mantiene mensaje exacto de versión 1.2.0"
-          }
-        },
-        "previousDependencyCandidate": {
-          "pr": 146,
-          "sha": "cd5367618ff92df691dff26994f69bad79655f88",
-          "branch": "feat/asen-equipo-E-M2-g2-pi16-dependencias-144",
-          "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-          "sourceRun": 45848775938,
-          "sourceJob": 140009311088,
-          "manifestSha256": "4d4b03decb737b0b83c6ba4e2a96558e462dd20efc84433021e6ee5d137eb6b7",
-          "lockSha256": "c020ee67503d50df3662c23a5687f440f34c85e04f20e63634961493ef34a321",
-          "state": "fallo-ci",
-          "scope": "Pi 1.6.0 y siete paquetes relacionados alineados; mínimo 1.2.0 conservado",
-          "evidence": {
-            "matrix": 45849526741,
-            "matrixResult": "success",
-            "ci": 45849526608,
-            "releaseGate": 45849526583,
-            "conclusion": "failure",
-            "reason": "Comprobaciones de SDK instalado fijadas a 1.2.0"
           }
         }
       },
