@@ -800,7 +800,7 @@ jobs:
           marker="<!-- asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA -->"
           comments="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments"
           commentBodies="$RUNNER_TEMP/asen-t06-comments.txt"
-          gh api "$comments" --paginate --jq '.[].body' > "$commentBodies"
+          gh api "$comments" --paginate --jq '.[] | select(.user.login == "github-actions[bot]") | .body' > "$commentBodies"
           if grep -Fqx -- "$marker" "$commentBodies"; then
             echo "::error::Este SHA ya consumió la autorización NVIDIA"
             exit 1
@@ -888,7 +888,7 @@ jobs:
           marker="<!-- asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA -->"
           comments="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments"
           commentBodies="$RUNNER_TEMP/asen-t06-comments.txt"
-          gh api "$comments" --paginate --jq '.[].body' > "$commentBodies"
+          gh api "$comments" --paginate --jq '.[] | select(.user.login == "github-actions[bot]") | .body' > "$commentBodies"
           if grep -Fqx -- "$marker" "$commentBodies"; then
             echo "::error::Este SHA ya consumió la autorización de sesiones Pi"
             exit 1
