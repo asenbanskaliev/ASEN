@@ -751,6 +751,9 @@ jobs:
       github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    concurrency:
+      group: t06-nvidia-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
     permissions:
       contents: read
       issues: write
@@ -783,6 +786,24 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           node --test tests/t06-nvidia-free-api-probe.test.mjs
+      - name: Consumir autorización única del SHA antes de llamar a NVIDIA
+        if: github.event.pull_request.number == 149
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY ausente; no se consume la autorización"; exit 1; }
+          test "$GITHUB_RUN_ATTEMPT" = 1 || { echo "::error::No se permite repetir este ensayo"; exit 1; }
+          marker="<!-- asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA -->"
+          comments="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments"
+          if gh api "$comments" --paginate --jq '.[].body' | grep -Fqx "$marker"; then
+            echo "::error::Este SHA ya consumió la autorización NVIDIA"
+            exit 1
+          fi
+          gh api --method POST "$comments" -f body="$marker" >/dev/null
       - name: NVIDIA gratuita — dos solicitudes reales en paralelo
         shell: bash
         env:
