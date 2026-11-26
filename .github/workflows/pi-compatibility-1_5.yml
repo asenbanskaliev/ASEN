@@ -18,7 +18,8 @@ jobs:
     if: >-
       github.event.pull_request.head.repo.full_name == 'asenbanskaliev/ASEN' &&
       (github.head_ref == 'feat/flujo-de-agentes-20261115' ||
-       startsWith(github.head_ref, 'feat/asen-equipo-E-M2-'))
+       startsWith(github.head_ref, 'feat/asen-equipo-E-M2-') ||
+       github.head_ref == 'feat/asen-equipo-E-M3-g2-continuidad-nativa-149')
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     strategy:

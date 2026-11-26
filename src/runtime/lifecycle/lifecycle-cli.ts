@@ -18,10 +18,10 @@ export interface LifecycleCliIo{
 }
 
 const VALUE_FLAGS=new Set(["--manifest","--signature","--package-root","--trust-anchor","--source-url","--expected-current","--to","--destination","--file","--backup","--target-home","--target-config","--private-key","--public-key","--output","--timeout-ms"]);
-const BOOLEAN_FLAGS=new Set(["--yes","--browser","--no-open","--allow-downgrade","--skip-links","--replace"]);
+const BOOLEAN_FLAGS=new Set(["--yes","--browser","--no-open","--allow-downgrade","--stage-only","--skip-links","--replace"]);
 const USAGE=`Lifecycle commands (explicit trust anchor required for acquisition):
   asen managed install   (--manifest F --signature F --package-root D | --source-url https://…) --trust-anchor F (--yes|--browser [--no-open])
-  asen managed upgrade   <same source flags> [--allow-downgrade] (--yes|--browser)
+  asen managed upgrade   <same source flags> [--allow-downgrade] [--stage-only] (--yes|--browser)
   asen managed rollback  --expected-current X.Y.Z [--to X.Y.Z] --yes
   asen managed uninstall --yes        (keeps data home, sessions and configuration)
   asen managed release keygen --private-key F --public-key F
@@ -116,7 +116,7 @@ export async function runLifecycleCommand(io:LifecycleCliIo):Promise<number|unde
    out(result);return result.status==="rolled-back"?0:1;
   }
   // install | upgrade
-  const allowed=new Set(["--manifest","--signature","--package-root","--trust-anchor","--source-url","--yes","--browser","--no-open","--timeout-ms",...(action==="upgrade"?["--allow-downgrade"]:[])]);
+  const allowed=new Set(["--manifest","--signature","--package-root","--trust-anchor","--source-url","--yes","--browser","--no-open","--timeout-ms",...(action==="upgrade"?["--allow-downgrade","--stage-only"]:[])]);
   if([...flags.keys()].some(key=>!allowed.has(key)))return usage();
   const trustedKeyPath=abs(flags.get("--trust-anchor"));if(!trustedKeyPath)return usage();
   const url=flags.get("--source-url");let source:ManagedAcquisitionSource;
@@ -133,7 +133,7 @@ export async function runLifecycleCommand(io:LifecycleCliIo):Promise<number|unde
   if(browser){
    const timeout=flags.get("--timeout-ms");
    const outcome=await requestBrowserConsent({title:`ASEN ${action}`,
-    lines:[`Operation: managed ${action}`,`Software prefix: ${prefix}`,`Data home (preserved): ${dataHome.dir}`,`Trust anchor: ${trustedKeyPath}`,"Only a manifest signed by that trust anchor will be installed."],
+    lines:[`Operation: managed ${action}${flags.has("--stage-only")?" (preparar sin ejecutar ni activar)":""}`,`Software prefix: ${prefix}`,`Data home (preserved): ${dataHome.dir}`,`Trust anchor: ${trustedKeyPath}`,"Only a manifest signed by that trust anchor will be installed."],
     ...(typeof timeout==="string"&&/^\d{1,7}$/u.test(timeout)?{timeoutMs:Number(timeout)}:{}),
     onUrl:url2=>{io.stderr(`Open ${url2} to confirm.\n`);if(flags.get("--no-open")!==true)(io.openBrowser??openInBrowser)(url2);}});
    if(outcome!=="confirmed"){io.stderr(`Browser consent ${outcome}; nothing was changed.\n`);return 1;}
@@ -142,9 +142,9 @@ export async function runLifecycleCommand(io:LifecycleCliIo):Promise<number|unde
   const protectedPaths=[path.resolve(dataHome.dir),path.join(prefix,"agent"),path.join(home,".pi","agent")];
   const result=action==="install"
    ?await installManaged({prefix,source,trustedKeyPath,protectedPaths,dataHome:path.resolve(dataHome.dir),launcherConfig,confirmed:true})
-   :await upgradeManaged({prefix,source,trustedKeyPath,protectedPaths,allowDowngrade:flags.has("--allow-downgrade"),confirmed:true});
+   :await upgradeManaged({prefix,source,trustedKeyPath,protectedPaths,allowDowngrade:flags.has("--allow-downgrade"),stageOnly:flags.has("--stage-only"),confirmed:true});
   out(result);
-  return result.status==="installed"||result.status==="unchanged"||result.status==="upgraded"?0:1;
+  return result.status==="installed"||result.status==="unchanged"||result.status==="upgraded"||result.status==="staged"?0:1;
  }catch(error){
   if(error instanceof ManagedLifecycleError&&error.report)out(error.report);
   const kind=error instanceof ManagedLifecycleError||error instanceof ManagedTrustError||error instanceof HomeBackupError?(error as {code:string}).code:"ERROR";

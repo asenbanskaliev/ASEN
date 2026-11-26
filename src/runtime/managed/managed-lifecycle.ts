@@ -4,7 +4,7 @@ import path from "node:path";
 import {createHash} from "node:crypto";
 import {
  inspectManagedInstall,readManagedOwnershipRecords,selectManagedVersion,stageAdditionalManagedVersion,stageManagedInstall,
- ManagedAdditionalStageError,ManagedVersionSelectionError,type ManagedInstallFile,type ManagedVersionInventory,
+ ManagedAdditionalStageError,ManagedVersionSelectionError,type ManagedInstallFile,type ManagedVersionInventory,type ManagedAdditionalStageReport,
 } from "./managed-install.js";
 import {probeManagedCliVersion} from "./managed-cli-version-probe.js";
 import {withManagedMaintenanceLock} from "./managed-maintenance-lock.js";
@@ -354,7 +354,9 @@ export interface ManagedInstallOperationRequest extends CommonRequest{
 export interface ManagedLifecycleReport{
  readonly schema:"asen.managed-lifecycle-report/v1";
  readonly operation:"install"|"upgrade"|"rollback";
- readonly status:"installed"|"unchanged"|"upgraded"|"rolled-back"|"not-activated"|"ambiguous";
+ readonly status:"installed"|"unchanged"|"upgraded"|"rolled-back"|"not-activated"|"ambiguous"|"staged";
+ readonly staging?:ManagedAdditionalStageReport;
+ readonly runtimeReady?:false;
  readonly version:string;
  readonly previousVersion:string|null;
  readonly activeVersion:string|null;
@@ -462,6 +464,8 @@ export interface ManagedUpgradeRequest extends CommonRequest{
  readonly trustedKeyPath:string;
  readonly protectedPaths:readonly string[];
  readonly allowDowngrade?:boolean;
+ /** Preparar solo bytes autenticados, sin ejecutar ni activar. */
+ readonly stageOnly?:boolean;
 }
 async function selectOrReconcile(prefix:string,to:string,from:string):Promise<Readonly<{state:"selected"|"not-started"|"uncertain";reason:string|null;observedActive:string|null}>>{
  try{await selectManagedVersion({prefix,version:to,expectedCurrentVersion:from,confirmed:true});return {state:"selected",reason:null,observedActive:to};}
@@ -489,14 +493,35 @@ export async function upgradeManaged(request:ManagedUpgradeRequest):Promise<Mana
  try{
   const {manifest}=acquired,to=manifest.version,signerKeyId=acquired.authenticity.keyId;
   if(to===from){
+   if(request.stageOnly){
+    const observed=await inspectManagedInstall({prefix});
+    const retained=observed.status==="owned"?observed.versions.find(item=>item.version===to):undefined;
+    const matches=observed.status==="owned"&&observed.activeVersion===from&&inventoryMatches(retained,manifest)&&!await readJournal(prefix);
+    return report({operation:"upgrade",status:matches?"unchanged":"ambiguous",version:to,previousVersion:from,activeVersion:observed.status==="owned"?observed.activeVersion:null,signerKeyId,reason:matches?null:"No se pudo confirmar la versión activa y su inventario firmado",runtimeReady:false});
+   }
    const health=await probe(prefix,to);
    return report({operation:"upgrade",status:health.ok?"unchanged":"ambiguous",version:to,previousVersion:from,activeVersion:from,signerKeyId,reason:health.reason});
   }
   if(compareVersions(to,from)<0&&request.allowDowngrade!==true)return fail("DOWNGRADE_REFUSED",`Refusing to replace ${from} with older ${to}`);
   const notActivated=(reason:string)=>report({operation:"upgrade",status:"not-activated",version:to,previousVersion:from,activeVersion:from,signerKeyId,reason});
+  let staged:ManagedAdditionalStageReport;
   try{
-   await stageAdditionalManagedVersion({prefix,packageRoot:acquired.packageRoot,version:to,files:fileMap(manifest),protectedPaths:request.protectedPaths,confirmed:true,expectedAcquisition:manifest});
-  }catch(error){return notActivated("Staging failed: "+text(error instanceof ManagedAdditionalStageError?error:error));}
+   staged=await stageAdditionalManagedVersion({prefix,packageRoot:acquired.packageRoot,version:to,files:fileMap(manifest),protectedPaths:request.protectedPaths,confirmed:true,expectedAcquisition:manifest});
+  }catch(error){
+   if(!request.stageOnly)return notActivated("Staging failed: "+text(error));
+   const observed=await inspectManagedInstall({prefix}).catch(()=>undefined);
+   const detail=error instanceof ManagedAdditionalStageError?error.report:undefined;
+   return report({operation:"upgrade",status:"ambiguous",version:to,previousVersion:from,activeVersion:observed?.status==="owned"?observed.activeVersion:null,signerKeyId,reason:"Preparación no confirmada: "+text(error),runtimeReady:false,...(detail?{staging:detail}:{})});
+  }
+  if(request.stageOnly){
+   // No ejecutar hooks, sondeo de CLI, escritura de selector ni activación.
+   // No atribuir a esta operación un cambio concurrente del selector.
+   const observed=await inspectManagedInstall({prefix}).catch(()=>undefined);
+   const retained=observed?.status==="owned"?observed.versions.find(item=>item.version===to):undefined;
+   const noJournal=await readJournal(prefix).then(value=>!value,()=>false);
+   const valid=observed?.status==="owned"&&observed.activeVersion===from&&inventoryMatches(retained,manifest)&&noJournal&&(staged.status==="staged"||staged.status==="unchanged");
+   return report({operation:"upgrade",status:valid?(staged.status==="staged"?"staged":"unchanged"):"ambiguous",version:to,previousVersion:from,activeVersion:observed?.status==="owned"?observed.activeVersion:null,signerKeyId,reason:valid?null:"No se confirmó la preparación inactiva; inspeccionar antes de repetir",runtimeReady:false,staging:staged});
+  }
   await request.hooks?.afterStage?.();
   const pre=await probe(prefix,to);
   if(!pre.ok)return notActivated(`Candidate failed its pre-activation probe (${pre.reason})`);

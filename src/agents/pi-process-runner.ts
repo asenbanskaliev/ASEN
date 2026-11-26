@@ -363,8 +363,9 @@ export class PiProcessRunner implements AgentRunner{
    // Compatibilidad: la ruta antigua sin fallback conserva su contrato.
    // T08 puede exigir agent_settled incluso sin cambiar de modelo: agent_end
    // solo cierra una tentativa de Pi y puede preceder a una recuperación.
-   const strictNativeSettlement=this.options.requireFinalSettlement===true&&!fallbackEnabled;
-   const settlementRequired=fallbackEnabled||strictNativeSettlement;
+   let strictNativeSettlement=this.options.requireFinalSettlement===true&&!fallbackEnabled;
+   let settlementRequired=fallbackEnabled||strictNativeSettlement;
+   let nativeRetryAwaitingStart=false;
    let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!settlementRequired,rpcSequence=0,currentModel=request.model;
    // Solo se usan marcadores del hijo Pi, nunca texto del modelo como prueba
    // de cierre. La respuesta RPC debe pertenecer a la petición actual.
@@ -566,18 +567,27 @@ export class PiProcessRunner implements AgentRunner{
        pendingRpc.delete(response.id);pending.resolve(record as Record<string,unknown>);continue;
       }
      }
-     if(strictNativeSettlement&&type==="response"&&response.id===request.id&&
-        response.success===true)strictPromptAck=true;
-     if(strictNativeSettlement&&type==="agent_start"){
-      agentEnded=false;
-      strictMessageEnd=false;strictAgentEnd=false;strictAgentWillRetry=false;
-     }
-     if(strictNativeSettlement&&type==="message_end"&&
-        (record as {message?:{role?:unknown}}).message?.role==="assistant")
-      strictMessageEnd=true;
-     if(strictNativeSettlement&&type==="agent_end"){
-      strictAgentEnd=true;
-      strictAgentWillRetry=(record as {willRetry?:unknown}).willRetry===true;
+     // G03: un reintento nativo explícito mantiene el mismo turno abierto.
+     // No se reenvía el prompt ni se inventa una sesión recuperada.
+     if(policyLoaded&&!fallbackEnabled){
+      if(type==="response"&&response.id===request.id&&response.success===true)strictPromptAck=true;
+      if(type==="agent_start"){
+       agentEnded=false;nativeRetryAwaitingStart=false;
+       strictMessageEnd=false;strictAgentEnd=false;strictAgentWillRetry=false;
+      }
+      if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant")
+       strictMessageEnd=true;
+      if(type==="agent_end"){
+       strictAgentEnd=true;
+       strictAgentWillRetry=(record as {willRetry?:unknown}).willRetry===true;
+       if(strictAgentWillRetry){
+        if(writer){
+         stop({id:request.id,ok:false,output:"pi Writer announced a native retry; outcome requires inspection"});return;
+        }
+        strictNativeSettlement=true;settlementRequired=true;finalAgentSettled=false;
+        nativeRetryAwaitingStart=true;
+       }
+      }
      }
      if(type==="message_end"&&(record as {message?:{role?:unknown}}).message?.role==="assistant"&&
         (!fallbackInProgress||(continuationPromptId!==undefined&&continuationAcked))){
@@ -690,7 +700,7 @@ export class PiProcessRunner implements AgentRunner{
        stop({id:request.id,ok:false,output:"pi agent_settled reported an aborted run"});
        return;
       }
-      if(!strictPromptAck||!strictMessageEnd||!strictAgentEnd||strictAgentWillRetry){
+      if(!strictPromptAck||!strictMessageEnd||!strictAgentEnd||strictAgentWillRetry||nativeRetryAwaitingStart){
        stop({id:request.id,ok:false,
         output:"pi agent_settled without a completed final assistant turn"});
        return;

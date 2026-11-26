@@ -1019,3 +1019,28 @@ test("public CLI: --browser asks for consent via loopback and a cancel changes n
  assert.equal(code,1);assert.match(err.join(""),/cancelled/);
  assert.equal((await inspectManagedInstall({prefix:path.join(homeDirectory,".asen")})).status,"absent");
 });
+
+test("upgrade prepares signed version without execution or activation, rejects wrong signer",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("signed-stage");
+ await installManaged({...base,source:v1.source,dataHome});
+ await fs.writeFile(path.join(dataHome,"session.jsonl"),"PRESERVE");
+ const marker=path.join(root,"EXECUTED");
+ const cli="require('node:fs').writeFileSync("+JSON.stringify(marker)+",'unexpected');process.stdout.write('2.0.0\\n');";
+ const v2=await release(root,await pkg(root,"v2","2.0.0",cli),v1.keys);
+ const evil=await release(root,await pkg(root,"evil","3.0.0"));
+ await assert.rejects(()=>upgradeManaged({...base,source:evil.source,stageOnly:true}),/authenticat|trusted|signer/i);
+ let stdout="",stderr="";
+ const args=["managed","upgrade","--manifest",v2.manifestPath,"--signature",v2.signaturePath,"--package-root",v2.dir,"--trust-anchor",v1.anchor,"--stage-only","--yes"];
+ const invoke=()=>runAsen(args,{}, {homeDirectory:()=>path.dirname(prefix),stdout:text=>{stdout+=text;},stderr:text=>{stderr+=text;}});
+ assert.equal(await invoke(),0,stderr);
+ const first=JSON.parse(stdout);
+ assert.equal(first.status,"staged");assert.equal(first.activeVersion,"1.0.0");assert.equal(first.runtimeReady,false);
+ assert.equal(first.signerKeyId,v1.keys.keyId);assert.equal(first.staging.activation,"not-active");
+ await assert.rejects(()=>fs.lstat(marker),{code:"ENOENT"});
+ const observed=await inspectManagedInstall({prefix});
+ assert.equal(observed.status,"owned");
+ if(observed.status==="owned"){assert.equal(observed.activeVersion,"1.0.0");assert.deepEqual(observed.versions.map(x=>x.version),["1.0.0","2.0.0"]);}
+ assert.equal(await fs.readFile(path.join(dataHome,"session.jsonl"),"utf8"),"PRESERVE");
+ stdout="";stderr="";assert.equal(await invoke(),0,stderr);assert.equal(JSON.parse(stdout).status,"unchanged");
+ await assert.rejects(()=>fs.lstat(marker),{code:"ENOENT"});
+});

@@ -12,6 +12,7 @@ export const ASEN_CLI_USAGE:readonly CliUsageRow[]=Object.freeze([
  Object.freeze({syntax:"asen [--link|--isolated|--home PATH] managed update --manifest <absolute-json> --package-root <absolute-dir> --dry-run",note:"Observe only; software prefix remains OS home/.asen"}),
  Object.freeze({syntax:"asen [--link|--isolated|--home PATH] [--package-root PATH] doctor"}),
  Object.freeze({syntax:"asen managed install|upgrade|rollback|uninstall|release …",note:"Signed install lifecycle (see docs/installation.md)"}),
+ Object.freeze({syntax:"asen managed upgrade --manifest F --signature F --package-root D --trust-anchor F --stage-only --yes",note:"Prepara una versión firmada sin ejecutar ni activar"}),
  Object.freeze({syntax:"asen backup home --destination <absolute-file> | backup verify --file <file> | restore home --backup <file> --target-home <dir> --yes"}),
  Object.freeze({syntax:"asen --version"}),
 ]);
