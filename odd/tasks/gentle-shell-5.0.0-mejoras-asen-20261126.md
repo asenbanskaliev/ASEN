@@ -134,3 +134,10 @@ La consulta del marcador de consumo ahora solo considera comentarios publicados 
 
 
 La CI rápida de `472547ae` encontró una prueba general de ramas que rechazaba cualquier igualdad con comillas dobles, incluida la nueva comprobación del autor. Se restringió esa prueba a comparaciones de `github.head_ref` en `3eafc1951776d19c8a21d525904be95acded984b`. Todas las puertas y la revisión independiente se vuelven a exigir sobre este SHA. La autorización NVIDIA/Pi sigue bloqueada.
+
+
+### Validación exacta y bloqueo del ensayo T06 — 26/11/2026
+
+El SHA `3eafc1951776d19c8a21d525904be95acded984b` pasó CI completa (45893102399), CI rápida (45893102387), Release Gate (45893102463), Phase 0 (45893102390), Pi 1.2 (45893102439), matriz Pi en los tres sistemas y G08 Windows. CodeRabbit completó revisión completa exacta sin hilos abiertos. Pi Free Smoke fue omitido y no cuenta.
+
+Se intentó consumir la autorización única ya aprobada. El trabajo T06 falló cerrado en el primer paso al retirar la etiqueta: GitHub respondió `403 Resource not accessible by integration` al `GITHUB_TOKEN` del trabajo. No llegó a consultar el marcador, no hizo solicitudes a NVIDIA y no inició sesiones Pi. La etiqueta se retiró con la integración y no se repetirá el intento automáticamente. M2 queda pendiente de que el propietario habilite permisos de escritura `issues:write` para el token de Actions en la PR. Tras corregir ese ajuste, el permiso de una sola ejecución deberá revisarse antes de volver a armar el ensayo. #149 permanece abierta y sin fusionar; globalFull:false.
