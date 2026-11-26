@@ -776,7 +776,7 @@ jobs:
         run: |
           set -euo pipefail
           endpoint="repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/labels"
-          present=$(gh api "$endpoint" --jq 'map(.name) | index($label) != null' --arg label 'asen-t06-nvidia-una-vez')
+          present=$(gh api "$endpoint" --jq 'map(.name) | index("asen-t06-nvidia-una-vez") != null')
           test "$present" = true
           gh api --method DELETE "$endpoint/asen-t06-nvidia-una-vez" >/dev/null
       - name: Verificar candidato y pruebas negativas sin secretos
@@ -834,12 +834,9 @@ jobs:
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
       (
-       (github.event.pull_request.number == 61 &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.head_ref == 'feat/flujo-de-agentes-20261115') ||
-       (github.event.pull_request.number == 149 &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.head_ref == 'feat/asen-equipo-E-M2-g2-compactacion-148')
+       github.event.pull_request.number == 61 &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.head_ref == 'feat/flujo-de-agentes-20261115'
       ) &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'asen-t06-nvidia-una-vez' &&
