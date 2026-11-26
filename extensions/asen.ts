@@ -431,7 +431,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostRefreshGeneration=0;
   let hostCompactionObserver:ReturnType<typeof createCompactionPressureObserver>|undefined;
-  let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string;signal:AbortSignal|undefined}>|undefined;
+  let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string;ctx:CommandContext}>|undefined;
   const stopHostCompactionObserver=()=>{
    hostCompactionObserver?.stop();hostCompactionObserver=undefined;hostCompactionOwner=undefined;
   };
@@ -473,9 +473,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const ensureHostCompactionObserver=(ctx:CommandContext,initial:CompactionPressure|undefined):void=>{
    const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;
    if(typeof pi.getSettings!=="function"||ctx.mode!=="tui"||ctx.hasUI!==true||!sessionId||hostStatusClosed)return;
-   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui&&!hostCompactionOwner.signal?.aborted){hostCompactionObserver?.synchronize(initial);return;}
+   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui&&!hostCompactionOwner.ctx.signal?.aborted){hostCompactionObserver?.synchronize(initial);return;}
    stopHostCompactionObserver();
-   hostCompactionOwner={sessionId,cwd,ui,signal:ctx.signal};
+   hostCompactionOwner={sessionId,cwd,ui,ctx};
    hostCompactionObserver=createCompactionPressureObserver({
     initial,
     read:()=>observeHostStatus(ctx).compactionPressure,
