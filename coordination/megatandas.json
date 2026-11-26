@@ -815,11 +815,11 @@
             "releaseGate": 45871105214,
             "releaseStatus": "in_progress",
             "architecture": 45871105310,
-            "architectureStatus": "in_progress",
+            "architectureStatus": "success",
             "quick": 45871105152,
-            "quickStatus": "in_progress",
+            "quickStatus": "success",
             "piRuntime": 45871105164,
-            "piRuntimeStatus": "in_progress",
+            "piRuntimeStatus": "success",
             "piFreeSmoke": "skipped"
           },
           "review": {
@@ -838,7 +838,16 @@
           "Revisar la corrección de actualización del estado con CodeRabbit",
           "Identidad/independencia real de modelos no acreditada bajo noModelCalls:true",
           "G08 actualización Windows recuperable pendiente"
-        ]
+        ],
+        "review": {
+          "triggered": true,
+          "commentId": 7199758239,
+          "confirmed": false,
+          "openThreads": 1,
+          "findings": [
+            4711841262
+          ]
+        }
       },
       "G03": {
         "state": "pendiente-de-implementacion-y-aceptacion",
@@ -913,18 +922,18 @@
       },
       "pr149": {
         "sha": "493ac1f23cec7a335a655b633e8b9039624b36fc",
-        "previousSha": "8acbfe56284077bb94c5396dfb3a12659d56fad4",
         "ci": "in_progress",
         "releaseGate": "in_progress",
-        "architecture": "in_progress",
-        "quick": "in_progress",
-        "piRuntime": "in_progress",
+        "architecture": "success",
+        "quick": "success",
+        "piRuntime": "success",
         "piFreeSmoke": "skipped",
         "coderabbit": {
-          "finding": 4711841262,
+          "priorFinding": 4711841262,
           "correctionCommitted": true,
           "reviewRequested": true,
-          "reviewCommentId": 7199758239
+          "openThreads": 1,
+          "commentId": 7199758239
         }
       },
       "g08": "pending",
