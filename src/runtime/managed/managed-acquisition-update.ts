@@ -23,12 +23,13 @@ export interface ManagedAcquisitionUpdateReport{
  readonly producerAuthenticity:"not-established";
  readonly runtimeReady:false;
 }
-function installError(code:"CONFIRMATION_REQUIRED"|"INVALID_ABSOLUTE_PATH"|"FOREIGN_MANAGED_ROOT"|"VERSION_CONFLICT",message:string):never{throw new ManagedInstallError(code,message);}
+function installError(code:"CONFIRMATION_REQUIRED"|"INVALID_ABSOLUTE_PATH"|"FOREIGN_MANAGED_ROOT"|"VERSION_CONFLICT"|"RECOVERY_REQUIRED",message:string):never{throw new ManagedInstallError(code,message);}
 
 /** Freshly previews then stages declared local bytes; it never selects, activates, or executes them. */
 export async function stageManagedAcquisitionUpdate(request:ManagedAcquisitionUpdateRequest):Promise<ManagedAcquisitionUpdateReport>{
  if(request.confirmed!==true)installError("CONFIRMATION_REQUIRED","Managed acquisition update requires explicit confirmation");
- await recoverManagedAcquisitionUpdate({prefix:request.prefix,confirmed:true});
+ const recovery=await recoverManagedAcquisitionUpdate({prefix:request.prefix,confirmed:true});
+ if(recovery.status==="ambiguous")installError("RECOVERY_REQUIRED","Managed acquisition recovery is unresolved; update was not staged");
  for(const [noun,value] of [["manifest",request.manifestPath],["package root",request.packageRoot],["installation prefix",request.prefix],...request.protectedPaths.map(value=>["protected path",value] as const)] as const)if(typeof value!=="string"||!path.isAbsolute(value))installError("INVALID_ABSOLUTE_PATH",`Managed ${noun} must be absolute`);
  const preview=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix:request.prefix});
  if(preview.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
@@ -52,10 +53,10 @@ export interface ManagedAcquisitionActivationReport{
  readonly error:"CANCELLED_BEFORE_SELECTION"|"CANCELLED_DURING_ACTIVATION"|"ACTIVATION_FAILED"|"ROLLBACK_UNCERTAIN"|null;
 }
 const freezeActivation=(report:ManagedAcquisitionActivationReport)=>Object.freeze({...report});
-type PendingManagedUpdate=Readonly<{schema:"asen.managed-acquisition-update-pending/v1";previousVersion:string;targetVersion:string}>;
+type PendingManagedUpdate=Readonly<{schema:"asen.managed-acquisition-update-pending/v1";pid:number;previousVersion:string;targetVersion:string}>;
 const pendingPath=(prefix:string)=>path.join(path.resolve(prefix),"install",".asen-acquisition-update.pending");
 async function writePendingManagedUpdate(prefix:string,previousVersion:string,targetVersion:string):Promise<string>{
- const file=pendingPath(prefix),bytes=JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",token:randomUUID(),previousVersion,targetVersion})+"\n";
+ const file=pendingPath(prefix),bytes=JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",token:randomUUID(),pid:process.pid,previousVersion,targetVersion})+"\n";
  const handle=await open(file,"wx",0o600);
  try{await handle.writeFile(bytes);await handle.sync();}finally{await handle.close();}
  return bytes;
@@ -72,8 +73,10 @@ export async function recoverManagedAcquisitionUpdate(request:Readonly<{prefix:s
  try{const info=await lstat(file);if(!info.isFile()||info.isSymbolicLink()||info.nlink!==1||info.size>4096)return Object.freeze({status:"ambiguous"});bytes=await readFile(file,"utf8");}
  catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return Object.freeze({status:"none"});return Object.freeze({status:"ambiguous"});}
  let journal:PendingManagedUpdate;
- try{const parsed=JSON.parse(bytes) as Record<string,unknown>;if(parsed.schema!=="asen.managed-acquisition-update-pending/v1"||typeof parsed.previousVersion!=="string"||typeof parsed.targetVersion!=="string")return Object.freeze({status:"ambiguous"});journal=parsed as PendingManagedUpdate;}
+ try{const parsed=JSON.parse(bytes) as Record<string,unknown>;if(parsed.schema!=="asen.managed-acquisition-update-pending/v1"||!Number.isSafeInteger(parsed.pid)||typeof parsed.previousVersion!=="string"||typeof parsed.targetVersion!=="string")return Object.freeze({status:"ambiguous"});journal=parsed as PendingManagedUpdate;}
  catch{return Object.freeze({status:"ambiguous"});}
+ try{process.kill(journal.pid,0);return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});}
+ catch(error){if((error as NodeJS.ErrnoException).code!=="ESRCH")return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});}
  const inventory=await inspectManagedInstall({prefix}).catch(()=>undefined);
  if(inventory?.status!=="owned"||!inventory.versions.some(item=>item.version===journal.previousVersion)||!inventory.versions.some(item=>item.version===journal.targetVersion))return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
  if(inventory.activeVersion===journal.targetVersion){
@@ -96,7 +99,8 @@ export async function activateManagedAcquisitionUpdate(
 ):Promise<ManagedAcquisitionActivationReport>{
  if(typeof activate!=="function")throw new TypeError("Managed acquisition update requires an activation verifier");
  const prefix=path.resolve(request.prefix);
- await recoverManagedAcquisitionUpdate({prefix,confirmed:request.confirmed});
+ const recovery=await recoverManagedAcquisitionUpdate({prefix,confirmed:request.confirmed});
+ if(recovery.status==="ambiguous")installError("RECOVERY_REQUIRED","Managed acquisition recovery is unresolved; activation was not started");
  const before=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix});
  if(before.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
  const previousVersion=before.managed.selectedVersion;
