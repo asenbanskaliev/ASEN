@@ -12,7 +12,7 @@
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
       "generation": 2,
-      "next": "Auditar recuperación de raíces archivadas en #140, casos negativos y bloqueo sin relanzar.",
+      "next": "Auditar #142 con foco en cierre y recuperación de tareas, no repetir cambios.",
       "blocker": null,
       "pr": 136,
       "sha": "a0caab2acf7eae6d1e4d8402f9e44ea06e12e4ff",
@@ -28,8 +28,8 @@
         "tests/native-partition-flow.test.ts"
       ],
       "tests": "CI rápida 45774877562, Pi 45774877646 y arquitectura 45774877744 correctos; CI completa y Release Gate omitidos por borrador.",
-      "candidatePR": 140,
-      "candidateSha": "a43151afb74207e9c553357a8d83b600c56e2d03"
+      "candidatePR": 142,
+      "candidateSha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19"
     },
     "B": {
       "state": "espera-candidato",
@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Auditar vigencia de perfiles y contratos SDK Pi 1.6; G01 matriz #141 ya publicada, no duplicar.",
+      "next": "Auditar perfiles y contratos de SDK 1.6; matriz #141 positiva sin llamadas; alineación de dependencias pendiente.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -49,8 +49,8 @@
       "tests": "CI rápida 45709504351, arquitectura 45709504258 y Pi runtime 45709504245 correctos; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 140,
-      "candidateSha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+      "candidatePR": 142,
+      "candidateSha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179615
@@ -77,8 +77,8 @@
       "tests": "CI rápida 45709037207 y arquitectura 45709037157 correctas; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 140,
-      "candidateSha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+      "candidatePR": 142,
+      "candidateSha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179608
@@ -105,8 +105,8 @@
       "tests": "Regresiones nuevas publicadas; CI completa y revisión pendientes.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 140,
-      "candidateSha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+      "candidatePR": 142,
+      "candidateSha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
       "correctionBase": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
       "reviewFindings": [
         4705072726
@@ -114,15 +114,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M1-g2-reconciliar-archivo-140",
-        "package": "M1",
-        "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
-        "branch": "feat/asen-equipo-E-M1-g2-reconciliar-archivo-140",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -167,11 +160,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Resolver hallazgo 4707849565 con reconciliación bajo bloqueo y lectura coherente de ambas ubicaciones; probar interrupción tras guardar archivo.",
+      "next": "Validar #142, pedir revisión exacta y reconciliar #141 después de admitir M1. No admitir #140 con hallazgo.",
       "blocker": null,
       "generation": 2,
-      "pr": 140,
-      "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+      "pr": 142,
+      "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -224,14 +217,14 @@
       "reviewFindings": [
         4701179590
       ],
-      "branch": "feat/asen-equipo-E-M1-g2-recuperacion-archivo-139",
+      "branch": "feat/asen-equipo-E-M1-g2-reconciliar-archivo-140",
       "tests": "#134 superó CI, arquitectura, Pi runtime y Release Gate; hallazgo nuevo corregido en #135, pendiente de validación.",
       "files": [
         "extensions/asen.ts"
       ],
       "lastAttempt": {
-        "pr": 140,
-        "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+        "pr": 142,
+        "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
         "result": "publicada"
       }
     }
@@ -466,8 +459,8 @@
     "sha": "ab17255d9569f874e196407ab12bd321ab827acc"
   },
   "consolidation": {
-    "pr": 140,
-    "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+    "pr": 142,
+    "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
     "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
     "includes": [
       130,
@@ -479,7 +472,8 @@
       137,
       136,
       138,
-      139
+      139,
+      140
     ],
     "findings": [
       4701179590,
@@ -487,13 +481,14 @@
       4701179608,
       4701179615,
       4704551343,
-      4705072726
+      4705072726,
+      4707849565
     ],
-    "status": "correccion-revision",
+    "status": "espera-ci-y-revision",
     "globalFull": false,
     "previousCandidate": {
-      "pr": 139,
-      "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+      "pr": 140,
+      "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "includes": [
         130,
@@ -504,7 +499,8 @@
         135,
         137,
         136,
-        138
+        138,
+        139
       ],
       "findings": [
         4701179590,
@@ -514,11 +510,11 @@
         4704551343,
         4705072726
       ],
-      "status": "correccion-ci",
+      "status": "correccion-revision",
       "globalFull": false,
       "previousCandidate": {
-        "pr": 137,
-        "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+        "pr": 139,
+        "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
         "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
         "includes": [
           130,
@@ -526,7 +522,10 @@
           132,
           133,
           134,
-          135
+          135,
+          137,
+          136,
+          138
         ],
         "findings": [
           4701179590,
@@ -536,61 +535,91 @@
           4704551343,
           4705072726
         ],
-        "status": "espera-ci-y-revision",
+        "status": "correccion-ci",
         "globalFull": false,
-        "latestFinding": 4705072726,
-        "ci": {
+        "previousCandidate": {
+          "pr": 137,
           "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-          "full": 45798838328,
-          "quick": 45798838411,
-          "architecture": 45798838365,
-          "releaseGate": 45798838489,
-          "pi": 45798838396,
-          "conclusion": "success",
-          "piFreeSmoke": "skipped"
+          "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+          "includes": [
+            130,
+            131,
+            132,
+            133,
+            134,
+            135
+          ],
+          "findings": [
+            4701179590,
+            4701179598,
+            4701179608,
+            4701179615,
+            4704551343,
+            4705072726
+          ],
+          "status": "espera-ci-y-revision",
+          "globalFull": false,
+          "latestFinding": 4705072726,
+          "ci": {
+            "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+            "full": 45798838328,
+            "quick": 45798838411,
+            "architecture": 45798838365,
+            "releaseGate": 45798838489,
+            "pi": 45798838396,
+            "conclusion": "success",
+            "piFreeSmoke": "skipped"
+          },
+          "review": {
+            "confirmed": false,
+            "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+            "requestedCommentId": 7189696664
+          },
+          "previousCandidate": {
+            "pr": 135,
+            "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+          }
         },
         "review": {
-          "confirmed": false,
-          "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-          "requestedCommentId": 7189696664
+          "confirmed": false
         },
-        "previousCandidate": {
-          "pr": 135,
-          "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+        "ci": {
+          "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+          "full": 45804701712,
+          "conclusion": "failure",
+          "quick": 45804701639,
+          "architecture": 45804701636,
+          "releaseGate": 45804702600,
+          "pi": 45804701792,
+          "piFreeSmoke": "skipped"
         }
       },
       "review": {
-        "confirmed": false
+        "confirmed": false,
+        "requestedCommentId": 7190886973,
+        "findings": [
+          4707849565
+        ]
       },
       "ci": {
-        "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
-        "full": 45804701712,
-        "conclusion": "failure",
-        "quick": 45804701639,
-        "architecture": 45804701636,
-        "releaseGate": 45804702600,
-        "pi": 45804701792,
+        "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+        "full": 45809299223,
+        "conclusion": "success",
+        "quick": 45809299532,
+        "architecture": 45809299238,
+        "releaseGate": 45809299460,
+        "pi": 45809299270,
         "piFreeSmoke": "skipped"
-      }
+      },
+      "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
     },
     "review": {
-      "confirmed": false,
-      "requestedCommentId": 7190886973,
-      "findings": [
-        4707849565
-      ]
+      "confirmed": false
     },
     "ci": {
-      "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
-      "full": 45809299223,
-      "conclusion": "success",
-      "quick": 45809299532,
-      "architecture": 45809299238,
-      "releaseGate": 45809299460,
-      "pi": 45809299270,
-      "piFreeSmoke": "skipped"
+      "conclusion": "pendiente"
     },
-    "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
+    "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
   },
   "gentleShell5": {
     "planBranch": "feat/flujo-de-agentes-20261115",
@@ -605,7 +634,7 @@
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
-        "next": "Comprobar resultados; luego alinear dependencias y contratos SDK si procede. No sustituye versión mínima.",
+        "next": "Revisión #141 y alinear dependencias una vez admitido M1; repetir pruebas relevantes del candidato final.",
         "evidence": {
           "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
           "matrix": 45811828713,
@@ -657,6 +686,6 @@
       "M6 Aceptación"
     ],
     "globalFull": false,
-    "candidate": 140
+    "candidate": 142
   }
 }
