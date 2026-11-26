@@ -92,7 +92,9 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  assert.ok(job.includes("test \"$GITHUB_RUN_ATTEMPT\" = 1"));
  const piNative=ci.slice(ci.indexOf("\n  t06-nvidia-pi-native:"),ci.indexOf("\n\n  managed-update-windows:"));
  assert.ok(piNative.includes("pull_request.number == 61"));
- assert.ok(!piNative.includes("pull_request.number == 149"),"M2 solo autoriza las dos consultas NVIDIA acotadas");
+ assert.ok(piNative.includes("pull_request.number == 149"));
+ assert.ok(piNative.includes("asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA"));
+ assert.ok(piNative.includes("maxConcurrency:2")===false,"La concurrencia se limita dentro del script Pi");
  assert.ok(job.includes('index("asen-t06-nvidia-una-vez")'));
  assert.ok(!job.includes("pull_request.number == 150"));
  const probe=readFileSync(new URL("../scripts/t06-nvidia-free-api-probe.mjs",import.meta.url),"utf8");
