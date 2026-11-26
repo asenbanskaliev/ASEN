@@ -16,13 +16,13 @@
       "blocker": null
     },
     "B": {
-      "state": "listo-revision",
+      "state": "espera-candidato",
       "lease": null,
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "E: candidato conjunto de las tres reparaciones.",
+      "next": "Comprobar validación del candidato #134 y corregir hallazgos propios si aparecen; no duplicar.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -33,8 +33,8 @@
       "tests": "CI rápida 45709504351, arquitectura 45709504258 y Pi runtime 45709504245 correctos; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 130,
-      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "candidatePR": 134,
+      "candidateSha": "c5246c472a6b6a2a20b9587634bd284191913c0a",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179615
@@ -42,13 +42,13 @@
       "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615"
     },
     "C": {
-      "state": "listo-revision",
+      "state": "espera-candidato",
       "lease": null,
       "package": "C1",
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 132,
       "sha": "23bc4ce17c5716df38dde3119e7653ed55125aee",
-      "next": "E: incluir corrección en candidato conjunto y validar CI completa.",
+      "next": "Comprobar validación del candidato #134 y corregir hallazgos propios si aparecen; no duplicar.",
       "files": [
         "src/runtime/lifecycle/native-integration-review.ts",
         "tests/native-partition-flow.test.ts"
@@ -57,8 +57,8 @@
       "tests": "CI rápida 45709037207 y arquitectura 45709037157 correctas; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 130,
-      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "candidatePR": 134,
+      "candidateSha": "c5246c472a6b6a2a20b9587634bd284191913c0a",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179608
@@ -66,13 +66,13 @@
       "branch": "feat/asen-equipo-C-C1-g2-judges-4701179608"
     },
     "D": {
-      "state": "listo-revision",
+      "state": "espera-candidato",
       "lease": null,
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 131,
       "sha": "6899f25cbd23cae2234865690bb400ffad4e0489",
-      "next": "E: incorporar al nuevo candidato sujeto a CI completa y revisión.",
+      "next": "Comprobar validación del candidato #134 y corregir hallazgos propios si aparecen; no duplicar.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
@@ -81,8 +81,8 @@
       "tests": "CI rápida 45706866421 y arquitectura 45706866167 correctas; CI completa y Release Gate omitidos por borrador.",
       "blocker": null,
       "generation": 2,
-      "candidatePR": 130,
-      "candidateSha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "candidatePR": 134,
+      "candidateSha": "c5246c472a6b6a2a20b9587634bd284191913c0a",
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [
         4701179598
@@ -90,15 +90,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-c0d1e190"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-g2-E-consolidacion-131-133",
-        "generation": 2,
-        "package": "E1",
-        "base": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
-        "branch": "feat/asen-equipo-E-E1-g2-consolidacion-131-133",
-        "phase": "escritura"
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -143,11 +136,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Tras CI rápida de #133, agrupar #131, #132 y #133 preservando commits, exigir CI completa y revisión exacta del nuevo candidato.",
+      "next": "Validar SHA exacto de #134; revisar hallazgos y admitir en #115 solo tras todas las puertas requeridas.",
       "blocker": null,
       "generation": 2,
-      "pr": 133,
-      "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
+      "pr": 134,
+      "sha": "c5246c472a6b6a2a20b9587634bd284191913c0a",
       "verifiedCandidate": {
         "pr": 130,
         "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
@@ -175,8 +168,8 @@
       "reviewFindings": [
         4701179590
       ],
-      "branch": "feat/asen-equipo-B-B1-g2-perfil-4701179615",
-      "tests": "Regresiones publicadas; CI del SHA exacto pendiente.",
+      "branch": "feat/asen-equipo-E-E1-g2-consolidacion-131-133",
+      "tests": "Candidato conjunto publicado; CI completa y revisión pendientes.",
       "files": [
         "extensions/asen.ts"
       ]
@@ -408,5 +401,24 @@
     "status": "publicada-espera-ci",
     "pr": 133,
     "sha": "ab17255d9569f874e196407ab12bd321ab827acc"
+  },
+  "consolidation": {
+    "pr": 134,
+    "sha": "c5246c472a6b6a2a20b9587634bd284191913c0a",
+    "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+    "includes": [
+      130,
+      131,
+      132,
+      133
+    ],
+    "findings": [
+      4701179590,
+      4701179598,
+      4701179608,
+      4701179615
+    ],
+    "status": "espera-ci-y-revision",
+    "globalFull": false
   }
 }
