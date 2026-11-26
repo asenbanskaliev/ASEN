@@ -68,7 +68,7 @@ export class AgentRuntime{
   const execution=this.dispatcher.dispatch(request,startBefore,validateStart);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);if(this.#fallbackOwners.get(request.id)===owner)this.#fallbackOwners.delete(request.id);});
  }
- async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;validateStart?:()=>Promise<void>;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId||input.onPrepared&&input.onQueued)throw new Error("An active Pi session and project with one launch boundary is required");
   const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role as Exclude<typeof input.role,"clarifier">];
   if(input.role==="clarifier"&&input.skillSelection)throw new Error("clarifier dispatch cannot receive a skill phase");
@@ -77,7 +77,7 @@ export class AgentRuntime{
   if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
   // Only unaffiliated ad-hoc Explorer work may reuse the identical active task.
   // Planned jobs and all reviewers/verifiers always retain unique identity.
-  if(input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared){
+  if(input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared&&!input.validateStart){
    const dedupeKey=createHash("sha256").update(JSON.stringify([
     "asen.explorer.active.v1",input.session.sessionId,workspaceIdentityPathKey(input.session.projectId),
     input.role,input.prompt,request.model??null,request.thinking??null,request.modelFallback??null,
@@ -95,7 +95,7 @@ export class AgentRuntime{
   }
   let enqueued=false,dispatched=false;
   const enqueue=async()=>{if(enqueued)throw new Error("Agent launch may enqueue only once");await this.store.enqueue(request,request.owner!,signal);enqueued=true;};
-  const dispatch=()=>{if(!enqueued)throw new Error("Agent launch must be durably enqueued before dispatch");if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal);dispatched=true;};
+  const dispatch=()=>{if(!enqueued)throw new Error("Agent launch must be durably enqueued before dispatch");if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal,undefined,input.validateStart);dispatched=true;};
   try{
    if(input.onPrepared)await input.onPrepared(request.id,enqueue,dispatch);
    else{await enqueue();if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});if(input.onQueued)await input.onQueued(request.id,dispatch);else dispatch();}
