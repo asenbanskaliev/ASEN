@@ -153,3 +153,22 @@ test("G08 restaura la versión previa después de una interrupción",async()=>{
  await assert.rejects(()=>fs.lstat(journal),{code:"ENOENT"});
  assert.equal(await fs.readFile(path.join(f.prefix,"install","versions","2.0.0","dist","cli.js"),"utf8"),f.bytes);
 });
+
+
+test("G08 cancela y restaura si la señal se aborta durante la inspección final",async()=>{
+ const f=await fixture();await selectInitialVersion(f);const controller=new AbortController();
+ const fsPromises=process.getBuiltinModule("fs/promises"),originalLstat=fsPromises.lstat.bind(fsPromises),managedRoot=path.join(f.prefix,"install");let armed=false,abortedDuringInspection=false;
+ Object.defineProperty(fsPromises,"lstat",{configurable:true,writable:true,value:async(...args:unknown[])=>{
+  const result=await (originalLstat as Function)(...args);
+  if(armed&&path.resolve(String(args[0]))===managedRoot){armed=false;abortedDuringInspection=true;controller.abort();}
+  return result;
+ }});syncBuiltinESMExports();
+ try{
+  const report=await activateManagedAcquisitionUpdate({manifestPath:f.manifestPath,packageRoot:f.packageRoot,prefix:f.prefix,
+   protectedPaths:[path.join(f.root,"protected")],confirmed:true},async()=>{armed=true;},controller.signal);
+  assert.equal(abortedDuringInspection,true);
+  assert.equal(report.status,"rolled-back");assert.equal(report.error,"CANCELLED_DURING_ACTIVATION");
+  assert.equal((await inspectManagedInstall({prefix:f.prefix})).activeVersion,"1.0.0");
+  await assert.rejects(()=>fs.lstat(path.join(f.prefix,"install",".asen-acquisition-update.pending")),{code:"ENOENT"});
+ }finally{Object.defineProperty(fsPromises,"lstat",{configurable:true,writable:true,value:originalLstat});syncBuiltinESMExports();}
+});
