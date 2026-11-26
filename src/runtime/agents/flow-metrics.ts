@@ -38,19 +38,26 @@ export function summarizeParentFlow(entries:readonly unknown[]){
 /** Los resultados conservados son una muestra, no necesariamente todos los
  * intentos de un agente. Un fallo, truncamiento o recuperación no puede
  * convertir el consumo observado en el consumo total de ese agente. */
-export function summarizeChildFlow(entry:{record:{id:string;role:string;state:string;createdAt:string;updatedAt:string};events:readonly {state:string;at:string}[];result?:{output:string}}){
+export function summarizeChildFlow(entry:{record:{id:string;role:string;state:string;createdAt:string;updatedAt:string};events:readonly {state:string;at:string}[];request?:{id:string;role:string;modelFallback?:{chain:readonly unknown[]}};result?:{output:string;id?:string;ok?:boolean}}){
  const starts=entry.events.filter(row=>row.state==="running");
  const terminals=new Set(["completed","failed","cancelled","interrupted"]);
  const terminal=terminals.has(entry.record.state);
  const elapsed=starts.length&&terminal?Date.parse(entry.record.updatedAt)-Date.parse(starts[0]!.at):NaN;
- const messages:Sample[]=[];let valid=!!entry.result,settled=false,duplicate=false;
+ const messages:Sample[]=[];let valid=!!entry.result,settled=false,aborted=false,duplicate=false,agentEnds=0,settlements=0,correlatedResponses=0,correlatedSuccess=false;
  const seen=new Set<string>();
  if(entry.result&&Buffer.byteLength(entry.result.output,"utf8")<=1_000_000){
   for(const line of entry.result.output.split(/\r?\n/u)){
    if(!line.trim())continue;
    try{
     const event=JSON.parse(line);
-    if(event?.type==="agent_settled"&&event.aborted!==true)settled=true;
+    if(event?.type==="agent_settled"){
+     settlements++;
+     if(event.aborted===true)aborted=true;else settled=true;
+    }
+    if(event?.type==="agent_end")agentEnds++;
+    if(event?.type==="response"&&event.id===entry.record.id){
+     correlatedResponses++;correlatedSuccess=event.success===true;
+    }
     if(event?.type==="message_end"){
      const s=sample(event.message);if(!s)continue;
      const id=event.message?.id;
@@ -65,9 +72,16 @@ export function summarizeChildFlow(entry:{record:{id:string;role:string;state:st
  }else valid=false;
  // Las muestras válidas del prefijo siguen siendo observaciones, no totales completos.
  const observed=summarizeFlowUsage(messages);
- // Una sola ejecución terminal y un cierre RPC explícito son necesarios;
- // el resultado de un reintento puede omitir por completo el primer consumo.
- const completeInventory=valid&&settled&&!duplicate&&starts.length===1&&entry.record.state==="completed"&&messages.length>0;
+ // El resultado persistido y completado acredita la salida limpia del runner.
+ // En lectura sin alternativas, este acepta una única respuesta correlacionada
+ // sin exigir agent_settled. No inferir ese contrato si falta la petición.
+ const readOnlyWithoutFallback=entry.request?.id===entry.record.id&&entry.request.role===entry.record.role&&
+  ["explorer","clarifier","reviewer","verifier"].includes(entry.record.role)&&
+  (entry.request.modelFallback===undefined||entry.request.modelFallback.chain.length===0);
+ const cleanReadOnly=readOnlyWithoutFallback&&entry.result?.id===entry.record.id&&entry.result.ok===true&&
+  correlatedResponses===1&&correlatedSuccess;
+ const completeInventory=valid&&(settled||cleanReadOnly)&&!aborted&&!duplicate&&settlements<=1&&agentEnds<=1&&
+  starts.length===1&&entry.record.state==="completed"&&messages.length>0;
  return Object.freeze({id:entry.record.id,role:entry.record.role,state:entry.record.state,
   elapsedMs:Number.isFinite(elapsed)&&elapsed>=0?elapsed:null,observedAttempts:starts.length,
   ...observed,

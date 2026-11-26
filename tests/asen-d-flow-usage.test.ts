@@ -38,3 +38,24 @@ test("Conserva el consumo observado de un prefijo válido aunque una línea post
  assert.equal(row.observedUsage.reportedCostUsd,0.01);
  assert.equal(row.source,"saved-pi-rpc-result");
 });
+
+test("La lectura sin alternativas admite una respuesta correlacionada con cierre limpio sin agent_settled",()=>{
+ const ack={type:"response",id:"agent",success:true};
+ const ended={type:"agent_end"};
+ const entry={record:{id:"agent",role:"explorer",state:"completed",createdAt:at,updatedAt:end},
+  request:{id:"agent",role:"explorer"},events:[{state:"running",at}]};
+ const run=(lines:unknown[],request:typeof entry.request&{modelFallback?:{chain:readonly unknown[]}}=entry.request,ok=true)=>
+  summarizeChildFlow({...entry,request,result:{id:"agent",ok,output:lines.map(row=>JSON.stringify(row)).join("\n")}});
+ const good=run([message,ended,ack]);
+ assert.equal(good.completeInventory,true);assert.equal(good.totalTokens,12);
+ for(const lines of [[message,ended],[message,ended,{...ack,id:"otro"}],[message,ended,{...ack,success:false}],
+  [message,ended,ack,ack],[message,message,ended,ack],[message,ended,ended,ack],
+  [message,ended,ack,{type:"agent_settled",aborted:true}]]){
+  const row=run(lines);assert.equal(row.completeInventory,false);assert.equal(row.totalTokens,null);
+  assert.equal(row.observedUsage.totalTokens,12);
+ }
+ assert.equal(run([message,ended,ack],{...entry.request,modelFallback:{chain:["otro"]}}).completeInventory,false);
+ assert.equal(run([message,ended,ack],entry.request,false).completeInventory,false);
+ assert.equal(run([message,ended,ack],{...entry.request,id:"otro"}).completeInventory,false);
+ assert.equal(run([message,ended,ack],{...entry.request,role:"worker"}).completeInventory,false);
+});
