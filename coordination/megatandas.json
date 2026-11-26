@@ -130,15 +130,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M3-g2-correlacion-pi-150",
-        "package": "G01-G03",
-        "base": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
-        "branch": "feat/asen-equipo-E-M3-g2-correlacion-pi-150",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-ci-y-revision-t06-bloqueado",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -183,11 +176,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Añadir evidencia RPC correlacionada y rechazo de preflight duplicado sin reenviar peticiones; no admitir hasta CI exacta.",
+      "next": "Validar #151 exacta, G01 RPC 36 celdas, G08 y G03; revisión independiente; cerrar T06 solo tras permiso válido. Continuar P04 sin repetir efectos.",
       "blocker": "El control previo de un solo uso devolvió 403 Resource not accessible by integration al desarmar la etiqueta. Falló cerrado antes de consultar o llamar a NVIDIA; no hubo solicitudes API ni sesiones Pi. La etiqueta se retiró mediante integración y no se repetirá automáticamente.",
       "generation": 2,
-      "pr": 150,
-      "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
+      "pr": 151,
+      "sha": "d5740d63ed190a7df8fbb353f6066738e15688a3",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -579,20 +572,7 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {
-    "E-M3-g2-correlacion-pi-150": {
-      "owner": "E",
-      "files": [
-        "scripts/pi-support-matrix.mjs",
-        "tests/pi-support-matrix.test.ts",
-        "src/agents/pi-process-runner.ts",
-        "tests/pi-process-runner-no-fallback-settlement.test.ts",
-        ".github/workflows/pi-compatibility-1_5.yml",
-        ".github/workflows/ci.yml"
-      ],
-      "reason": "Cerrar correlación RPC real de G01 y evitar prompt repetido por preflight duplicado G03"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -611,8 +591,8 @@
     "sha": "ab17255d9569f874e196407ab12bd321ab827acc"
   },
   "consolidation": {
-    "pr": 150,
-    "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
+    "pr": 151,
+    "sha": "d5740d63ed190a7df8fbb353f6066738e15688a3",
     "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
     "includes": [
       130,
@@ -633,13 +613,14 @@
       146,
       147,
       148,
-      149
+      149,
+      150
     ],
     "status": "candidato-no-admitido-espera-ci-revision-t06",
     "globalFull": false,
     "previousCandidate": {
-      "pr": 144,
-      "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+      "pr": 150,
+      "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "includes": [
         130,
@@ -655,23 +636,18 @@
         140,
         142,
         141,
-        143
+        143,
+        144,
+        146,
+        147,
+        148,
+        149
       ],
-      "findings": [
-        4701179590,
-        4701179598,
-        4701179608,
-        4701179615,
-        4704551343,
-        4705072726,
-        4707849565,
-        4708656296
-      ],
-      "status": "espera-revision",
+      "status": "candidato-no-admitido-espera-ci-revision-t06",
       "globalFull": false,
       "previousCandidate": {
-        "pr": 142,
-        "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
+        "pr": 144,
+        "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
         "includes": [
           130,
@@ -684,7 +660,10 @@
           136,
           138,
           139,
-          140
+          140,
+          142,
+          141,
+          143
         ],
         "findings": [
           4701179590,
@@ -693,13 +672,14 @@
           4701179615,
           4704551343,
           4705072726,
-          4707849565
+          4707849565,
+          4708656296
         ],
-        "status": "correccion-revision",
+        "status": "espera-revision",
         "globalFull": false,
         "previousCandidate": {
-          "pr": 140,
-          "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+          "pr": 142,
+          "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
           "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
           "includes": [
             130,
@@ -711,7 +691,8 @@
             137,
             136,
             138,
-            139
+            139,
+            140
           ],
           "findings": [
             4701179590,
@@ -719,13 +700,14 @@
             4701179608,
             4701179615,
             4704551343,
-            4705072726
+            4705072726,
+            4707849565
           ],
           "status": "correccion-revision",
           "globalFull": false,
           "previousCandidate": {
-            "pr": 139,
-            "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+            "pr": 140,
+            "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
             "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
             "includes": [
               130,
@@ -736,7 +718,8 @@
               135,
               137,
               136,
-              138
+              138,
+              139
             ],
             "findings": [
               4701179590,
@@ -746,11 +729,11 @@
               4704551343,
               4705072726
             ],
-            "status": "correccion-ci",
+            "status": "correccion-revision",
             "globalFull": false,
             "previousCandidate": {
-              "pr": 137,
-              "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+              "pr": 139,
+              "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
               "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
               "includes": [
                 130,
@@ -758,7 +741,10 @@
                 132,
                 133,
                 134,
-                135
+                135,
+                137,
+                136,
+                138
               ],
               "findings": [
                 4701179590,
@@ -768,125 +754,201 @@
                 4704551343,
                 4705072726
               ],
-              "status": "espera-ci-y-revision",
+              "status": "correccion-ci",
               "globalFull": false,
-              "latestFinding": 4705072726,
-              "ci": {
+              "previousCandidate": {
+                "pr": 137,
                 "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-                "full": 45798838328,
-                "quick": 45798838411,
-                "architecture": 45798838365,
-                "releaseGate": 45798838489,
-                "pi": 45798838396,
-                "conclusion": "success",
-                "piFreeSmoke": "skipped"
+                "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+                "includes": [
+                  130,
+                  131,
+                  132,
+                  133,
+                  134,
+                  135
+                ],
+                "findings": [
+                  4701179590,
+                  4701179598,
+                  4701179608,
+                  4701179615,
+                  4704551343,
+                  4705072726
+                ],
+                "status": "espera-ci-y-revision",
+                "globalFull": false,
+                "latestFinding": 4705072726,
+                "ci": {
+                  "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+                  "full": 45798838328,
+                  "quick": 45798838411,
+                  "architecture": 45798838365,
+                  "releaseGate": 45798838489,
+                  "pi": 45798838396,
+                  "conclusion": "success",
+                  "piFreeSmoke": "skipped"
+                },
+                "review": {
+                  "confirmed": false,
+                  "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+                  "requestedCommentId": 7189696664
+                },
+                "previousCandidate": {
+                  "pr": 135,
+                  "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+                }
               },
               "review": {
-                "confirmed": false,
-                "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-                "requestedCommentId": 7189696664
+                "confirmed": false
               },
-              "previousCandidate": {
-                "pr": 135,
-                "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+              "ci": {
+                "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+                "full": 45804701712,
+                "conclusion": "failure",
+                "quick": 45804701639,
+                "architecture": 45804701636,
+                "releaseGate": 45804702600,
+                "pi": 45804701792,
+                "piFreeSmoke": "skipped"
               }
             },
             "review": {
-              "confirmed": false
+              "confirmed": false,
+              "requestedCommentId": 7190886973,
+              "findings": [
+                4707849565
+              ]
             },
             "ci": {
-              "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
-              "full": 45804701712,
-              "conclusion": "failure",
-              "quick": 45804701639,
-              "architecture": 45804701636,
-              "releaseGate": 45804702600,
-              "pi": 45804701792,
+              "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+              "full": 45809299223,
+              "conclusion": "success",
+              "quick": 45809299532,
+              "architecture": 45809299238,
+              "releaseGate": 45809299460,
+              "pi": 45809299270,
               "piFreeSmoke": "skipped"
-            }
+            },
+            "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
           },
           "review": {
             "confirmed": false,
-            "requestedCommentId": 7190886973,
+            "requestedCommentId": 7192496419,
             "findings": [
-              4707849565
+              4708656296
             ]
           },
           "ci": {
-            "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
-            "full": 45809299223,
+            "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
+            "quick": 45822958208,
+            "architecture": 45822958311,
+            "pi": 45822958212,
+            "full": 45822958288,
+            "releaseGate": 45822958279,
             "conclusion": "success",
-            "quick": 45809299532,
-            "architecture": 45809299238,
-            "releaseGate": 45809299460,
-            "pi": 45809299270,
             "piFreeSmoke": "skipped"
           },
-          "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
+          "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
         },
         "review": {
-          "confirmed": false,
-          "requestedCommentId": 7192496419,
-          "findings": [
-            4708656296
-          ]
+          "confirmed": true,
+          "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+          "source": "CodeRabbit",
+          "actionable": 0,
+          "nitpick": 1,
+          "limitation": "Falta regresión de cola real; no equivale a aprobación humana ni admisión."
         },
         "ci": {
-          "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
-          "quick": 45822958208,
-          "architecture": 45822958311,
-          "pi": 45822958212,
-          "full": 45822958288,
-          "releaseGate": 45822958279,
+          "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+          "quick": 45832618271,
+          "architecture": 45832618249,
+          "pi": 45832618256,
+          "full": 45832618191,
+          "releaseGate": 45832618290,
+          "matrix": 45832618166,
           "conclusion": "success",
           "piFreeSmoke": "skipped"
         },
-        "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
+        "correction": "Contar intentos sin duplicar respuestas a preguntas; corregir TS2379; conservar matriz Pi adicional y ancestros."
       },
       "review": {
-        "confirmed": true,
-        "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-        "source": "CodeRabbit",
-        "actionable": 0,
-        "nitpick": 1,
-        "limitation": "Falta regresión de cola real; no equivale a aprobación humana ni admisión."
+        "confirmed": false
       },
       "ci": {
-        "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-        "quick": 45832618271,
-        "architecture": 45832618249,
-        "pi": 45832618256,
-        "full": 45832618191,
-        "releaseGate": 45832618290,
-        "matrix": 45832618166,
-        "conclusion": "success",
-        "piFreeSmoke": "skipped"
+        "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
+        "quick": 45899268570,
+        "architecture": 45899268656,
+        "pi": 45899268631,
+        "releaseGate": 45899268689,
+        "g08Windows": 140180749738,
+        "full": 45899268567,
+        "matrix": 45899268559,
+        "conclusion": "parcial-superado-espera-ci",
+        "latest": [
+          {
+            "name": "CI",
+            "run": 45899268567,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Pi Free Smoke",
+            "run": 45899268773,
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "CI rápida",
+            "run": 45899268570,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "run": 45899268656,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+            "run": 45899268559,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "run": 45899268631,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Release Gate",
+            "run": 45899268689,
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
       },
-      "correction": "Contar intentos sin duplicar respuestas a preguntas; corregir TS2379; conservar matriz Pi adicional y ancestros."
+      "audit": {
+        "workPr": 149,
+        "workSha": "3eafc1951776d19c8a21d525904be95acded984b",
+        "ciNoModels": 45893102399,
+        "g08Windows": 140167464000,
+        "t06FailedRun": 45895263733,
+        "t06FailedJob": 140167464412,
+        "staging": "Se conserva G08 firmado; se recupera preparación inactiva mediante --stage-only autenticado; no se restablece ruta sin firma.",
+        "scope": "Candidato consolidado, no merge ni aceptación real."
+      }
     },
     "review": {
       "confirmed": false
     },
     "ci": {
-      "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
-      "quick": 45899268570,
-      "architecture": 45899268656,
-      "pi": 45899268631,
-      "releaseGate": 45899268689,
-      "g08Windows": 140180749738,
-      "full": 45899268567,
-      "matrix": 45899268559,
-      "conclusion": "parcial-superado-espera-ci"
+      "conclusion": "pendiente"
     },
     "audit": {
-      "workPr": 149,
-      "workSha": "3eafc1951776d19c8a21d525904be95acded984b",
-      "ciNoModels": 45893102399,
-      "g08Windows": 140167464000,
-      "t06FailedRun": 45895263733,
-      "t06FailedJob": 140167464412,
-      "staging": "Se conserva G08 firmado; se recupera preparación inactiva mediante --stage-only autenticado; no se restablece ruta sin firma.",
-      "scope": "Candidato consolidado, no merge ni aceptación real."
+      "scope": "Candidato acumulativo, no admisión; G01 RPC respuesta exacta, G03 inventario duplicado; T06 bloqueado."
     }
   },
   "gentleShell5": {
@@ -896,13 +958,13 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "validacion-pi16-pasada-revision-completa-pendiente",
+        "state": "rpc-correlacion-implementada-espera-ci",
         "pr": 141,
         "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
-        "next": "Validar cambios de configuración en ejecución iniciada, identidad/independencia observada de modelos y G08 antes de cerrar M2.",
+        "next": "Comprobar matriz y CI exactas #151; no certificar identidad real de proveedor.",
         "evidence": {
           "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
           "matrix": 45832618166,
@@ -981,6 +1043,12 @@
             "conclusion": "failure",
             "reason": "F5 mantiene mensaje exacto de versión 1.2.0"
           }
+        },
+        "rpcCandidate": {
+          "pr": 151,
+          "sha": "d5740d63ed190a7df8fbb353f6066738e15688a3",
+          "state": "espera-ci",
+          "scope": "36 celdas, nueve RPC, exige respuesta única, comando e ID correctos y reposo real, sin modelos"
         }
       },
       "G02": {
@@ -1029,12 +1097,18 @@
         }
       },
       "G03": {
-        "state": "implementacion-parcial-turno-abierto-espera-ci",
+        "state": "turno-abierto-y-preflight-duplicado-espera-ci",
         "next": "Validar cuatro regresiones; completar recuperación duradera P04/G03 e integración real cuando se autorice.",
         "candidate": {
           "pr": 150,
           "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
           "scope": "Reintento anunciado por Pi sin fallback en mismo proceso; no nuevo prompt, settlement obligatorio tras nuevo inicio, Writer bloqueado; pruebas instrumentadas. No acredita reinicio de proceso, recuperación proveedor ni recorrido real."
+        },
+        "duplicatePreflight": {
+          "pr": 151,
+          "sha": "d5740d63ed190a7df8fbb353f6066738e15688a3",
+          "state": "espera-ci",
+          "scope": "Rechazar respuesta de inventario repetida antes de reenviar prompt"
         }
       },
       "G04": {
@@ -1109,7 +1183,7 @@
       "M6 Aceptación"
     ],
     "globalFull": false,
-    "candidate": 150
+    "candidate": 151
   },
   "currentSnapshot": {
     "capturedAt": "2026-11-26",
@@ -1132,13 +1206,13 @@
         "unresolved": 0
       }
     },
-    "m2": "#149 pruebas sin modelos y G08 correctas; T06 bloqueado 403. #150 consolida sin admitir.",
-    "m3": "G03 parcial implementado en #150, pruebas pendientes",
+    "m2": "#150 Release Gate, Pi 1.2, arquitectura, rápida y G08 Windows superados; #151 añade correlación RPC, falta CI exacta y T06",
+    "m3": "Continuidad nativa y rechazo de inventario repetido implementados; falta recuperación duradera y flujo real",
     "globalFull": false,
     "updatedAt": "2026-11-26T22:00:00Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
-    "candidate": 150,
-    "candidateSha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e"
+    "candidate": 151,
+    "candidateSha": "d5740d63ed190a7df8fbb353f6066738e15688a3"
   },
   "modelCallException": {
     "enabled": false,
