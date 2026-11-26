@@ -138,7 +138,7 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-validacion",
+      "state": "validacion-en-curso",
       "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
@@ -184,7 +184,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Comprobar CI rápida, completa, Release Gate, Pi 1.2 y la revisión CodeRabbit exactas sobre ccada704; después ejecutar las pruebas reales acotadas por autorización única.",
+      "next": "Esperar CI rápida, PI1.2, G08/CI completa y Release Gate de ccada704. Pedir revisión completa de CodeRabbit sobre este SHA; después de sus hallazgos corregidos, ejecutar NVIDIA/Pi real bajo autorización única.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
@@ -273,16 +273,42 @@
       "reviewState": "corregidos-en-b186-pendientes-de-revision-y-pruebas-exactas",
       "latestValidation": {
         "sha": "ccada704cbf029632d9c2cf914e2d95c39de2c23",
-        "state": "pendiente-de-ejecucion",
-        "previousSha": "762c9cb7bc46fb0da07f02cdd10afa4bc257bdea",
-        "previousEvidence": {
-          "g08Windows": "success",
-          "ciQuick": "success",
-          "pi12": "success",
-          "phase0": "success"
-        },
-        "globalFull": false,
-        "piFreeSmoke": "skipped"
+        "state": "en-curso",
+        "runs": [
+          {
+            "name": "CI",
+            "id": 45886986897,
+            "status": "pending"
+          },
+          {
+            "name": "CI rápida",
+            "id": 45886986894,
+            "status": "in_progress"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45886986970,
+            "status": "in_progress"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45886986905,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45886986917,
+            "status": "in_progress"
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 45886986923,
+            "status": "completed",
+            "conclusion": "skipped"
+          }
+        ],
+        "globalFull": false
       },
       "validationOwner": {
         "team": "E",
