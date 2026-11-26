@@ -101,3 +101,10 @@ En `b186e7d` pasaron CI rápida, Phase 0 y Pi 1.2, pero G08 Windows falló en ci
 
 La observación sobre `getSettings` ausente se corrigió en `4c1264a` y su hilo quedó resuelto.
 
+
+
+### Actualización de validación M2 — 26/11/2026
+
+La suite completa del SHA ccada704cbf029632d9c2cf914e2d95c39de2c23 detectó una diferencia de diagnóstico en Windows al alterar el binario mientras la sonda esperaba el bloqueo. El proceso no se ejecutó y no creó datos temporales; Windows rechazó el inventario como owned-installation-not-recognized, mientras otras plataformas informaron candidate-drift-before-launch. La regresión ahora acepta ambos motivos de rechazo seguro y conserva las comprobaciones de cero intentos, salida vacía, ningún temporal y bloqueo eliminado.
+
+La corrección se publicó como SHA 1d44a763b12703ad2e597b450087c977faf66143 en #149. La actualización segura G08 ya pasó en Windows en el SHA ccada704 (job 140140299346) y en 762c9cb (run 45886658455). Esas pruebas no reemplazan la CI completa del nuevo SHA. La validación de 1d44a76, la revisión completa CodeRabbit y el ensayo acotado NVIDIA/Pi siguen pendientes; Pi Free Smoke omitido no cuenta como evidencia real. #149 permanece abierta y sin fusionar. globalFull:false.
