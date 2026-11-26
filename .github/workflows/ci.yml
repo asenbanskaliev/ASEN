@@ -943,6 +943,7 @@ jobs:
         shell: pwsh
         run: |
           node --import tsx --test tests/managed-install.test.ts
+          node --import tsx --test tests/managed-maintenance-lock.test.ts
           node --import tsx --test --test-name-pattern="upgrade activates v2|fails its pre-activation|breaks only after activation|interrupted upgrade|unhealthy automatic rollback" tests/t09-lifecycle.test.ts
 
   # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
