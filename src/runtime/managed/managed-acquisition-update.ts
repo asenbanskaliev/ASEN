@@ -1,3 +1,5 @@
+import {randomUUID} from "node:crypto";
+import {open,lstat,readFile,unlink} from "node:fs/promises";
 import path from "node:path";
 import {createManagedUpdatePreview} from "./managed-update-preview.js";
 import {ManagedInstallError,inspectManagedInstall,selectManagedVersion,stageAdditionalManagedVersion,type ManagedInstallFile} from "./managed-install.js";
@@ -51,6 +53,37 @@ export interface ManagedAcquisitionActivationReport{
  readonly error:"CANCELLED_BEFORE_SELECTION"|"CANCELLED_DURING_ACTIVATION"|"ACTIVATION_FAILED"|"ROLLBACK_UNCERTAIN"|null;
 }
 const freezeActivation=(report:ManagedAcquisitionActivationReport)=>Object.freeze({...report});
+type PendingManagedUpdate=Readonly<{schema:"asen.managed-acquisition-update-pending/v1";previousVersion:string;targetVersion:string}>;
+const pendingPath=(prefix:string)=>path.join(path.resolve(prefix),"install",".asen-acquisition-update.pending");
+async function writePendingManagedUpdate(prefix:string,previousVersion:string,targetVersion:string):Promise<string>{
+ const file=pendingPath(prefix),bytes=JSON.stringify({schema:"asen.managed-acquisition-update-pending/v1",token:randomUUID(),previousVersion,targetVersion})+"\\n";
+ const handle=await open(file,"wx",0o600);
+ try{await handle.writeFile(bytes);await handle.sync();}finally{await handle.close();}
+ return bytes;
+}
+async function removePendingManagedUpdate(prefix:string,expected:string):Promise<void>{
+ const file=pendingPath(prefix),info=await lstat(file);
+ if(!info.isFile()||info.isSymbolicLink()||info.nlink!==1||await readFile(file,"utf8")!==expected)throw new Error("PENDING_JOURNAL_CHANGED");
+ await unlink(file);
+}
+export async function recoverManagedAcquisitionUpdate(request:Readonly<{prefix:string;confirmed:boolean}>):Promise<Readonly<{status:"none"|"restored"|"already-previous"|"ambiguous";previousVersion?:string;targetVersion?:string}>>{
+ if(request.confirmed!==true)installError("CONFIRMATION_REQUIRED","Managed acquisition recovery requires explicit confirmation");
+ const prefix=path.resolve(request.prefix),file=pendingPath(prefix);
+ let bytes:string;
+ try{const info=await lstat(file);if(!info.isFile()||info.isSymbolicLink()||info.nlink!==1||info.size>4096)return Object.freeze({status:"ambiguous"});bytes=await readFile(file,"utf8");}
+ catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return Object.freeze({status:"none"});return Object.freeze({status:"ambiguous"});}
+ let journal:PendingManagedUpdate;
+ try{const parsed=JSON.parse(bytes) as Record<string,unknown>;if(parsed.schema!=="asen.managed-acquisition-update-pending/v1"||typeof parsed.previousVersion!=="string"||typeof parsed.targetVersion!=="string")return Object.freeze({status:"ambiguous"});journal=parsed as PendingManagedUpdate;}
+ catch{return Object.freeze({status:"ambiguous"});}
+ const inventory=await inspectManagedInstall({prefix}).catch(()=>undefined);
+ if(inventory?.status!=="owned"||!inventory.versions.some(item=>item.version===journal.previousVersion)||!inventory.versions.some(item=>item.version===journal.targetVersion))return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
+ if(inventory.selectedVersion===journal.targetVersion){
+  const restored=await selectManagedVersion({prefix,version:journal.previousVersion,expectedCurrentVersion:journal.targetVersion,confirmed:true}).catch(()=>undefined);
+  if(restored?.status!=="selected"&&restored?.status!=="unchanged")return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
+ }else if(inventory.selectedVersion!==journal.previousVersion)return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
+ try{await removePendingManagedUpdate(prefix,bytes);}catch{return Object.freeze({status:"ambiguous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});}
+ return Object.freeze({status:inventory.selectedVersion===journal.targetVersion?"restored":"already-previous",previousVersion:journal.previousVersion,targetVersion:journal.targetVersion});
+}
 
 /**
  * Selecciona una versión ya validada, ejecuta la comprobación del lanzador y
@@ -67,7 +100,7 @@ export async function activateManagedAcquisitionUpdate(
  await recoverManagedAcquisitionUpdate({prefix,confirmed:request.confirmed});
  const before=await createManagedUpdatePreview({manifestPath:request.manifestPath,packageRoot:request.packageRoot,prefix});
  if(before.managed.status!=="owned")installError("FOREIGN_MANAGED_ROOT","Managed acquisition update requires an existing owned installation");
- const previousVersion=before.managed.activeVersion;
+ const previousVersion=before.managed.selectedVersion;
  if(!previousVersion)throw new ManagedInstallError("SOURCE_DRIFT","Recoverable update requires a currently selected managed version");
  const staged=await stageManagedAcquisitionUpdate(request);
  const base={schema:"asen.managed-acquisition-update/v1" as const,operation:"managed-acquisition-update" as const,
