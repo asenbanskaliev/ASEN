@@ -131,3 +131,20 @@ test("G02 sincroniza el último estado publicado antes del siguiente sondeo",()=
  assert.equal(changes,1);
  observer.stop();
 });
+
+
+test("G02 reemplaza el observador cuando se cancela su contexto y sigue con el nuevo",()=>{
+ type FakeTimer={callback:()=>void;cancelled:boolean};
+ let previous:(()=>void)|undefined,next:(()=>void)|undefined,oldSchedules=0,newSchedules=0,oldCurrent=true,newCurrent=true,changes=0;
+ const scheduleOld=(callback:()=>void)=>{oldSchedules++;previous=callback;return {callback,cancelled:false} as unknown as ReturnType<typeof setTimeout>;};
+ const scheduleNew=(callback:()=>void)=>{newSchedules++;next=callback;return {callback,cancelled:false} as unknown as ReturnType<typeof setTimeout>;};
+ const cancel=(_timer:ReturnType<typeof setTimeout>)=>{};
+ const old=createCompactionPressureObserver({initial:{state:"off"},read:()=>({state:"off"}),current:()=>oldCurrent,onChange:()=>{},schedule:scheduleOld,cancel});
+ oldCurrent=false;previous?.();
+ assert.equal(oldSchedules,1,"el contexto cancelado no programa más sondeos");
+ old.stop();
+ const resumed=createCompactionPressureObserver({initial:{state:"off"},read:()=>({state:"available",usedTokens:1,windowTokens:10,reserveTokens:2,thresholdTokens:8,remainingTokens:7,percent:12.5,atOrAboveThreshold:false}),current:()=>newCurrent,onChange:()=>{changes++;},schedule:scheduleNew,cancel});
+ assert.equal(newSchedules,1,"el contexto nuevo instala un observador");
+ next?.();assert.equal(changes,1);
+ newCurrent=false;next?.();resumed.stop();
+});
