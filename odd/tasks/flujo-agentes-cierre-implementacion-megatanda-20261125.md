@@ -12,6 +12,12 @@ Base de trabajo: PR #126 sobre #115. Complemento del plan de 18 objetivos y 12 p
 
 No se han lanzado nuevos ensayos de modelos ni declarado éxito por CI. globalFull:false. Pendientes: revisión del nuevo SHA, pruebas y aceptación real del flujo de extremo a extremo, causa del fallo de la sucesora, datos de facturación e identidad del proveedor cuando existan. No ampliar paralelismo o eliminar contexto sin mediciones.
 
+## Complemento M3/M4 · 26/11/2026
+
+- **M3:** se añade una segunda barrera en la materialización ODD. Solo admite dos Writers raíz preparados y, opcionalmente, una única sucesora bloqueada que depende exactamente de ambos. Evita que una relajación futura del filtrado active un tercer Writer. Pruebas focalizadas: 18 correctas; `typecheck` correcto.
+- **M4:** los checkpoints firmados de revisión se validan también por su progreso semántico. Una revisión incompleta, un dictamen parcial, una firma inválida o una propuesta Fix sin huella exacta bloquean la recuperación. Pruebas negativas nuevas: 3 correctas; `typecheck` correcto.
+- **Límite:** ambas piezas son validación sin modelos. No acreditan decisión natural, hijos reales, doble revisión de proveedor, Fix real ni aceptación integral. Mantener `globalFull:false` y no ejecutar proveedores sin autorización nueva y exacta.
+
 ## Revisión posterior
 
 - Corregir inventarios de comandos y herramientas Pi; registrar asen-flow-metrics y reservar asen_plan_resume_batch para impedir colisiones. La CI 45639738580 detectó cuatro fallos de inventario, propagados a los tres sistemas. No dar por validado el nuevo SHA hasta la CI.

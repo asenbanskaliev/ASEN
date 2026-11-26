@@ -210,6 +210,31 @@ const recoveredBindings=new WeakMap<object,{input:CheckpointInput;serialized:str
 const digest=(text:string)=>createHash("sha256").update(text).digest("hex");
 const checkpointFile=(input:CheckpointInput)=>join(input.storageDir,"native-review-"+digest(integrationKey(input.candidate,input.sessionId))+".json");
 const checkpointMac=(key:Buffer,body:string)=>createHmac("sha256",key).update("asen.native-review/v1\0"+body).digest("hex");
+/** Los checkpoints son recuperables, pero nunca pueden transformar un intento
+ * incompleto en una revisión completa. Esta validación semántica se aplica
+ * antes de que métricas, reanudación o aceptación observen el registro. */
+export function assertNativeReviewCheckpointProgress(data:ReviewCheckpoint):void{
+ const signature=data.receiptSignature;
+ if(typeof signature!=="string"||!/^[a-f0-9]{64}$/u.test(signature))throw Error("Checkpoint de revisión inválido");
+ const judges=data.judges;
+ const route=(value:unknown)=>typeof value==="string"&&value.length>0&&value.length<=512&&value===value.trim()&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(value);
+ const judgment=(value:unknown)=>value===undefined||value==="pass"||value==="fail";
+ if(judges.some(judge=>!route(judge.route)||!['provider-response-match','requested-descriptor-only','unknown'].includes(judge.evidence)||!judgment(judge.verdict)))throw Error("Checkpoint de revisión inválido");
+ if(data.fixProposalId!==undefined&&!/^[a-f0-9]{64}$/u.test(data.fixProposalId))throw Error("Checkpoint de revisión inválido");
+ if(data.phase==="joint-tests-reviewed"){
+  if(judges.length!==0||data.attemptStarted!==undefined||data.findingsCount!==undefined||data.fixProposalId!==undefined)throw Error("Checkpoint de revisión inválido");
+  return;
+ }
+ if(data.attemptStarted!==true||judges.length!==2||judges.some(judge=>judge.verdict===undefined)){
+  // dual-pending puede contener exactamente el primer dictamen auténtico,
+  // pero sigue siendo irrecuperable sin decisión explícita del usuario.
+  if(data.phase==="dual-pending"&&data.attemptStarted===false&&judges.length===0)return;
+  if(data.phase==="dual-pending"&&data.attemptStarted===true&&judges.length===1&&judges[0]?.verdict!==undefined)return;
+  throw Error("Checkpoint de revisión incompleto o inválido");
+ }
+ if(data.phase==="dual-reviewed"&&(data.findingsCount??0)!==0)throw Error("Checkpoint de revisión inválido");
+ if(data.phase==="dual-findings"&&(!Number.isSafeInteger(data.findingsCount)||data.findingsCount!<1))throw Error("Checkpoint de revisión inválido");
+}
 async function readSignedCheckpoint(file:string,storageDir:string):Promise<ReviewCheckpoint|undefined>{
  if(!await preparePrivateFile(file))return;
  if((await lstat(file)).size>65536)throw Error("Checkpoint de revisión demasiado grande");
@@ -220,6 +245,7 @@ async function readSignedCheckpoint(file:string,storageDir:string):Promise<Revie
  const data=JSON.parse(value.body) as ReviewCheckpoint;
  if(data.schema!=="asen.native-review/v1"||typeof data.key!=="string"||!["dual-pending","dual-findings","joint-tests-reviewed","dual-reviewed"].includes(data.phase)||!Array.isArray(data.judges)||data.judges.length>2||!/^[a-f0-9]{64}$/u.test(data.policyHash))
   throw Error("Checkpoint de revisión inválido");
+ assertNativeReviewCheckpointProgress(data);
  return data;
 }
 async function readCheckpoint(input:CheckpointInput){
