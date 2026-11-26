@@ -598,7 +598,8 @@
         "src/runtime/managed/managed-lifecycle.ts",
         ".github/workflows/ci.yml",
         ".github/workflows/pi-compatibility-1_5.yml",
-        ".github/workflows/t06-permission-probe.yml"
+        ".github/workflows/t06-permission-probe.yml",
+        "tests/t09-lifecycle.test.ts"
       ],
       "reason": "Corregir CRLF de Windows, límites RPC, snapshot API y dos hallazgos preparación firmada. No tocar extensiones ni recuperación M3."
     }
