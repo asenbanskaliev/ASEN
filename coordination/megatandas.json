@@ -184,7 +184,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar SHA 315fc98: CI 45890471242, Release Gate 45890471359, Pi 1.2 45890471273 y CI rápida 45890472526; CodeRabbit solicitada en comentario 7202590244.",
+      "next": "Esperar revisión completa CodeRabbit del SHA 315fc98, resolver/justificar todos sus hilos. Tras revisión sin accionables y hilos anteriores conciliados, ejecutar una sola vez NVIDIA API + dos sesiones Pi nativas acotadas.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
@@ -247,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "CodeRabbit encontró desajuste entre root lexical y físico en dos gates de allowPartialInventory. Ambos comparan ahora ownership con realpath(root); prueba Windows amplía alias 8.3 a recuperación parcial con archivo alterado. Validación nueva pendiente.",
+      "tests": "CI 45890471242 success en todos los shards/sistemas, matriz Pi y T02–T11; G08 Windows job 140151640110 success e incluyó la regresión de alias 8.3 con inventario alterado (log: test pass). CI rápida 45890472526, Phase0 45890471186, Pi1.2 45890471273 y Release Gate 45890471359 success. CodeRabbit exacta 315fc98 y ensayo NVIDIA/Pi aún pendientes.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -270,25 +270,28 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "CodeRabbit-full-review-solicitada-SHA-315fc98",
+      "reviewState": "review-completa-CodeRabbit-exacta-pendiente-SHA-315fc98",
       "latestValidation": {
         "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
-        "state": "en-curso",
+        "state": "CI-y-gates-success-CodeRabbit-pendiente",
         "runs": [
           {
             "name": "CI",
             "id": 45890471242,
-            "status": "queued"
+            "status": "completed",
+            "conclusion": "success"
           },
           {
             "name": "CI rápida",
             "id": 45890472526,
-            "status": "in_progress"
+            "status": "completed",
+            "conclusion": "success"
           },
           {
             "name": "Release Gate",
             "id": 45890471359,
-            "status": "in_progress"
+            "status": "completed",
+            "conclusion": "success"
           },
           {
             "name": "Phase 0 Architecture",
@@ -299,7 +302,8 @@
           {
             "name": "Pi 1.2 runtime evidence",
             "id": 45890471273,
-            "status": "in_progress"
+            "status": "completed",
+            "conclusion": "success"
           },
           {
             "name": "Pi Free Smoke",
@@ -308,6 +312,21 @@
             "conclusion": "skipped"
           }
         ],
+        "piMatrix": {
+          "run": 45890471242,
+          "os": [
+            "ubuntu-24.04",
+            "macos-latest",
+            "windows-latest"
+          ],
+          "result": "success"
+        },
+        "g08": {
+          "job": 140151640110,
+          "run": 45890471242,
+          "result": "success",
+          "windowsAliasPartialInventory": "success"
+        },
         "globalFull": false
       },
       "validationOwner": {
@@ -997,10 +1016,10 @@
         "unresolved": 0
       }
     },
-    "m2": "M2 abierta: G02 y G08 corregidos en 315fc98; CI/Release Gate/Pi 1.2/quick y revisión CodeRabbit exactos en curso; ensayo NVIDIA/Pi real pendiente",
+    "m2": "M2: CI completa, G08 Windows con alias e inventario parcial, matriz Pi linux/macOS/Windows, quick, arquitectura, Pi1.2 y Release Gate pasaron en 315fc98; revisión CodeRabbit exacta y NVIDIA/Pi real pendientes; globalFull:false",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T21:30:00Z",
+    "updatedAt": "2026-11-26T21:50:00Z",
     "g02Head": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c"
   },
   "modelCallException": {
@@ -1042,5 +1061,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T21:30:00Z"
+  "updatedAt": "2026-11-26T21:50:00Z"
 }
