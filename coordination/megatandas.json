@@ -721,7 +721,7 @@
   },
   "gentleShell5": {
     "planBranch": "feat/flujo-de-agentes-20261115",
-    "planSha": "66ceffac9c6e72f7adfdc6bee1abb8538a115127",
+    "planSha": "474edf161567f8f6f6eb9a3ac34557818706a8bd",
     "planPath": "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
@@ -814,7 +814,7 @@
         }
       },
       "G02": {
-        "state": "refresco-sin-Git-publicado-espera-CI-y-revision",
+        "state": "espera-validacion-SHA-c6a2d47",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
@@ -823,37 +823,37 @@
         "next": "Validar #149 y paridad SDK, representación y revisión independiente.",
         "connectionCandidate": {
           "pr": 149,
-          "sha": "c09141f922b32b9d0cb062537b5501e784b431d5",
+          "sha": "c6a2d47c83ab9fe61741f83ecae78ff74c2c82d6",
           "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
           "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "refresco-sin-Git-publicado-espera-validacion-y-revision",
+          "state": "observador-reiniciable-y-refresco-sin-Git-espera-validacion",
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática. Se agrega prueba del snapshot alternativo durante ejecución activa.",
           "evidence": {
-            "ci": 45876989194,
+            "ci": 45877154113,
             "ciStatus": "pending",
-            "releaseGate": 45876989152,
-            "releaseStatus": "in_progress",
-            "architecture": 45876989183,
-            "architectureStatus": "in_progress",
-            "quick": 45876989163,
+            "releaseGate": 45877154174,
+            "releaseStatus": "queued",
+            "architecture": 45877154327,
+            "architectureStatus": "queued",
+            "quick": 45877154130,
             "quickStatus": "in_progress",
-            "piRuntime": 45876989193,
+            "piRuntime": 45877154118,
             "piRuntimeStatus": "in_progress",
             "piFreeSmoke": "skipped"
           },
           "review": {
             "triggered": true,
-            "commentId": 7200617434,
+            "commentId": 7200638492,
             "reviewState": "requested",
-            "headSha": "c09141f922b32b9d0cb062537b5501e784b431d5",
-            "scope": "Confirmar publicación de ambos cambios y evitar Git síncrono por sondeo"
+            "headSha": "c6a2d47c83ab9fe61741f83ecae78ff74c2c82d6",
+            "scope": "Revisar observador detenido, estado persistente y ausencia de Git síncrono por sondeo"
           }
         },
         "blockers": [
           "CI, Release Gate, arquitectura y Pi 1.2 del SHA actual en curso",
-          "Revisión CodeRabbit del SHA actual pendiente",
-          "G08 necesita restauración demostrada de actualización activa",
-          "Identidad/independencia de modelos reales no acreditadas con noModelCalls:true"
+          "Revisión CodeRabbit completa del SHA actual pendiente",
+          "G08: falta completar reversión de actualización activa",
+          "Modelos reales e identidad independiente no verificables mientras noModelCalls:true"
         ],
         "review": {
           "triggered": true,
