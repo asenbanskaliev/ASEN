@@ -66,13 +66,24 @@
       "branch": "feat/asen-equipo-C-C1-g2-judges-4701179608"
     },
     "D": {
-      "state": "espera-candidato",
-      "lease": null,
+      "state": "trabajando",
+      "lease": {
+        "id": "D-g2-4704551343-0726",
+        "generation": 2,
+        "package": "D1",
+        "base": "c5246c472a6b6a2a20b9587634bd284191913c0a",
+        "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726",
+        "phase": "correccion",
+        "files": [
+          "src/runtime/agents/flow-metrics.ts",
+          "tests/asen-d-flow-usage.test.ts"
+        ]
+      },
       "package": "D1",
       "scope": "Métricas, contexto y preparación de ensayos sin consumo",
       "pr": 131,
       "sha": "6899f25cbd23cae2234865690bb400ffad4e0489",
-      "next": "Comprobar validación del candidato #134 y corregir hallazgos propios si aparecen; no duplicar.",
+      "next": "Alinear cierre de métricas con respuesta correlacionada y finalización limpia para solo lectura sin fallback; conservar límites.",
       "files": [
         "src/runtime/agents/flow-metrics.ts",
         "tests/asen-d-flow-usage.test.ts"
@@ -83,14 +94,14 @@
       "generation": 2,
       "candidatePR": 134,
       "candidateSha": "c5246c472a6b6a2a20b9587634bd284191913c0a",
-      "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
+      "correctionBase": "c5246c472a6b6a2a20b9587634bd284191913c0a",
       "reviewFindings": [
-        4701179598
+        4704551343
       ],
       "branch": "feat/asen-equipo-D-D1-g2-c0d1e190"
     },
     "E": {
-      "state": "espera-ci",
+      "state": "espera-correccion",
       "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
@@ -136,8 +147,8 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar SHA exacto de #134; revisar hallazgos y admitir en #115 solo tras todas las puertas requeridas.",
-      "blocker": null,
+      "next": "Validar nueva corrección D1 del hallazgo 4704551343 antes de admitir #134; no integrar SHA actual.",
+      "blocker": "CodeRabbit #134: métricas de lectura sin agent_settled",
       "generation": 2,
       "pr": 134,
       "sha": "c5246c472a6b6a2a20b9587634bd284191913c0a",
@@ -418,7 +429,9 @@
       4701179608,
       4701179615
     ],
-    "status": "espera-ci-y-revision",
-    "globalFull": false
+    "status": "hallazgo-pendiente",
+    "globalFull": false,
+    "latestFinding": 4704551343,
+    "ci": "CI completa, rápida, arquitectura, Pi runtime y Release Gate correctos; Pi Free Smoke omitido"
   }
 }
