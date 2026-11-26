@@ -7,12 +7,12 @@
   "maximumWriters": 2,
   "teams": {
     "A": {
-      "state": "espera-ci",
+      "state": "listo-revision",
       "lease": null,
       "package": "A1",
       "scope": "Orquestación, particiones, dependencias, preparación de hijos y sucesoras",
       "generation": 2,
-      "next": "Revisar #136 (cierre de dos raíces) y reconciliar cambios compartidos con candidato corregido; no duplicar rama ni dar por superada CI completa.",
+      "next": "E: reconciliar cambios compartidos de #136 con candidato #137; validar nuevo SHA y revisión.",
       "blocker": null,
       "pr": 136,
       "sha": "a0caab2acf7eae6d1e4d8402f9e44ea06e12e4ff",
@@ -27,7 +27,7 @@
         "tests/odd-unit-partition.test.ts",
         "tests/native-partition-flow.test.ts"
       ],
-      "tests": "CI rápida 45774877562, Pi runtime 45774877646 y arquitectura 45774877744 correctos; CI completa y Release Gate omitidos por borrador; sin revisión publicada."
+      "tests": "CI rápida 45774877562, Pi 45774877646 y arquitectura 45774877744 correctos; CI completa y Release Gate omitidos por borrador."
     },
     "B": {
       "state": "espera-candidato",
@@ -112,19 +112,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "manual-g2-E-G02-presion-compactacion",
-        "generation": 2,
-        "package": "G02",
-        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
-        "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
-        "phase": "escritura",
-        "files": [
-          "src/runtime/ui/compaction-pressure.ts",
-          "tests/compaction-pressure.test.ts"
-        ]
-      },
+      "state": "espera-ci",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -169,7 +158,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar CI completa y revisión exacta de #137; reconciliar #136 y el riesgo B de perfil obsoleto sin duplicar. No integrar hasta puertas superadas.",
+      "next": "Prioridad: #137 con CI completa, arquitectura, Release Gate y Pi correctos; revisión CodeRabbit solicitada (7189696664), no integrar hasta revisión. Reconciliar #136 (CI rápida, Pi y arquitectura correctas; CI completa omitida) y perfil B. G02 #138 independiente pendiente CI y conexión posterior.",
       "blocker": null,
       "generation": 2,
       "pr": 137,
@@ -449,16 +438,7 @@
       "admissibleFutureWrites": false
     }
   ],
-  "temporaryOwnership": {
-    "src/runtime/ui/compaction-pressure.ts": {
-      "team": "E",
-      "lease": "manual-g2-E-G02-presion-compactacion"
-    },
-    "tests/compaction-pressure.test.ts": {
-      "team": "E",
-      "lease": "manual-g2-E-G02-presion-compactacion"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -499,11 +479,20 @@
     "status": "espera-ci-y-revision",
     "globalFull": false,
     "latestFinding": 4705072726,
-    "ci": null,
+    "ci": {
+      "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+      "full": 45798838328,
+      "quick": 45798838411,
+      "architecture": 45798838365,
+      "releaseGate": 45798838489,
+      "pi": 45798838396,
+      "conclusion": "success",
+      "piFreeSmoke": "skipped"
+    },
     "review": {
       "confirmed": false,
       "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-      "previousFinding": 4705072726
+      "requestedCommentId": 7189696664
     },
     "previousCandidate": {
       "pr": 135,
@@ -520,7 +509,13 @@
         "state": "pendiente"
       },
       "G02": {
-        "state": "trabajando"
+        "state": "espera-ci",
+        "pr": 138,
+        "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
+        "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+        "implemented": "Cálculo puro y cuatro pruebas; aún no conectado al indicador",
+        "next": "Validar CI rápida; comprobar SDK real 1.6, conectar proyección y render tras estabilización sin duplicar P32."
       },
       "G03": {
         "state": "pendiente"
