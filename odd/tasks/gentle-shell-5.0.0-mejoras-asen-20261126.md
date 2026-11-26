@@ -82,19 +82,18 @@ Registro: [coordination/megatandas.json](https://github.com/asenbanskaliev/ASEN/
 
 ## Plan operativo actualizado para cerrar M2 — 26/11/2026
 
-La política general conserva `noModelCalls:true` y `globalFull:false`. Sigue vigente una excepción NVIDIA limitada para la PR #149, rama y SHA exactos, iniciada solo por `asenbanskaliev` con etiqueta de un uso. Abarca dos solicitudes API de hasta 128 tokens y dos sesiones Pi reales de Explorer/Verifier, sin herramientas ni escrituras. Cada fase tiene un marcador persistente propio por SHA y rechaza reintentos.
+La política general conserva `noModelCalls:true` y `globalFull:false`. Sigue vigente la excepción NVIDIA limitada de #149: dos solicitudes API de hasta 128 tokens y dos sesiones Pi reales Explorer/Verifier, sin herramientas ni escrituras. La autorización es por PR, rama, SHA, actor y etiqueta. Marcadores persistentes separados impiden repetir ambas fases.
 
 ### Puertas concretas de M2
 
-1. **Pi y cola:** validar compatibilidad 1.2/1.6, dependencias alineadas, cola y snapshot de alternativas durante y después de la ejecución. CI completa y matriz deben pertenecer al mismo SHA.
-2. **Perfiles e identidad:** cerrar los hallazgos de B1; probar la selección del perfil y alternativas en ejecución iniciada y en el siguiente lanzamiento. Registrar los modelos NVIDIA realmente devueltos y verificar dos modelos distintos en sesiones separadas. La identidad declarada no se presenta como prueba física.
-3. **G02:** comprobar ambos cambios de ajuste en reposo, ausencia/desactivación de la API pública, errores de lectura y cambios de presión. No debe recorrer historial ni ejecutar Git síncrono en cada sondeo.
-4. **G08:** mantener un único motor: `managed-lifecycle.ts`. Windows debe validar instalación, fallo antes y después de activar, diario interrumpido y rollback. El staging CLI duplicado quedó retirado; el CLI ya no anuncia ese comando.
-5. **T06:** mantener límites por PR, rama, actor, etiqueta, SHA y modelos autorizados. Marcadores separados hacen no repetibles las dos consultas API y las dos sesiones Pi.
-6. **Cierre:** solo declarar M2 terminada tras CI rápida y completa, Release Gate, Pi 1.2/1.6, G08 Windows, CodeRabbit sin hallazgos abiertos y evidencia real limitada por autorización. No fusionar ramas protegidas sin admisión.
+1. **Pi y cola:** validar compatibilidad 1.2/1.6, dependencias alineadas, cola y snapshot durante y después de la ejecución en el SHA consolidado.
+2. **Perfiles e identidad:** cerrar los hallazgos B1; verificar selección de perfil, alternativas, modelo devuelto y dos sesiones reales distintas. No atribuir identidad física cuando solo se conoce la declaración del proveedor.
+3. **G02:** probar cambios de ajuste en reposo, API ausente, lectura fallida y presión en ambos sentidos. No recorrer historial ni ejecutar Git síncrono por cada sondeo.
+4. **G08:** usar solamente `managed-lifecycle.ts`. Windows prueba instalación, errores antes/después de activar, interrupción de diario y rollback. El CLI de staging huérfano y duplicado se retiró.
+5. **T06:** revisar permisos mínimos y marcadores no repetibles de API y sesiones Pi. Ejecutar solo tras aprobar CI completa, Release Gate y revisión CodeRabbit exactos.
+6. **Cierre:** actualizar la evidencia ligada al SHA final. No fusionar ramas protegidas sin admisión y autorización.
 
-En `4c1264af1b56e3b78982223b77325efce5de7139` se corrigieron dos bloqueos encontrados por evidencia: (a) `dba4ce6` fallaba porque el CLI aún importaba un módulo G08 duplicado ya eliminado; (b) CodeRabbit observó en `aa5cfb4` que se mostraba presión cuando no existía `pi.getSettings`. Se retiró la ruta CLI huérfana, se conservó el motor administrado existente y se oculta el indicador al faltar la API, manteniendo el estado desconocido si existe pero falla la lectura.
+En el SHA `4c1264af1b56e3b78982223b77325efce5de7139`, CI rápida y Pi 1.2 pasaron, Phase 0 pasó, y Release Gate/CI estaban en marcha. El trabajo G08 Windows falló en la instalación inicial: el sondeo devolvió `candidate-drift` antes de iniciar el CLI, así que no se han demostrado aún la actualización ni la recuperación de Windows. Se añadieron causas por etapa en `1a0d333f91f2c204aec5e9aa01e3a331057a4261` para identificar el rechazo sin exponer rutas ni debilitar controles. Esta causa debe corregirse en el motor y volver a validarse.
 
-Las validaciones recién iniciadas para `4c1264af1b56e3b78982223b77325efce5de7139` son: CI rápida #45883768826 y en curso; CI completa #45883768832 en cola; Release Gate #45883768851 y Pi 1.2 #45883768840 en curso; Phase 0 #45883768866 correcto; Pi Free Smoke #45883768849 omitido. CodeRabbit recibió petición de revisión completa para este SHA. La observación anterior de CodeRabbit está corregida en el código actual; la nueva revisión exacta sigue pendiente.
+La revisión CodeRabbit anterior detectó una ausencia de `getSettings`; se corrigió y el hilo quedó resuelto. La revisión completa del SHA actual está pendiente. La PR #149 permanece abierta y sin fusionar. Pi Free Smoke omitido no cuenta como prueba real.
 
-La PR #149 permanece abierta y sin fusionar. Las pruebas omitidas no cuentan como aprobadas.
