@@ -74,12 +74,13 @@ export function summarizeChildFlow(entry:{record:{id:string;role:string;state:st
  const observed=summarizeFlowUsage(messages);
  // El resultado persistido y completado acredita la salida limpia del runner.
  // En lectura sin alternativas, este acepta una única respuesta correlacionada
- // sin exigir agent_settled. No inferir ese contrato si falta la petición.
+ // sin exigir agent_settled. Para acreditar inventario completo exigimos agent_end.
+ // No inferir ese contrato si falta la petición.
  const readOnlyWithoutFallback=entry.request?.id===entry.record.id&&entry.request.role===entry.record.role&&
   ["explorer","clarifier","reviewer","verifier"].includes(entry.record.role)&&
   (entry.request.modelFallback===undefined||entry.request.modelFallback.chain.length===0);
  const cleanReadOnly=readOnlyWithoutFallback&&entry.result?.id===entry.record.id&&entry.result.ok===true&&
-  correlatedResponses===1&&correlatedSuccess;
+  correlatedResponses===1&&correlatedSuccess&&agentEnds===1;
  const completeInventory=valid&&(settled||cleanReadOnly)&&!aborted&&!duplicate&&settlements<=1&&agentEnds<=1&&
   starts.length===1&&entry.record.state==="completed"&&messages.length>0;
  return Object.freeze({id:entry.record.id,role:entry.record.role,state:entry.record.state,

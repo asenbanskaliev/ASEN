@@ -48,10 +48,11 @@ test("La lectura sin alternativas admite una respuesta correlacionada con cierre
   summarizeChildFlow({...entry,request,result:{id:"agent",ok,output:lines.map(row=>JSON.stringify(row)).join("\n")}});
  const good=run([message,ended,ack]);
  assert.equal(good.completeInventory,true);assert.equal(good.totalTokens,12);
- for(const lines of [[message,ended],[message,ended,{...ack,id:"otro"}],[message,ended,{...ack,success:false}],
+ for(const lines of [[message,ack],[message,ended],[message,ended,{...ack,id:"otro"}],[message,ended,{...ack,success:false}],
   [message,ended,ack,ack],[message,message,ended,ack],[message,ended,ended,ack],
   [message,ended,ack,{type:"agent_settled",aborted:true}]]){
   const row=run(lines);assert.equal(row.completeInventory,false);assert.equal(row.totalTokens,null);
+  assert.equal(row.inputTokens,null);assert.equal(row.outputTokens,null);assert.equal(row.reportedCostUsd,null);
   assert.equal(row.observedUsage.totalTokens,12);
  }
  assert.equal(run([message,ended,ack],{...entry.request,modelFallback:{chain:["otro"]}}).completeInventory,false);
