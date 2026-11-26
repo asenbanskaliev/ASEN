@@ -430,7 +430,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostStatusSnapshot:AsenPanelSnapshot|undefined;
-  let hostRefreshGeneration=0;
+  let hostRefreshGeneration=0,hostPressureGeneration=0;
   let hostCompactionObserver:ReturnType<typeof createCompactionPressureObserver>|undefined;
   let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string;ctx:CommandContext}>|undefined;
   const stopHostCompactionObserver=()=>{
@@ -442,7 +442,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    hostStatusUI=undefined;hostStatusSnapshot=undefined;
   };
   const refreshHostStatus=async(ctx:CommandContext,pressureOnly=false):Promise<void>=>{
-   const generation=++hostRefreshGeneration;
+   const generation=pressureOnly?hostRefreshGeneration:++hostRefreshGeneration;
+   const pressureGeneration=pressureOnly?++hostPressureGeneration:0;
    if(hostStatusClosed||ctx?.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setStatus!=="function"||!ctx.sessionManager?.getSessionId?.()){
     clearHostStatus();return;
    }
@@ -450,12 +451,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    hostStatusUI=ctx.ui;
    try{
     const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),hostStatus=observeHostStatus(ctx),tone=hostStatus.context.state;
-    const previous=hostStatusSnapshot;
-    if(pressureOnly&&!previous)return;
+    if(pressureOnly&&!hostStatusSnapshot)return;
     const observed=pressureOnly?undefined:snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
-    if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
-    const changes=pressureOnly?previous?.changes:observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
+    if((pressureOnly?pressureGeneration!==hostPressureGeneration:generation!==hostRefreshGeneration)||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    const changes=pressureOnly?hostStatusSnapshot?.changes:observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
     const permission=permissionSession.mode(ctx);
     const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
     const review=live&&todoStorePromise?derivePanelReview({
@@ -473,7 +473,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     hostStatusSnapshot=info;
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
     ensureHostCompactionObserver(ctx,hostStatus.compactionPressure);
-   }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
+   }catch{if((pressureOnly?pressureGeneration===hostPressureGeneration:generation===hostRefreshGeneration)&&!hostStatusClosed)clearHostStatus();}
   };
   const ensureHostCompactionObserver=(ctx:CommandContext,initial:CompactionPressure|undefined):void=>{
    const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;

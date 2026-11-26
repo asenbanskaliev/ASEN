@@ -358,5 +358,14 @@ export function renderAsenStatusLine(snapshot:AsenPanelSnapshot,width=80):string
   const candidate=[...parts];const index=candidate.findIndex(part=>part.startsWith("ctx "));
   if(index>=0){candidate[index]+=" "+gauge;const row=candidate.join(" │ ");if(visibleWidth(row)<=width)return fit(row,width);}
  }
+ if(host?.compactionPressure?.state==="available"&&host.compactionPressure.atOrAboveThreshold){
+  const urgent=compactionPressureLabel(host.compactionPressure);
+  const retained=["ASEN",urgent];
+  for(const part of parts.slice(1).filter(value=>value!==urgent)){
+   const candidate=[...retained,part].join(" │ ");
+   if(visibleWidth(candidate)<=width)retained.push(part);
+  }
+  return fit(retained.join(" │ "),width);
+ }
  return fit(parts.join(" │ "),width);
 }
