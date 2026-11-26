@@ -59,3 +59,44 @@ export function compactionPressureLabel(value:CompactionPressure):string{
  if(value.state==="off")return "compact. desact.";
  return (value.atOrAboveThreshold?"! ":"")+"compact. "+Math.round(value.percent)+"%";
 }
+
+/** Sondeo acotado de ajustes efectivos. Solo lee ajustes/uso y avisa si cambia la presión. */
+export function createCompactionPressureObserver(options:Readonly<{
+ read:()=>CompactionPressure|undefined;
+ current:()=>boolean;
+ onChange:()=>void;
+ intervalMs?:number;
+ schedule?:(callback:()=>void,delayMs:number)=>ReturnType<typeof setTimeout>;
+ cancel?:(timer:ReturnType<typeof setTimeout>)=>void;
+}>):Readonly<{stop:()=>void}>{
+ const requested=options.intervalMs??5000;
+ if(!Number.isFinite(requested)||requested<0)throw new Error("G02: intervalo de observación no válido");
+ const intervalMs=Math.max(1000,Math.min(30000,Math.floor(requested)));
+ const schedule=options.schedule??((callback,delay)=>setTimeout(callback,delay));
+ const cancel=options.cancel??(timer=>clearTimeout(timer));
+ let stopped=false,timer:ReturnType<typeof setTimeout>|undefined,last:string|undefined;
+ const isCurrent=()=>{try{return options.current();}catch{return false;}};
+ const stop=()=>{stopped=true;if(timer!==undefined)cancel(timer);timer=undefined;};
+ const poll=()=>{
+  if(stopped)return;
+  if(!isCurrent()){stop();return;}
+  try{
+   const value=options.read(),next=JSON.stringify(value);
+   if(last!==undefined&&next!==last){
+    last=next;
+    try{options.onChange();}catch{/* Una vista de estado no puede interrumpir Pi. */}
+   }else last=next;
+  }catch{
+   const next="read-error";
+   if(last!==undefined&&next!==last){
+    last=next;
+    try{options.onChange();}catch{/* Una vista de estado no puede interrumpir Pi. */}
+   }else last=next;
+  }
+  if(stopped||!isCurrent()){stop();return;}
+  timer=schedule(()=>{timer=undefined;poll();},intervalMs);
+  timer.unref?.();
+ };
+ poll();
+ return {stop};
+}

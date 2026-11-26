@@ -113,6 +113,7 @@ import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObs
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
+import {createCompactionPressureObserver} from "../src/runtime/ui/compaction-pressure.js";
 import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps,prepareKeymapChange,writeKeymaps,keymapSavedNotice,resetKeymap,KEYMAP_RELOAD_NOTICE} from "../src/runtime/ui/keymaps.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/ui/integration-profile-inspection.js";
 import {integrationPanel} from "../src/runtime/ui/integrations-panel.js";
@@ -429,7 +430,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostRefreshGeneration=0;
+  let hostCompactionObserver:ReturnType<typeof createCompactionPressureObserver>|undefined;
+  let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string}>|undefined;
+  const stopHostCompactionObserver=()=>{
+   hostCompactionObserver?.stop();hostCompactionObserver=undefined;hostCompactionOwner=undefined;
+  };
   const clearHostStatus=()=>{
+   stopHostCompactionObserver();
    try{hostStatusUI?.setStatus?.("asen:host",undefined);}catch{/* Optional presentation only. */}
    hostStatusUI=undefined;
   };
@@ -460,7 +467,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable,agentFlowUnavailable:t11ChildFlowUnavailable}):
      renderAsenStatusLine(info,width);
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
+    ensureHostCompactionObserver(ctx);
    }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
+  };
+  const ensureHostCompactionObserver=(ctx:CommandContext):void=>{
+   const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;
+   if(typeof pi.getSettings!=="function"||ctx.mode!=="tui"||ctx.hasUI!==true||!sessionId||hostStatusClosed)return;
+   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui)return;
+   stopHostCompactionObserver();
+   hostCompactionOwner={sessionId,cwd,ui};
+   hostCompactionObserver=createCompactionPressureObserver({
+    read:()=>observeHostStatus(ctx).compactionPressure,
+    current:()=>!hostStatusClosed&&!ctx.signal?.aborted&&hostStatusUI===ui&&ctx.mode==="tui"&&ctx.hasUI===true&&
+     ctx.cwd===cwd&&ctx.sessionManager?.getSessionId?.()===sessionId,
+    onChange:()=>{void refreshHostStatus(ctx);}
+   });
   };
   // Immutable, session-scoped display data. Never performs an agent action.
   const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual",onReadStarted?:()=>void):Promise<AsenPanelSnapshot>=>{

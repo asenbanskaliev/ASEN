@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {projectCompactionPressure} from "../src/runtime/ui/compaction-pressure.js";
+import {createCompactionPressureObserver,projectCompactionPressure} from "../src/runtime/ui/compaction-pressure.js";
 import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import {renderAsenStatusLine} from "../src/runtime/ui/ide-panel.js";
 import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
@@ -80,4 +80,23 @@ test("G02 observa una sola vez el contexto y separa presión de ocupación",()=>
  assert.match(renderAsenT11CompactStatus(snapshot(),139),/compact\. \?/u);
  assert.deepEqual(projectHostStatus(host,undefined,()=>{throw Error("secreto");}).compactionPressure,{state:"unknown",reason:"settings"});
  assert.equal(projectHostStatus(host).compactionPressure,undefined);
+});
+
+test("G02 actualiza el estado al cambiar ajustes en ambos sentidos sin iniciar modelos",()=>{
+ type FakeTimer={callback:()=>void;delay:number;cancelled:boolean};
+ const timers:FakeTimer[]=[];let pressure=projectCompactionPressure({settings:{},model,usage}),refreshes=0;
+ const schedule=(callback:()=>void,delay:number)=>{
+  const timer:FakeTimer={callback,delay,cancelled:false};timers.push(timer);
+  return timer as unknown as ReturnType<typeof setTimeout>;
+ };
+ const cancel=(timer:ReturnType<typeof setTimeout>)=>{(timer as unknown as FakeTimer).cancelled=true;};
+ const observer=createCompactionPressureObserver({
+  read:()=>pressure,current:()=>true,onChange:()=>{refreshes++;},
+  intervalMs:5000,schedule,cancel
+ });
+ assert.equal(timers[0]?.delay,5000);
+ const tick=()=>{const timer=timers.shift();assert.ok(timer);if(!timer.cancelled)timer.callback();};
+ pressure={state:"off"};tick();assert.equal(refreshes,1);
+ pressure=projectCompactionPressure({settings:{},model,usage});tick();assert.equal(refreshes,2);
+ observer.stop();assert.equal(timers[0]?.cancelled,true);
 });
