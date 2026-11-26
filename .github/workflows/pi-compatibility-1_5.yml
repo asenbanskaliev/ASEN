@@ -2,6 +2,8 @@ name: Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos
 on:
   pull_request:
     paths:
+      - "package.json"
+      - "package-lock.json"
       - "scripts/pi-support-matrix.mjs"
       - "tests/pi-support-matrix.test.ts"
       - ".github/workflows/pi-compatibility-1_5.yml"
