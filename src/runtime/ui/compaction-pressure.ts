@@ -75,7 +75,7 @@ export function createCompactionPressureObserver(options:Readonly<{
  const intervalMs=Math.max(1000,Math.min(30000,Math.floor(requested)));
  const schedule=options.schedule??((callback,delay)=>setTimeout(callback,delay));
  const cancel=options.cancel??(timer=>clearTimeout(timer));
- const fingerprint=(value:CompactionPressure|undefined):string=>{
+ const fingerprint=(value:unknown):string=>{
   try{return JSON.stringify(value)??"undefined";}catch{return "unserializable";}
  };
  let stopped=false,timer:ReturnType<typeof setTimeout>|undefined;
@@ -83,7 +83,7 @@ export function createCompactionPressureObserver(options:Readonly<{
  let last=initialized?fingerprint(options.initial):"";
  const isCurrent=()=>{try{return options.current();}catch{return false;}};
  const stop=()=>{stopped=true;if(timer!==undefined)cancel(timer);timer=undefined;};
- const synchronize=(value:CompactionPressure|undefined)=>{if(stopped)return false;last=fingerprint(value);initialized=true;return true;};
+ const synchronize=(value:unknown)=>{if(stopped)return false;last=fingerprint(value);initialized=true;return true;};
  const poll=()=>{
   if(stopped)return;
   if(!isCurrent()){stop();return;}
