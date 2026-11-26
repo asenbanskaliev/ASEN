@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Verificar corrección TS2379 y vigencia de alternativas en #144; preparar prueba efectiva de cola y contratos SDK 1.6 sin modificar archivos compartidos.",
+      "next": "Verificar SDK 1.6 y alternativas en candidato #146; preparar regresión efectiva de cola sin tocar archivos compartidos.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -124,15 +124,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M2-g2-pi16-dependencias-144",
-        "package": "M2-G01",
-        "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-        "branch": "feat/asen-equipo-E-M2-g2-pi16-dependencias-144",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-revision",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -177,7 +170,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Recuperar manifiesto/lock de salida exacta y comprobar SHA256, adaptar expectativas de matriz, mantener candidato #144 sin admitir.",
+      "next": "Validar revisión #144 y CI/revisión #146; no admitir hasta puertas completas. No fusionar #145.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
@@ -705,13 +698,13 @@
     "priority": "Mantener 18+12/P01–P06; permitir piezas independientes sin duplicidad.",
     "packages": {
       "G01": {
-        "state": "matriz-consolidada-superada",
+        "state": "dependencias-implementadas-espera-ci",
         "pr": 141,
         "sha": "20dfb82e07034d86066290ba7e392fabf67f0176",
         "branch": "feat/asen-equipo-E-M2-g2-pi16-matriz-140",
         "base": "a43151afb74207e9c553357a8d83b600c56e2d03",
         "implemented": "Matriz adicional 1.2.0/1.5.2/1.6.0 × 3 sistemas × 4 modos, validación de entradas y flujo de pruebas sin modelos.",
-        "next": "Comprobar evidencia de #145, aplicar manifiesto y lock reales a candidato nuevo, actualizar pruebas y repetir CI.",
+        "next": "Validar #146 por SHA exacto y matriz 36 celdas; revisión independiente antes de integrar.",
         "evidence": {
           "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
           "matrix": 45832618166,
@@ -740,6 +733,18 @@
             "result": "success",
             "scope": "generación, instalación, check:fast y build en Linux"
           }
+        },
+        "dependencyCandidate": {
+          "pr": 146,
+          "sha": "cd5367618ff92df691dff26994f69bad79655f88",
+          "branch": "feat/asen-equipo-E-M2-g2-pi16-dependencias-144",
+          "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+          "sourceRun": 45848775938,
+          "sourceJob": 140009311088,
+          "manifestSha256": "4d4b03decb737b0b83c6ba4e2a96558e462dd20efc84433021e6ee5d137eb6b7",
+          "lockSha256": "c020ee67503d50df3662c23a5687f440f34c85e04f20e63634961493ef34a321",
+          "state": "espera-ci",
+          "scope": "Pi 1.6.0 y siete paquetes relacionados alineados; mínimo 1.2.0 conservado"
         }
       },
       "G02": {
