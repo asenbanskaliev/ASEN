@@ -148,7 +148,11 @@
           "src/runtime/ui/compaction-pressure.ts",
           "tests/compaction-pressure.test.ts",
           ".github/workflows/ci.yml",
-          "tests/flujo-agentes-nvidia-workflow.test.ts"
+          "tests/flujo-agentes-nvidia-workflow.test.ts",
+          "src/cli.ts",
+          "src/runtime/lifecycle/launcher.ts",
+          "src/runtime/lifecycle/cli-usage.ts",
+          "tests/managed-update-stage-cli.test.ts"
         ],
         "startedAt": "2026-11-26T18:15:00Z"
       },
@@ -196,11 +200,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar SHA dba4ce63; CodeRabbit exacta; CI/Release/Pi 1.2/1.6 y paso Windows G08. Solo después ejecutar las dos llamadas NVIDIA acotadas autorizadas.",
+      "next": "Cerrar CI rápida, CI completa, Release Gate, Pi 1.2/1.6, Windows G08 y revisión CodeRabbit exactos. Solo con puertas verdes, ejecutar T06 API y Pi, cada fase con marcador de un uso.",
       "blocker": null,
       "generation": 2,
-      "pr": 144,
-      "sha": "dba4ce63e069220fa1fbc63c840c392147df0bea",
+      "pr": 149,
+      "sha": "aa5cfb4f3a24e1acacb624ab4e73fa13134ea54a",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -252,9 +256,15 @@
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "reviewFindings": [],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "Se retiró el módulo de actualización duplicado; Windows apunta al flujo managed-lifecycle (instalación, fallo previo/posterior a activar, interrupción y diario). Se concedió issues:write únicamente al paso etiquetado para retirar el permiso de una sola vez; static gate actualizado. Gates del SHA actual pendientes.",
+      "tests": "SHA aa5cfb4f3a24e1acacb624ab4e73fa13134ea54a: validaciones nuevas en curso. dba4ce6 falló porque src/cli.ts aún importaba el módulo duplicado borrado; se eliminó el comando huérfano, el parser y la ayuda, se convirtió su prueba en rechazo seguro y se actualizaron los chequeos estáticos Windows/T06.",
       "files": [
-        "extensions/asen.ts"
+        "extensions/asen.ts",
+        "src/cli.ts",
+        "src/runtime/lifecycle/launcher.ts",
+        "src/runtime/lifecycle/cli-usage.ts",
+        "tests/managed-update-stage-cli.test.ts",
+        ".github/workflows/ci.yml",
+        "tests/flujo-agentes-nvidia-workflow.test.ts"
       ],
       "lastAttempt": {
         "pr": 144,
@@ -938,11 +948,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; G08 consolidado sobre managed-lifecycle existente, etiqueta T06 desechable con issues:write limitado al job; nuevo SHA dba4ce63 a validar",
+    "m2": "abierta; G08 reutiliza managed-lifecycle sin CLI duplicado; T06 limitado con marcadores no repetibles por SHA para API y sesiones Pi; candidato aa5cfb4 pendiente de CI, Release Gate, Pi y CodeRabbit",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:40:00Z",
-    "g02Head": "dba4ce63e069220fa1fbc63c840c392147df0bea"
+    "updatedAt": "2026-11-26T19:27:00Z",
+    "g02Head": "aa5cfb4f3a24e1acacb624ab4e73fa13134ea54a"
   },
   "modelCallException": {
     "enabled": true,
@@ -978,7 +988,9 @@
       "pruebas negativas del permiso, identidades y límites de uso"
     ],
     "globalPolicyStillNoModels": true,
-    "globalFull": false
+    "globalFull": false,
+    "apiAuthorizationMarker": "asen-t06-nvidia-consumido:<SHA>",
+    "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false
 }
