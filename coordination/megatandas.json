@@ -138,15 +138,17 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-validacion",
+      "state": "validacion-en-curso",
       "lease": {
-        "task": "G02 y B1 consolidados; esperar CI y revisión del SHA",
+        "task": "Cierre G02 y G08, revisión B1 y evidencia Pi 1.2/1.6; solo rama candidata",
         "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "6eb7260b9482ac6f949e89ab75e51cff3e81aaff",
+        "base": "a68bc496a510243b64f9e0a424e52589ab97663b",
         "files": [
           "extensions/asen.ts",
           "src/runtime/ui/compaction-pressure.ts",
-          "tests/compaction-pressure.test.ts"
+          "tests/compaction-pressure.test.ts",
+          "src/runtime/managed/managed-acquisition-update.ts",
+          "tests/managed-acquisition-update.test.ts"
         ],
         "startedAt": "2026-11-26T18:15:00Z"
       },
@@ -194,11 +196,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Comprobar revisión #148, CI y revisión #149 exactas; no admitir sin puertas completas. Preparar G03 recuperación de turnos.",
+      "next": "Validar CI rápida, CI completa, Release Gate, Pi 1.2 y Windows sobre el SHA 8be0cccb; cerrar los hilos de CodeRabbit y comprobar G08 dentro del runtime antes de habilitar los dos ensayos NVIDIA acotados.",
       "blocker": null,
       "generation": 2,
       "pr": 144,
-      "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+      "sha": "8be0cccb28a005ab239c21397ac4ce6f0a8aeccb",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -248,11 +250,9 @@
         }
       },
       "correctionBase": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
-      "reviewFindings": [
-        4701179590
-      ],
-      "branch": "feat/asen-equipo-E-M2-g2-consolidacion-141-142-143",
-      "tests": "#134 superó CI, arquitectura, Pi runtime y Release Gate; hallazgo nuevo corregido en #135, pendiente de validación.",
+      "reviewFindings": [],
+      "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+      "tests": "SHA f28bd329 falló typecheck/build por helpers de diario ausentes y propiedad incorrecta; corregido en la rama. SHA 8be0cccb tiene CI aún pendiente de aparecer. Los ensayos NVIDIA no están lanzados.",
       "files": [
         "extensions/asen.ts"
       ],
@@ -938,11 +938,11 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta; excepción NVIDIA acotada para dos modelos, autorizada; faltan puertas exactas, G08 y ensayo real",
+    "m2": "abierta; G02 y recuperación G08 en corrección; CI/revisión exactas pendientes; ensayo NVIDIA autorizado pero bloqueado por puertas",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T19:00:00Z",
-    "g02Head": "8e7f71d805967e6668e5a7ed50153301a8ed5401"
+    "updatedAt": "2026-11-26T19:15:00Z",
+    "g02Head": "8be0cccb28a005ab239c21397ac4ce6f0a8aeccb"
   },
   "modelCallException": {
     "enabled": true,
@@ -979,5 +979,6 @@
     ],
     "globalPolicyStillNoModels": true,
     "globalFull": false
-  }
+  },
+  "globalFull": false
 }
