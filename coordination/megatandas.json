@@ -32,21 +32,13 @@
       "candidateSha": "ef3a91053b553f01e22e8d396ac3173a10357caf"
     },
     "B": {
-      "state": "espera-validacion",
-      "lease": {
-        "task": "B1 snapshot de configuración tras inicio, añadido a revisión combinada",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "6eb7260b9482ac6f949e89ab75e51cff3e81aaff",
-        "files": [
-          "tests/asen-b-planned-fallback.test.ts"
-        ],
-        "startedAt": "2026-11-26T18:20:00Z"
-      },
+      "state": "espera-revision",
+      "lease": null,
       "package": "B1",
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 133,
       "sha": "ab17255d9569f874e196407ab12bd321ab827acc",
-      "next": "Verificar la regresión de snapshot en CI. No realizar llamada a modelos; declarar alcance limitado a configuración capturada por AgentRuntime.",
+      "next": "Snapshot B1 instrumentado validado en #149; repetir en #150 y distinguir identidad real pendiente.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -138,15 +130,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-M3-g2-continuidad-nativa-149",
-        "package": "M1-M2-M3-G03",
-        "base": "3eafc1951776d19c8a21d525904be95acded984b",
-        "branch": "feat/asen-equipo-E-M3-g2-continuidad-nativa-149",
-        "generation": 2,
-        "phase": "escritura"
-      },
+      "state": "espera-ci-y-bloqueo-permisos-t06",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -191,11 +176,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Preservar ruta firmada G08, registrar pérdida de staging separado; implementar continuidad G03 explícita sin reemitir prompt; candidato sobre #149 con base #115, sin admisión.",
+      "next": "Validar #150 CI, matriz Pi 36 celdas, G08 Windows y revisión exacta. No admitir ni rearmar T06 hasta que propietario resuelva 403 y se revise autorización. M3: continuar G03/P04 y prueba integral.",
       "blocker": "El control previo de un solo uso devolvió 403 Resource not accessible by integration al desarmar la etiqueta. Falló cerrado antes de consultar o llamar a NVIDIA; no hubo solicitudes API ni sesiones Pi. La etiqueta se retiró mediante integración y no se repetirá automáticamente.",
       "generation": 2,
-      "pr": 149,
-      "sha": "3eafc1951776d19c8a21d525904be95acded984b",
+      "pr": 150,
+      "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -571,25 +556,23 @@
       "sha": "f5e9fb46251d0b5bd7409d6fa5dc5e09b4894db0",
       "disposition": "revocacion administrativa autorizada por usuario; terminal manual no confirmado",
       "admissibleFutureWrites": false
+    },
+    {
+      "team": "B",
+      "reservation": {
+        "task": "B1 snapshot de configuración tras inicio, añadido a revisión combinada",
+        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+        "base": "6eb7260b9482ac6f949e89ab75e51cff3e81aaff",
+        "files": [
+          "tests/asen-b-planned-fallback.test.ts"
+        ],
+        "startedAt": "2026-11-26T18:20:00Z"
+      },
+      "reason": "Publicada y CI terminal exacta #149 45893102399; prueba instrumentada, sin modelos.",
+      "state": "liberada"
     }
   ],
-  "temporaryOwnership": {
-    "E-M3-g2-continuidad-nativa-149": {
-      "owner": "E",
-      "files": [
-        "src/agents/pi-process-runner.ts",
-        "tests/pi-process-runner-no-fallback-settlement.test.ts",
-        "src/runtime/managed/managed-lifecycle.ts",
-        "src/runtime/lifecycle/lifecycle-cli.ts",
-        "src/runtime/lifecycle/cli-usage.ts",
-        "tests/t09-lifecycle.test.ts",
-        "docs/installation.md",
-        ".github/workflows/ci.yml",
-        ".github/workflows/pi-compatibility-1_5.yml"
-      ],
-      "reason": "G03 y G08: recuperación de preparación firmada, pruebas y puertas de solo lectura; sin solape con B1."
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -608,8 +591,8 @@
     "sha": "ab17255d9569f874e196407ab12bd321ab827acc"
   },
   "consolidation": {
-    "pr": 144,
-    "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+    "pr": 150,
+    "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
     "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
     "includes": [
       130,
@@ -625,23 +608,18 @@
       140,
       142,
       141,
-      143
+      143,
+      144,
+      146,
+      147,
+      148,
+      149
     ],
-    "findings": [
-      4701179590,
-      4701179598,
-      4701179608,
-      4701179615,
-      4704551343,
-      4705072726,
-      4707849565,
-      4708656296
-    ],
-    "status": "espera-revision",
+    "status": "candidato-no-admitido-espera-ci-revision-t06",
     "globalFull": false,
     "previousCandidate": {
-      "pr": 142,
-      "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
+      "pr": 144,
+      "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
       "includes": [
         130,
@@ -654,7 +632,10 @@
         136,
         138,
         139,
-        140
+        140,
+        142,
+        141,
+        143
       ],
       "findings": [
         4701179590,
@@ -663,13 +644,14 @@
         4701179615,
         4704551343,
         4705072726,
-        4707849565
+        4707849565,
+        4708656296
       ],
-      "status": "correccion-revision",
+      "status": "espera-revision",
       "globalFull": false,
       "previousCandidate": {
-        "pr": 140,
-        "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+        "pr": 142,
+        "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
         "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
         "includes": [
           130,
@@ -681,7 +663,8 @@
           137,
           136,
           138,
-          139
+          139,
+          140
         ],
         "findings": [
           4701179590,
@@ -689,13 +672,14 @@
           4701179608,
           4701179615,
           4704551343,
-          4705072726
+          4705072726,
+          4707849565
         ],
         "status": "correccion-revision",
         "globalFull": false,
         "previousCandidate": {
-          "pr": 139,
-          "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+          "pr": 140,
+          "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
           "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
           "includes": [
             130,
@@ -706,7 +690,8 @@
             135,
             137,
             136,
-            138
+            138,
+            139
           ],
           "findings": [
             4701179590,
@@ -716,11 +701,11 @@
             4704551343,
             4705072726
           ],
-          "status": "correccion-ci",
+          "status": "correccion-revision",
           "globalFull": false,
           "previousCandidate": {
-            "pr": 137,
-            "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+            "pr": 139,
+            "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
             "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
             "includes": [
               130,
@@ -728,7 +713,10 @@
               132,
               133,
               134,
-              135
+              135,
+              137,
+              136,
+              138
             ],
             "findings": [
               4701179590,
@@ -738,101 +726,140 @@
               4704551343,
               4705072726
             ],
-            "status": "espera-ci-y-revision",
+            "status": "correccion-ci",
             "globalFull": false,
-            "latestFinding": 4705072726,
-            "ci": {
+            "previousCandidate": {
+              "pr": 137,
               "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-              "full": 45798838328,
-              "quick": 45798838411,
-              "architecture": 45798838365,
-              "releaseGate": 45798838489,
-              "pi": 45798838396,
-              "conclusion": "success",
-              "piFreeSmoke": "skipped"
+              "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+              "includes": [
+                130,
+                131,
+                132,
+                133,
+                134,
+                135
+              ],
+              "findings": [
+                4701179590,
+                4701179598,
+                4701179608,
+                4701179615,
+                4704551343,
+                4705072726
+              ],
+              "status": "espera-ci-y-revision",
+              "globalFull": false,
+              "latestFinding": 4705072726,
+              "ci": {
+                "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+                "full": 45798838328,
+                "quick": 45798838411,
+                "architecture": 45798838365,
+                "releaseGate": 45798838489,
+                "pi": 45798838396,
+                "conclusion": "success",
+                "piFreeSmoke": "skipped"
+              },
+              "review": {
+                "confirmed": false,
+                "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
+                "requestedCommentId": 7189696664
+              },
+              "previousCandidate": {
+                "pr": 135,
+                "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+              }
             },
             "review": {
-              "confirmed": false,
-              "sha": "69a0e16d751fdb2fbb41ce079088fd9b3b8b255b",
-              "requestedCommentId": 7189696664
+              "confirmed": false
             },
-            "previousCandidate": {
-              "pr": 135,
-              "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb"
+            "ci": {
+              "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
+              "full": 45804701712,
+              "conclusion": "failure",
+              "quick": 45804701639,
+              "architecture": 45804701636,
+              "releaseGate": 45804702600,
+              "pi": 45804701792,
+              "piFreeSmoke": "skipped"
             }
           },
           "review": {
-            "confirmed": false
+            "confirmed": false,
+            "requestedCommentId": 7190886973,
+            "findings": [
+              4707849565
+            ]
           },
           "ci": {
-            "sha": "39b67573cc73bc4f18615f332f35716f71cabe0a",
-            "full": 45804701712,
-            "conclusion": "failure",
-            "quick": 45804701639,
-            "architecture": 45804701636,
-            "releaseGate": 45804702600,
-            "pi": 45804701792,
+            "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
+            "full": 45809299223,
+            "conclusion": "success",
+            "quick": 45809299532,
+            "architecture": 45809299238,
+            "releaseGate": 45809299460,
+            "pi": 45809299270,
             "piFreeSmoke": "skipped"
-          }
+          },
+          "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
         },
         "review": {
           "confirmed": false,
-          "requestedCommentId": 7190886973,
+          "requestedCommentId": 7192496419,
           "findings": [
-            4707849565
+            4708656296
           ]
         },
         "ci": {
-          "sha": "a43151afb74207e9c553357a8d83b600c56e2d03",
-          "full": 45809299223,
+          "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
+          "quick": 45822958208,
+          "architecture": 45822958311,
+          "pi": 45822958212,
+          "full": 45822958288,
+          "releaseGate": 45822958279,
           "conclusion": "success",
-          "quick": 45809299532,
-          "architecture": 45809299238,
-          "releaseGate": 45809299460,
-          "pi": 45809299270,
           "piFreeSmoke": "skipped"
         },
-        "correction": "Recuperar raíces archivadas, no repetir agentes; prueba negativa de duplicados y faltantes."
+        "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
       },
       "review": {
-        "confirmed": false,
-        "requestedCommentId": 7192496419,
-        "findings": [
-          4708656296
-        ]
+        "confirmed": true,
+        "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+        "source": "CodeRabbit",
+        "actionable": 0,
+        "nitpick": 1,
+        "limitation": "Falta regresión de cola real; no equivale a aprobación humana ni admisión."
       },
       "ci": {
-        "sha": "d8ae9d3f3e96dbd263e1e151da3aa187e882ee19",
-        "quick": 45822958208,
-        "architecture": 45822958311,
-        "pi": 45822958212,
-        "full": 45822958288,
-        "releaseGate": 45822958279,
+        "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+        "quick": 45832618271,
+        "architecture": 45832618249,
+        "pi": 45832618256,
+        "full": 45832618191,
+        "releaseGate": 45832618290,
+        "matrix": 45832618166,
         "conclusion": "success",
         "piFreeSmoke": "skipped"
       },
-      "correction": "Reconciliar transacción pendiente bajo bloqueo y leer instantánea coherente; regresión con reinicio y marcador corrupto."
+      "correction": "Contar intentos sin duplicar respuestas a preguntas; corregir TS2379; conservar matriz Pi adicional y ancestros."
     },
     "review": {
-      "confirmed": true,
-      "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-      "source": "CodeRabbit",
-      "actionable": 0,
-      "nitpick": 1,
-      "limitation": "Falta regresión de cola real; no equivale a aprobación humana ni admisión."
+      "confirmed": false
     },
     "ci": {
-      "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
-      "quick": 45832618271,
-      "architecture": 45832618249,
-      "pi": 45832618256,
-      "full": 45832618191,
-      "releaseGate": 45832618290,
-      "matrix": 45832618166,
-      "conclusion": "success",
-      "piFreeSmoke": "skipped"
+      "conclusion": "pendiente"
     },
-    "correction": "Contar intentos sin duplicar respuestas a preguntas; corregir TS2379; conservar matriz Pi adicional y ancestros."
+    "audit": {
+      "workPr": 149,
+      "workSha": "3eafc1951776d19c8a21d525904be95acded984b",
+      "ciNoModels": 45893102399,
+      "g08Windows": 140167464000,
+      "t06FailedRun": 45895263733,
+      "t06FailedJob": 140167464412,
+      "staging": "Se conserva G08 firmado; se recupera preparación inactiva mediante --stage-only autenticado; no se restablece ruta sin firma.",
+      "scope": "Candidato consolidado, no merge ni aceptación real."
+    }
   },
   "gentleShell5": {
     "planBranch": "feat/flujo-de-agentes-20261115",
@@ -929,25 +956,27 @@
         }
       },
       "G02": {
-        "state": "observaciones-de-settings-y-propiedad-corregidas-espera-validacion",
+        "state": "ci-exacta-149-superada-nuevo-candidato-150",
         "pr": 138,
         "sha": "e61d0c03c99688859ec9127ed8f165200c50e92e",
         "branch": "feat/asen-equipo-E-G02-g2-presion-compactacion-1126",
         "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
         "implemented": "Cálculo puro y cuatro pruebas; aún no conectado al indicador",
-        "next": "Validar #149 y paridad SDK, representación y revisión independiente.",
+        "next": "Revalidar #150 exacta.",
         "connectionCandidate": {
           "pr": 149,
-          "sha": "1d44a763b12703ad2e597b450087c977faf66143",
+          "sha": "3eafc1951776d19c8a21d525904be95acded984b",
           "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
           "base": "e1e225d1951f819a055ac597a798171b70a71b0f",
-          "state": "candidato-con-indicador-G02-cola-y-correccion-windows-espera-CI",
+          "state": "ci-superada-no-modelos",
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática. Se agrega prueba del snapshot alternativo durante ejecución activa.",
           "evidence": {
-            "sha": "1d44a763b12703ad2e597b450087c977faf66143",
-            "previousExactG08": "ccada704cbf029632d9c2cf914e2d95c39de2c23/job-140140299346",
-            "latestCommit": "1d44a763b12703ad2e597b450087c977faf66143",
-            "result": "espera-validacion-exacta"
+            "ci": 45893102399,
+            "gate": 45893102463,
+            "architecture": 45893102390,
+            "pi": 45893102439,
+            "quick": 45893102387,
+            "result": "success"
           },
           "review": {
             "triggered": true,
@@ -972,8 +1001,13 @@
         }
       },
       "G03": {
-        "state": "pendiente-de-implementacion-y-aceptacion",
-        "next": "Auditar turnos Pi abiertos y diseñar G03 sobre el runner existente; no repetir llamadas de resultado incierto. Requiere prueba real de correlación/terminalidad y reinicio."
+        "state": "implementacion-parcial-turno-abierto-espera-ci",
+        "next": "Validar cuatro regresiones; completar recuperación duradera P04/G03 e integración real cuando se autorice.",
+        "candidate": {
+          "pr": 150,
+          "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
+          "scope": "Reintento anunciado por Pi sin fallback en mismo proceso; no nuevo prompt, settlement obligatorio tras nuevo inicio, Writer bloqueado; pruebas instrumentadas. No acredita reinicio de proceso, recuperación proveedor ni recorrido real."
+        }
       },
       "G04": {
         "state": "pendiente"
@@ -988,8 +1022,8 @@
         "state": "pendiente"
       },
       "G08": {
-        "state": "gates-de-raiz-fisica-corregidos-espera-validacion-exacta",
-        "next": "Validar recuperación parcial con alias Windows 8.3 e inventario alterado en CI exacta; G08 anterior pasó, pero la revisión de seguridad detectó comparación lexical/física en allowPartialInventory.",
+        "state": "g08-windows-superado-preparacion-firmada-espera-ci",
+        "next": "Validar preparación firmada, no ejecución, rechazo de firma ajena e idempotencia en #150, incluido Windows.",
         "evidence": {
           "candidatePR": 148,
           "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
@@ -1017,12 +1051,26 @@
             "result": "success"
           }
         },
-        "blocker": "CI y CodeRabbit exactos del SHA 315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c"
+        "blocker": "CI y CodeRabbit exactos del SHA 315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
+        "audit": {
+          "pr": 149,
+          "sha": "3eafc1951776d19c8a21d525904be95acded984b",
+          "windowsJob": 140167464000,
+          "result": "success",
+          "removed": "staging no autenticado separado",
+          "replacement": {
+            "pr": 150,
+            "sha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e",
+            "state": "espera-ci",
+            "mode": "managed upgrade --stage-only",
+            "trust": "firma obligatoria, no activación, sin ejecutar"
+          }
+        }
       }
     }
   },
   "roadmap": {
-    "active": "M1",
+    "active": "M2",
     "plan": "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
     "order": [
       "M1 Estabilización",
@@ -1033,7 +1081,7 @@
       "M6 Aceptación"
     ],
     "globalFull": false,
-    "candidate": 144
+    "candidate": 150
   },
   "currentSnapshot": {
     "capturedAt": "2026-11-26",
@@ -1056,11 +1104,13 @@
         "unresolved": 0
       }
     },
-    "m2": "CI sin modelos exacta superada, ensayo T06 bloqueado 403; falta admisión",
-    "m3": "implementación parcial G03 sin modelo",
+    "m2": "#149 pruebas sin modelos y G08 correctas; T06 bloqueado 403. #150 consolida sin admitir.",
+    "m3": "G03 parcial implementado en #150, pruebas pendientes",
     "globalFull": false,
     "updatedAt": "2026-11-26T22:00:00Z",
-    "g02Head": "3eafc1951776d19c8a21d525904be95acded984b"
+    "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
+    "candidate": 150,
+    "candidateSha": "9d0972ed38f6f907b9c402d4f112fb0c32f4f53e"
   },
   "modelCallException": {
     "enabled": false,
