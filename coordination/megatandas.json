@@ -138,18 +138,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "trabajando",
-      "lease": {
-        "id": "E-20261126T-g08-physical-root-gate",
-        "task": "Alinear con la identidad física las dos comprobaciones de raíz parcial tras alias 8.3",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "base": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
-        "files": [
-          "src/runtime/managed/managed-maintenance-lock.ts",
-          "tests/managed-maintenance-lock.test.ts"
-        ],
-        "startedAt": "2026-11-26T21:15:00Z"
-      },
+      "state": "validacion-en-curso",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -194,11 +184,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Corregir ambos gates de propiedad parcial para comparar la raíz física; probar recuperación con inventario parcial bajo alias Windows 8.3; liberar y validar nuevo SHA.",
+      "next": "Validar la corrección de propiedad física G08 en el SHA 315fc98; repetir CI, Release Gate, Pi y CodeRabbit. Conservar globalFull false hasta el ensayo NVIDIA/Pi exacto.",
       "blocker": null,
       "generation": 2,
       "pr": 149,
-      "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
+      "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -257,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "La CI de 1d44a76 confirma quick, Phase0, Pi1.2, T02–T11, G08 Windows, Linux y macOS parte de la matriz; el resto sigue en curso y la revisión encontró dos fallos G02 que ahora se corrigieron en 586f7a0. Se repite toda puerta sobre este SHA.",
+      "tests": "CodeRabbit encontró desajuste entre root lexical y físico en dos gates de allowPartialInventory. Ambos comparan ahora ownership con realpath(root); prueba Windows amplía alias 8.3 a recuperación parcial con archivo alterado. Validación nueva pendiente.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -280,50 +270,22 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "full-review-CodeRabbit-solicitada-SHA-586f7a0",
+      "reviewState": "hallazgo-G08-physical-root-corregido-espera-ci-y-revision-exactas",
       "latestValidation": {
-        "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
-        "state": "en-curso",
-        "runs": [
-          {
-            "name": "CI",
-            "id": 45888573325,
-            "status": "pending"
-          },
-          {
-            "name": "CI rápida",
-            "id": 45888573633,
-            "status": "in_progress"
-          },
-          {
-            "name": "Release Gate",
-            "id": 45888573368,
-            "status": "in_progress"
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 45888573361,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Pi 1.2 runtime evidence",
-            "id": 45888573274,
-            "status": "in_progress"
-          },
-          {
-            "name": "Pi Free Smoke",
-            "id": 45888573500,
-            "status": "completed",
-            "conclusion": "skipped"
-          }
-        ],
+        "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
+        "state": "pendiente-inicio-GitHub",
+        "superseded": {
+          "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
+          "ci": 45888573325,
+          "releaseGate": 45888573368
+        },
+        "runs": [],
         "globalFull": false
       },
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "sha": "586f7a0b08bb544c71cc7a873da13c99560ac23c",
+        "sha": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c",
         "phase": "CI y revisión",
         "writeReservation": false
       }
@@ -939,8 +901,8 @@
         "state": "pendiente"
       },
       "G08": {
-        "state": "implementacion-windows-y-rollback-validada-espera-suite-exacta",
-        "next": "Completar reversión transaccional de actualización activa con cancelación segura y pruebas de fallo/reinicio Windows; mantener versión anterior hasta verificar integridad de la nueva.",
+        "state": "gates-de-raiz-fisica-corregidos-espera-validacion-exacta",
+        "next": "Validar recuperación parcial con alias Windows 8.3 e inventario alterado en CI exacta; G08 anterior pasó, pero la revisión de seguridad detectó comparación lexical/física en allowPartialInventory.",
         "evidence": {
           "candidatePR": 148,
           "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
@@ -967,7 +929,8 @@
             "run": 45886658455,
             "result": "success"
           }
-        }
+        },
+        "blocker": "CI y CodeRabbit exactos del SHA 315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c"
       }
     }
   },
@@ -1006,11 +969,11 @@
         "unresolved": 0
       }
     },
-    "m2": "M2 abierta: correcciones G02 de CodeRabbit publicadas en 586f7a0; CI, Release Gate, Pi 1.2 y revisión exactos en curso; NVIDIA/Pi real pendiente; globalFull:false",
+    "m2": "M2 abierta: G02 corregido en 586f7a0; G08 alias de raíz física parcial corregido en 315fc98; CI/Release Gate/revisión exactos y NVIDIA/Pi real pendientes",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T20:52:00Z",
-    "g02Head": "586f7a0b08bb544c71cc7a873da13c99560ac23c"
+    "updatedAt": "2026-11-26T21:25:00Z",
+    "g02Head": "315fc98d3fee6014e5a0b8f3d1bfa0f34eaee28c"
   },
   "modelCallException": {
     "enabled": true,
@@ -1051,5 +1014,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T20:52:00Z"
+  "updatedAt": "2026-11-26T21:25:00Z"
 }
