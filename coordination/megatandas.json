@@ -247,7 +247,7 @@
         4712769641
       ],
       "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-      "tests": "El SHA 315fc98 tuvo CI/gates correctos y CodeRabbit sin hallazgos nuevos. SHA 472547ae añade filtro github-actions[bot] a la lectura de marcadores T06 y prueba negativa contra comentarios ajenos; se valida de nuevo desde cero. La CI rápida del SHA 472547ae detectó que tests/ci-specialized-gates.test.ts rechazaba cualquier comparación == con texto entre comillas; se acotó la regla a comparaciones de github.head_ref en 3eafc195. La aceptación automática y CodeRabbit deben repetirse sobre este SHA.",
+      "tests": "El SHA 315fc98 tuvo CI/gates correctos y CodeRabbit sin hallazgos nuevos. SHA 472547ae añade filtro github-actions[bot] a la lectura de marcadores T06 y prueba negativa contra comentarios ajenos; se valida de nuevo desde cero. La CI rápida del SHA 472547ae detectó que tests/ci-specialized-gates.test.ts rechazaba cualquier comparación == con texto entre comillas; se acotó la regla a comparaciones de github.head_ref en 3eafc195. La aceptación automática y CodeRabbit deben repetirse sobre este SHA. CodeRabbit full review sobre 3eafc195 completada sin hilos abiertos.",
       "files": [
         "extensions/asen.ts",
         "src/cli.ts",
@@ -270,10 +270,10 @@
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "result": "publicada"
       },
-      "reviewState": "pendiente-revision-completa-SHA-3eafc195",
+      "reviewState": "full-review-CodeRabbit-3eafc195-completa-cero-hilos-abiertos",
       "latestValidation": {
         "sha": "3eafc1951776d19c8a21d525904be95acded984b",
-        "state": "CI-rapida-Phase0-Pi1.2-ReleaseGate-correctos; CI-completa-en-curso; CodeRabbit-full-review-activada; T06-no-ejecutado",
+        "state": "CI-rapida-Phase0-Pi1.2-ReleaseGate-y-CodeRabbit-correctos; CI-completa-en-curso; NVIDIA/Pi-bloqueado",
         "runs": [
           {
             "name": "CI",
@@ -319,8 +319,9 @@
         "globalFull": false,
         "review": {
           "requestCommentId": 7203013283,
-          "status": "triggered",
-          "openThreads": 0
+          "status": "completed",
+          "openThreads": 0,
+          "sha": "3eafc1951776d19c8a21d525904be95acded984b"
         }
       },
       "validationOwner": {
@@ -1055,5 +1056,5 @@
     "piAuthorizationMarker": "asen-t06-nvidia-pi-consumido:<SHA>"
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T23:00:00Z"
+  "updatedAt": "2026-11-26T23:18:00Z"
 }
