@@ -830,15 +830,15 @@
           "scope": "Ajustes efectivos de Pi mediante getSettings; ocupación y presión separadas, una lectura de contexto, sin llamadas ni compactación automática. Se agrega prueba del snapshot alternativo durante ejecución activa.",
           "evidence": {
             "ci": 45877154113,
-            "ciStatus": "pending",
+            "ciStatus": "in_progress",
             "releaseGate": 45877154174,
-            "releaseStatus": "queued",
+            "releaseStatus": "success",
             "architecture": 45877154327,
-            "architectureStatus": "queued",
+            "architectureStatus": "success",
             "quick": 45877154130,
-            "quickStatus": "in_progress",
+            "quickStatus": "success",
             "piRuntime": 45877154118,
-            "piRuntimeStatus": "in_progress",
+            "piRuntimeStatus": "success",
             "piFreeSmoke": "skipped"
           },
           "review": {
@@ -850,10 +850,10 @@
           }
         },
         "blockers": [
-          "CI, Release Gate, arquitectura y Pi 1.2 del SHA actual en curso",
-          "Revisión CodeRabbit completa del SHA actual pendiente",
-          "G08: falta completar reversión de actualización activa",
-          "Modelos reales e identidad independiente no verificables mientras noModelCalls:true"
+          "CI completa del SHA actual #149 en curso; no reutilizar SHA de revisión anterior",
+          "CodeRabbit debe completar revisión del SHA exacto y resolver hallazgos B1",
+          "G08 no restaura aún la versión activa ante fallo o cancelación",
+          "La identidad e independencia reales requieren ejecutar el ensayo NVIDIA acotado, aún pendiente"
         ],
         "review": {
           "triggered": true,
@@ -883,7 +883,7 @@
       },
       "G08": {
         "state": "implementacion-parcial-en-cadena-pi16-validacion-de-rollback-pendiente",
-        "next": "Definir y probar recuperación transaccional de actualización activa, sin tocar versión ajena ni conceder activación antes de confirmar integridad.",
+        "next": "Completar reversión transaccional de actualización activa con cancelación segura y pruebas de fallo/reinicio Windows; mantener versión anterior hasta verificar integridad de la nueva.",
         "evidence": {
           "candidatePR": 148,
           "sha": "e1e225d1951f819a055ac597a798171b70a71b0f",
@@ -938,10 +938,45 @@
         "unresolved": 0
       }
     },
-    "m2": "abierta-validacion-pendiente",
+    "m2": "abierta; excepción NVIDIA de una ejecución autorizada; faltan puertas exactas, G08 y evidencia real",
     "m3": "base-auditoria-continua",
     "globalFull": false,
-    "updatedAt": "2026-11-26T18:05:00Z",
+    "updatedAt": "2026-11-26T19:00:00Z",
     "g02Head": "8e7f71d805967e6668e5a7ed50153301a8ed5401"
+  },
+  "modelCallException": {
+    "enabled": true,
+    "purpose": "Cerrar M2: comprobar identidad efectiva e independencia con NVIDIA real",
+    "state": "autorizada-acotada-pendiente-de-puertas-exactas",
+    "pullRequest": 149,
+    "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
+    "requiredLabel": "asen-t06-nvidia-una-vez",
+    "actor": "asenbanskaliev",
+    "exactShaOnly": true,
+    "provider": "NVIDIA",
+    "modelAllowlist": [
+      "nvidia/nemotron-3.5-lightning-30b-a3b"
+    ],
+    "maxApiRequests": 2,
+    "maxOutputTokensPerRequest": 128,
+    "retries": 0,
+    "fallbacks": 0,
+    "paidModels": false,
+    "piSessions": 2,
+    "piRoles": [
+      "Explorer",
+      "Verifier"
+    ],
+    "piTools": false,
+    "piWrites": false,
+    "runOnce": true,
+    "secretSource": "NVIDIA_API_KEY del repositorio",
+    "mustWaitFor": [
+      "CI completa y Release Gate del SHA exacto en éxito",
+      "CodeRabbit full review del SHA exacto sin observaciones accionables abiertas",
+      "pruebas negativas del permiso y límites de uso"
+    ],
+    "globalPolicyStillNoModels": true,
+    "globalFull": false
   }
 }
