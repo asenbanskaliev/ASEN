@@ -350,6 +350,28 @@
         "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
         "phase": "Validación definitiva M1/M2",
         "writeReservation": false
+      },
+      "lease": {
+        "id": "manual-E-M1M2-161-revision-independiente-defectos",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "f60bae7023cce4f7e802aed896797f6c51979cd3",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "files": [
+          ".github/workflows/ci.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts",
+          "src/agents/pi-process-runner.ts",
+          "src/runtime/lifecycle/parent-model-fallback.ts",
+          "extensions/asen.ts",
+          "tests/parent-model-fallback.test.ts",
+          "tests/extension-state-commands.test.ts",
+          "src/agents/interrupted-explorer-continuation.ts",
+          "tests/interrupted-explorer-continuation.test.ts",
+          "tests/pi-process-runner.test.ts",
+          "tests/odd-unit-partition.test.ts"
+        ],
+        "phase": "Correcciones concretas CodeRabbit; sin consumo ni fusión"
       }
     }
   },
@@ -1060,7 +1082,63 @@
       "finishedAt": "2026-11-27T14:51:20Z"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    ".github/workflows/ci.yml": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "tests/flujo-agentes-nvidia-workflow.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "src/agents/pi-process-runner.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "src/runtime/lifecycle/parent-model-fallback.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "extensions/asen.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "tests/parent-model-fallback.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "tests/extension-state-commands.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "src/agents/interrupted-explorer-continuation.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "tests/interrupted-explorer-continuation.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "tests/pi-process-runner.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    },
+    "tests/odd-unit-partition.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-revision-independiente-defectos",
+      "scope": "M1/M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
