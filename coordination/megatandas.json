@@ -350,6 +350,25 @@
         "sha": "09bc99ecf477f6a312f2e412eca5fa5d9e15dff7",
         "phase": "CI y revisión independiente",
         "writeReservation": false
+      },
+      "lease": {
+        "id": "manual-E-M1M2-161-ambito-y-recibos",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "09bc99ecf477f6a312f2e412eca5fa5d9e15dff7",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "files": [
+          "src/agents/pi-process-runner.ts",
+          "src/agents/agent-runtime.ts",
+          "src/agents/pi-agent-tools.ts",
+          "extensions/asen.ts",
+          "src/runtime/lifecycle/parent-model-fallback.ts",
+          "tests/parent-model-fallback.test.ts",
+          "tests/pi-process-runner.test.ts",
+          "scripts/m2-nvidia-0910.ts"
+        ],
+        "phase": "Cerrar hallazgos M2 de consentimiento vivo y evidencia, sin afectar M3/M4"
       }
     }
   },
@@ -953,7 +972,48 @@
       "finishedAt": "2026-11-27T12:55:08Z"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "src/agents/pi-process-runner.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M2"
+    },
+    "src/agents/agent-runtime.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M2"
+    },
+    "src/agents/pi-agent-tools.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M2"
+    },
+    "extensions/asen.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M2"
+    },
+    "src/runtime/lifecycle/parent-model-fallback.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M2"
+    },
+    "tests/parent-model-fallback.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M2"
+    },
+    "tests/pi-process-runner.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M2"
+    },
+    "scripts/m2-nvidia-0910.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
