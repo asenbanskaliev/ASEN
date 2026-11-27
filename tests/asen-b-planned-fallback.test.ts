@@ -212,3 +212,20 @@ test("B1 las rutas públicas comparten la selección y la vigencia de alternativ
  assert.equal((await agents.query(second,identity))?.record.state,"failed");
  assert.equal(seen.length,1,"No se ejecutan alternativas retiradas");
 });
+
+
+test("M2: un Explorer directo en cola rechaza la sustitución por otro ámbito con igual cadena", {timeout:30_000},async t=>{
+ const {registerAgentTools}=await import("../src/agents/pi-agent-tools.js");
+ const home=await mkdtemp(join(tmpdir(),"asen-b-directo-"));t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const identity={sessionId:"b1-directo",projectId:await realpath(process.cwd())};
+ let enter!:()=>void,release!:()=>void;const entered=new Promise<void>(r=>{enter=r;}),hold=new Promise<void>(r=>{release=r;});const seen:AgentRequest[]=[];
+ const agents=await AgentRuntime.open({storeFile:join(home,"agents.json"),maxConcurrency:1,runner:{run:async request=>{seen.push(request);if(request.prompt==="Ocupar plaza"){enter();await hold;}return {id:request.id,ok:true,output:"Instrumentado"};}}});
+ let scope:"project"|"global"="project";const tools=new Map<string,any>();
+ registerAgentTools({registerTool:tool=>{tools.set(tool.name,tool);}},async()=>agents,undefined,async()=>({choice:{model:primary},source:scope,modelFallback:{profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope,name:"perfil",model:primary}}}));
+ const context={cwd:identity.projectId,sessionManager:{getSessionId:()=>identity.sessionId},hasUI:false};
+ const blocker=await agents.startReadOnly({role:"clarifier",prompt:"Ocupar plaza",session:identity});await entered;
+ let queued:string;
+ try{const result=await tools.get("asen_agent_start").execute("start",{role:"explorer",prompt:"Exploración directa"},undefined,undefined,context);queued=result.details.id;scope="global";}finally{release();}
+ const deadline=Date.now()+10_000;while(Date.now()<deadline){if((await agents.query(queued!,identity))?.record.state==="failed")break;await new Promise<void>(r=>setTimeout(r,10));}
+ assert.equal((await agents.query(queued!,identity))?.record.state,"failed");assert.equal(seen.length,1);assert.equal(seen[0]?.id,blocker);
+});
