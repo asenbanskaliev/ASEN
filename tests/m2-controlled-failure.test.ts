@@ -4,6 +4,7 @@ import {existsSync,mkdtempSync,realpathSync,rmSync,writeFileSync,readFileSync} f
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {PiProcessRunner} from "../src/agents/pi-process-runner.js";
+import {normalizeT06PiChildSelection} from "../src/runtime/agents/t06-pi-receipt-validator.js";
 import {createT06ReadOnlyGitFixture} from "../src/runtime/agents/t06-read-only-git-fixture.js";
 import {ALTERNATIVE,CONTINUATION,PRIMARY,startControlledFailure} from "../scripts/m2-controlled-failure.js";
 
@@ -61,16 +62,18 @@ test("M2 09: Pi nativo cambia de modelo ante 429 local y conserva el contexto, s
  const globalPi=process.env.ASEN_M2_NATIVE_OFFLINE==="1";
  if(!globalPi&&!existsSync(cli)){t.skip("Pi nativo no instalado");return;}
  const calls:unknown[]=[],config=realpathSync(mkdtempSync(join(tmpdir(),"asen-m2-local-"))),fixture=createT06ReadOnlyGitFixture();
- const previous=process.env.PI_CODING_AGENT_DIR;let approvals=0,changes=0;
- const server=await startControlledFailure({apiKey:secret,marker,prompt,authorized:()=>approvals===1&&changes===1,request:simulatedProvider(calls)});
+ const previous=process.env.PI_CODING_AGENT_DIR;let approvals=0,changes=0,primarySelected=false;
+ const server=await startControlledFailure({apiKey:secret,marker,prompt,authorized:()=>primarySelected&&approvals===1&&changes===1,request:simulatedProvider(calls)});
  t.after(async()=>{await server.close();fixture.cleanup();rmSync(config,{recursive:true,force:true});if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;});
  process.env.PI_CODING_AGENT_DIR=config;
  writeFileSync(join(config,"settings.json"),JSON.stringify({retry:{enabled:false,maxRetries:0,provider:{maxRetries:0}},compaction:{enabled:false},cacheWarming:"off"}));
  writeFileSync(join(config,"models.json"),JSON.stringify({providers:{nvidia:{baseUrl:server.baseUrl,apiKey:server.localKey}}}));
  const runner=new PiProcessRunner({...(globalPi?{command:"pi"}:{command:process.execPath,rpcArgs:[cli,"--mode","rpc"]}),policyRoot:process.cwd(),noTools:true,requireChildModelBeforePrompt:true,timeoutMs:process.platform==="win32"?90000:45000,
-  authorizeModelFallback:attempt=>{assert.equal(attempt.to,ALTERNATIVE);assert.equal(server.receipt().local429,1);approvals++;return approvals===1;},
+  authorizeModelFallback:attempt=>{assert.ok(primarySelected);assert.equal(attempt.to,ALTERNATIVE);assert.equal(server.receipt().local429,1);approvals++;return approvals===1;},
   onModelFallback:event=>{assert.equal(event.from,PRIMARY);assert.equal(event.to,ALTERNATIVE);assert.equal(event.category,"rate_limit");changes++;}
  });
- const result=await runner.run({id:"m2-local-native",role:"explorer",prompt,repository:realpathSync(fixture.children[0]),model:PRIMARY,modelFallback:{chain:[{model:ALTERNATIVE}]}});
- assert.equal(result.ok,true,JSON.stringify({output:result.output,proof:server.receipt()}));assert.equal(approvals,1);assert.equal(changes,1);assert.equal(calls.length,1);assert.equal(server.receipt().contextPreserved,true);assert.equal(server.receipt().rejectedRequests,0);assert.ok(result.output.includes(marker));
+ const projectId=realpathSync(fixture.children[0]),sessionId="m2-local-session",taskId="m2-local-native";
+ runner.subscribeChildSelection(event=>{if(event.taskId===taskId&&event.sessionId===sessionId&&event.projectId===projectId&&normalizeT06PiChildSelection(event.model,PRIMARY)===PRIMARY)primarySelected=true;});
+ const result=await runner.run({id:taskId,role:"explorer",prompt,repository:projectId,isolationKey:sessionId,model:PRIMARY,modelFallback:{chain:[{model:ALTERNATIVE}]}});
+ assert.equal(result.ok,true,JSON.stringify({output:result.output,proof:server.receipt()}));assert.equal(primarySelected,true);assert.equal(approvals,1);assert.equal(changes,1);assert.equal(calls.length,1);assert.equal(server.receipt().contextPreserved,true);assert.equal(server.receipt().rejectedRequests,0);assert.ok(result.output.includes(marker));
 });
