@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 153,
       "sha": "6a71abdbbccbe1479f6238da9d9712c78d88bdd8",
-      "next": "V6: mientras M2 valida, auditar M3 G03/P04 y sucesora histórica; después G02/G07 M5. Solo código independiente expresamente reservado, candidato admitido, no tocar #159 ni #156 sin asignación E; sin modelos.",
+      "next": "V6: ocho rutas verificadas. M3-P04-SUCESORA-COMANDO: prueba pública tras HEAD posterior en candidato acumulativo. Preparar con base admitida y reserva E; no tocar #159/#156. Auditar G03 y luego M5.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -184,7 +184,7 @@
         "openReviewThreads": 0
       },
       "next": "V6: cierre M2 exacto y ensayo acotado; después rama acumulativa M3/M4 basada en M2 admitido y #156. No modificar #159 una vez acreditado salvo defecto real. Coordinar M5 y M6, preservar plan rector.",
-      "blocker": "CI y revisión exactas del nuevo SHA M2; #156 validada; M3–M6 organizadas por dependencias.",
+      "blocker": "M2 CI completa y matriz Pi en curso; revisión exacta aún no publicada, 0 hilos abiertos. M3 preparación de integración completa por blobs y una regresión pública identificada.",
       "generation": 2,
       "pr": 159,
       "sha": "e3b4553a29da86fc3a35b59749fcf44d8e82eb69",
@@ -2304,7 +2304,19 @@
           "status": "completed",
           "conclusion": "skipped"
         }
-      ]
+      ],
+      "integrated": {
+        "job": 140403352306,
+        "tests": 446,
+        "pass": 446,
+        "fail": 0,
+        "skipped": 0,
+        "jq": "22 casos aprobados"
+      },
+      "g08": {
+        "job": 140403352201,
+        "conclusion": "success"
+      }
     },
     "review": {
       "sha": "e3b4553a29da86fc3a35b59749fcf44d8e82eb69",
@@ -2651,7 +2663,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T08:49:50.640Z",
+  "updatedAt": "2026-11-27T08:56:05.311Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -2742,7 +2754,31 @@
         "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
         "owner": "B",
         "support": "C/E",
-        "next": "Auditar G03/P04 y hallazgo histórico sucesora con HEAD cambiado; comparar las ocho rutas de Work con M2. Preparar pruebas sin modelos de reinicio, recibos, dos raíces y sucesora; no repetir trabajos aprobados. Integración solo tras admisión M2 en rama nueva, no #159."
+        "next": "Integración de ocho rutas verificada; tras M2 admitida, ejecutar prueba pública de recuperación histórica con dos raíces y HEAD posterior. G03 turno proveedor abierto sigue pendiente de evidencia.",
+        "audit": {
+          "source": "e3b4553a29da86fc3a35b59749fcf44d8e82eb69",
+          "work": "853d105dd569903400a688cd65eb9f5ff3f0e401",
+          "findings": [
+            {
+              "id": "M3-P04-SUCESORA-COMANDO",
+              "state": "pendiente-prueba-comando",
+              "ref": "https://github.com/asenbanskaliev/ASEN/pull/157#discussion_r4713955031",
+              "paths": [
+                "tests/native-partition-flow.test.ts",
+                "tests/fixtures/native-partition-restart.ts",
+                "extensions/asen.ts"
+              ],
+              "evidence": "M2 helper inspectCompletedNativePartition devuelve partition-already-closed después de avanzar HEAD; test directo existente. continueIntegratedCandidate (2681–2687) invoca antes de checkpoint y devuelve resultado. advanceIntegratedCandidate (2714–2726) obtiene checkpointInput que solo valida identidad y diario, consulta helper antes de revisión; devuelve cierre sin advancePlan. Fixture restart inspect invoca helper, no comando público. No se demuestra aún ruta pública.",
+              "acceptance": "En candidato acumulativo, añadir prueba con comando público real tras cierre dos raíces y commit posterior. Comprobar partition-already-closed, writerAuthority:false, autoRetry:false, cero confirmaciones y cero invocaciones nuevas; preservar HEAD y diarios. Si el comando falla por guardia anterior, reparar mínimo y probar. No duplicar prueba directa ni modificar #159."
+            },
+            {
+              "id": "M3-P04-REAPERTURA",
+              "state": "revision-estatica-sin-nuevo-defecto-confirmado",
+              "path": "src/runtime/agents/agent-store.ts",
+              "evidence": "#156 normaliza recibos incompletos y cuarentena dentro de withExclusiveFileLock. #recover vuelve a leer mediante #mutate bajo bloqueo y excluye procesos propietarios vivos. Pruebas concurrentes CI #156 correcta. No reescribir sin reproducción adicional."
+            }
+          ]
+        }
       },
       {
         "id": "M4",
@@ -2793,7 +2829,44 @@
         "tests/agent-store.test.ts",
         "tests/asen-c-checkpoint-recovery.test.ts"
       ],
-      "condition": "Comprobar contenido de las cinco rutas frente a ancestro y M2 antes de copiar/mezclar, validar en PR independiente."
+      "condition": "Las ocho rutas ya comparadas contra ancestro 630adf5. Siete versiones de Work y fixture RPC con pruebas negativas de M2. Verificar blobs antes de aplicar en candidato acumulativo, luego CI y revisión nuevas. Sin cambiar #159.",
+      "verifiedRemainingFiles": [
+        {
+          "path": "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md",
+          "baseBlob": "4bf648af58aef0cbf2a58fd62ca1bc88bf483842",
+          "m2Blob": "4bf648af58aef0cbf2a58fd62ca1bc88bf483842",
+          "workBlob": "48315b8ec148a21c322b4575c9bb81a1a572ec49",
+          "action": "preservar versión Work"
+        },
+        {
+          "path": "src/runtime/agents/agent-store.ts",
+          "baseBlob": "847d13ce780fc5a55425ff59b2013e65056040d6",
+          "m2Blob": "847d13ce780fc5a55425ff59b2013e65056040d6",
+          "workBlob": "973dd2268a824031e8d45ae71b20d937ce6b8425",
+          "action": "preservar versión Work"
+        },
+        {
+          "path": "src/runtime/lifecycle/odd-unit-plan.ts",
+          "baseBlob": "e8633186fab01e39261a76a31d5ed20bc086bbd8",
+          "m2Blob": "e8633186fab01e39261a76a31d5ed20bc086bbd8",
+          "workBlob": "763d89ff6ebeb801e931fdaa65b4badaab1f6737",
+          "action": "preservar versión Work"
+        },
+        {
+          "path": "tests/agent-store.test.ts",
+          "baseBlob": "7066a162099eb849532965334c4f560d55549061",
+          "m2Blob": "7066a162099eb849532965334c4f560d55549061",
+          "workBlob": "5f49bb6bd2ea5afe6e8f271a29f1da163aaf36e8",
+          "action": "preservar versión Work"
+        },
+        {
+          "path": "tests/asen-c-checkpoint-recovery.test.ts",
+          "baseBlob": null,
+          "m2Blob": null,
+          "workBlob": "c71b12574a66489c9c469992b4afece5b1052228",
+          "action": "añadir prueba Work nueva"
+        }
+      ]
     }
   }
 }
