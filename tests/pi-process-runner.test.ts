@@ -1058,3 +1058,17 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
   const result=await runner(p,{timeoutMs:10_000}).run({id:"config-url",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"provider/backup"}]}});
   assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.args[trace.args.indexOf("--model")+1],"provider/primary");
  });
+
+ test("M2: OAuth compartido rechaza Pi anterior a 1.6 antes de iniciar procesos",async t=>{
+  const {d}=await fallbackRpcFixture({initialSuccess:true});
+  const source=join(d,"original-pi"),sdk=join(d,"node_modules","@earendil-works","pi-coding-agent");
+  await mkdir(source);await mkdir(join(sdk,"dist"),{recursive:true});
+  const auth=join(source,"auth.json"),original=JSON.stringify({provider:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}});
+  await writeFile(auth,original);await writeFile(join(sdk,"package.json"),JSON.stringify({name:"@earendil-works/pi-coding-agent",version:"1.2.0"}));
+  const cli=join(sdk,"dist","cli.js");await writeFile(cli,"throw Error('No debe ejecutarse');");await writeFile(join(sdk,"dist","index.js"),"throw Error('No debe importarse');");
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+  t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  let starts=0;const child=new PiProcessRunner({command:process.execPath,rpcArgs:[cli,"--mode","rpc"],policyRoot:d,onProcessStart:()=>{starts++;}});
+  const result=await child.run({id:"oauth-sdk-antiguo",role:"explorer",prompt:"No ejecutar",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
+  assert.equal(result.ok,false);assert.match(result.output,/requires a compatible native SDK/);assert.equal(starts,0);assert.equal(await readFile(auth,"utf8"),original);
+ });
