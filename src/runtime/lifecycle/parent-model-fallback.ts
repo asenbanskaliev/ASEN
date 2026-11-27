@@ -28,6 +28,8 @@ export interface ParentModelFallbackHost{
  setThinking?(level:Thinking):void;
  notify?(change:ModelFallbackChange,pricing:{from?:ModelCatalogRates;to?:ModelCatalogRates},context?:unknown):void;
  followUp?(message:string,context?:unknown):void;
+ /** Cuando el anfitrión no tiene una mutación cancelable, recomendar sin cambiar ni consumir. */
+ recommendManualModel?(model:ParentCatalogModel,context?:unknown):void;
  isCancelled?(context?:unknown):boolean;
  canAutoContinue?():boolean;
  onManualContinuation?(context?:unknown):void;
@@ -107,6 +109,14 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    const source=activeModel?host.findModel?.(activeModel,context):undefined;if(!current())return false;
    const beforeResult=await wait(currentIdentity(context));if(!beforeResult.valid)return false;
    if(!sameIdentity(beforeResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
+   if(host.recommendManualModel){
+    const fresh=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
+    if(!fresh.valid)return false;
+    const now=await wait(currentIdentity(context));if(!now.valid)return false;
+    if(!sameIdentity(now.value,activeEpisodeIdentity)||!fresh.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
+    if(current())host.recommendManualModel(found,context);
+    return false;
+   }
    // Ni la presencia en el catálogo ni una tarifa cero acreditan gratuidad.
    const authorized=await wait(Promise.resolve().then(()=>host.authorizeFallback?.(found,context)).catch(()=>false));
    if(!authorized.valid)return false;
@@ -115,6 +125,8 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    if(!sameIdentity(consentIdentity.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
    const liveChain=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
    if(!liveChain.valid)return false;
+   const liveIdentity=await wait(currentIdentity(context));if(!liveIdentity.valid)return false;
+   if(!sameIdentity(liveIdentity.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
    const liveModel=host.findModel?.(pick.model,context);
    if(!liveChain.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)||!liveModel||liveModel.api==="pi-virtual"||modelRef(liveModel)!==pick.model||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
    // La operación irreversible debe terminar antes de que Pi sustituya el host.
@@ -136,6 +148,8 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    if(!sameIdentity(continuationResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
    const dispatchChain=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
    if(!dispatchChain.valid)return false;
+   const dispatchIdentity=await wait(currentIdentity(context));if(!dispatchIdentity.valid)return false;
+   if(!sameIdentity(dispatchIdentity.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
    if(!dispatchChain.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)||host.currentModel(context)!==modelRef(found)||host.findModel?.(pick.model,context)?.api==="pi-virtual"){invalidate("aborted");return false;}
    if(host.canAutoContinue&&!host.canAutoContinue()){host.onManualContinuation?.(context);invalidate("aborted");return false;}
    host.followUp?.(formatModelFallbackContinuation(change),context);

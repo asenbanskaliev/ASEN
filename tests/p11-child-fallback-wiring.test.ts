@@ -225,3 +225,23 @@ test("M2: reutiliza un Explorer directo con alternativas idénticas",async t=>{
  let admitted=false;
  try{const first=await f.launch(undefined,{prompt:"Lectura con alternativas"});admitted=true;const second=await f.launch(undefined,{prompt:"Lectura con alternativas"});assert.equal(second.details.id,first.details.id);for(let i=0;i<200&&f.requests.length===0;i++)await new Promise(resolve=>setTimeout(resolve,20));assert.equal(f.requests.length,1);}finally{release();if(admitted){let timer:ReturnType<typeof setTimeout>|undefined;try{await Promise.race([f.finished,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("Explorer no alcanzó estado terminal")),10_000);})]);}finally{if(timer)clearTimeout(timer);}}}
 });
+
+
+test("M2: configuración opcional de alternativas ilegible no bloquea el modelo principal",async t=>{
+ const f=await fixture(t);await writeFile(f.fallbackFile,"{configuración inválida");
+ const result=await f.launch();const {request}=await f.complete(result);assert.equal(request.model,PRIMARY.model);assert.equal(request.modelFallback,undefined);
+});
+
+test("M2: no reutilizar un Explorer externo admitido por otro anfitrión",async t=>{
+ let release!:()=>void;const held=new Promise<void>(resolve=>{release=resolve;});const f=await fixture(t,configured(),()=>held);
+ const original=f.ctx.cwd;
+ try{
+  const first=await f.launch(undefined,{prompt:"Lectura externa",root:f.foreign});
+  f.ctx.cwd=f.foreign;
+  const second=await f.launch(undefined,{prompt:"Lectura externa",root:f.foreign});
+  assert.notEqual(second.details.id,first.details.id);
+  release();const deadline=Date.now()+10_000;
+  while(Date.now()<deadline){const row=f.records().find(record=>record.id===second.details.id);if(row&&["completed","failed","cancelled"].includes(row.state)){assert.equal(row.state,"completed");return;}await new Promise(resolve=>setTimeout(resolve,20));}
+  assert.fail("No se publicó el resultado del segundo anfitrión");
+ }finally{release();f.ctx.cwd=original;}
+});

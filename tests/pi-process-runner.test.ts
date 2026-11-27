@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile,execFileSync} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {isAbsolute,join,relative} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile,execFileSync} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {isAbsolute,join,relative} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment,drainSharedAuthChild} from "../src/agents/pi-process-runner.js";
 import {piRuntimeRouteArgs} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
@@ -1023,4 +1023,23 @@ test("M2: no iniciar una alternativa como primaria cuando falta una selección e
  const originalModels='{ // comentario\n "providers": { /* local */ } }';await writeFile(join(source,"models.json"),originalModels);
  const accepted=await child.run({id:"primary-configured",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"alternative/backup"}]}});
  assert.equal(accepted.ok,true,accepted.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.args[trace.args.indexOf("--model")+1],"provider/primary");assert.equal(await readFile(join(source,"models.json"),"utf8"),originalModels);
+});
+
+
+test("M2: el cierre OAuth espera la persistencia sintética de una renovación antes de terminar",async t=>{
+ const d=await mkdtemp(join(tmpdir(),"asen-oauth-drain-"));t.after(()=>rm(d,{recursive:true,force:true}));const auth=join(d,"auth.json");
+ await writeFile(auth,JSON.stringify({refresh:"anterior"}));
+ let finish!:()=>void,closing=false;const closed=new Promise<void>(resolve=>{finish=resolve;});
+ const pending=drainSharedAuthChild(()=>{closing=true;},closed,5_000);assert.equal(closing,true);
+ await writeFile(auth,JSON.stringify({refresh:"renovado"}));finish();assert.equal(await pending,true);
+ assert.deepEqual(JSON.parse(await readFile(auth,"utf8")),{refresh:"renovado"});
+ assert.equal(await drainSharedAuthChild(()=>{},new Promise<void>(()=>{}),20),false);
+});
+
+test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});const source=join(d,"original-pi");await mkdir(source);
+ await writeFile(join(source,"settings.json"),JSON.stringify({httpProxy:"http://localhost:1234"}));await writeFile(join(source,"auth.json"),JSON.stringify({provider:{type:"oauth",access:"ficticia",refresh:"ficticia",expires:0}}));
+ const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+ const result=await runner(p).run({id:"oauth-proxy",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/cannot preserve custom HTTP proxy/u);await assert.rejects(access(log));
 });

@@ -390,7 +390,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    isCancelled:host=>(host as CommandContext|undefined)?.signal?.aborted===true,
    canAutoContinue:()=>{const settings=hostSettings() as {retry?:{enabled?:boolean;maxRetries?:number;provider?:{maxRetries?:number}};compaction?:{enabled?:boolean};cacheWarming?:string}|undefined;return settings?.cacheWarming==="off"&&settings?.retry?.enabled===false&&settings.retry.maxRetries===0&&settings.retry.provider?.maxRetries===0&&settings.compaction?.enabled===false;},
    onManualContinuation:host=>(host as CommandContext|undefined)?.ui?.notify("ASEN: el modelo alternativo está disponible, pero no se inicia otro turno sin garantías de un único intento. Continúa manualmente o desactiva reintentos, compactación automática y calentamiento de caché en Pi.","warning"),
-   setModel:model=>pi.setModel?pi.setModel(model):false,
+   // Pi 1.2–1.6 no ofrece un setModel cancelable antes de la asignación.
+   // No cambiar el modelo del usuario mediante una autenticación asíncrona.
+   recommendManualModel:(model,host)=>(host as CommandContext|undefined)?.ui?.notify(`ASEN: alternativa ${model.provider}/${model.id} disponible. Selecciónala manualmente en Pi y continúa si deseas usarla. No se ha cambiado el modelo ni iniciado otra petición.`,"warning"),
    getThinking:()=>pi.getThinkingLevel?.(),setThinking:level=>pi.setThinkingLevel?.(level),
    notify:(change,pricing,host)=>(host as CommandContext|undefined)?.ui?.notify(formatModelFallbackNotice(change,pricing),"warning"),
    followUp:message=>pi.sendUserMessage?.(message,{deliverAs:"followUp"}),
@@ -739,7 +741,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    // La misma procedencia de perfil y ámbito que las rutas planificadas.
    // Un perfil de proyecto no hereda alternativas de un perfil global homónimo.
    const model=route.choice?.model,origin=plannedExplorerProfileOrigin(role,model,layers);
-   const scopedFallbacks=origin?await profileFallbacksReader(origin.scope==="global"?profileFallbacksFile:path.join(identity.projectId,".asen","profile-fallbacks.json")):undefined;
+   const scopedFallbacks=origin?await profileFallbacksReader(origin.scope==="global"?profileFallbacksFile:path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>undefined):undefined;
    const modelFallback=plannedExplorerFallback({role,...(model?{model}:{}),profiles:layers,...(origin?{origin}:{}),fallbacksByScope:origin&&scopedFallbacks?{[origin.scope]:scopedFallbacks}:{}});
    return {...route,...(modelFallback&&origin&&model?{modelFallback:{...modelFallback,origin:{...origin,model}}}:{})};
   },agentNoticeJournal,identity=>{

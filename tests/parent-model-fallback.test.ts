@@ -279,3 +279,14 @@ test("M2: retirar la alternativa durante setModel impide enviar la continuación
  const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
  assert.equal(await adapter.onAgentSettled(),false);assert.equal(f.calls.some(call=>call.startsWith("follow:")),false);
 });
+
+
+test("M2: un cambio de perfil durante una lectura posterior al consentimiento impide mutar o continuar",async()=>{
+ for(const boundary of [2,3]){
+  let reads=0;
+  const f=fixture({loadChain:async()=>{if(++reads===boundary)f.setIdentity(identity("otro"));return [{model:"provider/backup",thinking:"low"},{model:"provider/last"}];}});
+  const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+  assert.equal(await adapter.onAgentSettled(),false);assert.equal(f.calls.some(call=>call.startsWith("follow:")),false);
+  if(boundary===2)assert.equal(f.host.currentModel(),"provider/primary");
+ }
+});

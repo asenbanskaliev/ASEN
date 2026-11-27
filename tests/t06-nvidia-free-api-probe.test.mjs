@@ -39,7 +39,7 @@ test("T06 NVIDIA: dos solicitudes gratuitas empiezan a la vez y se identifican p
   await gate;
   return mockResponse(options);
  };
- const p=probeNvidiaFreeApi({apiKey:"nvapi-credential-only-for-test",request,timeoutMs:900});
+ const p=probeNvidiaFreeApi({apiKey:"nvapi-credential-only-for-test",models:NVIDIA_FREE_MODELS,request,timeoutMs:900});
  await both;release();
  const report=await p;
  assert.equal(calls,2);
@@ -60,14 +60,14 @@ test("T06 NVIDIA: dos solicitudes gratuitas empiezan a la vez y se identifican p
 });
 test("T06 NVIDIA: respuesta 404, 429 o modelo distinto nunca se interpretan como éxito",async()=>{
  for(const status of [404,429,500]){
-  const report=await probeNvidiaFreeApi({apiKey:"test-secret",
+  const report=await probeNvidiaFreeApi({apiKey:"test-secret",models:NVIDIA_FREE_MODELS,
    request:async(_,options)=>mockResponse(options,{status}),timeoutMs:900});
   assert.equal(report.status,"BLOCKED");
   assert.equal(report.results.every(r=>r.errorCode==="HTTP_BLOCKED"),true);
   assert.equal(report.distinctModelIdsVerified,false);
   assert.equal(report.retryCount,0);
  }
- const mismatch=await probeNvidiaFreeApi({apiKey:"test-secret",
+ const mismatch=await probeNvidiaFreeApi({apiKey:"test-secret",models:NVIDIA_FREE_MODELS,
   request:async(_,options)=>mockResponse(options,{model:"otro/modelo"}),timeoutMs:900});
  assert.equal(mismatch.status,"BLOCKED");
  assert.equal(mismatch.distinctModelIdsVerified,false);
@@ -76,14 +76,15 @@ test("T06 NVIDIA: respuesta 404, 429 o modelo distinto nunca se interpretan como
 test("T06 NVIDIA: falta de clave o intento de otro modelo bloquean antes de la red",async()=>{
  let calls=0;
  const request=async()=>{calls++;throw Error("No debería ejecutarse");};
- await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"",request}),/NVIDIA_API_KEY/u);
- await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",request,models:["moonshotai/kimi-k3.1-pro",NVIDIA_FREE_MODELS[1]]}),/fuera de la lista/u);
- await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",request,models:[NVIDIA_FREE_MODELS[0],NVIDIA_FREE_MODELS[0]]}),/fuera de la lista/u);
- await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",request,timeoutMs:100_000}),/límite/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"",models:NVIDIA_FREE_MODELS,request}),/NVIDIA_API_KEY/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",request}),/fuera de la lista/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:NVIDIA_FREE_MODELS,request,models:["moonshotai/kimi-k3.1-pro",NVIDIA_FREE_MODELS[1]]}),/fuera de la lista/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:NVIDIA_FREE_MODELS,request,models:[NVIDIA_FREE_MODELS[0],NVIDIA_FREE_MODELS[0]]}),/fuera de la lista/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:NVIDIA_FREE_MODELS,request,timeoutMs:100_000}),/límite/u);
  assert.equal(calls,0);
 });
 test("T06 NVIDIA: respuesta vacía o errónea no inventa confirmación de modelo",async()=>{
- const report=await probeNvidiaFreeApi({apiKey:"test-secret",
+ const report=await probeNvidiaFreeApi({apiKey:"test-secret",models:NVIDIA_FREE_MODELS,
   request:async(_,options)=>mockResponse(options,{content:"Otra respuesta"}),
   timeoutMs:900});
  assert.equal(report.status,"BLOCKED");
@@ -94,7 +95,7 @@ test("T06 NVIDIA: informe privado sin claves, prompts ni sobrescritura",async t=
  const dir=mkdtempSync(join(tmpdir(),"asen-nvidia-evidence-"));
  t.after(()=>rmSync(dir,{recursive:true,force:true}));
  const file=join(dir,"probe.json");
- const report=await probeNvidiaFreeApi({apiKey:"nvapi-secret",
+ const report=await probeNvidiaFreeApi({apiKey:"nvapi-secret",models:NVIDIA_FREE_MODELS,
   request:async(_,options)=>mockResponse(options),timeoutMs:900});
  persistNvidiaProbeReport(report,file);
  const saved=readFileSync(file,"utf8");
@@ -121,7 +122,7 @@ test("T06 conserva el orden de modelos enviado aunque cambie la lista del llaman
 
 
 test("T06 NVIDIA: una sola identidad confirmada no acredita dos modelos",async()=>{
- const report=await probeNvidiaFreeApi({apiKey:"test-secret",timeoutMs:900,request:async(_,options)=>{
+ const report=await probeNvidiaFreeApi({apiKey:"test-secret",models:NVIDIA_FREE_MODELS,timeoutMs:900,request:async(_,options)=>{
   const body=JSON.parse(options.body);
   return mockResponse(options,body.model===NVIDIA_FREE_MODELS[1]?{status:429}:{});
  }});
@@ -138,7 +139,7 @@ test("T06 NVIDIA: no aceptar identificadores privados ni reutilizar Super VL",as
  const old="nvidia/nemotron-3.5-super-vl-120b-a12b";
  assert.ok(!NVIDIA_FREE_MODELS.includes(old));
  await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:[NVIDIA_FREE_MODEL,old],request:async()=>assert.fail("No llamar a red")}),/fuera de la lista/u);
- const report=await probeNvidiaFreeApi({apiKey:"test",timeoutMs:900,request:async(_,options)=>{
+ const report=await probeNvidiaFreeApi({apiKey:"test",models:NVIDIA_FREE_MODELS,timeoutMs:900,request:async(_,options)=>{
   const body=JSON.parse(options.body);
   return mockResponse(options,body.model===NVIDIA_FREE_MODELS[1]?{model:"private/"+body.model}:{});
  }});

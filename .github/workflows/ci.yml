@@ -763,7 +763,7 @@ jobs:
           pr="$repo/pulls/$PR_NUMBER"
           issue="$repo/issues/$PR_NUMBER"
           test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
-          approval="asen-t06-autorizar:$ASEN_EXPECTED_SHA"
+          approval="asen-t06-autorizar:$ASEN_EXPECTED_SHA:nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
           gh api "$issue/comments" --paginate --jq '.[]' > "$RUNNER_TEMP/t06-approval.jsonl"
           approval_time=$(jq -ser --arg approval "$approval" 'map(select(.user.login == "asenbanskaliev" and .body == $approval)) | sort_by(.id) | last | .created_at | select(type == "string")' "$RUNNER_TEMP/t06-approval.jsonl")
           # El consentimiento delegado es del propietario; no equivale a revisión técnica.
@@ -854,6 +854,7 @@ jobs:
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           ASEN_NVIDIA_PROBE_REPORT: ${{ runner.temp }}/asen-t06-nvidia/probe.json
+          ASEN_NVIDIA_PROBE_MODELS: nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
         run: |
           set -euo pipefail
           if [ -z "$NVIDIA_API_KEY" ]; then

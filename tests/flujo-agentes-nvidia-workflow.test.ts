@@ -88,6 +88,8 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  const gate=ci.slice(begin,end);
  for(const required of ["pull_request.number == 161","feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","actions: read","gh api --method DELETE","ASEN_EXPECTED_SHA","asen-t06-autorizar:$ASEN_EXPECTED_SHA","head_sha=$ASEN_EXPECTED_SHA","G08 actualización administrada aislada (Windows)","Megatanda T02–T10 y T11 (pruebas integradas sin modelos)"]){assert.ok(gate.includes(required),"Falta puerta NVIDIA M2: "+required);}
  assert.ok(gate.includes('.user.login == "asenbanskaliev" and .body == $approval'));
+ assert.ok(gate.includes("asen-t06-autorizar:$ASEN_EXPECTED_SHA:nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"));
+ assert.ok(ci.includes("ASEN_NVIDIA_PROBE_MODELS: nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"));
  assert.ok(gate.includes('select(.user.login == "github-actions[bot]")'));
  assert.ok(gate.includes('.user.login == "coderabbitai[bot]" and .commit_id == $sha'));
  assert.ok(gate.includes('.submitted_at < $cutoff'));

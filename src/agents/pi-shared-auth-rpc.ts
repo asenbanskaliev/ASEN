@@ -17,6 +17,8 @@ async function main():Promise<void>{
  process.env.PI_CODING_AGENT="true";process.env.AI_AGENT="pi";
  const pi=await import(input.sdk) as typeof PiSdk;
  const settings=pi.SettingsManager.create(cwd,input.agentDir,{projectTrusted:false});
+ const network=settings.getGlobalSettings();
+ if(network.httpProxy!==undefined||network.httpIdleTimeoutMs!==undefined)throw Error("Unsupported shared-auth HTTP configuration");
  const retry=settings.getRetrySettings();
  if(retry.enabled||retry.maxRetries!==0||settings.getProviderRetrySettings().maxRetries!==0||settings.getCompactionEnabled())throw Error("Unsafe retry settings");
  const modelRuntime=await pi.ModelRuntime.create({authPath,modelsPath:join(input.agentDir,"models.json"),allowModelNetwork:false});

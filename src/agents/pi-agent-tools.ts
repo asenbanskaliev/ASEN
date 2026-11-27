@@ -55,7 +55,8 @@ export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
 export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal,claimBudgetExplorer?:(identity:AgentSessionIdentity)=>boolean,loadProfiles?:(identity:AgentSessionIdentity)=>Promise<ProfileLayer>,monotonicNow:()=>number=()=>performance.now(),loadExplorerFallbackConfig?:(identity:AgentSessionIdentity)=>Promise<ExplorerFallbackConfig>):()=>void{
  const access=new AgentProjectAccess();
- let accessGeneration=0;
+ let accessGeneration=0,managerSequence=0;
+ const managerScopes=new WeakMap<object,number>();
  // An exact status query records only a short-lived coordinator inspection
  // attempt; it is neither Pi model consumption nor approval for further work.
  const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number;monoAt:number}>();
@@ -66,6 +67,9 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   throwIfCancelled(signal);
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
   const launchManager=context?.sessionManager,launchGeneration=accessGeneration,launchHost=await identity(context),requestedRoot=(params as {root?:unknown}).root;
+  if(!launchManager||typeof launchManager!=="object")throw Error("ASEN requires an active Pi session manager");
+  let managerScope=managerScopes.get(launchManager);if(managerScope===undefined){managerScope=++managerSequence;managerScopes.set(launchManager,managerScope);}
+  const reuseScope=String(launchGeneration)+":"+String(managerScope);
   const session=await selectedIdentity(requestedRoot,context,true,signal);
   const validateHost=async(diagnostic="La sesión cambió antes de ejecutar la exploración")=>{
    throwIfCancelled(signal);
@@ -174,7 +178,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
       !claimBudgetExplorer?.(session))
     throw new Error("Budget Explorer was not authorized by one fresh, same-session read budget");
   }
-  const taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback,fallbackHost:launchHost}:{}),...(!todoSnapshot&&!budgetExplorer?{validateAdHocStart:validateReadOnlyStart}:{validateStart:validateReadOnlyStart}),...binding},signal);
+  const taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback}:{}),fallbackHost:launchHost,reuseScope,...(!todoSnapshot&&!budgetExplorer?{validateAdHocStart:validateReadOnlyStart}:{validateStart:validateReadOnlyStart}),...binding},signal);
   return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema,includeNotices:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{

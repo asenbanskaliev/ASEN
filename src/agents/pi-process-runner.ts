@@ -179,7 +179,12 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
  // Si una ruta usa OAuth, Pi debe acceder al almacén original con su propio
  // bloqueo de renovación. No copiar tokens, enlazar auth.json ni guardar
  // credenciales OAuth en el directorio temporal del hijo.
- if(auth&&Object.entries(auth).some(([key,value])=>providers.has(key)&&value&&typeof value==="object"&&!Array.isArray(value)&&(value as Record<string,unknown>).type==="oauth"))return {authPath:realpathSync(join(source,"auth.json")),model};
+ if(auth&&Object.entries(auth).some(([key,value])=>providers.has(key)&&value&&typeof value==="object"&&!Array.isArray(value)&&(value as Record<string,unknown>).type==="oauth")){
+  // El SDK público no expone el inicializador HTTP del CLI en Pi 1.2–1.6.
+  // No ignorar un proxy o plazo HTTP global configurado por el usuario.
+  if(settings.httpProxy!==undefined||settings.httpIdleTimeoutMs!==undefined)throw Error("Pi OAuth shared auth cannot preserve custom HTTP proxy or idle timeout");
+  return {authPath:realpathSync(join(source,"auth.json")),model};
+ }
  if(auth){
   const keys=Object.entries(auth).flatMap(([provider,value])=>{
    if(!providers.has(provider)||!value||typeof value!=="object"||Array.isArray(value))return [];
@@ -189,6 +194,14 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
   save("auth.json",Object.fromEntries(keys));
  }
  return {model};
+}
+
+/** Dar a Pi la oportunidad de persistir la renovación OAuth antes de matar el proceso.
+ * El límite solo gobierna la espera; no certifica persistencia si el hijo no cierra. */
+export async function drainSharedAuthChild(endInput:()=>void,closed:Promise<void>,graceMs=15_000):Promise<boolean>{
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{endInput();return await Promise.race([closed.then(()=>true),new Promise<boolean>(resolve=>{timer=setTimeout(()=>resolve(false),graceMs);})]);}
+ catch{return false;}finally{if(timer)clearTimeout(timer);}
 }
 
 /** Usar la instalación nativa de Pi elegida, no importar código del proyecto de trabajo. */
@@ -438,9 +451,10 @@ export class PiProcessRunner implements AgentRunner{
     sharedAuthPath=prepared.authPath;effectivePrimary=prepared.model;
     routeArgs=piRuntimeRouteArgs({...request,model:effectivePrimary});
     childEnvironment.PI_CODING_AGENT_DIR=isolatedConfig;
-   }catch{
+   }catch(error){
     rmSync(policyDirectory,{recursive:true,force:true});
-    return Promise.resolve({id:request.id,ok:false,output:"Pi fallback requires an exact primary model and an isolated configuration without automatic retries"});
+    const output=error instanceof Error&&error.message==="Pi OAuth shared auth cannot preserve custom HTTP proxy or idle timeout"?error.message:"Pi fallback requires an exact primary model and an isolated configuration without automatic retries";
+    return Promise.resolve({id:request.id,ok:false,output});
    }
   }
   const baseTools=writer?["read","edit","write"]:["read"];
@@ -551,8 +565,7 @@ export class PiProcessRunner implements AgentRunner{
       // La entrada RPC nativa cierra la sesión y Pi 1.6 drena escrituras
       // de credenciales al recibir EOF. No emitir más prompts ni comandos.
       // Mantener un límite de parada incluso si el proveedor no responde.
-      let grace:ReturnType<typeof setTimeout>|undefined;
-      try{child.stdin.end();const drained=await Promise.race([closed.then(()=>true),new Promise<boolean>(resolve=>{grace=setTimeout(()=>resolve(false),15_000);})]);if(drained){finish(result);return;}}catch{/* Terminar el árbol si no se puede cerrar normalmente. */}finally{if(grace)clearTimeout(grace);}
+      if(await drainSharedAuthChild(()=>child.stdin.end(),closed)){finish(result);return;}
      }
      await terminateTree(child,closed);finish(result);
     })();

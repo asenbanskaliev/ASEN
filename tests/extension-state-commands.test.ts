@@ -16,9 +16,9 @@ test("fallback-parent extension handles the real parent event path with a fake P
  for(const handler of events.get("agent_end")??[])await handler({messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctx);
  assert.deepEqual(calls,[],"agent_end only caches the last attempt");
  for(const handler of events.get("agent_settled")??[])await handler({aborted:false},{...ctx,get model(){return ctx.model;}});
- assert.deepEqual(calls.map(call=>String(call).split(":",1)[0]),["model","thinking","followUp"]);
- assert.equal(dialogSignal,consentSignal.signal);
- assert.match(calls[2]!,/^followUp:followUp:/);assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,1);
+ assert.deepEqual(calls,[],"Pi nativo no ofrece una mutación cancelable; solo se recomienda el modelo");
+ assert.equal(dialogSignal,undefined,"sin mutación ni inferencia no se solicita consentimiento de gasto");
+ assert.equal(ctx.model.id,"primary");assert.equal(notices.filter(message=>message.includes("alternativa provider/backup disponible")).length,1);
 });
 test("fallback-parent extension rejects delayed prior-session end and abort events",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-fallback-parent-scope-")),project=await realpath(process.cwd()),profilesFile=path.join(root,".asen","profiles.json"),fallbacksFile=path.join(root,".asen","profile-fallbacks.json");
@@ -32,11 +32,13 @@ test("fallback-parent extension rejects delayed prior-session end and abort even
  await emit("session_start",{},ctxA);await emit("session_start",{},ctxB);
  await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxA);
  await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[],"A end cannot feed B settled");
- await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);assert.ok(calls.map(String).includes("model:backup"));
+ await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[]);assert.ok(notices.some(message=>message.includes("alternativa provider/backup disponible")));
+ // Simular la elección manual del usuario, no un cambio hecho por ASEN.
+ ctxB.model={provider:"provider",id:"backup"};
  await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"fetch failed"}]},ctxB);
  await emit("agent_settled",{aborted:true},ctxA);
  await emit("agent_settled",{aborted:false},ctxB);
- assert.ok(calls.map(String).includes("model:last"),"stale A abort cannot clear B episode");assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,2);
+ assert.deepEqual(calls,[]);assert.ok(notices.some(message=>message.includes("alternativa provider/last disponible")),"stale A abort cannot clear B episode");assert.equal(notices.filter(message=>message.includes("alternativa provider/")).length,2);
 });
 
 test("fallback-parent extension suppresses stale deferred chain rejection notices",async t=>{

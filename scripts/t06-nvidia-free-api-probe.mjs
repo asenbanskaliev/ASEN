@@ -22,13 +22,13 @@ const TARGETS=Object.freeze([
 
 const requiredString=(value)=>typeof value==="string"&&value.trim().length>0&&value.length<=512;
 const nonNegative=(value)=>Number.isSafeInteger(value)&&value>=0?value:null;
-const secureMessage="No se han autorizado reintentos, escrituras, modelos alternativos ni proveedores de pago.";
+const secureMessage="Solo los dos identificadores NVIDIA expresamente autorizados. Sin reintentos, escrituras, otros modelos ni proveedores de pago; facturación no verificada.";
 
 export async function probeNvidiaFreeApi({
  apiKey,
  request=fetch,
  timeoutMs=MAX_DURATION_MS,
- models=NVIDIA_FREE_MODELS
+ models
 }={}){
  const modelList=Array.isArray(models)?[...models]:models;
  if(!Array.isArray(modelList)||modelList.length!==2||new Set(modelList).size!==2||modelList.some(model=>!NVIDIA_FREE_MODELS.includes(model)))throw Error("Modelos NVIDIA fuera de la lista gratuita permitida");
@@ -128,7 +128,9 @@ if(invoked){
  const reportFile=process.env.ASEN_NVIDIA_PROBE_REPORT;
  if(!reportFile)throw Error("ASEN_NVIDIA_PROBE_REPORT debe apuntar a un archivo temporal");
  try{
-  const report=await probeNvidiaFreeApi({apiKey:process.env.NVIDIA_API_KEY});
+  const authorized=process.env.ASEN_NVIDIA_PROBE_MODELS;
+  if(authorized!==NVIDIA_FREE_MODELS.join(","))throw Error("Falta el alcance explícito de los dos modelos NVIDIA");
+  const report=await probeNvidiaFreeApi({apiKey:process.env.NVIDIA_API_KEY,models:authorized.split(",")});
   persistNvidiaProbeReport(report,reportFile);
   // Únicamente metadatos acotados, nunca respuestas crudas ni tokens secretos.
   process.stdout.write(JSON.stringify({
