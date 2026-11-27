@@ -290,3 +290,13 @@ test("M2: un cambio de perfil durante una lectura posterior al consentimiento im
   if(boundary===2)assert.equal(f.host.currentModel(),"provider/primary");
  }
 });
+
+ test("M2: recomendar un modelo manualmente no lo consume ni salta al siguiente",async()=>{
+  const recommendations:string[]=[];
+  const f=fixture({recommendManualModel:model=>recommendations.push(model.id)}),adapter=createParentModelFallback(f.host);
+  adapter.onAgentEnd({messages:failure()});assert.equal(await adapter.onAgentSettled(),false);
+  adapter.onAgentEnd({messages:failure()});assert.equal(await adapter.onAgentSettled(),false);
+  assert.deepEqual(recommendations,["backup","backup"]);assert.deepEqual(f.calls,[]);
+  f.setModel("provider/backup");adapter.onAgentEnd({messages:failure()});assert.equal(await adapter.onAgentSettled(),false);
+  assert.deepEqual(recommendations,["backup","backup","last"]);assert.deepEqual(f.calls,[]);
+ });
