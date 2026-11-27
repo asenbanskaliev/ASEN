@@ -741,7 +741,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    // La misma procedencia de perfil y ámbito que las rutas planificadas.
    // Un perfil de proyecto no hereda alternativas de un perfil global homónimo.
    const model=route.choice?.model,origin=plannedExplorerProfileOrigin(role,model,layers);
-   const scopedFallbacks=origin?await profileFallbacksReader(origin.scope==="global"?profileFallbacksFile:path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>undefined):undefined;
+   const scopedFallbacks=origin?await profileFallbacksReader(origin.scope==="global"?profileFallbacksFile:path.join(identity.projectId,".asen","profile-fallbacks.json")):undefined;
    const modelFallback=plannedExplorerFallback({role,...(model?{model}:{}),profiles:layers,...(origin?{origin}:{}),fallbacksByScope:origin&&scopedFallbacks?{[origin.scope]:scopedFallbacks}:{}});
    return {...route,...(modelFallback&&origin&&model?{modelFallback:{...modelFallback,origin:{...origin,model}}}:{})};
   },agentNoticeJournal,identity=>{
