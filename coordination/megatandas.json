@@ -350,6 +350,28 @@
         "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
         "phase": "CI y revisión independiente M1/M2",
         "writeReservation": false
+      },
+      "lease": {
+        "id": "manual-E-M1M2-161-ventanas-consentimiento",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "files": [
+          "src/agents/pi-process-runner.ts",
+          "src/agents/agent-runtime.ts",
+          "src/agents/pi-agent-tools.ts",
+          "extensions/asen.ts",
+          "src/agents/interrupted-explorer-continuation.ts",
+          "src/runtime/lifecycle/parent-model-fallback.ts",
+          "tests/managed-acquisition-copy.test.ts",
+          "tests/interrupted-explorer-continuation.test.ts",
+          "tests/extension-state-commands.test.ts",
+          "tests/p11-child-fallback-wiring.test.ts",
+          "tests/pi-process-runner.test.ts"
+        ],
+        "phase": "Corregir fallos Windows y observaciones verificadas de M2"
       }
     }
   },
@@ -976,7 +998,63 @@
       "finishedAt": "2026-11-27T13:01:02Z"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "src/agents/pi-process-runner.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "src/agents/agent-runtime.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "src/agents/pi-agent-tools.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "extensions/asen.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "src/agents/interrupted-explorer-continuation.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "src/runtime/lifecycle/parent-model-fallback.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "tests/managed-acquisition-copy.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "tests/interrupted-explorer-continuation.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "tests/extension-state-commands.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "tests/p11-child-fallback-wiring.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    },
+    "tests/pi-process-runner.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
+      "scope": "M1/M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
