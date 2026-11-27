@@ -138,7 +138,20 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": null,
+      "lease": {
+        "id": "manual-E-g2-t06-predicados-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "c12c2a928abcf3b3893566228711088a63b27b9d",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "files": [
+          ".github/workflows/ci.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts"
+        ],
+        "phase": "M2: formatos de revisión y pruebas ejecutables",
+        "startedAt": "2026-11-27T08:11:16.831Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -722,7 +735,18 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    ".github/workflows/ci.yml": {
+      "team": "E",
+      "lease": "manual-E-g2-t06-predicados-1127",
+      "scope": "M2"
+    },
+    "tests/flujo-agentes-nvidia-workflow.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-t06-predicados-1127",
+      "scope": "M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
