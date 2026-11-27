@@ -17,7 +17,7 @@ type AgentRole=AgentRequest["role"];
 export interface AgentTaskSpec{ id:string;role:AgentRole;prompt:string;repository:string;isolationKey:string;createdAt:string;ownerProcessId?:number;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;continuationOf?:string;dedupeKey?:string; }
 export interface AgentExecutionReceipt{ id:string;ok:true;output:string;sha256:string;nativeCompletion?:NativeWriterCompletion; }
 export interface AgentStateEvent{ id:string;revision:number;state:PublicAgentRecord["state"];at:string;summary?:string; }
-export interface AgentStoreEntry{ record:PublicAgentRecord;request:AgentTaskSpec;events:AgentStateEvent[];result?:AgentExecutionReceipt; }
+export interface AgentStoreEntry{ record:PublicAgentRecord;request:AgentTaskSpec;events:AgentStateEvent[];result?:AgentExecutionReceipt;preStartRejection?:string; }
 export interface AgentStoreFile{schema:typeof SCHEMA;revision:number;entries:AgentStoreEntry[];}
 /** Question-channel state. The shared lifecycle union still models only the six original states, so "waiting" is widened inside this durable store alone. */
 export type AgentStoreState=PublicAgentRecord["state"]|"waiting";
@@ -81,12 +81,19 @@ function processIsAlive(pid:number):boolean{
  try{process.kill(pid,0);return true;}catch(error){return !!error&&typeof error==="object"&&"code" in error&&(error as NodeJS.ErrnoException).code==="EPERM";}
 }
 function receiptDigest(key:Buffer,entry:AgentStoreEntry,output:string,nativeCompletion?:NativeWriterCompletion):string{return createHmac("sha256",key).update(JSON.stringify([entry.record.id,entry.record.owner,entry.record.sessionId,entry.record.projectId,entry.request,output,...(nativeCompletion?[nativeCompletion]:[])])).digest("hex");}
+function preStartDigest(key:Buffer,entry:AgentStoreEntry):string{return createHmac("sha256",key).update(JSON.stringify(["asen.continuation.pre-start/v1",entry.request,entry.record,entry.events])).digest("hex");}
+function unusedContinuation(entry:AgentStoreEntry,key?:Buffer):boolean{
+ const proof=entry.preStartRejection;
+ if(!key||!entry.request.continuationOf||entry.record.role!=="explorer"||entry.record.state!=="failed"||entry.result||!proof||!/^[a-f0-9]{64}$/u.test(proof))return false;
+ const states=entry.events.map(event=>event.state).join(",");
+ return (states==="queued,failed"||states==="queued,running,failed")&&timingSafeEqual(Buffer.from(proof,"hex"),Buffer.from(preStartDigest(key,entry),"hex"));
+}
 function validAgentHistory(events:AgentStateEvent[],record:PublicAgentRecord):boolean{
  for(let i=0;i<events.length;i++){const current=events[i]!;if(current.revision!==i+1||current.id!==record.id||typeof current.at!=="string"||!Number.isFinite(Date.parse(current.at)))return false;if(i===0){if(current.state!=="queued"||current.at!==record.createdAt)return false;}else{const previous=events[i-1]!;if(!AGENT_TRANSITIONS[previous.state]?.includes(current.state)||Date.parse(current.at)<Date.parse(previous.at))return false;if(previous.state==="completed"&&(current.state!=="interrupted"||current.summary!=="Unverified completion after restart; explicit review is required"))return false;}}
  const last=events.at(-1);return !!last&&last.state===record.state&&last.at===record.updatedAt&&last.summary===record.summary;
 }
 function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false):v is AgentStoreEntry{
- if(!v||typeof v!=="object"||Array.isArray(v))return false;const keys=["record","request","events",...(Object.hasOwn(v,"result")?["result"]:[])];if(!exact(v,keys))return false;
+ if(!v||typeof v!=="object"||Array.isArray(v))return false;const keys=["record","request","events",...(Object.hasOwn(v,"result")?["result"]:[]),...(Object.hasOwn(v,"preStartRejection")?["preStartRejection"]:[])];if(!exact(v,keys))return false;
  // SAFETY: entryValue validates the complete entry shape and all nested fields before returning true.
  const x=v as unknown as AgentStoreEntry,r=x.record;if(!r||!exact(r,["id","role","owner","sessionId","projectId","state","createdAt","updatedAt",...(Object.hasOwn(r,"summary")?["summary"]:[]),...(Object.hasOwn(r,"pendingQuestion")?["pendingQuestion"]:[])])||!exact(r.owner,["kind","id"])||!specValue(x.request)||x.request.id!==r.id||x.request.role!==r.role||x.request.isolationKey!==r.sessionId||x.request.repository!==r.projectId||!Array.isArray(x.events)||x.events.length<1||x.events.length>MAX_EVENTS)return false;
  try{createAgentRecord({id:r.id,role:r.role,owner:r.owner,sessionId:r.sessionId,projectId:r.projectId,createdAt:r.createdAt});}catch{return false;}
@@ -96,6 +103,7 @@ function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false
  if(Object.hasOwn(r,"pendingQuestion")!==(durable.state==="waiting")||question!==undefined&&(durable.state!=="waiting"||!pendingQuestionValue(question)||question.askedAt>Date.parse(durable.updatedAt)))return false;
  if(x.events.some((event,i)=>!exact(event,["id","revision","state","at",...(Object.hasOwn(event,"summary")?["summary"]:[])])||event.id!==r.id||event.revision!==i+1||!PERSISTED_STATES.includes(event.state)||typeof event.at!=="string"||!Number.isFinite(Date.parse(event.at))||(event.summary!==undefined&&(typeof event.summary!=="string"||event.summary.length>MAX_OUTPUT))))return false;
  if(!validAgentHistory(x.events,r))return false;
+ if(Object.hasOwn(x,"preStartRejection")&&!unusedContinuation(x,receiptKey))return false;
  if(x.result!==undefined){const result=x.result;if(!result||typeof result!=="object"||Array.isArray(result))return false;const shape=!!receiptKey&&exact(result,["id","ok","output","sha256",...(Object.hasOwn(result,"nativeCompletion")?["nativeCompletion"]:[])])&&(!Object.hasOwn(result,"nativeCompletion")||isNativePartitionWriterIdentity(r.role,r.id)&&validNativeWriterCompletion(result.nativeCompletion))&&result.id===r.id&&result.ok===true&&typeof result.output==="string"&&result.output.length<=MAX_OUTPUT&&typeof result.sha256==="string"&&/^[a-f0-9]{64}$/u.test(result.sha256);let authenticated=false;if(shape){const expected=Buffer.from(receiptDigest(receiptKey!,x,result.output,result.nativeCompletion),"hex"),actual=Buffer.from(result.sha256,"hex");authenticated=actual.length===expected.length&&timingSafeEqual(actual,expected);}if(!authenticated&&!(allowUnverifiedCompletion&&r.state==="completed"))return false;}
  if(allowUnverifiedCompletion&&r.state==="completed"&&x.events.at(-1)?.state==="completed")return true;
  return x.result===undefined?r.state!=="completed":r.state==="completed"&&x.events.at(-1)?.state==="completed";
@@ -103,7 +111,7 @@ function entryValue(v:unknown,receiptKey?:Buffer,allowUnverifiedCompletion=false
 export function parseAgentStore(raw:string,receiptKey?:Buffer,allowUnverifiedCompletion=false):AgentStoreFile{
  let value:unknown;try{value=JSON.parse(raw);}catch(error){throw error;}
  if(!exact(value,["schema","revision","entries"])||value.schema!==SCHEMA||!Number.isSafeInteger(value.revision)||Number(value.revision)<0||!Array.isArray(value.entries)||value.entries.length>MAX_RECORDS||!value.entries.every(entry=>entryValue(entry,receiptKey)||allowUnverifiedCompletion&&entryValue(entry,receiptKey,true)))throw new Error("Invalid ASEN agent store");
- const entries=(value.entries as unknown[]).map(rawEntry=>{const trusted=entryValue(rawEntry,receiptKey),entry=structuredClone(rawEntry) as AgentStoreEntry;if(allowUnverifiedCompletion&&!trusted){delete entry.result;}return entry;}),byId=new Map<string,AgentStoreEntry>(),continuations=new Set<string>();for(const entry of entries){if(byId.has(entry.record.id))throw new Error("Duplicate ASEN agent task id");byId.set(entry.record.id,entry);}for(const entry of entries){const parentId=entry.request.continuationOf;if(!parentId)continue;const parent=byId.get(parentId);if(!parent||parent.record.sessionId!==entry.record.sessionId||parent.record.projectId!==entry.record.projectId||parent.record.role!=="explorer"||entry.record.role!=="explorer"||continuations.has(parentId))throw new Error("Invalid or duplicate ASEN agent continuation");continuations.add(parentId);}
+ const entries=(value.entries as unknown[]).map(rawEntry=>{const trusted=entryValue(rawEntry,receiptKey),entry=structuredClone(rawEntry) as AgentStoreEntry;if(allowUnverifiedCompletion&&!trusted){delete entry.result;}return entry;}),byId=new Map<string,AgentStoreEntry>(),continuations=new Set<string>();for(const entry of entries){if(byId.has(entry.record.id))throw new Error("Duplicate ASEN agent task id");byId.set(entry.record.id,entry);}for(const entry of entries){const parentId=entry.request.continuationOf;if(!parentId)continue;const parent=byId.get(parentId);if(!parent||parent.record.sessionId!==entry.record.sessionId||parent.record.projectId!==entry.record.projectId||parent.record.role!=="explorer"||entry.record.role!=="explorer"||(!unusedContinuation(entry,receiptKey)&&continuations.has(parentId)))throw new Error("Invalid or duplicate ASEN agent continuation");if(!unusedContinuation(entry,receiptKey))continuations.add(parentId);}
  return {schema:SCHEMA,revision:Number(value.revision),entries:entries.map(entry=>structuredClone(entry))};
 }
 function empty():AgentStoreFile{return {schema:SCHEMA,revision:0,entries:[]};}
@@ -196,7 +204,7 @@ export class PersistentAgentStore implements AgentLifecycleSink{
    const parent=data.entries.find(entry=>entry.record.id===parentId&&entry.record.sessionId===sessionId&&sameWorkspaceIdentityPath(entry.record.projectId,projectId));
    if(!parent)throw new Error("Agent task is unavailable to this session or project");
    if(parent.record.state!=="interrupted"||parent.record.role!=="explorer"||parent.request.role!=="explorer"||parent.request.prompt==="Queued task payload unavailable")throw new Error("This task cannot be resumed safely; create a new task with fresh authority");
-   if(data.entries.some(entry=>entry.request.continuationOf===parentId))throw new Error("This interrupted task already has a continuation");
+   if(data.entries.some(entry=>entry.request.continuationOf===parentId&&!unusedContinuation(entry,this.#receiptKey)))throw new Error("This interrupted task already has a continuation");
    const request:AgentRequest={id:`agent-${randomUUID()}`,role:"explorer",prompt:parent.request.prompt,repository:parent.record.projectId,isolationKey:sessionId,parentId,owner,...(parent.request.model?{model:parent.request.model}:{}),...(parent.request.thinking?{thinking:parent.request.thinking}:{}),...(parent.request.modelFallback?{modelFallback:snapshotAgentModelFallback(parent.request.modelFallback)!}:{})};
    const spec=specFrom(request,createdAt),record=createAgentRecord({id:spec.id,role:spec.role,owner,sessionId,projectId:parent.record.projectId,createdAt}),entry:AgentStoreEntry={record,request:spec,events:[event(record,1)]};
    data.entries.push(entry);continuation=request;queued=record;
@@ -214,6 +222,13 @@ export class PersistentAgentStore implements AgentLifecycleSink{
   let completed:PublicAgentRecord|undefined;
   await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry)throw new Error("Agent lifecycle record does not exist");completed=completeAgentRecord(entry.record,result,this,at);entry.record=completed;entry.result={id,ok:true,output:result.output,...(result.nativeCompletion?{nativeCompletion:result.nativeCompletion}:{}),sha256:receiptDigest(this.#receiptKey,entry,result.output,result.nativeCompletion)};entry.events.push(event(completed,entry.events.length+1));});
   if(completed)this.#records.set(id,structuredClone(completed));
+ }
+ /** Solo se invoca desde la validación del Dispatcher anterior a runner.run. */
+ async rejectContinuationBeforeStart(id:string):Promise<void>{
+  let updated:PublicAgentRecord|undefined;
+  await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry||!entry.request.continuationOf||entry.record.role!=="explorer"||!["queued","running"].includes(entry.record.state)||entry.result)throw Error("No unused continuation claim");
+   updated=transitionAgent(entry.record,"failed",this.now(),"La continuación no se inició: autorización vigente rechazada; puede solicitarse de nuevo.");entry.record=updated;entry.events.push(event(updated,entry.events.length+1));entry.preStartRejection=preStartDigest(this.#receiptKey,entry);
+  });if(updated)this.#records.set(id,structuredClone(updated));
  }
  async failed(id:string,summary?:string,at=this.now()):Promise<void>{await this.#move(id,"failed",summary,at);}
  async cancelled(id:string,summary?:string,at=this.now()):Promise<void>{await this.#move(id,"cancelled",summary,at);}
