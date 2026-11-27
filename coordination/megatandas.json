@@ -183,7 +183,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Completar CI/revisión #160; nuevo ensayo exacto y separado solo con todas las puertas, no rearmar #159. Mantener el candidato anterior intacto.",
+      "next": "M2: #160 es el nuevo candidato de ensayo, leer modelCallException.nextTrialProposal (no usar consolidation.pr=159 como candidato de consumo). Verificar SHA exacto y revisión independiente, aplicar consentimiento del usuario ya registrado una sola vez tras todas las puertas; preservar intento anterior. No ampliar límites ni repetir.",
       "blocker": "T06 consumido: MODEL_MISMATCH en segundo modelo, Pi omitido. Sin reintentos. Continuar trabajos independientes M3–M5.",
       "generation": 2,
       "pr": 159,
@@ -2963,13 +2963,19 @@
       "reviewRequested": 7215065302,
       "ci": [
         {
-          "id": 45976362484,
-          "name": "Pi 1.2 runtime evidence",
-          "status": "in_progress",
-          "conclusion": null
+          "id": 45976410780,
+          "name": "CI rápida",
+          "status": "completed",
+          "conclusion": "success"
         },
         {
-          "id": 45976362711,
+          "id": 45976410678,
+          "name": "Release Gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45976410535,
           "name": "CI",
           "status": "in_progress",
           "conclusion": null
@@ -2979,12 +2985,6 @@
           "name": "Pi Free Smoke",
           "status": "completed",
           "conclusion": "skipped"
-        },
-        {
-          "id": 45976362482,
-          "name": "CI rápida",
-          "status": "in_progress",
-          "conclusion": null
         },
         {
           "id": 45976362507,
@@ -3003,13 +3003,56 @@
           "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
           "status": "in_progress",
           "conclusion": null
+        },
+        {
+          "id": 45976362711,
+          "name": "CI",
+          "status": "completed",
+          "conclusion": "cancelled"
+        },
+        {
+          "id": 45976362482,
+          "name": "CI rápida",
+          "status": "completed",
+          "conclusion": "cancelled"
+        },
+        {
+          "id": 45976362484,
+          "name": "Pi 1.2 runtime evidence",
+          "status": "completed",
+          "conclusion": "success"
         }
       ],
-      "consentRecorded": "El usuario solicita «Hazlo. Revisa cuáles hemos usado» tras propuesta expresa de repetir con modelo alternativo gratuito. Nueva autorización de alcance acotado, no reutilizar reserva anterior. No aplicar etiqueta hasta admitir SHA exacto."
+      "consentRecorded": "El usuario solicita «Hazlo. Revisa cuáles hemos usado» tras propuesta expresa de repetir con modelo alternativo gratuito. Nueva autorización de alcance acotado, no reutilizar reserva anterior. No aplicar etiqueta hasta admitir SHA exacto.",
+      "apiContract": {
+        "source": "https://build.nvidia.com/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning/apireference",
+        "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "reasoningBudget": {
+          "min": -1,
+          "max": 32768,
+          "selected": 0
+        },
+        "responseModelExpected": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+        "sourceConfirmed": true,
+        "realVerified": false
+      },
+      "integrated": {
+        "job": 140429204247,
+        "conclusion": "success"
+      },
+      "g08": {
+        "job": 140429205034,
+        "conclusion": "success"
+      },
+      "linux": {
+        "job": 140429204591,
+        "conclusion": "success"
+      },
+      "priorCiCancelled": "Al pasar borrador a listo, CI y rápida anteriores canceladas por concurrencia; considerar últimas ejecuciones por nombre e ID anteriores al consentimiento."
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T09:45:49.604Z",
+  "updatedAt": "2026-11-27T09:53:45.272Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3091,7 +3134,13 @@
         "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
         "owner": "E",
         "support": "B/C",
-        "next": "Candidato #160 separado: Lightning + Nano Omni. Verificar CI exacta y revisión independiente; mantener #159 histórico con ensayo parcial. Ensayo nuevo solo tras puertas y consentimiento de alcance exacto."
+        "next": "Candidato #160 separado: Lightning + Nano Omni. Verificar CI exacta y revisión independiente; mantener #159 histórico con ensayo parcial. Ensayo nuevo solo tras puertas y consentimiento de alcance exacto.",
+        "pendingTrial": {
+          "pr": 160,
+          "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
+          "state": "espera-CI-y-CodeRabbit",
+          "oldAttempt": 159
+        }
       },
       {
         "id": "M3",
