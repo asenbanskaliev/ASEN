@@ -89,6 +89,8 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  assert.ok(gate.includes('.user.login == "asenbanskaliev" and .body == $approval'));
  assert.ok(gate.includes('select(.user.login == "github-actions[bot]")'));
  assert.ok(gate.includes('.user.login == "coderabbitai[bot]" and .commit_id == $sha'));
+ assert.ok(gate.includes('.submitted_at < $cutoff'));
+ assert.ok(gate.includes('(.submitted_at | type) == "string"'));
  assert.ok(gate.includes('reviewThreads(first:100,after:$endCursor)'));
  assert.ok(gate.includes('.isResolved == true'));
  assert.ok(gate.includes('.created_at < $cutoff'));
