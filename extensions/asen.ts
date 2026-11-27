@@ -343,7 +343,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const ctx=agentDeliveryContext,owner=agentDeliveryIdentity,generation=parentBindingGeneration;
    if(!fallbackSessionReady||!ctx||!owner||owner.sessionId!==scope.sessionId||owner.projectId!==scope.projectId)return;
    void sessionIdentity(ctx).then(current=>{
-    if(fallbackSessionReady&&generation===parentBindingGeneration&&agentDeliveryContext===ctx&&agentDeliveryIdentity===owner&&current.sessionId===scope.sessionId&&current.projectId===scope.projectId)ctx.ui?.notify("Alternativas OAuth no disponibles; se conserva el modelo principal.","warning");
+    if(fallbackSessionReady&&generation===parentBindingGeneration&&agentDeliveryContext===ctx&&agentDeliveryIdentity===owner&&current.sessionId===scope.sessionId&&current.projectId===scope.projectId)ctx.ui?.notify("Alternativas OAuth no disponibles; se conservan las rutas compatibles sujetas a autorización.","warning");
    }).catch(()=>{});
   },authorizeModelFallback:async(attempt,signal)=>{
    const owner=agentDeliveryIdentity,context=agentDeliveryContext,generation=parentBindingGeneration;
