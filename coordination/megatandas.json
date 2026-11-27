@@ -138,7 +138,23 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": null,
+      "lease": {
+        "id": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+        "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127",
+        "files": [
+          "scripts/t06-nvidia-free-api-probe.mjs",
+          "tests/t06-nvidia-free-api-probe.test.mjs",
+          ".github/workflows/ci.yml",
+          ".github/workflows/t06-permission-probe.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts"
+        ],
+        "phase": "Nuevo candidato separado, preservar intento consumido",
+        "startedAt": "2026-11-27T09:44:44.075Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -811,7 +827,33 @@
       "reason": "Primera y única aplicación de etiqueta intentada; no repetir"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "scripts/t06-nvidia-free-api-probe.mjs": {
+      "team": "E",
+      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
+      "scope": "M2"
+    },
+    "tests/t06-nvidia-free-api-probe.test.mjs": {
+      "team": "E",
+      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
+      "scope": "M2"
+    },
+    ".github/workflows/ci.yml": {
+      "team": "E",
+      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
+      "scope": "M2"
+    },
+    ".github/workflows/t06-permission-probe.yml": {
+      "team": "E",
+      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
+      "scope": "M2"
+    },
+    "tests/flujo-agentes-nvidia-workflow.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
+      "scope": "M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -2909,6 +2951,32 @@
       "apiMarker": 7214649388,
       "piMarker": 7214649690,
       "labelRemoved": true
+    },
+    "nextTrialProposal": {
+      "state": "preparacion-sin-consumo",
+      "source": "Usuario: Hazlo. Revisa cuáles hemos usado; respuesta a propuesta de alternativa y repetición.",
+      "priorAttemptSha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+      "priorAttemptPreserved": true,
+      "modelAllowlist": [
+        "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+      ],
+      "evidence": [
+        {
+          "run": 45467138376,
+          "job": 138704946817,
+          "model": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "result": "PASS_REAL_NVIDIA_SCOPED_PARTITION_TEST_ONLY"
+        },
+        {
+          "run": 45491178357,
+          "job": 138789597796,
+          "model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+          "result": "Juez auténtico en PASS_REAL_FOCUSED_NVIDIA_FIX_TEST_ONLY; no prueba identificador HTTP exacto"
+        }
+      ],
+      "limits": "2 solicitudes API de máximo 128 tokens, 2 sesiones Pi solo lectura, sin reintentos, sin pago ni nuevos modelos automáticos; verificar exactitud y revisión del nuevo candidato antes de etiqueta.",
+      "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127"
     }
   },
   "globalFull": false,
