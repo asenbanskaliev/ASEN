@@ -366,7 +366,8 @@
           "src/runtime/lifecycle/parent-model-fallback.ts",
           "tests/parent-model-fallback.test.ts",
           "tests/pi-process-runner.test.ts",
-          "scripts/m2-nvidia-0910.ts"
+          "scripts/m2-nvidia-0910.ts",
+          "src/runtime/managed/managed-acquisition-copy.ts"
         ],
         "phase": "Cerrar hallazgos M2 de consentimiento vivo y evidencia, sin afectar M3/M4"
       }
@@ -1012,6 +1013,11 @@
       "team": "E",
       "lease": "manual-E-M1M2-161-ambito-y-recibos",
       "scope": "M2"
+    },
+    "src/runtime/managed/managed-acquisition-copy.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-ambito-y-recibos",
+      "scope": "M1/M2"
     }
   },
   "jointCorrection": {
