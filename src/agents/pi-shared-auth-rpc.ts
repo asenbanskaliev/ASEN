@@ -31,7 +31,7 @@ async function main():Promise<void>{
  const runtime=await pi.createAgentSessionRuntime(async target=>{
   if(created||target.cwd!==cwd||target.agentDir!==input.agentDir||target.sessionManager!==sessionManager)throw Error("OAuth child cannot change execution scope");
   created=true;
-  const session=await pi.createAgentSessionFromServices({services,sessionManager,model,...(input.thinking===undefined?{}:{thinkingLevel:input.thinking}),noTools:input.tools.length===0,tools:input.tools});
+  const session=await pi.createAgentSessionFromServices({services,sessionManager,model,...(input.thinking===undefined?{}:{thinkingLevel:input.thinking}),...(input.tools.length===0?{noTools:"all" as const}:{tools:input.tools})});
   return {...session,services,diagnostics:services.diagnostics};
  },{cwd,agentDir:input.agentDir,sessionManager});
  await pi.runRpcMode(runtime);
