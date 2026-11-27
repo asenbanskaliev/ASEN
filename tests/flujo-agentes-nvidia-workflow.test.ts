@@ -86,9 +86,15 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  assert.ok(begin>=0&&end>begin);
  const gate=ci.slice(begin,end);
  for(const required of ["pull_request.number == 159","feat/asen-equipo-E-M2-g2-evidencia-nvidia-158","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","actions: read","gh api --method DELETE","ASEN_EXPECTED_SHA","asen-t06-autorizar:$ASEN_EXPECTED_SHA","head_sha=$ASEN_EXPECTED_SHA","G08 actualización administrada aislada (Windows)","Megatanda T02–T10 y T11 (pruebas integradas sin modelos)"]){assert.ok(gate.includes(required),"Falta puerta NVIDIA M2: "+required);}
- assert.ok(gate.includes('select(.user.login == "asenbanskaliev")'));
+ assert.ok(gate.includes('.user.login == "asenbanskaliev" and .body == $approval'));
  assert.ok(gate.includes('select(.user.login == "github-actions[bot]")'));
- assert.ok(gate.includes('grep -Fqx -- "$approval"'));
+ assert.ok(gate.includes('.user.login == "coderabbitai[bot]" and .commit_id == $sha'));
+ assert.ok(gate.includes('reviewThreads(first:100,after:$endCursor)'));
+ assert.ok(gate.includes('.isResolved == true'));
+ assert.ok(gate.includes('.created_at < $cutoff'));
+ assert.ok(gate.includes('.updated_at <= $cutoff'));
+ assert.ok(gate.indexOf('/reviews"')<gate.indexOf('gh api --method POST "$issue/comments"'));
+ assert.doesNotMatch(gate,/grep -Fqx -- "\$approval"/u);
  assert.ok(gate.includes('grep -Fqx -- "$api_marker"'));
  assert.ok(gate.includes('grep -Fqx -- "$pi_marker"'));
  assert.ok(gate.includes('asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA'));
