@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 153,
       "sha": "6a71abdbbccbe1479f6238da9d9712c78d88bdd8",
-      "next": "Además de validar #153, coordinar correcciones M2 de fallback público y revalidación tras reinicio (CodeRabbit #154 fuera y dentro del diff). Reservar antes de escribir; no duplicar cambios con Work.",
+      "next": "V6: mientras M2 valida, auditar M3 G03/P04 y sucesora histórica; después G02/G07 M5. Solo código independiente expresamente reservado, candidato admitido, no tocar #159 ni #156 sin asignación E; sin modelos.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -91,7 +91,7 @@
       "scope": "Revisión, recibos, jueces, Fix y aceptación final",
       "pr": 132,
       "sha": "23bc4ce17c5716df38dde3119e7653ed55125aee",
-      "next": "Auditar independencia y evidencia parcial de jueces sobre #140; preparar G04–G06 en archivos independientes.",
+      "next": "V6: auditoría independiente M2 del SHA actual y M4 G04–G06/P01/P06 de #156; separar revisión de desarrollo, registrar carencias exactas, sin autoaprobar; sin modelos.",
       "files": [
         "src/runtime/lifecycle/native-integration-review.ts",
         "tests/native-partition-flow.test.ts"
@@ -183,8 +183,8 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Verificar nuevo SHA exacto #159, CI y revisión independiente sin hilos accionables. Aplicar consentimiento delegado y etiqueta única solo después de todas las puertas y verificar evidencias. En paralelo reconciliar candidato separado #156 M3/M4 tras CI/revisión; no mezclar hasta admisión de M2.",
-      "blocker": "M2: predicados jq corregidos, CI y revisión exacta pendientes; #156 validada como candidata separada. Sin NVIDIA hasta puertas completas.",
+      "next": "V6: cierre M2 exacto y ensayo acotado; después rama acumulativa M3/M4 basada en M2 admitido y #156. No modificar #159 una vez acreditado salvo defecto real. Coordinar M5 y M6, preservar plan rector.",
+      "blocker": "CI y revisión exactas del nuevo SHA M2; #156 validada; M3–M6 organizadas por dependencias.",
       "generation": 2,
       "pr": 159,
       "sha": "e3b4553a29da86fc3a35b59749fcf44d8e82eb69",
@@ -2260,12 +2260,57 @@
     },
     "ci": {
       "sha": "e3b4553a29da86fc3a35b59749fcf44d8e82eb69",
-      "conclusion": "pendiente"
+      "conclusion": "pendiente",
+      "latest": [
+        {
+          "name": "Pi 1.2 runtime evidence",
+          "id": 45968644270,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Phase 0 Architecture",
+          "id": 45968644261,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Release Gate",
+          "id": 45968644257,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 45968644301,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "CI rápida",
+          "id": 45968644276,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "CI",
+          "id": 45968644548,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Pi Free Smoke",
+          "id": 45968644421,
+          "status": "completed",
+          "conclusion": "skipped"
+        }
+      ]
     },
     "review": {
       "sha": "e3b4553a29da86fc3a35b59749fcf44d8e82eb69",
       "confirmed": false,
-      "scope": "Corroboración de revisiones vacías por resumen exacto, rechazo de dictámenes adversos y tardíos; nueva revisión requerida."
+      "scope": "Corroboración de revisiones vacías por resumen exacto, rechazo de dictámenes adversos y tardíos; nueva revisión requerida.",
+      "requestedCommentId": 7213962339
     },
     "audit": {
       "scope": "Orden temporal de revisión/consentimiento y revalidación tras escritura running. Pruebas nuevas; CI pendiente."
@@ -2606,7 +2651,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T08:49:16.210Z",
+  "updatedAt": "2026-11-27T08:49:50.640Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -2660,7 +2705,95 @@
       "source": "CodeRabbit final_review_risk_coverage exacta, no actionable comments, todos los hilos cerrados",
       "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401"
     },
-    "next": "Verificar CI y revisión exacta; confirmar regresión de dictámenes con hallazgos y no aceptación. No mezclar M2 hasta admisión.",
+    "next": "Candidato #156 validado. Comparación de tres archivos compartidos resuelta por contenido. Esperar M2 admitido para crear rama acumulativa separada y validar recorrido integrado, no cerrar objetivos sin evidencia real.",
     "previousSha": "8c15dde53a64759e46034ec83eb8b77e95e26920"
+  },
+  "executionPlan": {
+    "version": "V6",
+    "updatedAt": "2026-11-27T08:49:50.640Z",
+    "source": {
+      "pr": 61,
+      "sha": "a1c6bb318388771a7c3298205535b4801a1d2c8a",
+      "plan": "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
+      "acceptance": "odd/tasks/flujo-agentes-18-objetivos-12-puntos-aceptacion-20261123.md"
+    },
+    "rule": "Un candidato acumulativo por etapa, sin cambios cosméticos ni nuevas ejecuciones si no hay defecto reproducible. Máximo dos reservas de escritura, archivos exclusivos, E coordina archivos compartidos. CI y revisión exactas, liberar antes de esperar. La evidencia real no se hereda a un SHA distinto.",
+    "stages": [
+      {
+        "id": "M1",
+        "state": "estabilizacion-tecnica-validada",
+        "pr": 144,
+        "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+        "next": "Conservar evidencia y ancestros, no volver a integrar piezas históricas; sin aceptación global."
+      },
+      {
+        "id": "M2",
+        "state": "ultima-validacion",
+        "pr": 159,
+        "sha": "e3b4553a29da86fc3a35b59749fcf44d8e82eb69",
+        "owner": "E",
+        "support": "B/C",
+        "next": "Esperar CI completa y revisión exacta tras ajuste de formato real; no más cambios si están verdes. Cerrar hilos solo con confirmación independiente explícita y prueba; verificar identidad del propietario, comentario exacto y etiqueta única con autorización ya registrada. Recoger API/Pi y distinguir identidad declarada/observada. Si falla o reserva incierta, detener sin reintentar. No acreditar objetivos 9/10 más allá de evidencia real."
+      },
+      {
+        "id": "M3",
+        "state": "candidato-separado-validado",
+        "pr": 156,
+        "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
+        "owner": "B",
+        "support": "C/E",
+        "next": "Auditar G03/P04 y hallazgo histórico sucesora con HEAD cambiado; comparar las ocho rutas de Work con M2. Preparar pruebas sin modelos de reinicio, recibos, dos raíces y sucesora; no repetir trabajos aprobados. Integración solo tras admisión M2 en rama nueva, no #159."
+      },
+      {
+        "id": "M4",
+        "state": "candidato-separado-validado",
+        "pr": 156,
+        "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
+        "owner": "C",
+        "support": "E",
+        "next": "Comprobar G04–G06, P01/P06, riesgo proporcional, Fix, recibo firmado, rutas sensibles; conservar pruebas aprobadas #156. Identificar huecos exactos antes de escribir. No modelos."
+      },
+      {
+        "id": "M5",
+        "state": "auditoria-paralela-independiente",
+        "owner": "B",
+        "support": "E",
+        "next": "Auditar G02/G07, CTX y P05 sobre candidato admitido; inventariar métricas, faltantes y comparación 1/2 agentes. No duplicar #137/#149. Preparar solo módulos aislados tras asignación E; no mediciones reales sin autorización."
+      },
+      {
+        "id": "M6",
+        "state": "bloqueado-por-aceptacion",
+        "owner": "E",
+        "support": "B/C",
+        "next": "Matriz 18+12, P01-P06, G01-G08 y CTX/E1-E4/F: evidencia exacta por fila, recorrido natural completo, A/B, tres sistemas/cuatro modos, CI y revisión independiente. Requiere autorización específica para ensayos reales adicionales; no extender T06. globalFull:false hasta acreditar todo."
+      }
+    ],
+    "integration": {
+      "base": "630adf5c11330ec3e2d8f5a55085db05dae9fb33",
+      "work": "853d105dd569903400a688cd65eb9f5ff3f0e401",
+      "policy": "No tocar #159 tras el ensayo. Crear candidato nuevo desde M2 admitido y aplicar cambios de Work preservando los ancestros y los contratos. No fusionar main, #61 ni #115.",
+      "sharedFiles": [
+        {
+          "path": "src/runtime/lifecycle/native-integration-review.ts",
+          "resolution": "Conservar Work: M2 idéntico a ancestro común, Work endurece recuperación."
+        },
+        {
+          "path": "tests/odd-unit-partition.test.ts",
+          "resolution": "Conservar Work: M2 idéntico a ancestro común."
+        },
+        {
+          "path": "tests/ecosystem-evidence-bundle.test.ts",
+          "resolution": "Conservar M2: incluye fixture RPC corregida de Work y pruebas negativas adicionales G01."
+        }
+      ],
+      "remainingWorkFiles": [
+        "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md",
+        "src/runtime/agents/agent-store.ts",
+        "src/runtime/lifecycle/odd-unit-plan.ts",
+        "tests/agent-store.test.ts",
+        "tests/asen-c-checkpoint-recovery.test.ts"
+      ],
+      "condition": "Comprobar contenido de las cinco rutas frente a ancestro y M2 antes de copiar/mezclar, validar en PR independiente."
+    }
   }
 }
