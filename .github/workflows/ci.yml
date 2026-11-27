@@ -730,9 +730,9 @@ jobs:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 160 &&
+      github.event.pull_request.number == 161 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127' &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127' &&
       github.event.pull_request.draft == false &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'asen-t06-nvidia-una-vez' &&
@@ -808,9 +808,9 @@ jobs:
        (github.event.pull_request.number == 61 &&
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.head_ref == 'feat/flujo-de-agentes-20261115') ||
-       (github.event.pull_request.number == 160 &&
+       (github.event.pull_request.number == 161 &&
         github.event.pull_request.head.repo.full_name == github.repository &&
-        github.head_ref == 'feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127')
+        github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127')
       ) &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'asen-t06-nvidia-una-vez' &&
@@ -884,9 +884,9 @@ jobs:
         (github.event.pull_request.number == 61 &&
          github.event.pull_request.head.repo.full_name == github.repository &&
          github.head_ref == 'feat/flujo-de-agentes-20261115') ||
-        (github.event.pull_request.number == 160 &&
+        (github.event.pull_request.number == 161 &&
          github.event.pull_request.head.repo.full_name == github.repository &&
-         github.head_ref == 'feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127')
+         github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127')
        )
       ) &&
       github.event.action == 'labeled' &&
@@ -933,11 +933,17 @@ jobs:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-pi-config
           ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-t06-nvidia-pi/receipt.json
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY ausente; prueba Pi auténtica bloqueada"; exit 1; }
           mkdir -p "$PI_CODING_AGENT_DIR"
-          timeout 250s tsx scripts/t06-nvidia-pi-concurrent.ts
+          if test "$PR_NUMBER" = 161; then
+            node scripts/t12-pi-retry-settings.mjs
+            ASEN_M2_TRIAL_AUTHORIZED="$ASEN_EXPECTED_SHA" timeout 250s tsx scripts/m2-nvidia-0910.ts
+          else
+            timeout 250s tsx scripts/t06-nvidia-pi-concurrent.ts
+          fi
       - name: Conservar informe de agentes Pi del SHA exacto
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
@@ -961,7 +967,7 @@ jobs:
        github.head_ref == 'feat/asen-equipo-E-M2-g2-reparar-admision-152' ||
        github.head_ref == 'feat/asen-equipo-E-M2-g2-limites-154' ||
        github.head_ref == 'feat/asen-equipo-E-M2-g2-rutas-vigentes-155' ||
-       (github.event.pull_request.number == 160 && github.head_ref == 'feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127'))
+       (github.event.pull_request.number == 161 && github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127'))
     runs-on: windows-latest
     timeout-minutes: 20
     permissions:

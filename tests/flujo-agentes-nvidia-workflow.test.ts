@@ -86,7 +86,7 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  const begin=ci.indexOf("\n  t06-m2-authorization:"),end=ci.indexOf("\n  t06-nvidia-free-api:",begin);
  assert.ok(begin>=0&&end>begin);
  const gate=ci.slice(begin,end);
- for(const required of ["pull_request.number == 160","feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","actions: read","gh api --method DELETE","ASEN_EXPECTED_SHA","asen-t06-autorizar:$ASEN_EXPECTED_SHA","head_sha=$ASEN_EXPECTED_SHA","G08 actualización administrada aislada (Windows)","Megatanda T02–T10 y T11 (pruebas integradas sin modelos)"]){assert.ok(gate.includes(required),"Falta puerta NVIDIA M2: "+required);}
+ for(const required of ["pull_request.number == 161","feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","actions: read","gh api --method DELETE","ASEN_EXPECTED_SHA","asen-t06-autorizar:$ASEN_EXPECTED_SHA","head_sha=$ASEN_EXPECTED_SHA","G08 actualización administrada aislada (Windows)","Megatanda T02–T10 y T11 (pruebas integradas sin modelos)"]){assert.ok(gate.includes(required),"Falta puerta NVIDIA M2: "+required);}
  assert.ok(gate.includes('.user.login == "asenbanskaliev" and .body == $approval'));
  assert.ok(gate.includes('select(.user.login == "github-actions[bot]")'));
  assert.ok(gate.includes('.user.login == "coderabbitai[bot]" and .commit_id == $sha'));
@@ -121,7 +121,7 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  assert.ok(apiCondition.includes("(github.event.pull_request.number == 61 || needs.t06-m2-authorization.result == 'success')"));
  for(const job of [api,piNative]){
   assert.ok(job.includes("pull_request.number == 61"));
-  assert.ok(job.includes("pull_request.number == 160"));
+  assert.ok(job.includes("pull_request.number == 161"));
   assert.ok(!job.includes("pull_request.number == 149"));
   assert.ok(job.includes("event.label.name == 'asen-t06-nvidia-una-vez'"));
   assert.ok(job.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
@@ -136,8 +136,8 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  assert.ok(windowsStart>=0&&windowsEnd>windowsStart);
  const windows=ci.slice(windowsStart,windowsEnd);
  assert.ok(windows.includes("runs-on: windows-latest"));
- assert.ok(windows.includes("pull_request.number == 160"));
- assert.ok(windows.includes("feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127"));
+ assert.ok(windows.includes("pull_request.number == 161"));
+ assert.ok(windows.includes("feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127"));
  assert.ok(windows.includes("tests/managed-install.test.ts"));
  assert.ok(windows.includes("tests/managed-maintenance-lock.test.ts"));
  assert.ok(windows.includes("tests/t09-lifecycle.test.ts"));
@@ -220,4 +220,21 @@ test("M2 T06: predicado real jq exige revisión independiente exacta y anterior 
  check([],[{...summary,user:{login:"asenbanskaliev"}}],false);
  check([],[{...summary,body:summary.body.replaceAll(sha,"b".repeat(40))}],false);
  check([],[{...summary,body:summary.body.replace('"kind":"reviewed"','"kind":"partial"')}],false);
+});
+
+
+test("M2 09/10: ensayo específico solo en el candidato autorizado, sin reintentos implícitos",()=>{
+ const job=ci.slice(ci.indexOf("\n  t06-nvidia-pi-native:"),ci.indexOf("\n\n  managed-update-windows:"));
+ assert.ok(job.includes("pull_request.number == 161"));
+ assert.ok(job.includes("feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127"));
+ assert.ok(job.includes('test "$PR_NUMBER" = 161'));
+ assert.ok(job.includes("node scripts/t12-pi-retry-settings.mjs"));
+ assert.ok(job.includes('ASEN_M2_TRIAL_AUTHORIZED="$ASEN_EXPECTED_SHA" timeout 250s tsx scripts/m2-nvidia-0910.ts'));
+ assert.ok(job.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
+ const source=readFileSync(new URL("../scripts/m2-nvidia-0910.ts",import.meta.url),"utf8");
+ assert.match(source,/continueInterruptedExplorer\(/u);
+ assert.match(source,/requireChildModelBeforePrompt:true/u);
+ assert.match(source,/noTools:true/u);
+ assert.match(source,/NO_PROVIDER_FAILURE_OBSERVED/u);
+ assert.match(source,/billingVerified:false/u);
 });
