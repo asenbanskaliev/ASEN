@@ -770,7 +770,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
           pi --version
-          tsx --test tests/m2-controlled-failure.test.ts
+          ASEN_M2_NATIVE_OFFLINE=1 tsx --test tests/m2-controlled-failure.test.ts
           mkdir -p "$PI_CODING_AGENT_DIR"
           node scripts/t12-pi-retry-settings.mjs
       - name: Revalidar revisión exacta y ejecución única
@@ -875,7 +875,8 @@ jobs:
           gh api --method POST "$issue/comments" -f body="$api_marker" >/dev/null
           gh api --method POST "$issue/comments" -f body="$pi_marker" >/dev/null
           gh api --method DELETE "$issue/labels/$TRIAL_LABEL" >/dev/null
-          test -z "$(gh api "$issue/labels" --paginate --jq '.[] | .name' | grep -Fx -- "$TRIAL_LABEL" || true)"
+          remaining_labels=$(gh api "$issue/labels" --paginate --jq '.[] | .name')
+          if grep -Fxq -- "$TRIAL_LABEL" <<< "$remaining_labels"; then exit 1; fi
           test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
 
   t06-nvidia-free-api:
