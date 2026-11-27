@@ -95,7 +95,7 @@ test("UFC-M2-03c shipped request guidance and tool description keep the same no-
 });
 
 test("B1 rechaza alternativas retiradas al continuar Explorer antes de reclamar el intento",async()=>{
- const saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}]};
+ const saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope:"global" as const,name:"perfil",model:"nvidia/modelo-a"}};
  let started=0;
  const runtime={query:async()=>({...interruptedEntry,spec:{model:"nvidia/modelo-a",modelFallback:saved}}),continue:async()=>{started++;return "unused";}};
  await assert.rejects(()=>continueInterruptedExplorer({runtime,agentId:"parent",identity,readCurrentDirectFallback:async()=>undefined}),/alternativas del perfil cambiaron/u);
@@ -120,4 +120,15 @@ test("B1 conserva la causa de interrupción si se retira la alternativa antes de
  await assert.rejects(()=>continueInterruptedExplorer(input),/alternativas del perfil cambiaron/u);
  assert.equal(enqueued,0);assert.equal(current.current.state,"blocked");assert.equal(current.current.reason,todo.current.reason);
  const result=await continueInterruptedExplorer(input);assert.equal(result.id,"child");assert.equal(enqueued,1);
+});
+
+
+test("M2: una alternativa directa antigua o de otro ámbito no autoriza reanudar",async()=>{
+ const chain=[{model:"nvidia/modelo-b"}],model="nvidia/modelo-a",origin={scope:"project" as const,name:"perfil",model};
+ let starts=0;
+ for(const saved of [{profile:"perfil",chain},{profile:"perfil",chain,origin}]){
+  const runtime={query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{starts++;return "child";}};
+  await assert.rejects(()=>continueInterruptedExplorer({runtime,agentId:"parent",identity,readCurrentDirectFallback:async()=>({profile:"perfil",chain,origin:{...origin,scope:"global"}})}),/alternativas del perfil cambiaron/u);
+ }
+ assert.equal(starts,0);
 });
