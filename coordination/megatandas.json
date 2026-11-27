@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 153,
       "sha": "6a71abdbbccbe1479f6238da9d9712c78d88bdd8",
-      "next": "V6: ocho rutas verificadas. M3-P04-SUCESORA-COMANDO: prueba pública tras HEAD posterior en candidato acumulativo. Preparar con base admitida y reserva E; no tocar #159/#156. Auditar G03 y luego M5.",
+      "next": "Auditar sin llamadas modelo devuelto por NVIDIA frente al solicitado, sin asumir equivalencia; en paralelo M3 recuperación pública y G03 sobre futuro candidato separado. Preparar alternativa solo con evidencia oficial y nueva autorización.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -183,8 +183,8 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "V6: cierre M2 exacto y ensayo acotado; después rama acumulativa M3/M4 basada en M2 admitido y #156. No modificar #159 una vez acreditado salvo defecto real. Coordinar M5 y M6, preservar plan rector.",
-      "blocker": "Recoger evidencia API/Pi del único ensayo T06; no repetir ni modificar SHA.",
+      "next": "Consolidar M3/M4 en candidato separado sobre base técnicamente validada #159, sin afirmar M2 cerrada ni repetir consumo. B audita identidad declarada y G03, C seguridad y Fix. Mantener M2 evidencia real parcial y solicitar nueva autorización solo cuando exista propuesta exacta y verificada.",
+      "blocker": "T06 consumido: MODEL_MISMATCH en segundo modelo, Pi omitido. Sin reintentos. Continuar trabajos independientes M3–M5.",
       "generation": 2,
       "pr": 159,
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
@@ -861,7 +861,7 @@
       157,
       158
     ],
-    "status": "admitido-tecnicamente-ensayo-real-en-curso",
+    "status": "admitido-tecnicamente-M2-real-parcial-bloqueado",
     "globalFull": false,
     "previousCandidate": {
       "pr": 159,
@@ -2483,6 +2483,45 @@
     },
     "audit": {
       "scope": "Orden temporal de revisión/consentimiento y revalidación tras escritura running. Pruebas nuevas; CI pendiente."
+    },
+    "realEvidence": {
+      "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+      "run": 45973464561,
+      "authorizationJob": 140419302714,
+      "authorization": "success",
+      "apiJob": 140419403494,
+      "apiConclusion": "failure",
+      "piJob": 140419511625,
+      "piConclusion": "skipped",
+      "artifactId": 15185874301,
+      "artifactDigest": "sha256:95b3eab9c0f5c9277ebd928ff514d487f5172da90c9a2e75681e70e27f727a99",
+      "apiRequests": 2,
+      "piSessions": 0,
+      "retries": 0,
+      "overlap": true,
+      "results": [
+        {
+          "requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "returned": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "http": 200,
+          "status": "api-confirmed",
+          "totalTokens": 58
+        },
+        {
+          "requested": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          "returned": "private/nvidia/nemotron-3.5-super-120b-a12b",
+          "http": 200,
+          "status": "blocked",
+          "errorCode": "MODEL_MISMATCH",
+          "totalTokens": null
+        }
+      ],
+      "distinctModelIdsVerified": false,
+      "billingVerified": false,
+      "costVerified": false,
+      "apiMarker": 7214649388,
+      "piMarker": 7214649690,
+      "labelRemoved": true
     }
   },
   "gentleShell5": {
@@ -2750,7 +2789,7 @@
   },
   "modelCallException": {
     "enabled": false,
-    "state": "ensayo-autorizado-etiqueta-aplicada-espera-evidencia",
+    "state": "consumida-ensayo-bloqueado-identidad-modelo",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 159,
     "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
@@ -2823,7 +2862,7 @@
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "owner": "asenbanskaliev",
       "summaryId": 7211220125,
-      "phase": "etiqueta-aplicada",
+      "phase": "consumida-sin-repeticion",
       "noRetry": true,
       "commentId": 7214634323,
       "labelApplied": true,
@@ -2831,10 +2870,49 @@
       "consentCreatedAt": "2026-11-27T09:24:00Z",
       "verificationSource": "fetch_pr_comments",
       "labelReservation": "manual-E-g2-T06-etiqueta-1127"
+    },
+    "actualAttempt": {
+      "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+      "run": 45973464561,
+      "authorizationJob": 140419302714,
+      "authorization": "success",
+      "apiJob": 140419403494,
+      "apiConclusion": "failure",
+      "piJob": 140419511625,
+      "piConclusion": "skipped",
+      "artifactId": 15185874301,
+      "artifactDigest": "sha256:95b3eab9c0f5c9277ebd928ff514d487f5172da90c9a2e75681e70e27f727a99",
+      "apiRequests": 2,
+      "piSessions": 0,
+      "retries": 0,
+      "overlap": true,
+      "results": [
+        {
+          "requested": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "returned": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "http": 200,
+          "status": "api-confirmed",
+          "totalTokens": 58
+        },
+        {
+          "requested": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          "returned": "private/nvidia/nemotron-3.5-super-120b-a12b",
+          "http": 200,
+          "status": "blocked",
+          "errorCode": "MODEL_MISMATCH",
+          "totalTokens": null
+        }
+      ],
+      "distinctModelIdsVerified": false,
+      "billingVerified": false,
+      "costVerified": false,
+      "apiMarker": 7214649388,
+      "piMarker": 7214649690,
+      "labelRemoved": true
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T09:24:35.159Z",
+  "updatedAt": "2026-11-27T09:30:28.151Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -2911,12 +2989,12 @@
       },
       {
         "id": "M2",
-        "state": "admitido-tecnicamente-ensayo-real-en-curso",
+        "state": "ensayo-real-parcial-modelo-no-coincide",
         "pr": 159,
         "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
         "owner": "E",
         "support": "B/C",
-        "next": "Esperar CI completa y revisión exacta tras ajuste de formato real; no más cambios si están verdes. Cerrar hilos solo con confirmación independiente explícita y prueba; verificar identidad del propietario, comentario exacto y etiqueta única con autorización ya registrada. Recoger API/Pi y distinguir identidad declarada/observada. Si falla o reserva incierta, detener sin reintentar. No acreditar objetivos 9/10 más allá de evidencia real."
+        "next": "Conservar SHA y artefacto. El segundo proveedor declara private/nvidia/nemotron-3.5-super-120b-a12b en vez del modelo VL solicitado. No homologar alias ni identidad sin evidencia oficial; analizar catálogo y contrato de identidad sin llamar modelos. No repetir T06 ni rearmar. Requiere nueva autorización específica antes de un nuevo ensayo. M3/M4 pueden preparar candidato separado sobre base técnicamente admitida, nunca afirmar cierre M2."
       },
       {
         "id": "M3",
@@ -3000,7 +3078,7 @@
         "tests/agent-store.test.ts",
         "tests/asen-c-checkpoint-recovery.test.ts"
       ],
-      "condition": "Las ocho rutas ya comparadas contra ancestro 630adf5. Siete versiones de Work y fixture RPC con pruebas negativas de M2. Verificar blobs antes de aplicar en candidato acumulativo, luego CI y revisión nuevas. Sin cambiar #159.",
+      "condition": "Base M2 técnicamente admitida; ensayo real parcial, no cerrado. Puede prepararse candidato M3/M4 separado sin transferir evidencia ni permiso de consumo. Validar siete rutas Work y conservar pruebas RPC de M2. No modificar #159 ni activar NVIDIA.",
       "verifiedRemainingFiles": [
         {
           "path": "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md",
