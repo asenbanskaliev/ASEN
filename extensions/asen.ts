@@ -737,10 +737,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   // Un único lector por ámbito para las rutas públicas y el avance automático.
   const readFallbacksByScope=async(identity:ProfileSessionIdentity)=>{
    const [globalFallbacks,projectFallbacks]=await Promise.all([
-    profileFallbacksReader(profileFallbacksFile).catch(()=>undefined),
-    profileFallbacksReader(path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>undefined)
+    profileFallbacksReader(profileFallbacksFile).catch(()=>null),
+    profileFallbacksReader(path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>null)
    ]);
-   return {...(globalFallbacks?{global:globalFallbacks}:{}),...(projectFallbacks?{project:projectFallbacks}:{})};
+   // null significa archivo inválido; undefined significa ausente.
+   return {...(globalFallbacks!==undefined?{global:globalFallbacks}:{}),...(projectFallbacks!==undefined?{project:projectFallbacks}:{})};
   };
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity,directExplorer)=>{
    const layers=await profileLayer(identity),route=resolveRuntimeRoute(layers,role);
@@ -870,7 +871,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
    fallbackSessionReady=false;fallbackConsentPending?.controller.abort();
     const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
+   const startupCurrent=()=>parentGeneration===parentBindingGeneration&&!hostStatusClosed&&!ctx.signal?.aborted;
    const pendingModelMutation=parentFallback.drainMutation();if(pendingModelMutation)await pendingModelMutation;
+   if(!startupCurrent())return;
    t11Preset=readAsenAppearance(home()).preset;
    const layout=readT11Layout(home());t11Position=layout.position;t11Density=layout.density;
    const chrome=readT11Chrome(home());t11Header=chrome.header;t11Surface=chrome.surface;
@@ -958,6 +961,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      },
     });
    }
+   if(!startupCurrent())return;
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.()){
@@ -995,13 +999,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const startupSummary = startupSnapshot ? buildStatus(startupSnapshot).summary : "Listo para empezar";
     ctx.ui?.notify?.(`ASEN: ${startupSummary}`, "info");
    } catch {/* Best effort only; never interrupt Pi startup. */}
+   if(!startupCurrent())return;
    validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
    if(heldNoticeBoundaryTimer){clearTimeout(heldNoticeBoundaryTimer);heldNoticeBoundaryTimer=undefined;}
    if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   if(!startupCurrent())return;
    publishT11Chrome(ctx);
    if(ctx.sessionManager?.getSessionId?.()){
-    agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);fallbackSessionReady=parentGeneration===parentBindingGeneration&&!hostStatusClosed;notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
+    const startupIdentity=await sessionIdentity(ctx);
+    if(!startupCurrent()||ctx.sessionManager?.getSessionId?.()!==startupIdentity.sessionId)return;
+    agentDeliveryContext=ctx;agentDeliveryIdentity=startupIdentity;fallbackSessionReady=true;notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
     try{
      const jobs=backgroundJobs.list(agentDeliveryIdentity.sessionId,agentDeliveryIdentity.projectId),pendingIds=new Set(pendingBackgroundJobNotifications(jobs,agentDeliveryIdentity.sessionId,agentDeliveryIdentity.projectId).map(item=>item.id));
      // A journaled "running" operation is projected as interrupted after restart, but
@@ -1021,7 +1029,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(todos){try{identity=await sessionIdentity(ctx);if(agentRuntimePromise&&taskAgentLinks)await new TaskAgentTodoReconciler(todos,await agentRuntimePromise,taskAgentLinks).reconcile(identity);await todos.recover(identity);}catch{ctx.ui.notify("ASEN no pudo recuperar el estado de las tareas; no ha repetido ninguna.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN aisló un archivo de tareas dañado; no inició ninguna tarea guardada.","error");if(identity){const interrupted=(await todos.list(identity)).filter(item=>item.current.state==="blocked"&&/restarted|session ended|interrupted/iu.test(item.current.reason??""));if(interrupted.length)ctx.ui.notify(todoProgressSummary(interrupted),"info");}}
    await refreshTodoWidget(ctx);
    if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN detectó y aisló datos de atribución dañados.","error");}
-   if(agentRuntimePromise){const runtime=await agentRuntimePromise;identity??=await sessionIdentity(ctx);agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
+   if(agentRuntimePromise){const runtime=await agentRuntimePromise;identity??=await sessionIdentity(ctx);if(!startupCurrent()||ctx.sessionManager?.getSessionId?.()!==identity.sessionId)return;agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
     if(childSelectionSource&&selectionOwner===selectionScope){
      const ownerIdentity=Object.freeze({sessionId:identity.sessionId,projectId:identity.projectId});
      const current=()=>selectionOwner===selectionScope&&selectionGeneration===selectionScope.generation&&ctx.sessionManager===selectionScope.manager&&ctx.cwd===selectionScope.cwd&&ctx.sessionManager?.getSessionId?.()===ownerIdentity.sessionId&&selectionScope.sessionId===ownerIdentity.sessionId;
