@@ -45,6 +45,7 @@ export async function probeNvidiaFreeApi({
   try{
    const response=await request(NVIDIA_FREE_URL,{
     method:"POST",
+    redirect:"error",
     headers:{
      "Authorization":"Bearer "+apiKey,
      "Content-Type":"application/json",
@@ -97,11 +98,14 @@ export async function probeNvidiaFreeApi({
  const [a,b]=results;
  const overlapped=!!a&&!!b&&Math.max(a.started,b.started)<Math.min(a.finished,b.finished);
  const completed=results.length===2&&results.every(x=>x.status==="api-confirmed");
+ // La lista solicitada no es prueba de identidad: ambas respuestas deben estar confirmadas.
+ const distinctModelIdsVerified=completed&&new Set(results.map(x=>x.modelReturned)).size===2;
  return Object.freeze({
   schema:"asen.t06.nvidia.free-api-probe/v1",
-  status:completed&&overlapped&&modelList[0]!==modelList[1]?"AUTHENTICATED_API_PARALLEL":"BLOCKED",
+  status:distinctModelIdsVerified&&overlapped?"AUTHENTICATED_API_PARALLEL":"BLOCKED",
   startedAt,finishedAt:new Date().toISOString(),
-  endpoint:"NVIDIA_BUILD_TRIAL",modelsRequested:[...modelList],distinctModelIdsVerified:modelList[0]!==modelList[1],freeEndpointOnly:true,
+  endpoint:"NVIDIA_BUILD_TRIAL",modelsRequested:[...modelList],distinctModelIdsVerified,freeEndpointOnly:true,
+  billingVerified:false,costVerified:false,
   maxTokensPerRequest:NVIDIA_MAX_TOKENS,requestCount:2,retryCount:0,
   overlappingRequests:overlapped,results:results.map(({started,finished,...safe})=>({
    ...safe,durationMs:Math.max(0,Math.round(finished-started))
