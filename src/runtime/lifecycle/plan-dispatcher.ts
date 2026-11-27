@@ -429,8 +429,13 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
   await input.validateIdentity();
  };
  try{await validateFallback();}catch{return {status:"blocked",reason:"Las alternativas del perfil ya no son verificables; actualizar el plan antes de ejecutar"};}
+ const validateStart=async()=>{
+  await validateReadOnlyLaunch();await validateFallback();
+  if(task.plan?.candidateRevision&&(readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&currentRevision(input.identity.projectId)!==task.plan.candidateRevision)throw Error("The project changed before read-only dispatch; rebuild the plan against the current candidate.");
+  if(input.signal?.aborted)throw Object.assign(Error("Agent task cancelled"),{name:"AbortError"});
+ };
  try{
-  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),...(modelFallback?{modelFallback,validateStart:validateFallback}:{}),onPrepared:async(id,enqueue,dispatch)=>{const validateLaunch=async()=>{await validateReadOnlyLaunch();await validateFallback();};await validateLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateLaunch);}},input.signal);
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),...(modelFallback?{modelFallback}:{}),validateStart,onPrepared:async(id,enqueue,dispatch)=>{await validateStart();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateStart);}},input.signal);
   return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
  }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }
