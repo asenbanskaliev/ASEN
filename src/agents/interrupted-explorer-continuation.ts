@@ -55,7 +55,8 @@ export async function continueInterruptedExplorer(input:InterruptedExplorerConti
  // No restaurar una alternativa retirada durante la interrupción, ni
  // incorporar opciones nuevas a un intento ya persistido.
  const savedFallback=prior.spec?.modelFallback;
- const validateStart=savedFallback?async()=>{
+ let continuationEnqueued=false,validationRejectedBeforeEnqueue=false;
+ const validateStart=savedFallback?async()=>{try{
   throwIfCancelled(signal);
   if(input.resolveCurrentIdentity){
    const current=await input.resolveCurrentIdentity();
@@ -74,11 +75,12 @@ export async function continueInterruptedExplorer(input:InterruptedExplorerConti
    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw Error("Pi session or project changed before agent continuation dispatch");
   }
   throwIfCancelled(signal);
- }:undefined;
+ }catch(error){if(!continuationEnqueued)validationRejectedBeforeEnqueue=true;throw error;}}:undefined;
  await validateStart?.();
  const resumed=link&&linkedTodo&&todos?await todos.update(linkedTodo.taskId,identity,linkedTodo.current.revision,"running","User asked ASEN to continue this persisted read-only task in the same session and project",signal):undefined;
  try{
   const next=await runtime.continue(agentId,identity,signal,link&&coordination?async(childId,dispatch)=>{
+   continuationEnqueued=true;
    const validate=async()=>{
     if(!input.resolveCurrentIdentity)return;
     const current=await input.resolveCurrentIdentity();
@@ -92,7 +94,10 @@ export async function continueInterruptedExplorer(input:InterruptedExplorerConti
  }catch(error){
   if(resumed&&todos){
    const current=(await todos.list(identity)).find(item=>item.taskId===resumed.taskId);
-   if(current?.current.state==="running")await todos.update(current.taskId,identity,current.current.revision,"blocked","Linked agent continuation was not dispatched; review is required",undefined).catch(()=>{});
+   if(current?.current.state==="running"&&current.current.revision===linkedTodo!.current.revision+1){
+    const reason=validationRejectedBeforeEnqueue&&!continuationEnqueued?linkedTodo?.current.reason:"Linked agent continuation was not dispatched; review is required";
+    await todos.update(current.taskId,identity,current.current.revision,"blocked",reason,undefined).catch(()=>{});
+   }
   }
   throw error;
  }
