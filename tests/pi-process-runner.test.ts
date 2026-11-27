@@ -596,7 +596,7 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;fallbackStateMismatch?:boolean;fallbackStateVirtual?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;initialText?:string;fallbackStateMismatch?:boolean;fallbackStateVirtual?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
@@ -613,7 +613,7 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
   if(stateRequired&&!stateReady){emit({type:"response",id:request.id,command:"prompt",success:false});emit({type:"agent_end"});continue;}
   turn++;
   const reply={type:"response",id:request.id,command:"prompt",success:turn===1||!rejectContinuation};
-  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",...${JSON.stringify(options.assistantIdentity??{})},content:[{type:"text",text:"respuesta de prueba completada"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
+  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",...${JSON.stringify(options.assistantIdentity??{})},content:[{type:"text",text:${JSON.stringify(options.initialText??"respuesta de prueba completada")}}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
   else if(${options.nativeRetryAfterFallback===true}){emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:"429 rate limit",provider:activeModel.provider,model:activeModel.id}});emit({type:"agent_end",willRetry:true});emit({type:"auto_retry_start"});}
   else if(coalesceSecondTurn){
    const records=[reply];
@@ -1081,4 +1081,15 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
   let approvals=0;const result=await runner(p,{timeoutMs:10_000,authorizeModelFallback:()=>{approvals++;return false;}}).run({id:"oauth-backup-proxy",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"backup/model"}]}});
   assert.equal(result.ok,true,result.output);assert.match(result.output,/asen_fallback_unavailable/);assert.equal(approvals,0);
   const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.authTypes,{provider:"api_key"});assert.deepEqual(trace.commands.map((row:{type:string})=>row.type),["get_commands","get_state","prompt"]);assert.equal(trace.retry.enabled,false);assert.equal(await readFile(join(source,"auth.json"),"utf8"),auth);
+ });
+
+ test("M2: un resultado al límite se conserva completo y el aviso OAuth se entrega fuera de la salida",async t=>{
+  const {d,p}=await fallbackRpcFixture({initialSuccess:true,initialText:"x".repeat(4096)}),source=join(d,"original-pi");await mkdir(source);
+  await writeFile(join(source,"auth.json"),JSON.stringify({provider:{type:"api_key",key:"ficticia"},backup:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const request={id:"oauth-output-limit",role:"explorer" as const,prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"backup/model"}]}};
+  const first=await runner(p,{timeoutMs:10_000}).run(request);assert.equal(first.ok,true,first.output);assert.match(first.output,/asen_fallback_unavailable/);
+  const marker=first.output.indexOf("\n{\"type\":\"asen_fallback_unavailable\"");assert.ok(marker>0);const original=first.output.slice(0,marker),notices:unknown[]=[];
+  const second=await runner(p,{timeoutMs:10_000,maxOutputBytes:Buffer.byteLength(original),onFallbackUnavailable:notice=>notices.push(notice)}).run(request);
+  assert.equal(second.ok,true,second.output);assert.equal(second.output,original);assert.equal(notices.length,1);for(const line of second.output.trim().split(/\\r?\\n/))JSON.parse(line);
  });
