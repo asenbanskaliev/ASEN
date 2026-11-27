@@ -764,12 +764,19 @@ jobs:
           issue="$repo/issues/$PR_NUMBER"
           test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
           approval="asen-t06-autorizar:$ASEN_EXPECTED_SHA"
-          gh api "$issue/comments" --paginate --jq '.[] | select(.user.login == "asenbanskaliev") | .body' > "$RUNNER_TEMP/t06-approval.txt"
-          grep -Fqx -- "$approval" "$RUNNER_TEMP/t06-approval.txt"
+          gh api "$issue/comments" --paginate --jq '.[]' > "$RUNNER_TEMP/t06-approval.jsonl"
+          approval_time=$(jq -ser --arg approval "$approval" 'map(select(.user.login == "asenbanskaliev" and .body == $approval)) | sort_by(.id) | last | .created_at | select(type == "string")' "$RUNNER_TEMP/t06-approval.jsonl")
+          # El consentimiento delegado es del propietario; no equivale a revisión técnica.
+          gh api "$pr/reviews" --paginate --jq '.[]' > "$RUNNER_TEMP/t06-reviews.jsonl"
+          jq -se --arg sha "$ASEN_EXPECTED_SHA" 'map(select(.user.login == "coderabbitai[bot]" and .commit_id == $sha)) | sort_by(.id) | last | . != null and (.state == "APPROVED" or (.state == "COMMENTED" and ((.body // "") == "" or ((.body // "") | test("(?m)^\\*\\*Actionable comments posted: 0\\*\\*$")))))' "$RUNNER_TEMP/t06-reviews.jsonl" >/dev/null
+          # Un informe sin observaciones nuevas no resuelve hilos anteriores.
+          gh api graphql --paginate -F owner="${GITHUB_REPOSITORY%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F number="$PR_NUMBER" -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){repository(owner:$owner,name:$name){pullRequest(number:$number){headRefOid reviewThreads(first:100,after:$endCursor){nodes{isResolved} pageInfo{hasNextPage endCursor}}}}}' > "$RUNNER_TEMP/t06-review-threads.jsonl"
+          jq -se --arg sha "$ASEN_EXPECTED_SHA" 'length > 0 and all(.[]; ((.errors // []) | length) == 0 and .data.repository.pullRequest.headRefOid == $sha and (.data.repository.pullRequest.reviewThreads.nodes | type) == "array" and all(.data.repository.pullRequest.reviewThreads.nodes[]; .isResolved == true)) and (last.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage == false)' "$RUNNER_TEMP/t06-review-threads.jsonl" >/dev/null
+          # Solo validaciones anteriores al consentimiento: la etiqueta dispara otras CI.
           gh api "$repo/actions/runs?head_sha=$ASEN_EXPECTED_SHA&event=pull_request&per_page=100" --paginate --jq '.workflow_runs[]' > "$RUNNER_TEMP/t06-runs.jsonl"
-          jq -s --arg sha "$ASEN_EXPECTED_SHA" --arg branch "$EXPECTED_BRANCH" --argjson current "$GITHUB_RUN_ID" 'map(select(.head_sha == $sha and .head_branch == $branch and .id != $current))' "$RUNNER_TEMP/t06-runs.jsonl" > "$RUNNER_TEMP/t06-exact-runs.json"
+          jq -s --arg sha "$ASEN_EXPECTED_SHA" --arg branch "$EXPECTED_BRANCH" --arg cutoff "$approval_time" 'map(select(.head_sha == $sha and .head_branch == $branch and .created_at < $cutoff))' "$RUNNER_TEMP/t06-runs.jsonl" > "$RUNNER_TEMP/t06-exact-runs.json"
           for name in 'CI' 'CI rápida' 'Release Gate' 'Phase 0 Architecture' 'Pi 1.2 runtime evidence' 'Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos'; do
-            jq -e --arg name "$name" 'map(select(.name == $name)) | sort_by(.id) | last | .status == "completed" and .conclusion == "success"' "$RUNNER_TEMP/t06-exact-runs.json" >/dev/null
+            jq -e --arg name "$name" --arg cutoff "$approval_time" 'map(select(.name == $name)) | sort_by(.id) | last | .status == "completed" and .conclusion == "success" and .updated_at <= $cutoff' "$RUNNER_TEMP/t06-exact-runs.json" >/dev/null
           done
           ci_run=$(jq -er 'map(select(.name == "CI")) | sort_by(.id) | last | .id' "$RUNNER_TEMP/t06-exact-runs.json")
           gh api "$repo/actions/runs/$ci_run/jobs?filter=latest&per_page=100" --paginate --jq '.jobs[]' > "$RUNNER_TEMP/t06-jobs.jsonl"
