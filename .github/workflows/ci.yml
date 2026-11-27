@@ -42,6 +42,14 @@ jobs:
           node --import tsx --test tests/e1-candidate-fallback-regression.test.ts
           # El ensayo integral debe compilar antes de autorizar modelos reales.
           npx --no-install tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck --types node scripts/e2a-native-partition-nvidia.ts
+      - name: Ensayo previo del objetivo 09 con Pi 1.2 y pasarela local sin secretos
+        if: github.event.pull_request.number == 161
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          pi --version
+          ASEN_M2_NATIVE_OFFLINE=1 tsx --test tests/m2-controlled-failure.test.ts
       - name: Pruebas específicas de la Megatanda B sin modelos externos
         run: |
           node --import tsx --test \
@@ -750,8 +758,6 @@ jobs:
       pull-requests: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-      PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-09-local-config
-      ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-t06-09-controlled/receipt.json
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
@@ -763,6 +769,8 @@ jobs:
           node-version: "22.19.0"
       - name: Preparar Pi y comprobar la pasarela sin credenciales
         shell: bash
+        env:
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-09-local-config
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
@@ -784,6 +792,8 @@ jobs:
       - name: Fallo local 429 y una respuesta NVIDIA real de Nano Omni
         shell: bash
         env:
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-09-local-config
+          ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-t06-09-controlled/receipt.json
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: |
           set -euo pipefail
