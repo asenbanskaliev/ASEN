@@ -22,6 +22,8 @@ export interface ParentModelFallbackHost{
  currentModel(context?:unknown):string|undefined;
  findModel?(model:string,context?:unknown):ParentCatalogModel|undefined;
  setModel?(model:ParentCatalogModel,context?:unknown):boolean|Promise<boolean>;
+ /** Consentimiento del anfitrión para esta alternativa concreta, no de la configuración del perfil. */
+ authorizeFallback?(model:ParentCatalogModel,context?:unknown):boolean|Promise<boolean>;
  getThinking?():Thinking|undefined;
  setThinking?(level:Thinking):void;
  notify?(change:ModelFallbackChange,pricing:{from?:ModelCatalogRates;to?:ModelCatalogRates},context?:unknown):void;
@@ -96,6 +98,11 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    const source=activeModel?host.findModel?.(activeModel,context):undefined;if(!current())return false;
    const beforeResult=await wait(currentIdentity(context));if(!beforeResult.valid)return false;
    if(!sameIdentity(beforeResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
+   // Ni la presencia en el catálogo ni una tarifa cero acreditan gratuidad.
+   const authorized=await wait(Promise.resolve().then(()=>host.authorizeFallback?.(found,context)).catch(()=>false));
+   if(!authorized.valid||authorized.value!==true){invalidate("aborted");return false;}
+   const consentIdentity=await wait(currentIdentity(context));if(!consentIdentity.valid)return false;
+   if(!sameIdentity(consentIdentity.value,activeEpisodeIdentity)||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
    const switchedResult=await wait(Promise.resolve(host.setModel?.(found,context)).catch(()=>false));if(!switchedResult.valid)return false;
    if(!switchedResult.value)continue;
    const afterResult=await wait(currentIdentity(context));if(!afterResult.valid)return false;
