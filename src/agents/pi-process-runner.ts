@@ -1,6 +1,6 @@
 import {runnerStartDeadline} from "./dispatcher.js";
 import {bindNativeRunnerModels,isNativePartitionWriter} from "../runtime/agents/native-writer-completion.js";
-import {splitPiModelIdentity,inspectReviewIdentity,bindPiChildIdentityEvidence,type PiChildIdentityObservation,type PiModelIdentity} from "../review/model-identity.js";
+import {splitPiModelIdentity,reviewModelIdentityKey,inspectReviewIdentity,bindPiChildIdentityEvidence,type PiChildIdentityObservation,type PiModelIdentity} from "../review/model-identity.js";
 import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {performance} from "node:perf_hooks";
 import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
@@ -505,10 +505,19 @@ export class PiProcessRunner implements AgentRunner{
        if(!alive())return;
        if(authorized!==true){fallbackInProgress=false;closeSettled(category);return;}
        const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!alive())return;
-      if(switched.success!==true)continue;
+      if(switched.success!==true||switched.command!=="set_model")continue;
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
       if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!alive())return;if(effort.success===true)appliedThinking=thinking;}
+      // Confirmar el modelo seleccionado realmente por Pi antes de otra inferencia.
+      const state=await sendRpc({type:"get_state"});if(!alive())return;
+      const stateModel=(state.data as {model?:{provider?:unknown;id?:unknown}}|undefined)?.model;
+      const expected=splitPiModelIdentity(to);
+      const selected=typeof stateModel?.provider==="string"&&typeof stateModel.id==="string"?splitPiModelIdentity(stateModel.provider+"/"+stateModel.id):undefined;
+      if(state.success!==true||state.command!=="get_state"||!expected||!selected||reviewModelIdentityKey(expected)!==reviewModelIdentityKey(selected)){
+       fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback model selection was not confirmed before continuation"});return;
+      }
       const observation=Object.freeze({...(from===undefined?{}:{from}),to,category,...(appliedThinking===undefined?{}:{thinking:appliedThinking})});publishFallback(observation);
+      selectedIdentity=selected;
       // Clear the *previous* turn's failure before issuing the continuation.
       // The next turn may complete before this await resumes: do not erase
       // its observed outcome and do not discard its agent_settled event.
