@@ -220,6 +220,7 @@ export function assertNativeReviewCheckpointProgress(data:ReviewCheckpoint):void
  const route=(value:unknown)=>typeof value==="string"&&value.length>0&&value.length<=512&&value===value.trim()&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(value);
  const judgment=(value:unknown)=>value===undefined||value==="pass"||value==="fail";
  if(judges.some(judge=>!route(judge.route)||!['provider-response-match','requested-descriptor-only','unknown'].includes(judge.evidence)||!judgment(judge.verdict)))throw Error("Checkpoint de revisión inválido");
+ if(new Set(judges.map(judge=>judge.route)).size!==judges.length)throw Error("Checkpoint de revisión inválido");
  if(data.fixProposalId!==undefined&&!/^[a-f0-9]{64}$/u.test(data.fixProposalId))throw Error("Checkpoint de revisión inválido");
  if(data.phase==="joint-tests-reviewed"){
   if(judges.length!==0||data.attemptStarted!==undefined||data.findingsCount!==undefined||data.fixProposalId!==undefined)throw Error("Checkpoint de revisión inválido");
@@ -232,8 +233,8 @@ export function assertNativeReviewCheckpointProgress(data:ReviewCheckpoint):void
   if(data.phase==="dual-pending"&&data.attemptStarted===true&&judges.length===1&&judges[0]?.verdict!==undefined)return;
   throw Error("Checkpoint de revisión incompleto o inválido");
  }
- if(data.phase==="dual-reviewed"&&(data.findingsCount??0)!==0)throw Error("Checkpoint de revisión inválido");
- if(data.phase==="dual-findings"&&(!Number.isSafeInteger(data.findingsCount)||data.findingsCount!<1))throw Error("Checkpoint de revisión inválido");
+ if(data.phase==="dual-reviewed"&&((data.findingsCount??0)!==0||judges.some(judge=>judge.verdict!=="pass")))throw Error("Checkpoint de revisión inválido");
+ if(data.phase==="dual-findings"&&(!Number.isSafeInteger(data.findingsCount)||data.findingsCount!<1||!judges.some(judge=>judge.verdict==="fail")))throw Error("Checkpoint de revisión inválido");
 }
 async function readSignedCheckpoint(file:string,storageDir:string):Promise<ReviewCheckpoint|undefined>{
  if(!await preparePrivateFile(file))return;

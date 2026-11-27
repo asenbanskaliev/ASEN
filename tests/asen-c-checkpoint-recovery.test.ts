@@ -20,3 +20,9 @@ test("G06 rechaza recibos y referencias Fix que no estén ligados de forma exact
  assert.throws(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:null,phase:"joint-tests-reviewed",judges:[]} as any),/inválido/u);
  assert.throws(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-findings",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b",verdict:"fail"}],findingsCount:1,fixProposalId:"no-firmado"} as any),/inválido/u);
 });
+
+test("G04 exige dos jueces distintos y estados coherentes con sus dictámenes",()=>{
+ assert.throws(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-reviewed",attemptStarted:true,judges:[judge,judge],findingsCount:0} as any),/inválido/u);
+ assert.throws(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-reviewed",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b",verdict:"fail"}],findingsCount:0} as any),/inválido/u);
+ assert.throws(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-findings",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b"}],findingsCount:1} as any),/inválido/u);
+});
