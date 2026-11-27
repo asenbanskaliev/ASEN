@@ -100,7 +100,8 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    if(!sameIdentity(beforeResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
    // Ni la presencia en el catálogo ni una tarifa cero acreditan gratuidad.
    const authorized=await wait(Promise.resolve().then(()=>host.authorizeFallback?.(found,context)).catch(()=>false));
-   if(!authorized.valid||authorized.value!==true){invalidate("aborted");return false;}
+   if(!authorized.valid)return false;
+   if(authorized.value!==true){invalidate("aborted");return false;}
    const consentIdentity=await wait(currentIdentity(context));if(!consentIdentity.valid)return false;
    if(!sameIdentity(consentIdentity.value,activeEpisodeIdentity)||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
    const switchedResult=await wait(Promise.resolve(host.setModel?.(found,context)).catch(()=>false));if(!switchedResult.valid)return false;
