@@ -74,7 +74,7 @@ process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,d
 }else{prompted=true;child.stdin.end(line+"\\n");if(closed!==null){process.stdin.destroy();process.exitCode=closed;}}}});`);
  return {d,p};
 }
-function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
+function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],authorizeModelFallback:()=>true,...options});}
 test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
 test("Dispatcher delivers a successful real Pi child result and records completion",async()=>{
  const {d,p}=await fixture('let input="";process.stdin.on("data",chunk=>input+=chunk);process.stdin.on("end",()=>{const request=JSON.parse(input.trim());console.log(JSON.stringify({type:"response",id:request.id,success:true,message:"child result delivered"}));});');
@@ -871,4 +871,26 @@ test("P02: Pi diferencia respuesta compatible, desconocida e incompatible en cua
   assert.equal(readPiChildIdentityEvidence(result).at(-1)?.status,item.status);
   assert.equal(readPiChildIdentityEvidence({...result}).length,0);
  }
+});
+
+
+test("M2: alternativa sin consentimiento o con rechazo no envía set_model ni otro prompt",async t=>{
+ for(const mode of ["sin-autorizador","rechazada","error"] as const){
+  const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+  const authorizer=mode==="sin-autorizador"?{}:{authorizeModelFallback:()=>{if(mode==="error")throw Error("fallo de consentimiento");return false;}};
+  const child=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],timeoutMs:10_000,...authorizer});
+  const result=await child.run({id:"coste-"+mode,role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+  assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,1);
+  assert.equal(trace.commands.some((c:{type:string})=>c.type==="set_model"),false);
+ }
+});
+
+test("M2: el hijo autoriza el modelo exacto una vez y no continúa tras cancelar el diálogo",async t=>{
+ const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ const controller=new AbortController(),seen:unknown[]=[];
+ const child=runner(p,{timeoutMs:10_000,authorizeModelFallback:attempt=>{seen.push(attempt);controller.abort();return true;}});
+ const result=await child.run({id:"coste-cancelado",role:"explorer",prompt:"inspect",repository:d,isolationKey:"sesion",model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}},controller.signal);
+ assert.equal(result.ok,false);assert.deepEqual(seen,[{taskId:"coste-cancelado",sessionId:"sesion",projectId:d,role:"explorer",to:"provider/final"}]);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,1);assert.equal(trace.commands.some((c:{type:string})=>c.type==="set_model"),false);
 });
