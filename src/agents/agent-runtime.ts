@@ -84,7 +84,7 @@ export class AgentRuntime{
   // Only unaffiliated ad-hoc Explorer work may reuse the identical active task.
   // Planned jobs and all reviewers/verifiers always retain unique identity.
   const adHoc=input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared&&!input.validateStart;
-  if(input.validateAdHocStart&&(!adHoc||modelFallback))throw new Error("Live ad-hoc validation requires an unplanned Explorer without alternatives");
+  if(input.validateAdHocStart&&!adHoc)throw new Error("Live ad-hoc validation requires an unplanned Explorer");
   if(adHoc){
    await input.validateAdHocStart?.();
    const dedupeKey=createHash("sha256").update(JSON.stringify([
@@ -102,7 +102,7 @@ export class AgentRuntime{
     await this.store.cancelled(request.id,"Explorer launch cancelled before dispatch").catch(()=>{});
     throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});
    }
-   try{this.#dispatch(request,signal,undefined,input.validateAdHocStart);}
+   try{this.#dispatch(request,signal,undefined,input.validateAdHocStart,input.fallbackHost);}
    catch(error){await this.store.cancelled(request.id,"Explorer launch could not dispatch").catch(()=>{});throw error;}
    return claim.id;
   }

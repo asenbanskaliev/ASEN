@@ -109,16 +109,16 @@ test("B1 rechaza alternativas retiradas al continuar Explorer antes de reclamar 
 test("B1 conserva la causa de interrupción si se retira la alternativa antes del encolado",async()=>{
  const saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}]};
  const plan={role:"explorer",model:"nvidia/modelo-a",explorerProfileOrigin:{scope:"global",name:"perfil"}} as const;
- const todo={...blockedTodo(),plan};let current=todo,reads=0,enqueued=0;
+ const todo={...blockedTodo(),plan};let current=todo,reads=0,enqueued=0;const transitions:string[]=[];
  const runtime={query:async()=>({...interruptedEntry,spec:{model:plan.model,modelFallback:saved}}),continue:async(_id:any,_identity:any,_signal:any,onQueued:any,validateStart:any)=>{await validateStart();enqueued++;await onQueued("child",()=>{});return "child";}};
- const coordination={links:async()=>({list:async()=>[{taskId:todo.taskId,agentId:"parent",...identity,createdAt:new Date(0).toISOString()}]}),todos:async()=>({list:async()=>[current],update:async(...[taskId,_identity,revision,state,reason]:Parameters<SessionTodoStore["update"]>)=>{current={...current,taskId,current:{state,revision:revision+1,reason}};return current;}} as any),binder:async()=>({launch:async(_taskId:string,_agentId:string,_identity:any,dispatch:()=>void)=>{dispatch();}})};
+ const coordination={links:async()=>({list:async()=>[{taskId:todo.taskId,agentId:"parent",...identity,createdAt:new Date(0).toISOString()}]}),todos:async()=>({list:async()=>[current],update:async(...[taskId,_identity,revision,state,reason]:Parameters<SessionTodoStore["update"]>)=>{transitions.push(state);current={...current,taskId,current:{state,revision:revision+1,reason}};return current;}} as any),binder:async()=>({launch:async(_taskId:string,_agentId:string,_identity:any,dispatch:()=>void)=>{dispatch();}})};
  // La configuración real se obtiene de los constructores de perfiles usados por B1.
  const {emptyProfileFallbacks,setProfileFallbackChain}=await import("../src/runtime/lifecycle/profile-fallback-store.js");
  const config={profiles:{global:{schema:"asen.runtime-profiles/v1" as const,active:"perfil",profiles:[{name:"perfil",routes:{explorer:{model:plan.model}}}]}},fallbacksByScope:{global:setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",saved.chain)}};
  const read=async()=>++reads===2?{profiles:config.profiles,fallbacksByScope:{}}:config;
  const input={runtime,agentId:"parent",identity,todo:coordination,readCurrentExplorerFallbackConfig:read};
  await assert.rejects(()=>continueInterruptedExplorer(input),/alternativas del perfil cambiaron/u);
- assert.equal(enqueued,0);assert.equal(current.current.state,"blocked");assert.equal(current.current.reason,todo.current.reason);
+ assert.equal(enqueued,0);assert.equal(current.current.state,"blocked");assert.equal(current.current.reason,todo.current.reason);assert.deepEqual(transitions,["running","blocked"]);
  const result=await continueInterruptedExplorer(input);assert.equal(result.id,"child");assert.equal(enqueued,1);
 });
 

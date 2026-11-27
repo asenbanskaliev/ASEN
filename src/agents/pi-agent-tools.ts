@@ -174,7 +174,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
       !claimBudgetExplorer?.(session))
     throw new Error("Budget Explorer was not authorized by one fresh, same-session read budget");
   }
-  const taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback,fallbackHost:launchHost}:{}),...(!todoSnapshot&&!modelFallback&&!budgetExplorer?{validateAdHocStart:validateReadOnlyStart}:{validateStart:validateReadOnlyStart}),...binding},signal);
+  const taskId=await active.startReadOnly({role:dispatchRole,prompt,session,...(planSkillSelection?{skillSelection:planSkillSelection}:{}),...(resolved.model!==undefined?{model:resolved.model}:{}),...(resolved.thinking!==undefined?{thinking:resolved.thinking}:{}),...(modelFallback?{modelFallback,fallbackHost:launchHost}:{}),...(!todoSnapshot&&!budgetExplorer?{validateAdHocStart:validateReadOnlyStart}:{validateStart:validateReadOnlyStart}),...binding},signal);
   return result({id:taskId,state:"queued",role:dispatchRole,routing,...(typeof todoId==="string"?{todoId}:{})});
  }});
  pi.registerTool?.({name:"asen_agent_status",label:"ASEN agent status",description:"List owned agent tasks, or query one task and its durable state history by id.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,properties:{id:idSchema,root:rootSchema,includeNotices:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{

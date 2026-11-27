@@ -387,6 +387,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    currentModel:host=>{const model=(host as CommandContext|undefined)?.model;return model?`${model.provider}/${model.id}`:undefined;},
    findModel:(model,host)=>{const split=model.indexOf("/");if(split<=0||split===model.length-1)return undefined;return (host as CommandContext|undefined)?.modelRegistry?.find(model.slice(0,split),model.slice(split+1));},
    authorizeFallback:async(model,host)=>{const ctx=host as CommandContext|undefined,scope=agentDeliveryIdentity;return !!scope&&await confirmFallbackAttempt(ctx,scope,model.provider+"/"+model.id);},
+   canAutoContinue:()=>{const settings=hostSettings() as {retry?:{enabled?:boolean;maxRetries?:number;provider?:{maxRetries?:number}};compaction?:{enabled?:boolean}}|undefined;return settings?.retry?.enabled===false&&settings.retry.maxRetries===0&&settings.retry.provider?.maxRetries===0&&settings.compaction?.enabled===false;},
+   onManualContinuation:host=>(host as CommandContext|undefined)?.ui?.notify("ASEN: el modelo alternativo está disponible, pero no se inicia otro turno sin garantías de un único intento. Continúa manualmente o desactiva reintentos y compactación automática en Pi.","warning"),
    setModel:model=>pi.setModel?pi.setModel(model):false,
    getThinking:()=>pi.getThinkingLevel?.(),setThinking:level=>pi.setThinkingLevel?.(level),
    notify:(change,pricing,host)=>(host as CommandContext|undefined)?.ui?.notify(formatModelFallbackNotice(change,pricing),"warning"),
@@ -467,7 +469,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
   let hostStatusSnapshot:AsenPanelSnapshot|undefined;
-  let hostRefreshGeneration=0,hostPressureGeneration=0,hostObservationGeneration=0;
+  let hostRefreshGeneration=0,hostPressureGeneration=0,hostObservationGeneration=0,hostSampleGeneration=0,hostPublishedSample=0;
   let hostStatusSettingsFingerprint:string|undefined;
   let hostCompactionObserver:ReturnType<typeof createCompactionPressureObserver>|undefined;
   let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string;ctx:CommandContext}>|undefined;
@@ -477,7 +479,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const clearHostStatus=()=>{
    stopHostCompactionObserver();
    try{hostStatusUI?.setStatus?.("asen:host",undefined);}catch{/* Optional presentation only. */}
-   hostStatusUI=undefined;hostStatusSnapshot=undefined;hostStatusSettingsFingerprint=undefined;
+   hostStatusUI=undefined;hostStatusSnapshot=undefined;hostStatusSettingsFingerprint=undefined;hostPublishedSample=0;
   };
   const refreshHostStatus=async(ctx:CommandContext,pressureOnly=false):Promise<void>=>{
    const refreshEpoch=panelEpoch;
@@ -490,14 +492,15 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(hostStatusUI&&hostStatusUI!==ctx.ui)clearHostStatus();
    hostStatusUI=ctx.ui;
    try{
-    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),settings=hostSettings(),settingsSnapshot=settingsFingerprint(settings),hostStatus=observeHostStatus(ctx,settings);
+    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),settings=hostSettings(),settingsSnapshot=settingsFingerprint(settings),hostStatus=observeHostStatus(ctx,settings),sample=++hostSampleGeneration;
     if(pressureOnly&&!hostStatusSnapshot)return;
     const observed=pressureOnly?undefined:snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
     if((pressureOnly&&(pressureGeneration!==hostPressureGeneration||observation!==hostObservationGeneration))||(!pressureOnly&&generation!==hostRefreshGeneration)||(!pressureOnly&&hostStatusUI!==ctx.ui)||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
     const changes=pressureOnly?hostStatusSnapshot?.changes:observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
-    const publishedHostStatus=observation===hostObservationGeneration?hostStatus:hostStatusSnapshot?.hostStatus??hostStatus;
-    const publishedSettingsFingerprint=observation===hostObservationGeneration?settingsSnapshot:hostStatusSettingsFingerprint??settingsSnapshot;
+    const newest=sample>=hostPublishedSample;
+    const publishedHostStatus=newest?hostStatus:hostStatusSnapshot?.hostStatus??hostStatus;
+    const publishedSettingsFingerprint=newest?settingsSnapshot:hostStatusSettingsFingerprint??settingsSnapshot;
     const tone=publishedHostStatus.context.state;
     const permission=permissionSession.mode(ctx);
     const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
@@ -513,7 +516,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const line=width<140?renderAsenT11CompactStatus(info,Math.max(1,width),
      {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable,agentFlowUnavailable:t11ChildFlowUnavailable}):
      renderAsenStatusLine(info,width);
-    if(observation===hostObservationGeneration)hostStatusSettingsFingerprint=settingsSnapshot;
+    if(newest){hostStatusSettingsFingerprint=settingsSnapshot;hostPublishedSample=sample;}
     hostStatusSnapshot=info;
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
     ensureHostCompactionObserver(ctx,publishedSettingsFingerprint);

@@ -993,3 +993,12 @@ test("M2: revocar la autorización durante set_model impide otro prompt",async t
  assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,1);
  assert.equal(trace.commands.filter((command:{type:string})=>command.type==="set_model").length,1);
 });
+
+
+test("M2: una comprobación de consentimiento que no responde termina el proceso",async t=>{
+ const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ const child=runner(p,{timeoutMs:2000,authorizeModelFallback:()=>()=>new Promise<boolean>(()=>{})});
+ const result=await child.run({id:"consentimiento-sin-respuesta",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/timed out/u);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,1);assert.equal(trace.commands.some((command:{type:string})=>command.type==="set_model"),false);
+});

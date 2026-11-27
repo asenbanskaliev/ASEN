@@ -28,6 +28,8 @@ export interface ParentModelFallbackHost{
  setThinking?(level:Thinking):void;
  notify?(change:ModelFallbackChange,pricing:{from?:ModelCatalogRates;to?:ModelCatalogRates},context?:unknown):void;
  followUp?(message:string,context?:unknown):void;
+ canAutoContinue?():boolean;
+ onManualContinuation?(context?:unknown):void;
  cooldown?:ModelFallbackCooldown;
  clock?:()=>number;
 }
@@ -125,6 +127,8 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    host.notify?.(change,pricing,context);if(!current())return false;
    const continuationResult=await wait(currentIdentity(context));if(!continuationResult.valid)return false;
    if(!sameIdentity(continuationResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
+   if(host.currentModel(context)!==modelRef(found)){invalidate("aborted");return false;}
+   if(host.canAutoContinue&&!host.canAutoContinue()){host.onManualContinuation?.(context);invalidate("aborted");return false;}
    host.followUp?.(formatModelFallbackContinuation(change),context);
    return true;
   }

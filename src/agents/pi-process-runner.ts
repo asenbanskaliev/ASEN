@@ -406,7 +406,9 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:`pi authority extension preparation failed: ${String(error)}`});
   }
   const policy=join(policyDirectory,"extensions","authority.ts");
-  const configHome=childEnvironment.PI_CODING_AGENT_DIR??join(childEnvironment.HOME??childEnvironment.USERPROFILE??homedir(),".pi","agent");
+  const userHome=childEnvironment.HOME??childEnvironment.USERPROFILE??homedir();
+  const override=childEnvironment.PI_CODING_AGENT_DIR;
+  const configHome=override?resolvePath(override==="~"?userHome:override.startsWith("~/")||override.startsWith("~\\")?join(userHome,override.slice(2)):override):join(userHome,".pi","agent");
   const scopedFallback=!!fallbackConfig?.chain.length;
   let sharedAuthPath:string|undefined;
   if(scopedFallback){
@@ -435,7 +437,11 @@ export class PiProcessRunner implements AgentRunner{
     const launchFile=join(policyDirectory,"shared-auth-launch.json");
     // Solo rutas y configuración de ejecución; nunca datos de credenciales.
     writeFileSync(launchFile,JSON.stringify({sdk,authPath:sharedAuthPath,agentDir:childEnvironment.PI_CODING_AGENT_DIR,cwd:request.repository,model:request.model,thinking:request.thinking,tools:this.options.noTools?[]:effectiveTools,extensions:[policy,...(providerExtension?[providerExtension]:[])],skills:(request.skillPaths??[]).map(path=>resolvePath(request.repository,path))}),{mode:0o600,flag:"wx"});
-    const entry=fileURLToPath(new URL(import.meta.url.endsWith(".ts")?"./pi-shared-auth-rpc.ts":"./pi-shared-auth-rpc.js",import.meta.url));
+    const sourceEntry=fileURLToPath(new URL("./pi-shared-auth-rpc.ts",import.meta.url));
+    const compiledEntry=fileURLToPath(new URL(import.meta.url.endsWith(".ts")?"../../dist/agents/pi-shared-auth-rpc.js":"./pi-shared-auth-rpc.js",import.meta.url));
+    const installed=sourceEntry.split(/[\\/]/u).includes("node_modules");
+    const entry=installed||!import.meta.url.endsWith(".ts")?compiledEntry:sourceEntry;
+    if(!lstatSync(entry).isFile())throw Error("Pi RPC entry unavailable");
     spawnCommand=process.execPath;args=[entry,launchFile];
    }catch{
     rmSync(policyDirectory,{recursive:true,force:true});
@@ -514,7 +520,16 @@ export class PiProcessRunner implements AgentRunner{
    const stop=(result:AgentResult)=>{
     if(stopResult)return;
     stopResult=result;
-    void terminateTree(child,closed).then(()=>finish(result));
+    void (async()=>{
+     if(sharedAuthPath){
+      // La entrada RPC nativa cierra la sesión y Pi 1.6 drena escrituras
+      // de credenciales al recibir EOF. No emitir más prompts ni comandos.
+      // Mantener un límite de parada incluso si el proveedor no responde.
+      let grace:ReturnType<typeof setTimeout>|undefined;
+      try{child.stdin.end();const drained=await Promise.race([closed.then(()=>true),new Promise<boolean>(resolve=>{grace=setTimeout(()=>resolve(false),15_000);})]);if(drained){finish(result);return;}}catch{/* Terminar el árbol si no se puede cerrar normalmente. */}finally{if(grace)clearTimeout(grace);}
+     }
+     await terminateTree(child,closed);finish(result);
+    })();
    };
    const alive=()=>!settled&&!stopResult&&!signal?.aborted;
    // Phase budget: every phase owns the same budget and is measured with a
@@ -614,7 +629,9 @@ export class PiProcessRunner implements AgentRunner{
        if(authorized!==true&&typeof authorized!=="function"){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback requires explicit consent"});return;}
        const consentCurrent=async()=>{
         if(!alive())return false;
+        armPhase("turn");
         let valid=false;try{valid=authorized===true||typeof authorized==="function"&&await authorized()===true;}catch{/* Una autorización no comprobable no habilita gasto. */}
+        disarmPhase();
         if(!alive())return false;
         if(!valid){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback consent scope is no longer live"});return false;}
         return true;
@@ -623,7 +640,8 @@ export class PiProcessRunner implements AgentRunner{
        // Cada RPC mantiene su propio presupuesto, sin competir con el diálogo.
        disarmPhase();
        const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!await consentCurrent()||!alive())return;
-      if(switched.success!==true||switched.command!=="set_model")continue;
+      if(switched.command!=="set_model"){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback model change timed out or could not be correlated"});return;}
+      if(switched.success!==true)continue;
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
       if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!await consentCurrent()||!alive())return;if(effort.success===true)appliedThinking=thinking;}
       // Confirmar el modelo seleccionado realmente por Pi antes de otra inferencia.

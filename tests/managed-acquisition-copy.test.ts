@@ -64,13 +64,13 @@ test("expected cleanup retains unknown child directories after the parent's link
 
 test("T09 Windows packed-copy deadline is separately bounded without weakening 30-second source verification",()=>{
  assert.equal(MANAGED_ACQUISITION_DEADLINE_MS,30_000);
- assert.equal(MANAGED_ACQUISITION_COPY_DEADLINE_MS,60_000);
+ assert.equal(MANAGED_ACQUISITION_COPY_DEADLINE_MS,process.platform==="win32"?90_000:60_000);
  assert.ok(Number.isSafeInteger(MANAGED_ACQUISITION_COPY_DEADLINE_MS));
  assert.ok(MANAGED_ACQUISITION_COPY_DEADLINE_MS<120_000,
   "Managed copy must remain a bounded operation");
 });
 
-test("T09 copy still aborts on a 60-second cooperative expiry before publishing a staged file",async t=>{
+test("T09 copy still aborts on the platform-specific cooperative expiry before publishing a staged file",async t=>{
  const cache=path.join(process.cwd(),".cache");
  await fs.mkdir(cache,{recursive:true});
  const root=await fs.mkdtemp(path.join(cache,"u9d-copy-deadline-"));
@@ -88,7 +88,7 @@ test("T09 copy still aborts on a 60-second cooperative expiry before publishing 
  const proto=Object.getPrototypeOf(performance) as {now:()=>number};
  const original=proto.now;
  let reads=0;
- proto.now=function(){reads++;return reads>=3?60_201:100;};
+ proto.now=function(){reads++;return reads>=3?MANAGED_ACQUISITION_COPY_DEADLINE_MS+201:100;};
  try{
   await assert.rejects(
    copyManagedAcquisitionToStage(source,stage,manifest),
