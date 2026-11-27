@@ -38,7 +38,7 @@ process.stdin.on("data",chunk=>{
 test("T2.2 an unanswered set_model fails on its own RPC budget",async t=>{
  const fixture=await createPiRpcFixture(t,scenario);
  const models=uniqueModelNames(1);
- const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:1000});
+ const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:1000,authorizeModelFallback:()=>true});
  const started=Date.now();
  const result=await runner.run({
   id:"rpc-timeout",role:"explorer",prompt:"work",repository:fixture.repository,
