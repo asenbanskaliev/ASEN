@@ -220,7 +220,9 @@ test("EF-603 never accepts forged or authority-bearing deduplication receipts",a
   const runtime=await AgentRuntime.open({storeFile:file,runner,maxConcurrency:1});
   const hold=await runtime.startExplorer({prompt:"hold",session});await until(()=>holding,2000);
   const validate=async()=>{if(!valid)throw Error("alternativa retirada");};
-  const first=await runtime.continue("crash-recovery-task",session,undefined,undefined,validate);valid=false;release();
+  const first=await runtime.continue("crash-recovery-task",session,undefined,undefined,validate);
+  await assert.rejects(()=>runtime.store.rejectContinuationBeforeStart(first,{}),/No unused continuation claim/);
+  valid=false;release();
   await until(()=>runtime.snapshot().find(row=>row.id===first)?.state==="failed",2000);
   assert.deepEqual(calls,[hold]);assert.deepEqual((await runtime.store.get(first,session.sessionId,session.projectId))?.events.map(row=>row.state),["queued","failed"]);
   valid=true;const reopened=await AgentRuntime.open({storeFile:file,runner,maxConcurrency:1});
