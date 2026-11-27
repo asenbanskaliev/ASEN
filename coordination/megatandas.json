@@ -138,7 +138,17 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": null,
+      "lease": {
+        "id": "manual-E-g2-T06-consentimiento-unico-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "files": [],
+        "phase": "Reserva única de consentimiento delegado T06",
+        "startedAt": "2026-11-27T09:23:52.183Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -829,7 +839,7 @@
       157,
       158
     ],
-    "status": "candidato-no-admitido-espera-ci-revision",
+    "status": "admitido-tecnicamente-pendiente-ensayo-real",
     "globalFull": false,
     "previousCandidate": {
       "pr": 159,
@@ -2383,37 +2393,13 @@
     },
     "ci": {
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
-      "conclusion": "pendiente",
+      "conclusion": "success",
       "latest": [
-        {
-          "id": 45970210790,
-          "name": "CI",
-          "status": "pending",
-          "conclusion": null
-        },
-        {
-          "id": 45970210810,
-          "name": "Release Gate",
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "id": 45970210822,
-          "name": "CI rápida",
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "id": 45970210694,
-          "name": "Phase 0 Architecture",
-          "status": "in_progress",
-          "conclusion": null
-        },
         {
           "id": 45970210740,
           "name": "Pi 1.2 runtime evidence",
-          "status": "in_progress",
-          "conclusion": null
+          "status": "completed",
+          "conclusion": "success"
         },
         {
           "id": 45970210875,
@@ -2422,18 +2408,56 @@
           "conclusion": "skipped"
         },
         {
+          "id": 45970210822,
+          "name": "CI rápida",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45970210694,
+          "name": "Phase 0 Architecture",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45970210810,
+          "name": "Release Gate",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
           "id": 45970210949,
           "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-          "status": "in_progress",
-          "conclusion": null
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45970210790,
+          "name": "CI",
+          "status": "completed",
+          "conclusion": "success"
         }
-      ]
+      ],
+      "integrated": {
+        "job": 140408735629,
+        "tests": 446,
+        "pass": 446,
+        "fail": 0,
+        "skipped": 0
+      },
+      "g08": {
+        "job": 140408735720,
+        "conclusion": "success"
+      }
     },
     "review": {
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
-      "confirmed": false,
+      "confirmed": true,
       "scope": "Corregir dependencia directa Pi: API exitosa y ejecución no cancelada; sin ampliar autorización ni permisos.",
-      "requestedCommentId": 7214187950
+      "requestedCommentId": 7214187950,
+      "summaryId": 7211220125,
+      "source": "CodeRabbit resumen limpio con cobertura SHA exacta, revisión completa terminada y todos los hilos resueltos",
+      "openThreads": 0
     },
     "audit": {
       "scope": "Orden temporal de revisión/consentimiento y revalidación tras escritura running. Pruebas nuevas; CI pendiente."
@@ -2704,7 +2728,7 @@
   },
   "modelCallException": {
     "enabled": false,
-    "state": "autorizacion-delegada-registrada-espera-gates",
+    "state": "reserva-delegada-en-curso",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 159,
     "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
@@ -2771,10 +2795,18 @@
       "mayApplyViaAuthenticatedOwnerConnector": true,
       "independentReviewRequired": true,
       "recordedAt": "2026-11-27T06:34:04.485Z"
+    },
+    "authorizationReservation": {
+      "id": "manual-E-g2-T06-consentimiento-unico-1127",
+      "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+      "owner": "asenbanskaliev",
+      "summaryId": 7211220125,
+      "phase": "reservada-antes-de-comentario",
+      "noRetry": true
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T09:01:22.381Z",
+  "updatedAt": "2026-11-27T09:23:52.188Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -2851,7 +2883,7 @@
       },
       {
         "id": "M2",
-        "state": "ultima-validacion",
+        "state": "admitida-tecnicamente-pendiente-ensayo-real",
         "pr": 159,
         "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
         "owner": "E",
