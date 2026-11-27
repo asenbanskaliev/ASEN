@@ -184,7 +184,7 @@
         "openReviewThreads": 0
       },
       "next": "Con autorización explícita delegada del usuario 27/11/2026, E puede aplicar comentario exacto y etiqueta de una vez mediante conector autenticado como propietario SOLO después de CI, Release Gate, rápida, arquitectura, Pi y G08/negativas correctas, revisión CodeRabbit exacta completa sin hilos/observaciones abiertas. No aprobar revisión propia ni simular identidad; comprobar actor con get_profile y comentario realmente atribuido al propietario; si no coincide, detener. No crear nuevo consentimiento si hubo reserva/llamada real para este ensayo; no reintentar ni ampliar presupuesto. Cotejar evidencia API y Pi reales, registrar resultado y cerrar solo requisitos acreditados; sin main, M3/M4 ni #61/#115.",
-      "blocker": "CI y revisión exacta del nuevo SHA pendientes; usuario ya autorizó delegación limitada. Todavía no se ha publicado consentimiento de SHA ni etiqueta de ensayo.",
+      "blocker": "CI completa, matriz adicional y revisión independiente de #159 pendientes; no autorizar NVIDIA hasta cumplir todas las puertas. Equipo E V5 activo con consentimiento delegado.",
       "generation": 2,
       "pr": 159,
       "sha": "b2d4b79211cf6b29ed92dbf58201793971295c9b",
@@ -1614,18 +1614,6 @@
       "sha": "b2d4b79211cf6b29ed92dbf58201793971295c9b",
       "latest": [
         {
-          "name": "Pi 1.2 runtime evidence",
-          "id": 45952791278,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "name": "Release Gate",
-          "id": 45952791295,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
           "name": "Pi Free Smoke",
           "id": 45952791313,
           "status": "completed",
@@ -1644,19 +1632,45 @@
           "conclusion": "success"
         },
         {
-          "name": "CI",
-          "id": 45952791308,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
           "name": "CI rápida",
           "id": 45952791351,
           "status": "completed",
           "conclusion": "success"
+        },
+        {
+          "name": "Pi 1.2 runtime evidence",
+          "id": 45952791278,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Release Gate",
+          "id": 45952791295,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "CI",
+          "id": 45952791308,
+          "status": "in_progress",
+          "conclusion": null
         }
       ],
-      "conclusion": "pendiente"
+      "conclusion": "pendiente",
+      "integrated": {
+        "job": 140352343781,
+        "conclusion": "success",
+        "observedSuite": {
+          "tests": 445,
+          "passed": 445,
+          "failed": 0,
+          "skipped": 0
+        }
+      },
+      "g08": {
+        "job": 140352343847,
+        "conclusion": "success"
+      }
     },
     "review": {
       "confirmed": false,
@@ -1669,10 +1683,96 @@
         4716319616,
         4716319624
       ],
-      "carriedFinding": 4713955031
+      "carriedFinding": 4713955031,
+      "threads": [
+        {
+          "id": "PRRT_kwDOUt6rUc68qw_-",
+          "path": ".github/workflows/ci.yml",
+          "resolved": true,
+          "outdated": true
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68qxAB",
+          "path": ".github/workflows/ci.yml",
+          "resolved": false,
+          "outdated": true
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68qxAF",
+          "path": ".github/workflows/ci.yml",
+          "resolved": false,
+          "outdated": false
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68qxAM",
+          "path": "extensions/asen.ts",
+          "resolved": true,
+          "outdated": false
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68qxAS",
+          "path": "src/agents/interrupted-explorer-continuation.ts",
+          "resolved": false,
+          "outdated": false
+        }
+      ]
     },
     "audit": {
-      "scope": "Consentimiento exacto por igualdad completa, CI anterior al consentimiento, verificación independiente CodeRabbit exacta y sin hilos no resueltos, replay sin restaurar alternativas, restauración de causa de interrupción previa al encolado. Pendiente CI y revisión del SHA final."
+      "scope": "Consentimiento exacto por igualdad completa, CI anterior al consentimiento, verificación independiente CodeRabbit exacta y sin hilos no resueltos, replay sin restaurar alternativas, restauración de causa de interrupción previa al encolado. Pendiente CI y revisión del SHA final.",
+      "previous158": {
+        "sha": "739e97dc32e0936d83f5a8b122d6a3363afec085",
+        "checks": [
+          {
+            "name": "Pi Free Smoke",
+            "id": 45949485979,
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "T06 comprobar permisos sin modelos",
+            "id": 45949485946,
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 45949485988,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 45949485954,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "CI rápida",
+            "id": 45949485981,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Release Gate",
+            "id": 45949485918,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+            "id": 45949485962,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "CI",
+            "id": 45949485917,
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "scope": "CI y Release Gate del SHA #158 correctos; no transferir a #159."
+      }
     }
   },
   "gentleShell5": {
@@ -2010,5 +2110,5 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T06:35:45.227Z"
+  "updatedAt": "2026-11-27T06:43:35.972Z"
 }
