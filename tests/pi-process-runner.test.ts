@@ -596,7 +596,7 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;fallbackStateMismatch?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;fallbackStateMismatch?:boolean;fallbackStateVirtual?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
@@ -607,7 +607,7 @@ const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=(
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
  if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:activeModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
- if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;if(!refused.has(model)&&!${options.fallbackStateMismatch===true})activeModel={provider:request.provider,id:request.modelId};emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
+ if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;if(!refused.has(model)&&!${options.fallbackStateMismatch===true})activeModel={provider:request.provider,id:request.modelId,...(${options.fallbackStateVirtual===true}?{api:"pi-virtual"}:{})};emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
  if(request.type==="set_thinking_level"){emit({type:"response",id:request.id,command:"set_thinking_level",success:!refuseThinking,...(refuseThinking?{error:"PRIVATE_THINKING_REJECTION"}:{})});continue;}
  if(request.type==="prompt"){
   if(stateRequired&&!stateReady){emit({type:"response",id:request.id,command:"prompt",success:false});emit({type:"agent_end"});continue;}
@@ -1001,4 +1001,12 @@ test("M2: una comprobación de consentimiento que no responde termina el proceso
  const result=await child.run({id:"consentimiento-sin-respuesta",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
  assert.equal(result.ok,false);assert.match(result.output,/timed out/u);
  const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,1);assert.equal(trace.commands.some((command:{type:string})=>command.type==="set_model"),false);
+});
+
+
+test("M2: una alternativa virtual seleccionada por Pi no recibe otro prompt",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({fallbackStateVirtual:true});t.after(()=>rm(d,{recursive:true,force:true}));
+ const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-virtual-denied",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","prompt","set_model","get_state"]);
 });

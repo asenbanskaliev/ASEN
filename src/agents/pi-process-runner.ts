@@ -651,10 +651,10 @@ export class PiProcessRunner implements AgentRunner{
       if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!await consentCurrent()||!alive())return;if(effort.success===true)appliedThinking=thinking;}
       // Confirmar el modelo seleccionado realmente por Pi antes de otra inferencia.
       const state=await sendRpc({type:"get_state"});if(!await consentCurrent()||!alive())return;
-      const stateModel=(state.data as {model?:{provider?:unknown;id?:unknown}}|undefined)?.model;
+      const stateModel=(state.data as {model?:{provider?:unknown;id?:unknown;api?:unknown}}|undefined)?.model;
       const expected=splitPiModelIdentity(to);
       const selected=typeof stateModel?.provider==="string"&&typeof stateModel.id==="string"?splitPiModelIdentity(stateModel.provider+"/"+stateModel.id):undefined;
-      if(state.success!==true||state.command!=="get_state"||!expected||!selected||reviewModelIdentityKey(expected)!==reviewModelIdentityKey(selected)){
+      if(state.success!==true||state.command!=="get_state"||stateModel?.api==="pi-virtual"||!expected||!selected||reviewModelIdentityKey(expected)!==reviewModelIdentityKey(selected)){
        fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback model selection was not confirmed before continuation"});return;
       }
       const observation=Object.freeze({...(from===undefined?{}:{from}),to,category,...(appliedThinking===undefined?{}:{thinking:appliedThinking})});publishFallback(observation);

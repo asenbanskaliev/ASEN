@@ -138,3 +138,11 @@ test("M2: no reanudar un Explorer sin alternativas tras cambiar la sesión en co
  let current=identity;
  await assert.rejects(()=>continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>interruptedEntry,continue:async(_id,_identity,_signal,_onQueued,validateStart)=>{current={...identity,sessionId:"otra"};assert.ok(validateStart);await validateStart();assert.fail("No debe iniciar el agente");}},resolveCurrentIdentity:async()=>current}),/session or project changed before agent continuation dispatch/u);
 });
+
+
+test("M2: la retirada de alternativa durante la última comprobación de identidad impide reanudar",async()=>{
+ const model="nvidia/modelo-a",saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope:"global" as const,name:"perfil",model}};
+ let reads=0,started=0;let active:typeof saved|undefined=saved;
+ await assert.rejects(()=>continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{started++;return "unused";}},resolveCurrentIdentity:async()=>{if(++reads===3)active=undefined;return identity;},readCurrentDirectFallback:async()=>active}),/alternativas del perfil cambiaron/u);
+ assert.equal(started,0);
+});

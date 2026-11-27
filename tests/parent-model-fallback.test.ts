@@ -254,3 +254,11 @@ test("M2: rechazar una alternativa retirada durante el consentimiento del padre"
  const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
  assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
 });
+
+
+test("M2: omitir modelos virtuales antes de pedir consentimiento al padre",async()=>{
+ const approvals:string[]=[];
+ const f=fixture({loadChain:async()=>[{model:"router/auto"},{model:"provider/last"}],findModel:model=>model==="router/auto"?{provider:"router",id:"auto",api:"pi-virtual"}:{provider:"provider",id:"last",api:"openai-completions"},authorizeFallback:model=>{approvals.push(model.provider+"/"+model.id);return true;}});
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+ assert.equal(await adapter.onAgentSettled(),true);assert.deepEqual(approvals,["provider/last"]);assert.equal(f.calls.includes("set:auto"),false);assert.ok(f.calls.includes("set:last"));
+});

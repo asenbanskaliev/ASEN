@@ -15,7 +15,7 @@ import {
 
 export interface ParentFallbackScope{sessionId:string;projectId:string}
 export interface ParentFallbackIdentity extends ParentFallbackScope{profile:string|undefined}
-export interface ParentCatalogModel{provider:string;id:string;cost?:ModelCatalogRates|undefined}
+export interface ParentCatalogModel{provider:string;id:string;api?:string;cost?:ModelCatalogRates|undefined}
 export interface ParentModelFallbackHost{
  identity(context?:unknown):ParentFallbackIdentity|undefined|Promise<ParentFallbackIdentity|undefined>;
  loadChain(profile:string|undefined,context?:unknown):readonly ModelFallbackStep[]|Promise<readonly ModelFallbackStep[]>;
@@ -100,7 +100,9 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    const pick=activeEpisode.pick();if(!pick?.fallback||!pick.model)return false;
    activeEpisode.markTried(pick.model);if(!current())return false;
    const found=host.findModel?.(pick.model,context);if(!current())return false;
-   if(!found||modelRef(found)!==pick.model)continue;
+   // Pi 1.2–1.6 identifica los modelos virtuales con api=pi-virtual.
+   // La aprobación de una referencia de enrutamiento no identifica un modelo físico.
+   if(!found||found.api==="pi-virtual"||modelRef(found)!==pick.model)continue;
    const source=activeModel?host.findModel?.(activeModel,context):undefined;if(!current())return false;
    const beforeResult=await wait(currentIdentity(context));if(!beforeResult.valid)return false;
    if(!sameIdentity(beforeResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
@@ -108,13 +110,14 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    const authorized=await wait(Promise.resolve().then(()=>host.authorizeFallback?.(found,context)).catch(()=>false));
    if(!authorized.valid)return false;
    if(authorized.value!==true){invalidate("aborted");return false;}
+   const consentIdentity=await wait(currentIdentity(context));if(!consentIdentity.valid)return false;
+   if(!sameIdentity(consentIdentity.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
    const liveChain=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
    if(!liveChain.valid)return false;
-   if(!liveChain.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)){invalidate("aborted");return false;}
-   const consentIdentity=await wait(currentIdentity(context));if(!consentIdentity.valid)return false;
-   if(!sameIdentity(consentIdentity.value,activeEpisodeIdentity)||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
+   const liveModel=host.findModel?.(pick.model,context);
+   if(!liveChain.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)||!liveModel||liveModel.api==="pi-virtual"||modelRef(liveModel)!==pick.model||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
    // La operación irreversible debe terminar antes de que Pi sustituya el host.
-   const pending=Promise.resolve().then(()=>current()?host.setModel?.(found,context)??false:false);
+   const pending=Promise.resolve().then(()=>current()?host.setModel?.(liveModel,context)??false:false);
    const switching=pending.then(value=>value===true,()=>false);
    mutation=switching;
    const switchedResult=await wait(switching);if(mutation===switching)mutation=undefined;

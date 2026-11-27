@@ -186,9 +186,13 @@ test("M2: Explorer con alternativas conserva el proyecto externo autorizado",asy
  assert.equal(f.requests[0]!.repository,await realpath(f.foreign));
  assert.equal(f.requests[0]!.isolationKey,f.identity.sessionId);
  assert.equal(f.requests[0]!.modelFallback?.origin?.model,PRIMARY.model);
- await f.finished;
+ const deadline=Date.now()+10_000;
+ let terminal=f.records().find(record=>record.id===result.details.id);
+ while(Date.now()<deadline&&(!terminal||!["completed","failed","cancelled","interrupted"].includes(terminal.state))){
+  await new Promise(resolve=>setTimeout(resolve,20));terminal=f.records().find(record=>record.id===result.details.id);
+ }
+ assert.equal(terminal?.state,"completed",`Explorer ${result.details.id} no completó dentro del plazo`);
  assert.equal(f.confirmations(),1);
- assert.ok(f.records().some(record=>record.id===result.details.id&&record.state==="completed"));
 });
 
 
