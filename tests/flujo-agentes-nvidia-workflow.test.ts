@@ -81,30 +81,36 @@ test("T08: el ensayo de reparación sigue requiriendo controles separados",()=>{
 });
 
 
-test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
- const start=ci.indexOf("\n  t06-nvidia-free-api:"),end=ci.indexOf("\n  # T06: dos sesiones Pi RPC",start);
- assert.ok(start>=0&&end>start);
- const job=ci.slice(start,end);
- for(const required of ["pull_request.number == 149","feat/asen-equipo-E-M2-g2-compactacion-148","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","gh api --method DELETE","ASEN_EXPECTED_SHA"]){assert.ok(job.includes(required),"Falta puerta NVIDIA M2: "+required);}
- assert.ok(job.includes("t06-nvidia-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}"));
- assert.ok(job.includes("asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA"));
- assert.ok(job.includes("gh api --method POST"));
- assert.ok(job.includes('select(.user.login == "github-actions[bot]")'),"solo el bot de Actions puede reservar la autorización");
- assert.ok(!job.includes("--jq '.[].body'"),"un comentario ajeno no puede bloquear el permiso");
- assert.ok(job.includes('if grep -Fqx -- "$marker" "$commentBodies"; then'));
- assert.doesNotMatch(job,/if gh api .*--paginate --jq/u,"La consulta fallida no puede habilitar el ensayo");
- assert.ok(job.includes("test \"$GITHUB_RUN_ATTEMPT\" = 1"));
+test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
+ const begin=ci.indexOf("\n  t06-m2-authorization:"),end=ci.indexOf("\n  t06-nvidia-free-api:",begin);
+ assert.ok(begin>=0&&end>begin);
+ const gate=ci.slice(begin,end);
+ for(const required of ["pull_request.number == 159","feat/asen-equipo-E-M2-g2-evidencia-nvidia-158","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","actions: read","gh api --method DELETE","ASEN_EXPECTED_SHA","asen-t06-autorizar:$ASEN_EXPECTED_SHA","head_sha=$ASEN_EXPECTED_SHA","G08 actualización administrada aislada (Windows)","Megatanda T02–T10 y T11 (pruebas integradas sin modelos)"]){assert.ok(gate.includes(required),"Falta puerta NVIDIA M2: "+required);}
+ assert.ok(gate.includes('select(.user.login == "asenbanskaliev")'));
+ assert.ok(gate.includes('select(.user.login == "github-actions[bot]")'));
+ assert.ok(gate.includes('grep -Fqx -- "$approval"'));
+ assert.ok(gate.includes('grep -Fqx -- "$api_marker"'));
+ assert.ok(gate.includes('grep -Fqx -- "$pi_marker"'));
+ assert.ok(gate.includes('asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA'));
+ assert.ok(gate.includes('asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA'));
+ assert.ok(gate.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
+ assert.ok(gate.indexOf('gh api --method POST "$issue/comments" -f body="$api_marker"')<gate.indexOf('gh api --method DELETE'));
+ assert.match(gate,/\.status == "completed" and \.conclusion == "success"/u);
+ assert.doesNotMatch(gate,/checkout@|secrets\.|NVIDIA_API_KEY|contents: write|id-token: write/u);
+ const api=ci.slice(end,ci.indexOf("\n  # T06: dos sesiones Pi RPC",end));
  const piNative=ci.slice(ci.indexOf("\n  t06-nvidia-pi-native:"),ci.indexOf("\n\n  managed-update-windows:"));
- assert.ok(piNative.includes("pull_request.number == 61"));
- assert.ok(piNative.includes("pull_request.number == 149"));
- assert.ok(piNative.includes("asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA"));
- assert.ok(piNative.includes('select(.user.login == "github-actions[bot]")'),"solo el bot de Actions puede reservar las sesiones Pi");
- assert.ok(!piNative.includes("--jq '.[].body'"),"un comentario ajeno no puede bloquear las sesiones Pi");
- assert.ok(piNative.includes('if grep -Fqx -- "$marker" "$commentBodies"; then'));
- assert.doesNotMatch(piNative,/if gh api .*--paginate --jq/u,"La consulta fallida no puede habilitar las sesiones Pi");
- assert.ok(piNative.includes("maxConcurrency:2")===false,"La concurrencia se limita dentro del script Pi");
- assert.ok(job.includes('index("asen-t06-nvidia-una-vez")'));
- assert.ok(!job.includes("pull_request.number == 150"));
+ assert.match(api,/needs: \[t06-m2-authorization\]/u);
+ assert.ok(api.includes("needs.t06-m2-authorization.result == 'success'"));
+ assert.match(piNative,/needs: \[t06-nvidia-free-api\]/u);
+ for(const job of [api,piNative]){
+  assert.ok(job.includes("pull_request.number == 61"));
+  assert.ok(job.includes("pull_request.number == 159"));
+  assert.ok(!job.includes("pull_request.number == 149"));
+  assert.ok(job.includes("event.label.name == 'asen-t06-nvidia-una-vez'"));
+  assert.ok(job.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
+  assert.ok(job.includes("pull-requests: read"));
+  assert.doesNotMatch(job,/issues: write|pull-requests: write|gh api --method POST|gh api --method DELETE/u);
+ }
  const probe=readFileSync(new URL("../scripts/t06-nvidia-free-api-probe.mjs",import.meta.url),"utf8");
  for(const model of ["nvidia/nemotron-3.5-lightning-30b-a3b","nvidia/nemotron-3.5-super-vl-120b-a12b"])assert.ok(probe.includes(model));
  assert.ok(probe.includes("distinctModelIdsVerified"));assert.ok(probe.includes("retryCount:0"));
@@ -113,6 +119,8 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
  assert.ok(windowsStart>=0&&windowsEnd>windowsStart);
  const windows=ci.slice(windowsStart,windowsEnd);
  assert.ok(windows.includes("runs-on: windows-latest"));
+ assert.ok(windows.includes("pull_request.number == 159"));
+ assert.ok(windows.includes("feat/asen-equipo-E-M2-g2-evidencia-nvidia-158"));
  assert.ok(windows.includes("tests/managed-install.test.ts"));
  assert.ok(windows.includes("tests/managed-maintenance-lock.test.ts"));
  assert.ok(windows.includes("tests/t09-lifecycle.test.ts"));
@@ -123,9 +131,12 @@ test("M2 T06: ensayo NVIDIA limitado a permiso de una ejecución",()=>{
 
 test("T06 el diagnóstico de permisos está aislado y no concede autorización de modelos",()=>{
  const probe=readFileSync(new URL("../.github/workflows/t06-permission-probe.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
- assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151'"));
- assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M2-g2-reparar-admision-152'"));
- assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M2-g2-limites-154'"));
+ assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M2-g2-evidencia-nvidia-158'"));
+ assert.ok(probe.includes("types: [labeled]"));
+ assert.ok(probe.includes("github.event.action == 'labeled'"));
+ assert.ok(probe.includes("github.event.label.name == 'asen-t06-permission-check-request'"));
+ assert.ok(probe.includes("github.actor == 'asenbanskaliev'"));
+ assert.doesNotMatch(probe,/types:.*(?:opened|synchronize|reopened)/u);
  assert.ok(probe.includes("trap cleanup_on_exit EXIT"));
  assert.ok(probe.includes("cleanup_label\n          test"));
  assert.ok(probe.includes("exit \"$status\""));
@@ -140,7 +151,7 @@ test("T06 el diagnóstico de permisos está aislado y no concede autorización d
   const end=ci.indexOf("\n  # T06:",start);
   const fallbackEnd=ci.indexOf("\n\n  managed-update-windows:",start);
   const job=ci.slice(start,end>start?end:fallbackEnd);
-  assert.match(job,/issues: write\s+pull-requests: write/u);
+  assert.doesNotMatch(job,/issues: write|pull-requests: write/u);
   assert.match(job,/github\.event\.label\.name == 'asen-t06-nvidia-una-vez'/u);
   assert.doesNotMatch(job,/asen-t06-permission-check/u);
  }
