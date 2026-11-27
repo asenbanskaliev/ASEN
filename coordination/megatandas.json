@@ -183,10 +183,10 @@
         "openReviewThreads": 0
       },
       "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
-      "blocker": "CI en curso: fallo de recibos Windows después de ocho celdas Pi PASS. GitHub impide repetir mientras CI está activa. Repetir únicamente job 140601890432 cuando termine, una vez, sin modelos; esperar CodeRabbit exacto.",
+      "blocker": "Tanda 16 hilos publicada; CI exacta y revisión independiente pendientes. Padre Pi selección manual por API no cancelable; OAuth proxy personalizado bloqueado, drenaje acotado. Ensayo 09/10 sin consumir.",
       "generation": 2,
       "pr": 161,
-      "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+      "sha": "f2f84653f58a4a697c857da295332b61f99b0109",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -347,34 +347,9 @@
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
-        "phase": "Validación independiente M1/M2",
+        "sha": "f2f84653f58a4a697c857da295332b61f99b0109",
+        "phase": "Resolución 16 hilos y validación independiente M1/M2",
         "writeReservation": false
-      },
-      "lease": {
-        "id": "manual-E-M1M2-161-auditoria-16-hilos",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "dffb799d6f95147c8b9abe84bb039bb429989151",
-        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "files": [
-          "extensions/asen.ts",
-          "src/runtime/lifecycle/parent-model-fallback.ts",
-          "tests/extension-state-commands.test.ts",
-          "tests/parent-model-fallback.test.ts",
-          "src/agents/agent-runtime.ts",
-          "src/agents/pi-agent-tools.ts",
-          "tests/p11-child-fallback-wiring.test.ts",
-          "src/agents/pi-process-runner.ts",
-          "tests/pi-process-runner.test.ts",
-          "src/agents/pi-shared-auth-rpc.ts",
-          "scripts/t06-nvidia-free-api-probe.mjs",
-          "tests/t06-nvidia-free-api-probe.test.mjs",
-          ".github/workflows/ci.yml",
-          "tests/flujo-agentes-nvidia-workflow.test.ts"
-        ],
-        "phase": "Correcciones de los 16 hilos y fuera de diff; sin consumo ni fusión"
       }
     }
   },
@@ -1108,80 +1083,37 @@
       "status": "liberada-tras-publicar",
       "resultSha": "dffb799d6f95147c8b9abe84bb039bb429989151",
       "finishedAt": "2026-11-27T15:42:31Z"
+    },
+    {
+      "id": "manual-E-M1M2-161-auditoria-16-hilos",
+      "team": "E",
+      "generation": 2,
+      "package": "E1",
+      "base": "dffb799d6f95147c8b9abe84bb039bb429989151",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+      "files": [
+        "extensions/asen.ts",
+        "src/runtime/lifecycle/parent-model-fallback.ts",
+        "tests/extension-state-commands.test.ts",
+        "tests/parent-model-fallback.test.ts",
+        "src/agents/agent-runtime.ts",
+        "src/agents/pi-agent-tools.ts",
+        "tests/p11-child-fallback-wiring.test.ts",
+        "src/agents/pi-process-runner.ts",
+        "tests/pi-process-runner.test.ts",
+        "src/agents/pi-shared-auth-rpc.ts",
+        "scripts/t06-nvidia-free-api-probe.mjs",
+        "tests/t06-nvidia-free-api-probe.test.mjs",
+        ".github/workflows/ci.yml",
+        "tests/flujo-agentes-nvidia-workflow.test.ts"
+      ],
+      "phase": "Correcciones de los 16 hilos y fuera de diff; sin consumo ni fusión",
+      "status": "liberada-tras-publicar",
+      "resultSha": "f2f84653f58a4a697c857da295332b61f99b0109",
+      "finishedAt": "2026-11-27T16:13:26Z"
     }
   ],
-  "temporaryOwnership": {
-    "extensions/asen.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "src/runtime/lifecycle/parent-model-fallback.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "tests/extension-state-commands.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "tests/parent-model-fallback.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "src/agents/agent-runtime.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "src/agents/pi-agent-tools.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "tests/p11-child-fallback-wiring.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "src/agents/pi-process-runner.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "tests/pi-process-runner.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "src/agents/pi-shared-auth-rpc.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "scripts/t06-nvidia-free-api-probe.mjs": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "tests/t06-nvidia-free-api-probe.test.mjs": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    ".github/workflows/ci.yml": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    },
-    "tests/flujo-agentes-nvidia-workflow.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-auditoria-16-hilos",
-      "scope": "M1/M2"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -3127,7 +3059,7 @@
     ],
     "globalFull": false,
     "candidate": 161,
-    "candidateSha": "dffb799d6f95147c8b9abe84bb039bb429989151"
+    "candidateSha": "f2f84653f58a4a697c857da295332b61f99b0109"
   },
   "currentSnapshot": {
     "capturedAt": "2026-11-26",
@@ -3150,14 +3082,14 @@
         "unresolved": 0
       }
     },
-    "m2": "Revisión solicitada por usuario y correcciones publicadas; CI exacta, revisión independiente y ensayo 09/10 pendientes",
+    "m2": "16 hilos y comentario fuera de diff auditados; cambios publicados; limitaciones padre y OAuth explícitas; revisión y ensayo pendientes",
     "m3": "CI y revisión independiente #156 correctas, candidata separada pendiente de consolidación y evidencia real.",
     "globalFull": false,
-    "updatedAt": "2026-11-27T15:42:31Z",
+    "updatedAt": "2026-11-27T16:13:26Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
     "candidate": 161,
-    "candidateSha": "dffb799d6f95147c8b9abe84bb039bb429989151",
-    "m1": "f60bae7 superó seis validaciones; revalidación final pendiente"
+    "candidateSha": "f2f84653f58a4a697c857da295332b61f99b0109",
+    "m1": "Último candidato publicado, validación exacta pendiente"
   },
   "modelCallException": {
     "enabled": false,
@@ -3452,117 +3384,79 @@
     },
     "objectives0910Trial": {
       "pr": 161,
-      "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+      "sha": "f2f84653f58a4a697c857da295332b61f99b0109",
       "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-      "state": "pendiente-ci-y-revision",
+      "state": "pendiente-validaciones-exactas",
       "source": "Usuario: «Adaptadolo y ejecutar», «Activa el real y verifícalo», «Hazlo asi» tras plan de corregir y activar únicamente con validaciones satisfactorias.",
       "scope": "Un ensayo M2 09/10 en #161; dos solicitudes API NVIDIA de hasta 128 tokens cada una y una sesión Pi Explorer en proyecto desechable, máximo una continuación alternativa ante fallo natural. Sin escrituras, herramientas, modelos de pago, reintentos automáticos ni repetición de ensayo. No provocar 429 ni confundir recuperación del registro con reinicio completo del orquestador.",
       "modelAllowlist": [
         "nvidia/nemotron-3.5-lightning-30b-a3b",
         "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
       ],
-      "requiredOwnerComment": "asen-t06-autorizar:dffb799d6f95147c8b9abe84bb039bb429989151",
+      "requiredOwnerComment": "asen-t06-autorizar:f2f84653f58a4a697c857da295332b61f99b0109:nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
       "requiredLabel": "asen-t06-nvidia-una-vez",
       "independentReviewRequired": true,
       "previousConsumedTrialsPreserved": true,
       "consumptionReserved": false,
-      "reviewRequested": 7222391713,
+      "reviewRequested": 7223013354,
       "validationRuns": [
         {
+          "name": "CI rápida",
+          "id": 46031741666,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 46031741636,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
           "name": "Pi 1.2 runtime evidence",
-          "id": 46027300802,
-          "status": "completed",
-          "conclusion": "success"
+          "id": 46031741625,
+          "status": "in_progress",
+          "conclusion": null
         },
         {
           "name": "Pi Free Smoke",
-          "id": 46027300958,
+          "id": 46031741692,
           "status": "completed",
           "conclusion": "skipped"
         },
         {
           "name": "Phase 0 Architecture",
-          "id": 46027300868,
-          "status": "completed",
-          "conclusion": "success"
-        },
-        {
-          "name": "CI",
-          "id": 46027300764,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "name": "CI rápida",
-          "id": 46027300870,
+          "id": 46031741493,
           "status": "completed",
           "conclusion": "success"
         },
         {
           "name": "Release Gate",
-          "id": 46027300855,
-          "status": "completed",
-          "conclusion": "success"
+          "id": 46031741814,
+          "status": "in_progress",
+          "conclusion": null
         },
         {
-          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-          "id": 46027300768,
-          "status": "completed",
-          "conclusion": "success"
+          "name": "CI",
+          "id": 46031741682,
+          "status": "in_progress",
+          "conclusion": null
         }
       ],
       "globalFull": false,
       "previousValidation": {
-        "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
-        "checks": [
-          {
-            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-            "id": 46019662208,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Release Gate",
-            "id": 46019662245,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 46019662193,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Pi Free Smoke",
-            "id": 46019662735,
-            "status": "completed",
-            "conclusion": "skipped"
-          },
-          {
-            "name": "CI rápida",
-            "id": 46019662335,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "Pi 1.2 runtime evidence",
-            "id": 46019662185,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "CI",
-            "id": 46019662200,
-            "status": "completed",
-            "conclusion": "success"
-          }
-        ],
-        "openReviewThreads": 18,
-        "g08": 140575700214,
-        "integrated": 140575700900,
-        "result": "six-required-workflows-passed",
-        "real0910": "not-executed"
+        "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+        "result": "cinco-flujos-correctos-ci-repeticion-recibos-windows",
+        "ci": 46027300764,
+        "releaseGate": 46027300855,
+        "windowsReceiptFailure": {
+          "run": 46027300764,
+          "job": 140601890432,
+          "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+          "observed": "8 celdas Pi Windows PASS; 60 contratos PASS; generación de recibos posterior termina con status null en admitTapResult, probable timeout de spawnSync (60s) no confirmado",
+          "rerun": "403: workflow still running",
+          "retryPolicy": "Una sola repetición del trabajo fallido sin modelos cuando CI termine; si repite el fallo, diagnosticar causa y no relajar controles."
+        }
       },
       "lastVerified": {
         "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
@@ -3627,7 +3521,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T15:42:31Z",
+  "updatedAt": "2026-11-27T16:13:26Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3686,7 +3580,7 @@
   },
   "executionPlan": {
     "version": "V6",
-    "updatedAt": "2026-11-27T15:42:31Z",
+    "updatedAt": "2026-11-27T16:13:26Z",
     "source": {
       "pr": 61,
       "sha": "a1c6bb318388771a7c3298205535b4801a1d2c8a",
@@ -3703,7 +3597,7 @@
         "next": "Preservar base #144; exigir candidato definitivo limpio y Release Gate incluyendo paquete Windows.",
         "currentCandidate": {
           "pr": 161,
-          "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+          "sha": "f2f84653f58a4a697c857da295332b61f99b0109",
           "ancestry": {
             "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
             "behind": 0,
@@ -3768,7 +3662,7 @@
         "id": "M2",
         "state": "reparaciones-publicadas-espera-validacion-exacta-y-09-10",
         "pr": 161,
-        "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+        "sha": "f2f84653f58a4a697c857da295332b61f99b0109",
         "owner": "E",
         "support": "B/C",
         "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
@@ -3779,7 +3673,7 @@
         },
         "currentTrial": {
           "pr": 161,
-          "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+          "sha": "f2f84653f58a4a697c857da295332b61f99b0109",
           "state": "pendiente-validaciones-exactas"
         }
       },
@@ -4188,7 +4082,7 @@
       },
       "latest": {
         "pr": 161,
-        "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+        "sha": "f2f84653f58a4a697c857da295332b61f99b0109",
         "ancestry": {
           "m1": {
             "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
@@ -4203,51 +4097,51 @@
         },
         "checks": [
           {
+            "name": "CI rápida",
+            "id": 46031741666,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+            "id": 46031741636,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
             "name": "Pi 1.2 runtime evidence",
-            "id": 46027300802,
-            "status": "completed",
-            "conclusion": "success"
+            "id": 46031741625,
+            "status": "in_progress",
+            "conclusion": null
           },
           {
             "name": "Pi Free Smoke",
-            "id": 46027300958,
+            "id": 46031741692,
             "status": "completed",
             "conclusion": "skipped"
           },
           {
             "name": "Phase 0 Architecture",
-            "id": 46027300868,
-            "status": "completed",
-            "conclusion": "success"
-          },
-          {
-            "name": "CI",
-            "id": 46027300764,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "CI rápida",
-            "id": 46027300870,
+            "id": 46031741493,
             "status": "completed",
             "conclusion": "success"
           },
           {
             "name": "Release Gate",
-            "id": 46027300855,
-            "status": "completed",
-            "conclusion": "success"
+            "id": 46031741814,
+            "status": "in_progress",
+            "conclusion": null
           },
           {
-            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-            "id": 46027300768,
-            "status": "completed",
-            "conclusion": "success"
+            "name": "CI",
+            "id": 46031741682,
+            "status": "in_progress",
+            "conclusion": null
           }
         ],
-        "reviewRequested": 7222391713,
-        "m1": "Validación técnica anterior superada; exacta pendiente",
-        "m2": "Correcciones de revisión independiente publicadas, no consumido",
+        "reviewRequested": 7223013354,
+        "m1": "Validación exacta pendiente",
+        "m2": "Tanda de 16 hilos publicada; aceptación real pendiente",
         "globalFull": false,
         "previousPassedCandidate": {
           "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
@@ -4304,51 +4198,71 @@
         "threadAudit": [
           {
             "id": "PRRT_kwDOUt6rUc68xAw0",
-            "assessment": "Corregido previamente: identidad de sessionManager y ámbito, no igualdad del objeto de evento; prueba de eventos con contexto nuevo."
+            "assessment": "Corregido anteriormente: sessionManager, identidad y generación, no igualdad de contexto de evento. En el host Pi sin mutación cancelable se recomienda manualmente."
           },
           {
             "id": "PRRT_kwDOUt6rUc68xlk_",
-            "assessment": "Corregido previamente: confirmWithAbort y AbortSignal de intento; runner aborta al terminar."
-          },
-          {
-            "id": "PRRT_kwDOUt6rUc68xllM",
-            "assessment": "Corregido previamente: almacén original OAuth vía SDK nativo; no copia de refresh tokens."
+            "assessment": "Corregido anteriormente: confirmWithAbort, signal del diálogo y señal de intento cancelada al parar runner."
           },
           {
             "id": "PRRT_kwDOUt6rUc68x--o",
-            "assessment": "Corregido previamente: drainMutation antes de transición de sesión y prueba de mutación pendiente."
+            "assessment": "Corregido anteriormente: drainMutation antes de cambiar de sesión; la producción actual no llama a setModel desde el fallback padre."
           },
           {
             "id": "PRRT_kwDOUt6rUc68zLvA",
-            "assessment": "Mitigación previa: cierre RPC por EOF y gracia de 15 s antes de matar. Falta comprobar drenaje con rotación sintética; una terminación forzada no garantiza persistencia."
-          },
-          {
-            "id": "PRRT_kwDOUt6rUc68zLvC",
-            "assessment": "Corregido previamente: dist/agents/pi-shared-auth-rpc.js si instalación bajo node_modules; falta confirmar ejecución instalada OAuth sin red."
+            "assessment": "Extraída espera de cierre EOF con prueba de persistencia sintética y plazo. No garantiza renovación si el proceso no se cierra y hay terminación forzada."
           },
           {
             "id": "PRRT_kwDOUt6rUc68zLvO",
-            "assessment": "Corregido y validado: plazos Windows y pruebas de paquete, Release Gate 46016548871."
+            "assessment": "Corregido: prueba deriva 90s/60s y vencimiento de constante. Release Gate y pruebas Windows posteriores correctas."
           },
           {
             "id": "PRRT_kwDOUt6rUc680nvk",
-            "assessment": "Corregido previamente: realpath settings.json y validación de archivo regular/tamaño."
-          },
-          {
-            "id": "PRRT_kwDOUt6rUc680nwG",
-            "assessment": "Corregido y validado: rpcFailure conserva timeout set_model; CI 46016548912 correcta."
-          },
-          {
-            "id": "PRRT_kwDOUt6rUc6808ud",
-            "assessment": "Cambio actual: excluir api=pi-virtual antes de consentir padre y rechazar selección virtual antes del segundo prompt hijo, con regresiones."
+            "assessment": "Corregido: realpath antes de lstat/tamaño para los tres archivos."
           },
           {
             "id": "PRRT_kwDOUt6rUc6808uh",
-            "assessment": "Corregido previamente: canAutoContinue exige cacheWarming=off, reintentos y compactación desactivados."
+            "assessment": "Corregido: cacheWarming off, reintentos y compactación deshabilitados; recomendación manual en Pi sin mutación segura."
           },
           {
-            "id": "PRRT_kwDOUt6rUc6808ul",
-            "assessment": "Cambio actual: espera de registro terminal por ID con plazo 10 s."
+            "id": "PRRT_kwDOUt6rUc681WFe",
+            "assessment": "Corregido en dffb799: primaria explícita o defaultProvider/defaultModel, si no determinable se detiene antes de filtrar; prueba de primaria ausente/configurada. Queda revisar exactitud del modelo inicial en el CLI nativo."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc681WGI",
+            "assessment": "Corregido: assert de writeSurfaces por unidad, pruebas exactas en CI de dffb799."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc681uUH",
+            "assessment": "Corregido: señal viva en current antes de mutar; prueba positiva/negativa; Pi no se muta automáticamente."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc681uUN",
+            "assessment": "Corregido: prueba separa evento obsoleto y retirada; se simula selección manual del usuario en nueva prueba."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc682qx_",
+            "assessment": "Corregido: fallo de lectura opcional omite cadena igual que planificador; prueba de configuración malformada."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc682qyD",
+            "assessment": "Corregido: ambos identificadores explícitos en autorización del propietario exacta y variable de job, sin lista implícita ni red sin alcance."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc682qyJ",
+            "assessment": "Corregido: clave de reutilización incluye anfitrión, generación y sessionManager aun sin alternativas, prueba de dos anfitriones."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc682qyO",
+            "assessment": "Mitigado de forma segura: SDK sin inicializador HTTP público rechaza proxy/plazo global personalizado antes de inferencia. Prueba negativa."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc682qyU",
+            "assessment": "Mitigado de forma segura: API pública Pi 1.2–1.6 no permite cancelar setModel antes de asignación; recomendar alternativa física y dejar selección manual, no cambiar ni consumir. No equivale a recuperación automática del padre."
+          },
+          {
+            "id": "fuera-de-diff",
+            "assessment": "Revalidación de identidad tras lectura de cadena antes de mutar y continuar; pruebas de cambio de perfil."
           }
         ],
         "latestEvidence": {
