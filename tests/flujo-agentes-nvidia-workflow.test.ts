@@ -111,6 +111,14 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  assert.match(api,/needs: \[t06-m2-authorization\]/u);
  assert.ok(api.includes("needs.t06-m2-authorization.result == 'success'"));
  assert.match(piNative,/needs: \[t06-nvidia-free-api\]/u);
+ // Una autorización M2 omitida en #61 no bloquea Pi si su API terminó correctamente.
+ // El estado de API, no el de ancestros transitivos, gobierna esta fase.
+ const piCondition=piNative.slice(piNative.indexOf("if: >-"),piNative.indexOf("runs-on:"));
+ assert.ok(piCondition.includes("!cancelled() && needs.t06-nvidia-free-api.result == 'success' &&"));
+ assert.ok(!piCondition.includes("needs.t06-m2-authorization"));
+ assert.ok(!piCondition.includes("always()"));
+ const apiCondition=api.slice(api.indexOf("if: >-"),api.indexOf("runs-on:"));
+ assert.ok(apiCondition.includes("(github.event.pull_request.number == 61 || needs.t06-m2-authorization.result == 'success')"));
  for(const job of [api,piNative]){
   assert.ok(job.includes("pull_request.number == 61"));
   assert.ok(job.includes("pull_request.number == 159"));
