@@ -138,7 +138,20 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": null,
+      "lease": {
+        "id": "manual-E-g2-pi-fase-dependiente-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "e3b4553a29da86fc3a35b59749fcf44d8e82eb69",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "files": [
+          ".github/workflows/ci.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts"
+        ],
+        "phase": "M2 corregir condición Pi tras API",
+        "startedAt": "2026-11-27T09:00:58.222Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -760,7 +773,18 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    ".github/workflows/ci.yml": {
+      "team": "E",
+      "lease": "manual-E-g2-pi-fase-dependiente-1127",
+      "scope": "M2"
+    },
+    "tests/flujo-agentes-nvidia-workflow.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-pi-fase-dependiente-1127",
+      "scope": "M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
