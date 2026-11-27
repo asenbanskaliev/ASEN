@@ -25,6 +25,7 @@ test("T06 NVIDIA: dos solicitudes gratuitas empiezan a la vez y se identifican p
  const request=async(url,options)=>{
   assert.equal(url,NVIDIA_FREE_URL);
   assert.equal(options.method,"POST");
+  assert.equal(options.redirect,"error");
   assert.equal(options.headers.Authorization,"Bearer nvapi-credential-only-for-test");
   const body=JSON.parse(options.body);
   assert.equal(body.model,NVIDIA_FREE_MODELS[calls]);
@@ -47,6 +48,8 @@ test("T06 NVIDIA: dos solicitudes gratuitas empiezan a la vez y se identifican p
  assert.deepEqual(report.results.map(r=>r.modelReturned),[...NVIDIA_FREE_MODELS]);
  assert.deepEqual(report.modelsRequested,[...NVIDIA_FREE_MODELS]);
  assert.equal(report.distinctModelIdsVerified,true);
+ assert.equal(report.billingVerified,false);
+ assert.equal(report.costVerified,false);
  assert.equal(report.results.every(r=>r.usage.totalTokens===23),true);
  assert.equal(report.retryCount,0);
  assert.equal(report.noWriterGrants,true);
@@ -59,11 +62,13 @@ test("T06 NVIDIA: respuesta 404, 429 o modelo distinto nunca se interpretan como
    request:async(_,options)=>mockResponse(options,{status}),timeoutMs:900});
   assert.equal(report.status,"BLOCKED");
   assert.equal(report.results.every(r=>r.errorCode==="HTTP_BLOCKED"),true);
+  assert.equal(report.distinctModelIdsVerified,false);
   assert.equal(report.retryCount,0);
  }
  const mismatch=await probeNvidiaFreeApi({apiKey:"test-secret",
   request:async(_,options)=>mockResponse(options,{model:"otro/modelo"}),timeoutMs:900});
  assert.equal(mismatch.status,"BLOCKED");
+ assert.equal(mismatch.distinctModelIdsVerified,false);
  assert.equal(mismatch.results.every(r=>r.errorCode==="MODEL_MISMATCH"),true);
 });
 test("T06 NVIDIA: falta de clave o intento de otro modelo bloquean antes de la red",async()=>{
@@ -81,6 +86,7 @@ test("T06 NVIDIA: respuesta vacía o errónea no inventa confirmación de modelo
   timeoutMs:900});
  assert.equal(report.status,"BLOCKED");
  assert.equal(report.results.every(r=>r.errorCode==="INVALID_REPLY"),true);
+ assert.equal(report.distinctModelIdsVerified,false);
 });
 test("T06 NVIDIA: informe privado sin claves, prompts ni sobrescritura",async t=>{
  const dir=mkdtempSync(join(tmpdir(),"asen-nvidia-evidence-"));
@@ -109,4 +115,18 @@ test("T06 conserva el orden de modelos enviado aunque cambie la lista del llaman
  assert.deepEqual(result.results.map(x=>x.modelRequested),sent);
  assert.deepEqual(sent,[...NVIDIA_FREE_MODELS]);
  await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:null,request:async()=>assert.fail("No debe llamar a red")}),/fuera de la lista/u);
+});
+
+
+test("T06 NVIDIA: una sola identidad confirmada no acredita dos modelos",async()=>{
+ const report=await probeNvidiaFreeApi({apiKey:"test-secret",timeoutMs:900,request:async(_,options)=>{
+  const body=JSON.parse(options.body);
+  return mockResponse(options,body.model===NVIDIA_FREE_MODELS[1]?{status:429}:{});
+ }});
+ assert.equal(report.status,"BLOCKED");
+ assert.equal(report.distinctModelIdsVerified,false);
+ assert.deepEqual(report.modelsRequested,[...NVIDIA_FREE_MODELS]);
+ assert.equal(report.results.filter(r=>r.status==="api-confirmed").length,1);
+ assert.equal(report.costVerified,false);
+ assert.equal(report.retryCount,0);
 });
