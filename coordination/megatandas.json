@@ -137,8 +137,21 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-revision",
-      "lease": null,
+      "state": "reparacion-m34",
+      "lease": {
+        "id": "manual-E-g2-m34-dictamen-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "8c15dde53a64759e46034ec83eb8b77e95e26920",
+        "branch": "integration/asen-megatandas-3-4-20261126",
+        "files": [
+          "src/runtime/lifecycle/native-integration-review.ts",
+          "tests/asen-c-checkpoint-recovery.test.ts"
+        ],
+        "phase": "M3/M4: preservar hallazgos leves firmados",
+        "startedAt": "2026-11-27T07:44:03.656Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -703,7 +716,18 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "src/runtime/lifecycle/native-integration-review.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-m34-dictamen-1127",
+      "scope": "M3/M4 traspaso Work"
+    },
+    "tests/asen-c-checkpoint-recovery.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-m34-dictamen-1127",
+      "scope": "M3/M4 traspaso Work"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
