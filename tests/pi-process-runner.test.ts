@@ -952,3 +952,31 @@ test("M2: OAuth solicitado sin SDK nativo no se copia ni se ejecuta",async t=>{
  assert.equal(result.ok,false);assert.match(result.output,/requires a compatible native SDK/u);
  await assert.rejects(access(log));assert.equal(await readFile(join(source,"auth.json"),"utf8"),original);
 });
+
+
+test("M2: Pi nativo selecciona OAuth desde el almacén original sin inferencia ni copia de tokens",async t=>{
+ const {d}=await fallbackRpcFixture({initialSuccess:true});
+ const source=join(d,"original-pi");await mkdir(source);
+ const cli=fileURLToPath(new URL("../node_modules/@earendil-works/pi-coding-agent/dist/cli.js",import.meta.url));
+ await access(cli);
+ const original=JSON.stringify({"openai-codex":{type:"oauth",access:"simulado-sin-acceso",refresh:"simulado-sin-renovacion",expires:Date.now()+86400000,accountId:"cuenta-de-prueba"},openai:{type:"api_key",key:"clave-ficticia-sin-acceso"}});
+ const authPath=join(source,"auth.json");await writeFile(authPath,original);
+ const previous=process.env.PI_CODING_AGENT_DIR,offline=process.env.PI_OFFLINE;
+ process.env.PI_CODING_AGENT_DIR=source;process.env.PI_OFFLINE="1";
+ t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;if(offline===undefined)delete process.env.PI_OFFLINE;else process.env.PI_OFFLINE=offline;await rm(d,{recursive:true,force:true});});
+ const pi=await import("@earendil-works/pi-coding-agent");
+ const catalog=await pi.ModelRuntime.create({authPath,modelsPath:null,allowModelNetwork:false});
+ const oauth=catalog.getAvailableSnapshot().find(model=>model.provider==="openai-codex");
+ const api=catalog.getAvailableSnapshot().find(model=>model.provider==="openai");
+ assert.ok(oauth,"El catálogo nativo debe reconocer la credencial OAuth ficticia sin inferencia");assert.ok(api,"El catálogo nativo debe reconocer la clave API ficticia");
+ for(const [main,backup] of [[oauth,api],[api,oauth]]){
+  assert.ok(main&&backup);
+  const controller=new AbortController();const requested=main.provider+"/"+main.id;
+  const selected:{provider:string;id:string}[]=[];let authorizations=0;
+  const child=new PiProcessRunner({command:process.execPath,rpcArgs:[cli,"--mode","rpc"],policyRoot:d,noTools:true,requireChildModelBeforePrompt:true,timeoutMs:30000,authorizeModelFallback:()=>{authorizations++;return false;}});
+  child.subscribeChildSelection(event=>{if(event.model)selected.push(event.model);controller.abort();});
+  const result=await child.run({id:"oauth-native-"+main.provider,role:"explorer",prompt:"No ejecutar esta instrucción",repository:d,isolationKey:"oauth-preflight",model:requested,modelFallback:{chain:[{model:backup.provider+"/"+backup.id}]}},controller.signal);
+  assert.equal(result.ok,false,result.output);assert.deepEqual(selected,[{provider:main.provider,id:main.id}],result.output);assert.equal(authorizations,0);
+  assert.match(result.output,/cancelled/u);assert.equal(await readFile(authPath,"utf8"),original);
+ }
+});
