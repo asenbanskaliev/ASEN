@@ -350,6 +350,18 @@
         "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
         "phase": "Validación definitiva M1/M2",
         "writeReservation": false
+      },
+      "lease": {
+        "id": "manual-E-M1M2-161-g02-prueba-orden-muestra",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "files": [
+          "tests/host-status-projection.test.ts"
+        ],
+        "phase": "Alinear prueba G02 con orden de muestra; sin cambios productivos"
       }
     }
   },
@@ -1001,7 +1013,13 @@
       "finishedAt": "2026-11-27T14:15:03Z"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "tests/host-status-projection.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-g02-prueba-orden-muestra",
+      "scope": "M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
