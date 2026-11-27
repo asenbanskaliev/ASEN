@@ -14,7 +14,7 @@ import {createPiRpcFixture,uniqueModelNames} from "./helpers/pi-rpc-fixture.js";
 const scenario=`
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-let buffer="",prompts=0;
+let buffer="",prompts=0,activeModel;
 process.stdin.on("data",chunk=>{
  buffer+=String(chunk);
  let end;
@@ -23,9 +23,10 @@ process.stdin.on("data",chunk=>{
   if(!line.trim())continue;
   const record=JSON.parse(line);
   if(record.type==="set_model"){
-   void (async()=>{await sleep(600);emit({type:"response",id:record.id,success:true,command:"set_model"});})();
+   void (async()=>{await sleep(600);activeModel={provider:record.provider,id:record.modelId};emit({type:"response",id:record.id,success:true,command:"set_model"});})();
    continue;
   }
+  if(record.type==="get_state"){emit({type:"response",id:record.id,success:true,command:"get_state",data:{model:activeModel}});continue;}
   if(record.type!=="prompt")continue;
   prompts++;
   if(prompts===1){
@@ -56,7 +57,7 @@ test("T2.1 a healthy fallback chain survives past the per-phase budget",async t=
  const models=uniqueModelNames(3);
  // The budget covers one attempt: 600ms model switch plus 500ms continuation.
  // The whole chain (3 continuations) needs more than that single budget.
- const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:2000});
+ const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:2000,authorizeModelFallback:()=>true});
  const started=Date.now();
  const result=await runner.run({
   id:"budget-run",role:"explorer",prompt:"work",repository:fixture.repository,
