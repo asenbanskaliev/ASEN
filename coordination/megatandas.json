@@ -137,8 +137,28 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-revision",
-      "lease": null,
+      "state": "reparacion-m2-m34",
+      "lease": {
+        "id": "manual-E-g2-retoma-m2-m34-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "b2d4b79211cf6b29ed92dbf58201793971295c9b",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "phase": "M2 y recuperación de Work en ramas separadas",
+        "files": [
+          ".github/workflows/ci.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts",
+          "src/agents/dispatcher.ts",
+          "tests/dispatcher.test.ts",
+          "tests/agent-store.test.ts",
+          "tests/ecosystem-evidence-bundle.test.ts",
+          "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md"
+        ],
+        "workBase": "8945c9fbf9fe7e22f84dbf1a6521971bfa2f5d53",
+        "workBranch": "integration/asen-megatandas-3-4-20261126",
+        "startedAt": "2026-11-27T07:32:54.703Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -659,7 +679,43 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    ".github/workflows/ci.yml": {
+      "team": "E",
+      "lease": "manual-E-g2-retoma-m2-m34-1127",
+      "scope": "M2"
+    },
+    "tests/flujo-agentes-nvidia-workflow.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-retoma-m2-m34-1127",
+      "scope": "M2"
+    },
+    "src/agents/dispatcher.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-retoma-m2-m34-1127",
+      "scope": "M2"
+    },
+    "tests/dispatcher.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-retoma-m2-m34-1127",
+      "scope": "M2"
+    },
+    "tests/agent-store.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-retoma-m2-m34-1127",
+      "scope": "M3/M4 traspaso Work autorizado por usuario"
+    },
+    "tests/ecosystem-evidence-bundle.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-retoma-m2-m34-1127",
+      "scope": "M3/M4 traspaso Work autorizado por usuario"
+    },
+    "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md": {
+      "team": "E",
+      "lease": "manual-E-g2-retoma-m2-m34-1127",
+      "scope": "M3/M4 traspaso Work autorizado por usuario"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -2110,5 +2166,19 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T06:43:35.972Z"
+  "updatedAt": "2026-11-27T07:32:54.705Z",
+  "workHandoff": {
+    "state": "retomado-en-chat",
+    "source": "Usuario indica que Work agotó cuota",
+    "pr": 156,
+    "base": 153,
+    "sha": "8945c9fbf9fe7e22f84dbf1a6521971bfa2f5d53",
+    "scope": "Recuperar trabajo publicado, mantener ramas separadas de M2 hasta validar.",
+    "findings": [
+      "CI heredada #153: prueba P04 intenta completar directamente sin recibo Dispatcher",
+      "Fixture RPC sin evidencia de correlación",
+      "Documento Markdown dañado",
+      "Checkpoint dual histórico: productor y lector ya corregidos en #156; pendiente confirmación independiente"
+    ]
+  }
 }
