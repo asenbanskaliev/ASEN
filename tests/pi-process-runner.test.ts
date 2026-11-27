@@ -596,18 +596,18 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;fallbackStateMismatch?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
  for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(join(root,source),target);}
  await writeFile(p,`import {writeFileSync} from "node:fs";import {resolve} from "node:path";
-const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true},initialSuccess=${options.initialSuccess===true};let buffer="",turn=0,commands=[],stateReady=false;
+const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true},initialSuccess=${options.initialSuccess===true};let buffer="",turn=0,commands=[],stateReady=false,activeModel=stateModel;
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands}));
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
- if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:stateModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
- if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
+ if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:activeModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
+ if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;if(!refused.has(model)&&!${options.fallbackStateMismatch===true})activeModel={provider:request.provider,id:request.modelId};emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
  if(request.type==="set_thinking_level"){emit({type:"response",id:request.id,command:"set_thinking_level",success:!refuseThinking,...(refuseThinking?{error:"PRIVATE_THINKING_REJECTION"}:{})});continue;}
  if(request.type==="prompt"){
   if(stateRequired&&!stateReady){emit({type:"response",id:request.id,command:"prompt",success:false});emit({type:"agent_end"});continue;}
@@ -617,13 +617,13 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
   else if(coalesceSecondTurn){
    const records=[reply];
    if(duplicateContinuationResponse)records.push({...reply});
-   if(!staleSettledOnly)records.push({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}},{type:"agent_end"},{type:"agent_settled"});
+   if(!staleSettledOnly)records.push({type:"message_end",message:{role:"assistant",stopReason:"stop",provider:activeModel.provider,model:activeModel.id,responseModel:activeModel.id,content:[{type:"text",text:"fallback completed"}]}},{type:"agent_end"},{type:"agent_settled"});
    process.stdout.write(records.map(value=>JSON.stringify(value)+"\\n").join(""));
    // A duplicate from the first turn may arrive AFTER the continuation
    // acknowledgement (outside the coalesced packet): never treat it as the
    // new turn's completion without message_end and agent_end.
    if(staleSettledOnly)setTimeout(()=>emit({type:"agent_settled"}),20);
-  }else{emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}
+  }else{emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"stop",provider:activeModel.provider,model:activeModel.id,responseModel:activeModel.id,content:[{type:"text",text:"fallback completed"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}
  }
  }});process.stdin.on("end",()=>process.exit(0));`);
  return {d,p,log};
@@ -761,7 +761,7 @@ test("coalesced continuation response and agent_settled cannot be lost by fallba
    });
   assert.equal(result.ok,true,result.output);
   const trace=JSON.parse(await readFile(log,"utf8"));
-  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","prompt"]);
+  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","get_state","prompt"]);
   assert.equal(observed.length,1);
   assert.match(result.output,/fallback completed/);
  }
@@ -775,7 +775,7 @@ test("stale first-turn settled and unaccompanied completion never attest a new t
   model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}
  });
  const trace=JSON.parse(await readFile(log,"utf8"));
- assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","prompt"]);
+ assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","get_state","prompt"]);
  assert.equal(result.ok,false);
  assert.match(result.output,/timed out/);
 });
@@ -794,7 +794,7 @@ test("rejected continuation prompt cannot be made successful by forged completio
 test("fallback-child keeps one RPC process and conversation through an accepted fallback",async t=>{
  const {d,p,log}=await fallbackRpcFixture({refuse:["provider/refused"]});t.after(()=>rm(d,{recursive:true,force:true}));const starts:number[]=[],changes:unknown[]=[];
  const result=await runner(p,{timeoutMs:10_000,onProcessStart:pid=>starts.push(pid),onModelFallback:change=>changes.push(change)}).run({id:"fallback-same-child",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",thinking:"medium",modelFallback:{profile:"child",chain:[{model:"provider/refused"},{model:"provider/final",thinking:"low"}]}});
- assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt","set_model","set_model","set_thinking_level","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
+ assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt","set_model","set_model","set_thinking_level","get_state","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
 });
 
 test("fallback-thinking-refusal omits an effort level rejected by RPC",async t=>{
@@ -893,4 +893,20 @@ test("M2: el hijo autoriza el modelo exacto una vez y no continúa tras cancelar
  const result=await child.run({id:"coste-cancelado",role:"explorer",prompt:"inspect",repository:d,isolationKey:"sesion",model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}},controller.signal);
  assert.equal(result.ok,false);assert.deepEqual(seen,[{taskId:"coste-cancelado",sessionId:"sesion",projectId:d,role:"explorer",to:"provider/final"}]);
  const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,1);assert.equal(trace.commands.some((c:{type:string})=>c.type==="set_model"),false);
+});
+
+
+test("M2: un cambio aceptado sin selección coincidente no consume la alternativa",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({fallbackStateMismatch:true});t.after(()=>rm(d,{recursive:true,force:true}));
+ const result=await runner(p,{timeoutMs:10_000}).run({id:"seleccion-incompatible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","prompt","set_model","get_state"]);
+});
+
+test("M2: tras un 429 instrumentado la respuesta queda atribuida a la alternativa exacta",async t=>{
+ const {d,p}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ const {readPiChildIdentityEvidence}=await import("../src/review/model-identity.js");
+ const result=await runner(p,{timeoutMs:10_000}).run({id:"identidad-alternativa",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,true,result.output);const receipt=readPiChildIdentityEvidence(result).at(-1);
+ assert.equal(receipt?.requested,"provider/final");assert.equal(receipt?.selected,"provider/final");assert.equal(receipt?.responseModel,"final");assert.equal(receipt?.status,"declared-match");
 });
