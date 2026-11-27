@@ -350,6 +350,18 @@
         "sha": "ca4717af6f3f3d5a62fbe0971923ee58cc47066c",
         "phase": "CI y revisión independiente",
         "writeReservation": false
+      },
+      "lease": {
+        "id": "manual-E-M2-161-contrato-diagnostico-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "ca4717af6f3f3d5a62fbe0971923ee58cc47066c",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "files": [
+          "src/agents/pi-agent-tools.ts"
+        ],
+        "phase": "Restaurar contrato de diagnóstico de bloqueo sin alterar comprobaciones"
       }
     }
   },
@@ -899,7 +911,13 @@
       "finishedAt": "2026-11-27T11:59:22Z"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "src/agents/pi-agent-tools.ts": {
+      "team": "E",
+      "lease": "manual-E-M2-161-contrato-diagnostico-1127",
+      "scope": "M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
