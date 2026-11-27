@@ -68,6 +68,8 @@ export interface PiProcessOptions{
  onNativeReviewEvent?:(event:PiNativeReviewEvent)=>void;
  /** Emitted only after this child accepts a configured model switch. */
  onModelFallback?:AgentFallbackListener;
+ /** Consentimiento del anfitrión para el intento exacto; nunca se serializa. */
+ authorizeModelFallback?:(input:Readonly<{taskId:string;sessionId:string;projectId:string;role:AgentRequest["role"];to:string}>,signal?:AbortSignal)=>boolean|Promise<boolean>;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -494,7 +496,15 @@ export class PiProcessRunner implements AgentRunner{
     void(async()=>{
      for(;;){
       const candidate=next();if(!candidate){fallbackInProgress=false;closeSettled(category);return;}
-      const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!alive())return;
+      // La cadena persistida selecciona opciones, pero no concede gasto.
+       armPhase("turn");
+       const authorized=await this.options.authorizeModelFallback?.(Object.freeze({
+        taskId:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,
+        role:request.role,to:candidate.pick.model!
+       }),signal);
+       if(!alive())return;
+       if(authorized!==true){fallbackInProgress=false;closeSettled(category);return;}
+       const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!alive())return;
       if(switched.success!==true)continue;
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
       if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!alive())return;if(effort.success===true)appliedThinking=thinking;}
