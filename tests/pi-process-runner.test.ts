@@ -1072,3 +1072,13 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
   const result=await child.run({id:"oauth-sdk-antiguo",role:"explorer",prompt:"No ejecutar",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
   assert.equal(result.ok,false);assert.match(result.output,/requires a compatible native SDK/);assert.equal(starts,0);assert.equal(await readFile(auth,"utf8"),original);
  });
+
+ test("M2: el principal API conserva su proxy cuando la alternativa OAuth no es compatible",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({initialSuccess:true}),source=join(d,"original-pi");await mkdir(source);
+  const auth=JSON.stringify({provider:{type:"api_key",key:"ficticia"},backup:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}});
+  await writeFile(join(source,"settings.json"),JSON.stringify({httpProxy:"http://localhost:1234"}));await writeFile(join(source,"auth.json"),auth);
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  let approvals=0;const result=await runner(p,{timeoutMs:10_000,authorizeModelFallback:()=>{approvals++;return false;}}).run({id:"oauth-backup-proxy",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"backup/model"}]}});
+  assert.equal(result.ok,true,result.output);assert.match(result.output,/asen_fallback_unavailable/);assert.equal(approvals,0);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.authTypes,{provider:"api_key"});assert.deepEqual(trace.commands.map((row:{type:string})=>row.type),["get_commands","get_state","prompt"]);assert.equal(trace.retry.enabled,false);assert.equal(await readFile(join(source,"auth.json"),"utf8"),auth);
+ });
