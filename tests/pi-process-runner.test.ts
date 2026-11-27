@@ -596,7 +596,7 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;fallbackStateMismatch?:boolean;fallbackStateVirtual?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;initialText?:string;fallbackStateMismatch?:boolean;fallbackStateVirtual?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
@@ -613,7 +613,7 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
   if(stateRequired&&!stateReady){emit({type:"response",id:request.id,command:"prompt",success:false});emit({type:"agent_end"});continue;}
   turn++;
   const reply={type:"response",id:request.id,command:"prompt",success:turn===1||!rejectContinuation};
-  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",...${JSON.stringify(options.assistantIdentity??{})},content:[{type:"text",text:"respuesta de prueba completada"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
+  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",...${JSON.stringify(options.assistantIdentity??{})},content:[{type:"text",text:${JSON.stringify(options.initialText??"respuesta de prueba completada")}}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
   else if(${options.nativeRetryAfterFallback===true}){emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:"429 rate limit",provider:activeModel.provider,model:activeModel.id}});emit({type:"agent_end",willRetry:true});emit({type:"auto_retry_start"});}
   else if(coalesceSecondTurn){
    const records=[reply];
@@ -762,7 +762,7 @@ test("coalesced continuation response and agent_settled cannot be lost by fallba
    });
   assert.equal(result.ok,true,result.output);
   const trace=JSON.parse(await readFile(log,"utf8"));
-  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","get_state","prompt"]);
+  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","get_state","prompt","set_model","get_state","prompt"]);
   assert.equal(observed.length,1);
   assert.match(result.output,/fallback completed/);
  }
@@ -776,7 +776,7 @@ test("stale first-turn settled and unaccompanied completion never attest a new t
   model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}
  });
  const trace=JSON.parse(await readFile(log,"utf8"));
- assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","get_state","prompt"]);
+ assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","get_state","prompt","set_model","get_state","prompt"]);
  assert.equal(result.ok,false);
  assert.match(result.output,/timed out/);
 });
@@ -795,7 +795,7 @@ test("rejected continuation prompt cannot be made successful by forged completio
 test("fallback-child keeps one RPC process and conversation through an accepted fallback",async t=>{
  const {d,p,log}=await fallbackRpcFixture({refuse:["provider/refused"]});t.after(()=>rm(d,{recursive:true,force:true}));const starts:number[]=[],changes:unknown[]=[];
  const result=await runner(p,{timeoutMs:10_000,onProcessStart:pid=>starts.push(pid),onModelFallback:change=>changes.push(change)}).run({id:"fallback-same-child",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",thinking:"medium",modelFallback:{profile:"child",chain:[{model:"provider/refused"},{model:"provider/final",thinking:"low"}]}});
- assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt","set_model","set_model","set_thinking_level","get_state","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
+ assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","get_state","prompt","set_model","set_model","set_thinking_level","get_state","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
 });
 
 test("fallback-thinking-refusal omits an effort level rejected by RPC",async t=>{
@@ -807,7 +807,7 @@ test("fallback-child preserves the ordinary no-chain process path",async t=>{
 });
 
 test("fallback-child does not continue for a noneligible final failure",async t=>{
- const {d,p,log}=await fallbackRpcFixture({category:"context_length"});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-noneligible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}});assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
+ const {d,p,log}=await fallbackRpcFixture({category:"context_length"});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-noneligible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}});assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","get_state","prompt"]);
 });
 
 test("fallback-child aborts before settled without sending a continuation RPC",async t=>{
@@ -901,7 +901,7 @@ test("M2: un cambio aceptado sin selección coincidente no consume la alternativ
  const {d,p,log}=await fallbackRpcFixture({fallbackStateMismatch:true});t.after(()=>rm(d,{recursive:true,force:true}));
  const result=await runner(p,{timeoutMs:10_000}).run({id:"seleccion-incompatible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
  assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
- const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","prompt","set_model","get_state"]);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state","prompt","set_model","get_state"]);
 });
 
 test("M2: tras un 429 instrumentado la respuesta queda atribuida a la alternativa exacta",async t=>{
@@ -1008,7 +1008,7 @@ test("M2: una alternativa virtual seleccionada por Pi no recibe otro prompt",asy
  const {d,p,log}=await fallbackRpcFixture({fallbackStateVirtual:true});t.after(()=>rm(d,{recursive:true,force:true}));
  const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-virtual-denied",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
  assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
- const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","prompt","set_model","get_state"]);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state","prompt","set_model","get_state"]);
 });
 
 
@@ -1043,3 +1043,82 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
  const result=await runner(p).run({id:"oauth-proxy",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
  assert.equal(result.ok,false);assert.match(result.output,/cannot preserve custom HTTP proxy/u);await assert.rejects(access(log));
 });
+
+ test("M2: el modelo inicial debe coincidir antes de cualquier petición con alternativas",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"provider",id:"primary-pro"},initialSuccess:true});t.after(()=>rm(d,{recursive:true,force:true}));
+  const result=await runner(p,{timeoutMs:10_000}).run({id:"primary-partial",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/primary-pro"}]}});
+  assert.equal(result.ok,false);assert.match(result.output,/primary model selection was not confirmed/);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state"]);
+ });
+ test("M2: una URL de archivo conserva la configuración Pi original",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});const source=join(d,"original pi");await mkdir(source);
+  await writeFile(join(source,"settings.json"),JSON.stringify({defaultProvider:"provider",defaultModel:"primary"}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=(await import("node:url")).pathToFileURL(source).href;
+  t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const result=await runner(p,{timeoutMs:10_000}).run({id:"config-url",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"provider/backup"}]}});
+  assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.args[trace.args.indexOf("--model")+1],"provider/primary");
+ });
+
+ test("M2: OAuth compartido rechaza Pi anterior a 1.6 antes de iniciar procesos",async t=>{
+  const {d}=await fallbackRpcFixture({initialSuccess:true});
+  const source=join(d,"original-pi"),sdk=join(d,"node_modules","@earendil-works","pi-coding-agent");
+  await mkdir(source);await mkdir(join(sdk,"dist"),{recursive:true});
+  const auth=join(source,"auth.json"),original=JSON.stringify({provider:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}});
+  await writeFile(auth,original);await writeFile(join(sdk,"package.json"),JSON.stringify({name:"@earendil-works/pi-coding-agent",version:"1.2.0"}));
+  const cli=join(sdk,"dist","cli.js");await writeFile(cli,"throw Error('No debe ejecutarse');");await writeFile(join(sdk,"dist","index.js"),"throw Error('No debe importarse');");
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+  t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  let starts=0;const child=new PiProcessRunner({command:process.execPath,rpcArgs:[cli,"--mode","rpc"],policyRoot:d,onProcessStart:()=>{starts++;}});
+  const result=await child.run({id:"oauth-sdk-antiguo",role:"explorer",prompt:"No ejecutar",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
+  assert.equal(result.ok,false);assert.match(result.output,/requires a compatible native SDK/);assert.equal(starts,0);assert.equal(await readFile(auth,"utf8"),original);
+ });
+
+ test("M2: el principal API conserva su proxy cuando la alternativa OAuth no es compatible",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({initialSuccess:true}),source=join(d,"original-pi");await mkdir(source);
+  const auth=JSON.stringify({provider:{type:"api_key",key:"ficticia"},backup:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}});
+  await writeFile(join(source,"settings.json"),JSON.stringify({httpProxy:"http://localhost:1234"}));await writeFile(join(source,"auth.json"),auth);
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  let approvals=0;const result=await runner(p,{timeoutMs:10_000,authorizeModelFallback:()=>{approvals++;return false;}}).run({id:"oauth-backup-proxy",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"backup/model"}]}});
+  assert.equal(result.ok,true,result.output);assert.match(result.output,/asen_fallback_unavailable/);assert.equal(approvals,0);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.authTypes,{provider:"api_key"});assert.deepEqual(trace.commands.map((row:{type:string})=>row.type),["get_commands","get_state","prompt"]);assert.equal(trace.retry.enabled,false);assert.equal(await readFile(join(source,"auth.json"),"utf8"),auth);
+ });
+
+ test("M2: un resultado al límite se conserva completo y el aviso OAuth se entrega fuera de la salida",async t=>{
+  const {d,p}=await fallbackRpcFixture({initialSuccess:true,initialText:"x".repeat(4096)}),source=join(d,"original-pi");await mkdir(source);
+  await writeFile(join(source,"auth.json"),JSON.stringify({provider:{type:"api_key",key:"ficticia"},backup:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const request={id:"oauth-output-limit",role:"explorer" as const,prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"backup/model"}]}};
+  const first=await runner(p,{timeoutMs:10_000}).run(request);assert.equal(first.ok,true,first.output);assert.match(first.output,/asen_fallback_unavailable/);
+  const marker=first.output.indexOf("\n{\"type\":\"asen_fallback_unavailable\"");assert.ok(marker>0);const original=first.output.slice(0,marker),notices:unknown[]=[];
+  const second=await runner(p,{timeoutMs:10_000,maxOutputBytes:Buffer.byteLength(original),onFallbackUnavailable:notice=>notices.push(notice)}).run(request);
+  assert.equal(second.ok,true,second.output);assert.equal(Buffer.byteLength(second.output),Buffer.byteLength(original));assert.equal(notices.length,1);
+  const records=(output:string)=>output.trim().split(/\r?\n/).map(line=>{
+   const record=JSON.parse(line);
+   if(record.type==="response"&&record.command==="get_commands"){
+    const authority=record.data.commands.find((command:{name:string})=>command.name==="asen-authority-status");
+    assert.ok(authority?.sourceInfo?.path);assert.match(authority.sourceInfo.path,/asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/u);
+    authority.sourceInfo.path="ruta-temporal";
+   }
+   return record;
+  });
+  assert.deepEqual(records(second.output),records(original));
+ });
+
+ test("M2: omitir OAuth incompatible conserva una alternativa API expresamente autorizada",async t=>{
+  const {d,p,log}=await fallbackRpcFixture(),source=join(d,"original-pi");await mkdir(source);
+  const auth=JSON.stringify({provider:{type:"api_key",key:"ficticia"},oauth:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0},api:{type:"api_key",key:"ficticia-2"}});
+  await writeFile(join(source,"auth.json"),auth);await writeFile(join(source,"settings.json"),JSON.stringify({httpProxy:"http://localhost:1234"}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const approvals:string[]=[];const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return attempt.to==="api/backup";}}).run({id:"oauth-mixto",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"oauth/backup"},{model:"api/backup"}]}});
+  assert.equal(result.ok,true,result.output);assert.deepEqual(approvals,["api/backup"]);assert.match(result.output,/asen_fallback_unavailable/);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.authTypes,{provider:"api_key",api:"api_key"});assert.equal(await readFile(join(source,"auth.json"),"utf8"),auth);
+ });
+
+ test("M2: un cambio de anfitrión posterior a la última validación impide escribir el prompt",async t=>{
+  const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+  let owned=true,validations=0,guards=0;
+  const validate=Object.assign(async()=>{if(++validations===4)queueMicrotask(()=>{owned=false;});return true;},{stillOwned:()=>{guards++;return owned;}});
+  const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:()=>validate}).run({id:"revocacion-envio-exacto",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+  assert.equal(result.ok,false,result.output);assert.match(result.output,/scope is no longer live/u);assert.equal(validations,4);assert.ok(guards>=2);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((row:{type:string})=>row.type==="prompt").length,1);assert.equal(trace.commands.filter((row:{type:string})=>row.type==="set_model").length,1);
+ });

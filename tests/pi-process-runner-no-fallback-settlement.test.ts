@@ -33,7 +33,8 @@ process.stdin.on("data",chunk=>{
 
 const abandonSettlement=`
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
-let buffer="",prompts=0,selected;
+const primary=process.argv[process.argv.indexOf("--model")+1],slash=primary.indexOf("/");
+let buffer="",prompts=0,selected={provider:primary.slice(0,slash),id:primary.slice(slash+1)};
 process.stdin.on("data",chunk=>{
  buffer+=String(chunk);
  let end;

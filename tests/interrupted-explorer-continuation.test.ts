@@ -142,9 +142,13 @@ test("M2: no reanudar un Explorer sin alternativas tras cambiar la sesión en co
 
 test("M2: la retirada de alternativa durante la última comprobación de identidad impide reanudar",async()=>{
  const model="nvidia/modelo-a",saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope:"global" as const,name:"perfil",model}};
- let reads=0,started=0;let active:typeof saved|undefined=saved;
- await assert.rejects(()=>continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{started++;return "unused";}},resolveCurrentIdentity:async()=>{if(++reads===3)active=undefined;return identity;},readCurrentDirectFallback:async()=>active}),/alternativas del perfil cambiaron/u);
- assert.equal(started,0);
+ let identities=0,fallbackReads=0,started=0;let active:typeof saved|undefined=saved;
+ let enter!:()=>void,release!:()=>void;
+ const entered=new Promise<void>(resolve=>{enter=resolve;}),barrier=new Promise<void>(resolve=>{release=resolve;});
+ const pending=continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{started++;return "unused";}},resolveCurrentIdentity:async()=>{if(++identities===4){enter();await barrier;}return identity;},readCurrentDirectFallback:async()=>{fallbackReads++;return active;}});
+ await entered;assert.equal(fallbackReads,2);active=undefined;release();
+ await assert.rejects(pending,/alternativas del perfil cambiaron/u);
+ assert.equal(started,0);assert.equal(fallbackReads,3);
 });
 
 

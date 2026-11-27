@@ -78,7 +78,7 @@ export async function continueInterruptedExplorer(input:InterruptedExplorerConti
   await verifyIdentity();
   // Comprobar ambas fuentes de nuevo si el perfil es revocable. La
   // autorización viva del intento se revalida también antes de otro prompt.
-  if(savedFallback&&input.resolveCurrentIdentity){await verifyFallback();await verifyIdentity();}
+  if(savedFallback&&input.resolveCurrentIdentity){await verifyFallback();await verifyIdentity();await verifyFallback();await verifyIdentity();}
   if(linkedTodo?.plan?.candidateRevision&&currentRevision(identity.projectId)!==linkedTodo.plan.candidateRevision)throw Error("El candidato de exploración cambió; actualizar el plan");
   throwIfCancelled(signal);
  }catch(error){if(!continuationEnqueued)validationRejectedBeforeEnqueue=true;throw error;}}:undefined;

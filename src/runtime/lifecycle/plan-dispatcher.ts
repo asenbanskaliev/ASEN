@@ -94,6 +94,8 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
  return !!after&&after.current.state==="planned"&&JSON.stringify(after)===JSON.stringify(before);
 }
 
+/** null conserva un fallo de lectura sin confundirlo con un archivo ausente. */
+export type ExplorerFallbackScopes=Partial<Record<ExplorerProfileOrigin["scope"],ProfileFallbacksFile|null>>;
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
 /** Solo Explorer de un plan normal puede cambiar de modelo sin alterar la
  * independencia de un lector obligatorio ni repetir una escritura incierta.
@@ -106,11 +108,12 @@ export function plannedExplorerProfileOrigin(role:string,model:string|undefined,
  const name=profiles[route.source]?.active;
  return name?{scope:route.source,name}:undefined;
 }
-export function plannedExplorerFallback(input:{role:string;model?:string;profiles?:ProfileLayer;origin?:ExplorerProfileOrigin;fallbacksByScope?:Partial<Record<ExplorerProfileOrigin["scope"],ProfileFallbacksFile>>;independentRecovery?:boolean}):AgentModelFallback|undefined{
+export function plannedExplorerFallback(input:{role:string;model?:string;profiles?:ProfileLayer;origin?:ExplorerProfileOrigin;fallbacksByScope?:ExplorerFallbackScopes;independentRecovery?:boolean}):AgentModelFallback|undefined{
  if(input.independentRecovery||!input.model||!input.profiles||!input.origin)return;
  const current=plannedExplorerProfileOrigin(input.role,input.model,input.profiles);
  if(!current||current.scope!==input.origin.scope||current.name!==input.origin.name)return;
  const profile=current.name,primary=splitPiModelIdentity(input.model),fallbacks=input.fallbacksByScope?.[current.scope];
+ if(fallbacks===null)throw Error("Archivo de alternativas inválido en el ámbito "+current.scope);
  if(!primary||!fallbacks)return;
  const seen=new Set([reviewModelIdentityKey(primary)]);
  const chain=resolveProfileFallbackChain(fallbacks,profile,input.role).filter(step=>{
@@ -122,13 +125,13 @@ export function plannedExplorerFallback(input:{role:string;model?:string;profile
 }
 export type ExplorerFallbackConfig=Pick<Parameters<typeof plannedExplorerFallback>[0],"profiles"|"fallbacksByScope">;
 /** No ampliar ni sustituir alternativas de una tarea ya seleccionada. */
-export async function assertPlannedExplorerFallbackCurrent(expected:AgentModelFallback,selection:Parameters<typeof plannedExplorerFallback>[0],readCurrent:()=>Promise<ExplorerFallbackConfig>):Promise<void>{
+export async function assertPlannedExplorerFallbackCurrent(expected:AgentModelFallback|undefined,selection:Parameters<typeof plannedExplorerFallback>[0],readCurrent:()=>Promise<ExplorerFallbackConfig>):Promise<void>{
  const current=await readCurrent();
  const {profiles:_previousProfiles,fallbacksByScope:_previousFallbacks,...persistedSelection}=selection;
  const actual=plannedExplorerFallback({...persistedSelection,...(current.profiles?{profiles:current.profiles}:{}),...(current.fallbacksByScope?{fallbacksByScope:current.fallbacksByScope}:{})});
  if(JSON.stringify(actual)!==JSON.stringify(expected))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
 }
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;profileFallbacksByScope?:Partial<Record<ExplorerProfileOrigin["scope"],ProfileFallbacksFile>>;
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;profileFallbacksByScope?:ExplorerFallbackScopes;
  readCurrentExplorerFallbackConfig?:()=>Promise<ExplorerFallbackConfig>;
  /** Solo el coordinador interno puede reservar una plaza de lectura.
   * Nunca es permiso para iniciar un Writer ni eludir las selecciones hijas. */
@@ -420,9 +423,10 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  await validateReadOnlyLaunch();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
  const fallbackSelection={role:readRole,...(task.plan.model?{model:task.plan.model}:{}),...(input.runtimeProfiles?{profiles:input.runtimeProfiles}:{}),...(task.plan.explorerProfileOrigin?{origin:task.plan.explorerProfileOrigin}:{}),...(input.profileFallbacksByScope?{fallbacksByScope:input.profileFallbacksByScope}:{}),independentRecovery:!!independence};
- const modelFallback=plannedExplorerFallback(fallbackSelection);
+ let modelFallback:AgentModelFallback|undefined;
+ try{modelFallback=plannedExplorerFallback(fallbackSelection);}catch{return {status:"blocked",reason:"Archivo de alternativas del ámbito seleccionado inválido; corregir antes de ejecutar"};}
  const validateFallback=async()=>{
-  if(!modelFallback)return;
+  if(!modelFallback&&(readRole!=="explorer"||!task.plan?.explorerProfileOrigin||independence||!input.readCurrentExplorerFallbackConfig))return;
   if(!input.readCurrentExplorerFallbackConfig)throw Error("No se puede comprobar la vigencia de las alternativas del perfil");
   await input.validateIdentity();
   await assertPlannedExplorerFallbackCurrent(modelFallback,fallbackSelection,input.readCurrentExplorerFallbackConfig);

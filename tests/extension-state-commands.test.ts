@@ -31,7 +31,7 @@ test("fallback-parent extension rejects delayed prior-session end and abort even
  t.after(async()=>{try{await emit("session_shutdown",{},ctxB);await emit("session_shutdown",{},ctxA);}finally{await rm(root,{recursive:true,force:true});}});
  await emit("session_start",{},ctxA);await emit("session_start",{},ctxB);
  await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxA);
- await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[],"A end cannot feed B settled");
+ await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[],"A end cannot feed B settled");assert.equal(notices.filter(message=>message.includes("alternativa provider/")).length,0,"Un evento tardío no debe recomendar modelos en otra sesión");
  await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[]);assert.ok(notices.some(message=>message.includes("alternativa provider/backup disponible")));
  // Simular la elección manual del usuario, no un cambio hecho por ASEN.
  ctxB.model={provider:"provider",id:"backup"};

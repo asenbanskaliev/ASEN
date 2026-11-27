@@ -127,7 +127,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   if(persistedPlan?.model&&persistedPlan.explorerProfileOrigin&&dispatchRole==="explorer"&&loadExplorerFallbackConfig){
    const selection={role:dispatchRole,...(persistedPlan.model?{model:persistedPlan.model}:{}),...(persistedPlan.explorerProfileOrigin?{origin:persistedPlan.explorerProfileOrigin}:{}),...await loadExplorerFallbackConfig(session)};
    modelFallback=plannedExplorerFallback(selection);
-   if(modelFallback){
+   {
     const expected=modelFallback;
     validateFallback=async()=>{
      await validateHost();
