@@ -11,7 +11,7 @@ import {dirname,resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 
 export const NVIDIA_FREE_MODEL="nvidia/nemotron-3.5-lightning-30b-a3b";
-export const NVIDIA_FREE_MODELS=Object.freeze([NVIDIA_FREE_MODEL,"nvidia/nemotron-3.5-super-vl-120b-a12b"]);
+export const NVIDIA_FREE_MODELS=Object.freeze([NVIDIA_FREE_MODEL,"nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"]);
 export const NVIDIA_FREE_URL="https://integrate.api.nvidia.com/v1/chat/completions";
 export const NVIDIA_MAX_TOKENS=128;
 const MAX_DURATION_MS=75_000;
@@ -58,7 +58,7 @@ export async function probeNvidiaFreeApi({
       {role:"system",content:"Sigue exactamente la instrucción breve. No uses herramientas ni razonamiento largo."},
       {role:"user",content:"Responde exactamente "+marker+". No añadas otros caracteres."}
      ],
-     chat_template_kwargs:{enable_thinking:false}
+     ...(model===NVIDIA_FREE_MODEL?{chat_template_kwargs:{enable_thinking:false}}:{reasoning_budget:0})
     }),
     signal:AbortSignal.timeout(timeoutMs)
    });
