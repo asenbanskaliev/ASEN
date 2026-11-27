@@ -199,6 +199,15 @@ test("M2 T06: predicado real jq exige revisión independiente exacta y anterior 
  check([{...review,state:"COMMENTED",body:nitpick+"\n**Actionable comments posted: 1**"}],[],false);
  check([review,{...review,id:2,state:"CHANGES_REQUESTED"}],[summary],false);
  check([],[summary],true);
+ // CodeRabbit publica respuestas vacías al confirmar hilos; solo valen con resumen independiente exacto.
+ const empty={...review,state:"COMMENTED",body:""};
+ check([empty],[summary],true);
+ check([empty],[{...summary,updated_at:cutoff}],false);
+ check([empty],[{...summary,body:summary.body.replaceAll(sha,"b".repeat(40))}],false);
+ check([{...empty,submitted_at:cutoff}],[summary],false);
+ check([{...review,state:"CHANGES_REQUESTED"},{...empty,id:2}],[summary],false);
+ check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 1**"},{...empty,id:2}],[summary],false);
+ check([review,{...empty,id:2}],[],true);
  check([],[{...summary,updated_at:cutoff}],false);
  check([],[{...summary,user:{login:"asenbanskaliev"}}],false);
  check([],[{...summary,body:summary.body.replaceAll(sha,"b".repeat(40))}],false);
