@@ -2,7 +2,7 @@ import {createHash} from "node:crypto";
 import {execFileSync} from "node:child_process";
 import {isolatedGitEnvironment,checkoutEolSettings} from "../agents/git-isolated-environment.js";
 import {isIssuedNativeIntegrationCandidate,readNativeIntegrationDiff,type NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
-import {isAcceptedNativeIntegration,exactPassingReceipt,type AcceptedNativeIntegration} from "./native-integration-review.js";
+import {isAcceptedNativeIntegration,exactPassingReceipt,inspectPartitionPolicy,type AcceptedNativeIntegration} from "./native-integration-review.js";
 import type {ReviewReceiptReader} from "./review-acceptance.js";
 import {parsePartitionUnitBasis,integratedSuccessorBasis,materializeIntegratedSuccessor,materializeHistoricalIntegratedSuccessor} from "./odd-unit-plan.js";
 import type {ProfileLayer} from "./profiles.js";
@@ -21,16 +21,24 @@ function assertIntegratedCheckout(candidate:NativeIntegrationCandidate,identity:
 }
 /** Reconoce el cierre atómico del Todo después de reiniciar el proceso.
  * No reconstituye AcceptedNativeIntegration, no autoriza el Writer, no ejecuta
- * herramientas, no modifica el diario ni reintenta un agente incierto. */
+ * herramientas ni reintenta agentes. Solo reconcilia el archivo ya registrado. */
 export async function inspectCompletedNativePartition(input:{
- candidate:NativeIntegrationCandidate;identity:TodoContext;todos:Pick<SessionTodoStore,"list">;receipts:ReviewReceiptReader;
+ candidate:NativeIntegrationCandidate;identity:TodoContext;todos:Pick<SessionTodoStore,"readRecoverySnapshot">;receipts:ReviewReceiptReader;
  validate:()=>Promise<void>;
 }){
  const {candidate,identity,todos}=input;
  if(!isIssuedNativeIntegrationCandidate(candidate)||identity.projectId!==candidate.repository||candidate.sourceBindings?.length!==2)
   throw Error("La recuperación requiere el lote original auténtico");
  await input.validate();
- const rows=await todos.list(identity);
+ // El diario reconcilia una transacción pendiente bajo bloqueo antes de
+ // leer las dos ubicaciones. Los duplicados restantes son ambiguos.
+ const readRows=async()=>{
+  const all=await todos.readRecoverySnapshot(identity);
+  if(new Set(all.map(row=>row.taskId)).size!==all.length)
+   throw Error("El diario activo y archivado se solapan; consultar sin repetir");
+  return all;
+ };
+ const rows=await readRows();
  await input.validate();
  const bindings=candidate.sourceBindings;
  const roots=bindings.map(binding=>{
@@ -52,6 +60,29 @@ export async function inspectCompletedNativePartition(input:{
    prior?.state!=="running"||prior.revision!==expected+1||prior.reason!=="Verifying accepted child integration "+candidate.commit||
    original?.state!=="planned"||original.revision!==expected;
  }))throw Error("El cierre del lote es parcial, distinto o incierto; no lanzar agentes");
+ const rootBases=roots.map(row=>JSON.parse(row.plan!.writerAuthorizationBasis!));
+ const rootUnits=rootBases.map(basis=>parsePartitionUnitBasis(basis,identity.projectId,candidate.baseCommit));
+ if(rootUnits[0]!.parentFacts.taskUnits.length===2){
+  if(rootUnits[1]!.parentFacts.taskUnits.length!==2||rootUnits[0]!.unit.id===rootUnits[1]!.unit.id||
+   JSON.stringify(rootBases[0].partitionOrigin)!==JSON.stringify(rootBases[1].partitionOrigin)||
+   roots.some((row,index)=>rootUnits[index]!.unit.dependsOn.length||
+    row.requestId!==`asen-plan:${rootUnits[index]!.facts.taskIdentity}:worker`||
+    row.description!=="Perform only the authorized, scoped work for: "+rootUnits[index]!.instruction||
+    JSON.stringify(row.plan!.writeSurfaces)!==JSON.stringify(rootUnits[index]!.facts.writes.map(write=>write.path)))||
+   rows.some(row=>row.dependsOn?.some(id=>candidate.sourceTodoIds.includes(id))))
+   throw Error("El cierre sin sucesora no coincide con el plan original.");
+  readNativeIntegrationDiff(candidate);
+  const receipt=await exactPassingReceipt(candidate,input.receipts);
+  // El cierre histórico no concede autoridad ni depende del checkout actual.
+  await input.validate();
+  const latest=await readRows();
+  if(roots.some(row=>JSON.stringify(row)!==JSON.stringify(latest.find(item=>item.taskId===row.taskId)))||
+   latest.some(row=>row.dependsOn?.some(id=>candidate.sourceTodoIds.includes(id))))
+   throw Error("El estado cambió durante la recuperación; consultar el diario sin repetir");
+  await input.validate();
+  return Object.freeze({status:"partition-already-closed" as const,commit:candidate.commit,
+   tests:receipt.testSuite.total,writerAuthority:false as const,autoRetry:false as const});
+ }
  const matches=rows.filter(row=>row.current.state==="cancelled"&&row.current.reason==="Superseded by a new candidate-bound ODD plan"&&
   row.plan?.role==="worker"&&row.plan.candidate?.revision===candidate.baseCommit&&row.dependsOn?.length===2&&
   candidate.sourceTodoIds.every(id=>row.dependsOn!.includes(id))&&row.requestId&&row.plan.writerAuthorizationBasis);
@@ -89,7 +120,7 @@ export async function inspectCompletedNativePartition(input:{
  // Si ya se ejecutó, su resultado puede haber cambiado el worktree; aquí
  // se informa de su estado sin restaurar permisos ni aceptar esos cambios.
  if(task.current.state==="planned")assertIntegratedCheckout(candidate,identity);
- const latest=await todos.list(identity);
+ const latest=await readRows();
  const relevant=[...roots,old,task,...rows.filter(row=>row.requestId==="asen-plan:"+id+":reviewer"||row.requestId==="asen-plan:"+id+":reviewer:2")];
  if(relevant.some(row=>JSON.stringify(row)!==JSON.stringify(latest.find(item=>item.taskId===row.taskId))))
   throw Error("El estado cambió durante la recuperación; consultar el diario sin repetir");
@@ -116,6 +147,13 @@ export async function persistNativePartitionSuccessor(input:{
  const roots=candidate.sourceTodoIds.map(id=>rows.find(row=>row.taskId===id));
  if(roots.length!==2||roots.some(row=>!row||row.current.state!=="planned"||row.plan?.candidate?.revision!==candidate.baseCommit||
   !row.requestId||!row.plan.writerAuthorizationBasis||!row.description))throw new Error("Las raíces originales cambiaron.");
+ const rootBasis=parsePartitionUnitBasis(JSON.parse(roots[0]!.plan!.writerAuthorizationBasis!),identity.projectId,candidate.baseCommit);
+ if(rootBasis.parentFacts.taskUnits.length===2){
+  await inspectPartitionPolicy(candidate,identity.sessionId,todos);
+  await todos.acceptIntegratedPartition({context:identity,roots:roots.map(row=>row!),commit:candidate.commit,
+   verify:assertCurrent,...(input.signal?{signal:input.signal}:{})});
+  return Object.freeze({status:"partition-closed" as const,commit:candidate.commit,writerAuthority:false as const,autoRetry:false as const});
+ }
  const matches=rows.filter(row=>row.current.state==="planned"&&row.plan?.candidate?.revision===candidate.baseCommit&&!!row.plan.writerAuthorizationBasis&&row.dependsOn?.length===2&&
   candidate.sourceTodoIds.every(id=>row.dependsOn!.includes(id)));
  if(matches.length!==1)return Object.freeze({status:"blocked" as const,reason:"Esta continuación admite una única sucesora que dependa exactamente de las dos raíces."});

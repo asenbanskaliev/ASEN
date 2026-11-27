@@ -10,7 +10,7 @@ import path from "node:path";
 import {createServer,type Server} from "node:http";
 import {DatabaseSync} from "node:sqlite";
 import {buildManagedManifest,generateManagedSigningKeyPair,parseManagedTrustAnchor,signManagedManifest,verifyManagedManifestSignature} from "../src/runtime/managed/managed-trust.js";
-import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,type ManagedAcquisitionSource} from "../src/runtime/managed/managed-lifecycle.js";
+import {installManaged,rollbackManaged,uninstallManaged,upgradeManaged,checkManagedPrerequisites,finishStageOnlyAcquisition,type ManagedAcquisitionSource} from "../src/runtime/managed/managed-lifecycle.js";
 import {inspectManagedInstall} from "../src/runtime/managed/managed-install.js";
 import {createHomeBackup,restoreHomeBackup,verifyHomeBackup,HomeBackupError} from "../src/runtime/lifecycle/home-backup.js";
 import {requestBrowserConsent} from "../src/runtime/ui/browser-assistant.js";
@@ -302,7 +302,7 @@ test("T09 manual recovery retains journal when probe corrupts the selector",asyn
  const result=await rollbackManaged({prefix,expectedCurrentVersion:"2.0.0",confirmed:true});
  assert.equal(result.status,"ambiguous");
  assert.equal(result.activeVersion,null);
- assert.match(result.reason??"",/(?:Active selector changed during CLI probe|ambiguous: candidate-drift; recovery journal retained)/);
+ assert.match(result.reason??"",/(?:Active selector changed during CLI probe|ambiguous: candidate-drift-after-launch; recovery journal retained)/);
  await fs.stat(journal);
  assert.equal(await fs.readFile(path.join(prefix,"install","current"),"utf8"),"unrecognized-version\n");
 });
@@ -1018,4 +1018,62 @@ test("public CLI: --browser asks for consent via loopback and a cancel changes n
   {homeDirectory:()=>homeDirectory,stdout:()=>undefined,stderr:text=>{err.push(text);const match=/(http:\/\/127\.0\.0\.1:\d+\/\S+) to confirm/u.exec(text);if(match){const url=match[1]!,token=new URL(url).pathname.slice(1);void request(`${url}/cancel`,"POST",{"x-asen-token":token});}}});
  assert.equal(code,1);assert.match(err.join(""),/cancelled/);
  assert.equal((await inspectManagedInstall({prefix:path.join(homeDirectory,".asen")})).status,"absent");
+});
+
+test("upgrade prepares signed version without execution or activation, rejects wrong signer",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("signed-stage");
+ await installManaged({...base,source:v1.source,dataHome});
+ await fs.writeFile(path.join(dataHome,"session.jsonl"),"PRESERVE");
+ const marker=path.join(root,"EXECUTED");
+ const cli="require('node:fs').writeFileSync("+JSON.stringify(marker)+",'unexpected');process.stdout.write('2.0.0\\n');";
+ const v2=await release(root,await pkg(root,"v2","2.0.0",cli),v1.keys);
+ const evil=await release(root,await pkg(root,"evil","3.0.0"));
+ await assert.rejects(()=>upgradeManaged({...base,source:evil.source,stageOnly:true}),/authenticat|trusted|signer/i);
+ let stdout="",stderr="";
+ const args=["managed","upgrade","--manifest",v2.manifestPath,"--signature",v2.signaturePath,"--package-root",v2.dir,"--trust-anchor",v1.anchor,"--stage-only","--yes"];
+ const invoke=()=>runAsen(args,{}, {homeDirectory:()=>path.dirname(prefix),stdout:text=>{stdout+=text;},stderr:text=>{stderr+=text;}});
+ assert.equal(await invoke(),0,stderr);
+ const first=JSON.parse(stdout);
+ assert.equal(first.status,"staged");assert.equal(first.activeVersion,"1.0.0");assert.equal(first.runtimeReady,false);
+ assert.equal(first.signerKeyId,v1.keys.keyId);assert.equal(first.staging.activation,"not-active");
+ await assert.rejects(()=>fs.lstat(marker),{code:"ENOENT"});
+ const observed=await inspectManagedInstall({prefix});
+ assert.equal(observed.status,"owned");
+ if(observed.status==="owned"){assert.equal(observed.activeVersion,"1.0.0");assert.deepEqual(observed.versions.map(x=>x.version),["1.0.0","2.0.0"]);}
+ assert.equal(await fs.readFile(path.join(dataHome,"session.jsonl"),"utf8"),"PRESERVE");
+ stdout="";stderr="";assert.equal(await invoke(),0,stderr);assert.equal(JSON.parse(stdout).status,"unchanged");
+ await assert.rejects(()=>fs.lstat(marker),{code:"ENOENT"});
+});
+
+test("upgrade stage-only conserva el resultado persistido aunque falle la salida",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("signed-stage-output");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ const args=["managed","upgrade","--manifest",v2.manifestPath,"--signature",v2.signaturePath,"--package-root",v2.dir,"--trust-anchor",v1.anchor,"--stage-only","--yes"];
+ let stderr="",writes=0;
+ const exit=await runAsen(args,{}, {homeDirectory:()=>path.dirname(prefix),stdout:()=>{writes++;throw new Error("salida cerrada");},stderr:text=>{stderr+=text;}});
+ assert.equal(exit,1);assert.equal(writes,1);
+ assert.match(stderr,/resultado staged; no se pudo emitir el informe/u);
+ assert.doesNotMatch(stderr,/refused/u);
+ const observed=await inspectManagedInstall({prefix});
+ assert.equal(observed.status,"owned");
+ if(observed.status==="owned"){assert.equal(observed.activeVersion,"1.0.0");assert.ok(observed.versions.some(x=>x.version==="2.0.0"));}
+});
+
+test("upgrade stage-only mantiene el informe firmado ante fallo de limpieza",async()=>{
+ const {root,prefix,dataHome,v1,base}=await setupInstall("signed-stage-cleanup");
+ await installManaged({...base,source:v1.source,dataHome});
+ const v2=await release(root,await pkg(root,"v2","2.0.0"),v1.keys);
+ let attempts=0;
+ const cleanup=async()=>{attempts++;throw new Error("ruta temporal ocupada");};
+ const first=await finishStageOnlyAcquisition(()=>upgradeManaged({...base,source:v2.source,stageOnly:true}),cleanup);
+ assert.equal(first.status,"staged");assert.equal(first.cleanupWarning,"ACQUISITION_CLEANUP_FAILED");assert.equal(first.activeVersion,"1.0.0");
+ const second=await finishStageOnlyAcquisition(()=>upgradeManaged({...base,source:v1.source,stageOnly:true}),cleanup);
+ assert.equal(second.status,"unchanged");assert.equal(second.cleanupWarning,"ACQUISITION_CLEANUP_FAILED");
+ const original=new Error("fallo original de operación");
+ await assert.rejects(()=>finishStageOnlyAcquisition(async()=>{throw original;},cleanup),error=>error===original);
+ assert.equal(attempts,3);
+ const observed=await inspectManagedInstall({prefix});
+ assert.equal(observed.status,"owned");
+ if(observed.status==="owned"){assert.equal(observed.activeVersion,"1.0.0");assert.ok(observed.versions.some(x=>x.version==="2.0.0"));}
 });

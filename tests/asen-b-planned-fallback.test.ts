@@ -1,0 +1,231 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {mkdtemp,realpath,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import {AgentRuntime} from "../src/agents/agent-runtime.js";
+import type {AgentRequest} from "../src/agents/dispatcher.js";
+import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
+import {selectSkills} from "../src/skills/registry.js";
+import {plannedExplorerFallback,plannedExplorerProfileOrigin,assertPlannedExplorerFallbackCurrent,dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {emptyProfileFallbacks,setProfileFallbackChain} from "../src/runtime/lifecycle/profile-fallback-store.js";
+import type {ProfileLayer} from "../src/runtime/lifecycle/profiles.js";
+const primary="nvidia/nvidia/modelo-a";
+const profiles:ProfileLayer={global:{schema:"asen.runtime-profiles/v1",active:"perfil",profiles:[{name:"perfil",routes:{explorer:{model:primary}}}]}};
+const fallbacks=setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",[{model:"nvidia/modelo-a"},{model:"nvidia/modelo-b"},{model:"nvidia/nvidia/modelo-b"}]);
+test("Las alternativas del Explorer planificado no cambian permisos ni independencia",()=>{
+ const input={role:"explorer",model:primary,profiles,origin:{scope:"global" as const,name:"perfil"},fallbacksByScope:{global:fallbacks}};
+ assert.deepEqual(plannedExplorerFallback(input),{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
+ for(const role of ["worker","reviewer","verifier","clarifier"])assert.equal(plannedExplorerFallback({...input,role}),undefined);
+ assert.equal(plannedExplorerFallback({...input,independentRecovery:true}),undefined);
+ assert.equal(plannedExplorerFallback({...input,model:"nvidia/otro"}),undefined);
+});
+
+ test("Las alternativas requieren procedencia exacta y archivo de su ámbito",()=>{
+ const global=profiles.global!;
+ const project={...global};
+ const projectFallbacks=setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",[{model:"nvidia/modelo-proyecto"}]);
+ const layers={global,project};
+ const origin=plannedExplorerProfileOrigin("explorer",primary,layers);
+ assert.deepEqual(origin,{scope:"project",name:"perfil"});
+ const input={role:"explorer",model:primary,profiles:layers,origin:origin!,fallbacksByScope:{global:fallbacks,project:projectFallbacks}};
+ assert.deepEqual(plannedExplorerFallback(input),{profile:"perfil",chain:[{model:"nvidia/modelo-proyecto"}]});
+ assert.equal(plannedExplorerFallback({...input,origin:{scope:"global",name:"perfil"}}),undefined);
+ assert.equal(plannedExplorerFallback({...input,origin:{scope:"project",name:"otro"}}),undefined);
+ assert.equal(plannedExplorerFallback({...input,fallbacksByScope:{global:fallbacks}}),undefined);
+ const {origin:legacyOrigin,...legacy}=input;assert.equal(plannedExplorerFallback(legacy),undefined);
+ assert.equal(plannedExplorerProfileOrigin("explorer",primary,{session:global,global}),undefined);
+ });
+
+test("B1 comprueba nuevamente las alternativas del perfil antes de ejecutar",async()=>{
+ const selection={role:"explorer",model:primary,profiles,origin:{scope:"global" as const,name:"perfil"},fallbacksByScope:{global:fallbacks}};
+ const expected=plannedExplorerFallback(selection)!;
+ assert.ok(expected);
+ await assert.doesNotReject(()=>assertPlannedExplorerFallbackCurrent(expected,selection,async()=>({profiles,fallbacksByScope:{global:fallbacks}})));
+ for(const current of [{profiles:{},fallbacksByScope:{global:fallbacks}},
+  {profiles:{...profiles,project:profiles.global!},fallbacksByScope:{global:fallbacks}},
+  {profiles,fallbacksByScope:{}},
+  {profiles,fallbacksByScope:{global:setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",[{model:"nvidia/otro"}])}}])
+  await assert.rejects(()=>assertPlannedExplorerFallbackCurrent(expected,selection,async()=>current),/alternativas del perfil cambiaron/u);
+ await assert.rejects(()=>assertPlannedExplorerFallbackCurrent(expected,selection,async()=>{throw Error("lectura fallida");}),/lectura fallida/u);
+});
+
+for(const changed of [true,false]){
+ test("B1 cola efectiva: "+(changed?"bloquea alternativas obsoletas":"conserva alternativas vigentes"),{timeout:30_000},async t=>{
+  const home=await mkdtemp(join(tmpdir(),"asen-b-cola-"));
+  const identity={sessionId:"b1-cola",projectId:await realpath(process.cwd())};
+  const todos=await SessionTodoStore.open(join(home,"todos.json"));
+  const links=new TaskAgentLinkStore(join(home,"links.json"));
+  let enter!:()=>void,release!:()=>void;
+  const entered=new Promise<void>(resolve=>{enter=resolve;});
+  const hold=new Promise<void>(resolve=>{release=resolve;});
+  const seen:AgentRequest[]=[];
+  const agents=await AgentRuntime.open({storeFile:join(home,"agents.json"),maxConcurrency:1,runner:{run:async request=>{
+   seen.push(request);
+   if(request.prompt==="Ocupar plaza"){enter();await hold;}
+   return {id:request.id,ok:true,output:"Resultado instrumentado sin modelos"};
+  }}});
+  const terminal=new Map<string,string>();
+  const unsubscribe=agents.subscribeTerminal(record=>{terminal.set(record.id,record.state);});
+  const wait=async(predicate:()=>boolean)=>{
+   const deadline=Date.now()+10_000;
+   while(!predicate()){
+    if(Date.now()>deadline)throw Error("No se observó el estado esperado");
+    await new Promise<void>(resolve=>setTimeout(resolve,10));
+   }
+  };
+  let blocker:string|undefined,queued:string|undefined;
+  try{
+   blocker=await agents.startReadOnly({role:"clarifier",prompt:"Ocupar plaza",session:identity});
+   await entered;
+   const selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0};
+   const [task]=await todos.addPlan([{title:"Explorar",requestId:"asen-plan:b1-cola:explorer",dependsOn:[],description:"Exploración en cola",
+    plan:{role:"explorer",skillPaths:selectSkills(selection).map(skill=>skill.path),skillSelection:selection,
+     model:primary,explorerProfileOrigin:{scope:"global",name:"perfil"}}}],identity);
+   assert.ok(task);
+   let current=fallbacks;
+   const result=await dispatchNextPlanTask({todos,agents,links,identity,autoApproveReadOnly:true,expectedTodoId:task.taskId,
+    runtimeProfiles:profiles,profileFallbacksByScope:{global:fallbacks},validateIdentity:async()=>{},
+    readCurrentExplorerFallbackConfig:async()=>({profiles,fallbacksByScope:{global:current}}),confirm:async()=>true});
+   assert.equal(result.status,"dispatched");
+   if(result.status!=="dispatched")throw Error("No se vinculó el Explorer");
+   queued=result.agentId;
+   assert.equal((await agents.query(queued,identity))?.record.state,"queued");
+   assert.equal(seen.length,1);
+   assert.equal((await links.list(identity)).find(link=>link.taskId===task.taskId)?.agentId,queued);
+   if(changed)current=setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",[{model:"nvidia/otro"}]);
+   release();
+   await wait(()=>terminal.has(queued!)&&terminal.has(blocker!));
+   assert.equal(terminal.get(queued),changed?"failed":"completed");
+   if(changed){
+    assert.equal(seen.length,1,"La configuración revocada no debe llegar al ejecutor");
+    assert.match((await agents.query(queued,identity))?.record.summary??"",/alternativas del perfil cambiaron/u);
+   }else{
+    assert.equal(seen.length,2);
+    assert.equal(seen[1]?.id,queued);
+    assert.deepEqual(seen[1]?.modelFallback,{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
+    assert.equal(seen[1]?.writeSurfaces,undefined);
+   }
+  }finally{
+   release();
+   try{await wait(()=>(!blocker||terminal.has(blocker))&&(!queued||terminal.has(queued)));}finally{
+    unsubscribe();await rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100});
+   }
+  }
+ });
+}
+
+
+test("B1 mantiene el snapshot activo y aplica la alternativa nueva en el siguiente lanzamiento",{timeout:30_000},async t=>{
+ const home=await mkdtemp(join(tmpdir(),"asen-b-ejecucion-iniciada-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const identity={sessionId:"b1-ejecucion-iniciada",projectId:await realpath(process.cwd())};
+ let enter!:()=>void,release!:()=>void;
+ const entered=new Promise<void>(resolve=>{enter=resolve;});
+ const hold=new Promise<void>(resolve=>{release=resolve;});
+ const seen:AgentRequest[]=[];
+ const agents=await AgentRuntime.open({storeFile:join(home,"agents.json"),maxConcurrency:1,runner:{run:async request=>{
+  seen.push(request);
+  if(request.prompt==="Ejecución ya iniciada"){enter();await hold;}
+  return{id:request.id,ok:true,output:"Ejecución instrumentada sin modelos"};
+ }}});
+ const initial=plannedExplorerFallback({role:"explorer",model:primary,profiles,origin:{scope:"global",name:"perfil"},fallbacksByScope:{global:fallbacks}});
+ assert.ok(initial);
+ assert.deepEqual(initial,{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
+ const id=await agents.startReadOnly({role:"explorer",prompt:"Ejecución ya iniciada",session:identity,model:primary,modelFallback:initial});
+ let afterChange:ReturnType<typeof plannedExplorerFallback>;
+ try{
+  await entered;
+  const captured=seen.find(request=>request.id===id);assert.ok(captured);
+  assert.deepEqual(captured.modelFallback,initial);
+  assert.equal(Object.isFrozen(captured.modelFallback),true);
+  assert.equal(Object.isFrozen(captured.modelFallback?.chain),true);
+  assert.equal(captured.modelFallback?.chain.every(Object.isFrozen),true);
+  const changed=setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",[{model:"nvidia/modelo-c"}]);
+  afterChange=plannedExplorerFallback({role:"explorer",model:primary,profiles,origin:{scope:"global",name:"perfil"},fallbacksByScope:{global:changed}});
+  assert.deepEqual(afterChange,{profile:"perfil",chain:[{model:"nvidia/modelo-c"}]});
+  assert.deepEqual(captured.modelFallback,initial,"La ejecución activa conserva su snapshot");
+ }finally{release();}
+ const deadline=Date.now()+10_000;
+ while(Date.now()<deadline){
+  const current=await agents.query(id,identity);
+  if(current?.record.state==="completed")break;
+  if(current?.record.state==="failed")assert.fail(current.record.summary??"La ejecución falló");
+  await new Promise<void>(resolve=>setTimeout(resolve,10));
+ }
+ assert.equal((await agents.query(id,identity))?.record.state,"completed");
+ assert.ok(afterChange);
+ const nextId=await agents.startReadOnly({role:"explorer",prompt:"Lanzamiento posterior",session:identity,model:primary,modelFallback:afterChange});
+ const nextDeadline=Date.now()+10_000;
+ while(Date.now()<nextDeadline){
+  const current=await agents.query(nextId,identity);
+  if(current?.record.state==="completed")break;
+  if(current?.record.state==="failed")assert.fail(current.record.summary??"El siguiente lanzamiento falló");
+  await new Promise<void>(resolve=>setTimeout(resolve,10));
+ }
+ assert.equal((await agents.query(nextId,identity))?.record.state,"completed");
+ assert.deepEqual(seen.find(request=>request.id===id)?.modelFallback,initial);
+ assert.deepEqual(seen.find(request=>request.id===nextId)?.modelFallback,afterChange);
+});
+
+test("B1 las rutas públicas comparten la selección y la vigencia de alternativas",async t=>{
+ const {registerAgentTools}=await import("../src/agents/pi-agent-tools.js");
+ const home=await mkdtemp(join(tmpdir(),"asen-b-publico-"));
+ t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const identity={sessionId:"b1-publico",projectId:await realpath(process.cwd())};
+ const todos=await SessionTodoStore.open(join(home,"todos.json")),links=new TaskAgentLinkStore(join(home,"links.json"));
+ const {TrustedTaskAgentBinder}=await import("../src/runtime/agents/trusted-task-agent-binder.js");
+ let enter!:()=>void,release!:()=>void;
+ const entered=new Promise<void>(resolve=>{enter=resolve;}),hold=new Promise<void>(resolve=>{release=resolve;});
+ const seen:AgentRequest[]=[];
+ const agents=await AgentRuntime.open({storeFile:join(home,"agents.json"),maxConcurrency:1,runner:{run:async request=>{
+  seen.push(request);if(request.prompt==="Ocupar plaza"){enter();await hold;}return {id:request.id,ok:true,output:"Resultado instrumentado"};
+ }}});
+ const tools=new Map<string,any>();let current=fallbacks;
+ registerAgentTools({registerTool:tool=>{tools.set(tool.name,tool);}},async()=>agents,{todos:async()=>todos,links:async()=>links,binder:async()=>new TrustedTaskAgentBinder(todos,agents,links)},undefined,undefined,undefined,async()=>profiles,undefined,async()=>({profiles,fallbacksByScope:{global:current}}));
+ const context={cwd:identity.projectId,sessionManager:{getSessionId:()=>identity.sessionId},hasUI:false};
+ const selection={phase:"explore" as const,risk:"low" as const,codeChange:false,behaviorChange:false,filesTouched:0};
+ const plan={role:"explorer" as const,skillPaths:selectSkills(selection).map(skill=>skill.path),skillSelection:selection,model:primary,explorerProfileOrigin:{scope:"global" as const,name:"perfil"}};
+ const [one,two]=await todos.addPlan([{title:"Uno",requestId:"asen-plan:publico-uno:explorer",dependsOn:[],description:"Exploración uno",plan},{title:"Dos",requestId:"asen-plan:publico-dos:explorer",dependsOn:[],description:"Exploración dos",plan}],identity);
+ assert.ok(one&&two);
+ const blocker=await agents.startReadOnly({role:"clarifier",prompt:"Ocupar plaza",session:identity});
+ await entered;
+ let first:string|undefined,second:string|undefined;
+ try{
+  const result=await tools.get("asen_agent_start").execute("start",{role:"explorer",prompt:"Exploración uno",todoId:one.taskId},undefined,undefined,context);
+  first=result.details.id;assert.ok(first);
+  // Ambas rutas deben conservar la alternativa autorizada en el diario.
+  assert.deepEqual((await agents.query(first,identity))?.spec.modelFallback,{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
+  const next=await tools.get("asen_plan_dispatch_next").execute("next",{},undefined,undefined,context);
+  assert.equal(next.details.status,"dispatched");second=next.details.agentId;assert.ok(second);
+  assert.deepEqual((await agents.query(second,identity))?.spec.modelFallback,{profile:"perfil",chain:[{model:"nvidia/modelo-b"}]});
+  current=emptyProfileFallbacks();
+ }finally{release();}
+ const deadline=Date.now()+10_000;
+ while(Date.now()<deadline){
+  const states=await Promise.all([blocker,first,second].filter((id):id is string=>!!id).map(id=>agents.query(id,identity)));
+  if(states.every(entry=>entry&&["completed","failed","cancelled"].includes(entry.record.state)))break;
+  await new Promise<void>(resolve=>setTimeout(resolve,10));
+ }
+ assert.ok(first&&second);assert.equal((await agents.query(first,identity))?.record.state,"failed");
+ assert.equal((await agents.query(second,identity))?.record.state,"failed");
+ assert.equal(seen.length,1,"No se ejecutan alternativas retiradas");
+});
+
+
+test("M2: un Explorer directo en cola rechaza la sustitución por otro ámbito con igual cadena", {timeout:30_000},async t=>{
+ const {registerAgentTools}=await import("../src/agents/pi-agent-tools.js");
+ const home=await mkdtemp(join(tmpdir(),"asen-b-directo-"));t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const identity={sessionId:"b1-directo",projectId:await realpath(process.cwd())};
+ let enter!:()=>void,release!:()=>void;const entered=new Promise<void>(r=>{enter=r;}),hold=new Promise<void>(r=>{release=r;});const seen:AgentRequest[]=[];
+ const agents=await AgentRuntime.open({storeFile:join(home,"agents.json"),maxConcurrency:1,runner:{run:async request=>{seen.push(request);if(request.prompt==="Ocupar plaza"){enter();await hold;}return {id:request.id,ok:true,output:"Instrumentado"};}}});
+ let scope:"project"|"global"="project";const tools=new Map<string,any>();
+ registerAgentTools({registerTool:tool=>{tools.set(tool.name,tool);}},async()=>agents,undefined,async()=>({choice:{model:primary},source:scope,modelFallback:{profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope,name:"perfil",model:primary}}}));
+ const context={cwd:identity.projectId,sessionManager:{getSessionId:()=>identity.sessionId},hasUI:false};
+ const blocker=await agents.startReadOnly({role:"clarifier",prompt:"Ocupar plaza",session:identity});await entered;
+ let queued:string;
+ try{const result=await tools.get("asen_agent_start").execute("start",{role:"explorer",prompt:"Exploración directa"},undefined,undefined,context);queued=result.details.id;scope="global";}finally{release();}
+ const deadline=Date.now()+10_000;while(Date.now()<deadline){if((await agents.query(queued!,identity))?.record.state==="failed")break;await new Promise<void>(r=>setTimeout(r,10));}
+ assert.equal((await agents.query(queued!,identity))?.record.state,"failed");assert.equal(seen.length,1);assert.equal(seen[0]?.id,blocker);
+});

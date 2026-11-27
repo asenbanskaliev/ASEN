@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 // @ts-expect-error CI-only matrix planner.
-import {planPiSupportMatrix,validateCellObservation} from "../scripts/pi-support-matrix.mjs";
+import {planPiSupportMatrix,validateCellObservation,supplementalPiVersions,observeMatrixRpcReply} from "../scripts/pi-support-matrix.mjs";
 
-test("support matrix selects exactly 12 distinct Pi 1.2.0 host cells",()=>{
+test("La matriz normal conserva Pi 1.2.0 y prueba la versión de desarrollo 1.6.0",()=>{
  const cells=planPiSupportMatrix();
- assert.equal(cells.length,12);
- assert.deepEqual([...new Set(cells.map((c:{version:string})=>c.version))],["1.2.0"]);
- assert.equal(new Set(cells.map((c:{id:string})=>c.id)).size,12);
- for(const platform of ["linux","win32","darwin"])assert.equal(cells.filter((c:{platform:string})=>c.platform===platform).length,4);
+ assert.equal(cells.length,24);
+ assert.deepEqual([...new Set(cells.map((c:{version:string})=>c.version))],["1.2.0","1.6.0"]);
+ assert.equal(new Set(cells.map((c:{id:string})=>c.id)).size,24);
+ for(const platform of ["linux","win32","darwin"])assert.equal(cells.filter((c:{platform:string})=>c.platform===platform).length,8);
 });
 
 test("support matrix derives its floor and development witnesses from the uncapped package contract",()=>{
@@ -68,4 +68,42 @@ test("La prueba de Pi adicional rechaza versiones ambiguas o inferiores",()=>{
  };
  for(const invalid of [["1.1.0"],["latest"],["1.5.x"],["1.5.2","1.5.3","1.5.4"]])
   assert.throws(()=>planPiSupportMatrix(metadata,invalid),/Supplemental Pi version/u);
+});
+
+test("G01 conserva Pi 1.2 y añade 1.5.2 y 1.6.0 en los tres sistemas y cuatro modos",()=>{
+ const versions=supplementalPiVersions({ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.5.2,1.6.0"});
+ const cells=planPiSupportMatrix(undefined,versions);
+ assert.deepEqual([...new Set(cells.map((cell:{version:string})=>cell.version))].sort(),["1.2.0","1.5.2","1.6.0"]);
+ assert.equal(cells.length,36);
+ assert.equal(new Set(cells.map((cell:{id:string})=>cell.id)).size,36);
+ for(const platform of ["linux","win32","darwin"])for(const version of ["1.2.0","1.5.2","1.6.0"])
+  assert.deepEqual(cells.filter((cell:{platform:string;version:string})=>cell.platform===platform&&cell.version===version).map((cell:{mode:string})=>cell.mode),["tui","rpc","json","print"]);
+ assert.deepEqual(supplementalPiVersions({ASEN_PI_MATRIX_EXTRA_VERSION:"1.5.2"}),["1.5.2"]);
+ assert.deepEqual(supplementalPiVersions({}),[]);
+});
+test("G01 rechaza solicitudes de versiones duplicadas, ambiguas o excesivas",()=>{
+ for(const env of [{ASEN_PI_MATRIX_EXTRA_VERSIONS:""},{ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.6.0,"},
+  {ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.6.0,1.6.0"},{ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.5.2, 1.6.0"},
+  {ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.4.0,1.5.2,1.6.0"},{ASEN_PI_MATRIX_EXTRA_VERSION:"latest"},
+  {ASEN_PI_MATRIX_EXTRA_VERSION:"1.5.2",ASEN_PI_MATRIX_EXTRA_VERSIONS:"1.6.0"}])
+  assert.throws(()=>supplementalPiVersions(env));
+});
+
+test("G01 RPC exige una respuesta correlacionada de una sesión en reposo",()=>{
+ const cell=planPiSupportMatrix().find((value:{mode:string})=>value.mode==="rpc");
+ assert.ok(cell);
+ const valid={mode:"rpc",hasUI:true,commands:["asen"],tools:["asen_ask_choice","ask_user_choice","ask_user_question"],modelCalls:0,shutdownObserved:true,exitCode:0,signal:null,timedOut:false};
+ const reply={type:"response",id:"matrix-state",command:"get_state",success:true,data:{sessionId:"private-session",isStreaming:false,isCompacting:false,pendingMessageCount:0}};
+ const observed=observeMatrixRpcReply([reply]);
+ assert.deepEqual(observed,{responseCount:1,correlated:true});
+ assert.deepEqual(observeMatrixRpcReply([reply],"matrix-state"," \r\t"),observed);
+ assert.deepEqual(observeMatrixRpcReply([reply],"matrix-state",JSON.stringify(reply)),{responseCount:1,correlated:false});
+ assert.deepEqual(observeMatrixRpcReply([reply],"matrix-state","{incompleto"),{responseCount:1,correlated:false});
+ assert.doesNotThrow(()=>validateCellObservation(cell,{...valid,rpc:observed}));
+ for(const records of [[],[reply,reply],[{...reply,id:"other"}],[{...reply,command:"prompt"}],[{...reply,success:false}],[{...reply,data:null}],
+  [{...reply,data:{...reply.data,isStreaming:true}}],[{...reply,data:{...reply.data,isCompacting:true}}],[{...reply,data:{...reply.data,pendingMessageCount:1}}],
+  [{...reply,data:{...reply.data,sessionId:""}}]]){
+  assert.throws(()=>validateCellObservation(cell,{...valid,rpc:observeMatrixRpcReply(records)}));
+ }
+ assert.throws(()=>validateCellObservation(cell,valid));
 });

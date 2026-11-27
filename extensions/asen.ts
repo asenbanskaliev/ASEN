@@ -51,7 +51,7 @@ import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {Candidate} from "../src/core/types.js";
 import {PiProcessRunner,configuredPiProviderCredential,type PiProviderCredential} from "../src/agents/pi-process-runner.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
-import {registerAgentTools,ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
+import {registerAgentTools,ASEN_AGENT_TOOL_NAMES,confirmWithAbort} from "../src/agents/pi-agent-tools.js";
 import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 import {TaskAgentCoordinator} from "../src/runtime/agents/task-agent-coordinator.js";
 import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
@@ -59,7 +59,7 @@ import {TrustedTaskAgentBinder} from "../src/runtime/agents/trusted-task-agent-b
 import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
-import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {dispatchNextPlanTask,plannedExplorerProfileOrigin,plannedExplorerFallback} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,assertNativeDualReviewReceipt,canResumeUnstartedDualReview,markNativeDualReviewAttemptStarted,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {summarizeParentFlow,summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
 import type {NativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
@@ -113,6 +113,7 @@ import {combineT11LocalWithChild,createT11ChildExpiryController,createT11RailObs
 import {createNativeM2Navigator,type M2AgentHierarchyBinding,type M2AgentStopTarget,type M2NavigatorSource} from "../src/runtime/ui/native-m2-navigator.js";
 import {renderT11CompactFallback} from "../src/runtime/ui/m1-readonly-rail.js";
 import {projectHostStatus,type HostStatusInput} from "../src/runtime/ui/host-status-projection.js";
+import {createCompactionPressureObserver} from "../src/runtime/ui/compaction-pressure.js";
 import {ASEN_KEYMAP_ACTIONS,effectiveKey,readKeymaps,prepareKeymapChange,writeKeymaps,keymapSavedNotice,resetKeymap,KEYMAP_RELOAD_NOTICE} from "../src/runtime/ui/keymaps.js";
 import {inspectIntegrationProfiles,type LoadedProfileInspection,type PublicInventoryRow} from "../src/runtime/ui/integration-profile-inspection.js";
 import {integrationPanel} from "../src/runtime/ui/integrations-panel.js";
@@ -128,8 +129,8 @@ import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
 type CreateProfileCatalogModel=ParentCatalogModel&{reasoning?:boolean|undefined;thinkingLevelMap?:Partial<Record<Thinking,string|null|undefined>>|undefined};
-type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string;getEntries?:()=>readonly unknown[]};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
-type PiLike={getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
+type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string;getEntries?:()=>readonly unknown[]};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string,opts?:{signal?:AbortSignal})=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
+type PiLike={getSettings?:()=>unknown;getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
 const ASEN_SESSION_TOOL_NAMES=Object.freeze(["asen_session_consult"] as const);
@@ -197,6 +198,9 @@ function terminalColumns():number{const columns=Number.isSafeInteger(process.std
 export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(pi:PiLike)=>AsenExtensionFacade {
  const home=dependencies.homeDir??homedir,packageRoot=dependencies.packageRoot??productionPackageRoot,refresh=dependencies.refresh??refreshSkillRegistry;
  return pi=>{
+  const hostSettings=()=>{try{return typeof pi.getSettings==="function"?pi.getSettings():undefined;}catch{return undefined;}};
+  const settingsFingerprint=(value:unknown)=>{try{return JSON.stringify(value)??"undefined";}catch{return "unserializable";}};
+  const observeHostStatus=(ctx:CommandContext,settings:unknown)=>projectHostStatus(ctx,undefined,typeof pi.getSettings==="function"?()=>settings:undefined);
   const registerRaw=pi.registerCommand?.bind(pi);
   if(!registerRaw)throw new Error("ASEN extension requires Pi command registration");
   // UFC-M1-04: registered handlers are captured so keymap shortcuts can invoke the very
@@ -283,6 +287,28 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return binding;
   };
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
+  // Una aprobación por intento: no guardar ni heredar permisos de gasto.
+  let fallbackConsentPending:{owner:object;controller:AbortController}|undefined;
+   let fallbackSessionReady=false;
+  const confirmFallbackAttempt=async(ctx:CommandContext|undefined,scope:{sessionId:string;projectId:string},model:string,signal?:AbortSignal,validateTarget?:()=>Promise<boolean>):Promise<boolean>=>{
+   if(!fallbackSessionReady||!ctx||ctx.hasUI!==true||typeof ctx.ui?.confirm!=="function"||ctx.signal?.aborted||signal?.aborted)return false;
+   if(!/^[a-z0-9][a-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u.test(model)||model.split("/").some(part=>part==="."||part===".."||!part))return false;
+   const owner=agentDeliveryIdentity,delivery=agentDeliveryContext,generation=parentBindingGeneration;
+   if(!owner||!delivery||ctx.sessionManager!==delivery.sessionManager||owner.sessionId!==scope.sessionId||(!validateTarget&&owner.projectId!==scope.projectId)||fallbackConsentPending?.owner===owner)return false;
+   const currentOwner=()=>fallbackSessionReady&&agentDeliveryIdentity===owner&&agentDeliveryContext===delivery&&parentBindingGeneration===generation&&ctx.sessionManager===delivery.sessionManager;
+   const pending={owner,controller:new AbortController()};
+   fallbackConsentPending=pending;
+   const dialogSignal=AbortSignal.any([pending.controller.signal,...(ctx.signal?[ctx.signal]:[]),...(signal?[signal]:[])]);
+   try{
+    const before=await sessionIdentity(ctx);
+    if(before.sessionId!==owner.sessionId||before.projectId!==owner.projectId||!currentOwner()||ctx.signal?.aborted||signal?.aborted)return false;
+    if(validateTarget&&(!await validateTarget()||!currentOwner()||ctx.signal?.aborted||signal?.aborted))return false;
+    const approved=await confirmWithAbort(dialogAbort=>ctx.ui.confirm!("Autorizar un cambio de modelo",`Modelo exacto: ${model}\nProyecto autorizado: ${scope.projectId}\n\nEl coste real y su inclusión en la suscripción no están verificados. ¿Autorizas este único intento de continuación con este modelo? No autoriza otros modelos ni intentos posteriores.`,dialogAbort?{signal:dialogAbort}:undefined),dialogSignal);
+    const after=await sessionIdentity(ctx);
+    if(approved!==true||!currentOwner()||after.sessionId!==owner.sessionId||after.projectId!==owner.projectId||ctx.signal?.aborted||signal?.aborted)return false;
+    return (!validateTarget||await validateTarget())&&currentOwner()&&!ctx.signal?.aborted&&!signal?.aborted;
+   }catch{return false;}finally{if(fallbackConsentPending===pending)fallbackConsentPending=undefined;}
+  };
   const agentProviderCredential=dependencies.agentProviderCredential??configuredPiProviderCredential(process.env);
   const notificationProjection=new PiNotificationProjection();
   const backgroundJobs=new BackgroundJobRegistry(new BackgroundJobJournal(dependencies.backgroundJobJournalFile??path.join(home(),".asen","background-jobs.json")),dependencies.backgroundExecutor);
@@ -313,7 +339,27 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const sessionDirectory=dependencies.enableWorkspaceRuntime?new SharedSessionDirectory(path.join(home(),".asen","session-directory")):new SessionDirectory();
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
-  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,requirePartitionModelBeforePrompt:true,...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
+  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,requirePartitionModelBeforePrompt:true,onFallbackUnavailable:scope=>{
+   const ctx=agentDeliveryContext,owner=agentDeliveryIdentity,generation=parentBindingGeneration;
+   if(!fallbackSessionReady||!ctx||!owner||owner.sessionId!==scope.sessionId||owner.projectId!==scope.projectId)return;
+   void sessionIdentity(ctx).then(current=>{
+    if(fallbackSessionReady&&generation===parentBindingGeneration&&agentDeliveryContext===ctx&&agentDeliveryIdentity===owner&&current.sessionId===scope.sessionId&&current.projectId===scope.projectId)ctx.ui?.notify("Alternativas OAuth no disponibles; se conservan las rutas compatibles sujetas a autorización.","warning");
+   }).catch(()=>{});
+  },authorizeModelFallback:async(attempt,signal)=>{
+   const owner=agentDeliveryIdentity,context=agentDeliveryContext,generation=parentBindingGeneration;
+   if(!fallbackSessionReady||!owner||!context||owner.sessionId!==attempt.sessionId||signal?.aborted)return false;
+   const manager=context.sessionManager,cwd=context.cwd;
+   const live=()=>fallbackSessionReady&&!hostStatusClosed&&agentDeliveryIdentity===owner&&agentDeliveryContext===context&&generation===parentBindingGeneration&&!context.signal?.aborted&&!signal?.aborted&&context.sessionManager===manager&&context.cwd===cwd&&manager?.getSessionId?.()===owner.sessionId;
+   const validate=async()=>{
+    if(!live())return false;
+    try{const before=await sessionIdentity(context);if(before.sessionId!==owner.sessionId||before.projectId!==owner.projectId||!live())return false;
+     const allowed=await (await getAgentRuntime()).validateActiveModelFallback(attempt,owner);
+     const after=await sessionIdentity(context);return allowed&&live()&&after.sessionId===owner.sessionId&&after.projectId===owner.projectId;
+    }catch{return false;}
+   };
+   if(!await confirmFallbackAttempt(context,attempt,attempt.to,signal,validate))return false;
+   return Object.assign(validate,{stillOwned:live});
+  },...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
   // El transporte Pi registra los modelos en el resultado autenticado del
   // Writer. Mantener un observador de selección para la comprobación previa.
@@ -348,7 +394,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    loadChain:async profile=>profile?resolveProfileFallbackChain(await profileFallbacksReader(profileFallbacksFile),profile,"orchestrator"):[],
    currentModel:host=>{const model=(host as CommandContext|undefined)?.model;return model?`${model.provider}/${model.id}`:undefined;},
    findModel:(model,host)=>{const split=model.indexOf("/");if(split<=0||split===model.length-1)return undefined;return (host as CommandContext|undefined)?.modelRegistry?.find(model.slice(0,split),model.slice(split+1));},
-   setModel:model=>pi.setModel?pi.setModel(model):false,
+   authorizeFallback:async(model,host)=>{const ctx=host as CommandContext|undefined,scope=agentDeliveryIdentity;return !!scope&&await confirmFallbackAttempt(ctx,scope,model.provider+"/"+model.id);},
+   isCancelled:host=>(host as CommandContext|undefined)?.signal?.aborted===true,
+   canAutoContinue:()=>{const settings=hostSettings() as {retry?:{enabled?:boolean;maxRetries?:number;provider?:{maxRetries?:number}};compaction?:{enabled?:boolean};cacheWarming?:string}|undefined;return settings?.cacheWarming==="off"&&settings?.retry?.enabled===false&&settings.retry.maxRetries===0&&settings.retry.provider?.maxRetries===0&&settings.compaction?.enabled===false;},
+   onManualContinuation:host=>(host as CommandContext|undefined)?.ui?.notify("ASEN: el modelo alternativo está disponible, pero no se inicia otro turno sin garantías de un único intento. Continúa manualmente o desactiva reintentos, compactación automática y calentamiento de caché en Pi.","warning"),
+   // Pi 1.2–1.6 no ofrece un setModel cancelable antes de la asignación.
+   // No cambiar el modelo del usuario mediante una autenticación asíncrona.
+   recommendManualModel:(model,host)=>(host as CommandContext|undefined)?.ui?.notify(`ASEN: alternativa ${model.provider}/${model.id} disponible. Selecciónala manualmente en Pi y continúa si deseas usarla. No se ha cambiado el modelo ni iniciado otra petición.`,"warning"),
    getThinking:()=>pi.getThinkingLevel?.(),setThinking:level=>pi.setThinkingLevel?.(level),
    notify:(change,pricing,host)=>(host as CommandContext|undefined)?.ui?.notify(formatModelFallbackNotice(change,pricing),"warning"),
    followUp:message=>pi.sendUserMessage?.(message,{deliverAs:"followUp"}),
@@ -427,39 +479,73 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   let t11ActivityUnavailable=false,t11ChildFlowUnavailable=false,t11ChildObservedAt=0;
   let hostStatusUI:CommandContext["ui"]|undefined;
-  let hostRefreshGeneration=0;
-  const clearHostStatus=()=>{
-   try{hostStatusUI?.setStatus?.("asen:host",undefined);}catch{/* Optional presentation only. */}
-   hostStatusUI=undefined;
+  let hostStatusSnapshot:AsenPanelSnapshot|undefined;
+  let hostRefreshGeneration=0,hostPressureGeneration=0,hostObservationGeneration=0,hostSampleGeneration=0,hostPublishedSample=0;
+  let hostStatusSettingsFingerprint:string|undefined;
+  let hostCompactionObserver:ReturnType<typeof createCompactionPressureObserver>|undefined;
+  let hostCompactionOwner:Readonly<{ui:CommandContext["ui"];sessionId:string;cwd:string;ctx:CommandContext}>|undefined;
+  const stopHostCompactionObserver=()=>{
+   hostCompactionObserver?.stop();hostCompactionObserver=undefined;hostCompactionOwner=undefined;
   };
-  const refreshHostStatus=async(ctx:CommandContext):Promise<void>=>{
-   const generation=++hostRefreshGeneration;
+  const clearHostStatus=()=>{
+   stopHostCompactionObserver();
+   try{hostStatusUI?.setStatus?.("asen:host",undefined);}catch{/* Optional presentation only. */}
+   hostStatusUI=undefined;hostStatusSnapshot=undefined;hostStatusSettingsFingerprint=undefined;hostPublishedSample=0;
+  };
+  const refreshHostStatus=async(ctx:CommandContext,pressureOnly=false):Promise<void>=>{
+   const refreshEpoch=panelEpoch;
+   const generation=pressureOnly?hostRefreshGeneration:++hostRefreshGeneration;
+   const pressureGeneration=pressureOnly?++hostPressureGeneration:0;
+   const observation=++hostObservationGeneration;
    if(hostStatusClosed||ctx?.mode!=="tui"||ctx.hasUI!==true||typeof ctx.ui?.setStatus!=="function"||!ctx.sessionManager?.getSessionId?.()){
     clearHostStatus();return;
    }
    if(hostStatusUI&&hostStatusUI!==ctx.ui)clearHostStatus();
    hostStatusUI=ctx.ui;
    try{
-    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),hostStatus=projectHostStatus(ctx),tone=hostStatus.context.state;
-    const observed=snapshotWorkspaceRoots([identity.projectId])[0];
+    const assertCurrent=panelScope(ctx),identity=await sessionIdentity(ctx),settings=hostSettings(),settingsSnapshot=settingsFingerprint(settings),hostStatus=observeHostStatus(ctx,settings),sample=++hostSampleGeneration;
+    if(pressureOnly&&!hostStatusSnapshot)return;
+    const observed=pressureOnly?undefined:snapshotWorkspaceRoots([identity.projectId])[0];
     const now=await sessionIdentity(ctx);assertCurrent();
-    if(generation!==hostRefreshGeneration||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
-    const changes=observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
+    if((pressureOnly&&(pressureGeneration!==hostPressureGeneration||observation!==hostObservationGeneration))||(!pressureOnly&&generation!==hostRefreshGeneration)||(!pressureOnly&&hostStatusUI!==ctx.ui)||hostStatusClosed||now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)return;
+    const changes=pressureOnly?hostStatusSnapshot?.changes:observed&&!observed.error?{branch:observed.branch,files:observed.files.length}:undefined;
+    const newest=sample>=hostPublishedSample;
+    const publishedHostStatus=newest?hostStatus:hostStatusSnapshot?.hostStatus??hostStatus;
+    const publishedSettingsFingerprint=newest?settingsSnapshot:hostStatusSettingsFingerprint??settingsSnapshot;
+    const tone=publishedHostStatus.context.state;
     const permission=permissionSession.mode(ctx);
     const live=t11ActivityCache.get(identity.sessionId,identity.projectId);
     const review=live&&todoStorePromise?derivePanelReview({
      todos:live.todos,agents:live.agents,jobs:live.jobs,todosObserved:true
     }):undefined;
-    const width=terminalColumns(),info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus,
+    const info:AsenPanelSnapshot={todos:live?.todos??[],agents:live?.agents??[],jobs:live?.jobs??[],hostStatus:publishedHostStatus,
      ...(review?.known&&review.pending?{review:{pending:review.pending}}:{}),
      ...(changes?{changes}:{}),...(permission==="normal"?{}:{permission:permission.toUpperCase()})};
     // En modo estrecho se priorizan avisos y acceso al panel, sin reemplazar
     // el pie de Pi ni duplicar el widget. La vista ancha conserva la barra anterior.
+    const width=terminalColumns();
     const line=width<140?renderAsenT11CompactStatus(info,Math.max(1,width),
      {headerAtTop:t11Header!=="below-input",panelCommand:true,activityUnavailable:t11ActivityUnavailable,agentFlowUnavailable:t11ChildFlowUnavailable}):
      renderAsenStatusLine(info,width);
+    if(newest){hostStatusSettingsFingerprint=settingsSnapshot;hostPublishedSample=sample;}
+    hostStatusSnapshot=info;
     ctx.ui.setStatus("asen:host",(tone==="warning"||tone==="error")&&typeof ctx.ui.theme?.fg==="function"?ctx.ui.theme.fg(tone,line):line);
-   }catch{if(generation===hostRefreshGeneration&&!hostStatusClosed)clearHostStatus();}
+    ensureHostCompactionObserver(ctx,publishedSettingsFingerprint);
+   }catch{if(refreshEpoch===panelEpoch&&observation===hostObservationGeneration&&(pressureOnly?pressureGeneration===hostPressureGeneration:generation===hostRefreshGeneration)&&!hostStatusClosed)clearHostStatus();}
+  };
+  const ensureHostCompactionObserver=(ctx:CommandContext,initial:string):void=>{
+   const sessionId=ctx.sessionManager?.getSessionId?.(),cwd=ctx.cwd,ui=ctx.ui;
+   if(typeof pi.getSettings!=="function"||ctx.mode!=="tui"||ctx.hasUI!==true||!sessionId||hostStatusClosed)return;
+   if(hostCompactionOwner?.sessionId===sessionId&&hostCompactionOwner.cwd===cwd&&hostCompactionOwner.ui===ui&&hostCompactionOwner.ctx===ctx&&!hostCompactionOwner.ctx.signal?.aborted&&hostCompactionObserver?.active()){hostCompactionObserver.synchronize(initial);return;}
+   stopHostCompactionObserver();
+   hostCompactionOwner={sessionId,cwd,ui,ctx};
+   hostCompactionObserver=createCompactionPressureObserver({
+    initial,
+    read:()=>settingsFingerprint(hostSettings()),
+    current:()=>!hostStatusClosed&&!ctx.signal?.aborted&&hostStatusUI===ui&&ctx.mode==="tui"&&ctx.hasUI===true&&
+     ctx.cwd===cwd&&ctx.sessionManager?.getSessionId?.()===sessionId,
+    onChange:()=>{void refreshHostStatus(ctx,true);}
+   });
   };
   // Immutable, session-scoped display data. Never performs an agent action.
   const getPanelSnapshot=async(ctx:CommandContext,mode:"manual"|"observer"="manual",onReadStarted?:()=>void):Promise<AsenPanelSnapshot>=>{
@@ -479,7 +565,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const now=await sessionIdentity(ctx);assertCurrent();
    if(now.sessionId!==identity.sessionId||now.projectId!==identity.projectId)throw new Error("ASEN panel session changed");
    const integrationInspection=inspectIntegrationProfiles({...(pi.getCommands?{getCommands:pi.getCommands.bind(pi)}:{}),...(pi.getAllTools?{getAllTools:pi.getAllTools.bind(pi)}:{}),...(profiles?{profiles}:{})});
-   const hostStatus=projectHostStatus(ctx);assertCurrent();
+   const hostStatus=observeHostStatus(ctx,hostSettings());assertCurrent();
    let agentFlow:Awaited<ReturnType<typeof readAgentFlowPanelObservation>>|undefined,agentFlowUnavailable=false;
    if(todoStorePromise&&agentRuntimePromise)try{
     agentFlow=await readAgentFlowPanelObservation({
@@ -649,17 +735,29 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    await Promise.all(links.filter(link=>link.taskId===taskId).map(link=>runtime.cancel(link.agentId,identity)));
   }:undefined,taskAgentLinks&&agentRuntimePromise?{links:async()=>taskAgentLinks,agents:async()=>agentRuntimePromise}:undefined,async host=>{await advancePlan(host as CommandContext);},async host=>refreshTodoWidget(host as CommandContext));
   if(memoryStorePromise)registerPiMemoryTools(pi,host=>currentMemoryBinding(host));
+  // Un único lector por ámbito para las rutas públicas y el avance automático.
+  const readFallbacksByScope=async(identity:ProfileSessionIdentity)=>{
+   const [globalFallbacks,projectFallbacks]=await Promise.all([
+    profileFallbacksReader(profileFallbacksFile).catch(()=>null),
+    profileFallbacksReader(path.join(identity.projectId,".asen","profile-fallbacks.json")).catch(()=>null)
+   ]);
+   // null significa archivo inválido; undefined significa ausente.
+   return {...(globalFallbacks!==undefined?{global:globalFallbacks}:{}),...(projectFallbacks!==undefined?{project:projectFallbacks}:{})};
+  };
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity,directExplorer)=>{
    const layers=await profileLayer(identity),route=resolveRuntimeRoute(layers,role);
    if(!directExplorer)return route;
-   const profile=(route.source==="default"?layers.session??layers.project??layers.global:layers[route.source])?.active;
-   const chain=resolveProfileFallbackChain(await readProfileFallbacksFile(profileFallbacksFile),profile,role);
-   return {...route,...(profile&&chain.length?{modelFallback:{profile,chain}}:{})};
+   // La misma procedencia de perfil y ámbito que las rutas planificadas.
+   // Un perfil de proyecto no hereda alternativas de un perfil global homónimo.
+   const model=route.choice?.model,origin=plannedExplorerProfileOrigin(role,model,layers);
+   const scopedFallbacks=origin?await profileFallbacksReader(origin.scope==="global"?profileFallbacksFile:path.join(identity.projectId,".asen","profile-fallbacks.json")):undefined;
+   const modelFallback=plannedExplorerFallback({role,...(model?{model}:{}),profiles:layers,...(origin?{origin}:{}),fallbacksByScope:origin&&scopedFallbacks?{[origin.scope]:scopedFallbacks}:{}});
+   return {...route,...(modelFallback&&origin&&model?{modelFallback:{...modelFallback,origin:{...origin,model}}}:{})};
   },agentNoticeJournal,identity=>{
    const budget=explorerBudget;
    return !!budget&&budget.sessionId===identity.sessionId&&
     budget.projectId===identity.projectId&&budget.telemetry.claimBudgetExplorer();
-  },async identity=>profileLayer(identity)):undefined;
+  },async identity=>profileLayer(identity),undefined,async identity=>({profiles:await profileLayer(identity),fallbacksByScope:await readFallbacksByScope(identity)})):undefined;
   const workspaceStorePromise=dependencies.workspaceStoreFactory?.()??(dependencies.enableWorkspaceRuntime?PersistentWorkspaceStore.open(workspaceFile):undefined);
   const planAdvanceQueue=new PlanAdvanceQueue();
   const advancePlan=async(ctx:CommandContext,independentBlockedTodoId?:string,expectedTodoId?:string,toolSignal?:AbortSignal):Promise<{started:boolean;authorized:boolean;role?:string;title?:string;reason?:string}>=>{
@@ -689,7 +787,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      const model=ctx.modelRegistry?.find(ref.slice(0,slash),ref.slice(slash+1));
      return !!model&&`${model.provider}/${model.id}`===ref;
     };
-    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,...(signal?{signal}:{}),
+    const profileFallbacksByScope=await readFallbacksByScope(identity);
+    const readCurrentExplorerFallbackConfig=async()=>({
+     profiles:await parentProfileLayer(ctx,identity),fallbacksByScope:await readFallbacksByScope(identity)
+    });
+    const dispatchOptions={todos,agents,links:taskAgentLinks,identity,autoApproveReadOnly:true,profileFallbacksByScope,readCurrentExplorerFallbackConfig,...(signal?{signal}:{}),
      ...(expectedTodoId?{expectedTodoId}:{}),
      ...(independentBlockedTodoId?{independentReadOnly:{blockedTodoId:independentBlockedTodoId,verifiedConfiguredModel}}:{}),
      runtimeProfiles:activeProfiles,validateIdentity:async()=>{
@@ -768,7 +870,18 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
-   const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
+   fallbackSessionReady=false;fallbackConsentPending?.controller.abort();
+    const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
+   const startupCurrent=()=>parentGeneration===parentBindingGeneration&&!hostStatusClosed&&!ctx.signal?.aborted;
+   // Cada sesión captura sus propios datos de perfil, aunque otra sesión
+   // pase a ser el anfitrión visible. Capturar no concede autoridad de ejecución.
+   const captureManager=ctx.sessionManager,captureId=captureManager?.getSessionId?.(),captureCwd=ctx.cwd;
+   if(captureId&&!ctx.signal?.aborted){
+    const capturedIdentity=await sessionIdentity(ctx);
+    if(ctx.sessionManager===captureManager&&ctx.cwd===captureCwd&&captureManager?.getSessionId?.()===captureId&&capturedIdentity.sessionId===captureId&&!ctx.signal?.aborted)await inheritedProfile(capturedIdentity);
+   }
+   const pendingModelMutation=parentFallback.drainMutation();if(pendingModelMutation)await pendingModelMutation;
+   if(!startupCurrent())return;
    t11Preset=readAsenAppearance(home()).preset;
    const layout=readT11Layout(home());t11Position=layout.position;t11Density=layout.density;
    const chrome=readT11Chrome(home());t11Header=chrome.header;t11Surface=chrome.surface;
@@ -856,6 +969,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      },
     });
    }
+   if(!startupCurrent())return;
    invalidateChildSelection();
    const selectionScope=Object.freeze({generation:selectionGeneration,context:ctx,manager:ctx.sessionManager,sessionId:ctx.sessionManager?.getSessionId?.(),cwd:ctx.cwd});selectionOwner=selectionScope;
    if(ctx.sessionManager?.getSessionId?.()){
@@ -893,13 +1007,17 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     const startupSummary = startupSnapshot ? buildStatus(startupSnapshot).summary : "Listo para empezar";
     ctx.ui?.notify?.(`ASEN: ${startupSummary}`, "info");
    } catch {/* Best effort only; never interrupt Pi startup. */}
+   if(!startupCurrent())return;
    validationActivities.clear();explorerBudget=undefined;agentDeliveryContext=undefined;agentDeliveryIdentity=undefined;
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
    if(heldNoticeBoundaryTimer){clearTimeout(heldNoticeBoundaryTimer);heldNoticeBoundaryTimer=undefined;}
    if(agentWakeTimer){clearTimeout(agentWakeTimer);agentWakeTimer=undefined;}ctx.ui?.setWidget?.("asen-todo-progress",undefined,{placement:"belowEditor"});ctx.ui?.setWidget?.("asen-live-work",undefined,{placement:"aboveEditor"});ctx.ui?.setWidget?.("asen:m1-rail",undefined,{placement:"aboveEditor"});ctx.ui?.setStatus?.("asen:workspace",undefined);workRowGeneration++;await lifecycle.start(ctx,registryStartupDisabled(undefined));
+   if(!startupCurrent())return;
    publishT11Chrome(ctx);
    if(ctx.sessionManager?.getSessionId?.()){
-    agentDeliveryContext=ctx;agentDeliveryIdentity=await sessionIdentity(ctx);notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
+    const startupIdentity=await sessionIdentity(ctx);
+    if(!startupCurrent()||ctx.sessionManager?.getSessionId?.()!==startupIdentity.sessionId)return;
+    agentDeliveryContext=ctx;agentDeliveryIdentity=startupIdentity;fallbackSessionReady=true;notificationProjection.activate(agentDeliveryIdentity,ctx.ui);sessionDirectory.publish({sessionId:agentDeliveryIdentity.sessionId,subject:"Local Pi session",projectId:agentDeliveryIdentity.projectId,classification:"read",updatedAt:new Date().toISOString()});
     try{
      const jobs=backgroundJobs.list(agentDeliveryIdentity.sessionId,agentDeliveryIdentity.projectId),pendingIds=new Set(pendingBackgroundJobNotifications(jobs,agentDeliveryIdentity.sessionId,agentDeliveryIdentity.projectId).map(item=>item.id));
      // A journaled "running" operation is projected as interrupted after restart, but
@@ -919,7 +1037,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(todos){try{identity=await sessionIdentity(ctx);if(agentRuntimePromise&&taskAgentLinks)await new TaskAgentTodoReconciler(todos,await agentRuntimePromise,taskAgentLinks).reconcile(identity);await todos.recover(identity);}catch{ctx.ui.notify("ASEN no pudo recuperar el estado de las tareas; no ha repetido ninguna.","error");}if(todos.diagnostics())ctx.ui.notify("ASEN aisló un archivo de tareas dañado; no inició ninguna tarea guardada.","error");if(identity){const interrupted=(await todos.list(identity)).filter(item=>item.current.state==="blocked"&&/restarted|session ended|interrupted/iu.test(item.current.reason??""));if(interrupted.length)ctx.ui.notify(todoProgressSummary(interrupted),"info");}}
    await refreshTodoWidget(ctx);
    if(workspaceStorePromise){const store=await workspaceStorePromise;if(store.diagnostics())ctx.ui.notify("ASEN detectó y aisló datos de atribución dañados.","error");}
-   if(agentRuntimePromise){const runtime=await agentRuntimePromise;identity??=await sessionIdentity(ctx);agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
+   if(agentRuntimePromise){const runtime=await agentRuntimePromise;identity??=await sessionIdentity(ctx);if(!startupCurrent()||ctx.sessionManager?.getSessionId?.()!==identity.sessionId)return;agentDeliveryContext=ctx;agentDeliveryIdentity=identity;
     if(childSelectionSource&&selectionOwner===selectionScope){
      const ownerIdentity=Object.freeze({sessionId:identity.sessionId,projectId:identity.projectId});
      const current=()=>selectionOwner===selectionScope&&selectionGeneration===selectionScope.generation&&ctx.sessionManager===selectionScope.manager&&ctx.cwd===selectionScope.cwd&&ctx.sessionManager?.getSessionId?.()===ownerIdentity.sessionId&&selectionScope.sessionId===ownerIdentity.sessionId;
@@ -1268,7 +1386,10 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
-   parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
+   fallbackSessionReady=false;fallbackConsentPending?.controller.abort();parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
+   // Pi 1.2–1.6 espera session_shutdown antes de invalidar la sesión anterior.
+   // No dejar un setModel autenticando mientras se instala el nuevo host.
+   const pendingModelMutation=parentFallback.drainMutation();if(pendingModelMutation)await pendingModelMutation;
    traceVerifierShutdown("session-start");
    const endingSession=ctx?.sessionManager?.getSessionId?.();
    agentParentRunActive=false;agentWakeOwed=undefined;flushPendingAgentNotices=undefined;scheduleAgentWakeAtBoundary=undefined;
@@ -1650,7 +1771,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const validateContext=()=>{if(signal?.aborted||ctx.signal?.aborted||ctx.sessionManager!==manager||manager.getSessionId?.()!==sessionId||ctx.cwd!==cwd)throw new Error("Pi session or project changed or was cancelled before plan persistence");};
    let project:string;try{project=await realpath(cwd);}catch{throw new Error("ASEN planning requires an existing active project");}validateContext();
    let output:Record<string,unknown>&{executablePlan?:ExecutablePlan;persistedTasks?:Array<{planTaskId:string;todoId:string|undefined;dependsOn:Array<string|undefined>}>};
-   try{output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),await (deferChildLaunch?profileLayer({sessionId,projectId:project}):parentProfileLayer(ctx,{sessionId,projectId:project})))) as typeof output;}
+   let planningProfiles:ProfileLayer;
+   try{planningProfiles=await (deferChildLaunch?profileLayer({sessionId,projectId:project}):parentProfileLayer(ctx,{sessionId,projectId:project}));output=JSON.parse(controlledInstructionPlanCommand(args??"",project,candidateAtHead(project),planningProfiles)) as typeof output;}
    catch(error){if(error instanceof Error)throw error;throw new Error("ASEN plan output was invalid");}
    if(!output.executablePlan)return JSON.stringify(output,null,2);
    if(output.executablePlan.route==="direct"&&!output.executablePlan.tasks.some(task=>task.role==="worker")){
@@ -1670,7 +1792,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    if(!todoStorePromise){output.persistence={status:"unavailable",reason:"Todo store is not configured; this graph was not saved or made runnable"};output.execution={started:false,authorized:false};output.notice="Plan only. The Todo store is unavailable, so no task records were persisted. No agent was dispatched and no permission was granted.";return JSON.stringify(output,null,2);}
    const store=await todoStorePromise,identity=await sessionIdentity(ctx),todoIds=new Map<string,string>(),ordered=output.executablePlan.topologicalOrder.map(taskId=>{const task=output.executablePlan!.tasks.find(item=>item.id===taskId);if(!task)throw new Error("ASEN executable plan order references an unknown task");return task;});
    validateContext();if(identity.sessionId!==sessionId||identity.projectId!==project)throw new Error("Pi session or project changed while preparing the plan");
-    const persisted=await store.addPlan(ordered.map(task=>({title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.model?{model:task.model}:{}),...(task.thinking?{thinking:task.thinking}:{}),...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{}),...(fixSource&&task.role==="worker"?{fixSource}:{})}})),identity,signal,validateContext);
+    const persisted=await store.addPlan(ordered.map(task=>{const explorerProfileOrigin=plannedExplorerProfileOrigin(task.role,task.model,planningProfiles);return {title:task.title,requestId:`asen-plan:${task.id}`,dependsOn:task.dependsOn.map(id=>`asen-plan:${id}`),description:task.instruction,plan:{role:task.role,skillPaths:[...task.skillPaths],priority:task.priority,...(task.model?{model:task.model}:{}),...(task.thinking?{thinking:task.thinking}:{}),...(task.skillSelection?{skillSelection:task.skillSelection}:{}),...(task.candidate?{candidate:task.candidate}:{}),...(task.candidateRevision?{candidateRevision:task.candidateRevision}:{}),...(task.writeSurfaces?{writeSurfaces:[...task.writeSurfaces]}:{}),...(task.writerAuthorizationBasis?{writerAuthorizationBasis:task.writerAuthorizationBasis}:{}),...(fixSource&&task.role==="worker"?{fixSource}:{}),...(explorerProfileOrigin?{explorerProfileOrigin}:{})}}}),identity,signal,validateContext);
    validateContext();
    for(const item of persisted)todoIds.set(item.requestId!.slice("asen-plan:".length),item.taskId);
    output.persistedTasks=output.executablePlan.tasks.map(task=>({planTaskId:task.id,todoId:todoIds.get(task.id),dependsOn:task.dependsOn.map(id=>todoIds.get(id))}));
@@ -2619,6 +2741,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
        throw Error("La partición cambió durante la revisión doble.");
       validate();},confirm:summary=>ctx.ui.confirm!("Revisión doble explícita del candidato?",summary),
      beforeModelUse:async()=>{validate();await markNativeDualReviewAttemptStarted(checkpoint,signature);validate();},
+     progressCheckpoint:{input:checkpoint,signature},
      ...(signal?{signal}:{})});
     validate();
     if("report" in result&&result.report){
@@ -2670,7 +2793,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
      if(completed){
       // Una petición natural de continuación puede solicitar permiso NUEVO para
       // una sucesora todavía planificada. Nunca relanzar una ya reclamada.
-      if(completed.todoState!=="planned")return completed;
+      if(completed.status==="partition-already-closed"||completed.todoState!=="planned")return completed;
       validate();const execution=await advancePlan(ctx,undefined,completed.todoId,signal);
       return {...completed,execution};
      }
@@ -2913,6 +3036,7 @@ export function createPiExtension(dependencies:AsenExtensionDependencies={}){
      return handler(...args);
     }),
     getFlag:name=>pi.getFlag(name),
+    ...(typeof pi.getSettings==="function"?{getSettings:pi.getSettings.bind(pi)}:{}),
     ...(typeof pi.getCommands==="function"?{getCommands:pi.getCommands.bind(pi)}:{}),
     ...(typeof pi.getAllTools==="function"?{getAllTools:pi.getAllTools.bind(pi)}:{}),
     ...(pi.sendMessage?{sendMessage:(message:Parameters<NonNullable<PiLike["sendMessage"]>>[0],options?:Parameters<NonNullable<PiLike["sendMessage"]>>[1])=>pi.sendMessage!(message,options)}:{}),

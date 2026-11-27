@@ -12,7 +12,8 @@ import {isThinking,type Thinking} from "./profiles.js";
 
 const SCHEMA="asen.todo/v1" as const,MAX_TASKS=2000,MAX_EVENTS=20000;
 export type TodoPlanRole="primary"|"explorer"|"worker"|"reviewer"|"verifier"|"clarifier";
-export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;fixSource?:Readonly<{proposalId:string;treeIdentity:string}>;}
+export type ExplorerProfileOrigin=Readonly<{scope:"global"|"project";name:string}>;
+export interface TodoPlanMetadata{role:TodoPlanRole;skillPaths:string[];skillSelection?:SkillSelectionContext;priority?:number;model?:string;explorerProfileOrigin?:ExplorerProfileOrigin;thinking?:Thinking;candidate?:Candidate;candidateRevision?:string;writeSurfaces?:string[];writerAuthorizationBasis?:string;fixSource?:Readonly<{proposalId:string;treeIdentity:string}>;}
 export interface TodoPlanDraft{title:string;requestId:string;dependsOn:readonly string[];description:string;plan:TodoPlanMetadata;}
 export interface TodoItem{taskId:string;title:string;events:TaskEvent[];requestId?:string;dependsOn?:string[];description?:string;plan?:TodoPlanMetadata;}
 export interface TodoFile{schema:typeof SCHEMA;revision:number;items:TodoItem[];}
@@ -47,10 +48,16 @@ const exact=(v:unknown,keys:readonly string[]):v is Record<string,unknown>=>!!v&
 const identity=(v:unknown)=>typeof v==="string"&&v.length>0&&v.length<=1024&&v===v.trim()&&v===v.normalize("NFC")&&!/[\u0000-\u001f\u007f-\u009f]/u.test(v);
 function validPlan(value:unknown):value is TodoPlanMetadata{
  if(!value||typeof value!=="object"||Array.isArray(value)||Object.getPrototypeOf(value)!==Object.prototype)return false;
- const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),hasModel=Object.hasOwn(value,"model"),hasThinking=Object.hasOwn(value,"thinking"),hasCandidate=Object.hasOwn(value,"candidate"),hasCandidateRevision=Object.hasOwn(value,"candidateRevision"),hasWriteSurfaces=Object.hasOwn(value,"writeSurfaces"),hasAuthorizationBasis=Object.hasOwn(value,"writerAuthorizationBasis"),hasFixSource=Object.hasOwn(value,"fixSource"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[]),...(hasModel?["model"]:[]),...(hasThinking?["thinking"]:[]),...(hasCandidate?["candidate"]:[]),...(hasCandidateRevision?["candidateRevision"]:[]),...(hasWriteSurfaces?["writeSurfaces"]:[]),...(hasAuthorizationBasis?["writerAuthorizationBasis"]:[]),...(hasFixSource?["fixSource"]:[])];
+ const hasSelection=Object.hasOwn(value,"skillSelection"),hasPriority=Object.hasOwn(value,"priority"),hasModel=Object.hasOwn(value,"model"),hasThinking=Object.hasOwn(value,"thinking"),hasCandidate=Object.hasOwn(value,"candidate"),hasCandidateRevision=Object.hasOwn(value,"candidateRevision"),hasWriteSurfaces=Object.hasOwn(value,"writeSurfaces"),hasAuthorizationBasis=Object.hasOwn(value,"writerAuthorizationBasis"),hasFixSource=Object.hasOwn(value,"fixSource"),hasOrigin=Object.hasOwn(value,"explorerProfileOrigin"),keys=["role","skillPaths",...(hasSelection?["skillSelection"]:[]),...(hasPriority?["priority"]:[]),...(hasModel?["model"]:[]),...(hasThinking?["thinking"]:[]),...(hasCandidate?["candidate"]:[]),...(hasCandidateRevision?["candidateRevision"]:[]),...(hasWriteSurfaces?["writeSurfaces"]:[]),...(hasAuthorizationBasis?["writerAuthorizationBasis"]:[]),...(hasFixSource?["fixSource"]:[]),...(hasOrigin?["explorerProfileOrigin"]:[])];
  if(!exact(value,keys)||!(["primary","explorer","worker","reviewer","verifier","clarifier"] as unknown[]).includes(value.role)||!Array.isArray(value.skillPaths)||value.skillPaths.some(p=>typeof p!=="string"||!/^skills\/asen-[a-z-]+\/SKILL\.md$/u.test(p))||new Set(value.skillPaths).size!==value.skillPaths.length)return false;
  if(hasPriority&&(!Number.isSafeInteger(value.priority)||Number(value.priority)<1||Number(value.priority)>100))return false;
  if(hasModel&&(typeof value.model!=="string"||!value.model||value.model!==value.model.trim()||value.model.length>256||/[\u0000-\u001f\u007f]/u.test(value.model)))return false;
+ if(hasOrigin){
+  const origin=value.explorerProfileOrigin;
+  if(value.role!=="explorer"||!hasModel||!exact(origin,["scope","name"])||
+   (origin.scope!=="global"&&origin.scope!=="project")||typeof origin.name!=="string"||
+   !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/u.test(origin.name))return false;
+ }
  if(hasThinking&&!isThinking(value.thinking))return false;
  if(hasCandidateRevision&&(!["explorer","reviewer","verifier"].includes(String(value.role))||typeof value.candidateRevision!=="string"||!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(value.candidateRevision)))return false;
  if(hasCandidate){const candidate=value.candidate;if(!candidate||typeof candidate!=="object"||Array.isArray(candidate)||!exact(candidate,["id","repository","revision","createdAt"])||!identity(candidate.id)||!identity(candidate.repository)||typeof candidate.revision!=="string"||!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/iu.test(candidate.revision)||typeof candidate.createdAt!=="string"||!Number.isFinite(Date.parse(candidate.createdAt)))return false;}
@@ -210,7 +217,14 @@ export class SessionTodoStore{
    const newItems:TodoItem[]=[],byRequest=new Map(existingByRequest);
    for(const draft of drafts){
     const dependencies=draft.dependsOn.map((request:string)=>{const id=plannedIds.get(request);if(!id)throw new Error("ASEN Todo plan dependency is missing");const prior=byRequest.get(request);if(prior&&(!prior.events[0]||prior.events[0].sessionId!==context.sessionId||!sameWorkspaceIdentityPath(prior.events[0].projectId,context.projectId)))throw new Error("Todo dependency must belong to the current session and project");return id;});
-    const existing=byRequest.get(draft.requestId);if(existing){if(existing.title!==draft.title||JSON.stringify(existing.dependsOn??[])!==JSON.stringify(dependencies)||existing.description!==draft.description||JSON.stringify(existing.plan??null)!==JSON.stringify(draft.plan))throw new Error("Todo request id conflicts with the existing task");continue;}
+    const existing=byRequest.get(draft.requestId);if(existing){
+     // Un plan anterior al registro de procedencia conserva sus permisos originales.
+     // Admitir solo la repetición idéntica sin adquirir alternativas nuevas.
+     const {explorerProfileOrigin,...withoutOrigin}=draft.plan;
+     const replayPlan=existing.plan?.role==="explorer"&&existing.plan.explorerProfileOrigin===undefined&&explorerProfileOrigin!==undefined?withoutOrigin:draft.plan;
+     if(existing.title!==draft.title||JSON.stringify(existing.dependsOn??[])!==JSON.stringify(dependencies)||existing.description!==draft.description||JSON.stringify(existing.plan??null)!==JSON.stringify(replayPlan))throw new Error("Todo request id conflicts with the existing task");
+     continue;
+    }
     const taskId=plannedIds.get(draft.requestId)!;if(dependencies.includes(taskId))throw new Error("Todo dependency cycle rejected");
     const item:TodoItem={taskId,title:draft.title,events:[{taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()}],requestId:draft.requestId,...(dependencies.length?{dependsOn:dependencies}:{}),description:draft.description,plan:structuredClone(draft.plan)};
     newItems.push(item);byRequest.set(draft.requestId,item);
@@ -222,18 +236,18 @@ export class SessionTodoStore{
   * El nuevo plan debe existir y depender de las dos raíces; así un fallo previo
   * no libera la sucesora. No se registra ningún lanzamiento de agente padre. */
  async acceptIntegratedPartition(input:{context:TodoContext;roots:readonly (TodoItem&{current:TaskEvent})[];
-  superseded:TodoItem&{current:TaskEvent};replacementRequestId:string;commit:string;
+  superseded?:TodoItem&{current:TaskEvent};replacementRequestId?:string;commit:string;
   verify:()=>Promise<void>;signal?:AbortSignal}):Promise<void>{
   const {context,roots,superseded,commit}=input;
   if(roots.length!==2||new Set(roots.map(row=>row.taskId)).size!==2||
    !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/u.test(commit)||
-   !identity(input.replacementRequestId)||superseded.dependsOn?.length!==2||
-   roots.some(root=>!superseded.dependsOn?.includes(root.taskId)||root.dependsOn?.length||
-    root.current.state!=="planned"||root.plan?.role!=="worker"||!root.plan.writerAuthorizationBasis)||
-   superseded.current.state!=="planned"||superseded.plan?.role!=="worker")
+   roots.some(root=>root.dependsOn?.length||root.current.state!=="planned"||root.plan?.role!=="worker"||!root.plan.writerAuthorizationBasis)||
+   (superseded?(!identity(input.replacementRequestId)||superseded.dependsOn?.length!==2||
+    roots.some(root=>!superseded.dependsOn?.includes(root.taskId))||superseded.current.state!=="planned"||superseded.plan?.role!=="worker"):
+    input.replacementRequestId!==undefined))
    throw new Error("Invalid exact integrated partition replacement");
   await this.#mutate(context,async data=>{
-   const expected=[...roots,superseded];
+   const expected=superseded?[...roots,superseded]:[...roots];
    const items=expected.map(row=>{
     const item=data.items.find(value=>value.taskId===row.taskId);
     const original=structuredClone(row);delete (original as {current?:TaskEvent}).current;
@@ -242,11 +256,14 @@ export class SessionTodoStore{
      throw new Error("Source partition changed during integration acceptance");
     return item;
    });
+   if(superseded){
    const replacement=data.items.find(row=>row.requestId===input.replacementRequestId);
    if(!replacement||replacement.plan?.role!=="worker"||replacement.plan.candidate?.revision!==commit||
     replayTask(replacement.events)?.state!=="planned"||
     replacement.dependsOn?.length!==2||roots.some(root=>!replacement.dependsOn?.includes(root.taskId)))
     throw new Error("Fresh dependent plan has not been persisted with exact predecessors");
+   }else if(data.items.some(row=>row.dependsOn?.some(id=>roots.some(root=>root.taskId===id))))
+    throw new Error("Unexpected dependent task in a root-only partition");
    await input.verify();
    const at=this.now();
    for(const item of items.slice(0,2)){
@@ -254,8 +271,10 @@ export class SessionTodoStore{
     const running=applyTaskEvent(previous,{...previous,revision:previous.revision+1,state:"running",at,reason:"Verifying accepted child integration "+commit});
     item.events.push(running,applyTaskEvent(running,{...running,revision:running.revision+1,state:"done",at,reason:"Child results integrated and verified at "+commit}));
    }
-   const old=items[2]!,previous=replayTask(old.events)!;
-   old.events.push(applyTaskEvent(previous,{...previous,revision:previous.revision+1,state:"cancelled",at,reason:"Superseded by a new candidate-bound ODD plan"}));
+   if(superseded){
+    const old=items[2]!,previous=replayTask(old.events)!;
+    old.events.push(applyTaskEvent(previous,{...previous,revision:previous.revision+1,state:"cancelled",at,reason:"Superseded by a new candidate-bound ODD plan"}));
+   }
   },input.signal);
  }
  async update(taskId:string,context:TodoContext,expectedRevision:number,state:TaskState,reason?:string,signal?:AbortSignal,validateContext?:()=>void):Promise<TodoItem>{
@@ -354,6 +373,17 @@ export class SessionTodoStore{
  }
  async list(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");const data=await this.#readSnapshot(context);return data.items.flatMap(item=>{const current=replayTask(item.events);return current&&current.sessionId===context.sessionId&&sameWorkspaceIdentityPath(current.projectId,context.projectId)?[{...structuredClone(item),current}]:[];});}
  async archived(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");return this.#archivedItems(this.#file(context),context);}
+ /** Recuperación de hechos persistidos: completa solamente una transacción de
+  * archivo ya registrada y obtiene ambas ubicaciones bajo el mismo bloqueo.
+  * No crea tareas, eventos ni autorizaciones de ejecución. */
+ async readRecoverySnapshot(context:TodoContext):Promise<readonly (TodoItem&{current:TaskEvent})[]>{
+  if(!identity(context.sessionId)||!identity(context.projectId))throw new Error("Invalid ASEN Todo session");
+  const file=this.#file(context);await preparePrivateFile(file,true);
+  return withExclusiveFileLock(file,async()=>{
+   if(this.projectScoped)await this.#reconcileArchive(file);
+   return [...await this.list(context),...await this.archived(context)];
+  });
+ }
  async history(taskId:string,context:TodoContext):Promise<readonly TaskEvent[]>{const data=await this.#readSnapshot(context);let item=data.items.find(x=>x.taskId===taskId&&x.events.at(-1)?.sessionId===context.sessionId&&sameWorkspaceIdentityPath(x.events.at(-1)!.projectId,context.projectId));if(!item)item=(await this.archived(context)).find(x=>x.taskId===taskId);return item?item.events.map(event=>structuredClone(event)):[];}
  async recover(context:TodoContext,reason:"restart"|"shutdown"="restart"):Promise<void>{if(!identity(context.sessionId)||!identity(context.projectId)||!(reason==="restart"||reason==="shutdown"))throw new Error("Invalid ASEN Todo recovery session");await this.#mutate(context,data=>{for(const item of data.items){const current=replayTask(item.events);if(current?.state!=="running"||current.sessionId!==context.sessionId||!sameWorkspaceIdentityPath(current.projectId,context.projectId))continue;const blocked:TaskEvent={taskId:item.taskId,sessionId:current.sessionId,projectId:current.projectId,revision:current.revision+1,state:"blocked",at:this.now(),reason:reason==="shutdown"?"Pi session ended while this task was running; explicit review is required before continuing":"ASEN restarted while this task was running; explicit review is required before continuing"};item.events.push(applyTaskEvent(current,blocked));}});}
  async #mutate(context:TodoContext,change:(data:TodoFile)=>void|boolean|Promise<void|boolean>,signal?:AbortSignal):Promise<void>{

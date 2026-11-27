@@ -1,4 +1,4 @@
-/** T11: medición real del ancho de conversación que entrega Pi 1.2.
+/** T11: medición real del ancho de conversación que entrega Pi 1.6.
  * Compara sesión limpia y sesión con ASEN; sin modelos ni credenciales. */
 import assert from "node:assert/strict";
 import {execFileSync} from "node:child_process";
@@ -28,7 +28,7 @@ if(process.platform==="darwin"){
 }
 const {spawn}=createRequire(import.meta.url)("node-pty");
 const pi=JSON.parse(readFileSync(join(repo,"node_modules","@earendil-works","pi-coding-agent","package.json"),"utf8"));
-assert.equal(pi.version,"1.2.0");
+assert.equal(pi.version,"1.6.0");
 const binary=join(repo,"node_modules","@earendil-works","pi-coding-agent",typeof pi.bin==="string"?pi.bin:pi.bin.pi);
 const temp=realpathSync(mkdtempSync(join(tmpdir(),"asen-t11-rail-")));
 const project=join(temp,"proyecto"),home=join(temp,"home");
@@ -109,11 +109,11 @@ async function run(label,withAsen,resize,interaction=false){
   // no únicamente en un renderizador simulado. No infiere la posición en píxeles.
   let chromeRender;
   if(label==="asen-bottom"){
-   await until(()=>output.includes("π ASEN")&&output.includes("Pi 1.2.0")||exited,
+   await until(()=>output.includes("π ASEN")&&output.includes("Pi "+pi.version)||exited,
     label+": cabecera inferior no observada en el host Pi");
    assert.equal(exited,false,label+": Pi salió antes de renderizar la cabecera");
    chromeRender={source:"native-pty-output",brandObserved:output.includes("π ASEN"),
-    piVersionObserved:output.includes("Pi 1.2.0"),
+    piVersionObserved:output.includes("Pi "+pi.version),
     placementConfigured:"below-input",surfaceConfigured:"tinted"};
   }
   if(interaction){

@@ -18,7 +18,7 @@ export interface AgentSessionIdentity{sessionId:string;projectId:string;}
 export class AgentRuntime{
  readonly #terminalListeners=new Set<(record:PublicAgentRecord)=>void>();
  readonly #fallbackListeners=new Set<AgentFallbackListener>();
- readonly #fallbackOwners=new Map<string,Readonly<{sessionId:string;projectId:string;projectKey:string}>>();
+ readonly #fallbackOwners=new Map<string,Readonly<{sessionId:string;projectId:string;projectKey:string;host:AgentSessionIdentity;role:AgentRequest["role"];alternatives:readonly string[];validateStart?:()=>Promise<void>}>>();
  readonly #executions=new Map<string,Promise<unknown>>();
  private constructor(readonly store:PersistentAgentStore,private readonly dispatcher:Dispatcher,private readonly evidence:EvidenceStore,readonly quarantined?:string){}
  static async open(options:{storeFile:string;runner:AgentRunner;maxConcurrency?:number;onModelFallback?:AgentFallbackListener}):Promise<AgentRuntime>{
@@ -47,6 +47,12 @@ export class AgentRuntime{
  subscribeModelFallback(listener:AgentFallbackListener):()=>void{
   if(typeof listener!=="function")throw new TypeError("Model fallback observer must be a function");this.#fallbackListeners.add(listener);return()=>{this.#fallbackListeners.delete(listener);};
  }
+ /** Valida la autorización de lanzamiento que sigue viva; la cadena no concede gasto. */
+ async validateActiveModelFallback(attempt:{taskId:string;sessionId:string;projectId:string;role:AgentRequest["role"];to:string},host:AgentSessionIdentity):Promise<boolean>{
+  const owner=this.#fallbackOwners.get(attempt.taskId);
+  if(!owner?.validateStart||!this.#executions.has(attempt.taskId)||owner.role!=="explorer"||attempt.role!==owner.role||attempt.sessionId!==owner.sessionId||workspaceIdentityPathKey(attempt.projectId)!==owner.projectKey||host.sessionId!==owner.host.sessionId||workspaceIdentityPathKey(host.projectId)!==workspaceIdentityPathKey(owner.host.projectId)||!owner.alternatives.includes(attempt.to))return false;
+  try{await owner.validateStart();return this.#fallbackOwners.get(attempt.taskId)===owner&&this.#executions.has(attempt.taskId);}catch{return false;}
+ }
  #publishModelFallback(observation:unknown):void{
   if(!observation||typeof observation!=="object"||Array.isArray(observation))return;const value=observation as Partial<Parameters<AgentFallbackListener>[0]>,identity=(candidate:unknown,limit:number)=>typeof candidate==="string"&&candidate.length>0&&candidate.length<=limit&&candidate===candidate.trim()&&!/[\u0000-\u001f\u007f-\u009f]/u.test(candidate),model=(candidate:unknown)=>identity(candidate,256),categories=new Set(["auth","rate_limit","quota","timeout","network","provider_unavailable"]);
   if(!identity(value.taskId,1024)||!identity(value.sessionId,1024)||!identity(value.projectId,32768))return;const taskId=value.taskId as string,projectId=value.projectId as string,owner=this.#fallbackOwners.get(taskId);
@@ -61,14 +67,14 @@ export class AgentRuntime{
    for(const listener of this.#terminalListeners)try{listener(structuredClone(entry.record));}catch{/* The durable result remains queryable. */}
   }catch{/* A failed storage read must never produce a success notification. */}
  }
-  #dispatch(request:AgentRequest,signal?:AbortSignal,startBefore?:number,validateStart?:()=>Promise<void>):void{
-  const sessionId=request.isolationKey??"default",projectId=request.repository,owner=Object.freeze({sessionId,projectId,projectKey:workspaceIdentityPathKey(projectId)});
+  #dispatch(request:AgentRequest,signal?:AbortSignal,startBefore?:number,validateStart?:()=>Promise<void>,fallbackHost?:AgentSessionIdentity,onPreStartValidationRejected?:(proof:object)=>Promise<void>):void{
+  const sessionId=request.isolationKey??"default",projectId=request.repository,owner=Object.freeze({sessionId,projectId,projectKey:workspaceIdentityPathKey(projectId),host:Object.freeze({...fallbackHost??{sessionId,projectId}}),role:request.role,alternatives:Object.freeze(request.modelFallback?.chain.map(step=>step.model)??[]),...(validateStart?{validateStart}:{})});
   const onAbort=()=>{this.dispatcher.cancel(request.id,sessionId,projectId);};
   signal?.addEventListener("abort",onAbort,{once:true});this.#fallbackOwners.set(request.id,owner);
-  const execution=this.dispatcher.dispatch(request,startBefore,validateStart);this.#executions.set(request.id,execution);
+  const execution=this.dispatcher.dispatch(request,startBefore,validateStart,onPreStartValidationRejected);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);if(this.#fallbackOwners.get(request.id)===owner)this.#fallbackOwners.delete(request.id);});
  }
- async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;fallbackHost?:AgentSessionIdentity;reuseScope?:string;validateStart?:()=>Promise<void>;validateAdHocStart?:()=>Promise<void>;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId||input.onPrepared&&input.onQueued)throw new Error("An active Pi session and project with one launch boundary is required");
   const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role as Exclude<typeof input.role,"clarifier">];
   if(input.role==="clarifier"&&input.skillSelection)throw new Error("clarifier dispatch cannot receive a skill phase");
@@ -77,25 +83,33 @@ export class AgentRuntime{
   if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
   // Only unaffiliated ad-hoc Explorer work may reuse the identical active task.
   // Planned jobs and all reviewers/verifiers always retain unique identity.
-  if(input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared){
+  const adHoc=input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared&&!input.validateStart;
+  if(input.validateAdHocStart&&!adHoc)throw new Error("Live ad-hoc validation requires an unplanned Explorer");
+  if(adHoc){
+   await input.validateAdHocStart?.();
    const dedupeKey=createHash("sha256").update(JSON.stringify([
-    "asen.explorer.active.v1",input.session.sessionId,workspaceIdentityPathKey(input.session.projectId),
+    "asen.explorer.active.v2",input.session.sessionId,workspaceIdentityPathKey(input.session.projectId),
+    input.fallbackHost?.sessionId??input.session.sessionId,workspaceIdentityPathKey(input.fallbackHost?.projectId??input.session.projectId),input.reuseScope??null,
     input.role,input.prompt,request.model??null,request.thinking??null,request.modelFallback??null,
    ])).digest("hex");
    const claim=await this.store.enqueueAdHocExplorerOrReuse({...request,dedupeKey},request.owner!,signal);
-   if(claim.reused)return claim.id;
+   try{await input.validateAdHocStart?.();}catch(error){
+    if(!claim.reused)await this.store.cancelled(request.id,"Explorer host changed before dispatch").catch(()=>{});
+    throw error;
+   }
+   if(claim.reused){if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});return claim.id;}
 
    if(signal?.aborted){
     await this.store.cancelled(request.id,"Explorer launch cancelled before dispatch").catch(()=>{});
     throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});
    }
-   try{this.#dispatch(request,signal);}
+   try{this.#dispatch(request,signal,undefined,input.validateAdHocStart,input.fallbackHost);}
    catch(error){await this.store.cancelled(request.id,"Explorer launch could not dispatch").catch(()=>{});throw error;}
    return claim.id;
   }
   let enqueued=false,dispatched=false;
   const enqueue=async()=>{if(enqueued)throw new Error("Agent launch may enqueue only once");await this.store.enqueue(request,request.owner!,signal);enqueued=true;};
-  const dispatch=()=>{if(!enqueued)throw new Error("Agent launch must be durably enqueued before dispatch");if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal);dispatched=true;};
+  const dispatch=()=>{if(!enqueued)throw new Error("Agent launch must be durably enqueued before dispatch");if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal,undefined,input.validateStart,input.fallbackHost);dispatched=true;};
   try{
    if(input.onPrepared)await input.onPrepared(request.id,enqueue,dispatch);
    else{await enqueue();if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});if(input.onQueued)await input.onQueued(request.id,dispatch);else dispatch();}
@@ -136,11 +150,14 @@ export class AgentRuntime{
   if(entry.record.state==="queued"||entry.record.state==="interrupted"){await this.store.cancelled(id,"Cancelled by the owning Pi session");return true;}
   return false;
  }
- async continue(id:string,identity:AgentSessionIdentity,signal?:AbortSignal,onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>):Promise<string>{
+ async continue(id:string,identity:AgentSessionIdentity,signal?:AbortSignal,onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>,validateStart?:()=>Promise<void>):Promise<string>{
+  const prior=await this.store.get(id,identity.sessionId,identity.projectId);
+  if(prior?.request.modelFallback&&!validateStart)throw Error("No se puede continuar con alternativas sin comprobar su vigencia");
+  await validateStart?.();
   const request=await this.store.enqueueContinuation(id,identity.sessionId,identity.projectId,{kind:"user",id:`pi:${identity.sessionId}`},signal);
   if(signal?.aborted){await this.store.cancelled(request.id,"Pi cancelled the continuation after durable enqueue and before dispatch");throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});}
   let dispatched=false;
-  const dispatch=()=>{if(dispatched)throw new Error("Agent continuation may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal);dispatched=true;};
+  const dispatch=()=>{if(dispatched)throw new Error("Agent continuation may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal,undefined,validateStart,undefined,!onQueued&&validateStart?proof=>this.store.rejectContinuationBeforeStart(request.id,proof):undefined);dispatched=true;};
   try{if(onQueued){await onQueued(request.id,dispatch);if(!dispatched)throw new Error("Trusted Todo binding did not start the continuation");}else dispatch();}
   catch(error){if(!dispatched)await this.store.cancelled(request.id,"Agent binding or continuation was cancelled before dispatch").catch(()=>{});throw error;}
   return request.id;

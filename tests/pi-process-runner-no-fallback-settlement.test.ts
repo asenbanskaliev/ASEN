@@ -33,7 +33,8 @@ process.stdin.on("data",chunk=>{
 
 const abandonSettlement=`
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
-let buffer="",prompts=0;
+const primary=process.argv[process.argv.indexOf("--model")+1],slash=primary.indexOf("/");
+let buffer="",prompts=0,selected={provider:primary.slice(0,slash),id:primary.slice(slash+1)};
 process.stdin.on("data",chunk=>{
  buffer+=String(chunk);
  let end;
@@ -57,7 +58,12 @@ process.stdin.on("data",chunk=>{
    continue;
   }
   if(record.type==="set_model"){
+   selected={provider:record.provider,id:record.modelId};
    emit({type:"response",id:record.id,success:true,command:"set_model"});
+   continue;
+  }
+  if(record.type==="get_state"){
+   emit({type:"response",id:record.id,success:true,command:"get_state",data:{model:selected}});
    continue;
   }
  }
@@ -75,7 +81,7 @@ test("T2.5 without a fallback chain a correlated response and a clean exit compl
 test("T2.5 with a fallback chain the run is rejected when the turn never settles",async t=>{
  const fixture=await createPiRpcFixture(t,abandonSettlement);
  const models=uniqueModelNames(1);
- const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:10_000});
+ const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:10_000,authorizeModelFallback:()=>true});
  const result=await runner.run({
   id:"settlement-fallback",role:"explorer",prompt:"work",repository:fixture.repository,
   model:models.primary,
@@ -83,4 +89,68 @@ test("T2.5 with a fallback chain the run is rejected when the turn never settles
  });
  assert.equal(result.ok,false);
  assert.match(result.output,/before final agent_settled/,`an unsettled turn must be rejected: ${result.output}`);
+});
+
+for(const outcome of ["settled","closed","premature","no-start"] as const){
+ test("G03 turno abierto nativo sin repetir prompt: "+outcome,{timeout:30_000},async t=>{
+  const fixture=await createPiRpcFixture(t,`
+const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
+let buffer="",prompts=0;
+process.stdin.on("data",chunk=>{
+ buffer+=String(chunk);
+ let end;
+ while((end=buffer.indexOf("\\n"))>=0){
+  const line=buffer.slice(0,end);buffer=buffer.slice(end+1);
+  if(!line.trim())continue;
+  const record=JSON.parse(line);
+  if(record.type!=="prompt")continue;
+  if(++prompts!==1){process.exit(3);return;}
+  emit({type:"response",id:record.id,success:true,command:"prompt"});
+  emit({type:"agent_start"});
+  emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:"quota exhausted in this fixture"}});
+  emit({type:"agent_end",willRetry:true});
+  if(${JSON.stringify(outcome)}==="closed"){setTimeout(()=>process.exit(0),30);return;}
+  if(${JSON.stringify(outcome)}==="premature"){emit({type:"agent_settled",aborted:false});return;}
+  setTimeout(()=>{
+   if(${JSON.stringify(outcome)}!=="no-start")emit({type:"agent_start"});
+   emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"recuperación del mismo turno"}]}});
+   emit({type:"agent_end",willRetry:false});
+   emit({type:"agent_settled",aborted:false});
+  },30);
+ }
+});
+`);
+  const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:10_000});
+  const result=await runner.run({id:"g03-open-turn",role:"explorer",prompt:"inspect",repository:fixture.repository});
+  if(outcome==="settled"){
+   assert.equal(result.ok,true,result.output);
+   assert.match(result.output,/recuperación del mismo turno/u);
+  }else{
+   assert.equal(result.ok,false,result.output);
+   assert.match(result.output,/before final agent_settled|without a completed final assistant turn/u);
+  }
+ });
+}
+
+test("G03 inventario repetido no vuelve a autorizar el prompt",{timeout:30_000},async t=>{
+ const fixture=await createPiRpcFixture(t,`
+let buffer="";
+const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
+process.stdin.on("data",chunk=>{
+ buffer+=String(chunk);
+ let end;
+ while((end=buffer.indexOf("\\n"))>=0){
+  const line=buffer.slice(0,end);buffer=buffer.slice(end+1);
+  if(!line.trim())continue;
+  const record=JSON.parse(line);
+  if(record.type!=="prompt")continue;
+  const position=process.argv.indexOf("--extension");
+  emit({type:"response",id:"asen-policy:"+record.id,success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path:process.argv[position+1]}}]}});
+ }
+});
+`);
+ const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:10_000});
+ const result=await runner.run({id:"g03-duplicate-preflight",role:"explorer",prompt:"inspect",repository:fixture.repository});
+ assert.equal(result.ok,false,result.output);
+ assert.match(result.output,/duplicate authority preflight response/u);
 });

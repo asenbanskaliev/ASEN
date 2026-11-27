@@ -20,6 +20,11 @@ process.stdin.on("data",chunk=>{
   const line=buffer.slice(0,end);buffer=buffer.slice(end+1);
   if(!line.trim())continue;
   const record=JSON.parse(line);
+  if(record.type==="get_state"){
+   const primary=process.argv[process.argv.indexOf("--model")+1],slash=primary.indexOf("/");
+   emit({type:"response",id:record.id,success:true,command:"get_state",data:{model:{provider:primary.slice(0,slash),id:primary.slice(slash+1)}}});
+   continue;
+  }
   if(record.type==="prompt"){
    emit({type:"response",id:record.id,success:true,command:"prompt"});
    emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:"quota exhausted in this fixture"}});
@@ -38,7 +43,7 @@ process.stdin.on("data",chunk=>{
 test("T2.2 an unanswered set_model fails on its own RPC budget",async t=>{
  const fixture=await createPiRpcFixture(t,scenario);
  const models=uniqueModelNames(1);
- const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:1000});
+ const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:1000,authorizeModelFallback:()=>true});
  const started=Date.now();
  const result=await runner.run({
   id:"rpc-timeout",role:"explorer",prompt:"work",repository:fixture.repository,

@@ -2,6 +2,8 @@ import type {AgentRuntime,AgentSessionIdentity} from "./agent-runtime.js";
 import type {TrustedTaskAgentBinder} from "../runtime/agents/trusted-task-agent-binder.js";
 import type {TaskAgentLinkStore} from "../runtime/agents/task-agent-link-store.js";
 import type {SessionTodoStore} from "../runtime/lifecycle/todo-store.js";
+import type {AgentModelFallback} from "./dispatcher.js";
+import {assertPlannedExplorerFallbackCurrent,currentRevision,type ExplorerFallbackConfig} from "../runtime/lifecycle/plan-dispatcher.js";
 
 const cancelled=():Error=>Object.assign(new Error("Agent task cancelled"),{name:"AbortError"});
 const throwIfCancelled=(signal?:AbortSignal):void=>{if(signal?.aborted)throw cancelled();};
@@ -19,6 +21,8 @@ export interface InterruptedExplorerContinuationInput{
  signal?:AbortSignal;
  todo?:InterruptedExplorerTodoCoordination;
  resolveCurrentIdentity?:()=>Promise<AgentSessionIdentity>;
+ readCurrentExplorerFallbackConfig?:()=>Promise<ExplorerFallbackConfig>;
+ readCurrentDirectFallback?:()=>Promise<AgentModelFallback|undefined>;
 }
 
 export interface InterruptedExplorerContinuationResult{
@@ -48,9 +52,41 @@ export async function continueInterruptedExplorer(input:InterruptedExplorerConti
   if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)
    throw new Error("Pi session or project changed before agent continuation");
  }
+ // No restaurar una alternativa retirada durante la interrupción, ni
+ // incorporar opciones nuevas a un intento ya persistido.
+ const savedFallback=prior.spec?.modelFallback;
+ let continuationEnqueued=false,validationRejectedBeforeEnqueue=false;
+ const validateStart=input.resolveCurrentIdentity||savedFallback||linkedTodo?.plan?.candidateRevision?async()=>{try{
+  throwIfCancelled(signal);
+  const verifyIdentity=async()=>{
+   if(input.resolveCurrentIdentity){
+    const current=await input.resolveCurrentIdentity();
+    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw Error("Pi session or project changed before agent continuation dispatch");
+   }
+  };
+  const verifyFallback=async()=>{
+   if(savedFallback&&linkedTodo?.plan){
+    const plan=linkedTodo.plan;
+    if(!input.readCurrentExplorerFallbackConfig||!plan.explorerProfileOrigin||!plan.model||prior.spec?.model!==plan.model)throw Error("No se puede comprobar la vigencia de las alternativas del perfil");
+    await assertPlannedExplorerFallbackCurrent(savedFallback,{role:"explorer",model:plan.model,origin:plan.explorerProfileOrigin},input.readCurrentExplorerFallbackConfig);
+   }else if(savedFallback){
+    if(link||!savedFallback.origin||savedFallback.origin.model!==prior.spec?.model||!input.readCurrentDirectFallback||JSON.stringify(await input.readCurrentDirectFallback())!==JSON.stringify(savedFallback))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
+   }
+  };
+  await verifyIdentity();
+  await verifyFallback();
+  await verifyIdentity();
+  // Comprobar ambas fuentes de nuevo si el perfil es revocable. La
+  // autorización viva del intento se revalida también antes de otro prompt.
+  if(savedFallback&&input.resolveCurrentIdentity){await verifyFallback();await verifyIdentity();await verifyFallback();await verifyIdentity();}
+  if(linkedTodo?.plan?.candidateRevision&&currentRevision(identity.projectId)!==linkedTodo.plan.candidateRevision)throw Error("El candidato de exploración cambió; actualizar el plan");
+  throwIfCancelled(signal);
+ }catch(error){if(!continuationEnqueued)validationRejectedBeforeEnqueue=true;throw error;}}:undefined;
+ await validateStart?.();
  const resumed=link&&linkedTodo&&todos?await todos.update(linkedTodo.taskId,identity,linkedTodo.current.revision,"running","User asked ASEN to continue this persisted read-only task in the same session and project",signal):undefined;
  try{
   const next=await runtime.continue(agentId,identity,signal,link&&coordination?async(childId,dispatch)=>{
+   continuationEnqueued=true;
    const validate=async()=>{
     if(!input.resolveCurrentIdentity)return;
     const current=await input.resolveCurrentIdentity();
@@ -59,12 +95,15 @@ export async function continueInterruptedExplorer(input:InterruptedExplorerConti
    };
    await validate();
    await (await coordination.binder()).launch(link.taskId,childId,identity,dispatch,validate);
-  }:undefined);
+  }:undefined,validateStart);
   return {id:next,state:"queued",continuedFrom:agentId,role:"explorer",...(link?{todoId:link.taskId}:{})};
  }catch(error){
   if(resumed&&todos){
    const current=(await todos.list(identity)).find(item=>item.taskId===resumed.taskId);
-   if(current?.current.state==="running")await todos.update(current.taskId,identity,current.current.revision,"blocked","Linked agent continuation was not dispatched; review is required",undefined).catch(()=>{});
+   if(current?.current.state==="running"&&current.current.revision===linkedTodo!.current.revision+1){
+    const reason=validationRejectedBeforeEnqueue&&!continuationEnqueued?linkedTodo?.current.reason:"Linked agent continuation was not dispatched; review is required";
+    await todos.update(current.taskId,identity,current.current.revision,"blocked",reason,undefined).catch(()=>{});
+   }
   }
   throw error;
  }

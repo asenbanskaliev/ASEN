@@ -28,8 +28,9 @@ test("real Pi loads the explicit ASEN policy extension with discovery disabled",
  const repository=resolve("."),main=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
  const cli=join(dirname(main),"bundle","cli.js"),extension=resolve("extensions/authority.ts");
  const result=spawnSync(process.execPath,[cli,"--mode","rpc","--no-session","--no-extensions","--extension",extension,"--no-skills","--no-tools"],{
-  cwd:repository,encoding:"utf8",timeout:20000,input:JSON.stringify({id:"policy",type:"get_commands"})+"\n",env:{...process.env,ASEN_PI_AUTHORITY:JSON.stringify({repository,role:"explorer",writeSurfaces:[]}),PI_OFFLINE:"1"}
+  cwd:repository,encoding:"utf8",timeout:process.platform==="win32"&&process.env.CI==="true"?90_000:20_000,input:JSON.stringify({id:"policy",type:"get_commands"})+"\n",env:{...process.env,ASEN_PI_AUTHORITY:JSON.stringify({repository,role:"explorer",writeSurfaces:[]}),PI_OFFLINE:"1"}
  });
+ assert.equal(result.error,undefined,`Pi RPC no terminó: ${result.error?.message??""}`);
  assert.equal(result.status,0,result.stderr);
  const records=result.stdout.trim().split(/\r?\n/).map(line=>JSON.parse(line));
  const response=records.find(record=>record.type==="response"&&record.id==="policy");

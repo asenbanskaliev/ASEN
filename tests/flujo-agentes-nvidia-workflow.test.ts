@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {spawnSync} from "node:child_process";
 
 const entry=readFileSync(new URL("../.github/workflows/memory-openrouter-e2e.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
 const flow=readFileSync(new URL("../.github/workflows/asen-flujo-agentes-nvidia.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
@@ -78,4 +79,166 @@ test("T08: el ensayo de reparación sigue requiriendo controles separados",()=>{
  assert.match(work,/asen-t08-reparacion/u);
  assert.match(work,/cost_acknowledged/u);
  assert.doesNotMatch(flow,/\bauto-merge\b|\bauto-fix\b/u);
+});
+
+
+test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
+ const begin=ci.indexOf("\n  t06-m2-authorization:"),end=ci.indexOf("\n  t06-nvidia-free-api:",begin);
+ assert.ok(begin>=0&&end>begin);
+ const gate=ci.slice(begin,end);
+ for(const required of ["pull_request.number == 161","feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","actions: read","gh api --method DELETE","ASEN_EXPECTED_SHA","asen-t06-autorizar:$ASEN_EXPECTED_SHA","head_sha=$ASEN_EXPECTED_SHA","G08 actualización administrada aislada (Windows)","Megatanda T02–T10 y T11 (pruebas integradas sin modelos)"]){assert.ok(gate.includes(required),"Falta puerta NVIDIA M2: "+required);}
+ assert.ok(gate.includes('.user.login == "asenbanskaliev" and .body == $approval'));
+ assert.ok(gate.includes("asen-t06-autorizar:$ASEN_EXPECTED_SHA:nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"));
+ assert.ok(ci.includes("ASEN_NVIDIA_PROBE_MODELS: nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"));
+ assert.ok(gate.includes('select(.user.login == "github-actions[bot]")'));
+ assert.ok(gate.includes('.user.login == "coderabbitai[bot]" and .commit_id == $sha'));
+ assert.ok(gate.includes('.submitted_at < $cutoff'));
+ assert.ok(gate.includes('(.submitted_at | type) == "string"'));
+ assert.ok(gate.includes('reviewThreads(first:100,after:$endCursor)'));
+ assert.ok(gate.includes('.isResolved == true'));
+ assert.ok(gate.includes('.created_at < $cutoff'));
+ assert.ok(gate.includes('.updated_at <= $cutoff'));
+ assert.ok(gate.indexOf('/reviews"')<gate.indexOf('gh api --method POST "$issue/comments"'));
+ assert.doesNotMatch(gate,/grep -Fqx -- "\$approval"/u);
+ assert.ok(gate.includes('grep -Fqx -- "$api_marker"'));
+ assert.ok(gate.includes('grep -Fqx -- "$pi_marker"'));
+ assert.ok(gate.includes('asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA'));
+ assert.ok(gate.includes('asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA'));
+ assert.ok(gate.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
+ assert.ok(gate.indexOf('gh api --method POST "$issue/comments" -f body="$api_marker"')<gate.indexOf('gh api --method DELETE'));
+ assert.match(gate,/\.status == "completed" and \.conclusion == "success"/u);
+ assert.doesNotMatch(gate,/checkout@|secrets\.|NVIDIA_API_KEY|contents: write|id-token: write/u);
+ const api=ci.slice(end,ci.indexOf("\n  # T06: dos sesiones Pi RPC",end));
+ const piNative=ci.slice(ci.indexOf("\n  t06-nvidia-pi-native:"),ci.indexOf("\n\n  managed-update-windows:"));
+ assert.match(api,/needs: \[t06-m2-authorization\]/u);
+ assert.ok(api.includes("needs.t06-m2-authorization.result == 'success'"));
+ assert.match(piNative,/needs: \[t06-nvidia-free-api\]/u);
+ // Una autorización M2 omitida en #61 no bloquea Pi si su API terminó correctamente.
+ // El estado de API, no el de ancestros transitivos, gobierna esta fase.
+ const piCondition=piNative.slice(piNative.indexOf("if: >-"),piNative.indexOf("runs-on:"));
+ assert.ok(piCondition.includes("!cancelled() && needs.t06-nvidia-free-api.result == 'success' &&"));
+ assert.ok(!piCondition.includes("needs.t06-m2-authorization"));
+ assert.ok(!piCondition.includes("always()"));
+ const apiCondition=api.slice(api.indexOf("if: >-"),api.indexOf("runs-on:"));
+ assert.ok(apiCondition.includes("(github.event.pull_request.number == 61 || needs.t06-m2-authorization.result == 'success')"));
+ for(const job of [api,piNative]){
+  assert.ok(job.includes("pull_request.number == 61"));
+  assert.ok(job.includes("pull_request.number == 161"));
+  assert.ok(!job.includes("pull_request.number == 149"));
+  assert.ok(job.includes("event.label.name == 'asen-t06-nvidia-una-vez'"));
+  assert.ok(job.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
+  assert.ok(job.includes("pull-requests: read"));
+  assert.doesNotMatch(job,/issues: write|pull-requests: write|gh api --method POST|gh api --method DELETE/u);
+ }
+ const probe=readFileSync(new URL("../scripts/t06-nvidia-free-api-probe.mjs",import.meta.url),"utf8");
+ for(const model of ["nvidia/nemotron-3.5-lightning-30b-a3b","nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"])assert.ok(probe.includes(model));
+ assert.ok(probe.includes("distinctModelIdsVerified"));assert.ok(probe.includes("retryCount:0"));
+ const windowsStart=ci.indexOf("\n  managed-update-windows:");
+ const windowsEnd=ci.indexOf("\n  generated-code-docker-sandbox:",windowsStart);
+ assert.ok(windowsStart>=0&&windowsEnd>windowsStart);
+ const windows=ci.slice(windowsStart,windowsEnd);
+ assert.ok(windows.includes("runs-on: windows-latest"));
+ assert.ok(windows.includes("pull_request.number == 161"));
+ assert.ok(windows.includes("feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127"));
+ assert.ok(windows.includes("tests/managed-install.test.ts"));
+ assert.ok(windows.includes("tests/managed-maintenance-lock.test.ts"));
+ assert.ok(windows.includes("tests/t09-lifecycle.test.ts"));
+ assert.ok(windows.includes("interrupted upgrade"));
+ assert.ok(windows.includes("unhealthy automatic rollback"));
+ assert.ok(windows.includes("npm run typecheck"));
+});
+
+test("T06 el diagnóstico de permisos está aislado y no concede autorización de modelos",()=>{
+ const probe=readFileSync(new URL("../.github/workflows/t06-permission-probe.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
+ assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127'"));
+ assert.ok(probe.includes("types: [labeled]"));
+ assert.ok(probe.includes("github.event.action == 'labeled'"));
+ assert.ok(probe.includes("github.event.label.name == 'asen-t06-permission-check-request'"));
+ assert.ok(probe.includes("github.actor == 'asenbanskaliev'"));
+ assert.doesNotMatch(probe,/types:.*(?:opened|synchronize|reopened)/u);
+ assert.ok(probe.includes("trap cleanup_on_exit EXIT"));
+ assert.ok(probe.includes("cleanup_label\n          test"));
+ assert.ok(probe.includes("exit \"$status\""));
+ assert.match(probe,/github\.event\.pull_request\.head\.repo\.full_name == github\.repository/u);
+ assert.match(probe,/issues: write\s+pull-requests: write/u);
+ assert.ok(probe.includes('gh api --method DELETE "$issue/labels/$label"'));
+ assert.ok(probe.includes('gh api --method POST "$issue/comments"'));
+ assert.match(probe,/asen-t06-diagnostico-permisos/u);
+ assert.doesNotMatch(probe,/secrets\.|NVIDIA_API_KEY|asen-t06-nvidia-una-vez|asen-t06-nvidia-consumido|asen-t06-nvidia-pi-consumido|checkout@|contents: write|id-token: write/u);
+ for(const name of ["t06-nvidia-free-api","t06-nvidia-pi-native"]){
+  const start=ci.indexOf("\n  "+name+":");
+  const end=ci.indexOf("\n  # T06:",start);
+  const fallbackEnd=ci.indexOf("\n\n  managed-update-windows:",start);
+  const job=ci.slice(start,end>start?end:fallbackEnd);
+  assert.doesNotMatch(job,/issues: write|pull-requests: write/u);
+  assert.match(job,/github\.event\.label\.name == 'asen-t06-nvidia-una-vez'/u);
+  assert.doesNotMatch(job,/asen-t06-permission-check/u);
+ }
+ const tui=ci.slice(ci.indexOf("\n  t12-real-pi-tui-dialog:"),ci.indexOf("\n  architecture:"));
+ assert.doesNotMatch(tui,/issues: write|pull-requests: write|group: t06-nvidia/u);
+});
+
+
+test("M2 T06: predicado real jq exige revisión independiente exacta y anterior al consentimiento",t=>{
+ const available=spawnSync("jq",["--version"],{encoding:"utf8"});
+ if(available.error&&(available.error as NodeJS.ErrnoException).code==="ENOENT"){
+  assert.ok(!(process.env.GITHUB_ACTIONS==="true"&&process.platform==="linux"),"jq obligatorio en CI Linux");
+  t.skip("jq no instalado en este entorno local");return;
+ }
+ assert.equal(available.status,0);
+ const line=ci.split("\n").find(value=>value.includes("jq -se --arg sha")&&value.includes("t06-reviews.jsonl"));
+ assert.ok(line);const predicate=line.split("'")[1];assert.ok(predicate);
+ const sha="a".repeat(40),cutoff="2026-11-27T09:00:00Z",before="2026-11-27T08:00:00Z";
+ const bot={login:"coderabbitai[bot]"},review={id:1,user:bot,commit_id:sha,submitted_at:before,state:"APPROVED",body:""};
+ const publication="<!-- coderabbit-review-publication v1 publication=abc attempt=def batch=1/1 -->";
+ const nitpick="Nitpick comments: 1\n"+publication;
+ const summary={user:bot,updated_at:before,body:"<!-- recent_review_status_start -->\n\nNo actionable comments were generated in the recent review.\n\n<!-- recent_review_status_end -->\n<!-- final_review_risk_coverage:"+JSON.stringify({sourceCommitId:sha,coveredCommitId:sha,kind:"reviewed"})+" -->"};
+ const check=(rows:unknown[],comments:unknown[],accepted:boolean)=>{
+  const result=spawnSync("jq",["-se","--arg","sha",sha,"--arg","cutoff",cutoff,"--argjson","comments",JSON.stringify(comments),predicate],{input:rows.map(row=>JSON.stringify(row)).join("\n"),encoding:"utf8"});
+  assert.equal(result.error,undefined);assert.ok(result.status===0||result.status===1||result.status===4,result.stderr);
+  assert.equal(result.status===0,accepted,JSON.stringify({rows,comments,stdout:result.stdout,stderr:result.stderr}));
+ };
+ check([review],[],true);
+ check([{...review,state:"COMMENTED",body:nitpick}],[],true);
+ check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 0**\n"+publication}],[],true);
+ check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 1**\n"+publication+"\n> **Actionable comments posted: 0**"}],[],false);
+ check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 0**\n"+publication+"\n**Actionable comments posted: 1**"}],[],false);
+ check([{...review,commit_id:"b".repeat(40)}],[],false);
+ check([{...review,submitted_at:cutoff}],[],false);
+ check([{...review,state:"CHANGES_REQUESTED"}],[],false);
+ check([{...review,user:{login:"asenbanskaliev"}}],[],false);
+ check([{...review,state:"COMMENTED",body:""}],[],false);
+ check([{...review,state:"COMMENTED",body:nitpick+"\n**Actionable comments posted: 1**"}],[],false);
+ check([review,{...review,id:2,state:"CHANGES_REQUESTED"}],[summary],false);
+ check([],[summary],true);
+ // CodeRabbit publica respuestas vacías al confirmar hilos; solo valen con resumen independiente exacto.
+ const empty={...review,state:"COMMENTED",body:""};
+ check([empty],[summary],true);
+ check([empty],[{...summary,updated_at:cutoff}],false);
+ check([empty],[{...summary,body:summary.body.replaceAll(sha,"b".repeat(40))}],false);
+ check([{...empty,submitted_at:cutoff}],[summary],false);
+ check([{...review,state:"CHANGES_REQUESTED"},{...empty,id:2}],[summary],false);
+ check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 1**"},{...empty,id:2}],[summary],false);
+ check([review,{...empty,id:2}],[],true);
+ check([],[{...summary,updated_at:cutoff}],false);
+ check([],[{...summary,user:{login:"asenbanskaliev"}}],false);
+ check([],[{...summary,body:summary.body.replaceAll(sha,"b".repeat(40))}],false);
+ check([],[{...summary,body:summary.body.replace('"kind":"reviewed"','"kind":"partial"')}],false);
+});
+
+
+test("M2 09/10: ensayo específico solo en el candidato autorizado, sin reintentos implícitos",()=>{
+ const job=ci.slice(ci.indexOf("\n  t06-nvidia-pi-native:"),ci.indexOf("\n\n  managed-update-windows:"));
+ assert.ok(job.includes("pull_request.number == 161"));
+ assert.ok(job.includes("feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127"));
+ assert.ok(job.includes('test "$PR_NUMBER" = 161'));
+ assert.ok(job.includes("node scripts/t12-pi-retry-settings.mjs"));
+ assert.ok(job.includes('ASEN_M2_TRIAL_AUTHORIZED="$ASEN_EXPECTED_SHA" timeout 250s tsx scripts/m2-nvidia-0910.ts'));
+ assert.ok(job.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
+ const source=readFileSync(new URL("../scripts/m2-nvidia-0910.ts",import.meta.url),"utf8");
+ assert.match(source,/continueInterruptedExplorer\(/u);
+ assert.match(source,/requireChildModelBeforePrompt:true/u);
+ assert.match(source,/noTools:true/u);
+ assert.match(source,/NO_PROVIDER_FAILURE_OBSERVED/u);
+ assert.match(source,/billingVerified:false/u);
 });

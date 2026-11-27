@@ -40,12 +40,36 @@ export function piVersionAnchors(metadata=packageMetadata(),additionalVersions=[
  return [...new Set([minimum,development,...valid])];
 }
 
+// Mantener la opción singular histórica y aceptar una lista acotada explícita.
+export function supplementalPiVersions(env=process.env){
+ const single=env.ASEN_PI_MATRIX_EXTRA_VERSION,multiple=env.ASEN_PI_MATRIX_EXTRA_VERSIONS;
+ assert.ok(single===undefined||multiple===undefined,"No combinar las opciones de versiones adicionales de Pi");
+ const raw=multiple??single;
+ if(raw===undefined)return [];
+ assert.ok(typeof raw==="string"&&raw.length>0,"Versiones adicionales de Pi vacías");
+ const versions=multiple===undefined?[raw]:raw.split(",");
+ piVersionAnchors(packageMetadata(),versions); // mismo límite y validación exacta
+ assert.equal(new Set(versions).size,versions.length,"Versiones adicionales de Pi duplicadas");
+ return versions;
+}
+
 export function planPiSupportMatrix(metadata,additionalVersions=[]){
  const versions=piVersionAnchors(metadata,additionalVersions);
  return ["linux","win32","darwin"].flatMap(platform=>versions.flatMap(version=>
   ["tui","rpc","json","print"].map(mode=>({platform,version,mode,id:`${platform}-${version}-${mode}`}))));
 }
 
+// Solo se conserva evidencia acotada del estado RPC, no el estado completo,
+// rutas, modelos, credenciales ni contenido del anfitrión.
+export function observeMatrixRpcReply(records,id="matrix-state",trailingOutput=""){
+ const matches=records.filter(value=>value&&typeof value==="object"&&!Array.isArray(value)&&value.type==="response"&&value.id===id);
+ const reply=matches.length===1?matches[0]:undefined;
+ const state=reply?.data;
+ return {responseCount:matches.length,correlated:trailingOutput.trim()===""&&reply?.command==="get_state"&&reply.success===true&&
+  state!==null&&typeof state==="object"&&!Array.isArray(state)&&
+  typeof state.sessionId==="string"&&state.sessionId.length>0&&state.sessionId.length<=1024&&
+  state.isStreaming===false&&state.isCompacting===false&&state.pendingMessageCount===0};
+}
 export function validateCellObservation(cell,result){
  assert.equal(result.mode,cell.mode);
  assert.equal(typeof result.hasUI,"boolean");
@@ -59,6 +83,10 @@ export function validateCellObservation(cell,result){
  assert.equal(result.signal,null);
  assert.equal(result.timedOut,false,"forced shutdown is not natural exit");
  if(cell.mode==="tui")assert.equal(result.keyboardCommandObserved,true,"real Pi TUI must run the keyboard-submitted ASEN changes command");
+ if(cell.mode==="rpc"){
+  assert.equal(result.rpc?.responseCount,1,"Pi RPC debe responder exactamente una vez a la petición");
+  assert.equal(result.rpc?.correlated,true,"Pi RPC debe confirmar get_state de la sesión en reposo");
+ }
 }
 
 async function runCell(cell,cli,packageRoot,root){
@@ -93,6 +121,7 @@ async function runCell(cell,cli,packageRoot,root){
  const env={...createPiVerifierEnvironment(process.env),HOME:work,USERPROFILE:work,
   PI_CODING_AGENT_DIR:join(work,"agent"),ASEN_NO_SKILL_REGISTRY:"1",TERM:"xterm-256color"};
  let log="",timedOut=false,exitCode,signal=null,keyboardAcknowledged=false;
+ let rpcReplies=[],rpcMalformed=false,rpcTrailingOutput="";
  if(cell.mode==="tui"){
   prepareDarwinPtyHelper();
   const pty=await import("node-pty");
@@ -120,18 +149,42 @@ async function runCell(cell,cli,packageRoot,root){
   await new Promise((done,reject)=>{
    const timer=setTimeout(()=>{timedOut=true;child.kill();},60_000);
    const finalTimer=setTimeout(()=>{child.kill("SIGKILL");reject(Error("Process cleanup unconfirmed"));},65_000);
-   child.stdout.on("data",data=>{log=(log+data).slice(-1_000_000);});
+   let rpcBuffer="",rpcInputClosed=false;
+   child.stdout.setEncoding("utf8");
+   child.stdout.on("data",data=>{
+    log=(log+data).slice(-1_000_000);
+    if(cell.mode!=="rpc"||rpcMalformed)return;
+    rpcBuffer+=data;
+    let end;
+    while((end=rpcBuffer.indexOf("\n"))>=0){
+     const line=rpcBuffer.slice(0,end);rpcBuffer=rpcBuffer.slice(end+1);
+     if(!line.trim())continue;
+     if(line.length>1_000_000){rpcMalformed=true;child.kill();return;}
+     let record;try{record=JSON.parse(line);}catch{rpcMalformed=true;child.kill();return;}
+     if(record?.type==="response"&&record.id==="matrix-state"){
+      if(rpcReplies.length>=2){rpcMalformed=true;child.kill();return;}
+      rpcReplies.push(record);
+      // Mantener vivo el proceso hasta recibir la respuesta; cerrar stdin
+      // solo después de observarla para no confundir salida con respuesta.
+      if(!rpcInputClosed){rpcInputClosed=true;child.stdin.end();}
+     }
+     if(record?.type==="agent_start"){rpcMalformed=true;child.kill();return;}
+    }
+    if(rpcBuffer.length>1_000_000){rpcMalformed=true;child.kill();}
+   });
+   child.stdin.on("error",()=>{rpcMalformed=true;child.kill();});
    child.stderr.on("data",data=>{log=(log+data).slice(-1_000_000);});
    child.on("error",error=>{clearTimeout(timer);clearTimeout(finalTimer);reject(error);});
-   child.on("close",(code,stop)=>{clearTimeout(timer);clearTimeout(finalTimer);exitCode=code;signal=stop;done();});
-   child.stdin.end(cell.mode==="rpc"?JSON.stringify({type:"get_state",id:"matrix-state"})+"\n":"");
+   child.on("close",(code,stop)=>{clearTimeout(timer);clearTimeout(finalTimer);if(cell.mode==="rpc")rpcTrailingOutput=rpcBuffer;exitCode=code;signal=stop;done();});
+   if(cell.mode==="rpc")child.stdin.write(JSON.stringify({type:"get_state",id:"matrix-state"})+"\n");
+   else child.stdin.end();
   });
  }
  let observed;
  try{observed=JSON.parse(readFileSync(observation,"utf8"));}
  catch{observed={mode:null,hasUI:null,commands:[],tools:[],modelCalls:null};}
  assert.ok(!log.includes('"type":"agent_start"'),"host must not start an agent");
- return {...observed,...(cell.mode==="tui"?{keyboardCommandObserved:keyboardAcknowledged}:{}),exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),log};
+ return {...observed,...(cell.mode==="tui"?{keyboardCommandObserved:keyboardAcknowledged}:{}),...(cell.mode==="rpc"?{rpc:rpcMalformed?{responseCount:rpcReplies.length,correlated:false}:observeMatrixRpcReply(rpcReplies,"matrix-state",rpcTrailingOutput)}:{}),exitCode,signal,timedOut,logSha256:createHash("sha256").update(log).digest("hex"),log};
 }
 
 export async function main({tarball=process.argv[2],output=process.argv[3],candidate=process.env.ASEN_EXPECTED_SHA}={}){
@@ -146,8 +199,7 @@ export async function main({tarball=process.argv[2],output=process.argv[3],candi
  const results=[];
  // La versión adicional solo se prueba cuando una ejecución concreta la solicita.
  // No sustituye el Pi principal ni se usan proveedores o modelos.
- const additionalVersions=process.env.ASEN_PI_MATRIX_EXTRA_VERSION?
-  [process.env.ASEN_PI_MATRIX_EXTRA_VERSION]:[];
+ const additionalVersions=supplementalPiVersions();
  const versions=piVersionAnchors(packageMetadata(),additionalVersions);
  const npmCli=process.env.npm_execpath;
  assert.ok(npmCli,"Run through npm run verify:pi-matrix");

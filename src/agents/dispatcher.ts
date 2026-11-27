@@ -13,13 +13,21 @@ import {isThinking,type Thinking} from "../runtime/lifecycle/profiles.js";
 import type {TerminalErrorCategory} from "../runtime/lifecycle/model-fallback-policy.js";
 
 export interface AgentModelFallbackStep{readonly model:string;readonly thinking?:Thinking}
-export interface AgentModelFallback{readonly profile?:string;readonly chain:readonly AgentModelFallbackStep[]}
+export interface AgentModelFallback{readonly profile?:string;readonly chain:readonly AgentModelFallbackStep[];readonly origin?:Readonly<{scope:"global"|"project";name:string;model:string}>}
 export interface AgentFallbackObservation{readonly taskId:string;readonly sessionId:string;readonly projectId:string;readonly from?:string;readonly to:string;readonly category:TerminalErrorCategory;readonly thinking?:Thinking}
 export type AgentFallbackListener=(observation:AgentFallbackObservation)=>void;
 export interface AgentRequest { id:string; role:"clarifier"|"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:Thinking; modelFallback?:AgentModelFallback; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; owner?:{kind:"user"|"agent"|"system";id:string};parentId?:string; }
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; nativeCompletion?:NativeWriterCompletion; }
 export interface AgentRunner { run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>; subscribeModelFallback?(listener:AgentFallbackListener):()=>void; }
+const unusedContinuationProofs=new WeakMap<object,{lifecycle:AgentLifecycleSink|undefined;id:string;sessionId:string;projectId:string;parentId:string}>();
+/** Solo un rechazo real anterior a runner.run puede emitir esta prueba de un uso. */
+export function consumePreStartRejection(value:unknown,lifecycle:unknown,id:string,sessionId:string,projectId:string,parentId:string):boolean{
+ if(typeof value!=="object"||value===null)return false;
+ const proof=unusedContinuationProofs.get(value);
+ if(!proof||proof.lifecycle!==lifecycle||proof.id!==id||proof.sessionId!==sessionId||proof.projectId!==projectId||proof.parentId!==parentId)return false;
+ unusedContinuationProofs.delete(value);return true;
+}
 const validatedRunnerResults=new WeakMap<object,{lifecycle:AgentLifecycleSink|undefined;id:string;sessionId:string;projectId:string;consumed:boolean}>();
 function isPromise(value:void|Promise<void>):value is Promise<void>{return !!value&&typeof value==="object"&&"then" in value&&typeof value.then==="function";}
 /** Lifecycle code consumes a dispatcher result once, bound to one sink and exact task identity. */
@@ -63,8 +71,14 @@ function fallbackModel(value:unknown):value is string{return typeof value==="str
 export function snapshotAgentModelFallback(value:unknown):AgentModelFallback|undefined{
  if(value===undefined)return undefined;
  const data=plainData(value),keys=Object.keys(data).sort();
- if(keys.some(key=>key!=="chain"&&key!=="profile")||!keys.includes("chain"))throw new Error("Invalid agent model fallback");
+ if(keys.some(key=>key!=="chain"&&key!=="profile"&&key!=="origin")||!keys.includes("chain"))throw new Error("Invalid agent model fallback");
  const profile=data.profile;if(profile!==undefined&&(typeof profile!=="string"||profile.length===0||profile.length>64||!/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(profile)))throw new Error("Invalid fallback profile");
+ let origin:AgentModelFallback["origin"];
+ if(data.origin!==undefined){
+  const value=plainData(data.origin);
+  if(Object.keys(value).sort().join(",")!=="model,name,scope"||(value.scope!=="global"&&value.scope!=="project")||typeof value.name!=="string"||value.name!==profile||!fallbackModel(value.model))throw Error("Invalid fallback profile origin");
+  origin=Object.freeze({scope:value.scope,name:value.name,model:value.model});
+ }
  const raw=data.chain;if(typeof raw!=="object"||raw===null||types.isProxy(raw)||!Array.isArray(raw)||Object.getPrototypeOf(raw)!==Array.prototype||raw.length>8||Reflect.ownKeys(raw).length!==raw.length+1)throw new Error("Fallback chain exceeds the eight-model limit");
  const seen=new Set<string>(),chain=Array.from({length:raw.length},(_,index)=>{
   const descriptor=Object.getOwnPropertyDescriptor(raw,String(index));if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Invalid fallback chain");
@@ -73,7 +87,7 @@ export function snapshotAgentModelFallback(value:unknown):AgentModelFallback|und
   if(seen.has(step.model))throw new Error("duplicate fallback model");seen.add(step.model);
   return Object.freeze(step.thinking===undefined?{model:step.model}:{model:step.model,thinking:step.thinking});
  });
- return Object.freeze({...(profile===undefined?{}:{profile}),chain:Object.freeze(chain)});
+ return Object.freeze({...(profile===undefined?{}:{profile}),chain:Object.freeze(chain),...(origin?{origin}:{})});
 }
 
 export class Dispatcher {
@@ -96,7 +110,7 @@ export class Dispatcher {
  }
  /** Cancel a queued or running task. The runner receives the abort signal and must stop its owned work. */
  cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||!sameWorkspaceIdentityPath(control.projectId,projectId)||control.controller.signal.aborted)return false;control.controller.abort();return true;}
- async dispatch(request:AgentRequest,startBefore?:number,validateStart?:()=>Promise<void>):Promise<AgentResult>{
+ async dispatch(request:AgentRequest,startBefore?:number,validateStart?:()=>Promise<void>,onPreStartValidationRejected?:(proof:object)=>Promise<void>):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
   let runnerRequest:AgentRequest,writerLease:{verify:()=>void;release:()=>void}|undefined;
   try{
@@ -119,10 +133,14 @@ export class Dispatcher {
   const lifecycleInput={id:request.id,role:request.role,owner:request.owner??{kind:"system" as const,id:"asen-dispatcher"},sessionId:request.isolationKey??"default",projectId:request.repository,createdAt:this.lifecycle?.createdAt()??new Date().toISOString()};
   try{const pending=this.lifecycle?.queued(lifecycleInput);if(isPromise(pending))await pending;}catch(error){this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);throw error;}
   let grant:WriteGrant|undefined,lifecycleRunning=false,acquired=false,terminalState=false;
+  const validateBeforeRunner=async()=>{try{await validateStart?.();}catch(error){if(!controller.signal.aborted&&request.role==="explorer"&&request.parentId&&onPreStartValidationRejected){const proof=Object.freeze({});
+    unusedContinuationProofs.set(proof,{lifecycle:this.lifecycle,id:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,parentId:request.parentId});
+    try{await onPreStartValidationRejected(proof);terminalState=true;}catch{/* Si no se acredita el rechazo, conservar la reclamación. */}
+    finally{unusedContinuationProofs.delete(proof);}}throw error;}};
   try{
    await this.#acquire(controller.signal);acquired=true;
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before execution");
-   if(validateStart)await validateStart();
+   if(validateStart)await validateBeforeRunner();
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled after validation");
    const starting=this.lifecycle?.running(request.id);if(isPromise(starting))await starting;lifecycleRunning=true;
    if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
@@ -159,7 +177,8 @@ export class Dispatcher {
    if(request.writeSurfaces){assertActiveWriterSnapshot(request);writerLease=acquireActiveWriterLease(request);writerLease?.verify();}
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
    const nativeBaseline=isNativePartitionWriter(request)?await captureNativeWriterBaseline(request):undefined;
-   if(nativeBaseline&&validateStart)await validateStart();
+   // El diario puede haber esperado un bloqueo; volver a comprobar toda autorización vigente.
+   if(validateStart)await validateBeforeRunner();
    writerLease?.verify();
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before Writer execution");
    if(startBefore!==undefined&&(!Number.isFinite(startBefore)||performance.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");

@@ -1,4 +1,4 @@
-/** EF-604: REAL installed Pi 1.2 RPC host restart, authenticated ASEN store,
+/** EF-604: REAL installed Pi 1.6 RPC host restart, authenticated ASEN store,
  * and production notice journal. Child model execution and Writer are NOT tested here.
  * No provider credentials or model requests. All state lives in a disposable root.
  */
@@ -115,7 +115,7 @@ test("EF-604 authentic Pi RPC host restart, forced process death and durable iso
  await writeFile(probe,probeCode(),{flag:"wx",mode:0o600});
  const packageMetadata=JSON.parse(readFileSync(join(repo,"node_modules",
   "@earendil-works","pi-coding-agent","package.json"),"utf8"));
- assert.equal(packageMetadata.version,"1.2.0","Real pinned Pi 1.2.0 required");
+ assert.equal(packageMetadata.version,"1.6.0","Se requiere Pi de desarrollo 1.6.0 instalado");
  const piEntrypoint=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
  const binary=join(dirname(piEntrypoint),"bundle","cli.js");
  const env=scrubEnv(home,trace);

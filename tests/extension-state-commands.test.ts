@@ -7,34 +7,38 @@ test("fallback-parent extension handles the real parent event path with a fake P
  await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{}}]});
  await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup",thinking:"low"}]}}});
  const commands=new Map<string,any>(),events=new Map<string,Function[]>(),calls:string[]=[],notices:string[]=[];
- const pi:any={registerCommand:(name:string,command:any)=>commands.set(name,command),registerTool(){},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[],getThinkingLevel:()=>"high",setThinkingLevel:(level:string)=>calls.push(`thinking:${level}`),setModel:async(model:any)=>{calls.push(`model:${model.provider}/${model.id}`);ctx.model=model;return true;},sendUserMessage:(message:string,options:any)=>calls.push(`followUp:${options.deliverAs}:${message}`)};
- const ctx:any={cwd:project,model:{provider:"provider",id:"primary",cost:{input:1,output:2}},modelRegistry:{find:(provider:string,id:string)=>provider==="provider"&&id==="backup"?{provider,id,cost:{input:2,output:4}}:undefined},sessionManager:{getSessionId:()=>"fallback-parent-session"},ui:{notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}};
+ const pi:any={registerCommand:(name:string,command:any)=>commands.set(name,command),registerTool(){},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[],getThinkingLevel:()=>"high",setThinkingLevel:(level:string)=>calls.push(`thinking:${level}`),getSettings:()=>({cacheWarming:"off",retry:{enabled:false,maxRetries:0,provider:{maxRetries:0}},compaction:{enabled:false}}),setModel:async(model:any)=>{calls.push(`model:${model.provider}/${model.id}`);ctx.model=model;return true;},sendUserMessage:(message:string,options:any)=>calls.push(`followUp:${options.deliverAs}:${message}`)};
+ const consentSignal=new AbortController();let dialogSignal:AbortSignal|undefined;
+ const ctx:any={cwd:project,hasUI:true,signal:consentSignal.signal,model:{provider:"provider",id:"primary",cost:{input:1,output:2}},modelRegistry:{find:(provider:string,id:string)=>provider==="provider"&&id==="backup"?{provider,id,cost:{input:2,output:4}}:undefined},sessionManager:{getSessionId:()=>"fallback-parent-session"},ui:{confirm:async(_title:string,_message:string,options?:{signal?:AbortSignal})=>{dialogSignal=options?.signal;return true;},notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}};
  createAsenExtension({homeDir:()=>root,profilesFile,profileFallbacksFile:fallbacksFile,enableAgentRuntime:false,enableTodoRuntime:false,enableMemoryRuntime:false})(pi);
  t.after(async()=>{try{for(const handler of events.get("session_shutdown")??[])await handler({},ctx);}finally{await rm(root,{recursive:true,force:true});}});
  for(const handler of events.get("session_start")??[])await handler({},ctx);
  for(const handler of events.get("agent_end")??[])await handler({messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctx);
  assert.deepEqual(calls,[],"agent_end only caches the last attempt");
- for(const handler of events.get("agent_settled")??[])await handler({aborted:false},ctx);
- assert.deepEqual(calls.map(call=>String(call).split(":",1)[0]),["model","thinking","followUp"]);
- assert.match(calls[2]!,/^followUp:followUp:/);assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,1);
+ for(const handler of events.get("agent_settled")??[])await handler({aborted:false},{...ctx,get model(){return ctx.model;}});
+ assert.deepEqual(calls,[],"Pi nativo no ofrece una mutación cancelable; solo se recomienda el modelo");
+ assert.equal(dialogSignal,undefined,"sin mutación ni inferencia no se solicita consentimiento de gasto");
+ assert.equal(ctx.model.id,"primary");assert.equal(notices.filter(message=>message.includes("alternativa provider/backup disponible")).length,1);
 });
 test("fallback-parent extension rejects delayed prior-session end and abort events",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-fallback-parent-scope-")),project=await realpath(process.cwd()),profilesFile=path.join(root,".asen","profiles.json"),fallbacksFile=path.join(root,".asen","profile-fallbacks.json");
  await writeProfilesFile(profilesFile,{schema:ASEN_PROFILES_SCHEMA,active:"main",profiles:[{name:"main",routes:{}}]});
  await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup"},{model:"provider/last"}]}}});
- const events=new Map<string,Function[]>(),calls:string[]=[],notices:string[]=[],pi:any={registerCommand(){},registerTool(){},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[],getThinkingLevel:()=>"high",setThinkingLevel(){},setModel:async(model:any)=>{calls.push(`model:${model.id}`);ctxB.model=model;return true;},sendUserMessage:(message:string,options:any)=>calls.push(`follow:${options.deliverAs}:${message}`)};
- const context=(sessionId:string)=>({cwd:project,model:{provider:"provider",id:"primary"},modelRegistry:{find:(provider:string,id:string)=>provider==="provider"&&["backup","last"].includes(id)?{provider,id}:undefined},sessionManager:{getSessionId:()=>sessionId},ui:{notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}}),ctxA:any=context("scope-a"),ctxB:any=context("scope-b");
+ const events=new Map<string,Function[]>(),calls:string[]=[],notices:string[]=[],pi:any={registerCommand(){},registerTool(){},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[],getThinkingLevel:()=>"high",setThinkingLevel(){},getSettings:()=>({cacheWarming:"off",retry:{enabled:false,maxRetries:0,provider:{maxRetries:0}},compaction:{enabled:false}}),setModel:async(model:any)=>{calls.push(`model:${model.id}`);ctxB.model=model;return true;},sendUserMessage:(message:string,options:any)=>calls.push(`follow:${options.deliverAs}:${message}`)};
+ const context=(sessionId:string)=>({cwd:project,hasUI:true,model:{provider:"provider",id:"primary"},modelRegistry:{find:(provider:string,id:string)=>provider==="provider"&&["backup","last"].includes(id)?{provider,id}:undefined},sessionManager:{getSessionId:()=>sessionId},ui:{confirm:async()=>true,notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}}),ctxA:any=context("scope-a"),ctxB:any=context("scope-b");
  createAsenExtension({homeDir:()=>root,profilesFile,profileFallbacksFile:fallbacksFile,enableAgentRuntime:false,enableTodoRuntime:false,enableMemoryRuntime:false})(pi);
  const emit=async(name:string,event:unknown,ctx:any)=>{for(const handler of events.get(name)??[])await handler(event,ctx);};
  t.after(async()=>{try{await emit("session_shutdown",{},ctxB);await emit("session_shutdown",{},ctxA);}finally{await rm(root,{recursive:true,force:true});}});
  await emit("session_start",{},ctxA);await emit("session_start",{},ctxB);
  await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxA);
- await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[],"A end cannot feed B settled");
- await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);assert.ok(calls.map(String).includes("model:backup"));
- await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup"}]}}});
+ await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[],"A end cannot feed B settled");assert.equal(notices.filter(message=>message.includes("alternativa provider/")).length,0,"Un evento tardío no debe recomendar modelos en otra sesión");
+ await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[]);assert.ok(notices.some(message=>message.includes("alternativa provider/backup disponible")));
+ // Simular la elección manual del usuario, no un cambio hecho por ASEN.
+ ctxB.model={provider:"provider",id:"backup"};
+ await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"fetch failed"}]},ctxB);
  await emit("agent_settled",{aborted:true},ctxA);
- await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"fetch failed"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);
- assert.ok(calls.map(String).includes("model:last"),"stale A abort cannot clear B's frozen episode");assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,2);
+ await emit("agent_settled",{aborted:false},ctxB);
+ assert.deepEqual(calls,[]);assert.ok(notices.some(message=>message.includes("alternativa provider/last disponible")),"stale A abort cannot clear B episode");assert.equal(notices.filter(message=>message.includes("alternativa provider/")).length,2);
 });
 
 test("fallback-parent extension suppresses stale deferred chain rejection notices",async t=>{

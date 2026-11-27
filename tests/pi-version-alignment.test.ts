@@ -53,24 +53,24 @@ await test("package and lock metadata align the development SDK and Node floor",
   const lockRoot = packageLock.packages?.[""];
   const lockedSdk = packageLock.packages?.[`node_modules/${sdkName}`];
 
-  assert.equal(packageJson.devDependencies?.[sdkName], "^1.2.0");
+  assert.equal(packageJson.devDependencies?.[sdkName], "^1.6.0");
   assert.equal(packageJson.engines?.node, ">=22.19.0");
   assert.equal(packageJson.peerDependencies?.[sdkName], ">=1.2.0");
   assert.equal(packageJson.peerDependenciesMeta?.[sdkName]?.optional, true);
 
-  assert.equal(lockRoot?.devDependencies?.[sdkName], "^1.2.0");
+  assert.equal(lockRoot?.devDependencies?.[sdkName], "^1.6.0");
   assert.equal(lockRoot?.engines?.node, ">=22.19.0");
   assert.equal(lockRoot?.peerDependencies?.[sdkName], ">=1.2.0");
   assert.equal(lockRoot?.peerDependenciesMeta?.[sdkName]?.optional, true);
-  assert.equal(lockedSdk?.version, "1.2.0");
+  assert.equal(lockedSdk?.version, "1.6.0");
 });
 
-await test("all seven current-runtime workflows pin Pi 1.2.0", () => {
+await test("Los seis flujos de compatibilidad conservan Pi 1.2.0 y Release Gate usa Pi 1.6.0", () => {
   for (const [path, workflow] of workflowTexts) {
     if (path === "release-gate.yml") {
       // Release Gate reuses the lockfile-installed SDK to avoid an unpinned second npm resolution.
       assert.match(workflow, /npm install/);
-      assert.match(workflow, /p\.version !== "1\.2\.0"/);
+      assert.match(workflow, /p\.version !== "1\.6\.0"/);
       assert.match(workflow, /GITHUB_WORKSPACE\/node_modules\/\.bin/);
       assert.equal(workflow.includes("npm install -g"), false);
       continue;

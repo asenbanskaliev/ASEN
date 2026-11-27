@@ -3,7 +3,10 @@ import {realpathSync} from "node:fs";
 import {isolatedGitEnvironment} from "../agents/git-isolated-environment.js";
 import {execFileSync} from "node:child_process";
 import type {AgentRuntime,AgentSessionIdentity} from "../../agents/agent-runtime.js";
-import {resolveRuntimeDelegationMode,type ProfileLayer} from "./profiles.js";
+import {resolveRuntimeDelegationMode,resolveRuntimeRoute,type ProfileLayer} from "./profiles.js";
+import {resolveProfileFallbackChain,type ProfileFallbacksFile} from "./profile-fallback-store.js";
+import {reviewModelIdentityKey,splitPiModelIdentity} from "../../review/model-identity.js";
+import type {AgentModelFallback} from "../../agents/dispatcher.js";
 import {isPartitionUnitBasis,parsePartitionUnitBasis,integratedSuccessorBasis} from "./odd-unit-plan.js";
 import type {Candidate} from "../../core/types.js";
 import {deriveOddFacts,planOddRoute,type OddRoutingRequest} from "../../flow/odd-routing.js";
@@ -13,7 +16,7 @@ import {issueOrganicWriterAdmission} from "../../lifecycle/skill-lifecycle.js";
 import {buildOrchestrationPlan} from "../../orchestration/orchestrator.js";
 import {materializeExecutablePlan} from "../../orchestration/executable-plan.js";
 import {selectSkills,type SkillSelectionContext} from "../../skills/registry.js";
-import type {SessionTodoStore,TodoContext,TodoItem} from "./todo-store.js";
+import type {SessionTodoStore,TodoContext,TodoItem,ExplorerProfileOrigin} from "./todo-store.js";
 import type {TaskAgentLinkStore} from "../agents/task-agent-link-store.js";
 import {TodoLaunchConflictError,TrustedTaskAgentBinder} from "../agents/trusted-task-agent-binder.js";
 import {inspectRiskVerifierBinding,exactRiskReaderContract,type RiskVerifierBinding,type RiskReaderContract} from "./plan-risk-verifier-binding.js";
@@ -91,8 +94,45 @@ export function sameApprovedTaskSnapshot(before:TodoItem&{current:{state:string}
  return !!after&&after.current.state==="planned"&&JSON.stringify(after)===JSON.stringify(before);
 }
 
+/** null conserva un fallo de lectura sin confundirlo con un archivo ausente. */
+export type ExplorerFallbackScopes=Partial<Record<ExplorerProfileOrigin["scope"],ProfileFallbacksFile|null>>;
 type PlanDispatchTask={id:string;title:string;role:string;instruction:string;writeSurfaces?:readonly string[];candidateRevision?:string};
-type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;
+/** Solo Explorer de un plan normal puede cambiar de modelo sin alterar la
+ * independencia de un lector obligatorio ni repetir una escritura incierta.
+ * No reinterpretar un Todo antiguo usando otro perfil. */
+export function plannedExplorerProfileOrigin(role:string,model:string|undefined,profiles:ProfileLayer):ExplorerProfileOrigin|undefined{
+ if(role!=="explorer"||!model)return;
+ const route=resolveRuntimeRoute(profiles,role);
+ // No existe archivo de alternativas de ámbito sesión: no usar el global por inferencia.
+ if((route.source!=="global"&&route.source!=="project")||route.choice?.model!==model)return;
+ const name=profiles[route.source]?.active;
+ return name?{scope:route.source,name}:undefined;
+}
+export function plannedExplorerFallback(input:{role:string;model?:string;profiles?:ProfileLayer;origin?:ExplorerProfileOrigin;fallbacksByScope?:ExplorerFallbackScopes;independentRecovery?:boolean}):AgentModelFallback|undefined{
+ if(input.independentRecovery||!input.model||!input.profiles||!input.origin)return;
+ const current=plannedExplorerProfileOrigin(input.role,input.model,input.profiles);
+ if(!current||current.scope!==input.origin.scope||current.name!==input.origin.name)return;
+ const profile=current.name,primary=splitPiModelIdentity(input.model),fallbacks=input.fallbacksByScope?.[current.scope];
+ if(fallbacks===null)throw Error("Archivo de alternativas inválido en el ámbito "+current.scope);
+ if(!primary||!fallbacks)return;
+ const seen=new Set([reviewModelIdentityKey(primary)]);
+ const chain=resolveProfileFallbackChain(fallbacks,profile,input.role).filter(step=>{
+  const model=splitPiModelIdentity(step.model);if(!model)return false;
+  const key=reviewModelIdentityKey(model);if(seen.has(key))return false;
+  seen.add(key);return true;
+ });
+ return chain.length?{profile,chain}:undefined;
+}
+export type ExplorerFallbackConfig=Pick<Parameters<typeof plannedExplorerFallback>[0],"profiles"|"fallbacksByScope">;
+/** No ampliar ni sustituir alternativas de una tarea ya seleccionada. */
+export async function assertPlannedExplorerFallbackCurrent(expected:AgentModelFallback|undefined,selection:Parameters<typeof plannedExplorerFallback>[0],readCurrent:()=>Promise<ExplorerFallbackConfig>):Promise<void>{
+ const current=await readCurrent();
+ const {profiles:_previousProfiles,fallbacksByScope:_previousFallbacks,...persistedSelection}=selection;
+ const actual=plannedExplorerFallback({...persistedSelection,...(current.profiles?{profiles:current.profiles}:{}),...(current.fallbacksByScope?{fallbacksByScope:current.fallbacksByScope}:{})});
+ if(JSON.stringify(actual)!==JSON.stringify(expected))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
+}
+type DispatchInput={todos:SessionTodoStore;agents:AgentRuntime;links:TaskAgentLinkStore;identity:AgentSessionIdentity;validateIdentity:()=>Promise<void>;confirm:(task:PlanDispatchTask)=>Promise<boolean>;autoApproveReadOnly?:boolean;runtimeProfiles?:ProfileLayer;expectedTodoId?:string;startBefore?:number;signal?:AbortSignal;profileFallbacksByScope?:ExplorerFallbackScopes;
+ readCurrentExplorerFallbackConfig?:()=>Promise<ExplorerFallbackConfig>;
  /** Solo el coordinador interno puede reservar una plaza de lectura.
   * Nunca es permiso para iniciar un Writer ni eludir las selecciones hijas. */
  readOnlyWave?:boolean;
@@ -382,8 +422,24 @@ export async function dispatchNextPlanTask(input:DispatchInput):Promise<Dispatch
  if((readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&task.plan?.candidateRevision){let revision:string;try{revision=currentRevision(input.identity.projectId);}catch{return {status:"blocked",reason:"The planned exploration candidate is no longer readable; rebuild the plan."};}if(revision!==task.plan.candidateRevision)return {status:"blocked",reason:"The project changed while awaiting exploration approval; rebuild the plan against the current candidate."};}
  await validateReadOnlyLaunch();
  const binder=new TrustedTaskAgentBinder(input.todos,input.agents,input.links);
+ const fallbackSelection={role:readRole,...(task.plan.model?{model:task.plan.model}:{}),...(input.runtimeProfiles?{profiles:input.runtimeProfiles}:{}),...(task.plan.explorerProfileOrigin?{origin:task.plan.explorerProfileOrigin}:{}),...(input.profileFallbacksByScope?{fallbacksByScope:input.profileFallbacksByScope}:{}),independentRecovery:!!independence};
+ let modelFallback:AgentModelFallback|undefined;
+ try{modelFallback=plannedExplorerFallback(fallbackSelection);}catch{return {status:"blocked",reason:"Archivo de alternativas del ámbito seleccionado inválido; corregir antes de ejecutar"};}
+ const validateFallback=async()=>{
+  if(!modelFallback&&(readRole!=="explorer"||!task.plan?.explorerProfileOrigin||independence||!input.readCurrentExplorerFallbackConfig))return;
+  if(!input.readCurrentExplorerFallbackConfig)throw Error("No se puede comprobar la vigencia de las alternativas del perfil");
+  await input.validateIdentity();
+  await assertPlannedExplorerFallbackCurrent(modelFallback,fallbackSelection,input.readCurrentExplorerFallbackConfig);
+  await input.validateIdentity();
+ };
+ try{await validateFallback();}catch{return {status:"blocked",reason:"Las alternativas del perfil ya no son verificables; actualizar el plan antes de ejecutar"};}
+ const validateStart=async()=>{
+  await validateReadOnlyLaunch();await validateFallback();
+  if(task.plan?.candidateRevision&&(readRole==="explorer"||readRole==="reviewer"||readRole==="verifier")&&currentRevision(input.identity.projectId)!==task.plan.candidateRevision)throw Error("The project changed before read-only dispatch; rebuild the plan against the current candidate.");
+  if(input.signal?.aborted)throw Object.assign(Error("Agent task cancelled"),{name:"AbortError"});
+ };
  try{
-  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),onPrepared:async(id,enqueue,dispatch)=>{await validateReadOnlyLaunch();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateReadOnlyLaunch);}},input.signal);
+  const agentId=await input.agents.startReadOnly({role:readRole,prompt:task.description,session:input.identity,...(selection?{skillSelection:selection}:{}),...(task.plan.model?{model:task.plan.model}:{}),...(task.plan.thinking?{thinking:task.plan.thinking}:{}),...(modelFallback?{modelFallback}:{}),validateStart,onPrepared:async(id,enqueue,dispatch)=>{await validateStart();await binder.launchExact(task,id,input.identity,enqueue,dispatch,validateStart);}},input.signal);
   return {status:"dispatched",todoId:task.taskId,agentId,role:readRole};
  }catch(error){if(error instanceof TodoLaunchConflictError)return {status:"blocked",reason:"The plan task changed while awaiting confirmation; refresh the plan before dispatch."};throw error;}
 }

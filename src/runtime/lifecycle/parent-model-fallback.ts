@@ -15,22 +15,31 @@ import {
 
 export interface ParentFallbackScope{sessionId:string;projectId:string}
 export interface ParentFallbackIdentity extends ParentFallbackScope{profile:string|undefined}
-export interface ParentCatalogModel{provider:string;id:string;cost?:ModelCatalogRates|undefined}
+export interface ParentCatalogModel{provider:string;id:string;api?:string;cost?:ModelCatalogRates|undefined}
 export interface ParentModelFallbackHost{
  identity(context?:unknown):ParentFallbackIdentity|undefined|Promise<ParentFallbackIdentity|undefined>;
  loadChain(profile:string|undefined,context?:unknown):readonly ModelFallbackStep[]|Promise<readonly ModelFallbackStep[]>;
  currentModel(context?:unknown):string|undefined;
  findModel?(model:string,context?:unknown):ParentCatalogModel|undefined;
  setModel?(model:ParentCatalogModel,context?:unknown):boolean|Promise<boolean>;
+ /** Consentimiento del anfitrión para esta alternativa concreta, no de la configuración del perfil. */
+ authorizeFallback?(model:ParentCatalogModel,context?:unknown):boolean|Promise<boolean>;
  getThinking?():Thinking|undefined;
  setThinking?(level:Thinking):void;
  notify?(change:ModelFallbackChange,pricing:{from?:ModelCatalogRates;to?:ModelCatalogRates},context?:unknown):void;
  followUp?(message:string,context?:unknown):void;
+ /** Cuando el anfitrión no tiene una mutación cancelable, recomendar sin cambiar ni consumir. */
+ recommendManualModel?(model:ParentCatalogModel,context?:unknown):void;
+ isCancelled?(context?:unknown):boolean;
+ canAutoContinue?():boolean;
+ onManualContinuation?(context?:unknown):void;
  cooldown?:ModelFallbackCooldown;
  clock?:()=>number;
 }
 export interface ParentModelFallbackAdapter{
  activate(scope:ParentFallbackScope|undefined):void;
+ /** Solo espera una mutación Pi ya iniciada, nunca un diálogo pendiente. */
+ drainMutation():Promise<void>|undefined;
  onAgentEnd(event:{messages?:readonly unknown[]}|undefined,scope?:ParentFallbackScope):void;
  onAgentSettled(event?:{aborted?:boolean},context?:unknown,scope?:ParentFallbackScope):Promise<boolean>;
  clear():void;
@@ -59,14 +68,15 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
  let episodeIdentity:ParentFallbackIdentity|undefined;
  let episodeThinking:Thinking|undefined;
  let inFlight:Promise<boolean>|undefined;
+ let mutation:Promise<boolean>|undefined;
  let epoch=0;
  const accepts=(scope:ParentFallbackScope|undefined)=>!bindingRequired||sameScope(activeScope,scope);
  const currentIdentity=async(context?:unknown)=>{const value=await host.identity(context);return validIdentity(value)?value:undefined;};
  const invalidate=(outcome:"success"|"aborted")=>{
-  epoch+=1;episode?.clear(outcome);episode=undefined;episodeIdentity=undefined;episodeThinking=undefined;lastMessages=[];lastScope=undefined;
+  epoch+=1;inFlight=undefined;episode?.clear(outcome);episode=undefined;episodeIdentity=undefined;episodeThinking=undefined;lastMessages=[];lastScope=undefined;
  };
  const run=async(messages:readonly unknown[],settled:{aborted?:boolean},context:unknown,operation:number,origin:ParentFallbackScope|undefined):Promise<boolean>=>{
-  const current=()=>operation===epoch&&accepts(origin);
+  const current=()=>operation===epoch&&accepts(origin)&&host.isCancelled?.(context)!==true;
   const wait=async<T>(promise:Promise<T>):Promise<{valid:true;value:T}|{valid:false}>=>{
    try{const value=await promise;return current()?{valid:true,value}:{valid:false};}
    catch(error){if(!current())return {valid:false};throw error;}
@@ -75,6 +85,7 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
   const category=classifyLastAssistantFailure(messages);
   if(category===undefined){invalidate("success");return false;}
   if(!shouldFallback(category)||!current())return false;
+  if(mutation){const drained=await wait(mutation);if(!drained.valid)return false;}
   const identityResult=await wait(currentIdentity(context));if(!identityResult.valid||!identityResult.value)return false;
   const identity=identityResult.value;if(bindingRequired&&!sameScope(identity,origin))return false;
   const activeModel=host.currentModel(context);if(!current())return false;
@@ -90,13 +101,42 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
   for(;;){
    if(!current())return false;
    const pick=activeEpisode.pick();if(!pick?.fallback||!pick.model)return false;
-   activeEpisode.markTried(pick.model);if(!current())return false;
+   if(!current())return false;
    const found=host.findModel?.(pick.model,context);if(!current())return false;
-   if(!found||modelRef(found)!==pick.model)continue;
+   // Pi 1.2–1.6 identifica los modelos virtuales con api=pi-virtual.
+   // La aprobación de una referencia de enrutamiento no identifica un modelo físico.
+   if(!found||found.api==="pi-virtual"||modelRef(found)!==pick.model){activeEpisode.markTried(pick.model);continue;}
    const source=activeModel?host.findModel?.(activeModel,context):undefined;if(!current())return false;
    const beforeResult=await wait(currentIdentity(context));if(!beforeResult.valid)return false;
    if(!sameIdentity(beforeResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
-   const switchedResult=await wait(Promise.resolve(host.setModel?.(found,context)).catch(()=>false));if(!switchedResult.valid)return false;
+   if(host.recommendManualModel){
+    const fresh=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
+    if(!fresh.valid)return false;
+    const now=await wait(currentIdentity(context));if(!now.valid)return false;
+    if(!sameIdentity(now.value,activeEpisodeIdentity)||!fresh.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
+    if(current())host.recommendManualModel(found,context);
+    return false;
+   }
+   // Una recomendación manual no consume ni marca un intento.
+    activeEpisode.markTried(pick.model);
+    // Ni la presencia en el catálogo ni una tarifa cero acreditan gratuidad.
+   const authorized=await wait(Promise.resolve().then(()=>host.authorizeFallback?.(found,context)).catch(()=>false));
+   if(!authorized.valid)return false;
+   if(authorized.value!==true){invalidate("aborted");return false;}
+   const consentIdentity=await wait(currentIdentity(context));if(!consentIdentity.valid)return false;
+   if(!sameIdentity(consentIdentity.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
+   const liveChain=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
+   if(!liveChain.valid)return false;
+   const liveIdentity=await wait(currentIdentity(context));if(!liveIdentity.valid)return false;
+   if(!sameIdentity(liveIdentity.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
+   const liveModel=host.findModel?.(pick.model,context);
+   if(!liveChain.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)||!liveModel||liveModel.api==="pi-virtual"||modelRef(liveModel)!==pick.model||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
+   // La operación irreversible debe terminar antes de que Pi sustituya el host.
+   const pending=Promise.resolve().then(()=>current()?host.setModel?.(liveModel,context)??false:false);
+   const switching=pending.then(value=>value===true,()=>false);
+   mutation=switching;
+   const switchedResult=await wait(switching);if(mutation===switching)mutation=undefined;
+   if(!switchedResult.valid)return false;
    if(!switchedResult.value)continue;
    const afterResult=await wait(currentIdentity(context));if(!afterResult.valid)return false;
    if(!sameIdentity(afterResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
@@ -108,12 +148,19 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    host.notify?.(change,pricing,context);if(!current())return false;
    const continuationResult=await wait(currentIdentity(context));if(!continuationResult.valid)return false;
    if(!sameIdentity(continuationResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
+   const dispatchChain=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
+   if(!dispatchChain.valid)return false;
+   const dispatchIdentity=await wait(currentIdentity(context));if(!dispatchIdentity.valid)return false;
+   if(!sameIdentity(dispatchIdentity.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
+   if(!dispatchChain.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)||host.currentModel(context)!==modelRef(found)||host.findModel?.(pick.model,context)?.api==="pi-virtual"){invalidate("aborted");return false;}
+   if(host.canAutoContinue&&!host.canAutoContinue()){host.onManualContinuation?.(context);invalidate("aborted");return false;}
    host.followUp?.(formatModelFallbackContinuation(change),context);
    return true;
   }
  };
  return Object.freeze({
   activate(scope:ParentFallbackScope|undefined){bindingRequired=true;invalidate("aborted");activeScope=validScope(scope)?{...scope}:undefined;},
+  drainMutation(){return mutation?.then(()=>{});},
   onAgentEnd(event:{messages?:readonly unknown[]}|undefined,scope?:ParentFallbackScope){
    if(!accepts(scope))return;lastScope=scope?{...scope}:undefined;lastMessages=Array.isArray(event?.messages)?[...event.messages]:[];
   },

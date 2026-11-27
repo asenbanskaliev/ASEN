@@ -17,7 +17,7 @@ function fixture(){
   const matrix=planPiSupportMatrix().filter((cell:{platform:string})=>cell.platform===platform).map((cell:object)=>{
    const log="real-host fixture log";
    const bytes=JSON.stringify({...cell,candidate,sourceCommit,artifactSha256:"d".repeat(64),result:"PASS",
-    observation:{mode:(cell as {mode:string}).mode,...((cell as {mode:string}).mode==="tui"?{keyboardCommandObserved:true}:{}),hasUI:true,commands:["asen"],tools:["asen_ask_choice","asen_ask_question","ask_user_choice","ask_user_question"],modelCalls:0,shutdownObserved:true,exitCode:0,signal:null,timedOut:false,logSha256:hash(log)}});
+    observation:{mode:(cell as {mode:string}).mode,...((cell as {mode:string}).mode==="tui"?{keyboardCommandObserved:true}:{}),...((cell as {mode:string}).mode==="rpc"?{rpc:{responseCount:1,correlated:true}}:{}),hasUI:true,commands:["asen"],tools:["asen_ask_choice","asen_ask_question","ask_user_choice","ask_user_question"],modelCalls:0,shutdownObserved:true,exitCode:0,signal:null,timedOut:false,logSha256:hash(log)}});
    return {bytes,log};
   });
   const hostLog=JSON.stringify(matrix.map((item:{bytes:string})=>({id:JSON.parse(item.bytes).id,sha256:hash(item.bytes)})),null,2)+"\n";
@@ -134,4 +134,15 @@ test("Windows manifest receipt admits only the exact Git LF-to-CRLF checkout tra
 test("canonical manifest byte digest is checked before accepting any checkout transform",()=>{
  const input=fixture();input.sourceManifestBytes=Buffer.from("different");
  assert.throws(()=>validateEvidenceBundle(input));
+});
+
+test("G01 el paquete de evidencias no admite RPC sin respuesta correlacionada",()=>{
+ for(const rpc of [undefined,{responseCount:0,correlated:false},{responseCount:2,correlated:true},{responseCount:1,correlated:false}]){
+  const input=fixture();
+  const entry=input.groups[0]!.matrix.find((item:{bytes:string})=>JSON.parse(item.bytes).mode==="rpc")!;
+  const row=JSON.parse(entry.bytes);
+  if(rpc===undefined)delete row.observation.rpc;else row.observation.rpc=rpc;
+  entry.bytes=JSON.stringify(row);
+  assert.throws(()=>validateEvidenceBundle(input),/Pi RPC debe/u);
+ }
 });

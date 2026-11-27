@@ -12,11 +12,11 @@ test("interrupted Explorer continuation service preserves the public queued resu
  let queryCount=0,continueCount=0,identityChecks=0;
  const result=await continueInterruptedExplorer({
   agentId:"parent",identity,
-  runtime:{query:async()=>{queryCount++;return interruptedEntry;},continue:async()=>{continueCount++;return "child";}},
+  runtime:{query:async()=>{queryCount++;return interruptedEntry;},continue:async(_id,_identity,_signal,_onQueued,validateStart)=>{continueCount++;assert.ok(validateStart);await validateStart();return "child";}},
   resolveCurrentIdentity:async()=>{identityChecks++;return identity;},
  });
  assert.deepEqual(result,{id:"child",state:"queued",continuedFrom:"parent",role:"explorer"});
- assert.equal(queryCount,1);assert.equal(continueCount,1);assert.equal(identityChecks,1);
+ assert.equal(queryCount,1);assert.equal(continueCount,1);assert.equal(identityChecks,5);
 });
 
 test("interrupted Explorer continuation service rejects other lifecycle states without coordination or dispatch",async()=>{
@@ -92,4 +92,69 @@ test("UFC-M2-03c shipped request guidance and tool description keep the same no-
  const tools=readFileSync(new URL("../src/agents/pi-agent-tools.ts",import.meta.url),"utf8");
  assert.match(tools,/resume only an interrupted read-only explorer/u,"the public tool description matches the guard clause");
  assert.match(tools,/Never use this for failed, cancelled, reviewer, verifier, or writer tasks/u,"the description names every non-explorer target");
+});
+
+test("B1 rechaza alternativas retiradas al continuar Explorer antes de reclamar el intento",async()=>{
+ const saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope:"global" as const,name:"perfil",model:"nvidia/modelo-a"}};
+ let started=0;
+ const runtime={query:async()=>({...interruptedEntry,spec:{model:"nvidia/modelo-a",modelFallback:saved}}),continue:async()=>{started++;return "unused";}};
+ await assert.rejects(()=>continueInterruptedExplorer({runtime,agentId:"parent",identity,readCurrentDirectFallback:async()=>undefined}),/alternativas del perfil cambiaron/u);
+ assert.equal(started,0);
+ let validated=false;
+ const result=await continueInterruptedExplorer({runtime:{...runtime,continue:async(_id,_identity,_signal,_onQueued,validateStart)=>{assert.ok(validateStart);await validateStart();validated=true;return "child";}},agentId:"parent",identity,readCurrentDirectFallback:async()=>saved});
+ assert.equal(result.id,"child");assert.equal(validated,true);
+});
+
+
+test("B1 conserva la causa de interrupción si se retira la alternativa antes del encolado",async()=>{
+ const saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}]};
+ const plan={role:"explorer",model:"nvidia/modelo-a",explorerProfileOrigin:{scope:"global",name:"perfil"}} as const;
+ const todo={...blockedTodo(),plan};let current=todo,reads=0,enqueued=0;const transitions:string[]=[];
+ const runtime={query:async()=>({...interruptedEntry,spec:{model:plan.model,modelFallback:saved}}),continue:async(_id:any,_identity:any,_signal:any,onQueued:any,validateStart:any)=>{await validateStart();enqueued++;await onQueued("child",()=>{});return "child";}};
+ const coordination={links:async()=>({list:async()=>[{taskId:todo.taskId,agentId:"parent",...identity,createdAt:new Date(0).toISOString()}]}),todos:async()=>({list:async()=>[current],update:async(...[taskId,_identity,revision,state,reason]:Parameters<SessionTodoStore["update"]>)=>{transitions.push(state);current={...current,taskId,current:{state,revision:revision+1,reason}};return current;}} as any),binder:async()=>({launch:async(_taskId:string,_agentId:string,_identity:any,dispatch:()=>void)=>{dispatch();}})};
+ // La configuración real se obtiene de los constructores de perfiles usados por B1.
+ const {emptyProfileFallbacks,setProfileFallbackChain}=await import("../src/runtime/lifecycle/profile-fallback-store.js");
+ const config={profiles:{global:{schema:"asen.runtime-profiles/v1" as const,active:"perfil",profiles:[{name:"perfil",routes:{explorer:{model:plan.model}}}]}},fallbacksByScope:{global:setProfileFallbackChain(emptyProfileFallbacks(),"perfil","explorer",saved.chain)}};
+ const read=async()=>++reads===2?{profiles:config.profiles,fallbacksByScope:{}}:config;
+ const input={runtime,agentId:"parent",identity,todo:coordination,readCurrentExplorerFallbackConfig:read};
+ await assert.rejects(()=>continueInterruptedExplorer(input),/alternativas del perfil cambiaron/u);
+ assert.equal(enqueued,0);assert.equal(current.current.state,"blocked");assert.equal(current.current.reason,todo.current.reason);assert.deepEqual(transitions,["running","blocked"]);
+ const result=await continueInterruptedExplorer(input);assert.equal(result.id,"child");assert.equal(enqueued,1);
+});
+
+
+test("M2: una alternativa directa antigua o de otro ámbito no autoriza reanudar",async()=>{
+ const chain=[{model:"nvidia/modelo-b"}],model="nvidia/modelo-a",origin={scope:"project" as const,name:"perfil",model};
+ let starts=0;
+ for(const saved of [{profile:"perfil",chain},{profile:"perfil",chain,origin}]){
+  const runtime={query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{starts++;return "child";}};
+  await assert.rejects(()=>continueInterruptedExplorer({runtime,agentId:"parent",identity,readCurrentDirectFallback:async()=>({profile:"perfil",chain,origin:{...origin,scope:"global"}})}),/alternativas del perfil cambiaron/u);
+ }
+ assert.equal(starts,0);
+});
+
+
+test("M2: no reanudar un Explorer sin alternativas tras cambiar la sesión en cola",async()=>{
+ let current=identity;
+ await assert.rejects(()=>continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>interruptedEntry,continue:async(_id,_identity,_signal,_onQueued,validateStart)=>{current={...identity,sessionId:"otra"};assert.ok(validateStart);await validateStart();assert.fail("No debe iniciar el agente");}},resolveCurrentIdentity:async()=>current}),/session or project changed before agent continuation dispatch/u);
+});
+
+
+test("M2: la retirada de alternativa durante la última comprobación de identidad impide reanudar",async()=>{
+ const model="nvidia/modelo-a",saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope:"global" as const,name:"perfil",model}};
+ let identities=0,fallbackReads=0,started=0;let active:typeof saved|undefined=saved;
+ let enter!:()=>void,release!:()=>void;
+ const entered=new Promise<void>(resolve=>{enter=resolve;}),barrier=new Promise<void>(resolve=>{release=resolve;});
+ const pending=continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{started++;return "unused";}},resolveCurrentIdentity:async()=>{if(++identities===4){enter();await barrier;}return identity;},readCurrentDirectFallback:async()=>{fallbackReads++;return active;}});
+ await entered;assert.equal(fallbackReads,2);active=undefined;release();
+ await assert.rejects(pending,/alternativas del perfil cambiaron/u);
+ assert.equal(started,0);assert.equal(fallbackReads,3);
+});
+
+
+test("M2: un cambio de sesión durante la lectura de alternativas impide reanudar",async()=>{
+ const model="nvidia/modelo-a",saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope:"global" as const,name:"perfil",model}};
+ let current=identity,started=0;
+ await assert.rejects(()=>continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{started++;return "unused";}},resolveCurrentIdentity:async()=>current,readCurrentDirectFallback:async()=>{current={...identity,sessionId:"otra"};return saved;}}),/session or project changed before agent continuation dispatch/u);
+ assert.equal(started,0);
 });

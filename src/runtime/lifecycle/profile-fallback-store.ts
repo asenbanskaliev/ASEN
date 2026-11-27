@@ -1,4 +1,5 @@
-import {mkdir,readFile} from "node:fs/promises";
+import {mkdir,open,stat} from "node:fs/promises";
+import {constants} from "node:fs";
 import path from "node:path";
 import {atomicWriteText} from "../../io/atomic-write.js";
 import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
@@ -65,7 +66,27 @@ function prepareProfileFallbacks(value:ProfileFallbacksFile):{checked:ProfileFal
 }
 export function serializeProfileFallbacks(value:ProfileFallbacksFile):string{return prepareProfileFallbacks(value).text;}
 export async function readProfileFallbacksFile(file:string):Promise<ProfileFallbacksFile>{
- try{const parsed=parseProfileFallbacks(await readFile(file,"utf8"));if(!parsed)throw new Error("Invalid profile fallback file");return parsed;}
+ try{
+  const initial=await stat(file);
+  if(!initial.isFile()||initial.size>MAX_FILE_TEXT_BYTES)throw new Error("Invalid profile fallback file");
+  const handle=await open(file,constants.O_RDONLY|(process.platform==="win32"?0:constants.O_NONBLOCK));
+  try{
+   const current=await handle.stat();
+   if(!current.isFile()||current.size>MAX_FILE_TEXT_BYTES)throw new Error("Invalid profile fallback file");
+   // Limitar la lectura incluso si el archivo crece después de comprobarlo.
+   const buffer=Buffer.alloc(MAX_FILE_TEXT_BYTES+1);
+   let offset=0;
+   while(offset<buffer.length){
+    const {bytesRead}=await handle.read(buffer,offset,buffer.length-offset,null);
+    if(bytesRead===0)break;
+    offset+=bytesRead;
+   }
+   if(offset>MAX_FILE_TEXT_BYTES)throw new Error("Invalid profile fallback file");
+   const parsed=parseProfileFallbacks(buffer.subarray(0,offset).toString("utf8"));
+   if(!parsed)throw new Error("Invalid profile fallback file");
+   return parsed;
+  }finally{await handle.close();}
+ }
  catch(error){if((error as NodeJS.ErrnoException).code==="ENOENT")return emptyProfileFallbacks();throw error;}
 }
 async function writeUnlocked(file:string,value:ProfileFallbacksFile):Promise<ProfileFallbacksFile>{

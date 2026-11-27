@@ -5,15 +5,15 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {
  probeNvidiaFreeApi,persistNvidiaProbeReport,
- NVIDIA_FREE_MODEL,NVIDIA_FREE_URL,NVIDIA_MAX_TOKENS
+ NVIDIA_FREE_MODEL,NVIDIA_FREE_MODELS,NVIDIA_FREE_URL,NVIDIA_MAX_TOKENS
 } from "../scripts/t06-nvidia-free-api-probe.mjs";
 
-function mockResponse(options,{status=200,model=NVIDIA_FREE_MODEL,content}={}){
+function mockResponse(options,{status=200,model,content}={}){
  const body=JSON.parse(options.body);
  const marker=body.messages[1].content.includes("ASEN_NVIDIA_A_OK")?
   "ASEN_NVIDIA_A_OK":"ASEN_NVIDIA_B_OK";
  return {ok:status===200,status,json:async()=>({
-  id:"chatcmpl-probe-"+marker,model,
+  id:"chatcmpl-probe-"+marker,model:model??body.model,
   choices:[{message:{content:content??marker}}],
   usage:{prompt_tokens:15,completion_tokens:8,total_tokens:23}
  })};
@@ -25,18 +25,21 @@ test("T06 NVIDIA: dos solicitudes gratuitas empiezan a la vez y se identifican p
  const request=async(url,options)=>{
   assert.equal(url,NVIDIA_FREE_URL);
   assert.equal(options.method,"POST");
+  assert.equal(options.redirect,"error");
   assert.equal(options.headers.Authorization,"Bearer nvapi-credential-only-for-test");
   const body=JSON.parse(options.body);
-  assert.equal(body.model,NVIDIA_FREE_MODEL);
+  assert.equal(body.model,NVIDIA_FREE_MODELS[calls]);
   assert.equal(body.max_tokens,NVIDIA_MAX_TOKENS);
   assert.equal(body.stream,false);
+  if(body.model===NVIDIA_FREE_MODEL){assert.deepEqual(body.chat_template_kwargs,{enable_thinking:false});assert.equal(body.reasoning_budget,undefined);}
+  else{assert.equal(body.reasoning_budget,0);assert.equal(body.chat_template_kwargs,undefined);}
   assert.equal(body.messages.length,2);
   calls++;
   if(calls===2)entered();
   await gate;
   return mockResponse(options);
  };
- const p=probeNvidiaFreeApi({apiKey:"nvapi-credential-only-for-test",request,timeoutMs:900});
+ const p=probeNvidiaFreeApi({apiKey:"nvapi-credential-only-for-test",models:NVIDIA_FREE_MODELS,request,timeoutMs:900});
  await both;release();
  const report=await p;
  assert.equal(calls,2);
@@ -44,7 +47,11 @@ test("T06 NVIDIA: dos solicitudes gratuitas empiezan a la vez y se identifican p
  assert.equal(report.overlappingRequests,true);
  assert.equal(report.executionProved,"HTTP_ONLY_NOT_PI_WORKERS");
  assert.deepEqual(report.results.map(r=>r.agent),["worker-a","worker-b"]);
- assert.equal(report.results.every(r=>r.modelReturned===NVIDIA_FREE_MODEL),true);
+ assert.deepEqual(report.results.map(r=>r.modelReturned),[...NVIDIA_FREE_MODELS]);
+ assert.deepEqual(report.modelsRequested,[...NVIDIA_FREE_MODELS]);
+ assert.equal(report.distinctModelIdsVerified,true);
+ assert.equal(report.billingVerified,false);
+ assert.equal(report.costVerified,false);
  assert.equal(report.results.every(r=>r.usage.totalTokens===23),true);
  assert.equal(report.retryCount,0);
  assert.equal(report.noWriterGrants,true);
@@ -53,41 +60,88 @@ test("T06 NVIDIA: dos solicitudes gratuitas empiezan a la vez y se identifican p
 });
 test("T06 NVIDIA: respuesta 404, 429 o modelo distinto nunca se interpretan como éxito",async()=>{
  for(const status of [404,429,500]){
-  const report=await probeNvidiaFreeApi({apiKey:"test-secret",
+  const report=await probeNvidiaFreeApi({apiKey:"test-secret",models:NVIDIA_FREE_MODELS,
    request:async(_,options)=>mockResponse(options,{status}),timeoutMs:900});
   assert.equal(report.status,"BLOCKED");
   assert.equal(report.results.every(r=>r.errorCode==="HTTP_BLOCKED"),true);
+  assert.equal(report.distinctModelIdsVerified,false);
   assert.equal(report.retryCount,0);
  }
- const mismatch=await probeNvidiaFreeApi({apiKey:"test-secret",
+ const mismatch=await probeNvidiaFreeApi({apiKey:"test-secret",models:NVIDIA_FREE_MODELS,
   request:async(_,options)=>mockResponse(options,{model:"otro/modelo"}),timeoutMs:900});
  assert.equal(mismatch.status,"BLOCKED");
+ assert.equal(mismatch.distinctModelIdsVerified,false);
  assert.equal(mismatch.results.every(r=>r.errorCode==="MODEL_MISMATCH"),true);
 });
 test("T06 NVIDIA: falta de clave o intento de otro modelo bloquean antes de la red",async()=>{
  let calls=0;
  const request=async()=>{calls++;throw Error("No debería ejecutarse");};
- await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"",request}),/NVIDIA_API_KEY/u);
- await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",request,model:"moonshotai/kimi-k3.1-pro"}),/fuera de la lista/u);
- await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",request,timeoutMs:100_000}),/límite/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"",models:NVIDIA_FREE_MODELS,request}),/NVIDIA_API_KEY/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",request}),/fuera de la lista/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:NVIDIA_FREE_MODELS,request,models:["moonshotai/kimi-k3.1-pro",NVIDIA_FREE_MODELS[1]]}),/fuera de la lista/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:NVIDIA_FREE_MODELS,request,models:[NVIDIA_FREE_MODELS[0],NVIDIA_FREE_MODELS[0]]}),/fuera de la lista/u);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:NVIDIA_FREE_MODELS,request,timeoutMs:100_000}),/límite/u);
  assert.equal(calls,0);
 });
 test("T06 NVIDIA: respuesta vacía o errónea no inventa confirmación de modelo",async()=>{
- const report=await probeNvidiaFreeApi({apiKey:"test-secret",
+ const report=await probeNvidiaFreeApi({apiKey:"test-secret",models:NVIDIA_FREE_MODELS,
   request:async(_,options)=>mockResponse(options,{content:"Otra respuesta"}),
   timeoutMs:900});
  assert.equal(report.status,"BLOCKED");
  assert.equal(report.results.every(r=>r.errorCode==="INVALID_REPLY"),true);
+ assert.equal(report.distinctModelIdsVerified,false);
 });
 test("T06 NVIDIA: informe privado sin claves, prompts ni sobrescritura",async t=>{
  const dir=mkdtempSync(join(tmpdir(),"asen-nvidia-evidence-"));
  t.after(()=>rmSync(dir,{recursive:true,force:true}));
  const file=join(dir,"probe.json");
- const report=await probeNvidiaFreeApi({apiKey:"nvapi-secret",
+ const report=await probeNvidiaFreeApi({apiKey:"nvapi-secret",models:NVIDIA_FREE_MODELS,
   request:async(_,options)=>mockResponse(options),timeoutMs:900});
  persistNvidiaProbeReport(report,file);
  const saved=readFileSync(file,"utf8");
  assert.doesNotMatch(saved,/nvapi-secret|Authorization|Bearer|Responde exactamente/u);
  assert.match(saved,/AUTHENTICATED_API_PARALLEL/u);
  assert.throws(()=>persistNvidiaProbeReport(report,file),/EEXIST/u);
+});
+
+test("T06 conserva el orden de modelos enviado aunque cambie la lista del llamante",async()=>{
+ const models=[...NVIDIA_FREE_MODELS],sent=[];
+ let release;
+ const gate=new Promise(resolve=>{release=resolve;});
+ const pending=probeNvidiaFreeApi({apiKey:"test-secret",models,timeoutMs:900,request:async(_,options)=>{
+  sent.push(JSON.parse(options.body).model);await gate;return mockResponse(options);
+ }});
+ models.reverse();release();
+ const result=await pending;
+ assert.equal(result.status,"AUTHENTICATED_API_PARALLEL");
+ assert.deepEqual(result.modelsRequested,sent);
+ assert.deepEqual(result.results.map(x=>x.modelRequested),sent);
+ assert.deepEqual(sent,[...NVIDIA_FREE_MODELS]);
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:null,request:async()=>assert.fail("No debe llamar a red")}),/fuera de la lista/u);
+});
+
+
+test("T06 NVIDIA: una sola identidad confirmada no acredita dos modelos",async()=>{
+ const report=await probeNvidiaFreeApi({apiKey:"test-secret",models:NVIDIA_FREE_MODELS,timeoutMs:900,request:async(_,options)=>{
+  const body=JSON.parse(options.body);
+  return mockResponse(options,body.model===NVIDIA_FREE_MODELS[1]?{status:429}:{});
+ }});
+ assert.equal(report.status,"BLOCKED");
+ assert.equal(report.distinctModelIdsVerified,false);
+ assert.deepEqual(report.modelsRequested,[...NVIDIA_FREE_MODELS]);
+ assert.equal(report.results.filter(r=>r.status==="api-confirmed").length,1);
+ assert.equal(report.costVerified,false);
+ assert.equal(report.retryCount,0);
+});
+
+
+test("T06 NVIDIA: no aceptar identificadores privados ni reutilizar Super VL",async()=>{
+ const old="nvidia/nemotron-3.5-super-vl-120b-a12b";
+ assert.ok(!NVIDIA_FREE_MODELS.includes(old));
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:[NVIDIA_FREE_MODEL,old],request:async()=>assert.fail("No llamar a red")}),/fuera de la lista/u);
+ const report=await probeNvidiaFreeApi({apiKey:"test",models:NVIDIA_FREE_MODELS,timeoutMs:900,request:async(_,options)=>{
+  const body=JSON.parse(options.body);
+  return mockResponse(options,body.model===NVIDIA_FREE_MODELS[1]?{model:"private/"+body.model}:{});
+ }});
+ assert.equal(report.status,"BLOCKED");assert.equal(report.distinctModelIdsVerified,false);assert.equal(report.results[1].errorCode,"MODEL_MISMATCH");assert.equal(report.retryCount,0);
 });

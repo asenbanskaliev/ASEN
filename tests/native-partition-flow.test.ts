@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from "node:fs/promises";
+import {mkdtemp,mkdir,writeFile,readFile,rm,realpath,readdir} from "node:fs/promises";
 import {tmpdir} from "node:os";
-import {join} from "node:path";
+import {join,dirname} from "node:path";
 import {fileURLToPath} from "node:url";
 import {SessionManager} from "@earendil-works/pi-coding-agent";
 import {isolatedGitEnvironment} from "../src/runtime/agents/git-isolated-environment.js";
 import {createAsenExtension} from "../extensions/asen.js";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
-import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
+import {SessionTodoStore,todoProjectStorageFile} from "../src/runtime/lifecycle/todo-store.js";
 import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
 import {ParallelTodoWorktreeJournal} from "../src/runtime/agents/parallel-todo-journal.js";
 import {ParallelChildSessionJournal} from "../src/runtime/agents/parallel-todo-session-links.js";
@@ -31,7 +31,7 @@ import {reconcileNativeChildTerminal} from "../src/runtime/agents/parallel-nativ
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 
-for(const mode of ["approved","approved-legacy","declined","changed","child-declined"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
+for(const mode of ["approved","approved-legacy","approved-roots","declined","changed","child-declined"] as const)test("ODD nativo 2+1: "+mode+" (Runner simulado; no NVIDIA)",async()=>{
  const base=await realpath(await mkdtemp(join(tmpdir(),"asen-native-odd-"))),project=join(base,"repo"),home=join(base,"home"),privateDir=join(home,".asen");
  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"],env:isolatedGitEnvironment()}).trim();
  let launched=0,partialObserved=false;
@@ -61,7 +61,7 @@ const terminalErrors:unknown[]=[];
    launched++;
    assert.equal(request.role,"worker");assert.equal(request.writeSurfaces?.length,1);
    assert.ok(["a.txt","b.txt"].includes(request.writeSurfaces![0]!));
-   if((mode==="approved"||mode==="approved-legacy")&&request.writeSurfaces![0]==="b.txt"){
+   if((mode==="approved"||mode==="approved-legacy"||mode==="approved-roots")&&request.writeSurfaces![0]==="b.txt"){
     let timer:ReturnType<typeof setTimeout>|undefined;
     try{await Promise.race([siblingGate,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("No se guardó el recibo parcial de A")),15000);})]);}
     finally{if(timer)clearTimeout(timer);}
@@ -82,7 +82,7 @@ const terminalErrors:unknown[]=[];
   agents.subscribeTerminal(record=>{terminalWork.push((async()=>{
    const owned={sessionId:record.sessionId,projectId:record.projectId};
    const row=(await todos.list(owned)).find(item=>item.plan?.role==="worker");
-   const first=(mode==="approved"||mode==="approved-legacy")&&record.state==="completed"&&row?.plan?.writeSurfaces?.[0]==="a.txt";
+   const first=(mode==="approved"||mode==="approved-legacy"||mode==="approved-roots")&&record.state==="completed"&&row?.plan?.writeSurfaces?.[0]==="a.txt";
    try{
     // El resultado ya quedó firmado en AgentStore. Restaurar el archivo
     // antes de recoger el recibo no debe sustituir ese árbol inmutable.
@@ -124,6 +124,7 @@ const terminalErrors:unknown[]=[];
     {id:"b",objective:"Preparar B",estimatedMinutes:40,dependsOn:[],writePaths:["b.txt"]},
     {id:"c",objective:"Integración",estimatedMinutes:40,dependsOn:["a","b"],writePaths:["c.txt"]}
    ]};
+  if(mode==="approved-roots"){params.instruction="Completar dos archivos independientes";params.scope.expectedPaths.pop();params.writes.pop();params.taskUnits.pop();}
   const result=await tools.get("asen_plan_request").execute("call",params,undefined,undefined,context);
   const detail=result.details;
   assert.equal(detail.persistence.status,"saved");
@@ -151,7 +152,7 @@ const terminalErrors:unknown[]=[];
    assert.equal(SessionManager.open(child.sessionFile).getSessionId(),child.sessionId);
    assert.equal(SessionManager.open(child.sessionFile).getCwd(),child.projectId);
   }
-  if((mode==="approved"||mode==="approved-legacy")){
+  if((mode==="approved"||mode==="approved-legacy"||mode==="approved-roots")){
    assert.equal(detail.supervisedLaunch.status,"started");
    assert.equal(detail.supervisedLaunch.started.length,2);
    expectedTerminals=2;
@@ -221,12 +222,12 @@ const terminalErrors:unknown[]=[];
    assert.equal((await observations.listSource(identity,await sessionJournal.listSource(identity))).length,0);
   }
   const rows=await todos.list(identity);
-  assert.equal(rows.length,3);
-  assert.equal(rows.find(row=>row.dependsOn?.length===2)?.current.state,"planned");
+  assert.equal(rows.length,mode==="approved-roots"?2:3);
+  if(mode!=="approved-roots")assert.equal(rows.find(row=>row.dependsOn?.length===2)?.current.state,"planned");
   assert.equal(await readFile(join(project,"a.txt"),"utf8"),"original");
   assert.equal(await readFile(join(project,"b.txt"),"utf8"),"original");
   assert.equal(git("status","--porcelain"),"");
-  if((mode==="approved"||mode==="approved-legacy")){
+  if((mode==="approved"||mode==="approved-legacy"||mode==="approved-roots")){
    const batch=(await sourceJournal.list(identity)).at(-1)!;
    const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
    // Jueces simulados: ejercicio de contratos, no prueba independiente real.
@@ -293,6 +294,45 @@ const terminalErrors:unknown[]=[];
    assert.equal(await canResumeUnstartedDualReview(dualCheckpoint),false);
    await assert.rejects(()=>markNativeDualReviewPending(dualCheckpoint),/incierto/u);
    await assert.rejects(()=>markNativeDualReviewAttemptStarted(dualCheckpoint,initialSignature),/iniciado/u);
+   // E: simular una interrupción tras el primer juez sobre un checkpoint independiente.
+   const partialCheckpoint={...checkpoint,storageDir:join(privateDir,"partial-checkpoint")};
+   const partialSignature=await markNativeDualReviewPending(partialCheckpoint);
+   const partialRegistry:PiReviewRegistry={...registry,async *streamSimple(model){
+    if(model.id==="juez-b")throw Error("segundo juez interrumpido");
+    yield {type:"done",reason:"stop",message:{provider:model.provider,model:model.id,content:[{type:"text",text:JSON.stringify({verdict:"pass",summary:"Resultado parcial simulado",findings:[]})}]}};
+   }};
+   await assert.rejects(()=>reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry:partialRegistry,
+    judgeA:{model:"prueba/juez-a"},judgeB:{model:"prueba/juez-b"},fixJournal:new JudgmentFixProposalJournal(join(privateDir,"partial-fixes.json")),
+    requirements:"Revisar candidato",validate:async()=>{},confirm:async()=>true,
+    beforeModelUse:()=>markNativeDualReviewAttemptStarted(partialCheckpoint,partialSignature),
+    progressCheckpoint:{input:partialCheckpoint,signature:partialSignature}}));
+   const partialMetrics=await readNativeReviewMetrics(partialCheckpoint.storageDir,identity);
+   assert.equal(partialMetrics.reviews[0]?.judges.length,1);
+   assert.equal(partialMetrics.reviews[0]?.completeJudgment,false);
+   assert.equal(await restoreNativeIntegrationReview(partialCheckpoint),undefined);
+   assert.equal(await canResumeUnstartedDualReview(partialCheckpoint),false);
+   // Una revisión del Todo durante el primer juez no borra el resultado observado,
+   // pero impide el segundo juez y cualquier aceptación.
+   let changedDuringJudge=false,policyJudgeCalls=0;
+   const policyCheckpoint={...checkpoint,storageDir:join(privateDir,"policy-change-checkpoint"),
+    todos:{list:async()=>changedDuringJudge?altered.list():todos.list(identity)}};
+   const policySignature=await markNativeDualReviewPending(policyCheckpoint);
+   const policyRegistry:PiReviewRegistry={...registry,async *streamSimple(model){
+    policyJudgeCalls++;
+    changedDuringJudge=true;
+    yield {type:"done",reason:"stop",message:{provider:model.provider,model:model.id,content:[{type:"text",text:JSON.stringify({verdict:"pass",summary:"Observación anterior al cambio",findings:[]})}]}};
+   }};
+   await assert.rejects(()=>reviewNativeIntegratedCandidate({candidate,sessionId:identity.sessionId,registry:policyRegistry,
+    judgeA:{model:"prueba/juez-a"},judgeB:{model:"prueba/juez-b"},fixJournal:new JudgmentFixProposalJournal(join(privateDir,"policy-change-fixes.json")),
+    requirements:"Revisar candidato",validate:()=>assertNativeDualReviewReceipt(policyCheckpoint,policySignature),confirm:async()=>true,
+    beforeModelUse:()=>markNativeDualReviewAttemptStarted(policyCheckpoint,policySignature),
+    progressCheckpoint:{input:policyCheckpoint,signature:policySignature}}),/raíz ODD original cambió/u);
+   const policyMetrics=await readNativeReviewMetrics(policyCheckpoint.storageDir,identity);
+   assert.equal(policyJudgeCalls,1);
+   assert.equal(policyMetrics.reviews[0]?.judges.length,1);
+   assert.equal(policyMetrics.reviews[0]?.completeJudgment,false);
+   assert.equal(await canResumeUnstartedDualReview(policyCheckpoint),false);
+   await assert.rejects(()=>restoreNativeIntegrationReview(policyCheckpoint),/raíz ODD original cambió/u);
    const originalReceipt=await receipts.readReceiptState(candidate.commit);
    if(originalReceipt.status!=="valid")assert.fail("Sin recibo auténtico");
    // El lector simula una nueva firma auténtica para el mismo árbol: no basta conservar el SHA.
@@ -346,6 +386,50 @@ const terminalErrors:unknown[]=[];
    assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit);
    assert.equal(git("show",candidate.commit+":sin-cambios.txt"),"texto sin cambios\nsegunda línea");
    assert.equal(await readFile(join(project,"sin-cambios.txt"),"utf8"),"texto sin cambios\r\nsegunda línea\r\n");
+   if(mode==="approved-roots"){
+    let verifications=0;
+    await assert.rejects(()=>persistNativePartitionSuccessor({candidate,accepted,identity,todos,profiles:{},
+     validate:async()=>{},verify:async()=>{await verifyNativeIntegrationAcceptance(jointProof);if(++verifications===2)throw Error("interrupción simulada");}}),/interrupción simulada/u);
+    assert.ok((await todos.list(identity)).every(row=>row.current.state==="planned"));
+    const restartFile=fileURLToPath(new URL("./fixtures/native-partition-restart.ts",import.meta.url));
+    const restart=(phase:string)=>JSON.parse(execFileSync(process.execPath,["--import","tsx",restartFile,phase,privateDir,JSON.stringify(identity),batch.id],{
+     encoding:"utf8",timeout:45000,windowsHide:true,stdio:["ignore","pipe","pipe"]}).trim());
+    const activeFile=todoProjectStorageFile(join(privateDir,"todos"),identity.projectId);
+    const beforeArchive=await readFile(activeFile,"utf8");
+    const closed=restart("resume");
+    assert.equal(closed.status,"partition-closed");assert.equal(closed.authorizations,2);
+    // Reconstruir el punto de corte real: archivo durable, marcador presente,
+    // diario activo todavía anterior al cierre. El reinicio debe reconciliarlo.
+    const archiveDir=join(dirname(activeFile),"archive");
+    const archiveNames=(await readdir(archiveDir)).filter(name=>/^archive-[0-9]+-[a-f0-9]{12}\.json$/u.test(name));
+    assert.equal(archiveNames.length,1);
+    const archiveName=archiveNames[0]!,archiveRaw=await readFile(join(archiveDir,archiveName),"utf8");
+    const markerFile=activeFile+".archive-pending.json",marker={schema:"asen.todo-archive-transaction/v1",archiveFile:archiveName,
+     sha256:createHash("sha256").update(archiveRaw).digest("hex"),revision:JSON.parse(archiveRaw).revision};
+    await writeFile(activeFile,beforeArchive,{mode:0o600});
+    await writeFile(markerFile,JSON.stringify({...marker,sha256:"0".repeat(64)}),{mode:0o600});
+    await assert.rejects(()=>inspectCompletedNativePartition({candidate,identity,todos,receipts,validate:async()=>{}}),/checksum mismatch/u);
+    assert.equal(await readFile(activeFile,"utf8"),beforeArchive);
+    await writeFile(markerFile,JSON.stringify(marker),{mode:0o600});
+    const recovered=restart("inspect");
+    await assert.rejects(()=>readFile(markerFile),{code:"ENOENT"});
+    assert.equal(recovered.status,"partition-already-closed");assert.equal(recovered.authorizations,0);
+    assert.equal(recovered.writerAuthority,false);assert.equal(recovered.autoRetry,false);
+    const closedRows=await todos.archived(identity);
+    assert.equal((await todos.list(identity)).length,0);
+    assert.equal(closedRows.length,2);assert.ok(closedRows.every(row=>row.current.state==="done"));
+    assert.deepEqual(closedRows.map(row=>row.taskId).sort(),[...candidate.sourceTodoIds].sort());
+    const inspectInput={candidate,identity,todos,receipts,validate:async()=>{}};
+    await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{readRecoverySnapshot:async()=>[...closedRows,...closedRows]}}),/solapan/u);
+    await assert.rejects(()=>inspectCompletedNativePartition({...inspectInput,todos:{readRecoverySnapshot:async()=>closedRows.slice(0,1)}}),/raíces originales/u);
+    await writeFile(join(project,"posterior.txt"),"trabajo posterior autorizado");
+    git("add","posterior.txt");git("commit","-m","Trabajo posterior");
+    assert.notEqual(git("rev-parse","HEAD"),candidate.commit);
+    const historical=await inspectCompletedNativePartition(inspectInput);
+    assert.equal(historical?.status,"partition-already-closed");assert.equal(historical?.writerAuthority,false);
+    assert.equal(launched,2);
+    return;
+   }
    // Un plan histórico conserva sus revisores, incluso después de actualizar.
    if(mode==="approved-legacy"){
     const roots=candidate.sourceTodoIds.map(id=>rows.find(row=>row.taskId===id)!);

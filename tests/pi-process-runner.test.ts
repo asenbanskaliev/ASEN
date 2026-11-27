@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";import test from "node:test";import {execFile,execFileSync} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {isAbsolute,join,relative} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment} from "../src/agents/pi-process-runner.js";
+import assert from "node:assert/strict";import test from "node:test";import {execFile,execFileSync} from "node:child_process";import {access,copyFile,mkdir,mkdtemp,readFile,readdir,realpath,rm,writeFile} from "node:fs/promises";import {tmpdir} from "node:os";import {isAbsolute,join,relative} from "node:path";import {fileURLToPath} from "node:url";import {PiProcessRunner,piRuntimeEnvironment,drainSharedAuthChild} from "../src/agents/pi-process-runner.js";
 import {piRuntimeRouteArgs} from "../src/agents/pi-process-runner.js";
 import {PiArtifactRunner} from "../src/agents/pi-artifact-runner.js";
 import {createTestSkillLifecycle} from "./helpers/lifecycle-applicability.js";
@@ -74,7 +74,7 @@ process.stdout.write(JSON.stringify({type:"response",id:record.id,success:true,d
 }else{prompted=true;child.stdin.end(line+"\\n");if(closed!==null){process.stdin.destroy();process.exitCode=closed;}}}});`);
  return {d,p};
 }
-function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],...options});}
+function runner(p:string,options:ConstructorParameters<typeof PiProcessRunner>[0]={}){return new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],authorizeModelFallback:()=>true,...options});}
 test("Pi RPC adapter correlates request id",async()=>{const {d,p}=await fixture('let x="";process.stdin.on("data",d=>x+=d);process.stdin.on("end",()=>{const f=JSON.parse(x.trim());console.log(JSON.stringify({type:"response",id:f.id,command:"prompt",success:true,message:f.message}));});');const r=await runner(p,{}).run({id:"req-1",role:"explorer",prompt:"hello",repository:d});assert.equal(r.ok,true);assert.match(r.output,/req-1/);});
 test("Dispatcher delivers a successful real Pi child result and records completion",async()=>{
  const {d,p}=await fixture('let input="";process.stdin.on("data",chunk=>input+=chunk);process.stdin.on("end",()=>{const request=JSON.parse(input.trim());console.log(JSON.stringify({type:"response",id:request.id,success:true,message:"child result delivered"}));});');
@@ -596,34 +596,36 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
+async function fallbackRpcFixture(options:{catalog?:{provider:string;id:string;api?:string}[];category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;initialText?:string;fallbackStateMismatch?:boolean;fallbackStateVirtual?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
  for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(join(root,source),target);}
- await writeFile(p,`import {writeFileSync} from "node:fs";import {resolve} from "node:path";
-const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true},initialSuccess=${options.initialSuccess===true};let buffer="",turn=0,commands=[],stateReady=false;
-const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands}));
+ await writeFile(p,`import {writeFileSync,readFileSync} from "node:fs";import {resolve} from "node:path";
+const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true},initialSuccess=${options.initialSuccess===true};let buffer="",turn=0,commands=[],stateReady=false,activeModel=stateModel;
+const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>{let retry=null,cacheWarming=null,authTypes={};try{const settings=JSON.parse(readFileSync(resolve(process.env.PI_CODING_AGENT_DIR,"settings.json"),"utf8"));retry=settings.retry;cacheWarming=settings.cacheWarming;}catch{}try{const auth=JSON.parse(readFileSync(resolve(process.env.PI_CODING_AGENT_DIR,"auth.json"),"utf8"));authTypes=Object.fromEntries(Object.entries(auth).map(([key,value])=>[key,value.type]));}catch{}writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands,retry,cacheWarming,authTypes}));};
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
- if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:stateModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
- if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
+ if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:activeModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
+ if(request.type==="get_available_models"){emit({type:"response",id:request.id,command:"get_available_models",success:true,data:{models:${JSON.stringify(options.catalog??[])}}});continue;}
+ if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;if(!refused.has(model)&&!${options.fallbackStateMismatch===true})activeModel={provider:request.provider,id:request.modelId,...(${options.fallbackStateVirtual===true}?{api:"pi-virtual"}:{})};emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
  if(request.type==="set_thinking_level"){emit({type:"response",id:request.id,command:"set_thinking_level",success:!refuseThinking,...(refuseThinking?{error:"PRIVATE_THINKING_REJECTION"}:{})});continue;}
  if(request.type==="prompt"){
   if(stateRequired&&!stateReady){emit({type:"response",id:request.id,command:"prompt",success:false});emit({type:"agent_end"});continue;}
   turn++;
   const reply={type:"response",id:request.id,command:"prompt",success:turn===1||!rejectContinuation};
-  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",...${JSON.stringify(options.assistantIdentity??{})},content:[{type:"text",text:"respuesta de prueba completada"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
+  if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",...${JSON.stringify(options.assistantIdentity??{})},content:[{type:"text",text:${JSON.stringify(options.initialText??"respuesta de prueba completada")}}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
+  else if(${options.nativeRetryAfterFallback===true}){emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:"429 rate limit",provider:activeModel.provider,model:activeModel.id}});emit({type:"agent_end",willRetry:true});emit({type:"auto_retry_start"});}
   else if(coalesceSecondTurn){
    const records=[reply];
    if(duplicateContinuationResponse)records.push({...reply});
-   if(!staleSettledOnly)records.push({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}},{type:"agent_end"},{type:"agent_settled"});
+   if(!staleSettledOnly)records.push({type:"message_end",message:{role:"assistant",stopReason:"stop",provider:activeModel.provider,model:activeModel.id,responseModel:activeModel.id,content:[{type:"text",text:"fallback completed"}]}},{type:"agent_end"},{type:"agent_settled"});
    process.stdout.write(records.map(value=>JSON.stringify(value)+"\\n").join(""));
    // A duplicate from the first turn may arrive AFTER the continuation
    // acknowledgement (outside the coalesced packet): never treat it as the
    // new turn's completion without message_end and agent_end.
    if(staleSettledOnly)setTimeout(()=>emit({type:"agent_settled"}),20);
-  }else{emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"fallback completed"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}
+  }else{emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"stop",provider:activeModel.provider,model:activeModel.id,responseModel:activeModel.id,content:[{type:"text",text:"fallback completed"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}
  }
  }});process.stdin.on("end",()=>process.exit(0));`);
  return {d,p,log};
@@ -761,7 +763,7 @@ test("coalesced continuation response and agent_settled cannot be lost by fallba
    });
   assert.equal(result.ok,true,result.output);
   const trace=JSON.parse(await readFile(log,"utf8"));
-  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","prompt"]);
+  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","get_state","prompt","set_model","get_state","prompt"]);
   assert.equal(observed.length,1);
   assert.match(result.output,/fallback completed/);
  }
@@ -775,7 +777,7 @@ test("stale first-turn settled and unaccompanied completion never attest a new t
   model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}
  });
  const trace=JSON.parse(await readFile(log,"utf8"));
- assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","prompt"]);
+ assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","get_state","prompt","set_model","get_state","prompt"]);
  assert.equal(result.ok,false);
  assert.match(result.output,/timed out/);
 });
@@ -794,7 +796,7 @@ test("rejected continuation prompt cannot be made successful by forged completio
 test("fallback-child keeps one RPC process and conversation through an accepted fallback",async t=>{
  const {d,p,log}=await fallbackRpcFixture({refuse:["provider/refused"]});t.after(()=>rm(d,{recursive:true,force:true}));const starts:number[]=[],changes:unknown[]=[];
  const result=await runner(p,{timeoutMs:10_000,onProcessStart:pid=>starts.push(pid),onModelFallback:change=>changes.push(change)}).run({id:"fallback-same-child",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",thinking:"medium",modelFallback:{profile:"child",chain:[{model:"provider/refused"},{model:"provider/final",thinking:"low"}]}});
- assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt","set_model","set_model","set_thinking_level","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
+ assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","get_state","prompt","set_model","set_model","set_thinking_level","get_state","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
 });
 
 test("fallback-thinking-refusal omits an effort level rejected by RPC",async t=>{
@@ -806,7 +808,7 @@ test("fallback-child preserves the ordinary no-chain process path",async t=>{
 });
 
 test("fallback-child does not continue for a noneligible final failure",async t=>{
- const {d,p,log}=await fallbackRpcFixture({category:"context_length"});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-noneligible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}});assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
+ const {d,p,log}=await fallbackRpcFixture({category:"context_length"});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-noneligible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}});assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","get_state","prompt"]);
 });
 
 test("fallback-child aborts before settled without sending a continuation RPC",async t=>{
@@ -870,5 +872,283 @@ test("P02: Pi diferencia respuesta compatible, desconocida e incompatible en cua
   assert.equal(result.ok,item.ok,result.output);
   assert.equal(readPiChildIdentityEvidence(result).at(-1)?.status,item.status);
   assert.equal(readPiChildIdentityEvidence({...result}).length,0);
+ }
+});
+
+
+test("M2: alternativa sin consentimiento o con rechazo no envía set_model ni otro prompt",async t=>{
+ for(const mode of ["sin-autorizador","rechazada","error"] as const){
+  const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+  const authorizer=mode==="sin-autorizador"?{}:{authorizeModelFallback:()=>{if(mode==="error")throw Error("fallo de consentimiento");return false;}};
+  const child=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[p],timeoutMs:10_000,...authorizer});
+  const result=await child.run({id:"coste-"+mode,role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+  assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,1);
+  assert.equal(trace.commands.some((c:{type:string})=>c.type==="set_model"),false);
+ }
+});
+
+test("M2: el hijo autoriza el modelo exacto una vez y no continúa tras cancelar el diálogo",async t=>{
+ const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ const controller=new AbortController(),seen:unknown[]=[];
+ const child=runner(p,{timeoutMs:10_000,authorizeModelFallback:attempt=>{seen.push(attempt);controller.abort();return true;}});
+ const result=await child.run({id:"coste-cancelado",role:"explorer",prompt:"inspect",repository:d,isolationKey:"sesion",model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}},controller.signal);
+ assert.equal(result.ok,false);assert.deepEqual(seen,[{taskId:"coste-cancelado",sessionId:"sesion",projectId:d,role:"explorer",to:"provider/final"}]);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,1);assert.equal(trace.commands.some((c:{type:string})=>c.type==="set_model"),false);
+});
+
+
+test("M2: un cambio aceptado sin selección coincidente no consume la alternativa",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({fallbackStateMismatch:true});t.after(()=>rm(d,{recursive:true,force:true}));
+ const result=await runner(p,{timeoutMs:10_000}).run({id:"seleccion-incompatible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state","prompt","set_model","get_state"]);
+});
+
+test("M2: tras un 429 instrumentado la respuesta queda atribuida a la alternativa exacta",async t=>{
+ const {d,p}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ const {readPiChildIdentityEvidence}=await import("../src/review/model-identity.js");
+ const result=await runner(p,{timeoutMs:10_000}).run({id:"identidad-alternativa",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,true,result.output);const receipt=readPiChildIdentityEvidence(result).at(-1);
+ assert.equal(receipt?.requested,"provider/final");assert.equal(receipt?.selected,"provider/final");assert.equal(receipt?.responseModel,"final");assert.equal(receipt?.status,"declared-match");
+});
+
+
+test("M2: las alternativas desactivan los reintentos Pi y HTTP en una configuración privada",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({nativeRetryAfterFallback:true});t.after(()=>rm(d,{recursive:true,force:true}));
+ const approvals:string[]=[];
+ const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return true;}}).run({id:"fallback-native-retry",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/native retry is not authorized/);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.deepEqual(approvals,["provider/final"]);
+ assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,2);
+ assert.ok(trace.args.includes("--no-approve"));
+ assert.equal(trace.retry.enabled,false);assert.equal(trace.retry.maxRetries,0);assert.equal(trace.retry.provider.maxRetries,0);assert.equal(trace.cacheWarming,"off");
+});
+
+
+test("M2: configuración privada conserva claves API permitidas y no copia OAuth ajeno",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});
+ const source=join(d,"original-pi");await mkdir(source);
+ const original=JSON.stringify({oauthNoSolicitado:{type:"oauth",access:"simulado",refresh:"rotatorio",expires:0},alternative:{type:"api_key",key:"clave-de-prueba"},unrelated:{type:"api_key",key:"otra-clave-de-prueba"}});
+ await writeFile(join(source,"auth.json"),original);
+ const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+ t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+ const result=await runner(p,{timeoutMs:10000}).run({id:"fallback-oauth-isolated",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"alternative/backup"}]}});
+ assert.equal(result.ok,true,result.output);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.deepEqual(trace.authTypes,{alternative:"api_key"});
+ assert.equal(await readFile(join(source,"auth.json"),"utf8"),original);
+});
+
+
+test("M2: OAuth solicitado sin SDK nativo no se copia ni se ejecuta",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});
+ const source=join(d,"original-pi");await mkdir(source);
+ const original=JSON.stringify({provider:{type:"oauth",access:"simulado",refresh:"rotatorio",expires:0}});
+ await writeFile(join(source,"auth.json"),original);
+ const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+ t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+ const result=await runner(p).run({id:"fallback-oauth-without-native",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/requires a compatible native SDK/u);
+ await assert.rejects(access(log));assert.equal(await readFile(join(source,"auth.json"),"utf8"),original);
+});
+
+
+test("M2: Pi nativo selecciona OAuth desde el almacén original sin inferencia ni copia de tokens",async t=>{
+ const {d}=await fallbackRpcFixture({initialSuccess:true});
+ const source=join(d,"original-pi");await mkdir(source);
+ const cli=fileURLToPath(new URL("../node_modules/@earendil-works/pi-coding-agent/dist/cli.js",import.meta.url));
+ await access(cli);
+ const original=JSON.stringify({"openai-codex":{type:"oauth",access:"simulado-sin-acceso",refresh:"simulado-sin-renovacion",expires:Date.now()+86400000,accountId:"cuenta-de-prueba"},openai:{type:"api_key",key:"clave-ficticia-sin-acceso"}});
+ const authPath=join(source,"auth.json");await writeFile(authPath,original);
+ const previous=process.env.PI_CODING_AGENT_DIR,offline=process.env.PI_OFFLINE;
+ process.env.PI_CODING_AGENT_DIR=source;process.env.PI_OFFLINE="1";
+ t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;if(offline===undefined)delete process.env.PI_OFFLINE;else process.env.PI_OFFLINE=offline;await rm(d,{recursive:true,force:true});});
+ const pi=await import("@earendil-works/pi-coding-agent");
+ const catalog=await pi.ModelRuntime.create({authPath,modelsPath:null,allowModelNetwork:false});
+ const oauth=catalog.getAvailableSnapshot().find(model=>model.provider==="openai-codex");
+ const api=catalog.getAvailableSnapshot().find(model=>model.provider==="openai");
+ assert.ok(oauth,"El catálogo nativo debe reconocer la credencial OAuth ficticia sin inferencia");assert.ok(api,"El catálogo nativo debe reconocer la clave API ficticia");
+ for(const [main,backup] of [[oauth,api],[api,oauth]]){
+  assert.ok(main&&backup);
+  const controller=new AbortController();const requested=main.provider+"/"+main.id;
+  const selected:{provider:string;id:string}[]=[];let authorizations=0;
+  const child=new PiProcessRunner({command:process.execPath,rpcArgs:[cli,"--mode","rpc"],policyRoot:d,noTools:true,requireChildModelBeforePrompt:true,timeoutMs:30000,authorizeModelFallback:()=>{authorizations++;return false;}});
+  child.subscribeChildSelection(event=>{if(event.model)selected.push(event.model);controller.abort();});
+  const result=await child.run({id:"oauth-native-"+main.provider,role:"explorer",prompt:"No ejecutar esta instrucción",repository:d,isolationKey:"oauth-preflight",model:requested,modelFallback:{chain:[{model:backup.provider+"/"+backup.id}]}},controller.signal);
+  assert.equal(result.ok,false,result.output);assert.deepEqual(selected,[{provider:main.provider,id:main.id}],result.output);assert.equal(authorizations,0);
+  assert.match(result.output,/cancelled/u);assert.equal(await readFile(authPath,"utf8"),original);
+ }
+});
+
+
+test("M2: revocar la autorización durante set_model impide otro prompt",async t=>{
+ const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ let validations=0,approvals=0;
+ const child=runner(p,{timeoutMs:10000,authorizeModelFallback:()=>{approvals++;return ()=>++validations===1;}});
+ const result=await child.run({id:"revocar-despues-set-model",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/scope is no longer live/u);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.equal(approvals,1);assert.equal(validations,2);
+ assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,1);
+ assert.equal(trace.commands.filter((command:{type:string})=>command.type==="set_model").length,1);
+});
+
+
+test("M2: una comprobación de consentimiento que no responde termina el proceso",async t=>{
+ const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ const child=runner(p,{timeoutMs:2000,authorizeModelFallback:()=>()=>new Promise<boolean>(()=>{})});
+ const result=await child.run({id:"consentimiento-sin-respuesta",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/timed out/u);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,1);assert.equal(trace.commands.some((command:{type:string})=>command.type==="set_model"),false);
+});
+
+
+test("M2: una alternativa virtual seleccionada por Pi no recibe otro prompt",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({fallbackStateVirtual:true});t.after(()=>rm(d,{recursive:true,force:true}));
+ const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-virtual-denied",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state","prompt","set_model","get_state"]);
+});
+
+
+test("M2: no iniciar una alternativa como primaria cuando falta una selección exacta",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});const source=join(d,"original-pi");await mkdir(source);
+ await writeFile(join(source,"auth.json"),JSON.stringify({alternative:{type:"api_key",key:"ficticia"}}));
+ const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+ t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+ const child=runner(p,{timeoutMs:10_000});const result=await child.run({id:"primary-missing",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"alternative/backup"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/exact primary model/u);await assert.rejects(access(log));
+ await writeFile(join(source,"settings.json"),JSON.stringify({defaultProvider:"provider",defaultModel:"primary"}));
+ const originalModels='{ // comentario\n "providers": { /* local */ } }';await writeFile(join(source,"models.json"),originalModels);
+ const accepted=await child.run({id:"primary-configured",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"alternative/backup"}]}});
+ assert.equal(accepted.ok,true,accepted.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.args[trace.args.indexOf("--model")+1],"provider/primary");assert.equal(await readFile(join(source,"models.json"),"utf8"),originalModels);
+});
+
+
+test("M2: el cierre OAuth espera la persistencia sintética de una renovación antes de terminar",async t=>{
+ const d=await mkdtemp(join(tmpdir(),"asen-oauth-drain-"));t.after(()=>rm(d,{recursive:true,force:true}));const auth=join(d,"auth.json");
+ await writeFile(auth,JSON.stringify({refresh:"anterior"}));
+ let finish!:()=>void,closing=false;const closed=new Promise<void>(resolve=>{finish=resolve;});
+ const pending=drainSharedAuthChild(()=>{closing=true;},closed,5_000);assert.equal(closing,true);
+ await writeFile(auth,JSON.stringify({refresh:"renovado"}));finish();assert.equal(await pending,true);
+ assert.deepEqual(JSON.parse(await readFile(auth,"utf8")),{refresh:"renovado"});
+ assert.equal(await drainSharedAuthChild(()=>{},new Promise<void>(()=>{}),20),false);
+});
+
+test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});const source=join(d,"original-pi");await mkdir(source);
+ await writeFile(join(source,"settings.json"),JSON.stringify({httpProxy:"http://localhost:1234"}));await writeFile(join(source,"auth.json"),JSON.stringify({provider:{type:"oauth",access:"ficticia",refresh:"ficticia",expires:0}}));
+ const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+ const result=await runner(p).run({id:"oauth-proxy",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/cannot preserve custom HTTP proxy/u);await assert.rejects(access(log));
+});
+
+ test("M2: el modelo inicial debe coincidir antes de cualquier petición con alternativas",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"provider",id:"primary-pro"},initialSuccess:true});t.after(()=>rm(d,{recursive:true,force:true}));
+  const result=await runner(p,{timeoutMs:10_000}).run({id:"primary-partial",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/primary-pro"}]}});
+  assert.equal(result.ok,false);assert.match(result.output,/primary model selection was not confirmed/);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state"]);
+ });
+ test("M2: una URL de archivo conserva la configuración Pi original",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});const source=join(d,"original pi");await mkdir(source);
+  await writeFile(join(source,"settings.json"),JSON.stringify({defaultProvider:"provider",defaultModel:"primary"}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=(await import("node:url")).pathToFileURL(source).href;
+  t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const result=await runner(p,{timeoutMs:10_000}).run({id:"config-url",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"provider/backup"}]}});
+  assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.args[trace.args.indexOf("--model")+1],"provider/primary");
+ });
+
+ test("M2: OAuth compartido rechaza Pi anterior a 1.6 antes de iniciar procesos",async t=>{
+  const {d}=await fallbackRpcFixture({initialSuccess:true});
+  const source=join(d,"original-pi"),sdk=join(d,"node_modules","@earendil-works","pi-coding-agent");
+  await mkdir(source);await mkdir(join(sdk,"dist"),{recursive:true});
+  const auth=join(source,"auth.json"),original=JSON.stringify({provider:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}});
+  await writeFile(auth,original);await writeFile(join(sdk,"package.json"),JSON.stringify({name:"@earendil-works/pi-coding-agent",version:"1.2.0"}));
+  const cli=join(sdk,"dist","cli.js");await writeFile(cli,"throw Error('No debe ejecutarse');");await writeFile(join(sdk,"dist","index.js"),"throw Error('No debe importarse');");
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+  t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  let starts=0;const child=new PiProcessRunner({command:process.execPath,rpcArgs:[cli,"--mode","rpc"],policyRoot:d,onProcessStart:()=>{starts++;}});
+  const result=await child.run({id:"oauth-sdk-antiguo",role:"explorer",prompt:"No ejecutar",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
+  assert.equal(result.ok,false);assert.match(result.output,/requires a compatible native SDK/);assert.equal(starts,0);assert.equal(await readFile(auth,"utf8"),original);
+ });
+
+ test("M2: el principal API conserva su proxy cuando la alternativa OAuth no es compatible",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({initialSuccess:true}),source=join(d,"original-pi");await mkdir(source);
+  const auth=JSON.stringify({provider:{type:"api_key",key:"ficticia"},backup:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}});
+  await writeFile(join(source,"settings.json"),JSON.stringify({httpProxy:"http://localhost:1234"}));await writeFile(join(source,"auth.json"),auth);
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  let approvals=0;const result=await runner(p,{timeoutMs:10_000,authorizeModelFallback:()=>{approvals++;return false;}}).run({id:"oauth-backup-proxy",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"backup/model"}]}});
+  assert.equal(result.ok,true,result.output);assert.match(result.output,/asen_fallback_unavailable/);assert.equal(approvals,0);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.authTypes,{provider:"api_key"});assert.deepEqual(trace.commands.map((row:{type:string})=>row.type),["get_commands","get_state","prompt"]);assert.equal(trace.retry.enabled,false);assert.equal(await readFile(join(source,"auth.json"),"utf8"),auth);
+ });
+
+ test("M2: un resultado al límite se conserva completo y el aviso OAuth se entrega fuera de la salida",async t=>{
+  const {d,p}=await fallbackRpcFixture({initialSuccess:true,initialText:"x".repeat(4096)}),source=join(d,"original-pi");await mkdir(source);
+  await writeFile(join(source,"auth.json"),JSON.stringify({provider:{type:"api_key",key:"ficticia"},backup:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0}}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const request={id:"oauth-output-limit",role:"explorer" as const,prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"backup/model"}]}};
+  const first=await runner(p,{timeoutMs:10_000}).run(request);assert.equal(first.ok,true,first.output);assert.match(first.output,/asen_fallback_unavailable/);
+  const marker=first.output.indexOf("\n{\"type\":\"asen_fallback_unavailable\"");assert.ok(marker>0);const original=first.output.slice(0,marker),notices:unknown[]=[];
+  const second=await runner(p,{timeoutMs:10_000,maxOutputBytes:Buffer.byteLength(original),onFallbackUnavailable:notice=>notices.push(notice)}).run(request);
+  assert.equal(second.ok,true,second.output);assert.equal(Buffer.byteLength(second.output),Buffer.byteLength(original));assert.equal(notices.length,1);
+  const records=(output:string)=>output.trim().split(/\r?\n/).map(line=>{
+   const record=JSON.parse(line);
+   if(record.type==="response"&&record.command==="get_commands"){
+    const authority=record.data.commands.find((command:{name:string})=>command.name==="asen-authority-status");
+    assert.ok(authority?.sourceInfo?.path);assert.match(authority.sourceInfo.path,/asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/u);
+    authority.sourceInfo.path="ruta-temporal";
+   }
+   return record;
+  });
+  assert.deepEqual(records(second.output),records(original));
+ });
+
+ test("M2: omitir OAuth incompatible conserva una alternativa API expresamente autorizada",async t=>{
+  const {d,p,log}=await fallbackRpcFixture(),source=join(d,"original-pi");await mkdir(source);
+  const auth=JSON.stringify({provider:{type:"api_key",key:"ficticia"},oauth:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0},api:{type:"api_key",key:"ficticia-2"}});
+  await writeFile(join(source,"auth.json"),auth);await writeFile(join(source,"settings.json"),JSON.stringify({httpProxy:"http://localhost:1234"}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const approvals:string[]=[];const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return attempt.to==="api/backup";}}).run({id:"oauth-mixto",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"oauth/backup"},{model:"api/backup"}]}});
+  assert.equal(result.ok,true,result.output);assert.deepEqual(approvals,["api/backup"]);assert.match(result.output,/asen_fallback_unavailable/);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.authTypes,{provider:"api_key",api:"api_key"});assert.equal(await readFile(join(source,"auth.json"),"utf8"),auth);
+ });
+
+ test("M2: un cambio de anfitrión posterior a la última validación impide escribir el prompt",async t=>{
+  const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+  let owned=true,validations=0,guards=0;
+  const validate=Object.assign(async()=>{if(++validations===4)queueMicrotask(()=>{owned=false;});return true;},{stillOwned:()=>{guards++;return owned;}});
+  const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:()=>validate}).run({id:"revocacion-envio-exacto",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+  assert.equal(result.ok,false,result.output);assert.match(result.output,/scope is no longer live/u);assert.equal(validations,4);assert.ok(guards>=2);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((row:{type:string})=>row.type==="prompt").length,1);assert.equal(trace.commands.filter((row:{type:string})=>row.type==="set_model").length,1);
+ });
+
+test("M2: NVIDIA conserva el identificador nativo completo en set_model sin ampliar consentimiento",async t=>{
+ const primary="nvidia/nemotron-3.5-lightning-30b-a3b",alternative="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
+ const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"nvidia",id:primary},catalog:[{provider:"nvidia",id:primary},{provider:"nvidia",id:alternative}],refuse:[alternative]});
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ const approvals:string[]=[];
+ const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return true;}}).run({id:"nvidia-id-nativo",role:"explorer",prompt:"inspect",repository:d,model:primary,modelFallback:{chain:[{model:alternative}]}});
+ assert.equal(result.ok,true,result.output);
+ assert.deepEqual(approvals,[alternative]);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.deepEqual(trace.commands.filter((c:{type:string})=>c.type==="set_model").map((c:{modelId:string})=>c.modelId),[alternative]);
+ assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,2);
+});
+
+test("M2: catálogo NVIDIA mixto y ambiguo no infiere el prefijo del primario",async t=>{
+ const primary="nvidia/nemotron-3.5-lightning-30b-a3b",alternative="nvidia/meta/llama";
+ for(const ambiguous of [false,true]){
+  const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"nvidia",id:primary},catalog:[{provider:"nvidia",id:primary},{provider:"nvidia",id:"meta/llama"},...(ambiguous?[{provider:"nvidia",id:"nvidia/meta/llama"}]:[])]});
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const approvals:string[]=[];
+  const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return true;}}).run({id:"nvidia-catalogo-"+ambiguous,role:"explorer",prompt:"inspect",repository:d,model:primary,modelFallback:{chain:[{model:alternative}]}});
+  assert.deepEqual(approvals,[alternative]);
+  const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.equal(result.ok,!ambiguous,result.output);
+  assert.equal(trace.commands.filter((c:{type:string})=>c.type==="get_available_models").length,1);
+  assert.deepEqual(trace.commands.filter((c:{type:string})=>c.type==="set_model").map((c:{modelId:string})=>c.modelId),ambiguous?[]:["meta/llama"]);
+  assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,ambiguous?1:2);
  }
 });
