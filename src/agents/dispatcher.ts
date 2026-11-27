@@ -13,7 +13,7 @@ import {isThinking,type Thinking} from "../runtime/lifecycle/profiles.js";
 import type {TerminalErrorCategory} from "../runtime/lifecycle/model-fallback-policy.js";
 
 export interface AgentModelFallbackStep{readonly model:string;readonly thinking?:Thinking}
-export interface AgentModelFallback{readonly profile?:string;readonly chain:readonly AgentModelFallbackStep[]}
+export interface AgentModelFallback{readonly profile?:string;readonly chain:readonly AgentModelFallbackStep[];readonly origin?:Readonly<{scope:"global"|"project";name:string;model:string}>}
 export interface AgentFallbackObservation{readonly taskId:string;readonly sessionId:string;readonly projectId:string;readonly from?:string;readonly to:string;readonly category:TerminalErrorCategory;readonly thinking?:Thinking}
 export type AgentFallbackListener=(observation:AgentFallbackObservation)=>void;
 export interface AgentRequest { id:string; role:"clarifier"|"explorer"|"worker"|"reviewer"|"verifier"; expectedPhase?:string; phaseGrant?:object; prompt:string; repository:string; model?:string; thinking?:Thinking; modelFallback?:AgentModelFallback; writeSurfaces?:string[]; isolationKey?:string; candidate?:Candidate; skillContext?:IssuedSkillContext; skillPaths?:string[]; writerAdmission?:object; runnerWriteReceiver?:object; owner?:{kind:"user"|"agent"|"system";id:string};parentId?:string; }
@@ -63,8 +63,14 @@ function fallbackModel(value:unknown):value is string{return typeof value==="str
 export function snapshotAgentModelFallback(value:unknown):AgentModelFallback|undefined{
  if(value===undefined)return undefined;
  const data=plainData(value),keys=Object.keys(data).sort();
- if(keys.some(key=>key!=="chain"&&key!=="profile")||!keys.includes("chain"))throw new Error("Invalid agent model fallback");
+ if(keys.some(key=>key!=="chain"&&key!=="profile"&&key!=="origin")||!keys.includes("chain"))throw new Error("Invalid agent model fallback");
  const profile=data.profile;if(profile!==undefined&&(typeof profile!=="string"||profile.length===0||profile.length>64||!/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(profile)))throw new Error("Invalid fallback profile");
+ let origin:AgentModelFallback["origin"];
+ if(data.origin!==undefined){
+  const value=plainData(data.origin);
+  if(Object.keys(value).sort().join(",")!=="model,name,scope"||(value.scope!=="global"&&value.scope!=="project")||typeof value.name!=="string"||value.name!==profile||!fallbackModel(value.model))throw Error("Invalid fallback profile origin");
+  origin=Object.freeze({scope:value.scope,name:value.name,model:value.model});
+ }
  const raw=data.chain;if(typeof raw!=="object"||raw===null||types.isProxy(raw)||!Array.isArray(raw)||Object.getPrototypeOf(raw)!==Array.prototype||raw.length>8||Reflect.ownKeys(raw).length!==raw.length+1)throw new Error("Fallback chain exceeds the eight-model limit");
  const seen=new Set<string>(),chain=Array.from({length:raw.length},(_,index)=>{
   const descriptor=Object.getOwnPropertyDescriptor(raw,String(index));if(!descriptor?.enumerable||!("value" in descriptor))throw new Error("Invalid fallback chain");
@@ -73,7 +79,7 @@ export function snapshotAgentModelFallback(value:unknown):AgentModelFallback|und
   if(seen.has(step.model))throw new Error("duplicate fallback model");seen.add(step.model);
   return Object.freeze(step.thinking===undefined?{model:step.model}:{model:step.model,thinking:step.thinking});
  });
- return Object.freeze({...(profile===undefined?{}:{profile}),chain:Object.freeze(chain)});
+ return Object.freeze({...(profile===undefined?{}:{profile}),chain:Object.freeze(chain),...(origin?{origin}:{})});
 }
 
 export class Dispatcher {
