@@ -402,9 +402,8 @@ test("ECO-06 cancelled queued work never reaches the runner",async()=>{
 
 
 test("revalida la alternativa Explorer después de guardar el estado running",async()=>{
- const lifecycle=createAgentLifecycleSink();let valid=true,started=0,checks=0;
- const running=lifecycle.running.bind(lifecycle);
- lifecycle.running=async(id:string)=>{await running(id);valid=false;};
+ const base=createAgentLifecycleSink();let valid=true,started=0,checks=0;
+ const lifecycle={...base,running:async(id:string)=>{await base.running(id);valid=false;}};
  const dispatcher=new Dispatcher({run:async request=>{started++;return {id:request.id,ok:true,output:"no debe ejecutarse"};}},new EvidenceStore(),1,lifecycle);
  await assert.rejects(()=>dispatcher.dispatch({id:"revocacion-tras-running",role:"explorer",prompt:"inspeccionar",repository:"r"},undefined,async()=>{checks++;if(!valid)throw Error("alternativa revocada durante el bloqueo");}),/alternativa revocada/u);
  assert.equal(checks,2);assert.equal(started,0);assert.equal(lifecycle.snapshot()[0]?.state,"failed");
