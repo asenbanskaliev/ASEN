@@ -350,6 +350,24 @@
         "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
         "phase": "Validación definitiva M1/M2",
         "writeReservation": false
+      },
+      "lease": {
+        "id": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "files": [
+          "src/runtime/lifecycle/parent-model-fallback.ts",
+          "src/agents/pi-process-runner.ts",
+          "src/agents/interrupted-explorer-continuation.ts",
+          "tests/parent-model-fallback.test.ts",
+          "tests/pi-process-runner.test.ts",
+          "tests/interrupted-explorer-continuation.test.ts",
+          "tests/p11-child-fallback-wiring.test.ts"
+        ],
+        "phase": "Tanda de cierre tras seis validaciones correctas: modelos virtuales, revocación final y pruebas acotadas"
       }
     }
   },
@@ -1039,7 +1057,43 @@
       "finishedAt": "2026-11-27T14:30:26Z"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "src/runtime/lifecycle/parent-model-fallback.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+      "scope": "M1/M2"
+    },
+    "src/agents/pi-process-runner.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+      "scope": "M1/M2"
+    },
+    "src/agents/interrupted-explorer-continuation.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+      "scope": "M1/M2"
+    },
+    "tests/parent-model-fallback.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+      "scope": "M1/M2"
+    },
+    "tests/pi-process-runner.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+      "scope": "M1/M2"
+    },
+    "tests/interrupted-explorer-continuation.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+      "scope": "M1/M2"
+    },
+    "tests/p11-child-fallback-wiring.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+      "scope": "M1/M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
