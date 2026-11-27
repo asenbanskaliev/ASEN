@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 153,
       "sha": "6a71abdbbccbe1479f6238da9d9712c78d88bdd8",
-      "next": "Auditar sin llamadas modelo devuelto por NVIDIA frente al solicitado, sin asumir equivalencia; en paralelo M3 recuperación pública y G03 sobre futuro candidato separado. Preparar alternativa solo con evidencia oficial y nueva autorización.",
+      "next": "M3/P04: preparar prueba pública de recuperación histórica y G03 en candidato acumulativo desde #160, solo con reserva E; M5 después. No modelos.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -183,8 +183,8 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Recoger resultados del único ensayo #160; no rearmar #159 ni #160. Consolidar M3/M4 cuando corresponda.",
-      "blocker": "Ensayo nuevo iniciado; falta evidencia de API y Pi.",
+      "next": "Consolidar #156 en rama separada desde #160 admitida para M3/M4; comprobar ocho rutas y prueba pública de recuperación histórica. No repetir ensayos NVIDIA.",
+      "blocker": "Ningún bloqueo T06; falta consolidación y aceptación integral de etapas posteriores.",
       "generation": 2,
       "pr": 159,
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
@@ -2827,7 +2827,7 @@
   },
   "modelCallException": {
     "enabled": false,
-    "state": "consumida-ensayo-bloqueado-identidad-modelo",
+    "state": "dos-ensayos-consumidos-segundo-T06-correcto",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 159,
     "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
@@ -2949,7 +2949,7 @@
       "labelRemoved": true
     },
     "nextTrialProposal": {
-      "state": "ensayo-autorizado-espera-evidencia",
+      "state": "consumida-ensayo-T06-api-y-pi-correcto",
       "source": "Usuario: Hazlo. Revisa cuáles hemos usado; respuesta a propuesta de alternativa y repetición.",
       "priorAttemptSha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "priorAttemptPreserved": true,
@@ -3026,7 +3026,7 @@
         },
         "responseModelExpected": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
         "sourceConfirmed": true,
-        "realVerified": false
+        "realVerified": true
       },
       "integrated": {
         "job": 140429204247,
@@ -3052,17 +3052,73 @@
         "id": "manual-E-g2-T06-nano-omni-unico-1127",
         "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
         "owner": "asenbanskaliev",
-        "phase": "etiqueta-aplicada",
+        "phase": "consumida-sin-repeticion",
         "noRetry": true,
         "commentId": 7216582337,
         "consentAt": "2026-11-27T11:01:13Z",
         "labelApplied": true,
         "error": null
+      },
+      "actualAttempt": {
+        "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
+        "pr": 160,
+        "run": 45986966034,
+        "authorizationJob": 140464950855,
+        "apiJob": 140465086952,
+        "piJob": 140465199964,
+        "authorization": "success",
+        "apiConclusion": "success",
+        "piConclusion": "success",
+        "apiStatus": "AUTHENTICATED_API_PARALLEL",
+        "piStatus": "PASS_READ_ONLY_PI_CONCURRENT",
+        "apiRequests": 2,
+        "apiModels": [
+          "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+        ],
+        "httpCodes": [
+          200,
+          200
+        ],
+        "reportedTotalTokens": [
+          58,
+          69
+        ],
+        "apiOverlapped": true,
+        "distinctApiModelIdsVerified": true,
+        "piSessions": 2,
+        "piRoles": [
+          "Explorer",
+          "Verifier"
+        ],
+        "piModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "piStates": [
+          "completed",
+          "completed"
+        ],
+        "piOverlapped": true,
+        "gitWorktreesVerified": true,
+        "retries": 0,
+        "billingVerified": false,
+        "costVerified": false,
+        "apiMarker": 7216588007,
+        "piMarker": 7216588315,
+        "artifacts": [
+          {
+            "id": 15191234512,
+            "digest": "sha256:6225061e1f65a31d05d8025a87f595df52cb81d1a39fc11761a2cd1563c35fec"
+          },
+          {
+            "id": 15191094797,
+            "digest": "sha256:ec511c20af26579bbc92010ff69f0aa9e3b101cede63445a923c0813a80a4e07"
+          }
+        ],
+        "scope": "T06 API dos identidades exactas y Pi dos sesiones nativas de lectura simultáneas con Lightning; no acredita dos modelos distintos dentro de Pi, Writer, factura, fallback integral ni aceptación global."
       }
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T11:01:18.586Z",
+  "updatedAt": "2026-11-27T11:06:48.950Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3139,16 +3195,16 @@
       },
       {
         "id": "M2",
-        "state": "ensayo-real-parcial-modelo-no-coincide",
+        "state": "T06-real-validado-cierre-acotado",
         "pr": 159,
         "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
         "owner": "E",
         "support": "B/C",
-        "next": "Candidato #160 separado: Lightning + Nano Omni. Verificar CI exacta y revisión independiente; mantener #159 histórico con ensayo parcial. Ensayo nuevo solo tras puertas y consentimiento de alcance exacto.",
+        "next": "Conservar #159 y #160 inmutables; T06 supera aceptación acotada. Consolidar M3/M4 sobre candidato #160 en rama separada; validar objetivos 9/10/18 contra matriz completa antes de globalFull. No repetir modelos.",
         "pendingTrial": {
           "pr": 160,
           "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
-          "state": "ensayo-autorizado-espera-evidencia"
+          "state": "consumida-ensayo-T06-api-y-pi-correcto"
         }
       },
       {
@@ -3233,7 +3289,7 @@
         "tests/agent-store.test.ts",
         "tests/asen-c-checkpoint-recovery.test.ts"
       ],
-      "condition": "Base M2 técnicamente admitida; ensayo real parcial, no cerrado. Puede prepararse candidato M3/M4 separado sin transferir evidencia ni permiso de consumo. Validar siete rutas Work y conservar pruebas RPC de M2. No modificar #159 ni activar NVIDIA.",
+      "condition": "M2 T06 real superado en #160 SHA 9261479. Base acumulativa #160, incorporar siete rutas Work verificadas por blob y conservar pruebas RPC M2. Comparar nuevamente ancestro, candidato y Work. No modificar #159/#160, no activar NVIDIA ni fusionar ramas protegidas.",
       "verifiedRemainingFiles": [
         {
           "path": "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md",
@@ -3270,7 +3326,68 @@
           "workBlob": "c71b12574a66489c9c469992b4afece5b1052228",
           "action": "añadir prueba Work nueva"
         }
-      ]
+      ],
+      "admittedM2Base": {
+        "pr": 160,
+        "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
+        "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127",
+        "realEvidence": {
+          "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
+          "pr": 160,
+          "run": 45986966034,
+          "authorizationJob": 140464950855,
+          "apiJob": 140465086952,
+          "piJob": 140465199964,
+          "authorization": "success",
+          "apiConclusion": "success",
+          "piConclusion": "success",
+          "apiStatus": "AUTHENTICATED_API_PARALLEL",
+          "piStatus": "PASS_READ_ONLY_PI_CONCURRENT",
+          "apiRequests": 2,
+          "apiModels": [
+            "nvidia/nemotron-3.5-lightning-30b-a3b",
+            "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+          ],
+          "httpCodes": [
+            200,
+            200
+          ],
+          "reportedTotalTokens": [
+            58,
+            69
+          ],
+          "apiOverlapped": true,
+          "distinctApiModelIdsVerified": true,
+          "piSessions": 2,
+          "piRoles": [
+            "Explorer",
+            "Verifier"
+          ],
+          "piModel": "nvidia/nemotron-3.5-lightning-30b-a3b",
+          "piStates": [
+            "completed",
+            "completed"
+          ],
+          "piOverlapped": true,
+          "gitWorktreesVerified": true,
+          "retries": 0,
+          "billingVerified": false,
+          "costVerified": false,
+          "apiMarker": 7216588007,
+          "piMarker": 7216588315,
+          "artifacts": [
+            {
+              "id": 15191234512,
+              "digest": "sha256:6225061e1f65a31d05d8025a87f595df52cb81d1a39fc11761a2cd1563c35fec"
+            },
+            {
+              "id": 15191094797,
+              "digest": "sha256:ec511c20af26579bbc92010ff69f0aa9e3b101cede63445a923c0813a80a4e07"
+            }
+          ],
+          "scope": "T06 API dos identidades exactas y Pi dos sesiones nativas de lectura simultáneas con Lightning; no acredita dos modelos distintos dentro de Pi, Writer, factura, fallback integral ni aceptación global."
+        }
+      }
     }
   }
 }
