@@ -137,8 +137,22 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-revision",
-      "lease": null,
+      "state": "reparacion-autorizacion",
+      "lease": {
+        "id": "manual-E-g2-159-puerta-exacta-t06",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "2984cc190cada63d7fcf7b2dd400e017b891947b",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "phase": "autorizacion-y-consolidacion-M2",
+        "files": [
+          ".github/workflows/ci.yml",
+          ".github/workflows/t06-permission-probe.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts"
+        ],
+        "startedAt": "2026-11-27T06:12:48.724Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -616,7 +630,23 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    ".github/workflows/ci.yml": {
+      "team": "E",
+      "lease": "manual-E-g2-159-puerta-exacta-t06",
+      "scope": "M2 T06 y G08, sin cambios de ramas M3/M4 ni consumo"
+    },
+    ".github/workflows/t06-permission-probe.yml": {
+      "team": "E",
+      "lease": "manual-E-g2-159-puerta-exacta-t06",
+      "scope": "M2 T06 y G08, sin cambios de ramas M3/M4 ni consumo"
+    },
+    "tests/flujo-agentes-nvidia-workflow.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-159-puerta-exacta-t06",
+      "scope": "M2 T06 y G08, sin cambios de ramas M3/M4 ni consumo"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -1795,5 +1825,5 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T06:06:21.122Z"
+  "updatedAt": "2026-11-27T06:12:48.724Z"
 }
