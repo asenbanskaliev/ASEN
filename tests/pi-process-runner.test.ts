@@ -1122,3 +1122,16 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
   assert.equal(result.ok,false,result.output);assert.match(result.output,/scope is no longer live/u);assert.equal(validations,4);assert.ok(guards>=2);
   const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((row:{type:string})=>row.type==="prompt").length,1);assert.equal(trace.commands.filter((row:{type:string})=>row.type==="set_model").length,1);
  });
+
+test("M2: NVIDIA conserva el identificador nativo completo en set_model sin ampliar consentimiento",async t=>{
+ const primary="nvidia/nemotron-3.5-lightning-30b-a3b",alternative="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
+ const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"nvidia",id:primary},refuse:[alternative]});
+ t.after(()=>rm(d,{recursive:true,force:true}));
+ const approvals:string[]=[];
+ const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return true;}}).run({id:"nvidia-id-nativo",role:"explorer",prompt:"inspect",repository:d,model:primary,modelFallback:{chain:[{model:alternative}]}});
+ assert.equal(result.ok,true,result.output);
+ assert.deepEqual(approvals,[alternative]);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.deepEqual(trace.commands.filter((c:{type:string})=>c.type==="set_model").map((c:{modelId:string})=>c.modelId),[alternative]);
+ assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,2);
+});
