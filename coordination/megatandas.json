@@ -350,6 +350,20 @@
         "sha": "f2f84653f58a4a697c857da295332b61f99b0109",
         "phase": "Resolución 16 hilos y validación independiente M1/M2",
         "writeReservation": false
+      },
+      "lease": {
+        "id": "manual-E-g2-cierre-M1-M2-6a75f8e",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "sha": "6a75f8ef24bfaab941f25e8e749d7a57512aac83",
+        "phase": "integracion-cierre-M1-M2",
+        "files": [
+          "coordination/megatandas.json"
+        ],
+        "purpose": "Integrar #161 en rama #115, sin tocar main ni ejecutar modelos"
       }
     }
   },
