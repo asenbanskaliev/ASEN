@@ -872,6 +872,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    fallbackSessionReady=false;fallbackConsentPending?.controller.abort();
     const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    const startupCurrent=()=>parentGeneration===parentBindingGeneration&&!hostStatusClosed&&!ctx.signal?.aborted;
+   // Cada sesión captura sus propios datos de perfil, aunque otra sesión
+   // pase a ser el anfitrión visible. Capturar no concede autoridad de ejecución.
+   const captureManager=ctx.sessionManager,captureId=captureManager?.getSessionId?.(),captureCwd=ctx.cwd;
+   if(captureId&&!ctx.signal?.aborted){
+    const capturedIdentity=await sessionIdentity(ctx);
+    if(ctx.sessionManager===captureManager&&ctx.cwd===captureCwd&&captureManager?.getSessionId?.()===captureId&&capturedIdentity.sessionId===captureId&&!ctx.signal?.aborted)await inheritedProfile(capturedIdentity);
+   }
    const pendingModelMutation=parentFallback.drainMutation();if(pendingModelMutation)await pendingModelMutation;
    if(!startupCurrent())return;
    t11Preset=readAsenAppearance(home()).preset;
