@@ -14,7 +14,8 @@ import {createPiRpcFixture,uniqueModelNames} from "./helpers/pi-rpc-fixture.js";
 const scenario=`
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-let buffer="",prompts=0,activeModel;
+const primary=process.argv[process.argv.indexOf("--model")+1],slash=primary.indexOf("/");
+let buffer="",prompts=0,activeModel={provider:primary.slice(0,slash),id:primary.slice(slash+1)};
 process.stdin.on("data",chunk=>{
  buffer+=String(chunk);
  let end;
