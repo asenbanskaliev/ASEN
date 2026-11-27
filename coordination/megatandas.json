@@ -183,10 +183,10 @@
         "openReviewThreads": 0
       },
       "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
-      "blocker": "Nueva CI, Release Gate de Windows y revisión exacta pendientes. Ensayo 09/10 y compatibilidad OAuth real no demostrados.",
+      "blocker": "CI y revisión exacta nuevas; probar cierre OAuth, alternativa real y reanudación. No adelantar ensayo.",
       "generation": 2,
       "pr": 161,
-      "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+      "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -347,31 +347,9 @@
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
-        "phase": "CI y revisión independiente M1/M2",
+        "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+        "phase": "Validación definitiva M1/M2",
         "writeReservation": false
-      },
-      "lease": {
-        "id": "manual-E-M1M2-161-ventanas-consentimiento",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
-        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "files": [
-          "src/agents/pi-process-runner.ts",
-          "src/agents/agent-runtime.ts",
-          "src/agents/pi-agent-tools.ts",
-          "extensions/asen.ts",
-          "src/agents/interrupted-explorer-continuation.ts",
-          "src/runtime/lifecycle/parent-model-fallback.ts",
-          "tests/managed-acquisition-copy.test.ts",
-          "tests/interrupted-explorer-continuation.test.ts",
-          "tests/extension-state-commands.test.ts",
-          "tests/p11-child-fallback-wiring.test.ts",
-          "tests/pi-process-runner.test.ts"
-        ],
-        "phase": "Corregir fallos Windows y observaciones verificadas de M2"
       }
     }
   },
@@ -996,65 +974,34 @@
       "status": "liberada-tras-publicar",
       "resultSha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
       "finishedAt": "2026-11-27T13:01:02Z"
+    },
+    {
+      "id": "manual-E-M1M2-161-ventanas-consentimiento",
+      "team": "E",
+      "generation": 2,
+      "package": "E1",
+      "base": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+      "files": [
+        "src/agents/pi-process-runner.ts",
+        "src/agents/agent-runtime.ts",
+        "src/agents/pi-agent-tools.ts",
+        "extensions/asen.ts",
+        "src/agents/interrupted-explorer-continuation.ts",
+        "src/runtime/lifecycle/parent-model-fallback.ts",
+        "tests/managed-acquisition-copy.test.ts",
+        "tests/interrupted-explorer-continuation.test.ts",
+        "tests/extension-state-commands.test.ts",
+        "tests/p11-child-fallback-wiring.test.ts",
+        "tests/pi-process-runner.test.ts"
+      ],
+      "phase": "Corregir fallos Windows y observaciones verificadas de M2",
+      "status": "liberada-tras-publicar",
+      "resultSha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+      "finishedAt": "2026-11-27T14:15:03Z"
     }
   ],
-  "temporaryOwnership": {
-    "src/agents/pi-process-runner.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "src/agents/agent-runtime.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "src/agents/pi-agent-tools.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "extensions/asen.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "src/agents/interrupted-explorer-continuation.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "src/runtime/lifecycle/parent-model-fallback.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "tests/managed-acquisition-copy.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "tests/interrupted-explorer-continuation.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "tests/extension-state-commands.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "tests/p11-child-fallback-wiring.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    },
-    "tests/pi-process-runner.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-ventanas-consentimiento",
-      "scope": "M1/M2"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -3000,7 +2947,7 @@
     ],
     "globalFull": false,
     "candidate": 161,
-    "candidateSha": "a732ed89899a3df98d4ae0e96cde9d3646de2372"
+    "candidateSha": "23588aca4c4897f5e794c4a8876c4fe376f641ea"
   },
   "currentSnapshot": {
     "capturedAt": "2026-11-26",
@@ -3023,14 +2970,14 @@
         "unresolved": 0
       }
     },
-    "m2": "G01/G08/T06 históricos correctos; reparación de plazo Windows, autorización viva, recibo 09/10 y OAuth SDK publicados; exacta CI/revisión y ensayo real pendientes.",
+    "m2": "Correcciones de consentimiento, OAuth y continuidad publicadas; CI/revisión y 09/10 pendientes",
     "m3": "CI y revisión independiente #156 correctas, candidata separada pendiente de consolidación y evidencia real.",
     "globalFull": false,
-    "updatedAt": "2026-11-27T13:01:02Z",
+    "updatedAt": "2026-11-27T14:15:03Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
     "candidate": 161,
-    "candidateSha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
-    "m1": "Base histórica validada #144 y ancestría verificada; admisión exacta del candidato actual pendiente"
+    "candidateSha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+    "m1": "Base histórica aprobada; dos pruebas de Windows corregidas; nueva CI exacta pendiente"
   },
   "modelCallException": {
     "enabled": false,
@@ -3325,7 +3272,7 @@
     },
     "objectives0910Trial": {
       "pr": 161,
-      "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+      "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
       "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
       "state": "pendiente-validaciones-exactas",
       "source": "Usuario: «Adaptadolo y ejecutar», «Activa el real y verifícalo», «Hazlo asi» tras plan de corregir y activar únicamente con validaciones satisfactorias.",
@@ -3334,66 +3281,72 @@
         "nvidia/nemotron-3.5-lightning-30b-a3b",
         "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
       ],
-      "requiredOwnerComment": "asen-t06-autorizar:a732ed89899a3df98d4ae0e96cde9d3646de2372",
+      "requiredOwnerComment": "asen-t06-autorizar:23588aca4c4897f5e794c4a8876c4fe376f641ea",
       "requiredLabel": "asen-t06-nvidia-una-vez",
       "independentReviewRequired": true,
       "previousConsumedTrialsPreserved": true,
       "consumptionReserved": false,
-      "reviewRequested": 7218963732,
+      "reviewRequested": 7220544991,
       "validationRuns": [
         {
           "name": "Release Gate",
-          "id": 46003468168,
+          "id": 46014194316,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 46014194293,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "CI",
+          "id": 46014194292,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "Phase 0 Architecture",
+          "id": 46014194319,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Pi Free Smoke",
+          "id": 46014194311,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "CI rápida",
+          "id": 46014194331,
           "status": "in_progress",
           "conclusion": null
         },
         {
           "name": "Pi 1.2 runtime evidence",
-          "id": 46003468146,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-          "id": 46003468361,
-          "status": "pending",
-          "conclusion": null
-        },
-        {
-          "name": "Pi Free Smoke",
-          "id": 46003468303,
-          "status": "completed",
-          "conclusion": "skipped"
-        },
-        {
-          "name": "CI",
-          "id": 46003468340,
-          "status": "pending",
-          "conclusion": null
-        },
-        {
-          "name": "Phase 0 Architecture",
-          "id": 46003468224,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "name": "CI rápida",
-          "id": 46003468163,
+          "id": 46014194294,
           "status": "in_progress",
           "conclusion": null
         }
       ],
       "globalFull": false,
       "previousValidation": {
-        "sha": "09bc99ecf477f6a312f2e412eca5fa5d9e15dff7",
-        "releaseGateJob": 140517892609,
-        "reason": "Windows paquete firmado no activado por plazo cooperativo de copia; versión anterior intacta. CI anterior cancelada al avanzar candidato; pruebas integradas y G08 dedicadas pasaron."
+        "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+        "ci": 46003468340,
+        "releaseGate": 46003468168,
+        "failedJobs": [
+          140520945821,
+          140520680500,
+          140528293415
+        ],
+        "reason": "Pruebas de límite Windows todavía esperaban 60 s; corregidas sin relajar límite de verificación de 30 s. Compatibilidad Pi, arquitectura, CI rápida y Pi 1.2 correctas en SHA anterior."
       }
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T13:01:02Z",
+  "updatedAt": "2026-11-27T14:15:03Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3452,7 +3405,7 @@
   },
   "executionPlan": {
     "version": "V6",
-    "updatedAt": "2026-11-27T13:01:02Z",
+    "updatedAt": "2026-11-27T14:15:03Z",
     "source": {
       "pr": 61,
       "sha": "a1c6bb318388771a7c3298205535b4801a1d2c8a",
@@ -3469,7 +3422,7 @@
         "next": "Preservar base #144; exigir candidato definitivo limpio y Release Gate incluyendo paquete Windows.",
         "currentCandidate": {
           "pr": 161,
-          "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+          "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
           "ancestry": {
             "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
             "behind": 0,
@@ -3482,7 +3435,7 @@
         "id": "M2",
         "state": "reparaciones-publicadas-espera-validacion-exacta-y-09-10",
         "pr": 161,
-        "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+        "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
         "owner": "E",
         "support": "B/C",
         "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
@@ -3493,7 +3446,7 @@
         },
         "currentTrial": {
           "pr": 161,
-          "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+          "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
           "state": "pendiente-validaciones-exactas"
         }
       },
@@ -3902,7 +3855,7 @@
       },
       "latest": {
         "pr": 161,
-        "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
+        "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
         "ancestry": {
           "m1": {
             "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
@@ -3918,50 +3871,50 @@
         "checks": [
           {
             "name": "Release Gate",
-            "id": 46003468168,
+            "id": 46014194316,
+            "status": "queued",
+            "conclusion": null
+          },
+          {
+            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+            "id": 46014194293,
+            "status": "queued",
+            "conclusion": null
+          },
+          {
+            "name": "CI",
+            "id": 46014194292,
+            "status": "queued",
+            "conclusion": null
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 46014194319,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 46014194311,
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "CI rápida",
+            "id": 46014194331,
             "status": "in_progress",
             "conclusion": null
           },
           {
             "name": "Pi 1.2 runtime evidence",
-            "id": 46003468146,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-            "id": 46003468361,
-            "status": "pending",
-            "conclusion": null
-          },
-          {
-            "name": "Pi Free Smoke",
-            "id": 46003468303,
-            "status": "completed",
-            "conclusion": "skipped"
-          },
-          {
-            "name": "CI",
-            "id": 46003468340,
-            "status": "pending",
-            "conclusion": null
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 46003468224,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "CI rápida",
-            "id": 46003468163,
+            "id": 46014194294,
             "status": "in_progress",
             "conclusion": null
           }
         ],
-        "reviewRequested": 7218963732,
-        "m1": "base técnica histórica aprobada; nuevo candidato pendiente",
-        "m2": "09/10, revisión exacta, CI y paquete Windows pendientes",
+        "reviewRequested": 7220544991,
+        "m1": "base técnica histórica aprobada, nueva validación pendiente",
+        "m2": "09/10, revisión exacta y CI pendientes",
         "globalFull": false
       }
     }
