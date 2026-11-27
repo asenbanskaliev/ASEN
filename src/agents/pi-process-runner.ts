@@ -69,6 +69,8 @@ export interface PiProcessOptions{
  onNativeReviewEvent?:(event:PiNativeReviewEvent)=>void;
  /** Emitted only after this child accepts a configured model switch. */
  onModelFallback?:AgentFallbackListener;
+ /** Aviso acotado del host, sin añadir autoridad ni consumir modelos. */
+ onFallbackUnavailable?:(scope:Readonly<{taskId:string;sessionId:string;projectId:string}>)=>void;
  /** Consentimiento del anfitrión para el intento exacto; nunca se serializa.
   * El host de producción devuelve una comprobación viva, no una autorización reutilizable. */
  authorizeModelFallback?:(input:Readonly<{taskId:string;sessionId:string;projectId:string;role:AgentRequest["role"];to:string}>,signal?:AbortSignal)=>boolean|(()=>boolean|Promise<boolean>)|Promise<boolean|(()=>boolean|Promise<boolean>)>;
@@ -559,7 +561,14 @@ export class PiProcessRunner implements AgentRunner{
    const consentSignal=signal?AbortSignal.any([signal,consentAbort.signal]):consentAbort.signal;
    const finish=(result:AgentResult)=>{
     if(settled)return;
-    if(alternativesUnavailable){const notice="Alternativas OAuth no disponibles; solo se permite el modelo principal exacto.";result={...result,output:result.ok?result.output+"\n"+JSON.stringify({type:"asen_fallback_unavailable",message:notice})+"\n":result.output+"; "+notice};}
+    if(alternativesUnavailable){
+     const notice="Alternativas OAuth no disponibles; solo se permite el modelo principal exacto.";
+     const suffix=result.ok?"\n"+JSON.stringify({type:"asen_fallback_unavailable",message:notice})+"\n":"; "+notice;
+     // Conservar todos los registros originales si el aviso no cabe. El
+     // anfitrión recibe el aviso por separado, incluso en ese límite.
+     if(Buffer.byteLength(result.output)+Buffer.byteLength(suffix)<=Math.min(max,1_000_000))result={...result,output:result.output+suffix};
+     try{this.options.onFallbackUnavailable?.(Object.freeze({taskId:request.id,sessionId:request.isolationKey??"default",projectId:request.repository}));}catch{/* Un aviso nunca invalida un resultado. */}
+    }
     consentAbort.abort();
     settled=true;
     clearTimeout(timer);
