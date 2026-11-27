@@ -122,7 +122,7 @@ for (const specific of [true, false]) test(`P11 public E registration wires ${sp
  // Global active-name drift must not silently replace this session's captured A identity.
  await writeFile(f.profilesFile, JSON.stringify(profiles("B")));
  const before = await f.state(), {request, query} = await f.complete(await f.launch());
- const expected = {profile: "A", chain: specific ? ROLE : WILDCARD};
+ const expected = {profile: "A", chain: specific ? ROLE : WILDCARD, origin:{scope:"global",name:"A",model:PRIMARY.model}};
  assert.deepEqual(request.modelFallback, expected, "Missing selected stored explorer fallback at public admission");
  assert.deepEqual(query.details.task.spec.modelFallback, expected);
  assert.deepEqual((await f.state()).binding, before.binding);
@@ -142,14 +142,14 @@ test("P11 legacy direct launch without stored configuration preserves model, eff
 
 test("P11 existing runtime admission freezes and persists a copy independent of later stored chain edits", async t => {
  const f = await fixture(t, configured()), {request, query} = await f.complete(await f.launch());
- assert.deepEqual(request.modelFallback, {profile: "A", chain: ROLE}, "Missing fallback before snapshot check");
+ assert.deepEqual(request.modelFallback, {profile: "A", chain: ROLE, origin:{scope:"global",name:"A",model:PRIMARY.model}}, "Missing fallback before snapshot check");
  assert.ok(Object.isFrozen(request.modelFallback)); assert.ok(Object.isFrozen(request.modelFallback!.chain));
  for (const step of request.modelFallback!.chain) assert.ok(Object.isFrozen(step));
  await writeFile(f.fallbackFile, serializeProfileFallbacks({schema: ASEN_PROFILE_FALLBACKS_SCHEMA, profiles: {A: {explorer: [{model: "later/edit"}]}}}));
- assert.deepEqual(request.modelFallback, {profile: "A", chain: ROLE});
- assert.deepEqual(query.details.task.spec.modelFallback, {profile: "A", chain: ROLE});
+ assert.deepEqual(request.modelFallback, {profile: "A", chain: ROLE, origin:{scope:"global",name:"A",model:PRIMARY.model}});
+ assert.deepEqual(query.details.task.spec.modelFallback, {profile: "A", chain: ROLE, origin:{scope:"global",name:"A",model:PRIMARY.model}});
  assert.notEqual(query.details.task.spec.modelFallback, request.modelFallback);
- assert.deepEqual((await f.queryTask(request.id)).details.task.spec.modelFallback, {profile: "A", chain: ROLE});
+ assert.deepEqual((await f.queryTask(request.id)).details.task.spec.modelFallback, {profile: "A", chain: ROLE, origin:{scope:"global",name:"A",model:PRIMARY.model}});
 });
 
 test("P11 strict malformed stored bytes reject through the public tool with no admission or configuration/counter/binding effects", async t => {
