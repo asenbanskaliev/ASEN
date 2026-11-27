@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 153,
       "sha": "6a71abdbbccbe1479f6238da9d9712c78d88bdd8",
-      "next": "M2: auditar ruta de coste/consentimiento de alternativas (AUD-M2-03), preparar pruebas offline 09/10 de fallo y perfil, sin llamadas, con reserva exclusiva si hay defecto reproducible. M3 independiente después.",
+      "next": "Auditar de forma independiente consentimiento, identidad y ámbito en PR 161; no editar archivos reservados, preparar prueba de reinicio real de perfil sin modelos externos.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -138,23 +138,7 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": {
-        "id": "manual-E-auditoria-M2-coste-1127",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
-        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "files": [
-          "src/runtime/lifecycle/parent-model-fallback.ts",
-          "src/agents/pi-process-runner.ts",
-          "extensions/asen.ts",
-          "tests/parent-model-fallback.test.ts",
-          "tests/pi-process-runner.test.ts"
-        ],
-        "phase": "Corregir autorización de cambio de modelo padre/hijo; pruebas offline",
-        "startedAt": "2026-11-27T11:12:43.156Z"
-      },
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -199,7 +183,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Prioridad auditoría AUD-M2-03 de consentimiento para alternativas de coste no acreditado; coordinar B para pruebas dirigidas de 09/10, sin repetir T06 ni usar modelos. No declarar M2 completa.",
+      "next": "Validar PR 161 exacta; completar pruebas de reanudación perfil y fallo proveedor controlado, no declarar M2 cerrada, no repetir T06. Corregir regresiones del candidato propio.",
       "blocker": "Ningún bloqueo T06; falta consolidación y aceptación integral de etapas posteriores.",
       "generation": 2,
       "pr": 159,
@@ -863,35 +847,31 @@
       },
       "state": "liberada",
       "reason": "Intento único de nuevo ensayo #160; no repetir"
+    },
+    {
+      "team": "E",
+      "reservation": {
+        "id": "manual-E-auditoria-M2-coste-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "files": [
+          "src/runtime/lifecycle/parent-model-fallback.ts",
+          "src/agents/pi-process-runner.ts",
+          "extensions/asen.ts",
+          "tests/parent-model-fallback.test.ts",
+          "tests/pi-process-runner.test.ts"
+        ],
+        "phase": "Corregir autorización de cambio de modelo padre/hijo; pruebas offline",
+        "startedAt": "2026-11-27T11:12:43.156Z"
+      },
+      "state": "liberada",
+      "reason": "Código y pruebas publicados, liberar antes de CI"
     }
   ],
-  "temporaryOwnership": {
-    "src/runtime/lifecycle/parent-model-fallback.ts": {
-      "team": "E",
-      "lease": "manual-E-auditoria-M2-coste-1127",
-      "scope": "AUD-M2-03"
-    },
-    "src/agents/pi-process-runner.ts": {
-      "team": "E",
-      "lease": "manual-E-auditoria-M2-coste-1127",
-      "scope": "AUD-M2-03"
-    },
-    "extensions/asen.ts": {
-      "team": "E",
-      "lease": "manual-E-auditoria-M2-coste-1127",
-      "scope": "AUD-M2-03"
-    },
-    "tests/parent-model-fallback.test.ts": {
-      "team": "E",
-      "lease": "manual-E-auditoria-M2-coste-1127",
-      "scope": "AUD-M2-03"
-    },
-    "tests/pi-process-runner.test.ts": {
-      "team": "E",
-      "lease": "manual-E-auditoria-M2-coste-1127",
-      "scope": "AUD-M2-03"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -3160,7 +3140,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T11:10:18.784Z",
+  "updatedAt": "2026-11-27T11:16:04.195Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3610,21 +3590,21 @@
         {
           "id": "AUD-M2-01",
           "priority": "alta",
-          "status": "brecha-evidencia",
+          "status": "refuerzo-identidad-y-429-instrumentado-publicado-pendiente-real",
           "description": "Objetivo 09 no probado con fallo real, 429 o credencial; el ensayo T06 es paralelo, no fallback.",
           "acceptance": "Ensayo limitado con fallo controlado y respuesta real alternativa, registro del modelo observado y un único resultado; primero pruebas offline, nueva autorización exacta para proveedor."
         },
         {
           "id": "AUD-M2-02",
           "priority": "alta",
-          "status": "brecha-evidencia",
+          "status": "correccion-ambito-explorer-directo-pendiente-prueba-recuperacion-real",
           "description": "Objetivo 10: script T06 usa modelo explícito, no perfil principal o reanudación. Ambas sesiones Pi usan Lightning.",
           "acceptance": "Fixture de perfil real, elegir principal a través de ruta de producción y reabrir sesión; comprobar recibo exacto y variante dos modelos Pi si requerida."
         },
         {
           "id": "AUD-M2-03",
           "priority": "alta",
-          "status": "auditoria-pendiente-de-gate-coste",
+          "status": "correccion-publicada-espera-validacion",
           "description": "profile-fallback-store.ts guarda modelo/esfuerzo y pi-process-runner.ts 485-510 cambia al modelo configurado sin comprobar coste en ese tramo. No se ha acreditado una confirmación específica de modelo de pago/indeterminado aguas arriba; no concluir vulnerabilidad sin verificar consumidores.",
           "acceptance": "Auditar admisión de alternativas de pago/indeterminadas, perfil de proyecto y autorización humana; prueba negativa de cero llamadas si no existe consentimiento aplicable; no bloquear alternativas legítimas ya autorizadas."
         },
@@ -3639,13 +3619,18 @@
       "followup": {
         "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
         "base": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
-        "state": "reservada",
+        "state": "correcciones-publicadas-espera-ci-revision",
         "modelsAllowed": false,
         "findings": [
           "AUD-M2-01",
           "AUD-M2-02",
           "AUD-M2-03"
-        ]
+        ],
+        "pr": 161,
+        "sha": "fa873cbd0bb7e313f10491bb70d50ed15ecbf997",
+        "reviewRequested": 7216875208,
+        "scope": "Consentimiento exacto padre/hijo, confirmación de selección efectiva antes de segunda inferencia, ámbito Explorer directo y regresiones.",
+        "real09and10": "No ensayado aún con proveedor real; no rearmar #160. Preparar fixture acotada y solicitar autorización nueva específica cuando esté lista."
       }
     }
   }
