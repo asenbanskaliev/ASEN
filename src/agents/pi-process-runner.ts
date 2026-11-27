@@ -441,8 +441,11 @@ export class PiProcessRunner implements AgentRunner{
   const policy=join(policyDirectory,"extensions","authority.ts");
   const userHome=childEnvironment.HOME??childEnvironment.USERPROFILE??homedir();
   const override=childEnvironment.PI_CODING_AGENT_DIR;
-  const configHome=override?resolvePath(override==="~"?userHome:override.startsWith("~/")||override.startsWith("~\\")?join(userHome,override.slice(2)):override):join(userHome,".pi","agent");
+  let configHome:string;
+   try{configHome=override?resolvePath(override.startsWith("file:")?fileURLToPath(override):override==="~"?userHome:override.startsWith("~/")||override.startsWith("~\\")?join(userHome,override.slice(2)):override):join(userHome,".pi","agent");}
+   catch{rmSync(policyDirectory,{recursive:true,force:true});return Promise.resolve({id:request.id,ok:false,output:"Invalid Pi configuration directory"});}
   const scopedFallback=!!fallbackConfig?.chain.length;
+   const needsModelPreflight=strictModelPreflight||scopedFallback;
   let sharedAuthPath:string|undefined,effectivePrimary=request.model;
   if(scopedFallback){
    try{
@@ -849,10 +852,19 @@ export class PiProcessRunner implements AgentRunner{
       });
       try{this.options.onToolExecution?.(event);}catch{/* Evidence observers cannot alter Pi execution. */}
      }
-     if(selectionOwner&&selectionSubscriptions.length&&type==="response"&&(response.id===selectionId||response.command==="get_state")){
+     if(type==="response"&&(needsModelPreflight||selectionOwner&&selectionSubscriptions.length)&&(response.id===selectionId||response.command==="get_state")){
       if(selectionRequested&&!selectionResponded&&response.id===selectionId&&policyLoaded&&!settled&&!stopResult&&!agentEnded&&!signal?.aborted){
        selectionResponded=true;
-       const observation=response.success===true&&response.command==="get_state"?childSelection(selectionOwner,response.data):undefined;
+       const observation=selectionOwner&&response.success===true&&response.command==="get_state"?childSelection(selectionOwner,response.data):undefined;
+       if(scopedFallback){
+        const raw=(response.data as {model?:{provider?:unknown;id?:unknown;api?:unknown}}|undefined)?.model;
+        const expected=effectivePrimary?splitPiModelIdentity(effectivePrimary):undefined;
+        const actual=typeof raw?.provider==="string"&&typeof raw.id==="string"?splitPiModelIdentity(raw.provider+"/"+raw.id):undefined;
+        if(response.success!==true||response.command!=="get_state"||raw?.api==="pi-virtual"||!expected||!actual||reviewModelIdentityKey(expected)!==reviewModelIdentityKey(actual)){
+         stop({id:request.id,ok:false,output:"Pi primary model selection was not confirmed before prompt"});return;
+        }
+        selectedIdentity=actual;
+       }
        if(strictModelPreflight){
         const expected=request.model!,slash=expected.indexOf("/"),selected=observation?.model;
         if(slash<=0||slash===expected.length-1||!selected||
@@ -867,7 +879,7 @@ export class PiProcessRunner implements AgentRunner{
         if(!this.#selectionSubscriptions.has(subscription))continue;
         try{void Promise.resolve(subscription.listener(observation)).catch(()=>{});}catch{/* Descriptive observers cannot alter execution. */}
        }
-       if(strictModelPreflight){
+       if(needsModelPreflight){
         // Un observador de selección puede cancelar de forma síncrona.
         // Esa cancelación no debe permitir una llamada al proveedor.
         if(!alive())return;
@@ -934,8 +946,8 @@ export class PiProcessRunner implements AgentRunner{
      const observed=response.data?.commands?.filter(item=>item.source==="skill").map(item=>typeof item.sourceInfo?.path==="string"?canonical(item.sourceInfo.path):"")??[];
      if(observed.length!==expected.length||observed.some((path,index)=>path!==expected[index])){stop({id:request.id,ok:false,output:"pi native Skill paths do not match ASEN selection"});return;}
      policyLoaded=true;
-     if(selectionOwner&&selectionSubscriptions.length&&!selectionRequested){selectionRequested=true;void writeLine(JSON.stringify({id:selectionId,type:"get_state"})+"\n");}
-     if(!strictModelPreflight){
+     if((needsModelPreflight||selectionOwner&&selectionSubscriptions.length)&&!selectionRequested){selectionRequested=true;void writeLine(JSON.stringify({id:selectionId,type:"get_state"})+"\n");}
+     if(!needsModelPreflight){
       armPhase("turn");
       void writeLine(JSON.stringify({id:request.id,type:"prompt",message})+"\n",true);
      }
