@@ -926,10 +926,10 @@ test("M2: las alternativas desactivan los reintentos Pi y HTTP en una configurac
 });
 
 
-test("M2: configuración privada conserva claves API permitidas y excluye sesiones OAuth",async t=>{
+test("M2: configuración privada conserva claves API permitidas y no copia OAuth ajeno",async t=>{
  const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});
  const source=join(d,"original-pi");await mkdir(source);
- const original=JSON.stringify({provider:{type:"oauth",access:"simulado",refresh:"rotatorio",expires:0},alternative:{type:"api_key",key:"clave-de-prueba"},unrelated:{type:"api_key",key:"otra-clave-de-prueba"}});
+ const original=JSON.stringify({oauthNoSolicitado:{type:"oauth",access:"simulado",refresh:"rotatorio",expires:0},alternative:{type:"api_key",key:"clave-de-prueba"},unrelated:{type:"api_key",key:"otra-clave-de-prueba"}});
  await writeFile(join(source,"auth.json"),original);
  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
  t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
@@ -938,4 +938,17 @@ test("M2: configuración privada conserva claves API permitidas y excluye sesion
  const trace=JSON.parse(await readFile(log,"utf8"));
  assert.deepEqual(trace.authTypes,{alternative:"api_key"});
  assert.equal(await readFile(join(source,"auth.json"),"utf8"),original);
+});
+
+
+test("M2: OAuth solicitado sin SDK nativo no se copia ni se ejecuta",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});
+ const source=join(d,"original-pi");await mkdir(source);
+ const original=JSON.stringify({provider:{type:"oauth",access:"simulado",refresh:"rotatorio",expires:0}});
+ await writeFile(join(source,"auth.json"),original);
+ const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+ t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+ const result=await runner(p).run({id:"fallback-oauth-without-native",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/requires a compatible native SDK/u);
+ await assert.rejects(access(log));assert.equal(await readFile(join(source,"auth.json"),"utf8"),original);
 });

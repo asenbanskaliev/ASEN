@@ -1,5 +1,5 @@
 import {AgentProjectAccess} from "./agent-project-access.js";
-import {realpath} from "node:fs/promises";
+import {realpath,stat} from "node:fs/promises";
 import {realpathSync} from "node:fs";
 import {isAbsolute,resolve} from "node:path";
 import type {ToolDefinition} from "@earendil-works/pi-coding-agent";
@@ -55,6 +55,7 @@ export const ASEN_AGENT_TOOL_NAMES=Object.freeze(["asen_agent_start","asen_agent
 /** Exposes only read-only explorer work by default; write agents require an internal fresh ASEN grant. */
 export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=>void},runtime:()=>Promise<AgentRuntime>,todoLink?:{todos:()=>Promise<SessionTodoStore>;binder:()=>Promise<TrustedTaskAgentBinder>;links:()=>Promise<TaskAgentLinkStore>},resolveRouting?:(role:"explorer"|"reviewer"|"verifier",identity:AgentSessionIdentity,directExplorer?:boolean)=>Promise<{choice?:RouteChoice;source:"session"|"project"|"global"|"default";modelFallback?:AgentModelFallback}>,notificationJournal?:AgentNotificationJournal,claimBudgetExplorer?:(identity:AgentSessionIdentity)=>boolean,loadProfiles?:(identity:AgentSessionIdentity)=>Promise<ProfileLayer>,monotonicNow:()=>number=()=>performance.now(),loadExplorerFallbackConfig?:(identity:AgentSessionIdentity)=>Promise<ExplorerFallbackConfig>):()=>void{
  const access=new AgentProjectAccess();
+ let accessGeneration=0;
  // An exact status query records only a short-lived coordinator inspection
  // attempt; it is neither Pi model consumption nor approval for further work.
  const inspected=new Map<string,{sessionId:string;projectId:string;agentId:string;state:string;at:number;monoAt:number}>();
@@ -64,16 +65,18 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
  pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated read-only Pi Explorer. With budgetExplorer=true, require real same-session exhaustion and the exact Explorer model configured in the active profile, without writing.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema,budgetExplorer:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
-  const launchManager=context?.sessionManager,launchHost=await identity(context),requestedRoot=(params as {root?:unknown}).root;
+  const launchManager=context?.sessionManager,launchGeneration=accessGeneration,launchHost=await identity(context),requestedRoot=(params as {root?:unknown}).root;
   const session=await selectedIdentity(requestedRoot,context,true,signal);
   const validateHost=async(diagnostic="La sesión cambió antes de ejecutar la exploración")=>{
    throwIfCancelled(signal);
    const current=await identity(context);
-   if(context?.sessionManager!==launchManager||current.sessionId!==launchHost.sessionId||session.sessionId!==launchHost.sessionId||!sameWorkspaceIdentityPath(current.projectId,launchHost.projectId))throw Error(diagnostic);
-   const target=await selectedIdentity(requestedRoot,context,false,signal);
-   if(target.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(target.projectId,session.projectId))throw Error("El proyecto autorizado cambió antes de ejecutar la exploración");
+   if(accessGeneration!==launchGeneration||context?.sessionManager!==launchManager||current.sessionId!==launchHost.sessionId||session.sessionId!==launchHost.sessionId||!sameWorkspaceIdentityPath(current.projectId,launchHost.projectId))throw Error(diagnostic);
+   // La confirmación inicial pertenece a este lanzamiento. Revalidarla sin
+   // cambiar la caché de permisos de otras llamadas o sesiones intercaladas.
+   const target=requestedRoot===undefined?current.projectId:await realpath(String(requestedRoot));
+   if(!sameWorkspaceIdentityPath(target,session.projectId)||!(await stat(target)).isDirectory())throw Error("El proyecto autorizado cambió antes de ejecutar la exploración");
    const after=await identity(context);
-   if(context?.sessionManager!==launchManager||after.sessionId!==launchHost.sessionId||!sameWorkspaceIdentityPath(after.projectId,launchHost.projectId))throw Error(diagnostic);
+   if(accessGeneration!==launchGeneration||context?.sessionManager!==launchManager||after.sessionId!==launchHost.sessionId||!sameWorkspaceIdentityPath(after.projectId,launchHost.projectId))throw Error(diagnostic);
    throwIfCancelled(signal);
   };
   await validateHost();
@@ -317,5 +320,5 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   throwIfCancelled(signal);const inspection=inspectInterruptedWrite({repository:session.projectId,expectedRevision:todo.plan.candidate.revision,writeSurfaces:todo.plan.writeSurfaces});
   return result({task:{title:todo.title,role:"worker",state:todo.current.state},agent:{id:agentId,state:entry.record.state},...inspection});
  }});
- return ()=>{inspected.clear();access.reset();};
+ return ()=>{inspected.clear();(++accessGeneration,access.reset());};
 }

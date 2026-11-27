@@ -1,7 +1,8 @@
 import {runnerStartDeadline} from "./dispatcher.js";
 import {bindNativeRunnerModels,isNativePartitionWriter} from "../runtime/agents/native-writer-completion.js";
 import {splitPiModelIdentity,reviewModelIdentityKey,inspectReviewIdentity,bindPiChildIdentityEvidence,type PiChildIdentityObservation,type PiModelIdentity} from "../review/model-identity.js";
-import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
+import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {delimiter,dirname,isAbsolute,join,resolve as resolvePath} from "node:path";
+import {fileURLToPath,pathToFileURL} from "node:url";
 import {performance} from "node:perf_hooks";
 import {lstatSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
 import {homedir,tmpdir} from "node:os";
@@ -122,7 +123,7 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 /** Una alternativa consentida no autoriza reintentos. Pi guarda set_auto_retry
  * en los ajustes globales: aislar los ajustes del hijo sin cambiar los del usuario.
  */
-function privateFallbackSettings(directory:string,source:string,request:AgentRequest,chain:readonly {model:string}[]):void{
+function privateFallbackSettings(directory:string,source:string,request:AgentRequest,chain:readonly {model:string}[]):string|undefined{
  const object=(value:unknown):Record<string,unknown>=>{
   if(!value||typeof value!=="object"||Array.isArray(value))throw Error("Invalid Pi fallback settings");
   return value as Record<string,unknown>;
@@ -132,7 +133,7 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
   try{
    const stat=lstatSync(path);
    if(!stat.isFile()||stat.size>4*1024*1024)throw Error("Invalid Pi fallback configuration file");
-   return object(JSON.parse(readFileSync(path,"utf8")));
+   return object(JSON.parse(readFileSync(path,"utf8").replace(/^\uFEFF/u,"")));
   }catch(error){
    if((error as NodeJS.ErrnoException).code==="ENOENT")return;
    throw Error("Unable to read private Pi fallback configuration");
@@ -147,16 +148,17 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
  if(typeof primary==="string"&&primary)providers.add(primary);
  mkdirSync(directory,{mode:0o700});
  const save=(name:string,value:unknown)=>writeFileSync(join(directory,name),JSON.stringify(value)+"\n",{mode:0o600,flag:"wx"});
- save("settings.json",{...settings,compaction:{...compaction,enabled:false},retry:{...retry,enabled:false,maxRetries:0,provider:{...provider,maxRetries:0}}});
+ save("settings.json",{...settings,packages:[],extensions:[],skills:[],promptTemplates:[],themes:[],compaction:{...compaction,enabled:false},retry:{...retry,enabled:false,maxRetries:0,provider:{...provider,maxRetries:0}}});
  const models=read("models.json");
  if(models){
   const configured=models.providers===undefined?{}:object(models.providers);
   save("models.json",{...models,providers:Object.fromEntries(Object.entries(configured).filter(([key])=>providers.has(key)))});
  }
  const auth=read("auth.json");
- // Nunca duplicar credenciales OAuth: su renovación puede invalidar el inicio
- // de sesión original. Las alternativas aisladas admiten claves API estáticas
- // y la credencial de entorno seleccionada; no heredan una sesión OAuth.
+ // Si una ruta usa OAuth, Pi debe acceder al almacén original con su propio
+ // bloqueo de renovación. No copiar tokens, enlazar auth.json ni guardar
+ // credenciales OAuth en el directorio temporal del hijo.
+ if(auth&&Object.entries(auth).some(([key,value])=>providers.has(key)&&value&&typeof value==="object"&&!Array.isArray(value)&&(value as Record<string,unknown>).type==="oauth"))return realpathSync(join(source,"auth.json"));
  if(auth){
   const keys=Object.entries(auth).flatMap(([provider,value])=>{
    if(!providers.has(provider)||!value||typeof value!=="object"||Array.isArray(value))return [];
@@ -165,6 +167,36 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
   });
   save("auth.json",Object.fromEntries(keys));
  }
+ return undefined;
+}
+
+/** Usar la instalación nativa de Pi elegida, no importar código del proyecto de trabajo. */
+function nativePiSdk(command:string,rpcArgs:readonly string[]|undefined,env:NodeJS.ProcessEnv):string|undefined{
+ const fromCli=(cli:string):string|undefined=>{
+  try{
+   const real=realpathSync(cli),normalized=real.replace(/\\/gu,"/");
+   if(!/\/@earendil-works\/pi-coding-agent\/dist\/(?:bundle\/)?cli\.js$/u.test(normalized))return;
+   const dist=normalized.endsWith("/bundle/cli.js")?dirname(dirname(real)):dirname(real),manifest=JSON.parse(readFileSync(join(dist,"..","package.json"),"utf8"));
+   if(manifest.name!=="@earendil-works/pi-coding-agent"||typeof manifest.version!=="string"||!checkPiVersion(manifest.version).ok)return;
+   const entry=realpathSync(join(dist,"index.js"));
+   if(!lstatSync(entry).isFile())return;
+   return pathToFileURL(entry).href;
+  }catch{return;}
+ };
+ if(command===process.execPath&&rpcArgs?.length===3&&rpcArgs[1]==="--mode"&&rpcArgs[2]==="rpc"&&isAbsolute(rpcArgs[0]!))return fromCli(rpcArgs[0]!);
+ if(command!=="pi"||rpcArgs!==undefined&&JSON.stringify(rpcArgs)!==JSON.stringify(["--mode","rpc"]))return;
+ for(const root of (env.PATH??"").split(delimiter).filter(Boolean)){
+  if(!isAbsolute(root))continue;
+  const direct=fromCli(join(root,"pi"));if(direct)return direct;
+  if(process.platform==="win32"){
+   const shim=join(root,"pi.cmd");try{if(!lstatSync(shim).isFile())continue;}catch{continue;}
+   const native=fromCli(join(root,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"));if(native)return native;
+   return;
+  }
+  // No saltar un ejecutable anterior de PATH para cambiar de instalación.
+  try{lstatSync(join(root,"pi"));return;}catch{/* No hay ejecutable Pi en esta entrada. */}
+ }
+ return;
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
@@ -375,10 +407,11 @@ export class PiProcessRunner implements AgentRunner{
   const policy=join(policyDirectory,"extensions","authority.ts");
   const configHome=childEnvironment.PI_CODING_AGENT_DIR??join(childEnvironment.HOME??childEnvironment.USERPROFILE??homedir(),".pi","agent");
   const scopedFallback=!!fallbackConfig?.chain.length;
+  let sharedAuthPath:string|undefined;
   if(scopedFallback){
    try{
     const isolatedConfig=join(policyDirectory,"agent");
-    privateFallbackSettings(isolatedConfig,configHome,request,fallbackConfig!.chain);
+    sharedAuthPath=privateFallbackSettings(isolatedConfig,configHome,request,fallbackConfig!.chain);
     childEnvironment.PI_CODING_AGENT_DIR=isolatedConfig;
    }catch{
     rmSync(policyDirectory,{recursive:true,force:true});
@@ -391,8 +424,23 @@ export class PiProcessRunner implements AgentRunner{
   const requestedTools=applyToolOverlay(baseTools,loadToolOverlays(configHome,request.repository));
   const effectiveTools=requestedTools.filter(tool=>baseTools.includes(tool));
   const toolArgs=this.options.noTools||effectiveTools.length===0?["--no-tools"]:["--tools",effectiveTools.join(",")];
-  const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,...(scopedFallback?["--no-approve"]:[]),
+  let spawnCommand=command;
+  let args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,...(scopedFallback?["--no-approve"]:[]),
    "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...toolArgs,...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
+  if(sharedAuthPath){
+   try{
+    const sdk=nativePiSdk(command,this.options.rpcArgs,childEnvironment);
+    if(!sdk||extra.length||!request.model)throw Error("Pi native SDK required for OAuth");
+    const launchFile=join(policyDirectory,"shared-auth-launch.json");
+    // Solo rutas y configuración de ejecución; nunca datos de credenciales.
+    writeFileSync(launchFile,JSON.stringify({sdk,authPath:sharedAuthPath,agentDir:childEnvironment.PI_CODING_AGENT_DIR,cwd:request.repository,model:request.model,thinking:request.thinking,tools:this.options.noTools?[]:effectiveTools,extensions:[policy,...(providerExtension?[providerExtension]:[])],skills:(request.skillPaths??[]).map(path=>resolvePath(request.repository,path))}),{mode:0o600,flag:"wx"});
+    const entry=fileURLToPath(new URL(import.meta.url.endsWith(".ts")?"./pi-shared-auth-rpc.ts":"./pi-shared-auth-rpc.js",import.meta.url));
+    spawnCommand=process.execPath;args=[entry,launchFile];
+   }catch{
+    rmSync(policyDirectory,{recursive:true,force:true});
+    return Promise.resolve({id:request.id,ok:false,output:"Pi OAuth fallback requires a compatible native SDK and one exact primary model; no credentials were copied"});
+   }
+  }
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
   const maxStream=this.options.maxStreamBytes??32_000_000;
@@ -405,7 +453,7 @@ export class PiProcessRunner implements AgentRunner{
    try{
     const deadline=runnerStartDeadline(request);
     if(deadline!==undefined&&performance.now()>=deadline)throw Error("Exact batch consent expired before native Pi spawn");
-    child=spawnContained(command,args,{
+    child=spawnContained(spawnCommand,args,{
      cwd:request.repository,
      env:{...childEnvironment,ASEN_PI_AUTHORITY:JSON.stringify({repository:request.repository,role:request.role,writeSurfaces:writer?request.writeSurfaces:[],agentId:request.id,sessionId:request.isolationKey??"default",...(this.options.attributionFile?{attributionFile:this.options.attributionFile}:{}),...(receipt?{exactWriteReceipt:receipt}:{}),...(oneShot?{oneShotWritePath:oneShot,oneShotClaimFile:this.options.attributionFile!+".t06-claim"}:{})})},
      stdio:["pipe","pipe","pipe"],
