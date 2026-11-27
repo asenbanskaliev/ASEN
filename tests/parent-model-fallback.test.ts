@@ -231,3 +231,18 @@ test("M2: una respuesta de consentimiento obsoleta no borra el fallo de la sesi�
  const before=Array.from(f.calls);resolve(true);
  assert.equal(await pending,false);assert.deepEqual(f.calls,before);assert.ok(before.some(x=>x.startsWith("set:")));
 });
+
+
+test("M2: el cambio de sesión drena una mutación de modelo anterior sin continuar su turno",async()=>{
+ let release!:()=>void,started!:()=>void;
+ const gate=new Promise<void>(resolve=>{release=resolve;}),entered=new Promise<void>(resolve=>{started=resolve;});
+ const f=fixture({setModel:async model=>{f.calls.push("set:"+model.id);started();await gate;f.setModel(model.provider+"/"+model.id);return true;}});
+ const adapter=createParentModelFallback(f.host),scope={sessionId:"session-1",projectId:"/project"};
+ adapter.activate(scope);adapter.onAgentEnd({messages:failure()},scope);
+ const pending=adapter.onAgentSettled({},undefined,scope);await entered;
+ adapter.activate(undefined);let drained=false;
+ const transition=adapter.drainMutation()!.then(()=>{drained=true;});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(drained,false);
+ release();await transition;assert.equal(await pending,false);assert.equal(drained,true);
+ assert.deepEqual(f.calls,["set:backup"]);
+});

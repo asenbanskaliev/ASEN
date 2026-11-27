@@ -54,7 +54,7 @@ if(process.argv[2]==="--seed"){
  const base=realpathSync(mkdtempSync(join(tmpdir(),"asen-m2-0910-")));
  const fixture=createT06ReadOnlyGitFixture();
  const identity:AgentSessionIdentity={sessionId,projectId:realpathSync(fixture.children[0])};
- const report={schema:"asen.m2.0910/v1",sha,profile,primary,alternative,objective09:"BLOCKED",objective10:"BLOCKED",stage:"seed",providerFailureCategory:null as string|null,primarySelected:false,alternativeConsents:0,alternativeSwitches:0,interruptedRecordSeeded:true,storeReopened:false,nativeParentRestartProven:false,providerResponseVerified:false,gitClean:false,billingVerified:false,globalFull:false};
+ const report={schema:"asen.m2.0910/v1",sha,profile,sessionId,projectId:identity.projectId,continuationOf:parentId,resumedTaskId:null as string|null,primary,alternative,objective09:"BLOCKED",objective10:"BLOCKED",stage:"seed",providerFailureCategory:null as string|null,primarySelected:false,alternativeConsents:0,alternativeSwitches:0,interruptedRecordSeeded:true,storeReopened:false,nativeParentRestartProven:false,providerResponseVerified:false,gitClean:false,billingVerified:false,globalFull:false};
  let runtime:AgentRuntime|undefined;
  let started:Promise<unknown>|undefined;
  let childId:string|undefined;
@@ -83,7 +83,7 @@ if(process.argv[2]==="--seed"){
   report.storeReopened=true;report.stage="native-child";
   const pending=continueInterruptedExplorer({runtime,agentId:parentId,identity,resolveCurrentIdentity:async()=>identity,readCurrentDirectFallback:()=>configuration(base)});
   started=pending;
-  const resumed=await pending;childId=resumed.id;
+  const resumed=await pending;childId=resumed.id;report.resumedTaskId=childId;
   assert.notEqual(childId,parentId);
   const deadline=Date.now()+145000;
   while(Date.now()<deadline){
@@ -127,6 +127,7 @@ if(process.argv[2]==="--seed"){
   if(started)await Promise.allSettled([started]);
   let stopped=true;
   try{await runtime?.cancelSession(identity);}catch{stopped=false;}
+  report.primarySelected=selectedPrimary;report.alternativeConsents=consentCount;report.alternativeSwitches=switches.length;
   if(stopped){
    try{const git=fixture.observe();report.gitClean=git.isolated&&git.sourceClean&&git.children.every(x=>x.pinned&&x.clean&&x.linked);}
    catch{report.gitClean=false;}

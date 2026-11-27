@@ -980,3 +980,16 @@ test("M2: Pi nativo selecciona OAuth desde el almacén original sin inferencia n
   assert.match(result.output,/cancelled/u);assert.equal(await readFile(authPath,"utf8"),original);
  }
 });
+
+
+test("M2: revocar la autorización durante set_model impide otro prompt",async t=>{
+ const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+ let validations=0,approvals=0;
+ const child=runner(p,{timeoutMs:10000,authorizeModelFallback:()=>{approvals++;return ()=>++validations===1;}});
+ const result=await child.run({id:"revocar-despues-set-model",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/scope is no longer live/u);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.equal(approvals,1);assert.equal(validations,2);
+ assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,1);
+ assert.equal(trace.commands.filter((command:{type:string})=>command.type==="set_model").length,1);
+});

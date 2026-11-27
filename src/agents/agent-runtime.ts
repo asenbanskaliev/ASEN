@@ -18,7 +18,7 @@ export interface AgentSessionIdentity{sessionId:string;projectId:string;}
 export class AgentRuntime{
  readonly #terminalListeners=new Set<(record:PublicAgentRecord)=>void>();
  readonly #fallbackListeners=new Set<AgentFallbackListener>();
- readonly #fallbackOwners=new Map<string,Readonly<{sessionId:string;projectId:string;projectKey:string}>>();
+ readonly #fallbackOwners=new Map<string,Readonly<{sessionId:string;projectId:string;projectKey:string;host:AgentSessionIdentity;role:AgentRequest["role"];alternatives:readonly string[];validateStart?:()=>Promise<void>}>>();
  readonly #executions=new Map<string,Promise<unknown>>();
  private constructor(readonly store:PersistentAgentStore,private readonly dispatcher:Dispatcher,private readonly evidence:EvidenceStore,readonly quarantined?:string){}
  static async open(options:{storeFile:string;runner:AgentRunner;maxConcurrency?:number;onModelFallback?:AgentFallbackListener}):Promise<AgentRuntime>{
@@ -47,6 +47,12 @@ export class AgentRuntime{
  subscribeModelFallback(listener:AgentFallbackListener):()=>void{
   if(typeof listener!=="function")throw new TypeError("Model fallback observer must be a function");this.#fallbackListeners.add(listener);return()=>{this.#fallbackListeners.delete(listener);};
  }
+ /** Valida la autorización de lanzamiento que sigue viva; la cadena no concede gasto. */
+ async validateActiveModelFallback(attempt:{taskId:string;sessionId:string;projectId:string;role:AgentRequest["role"];to:string},host:AgentSessionIdentity):Promise<boolean>{
+  const owner=this.#fallbackOwners.get(attempt.taskId);
+  if(!owner?.validateStart||!this.#executions.has(attempt.taskId)||owner.role!=="explorer"||attempt.role!==owner.role||attempt.sessionId!==owner.sessionId||workspaceIdentityPathKey(attempt.projectId)!==owner.projectKey||host.sessionId!==owner.host.sessionId||workspaceIdentityPathKey(host.projectId)!==workspaceIdentityPathKey(owner.host.projectId)||!owner.alternatives.includes(attempt.to))return false;
+  try{await owner.validateStart();return this.#fallbackOwners.get(attempt.taskId)===owner&&this.#executions.has(attempt.taskId);}catch{return false;}
+ }
  #publishModelFallback(observation:unknown):void{
   if(!observation||typeof observation!=="object"||Array.isArray(observation))return;const value=observation as Partial<Parameters<AgentFallbackListener>[0]>,identity=(candidate:unknown,limit:number)=>typeof candidate==="string"&&candidate.length>0&&candidate.length<=limit&&candidate===candidate.trim()&&!/[\u0000-\u001f\u007f-\u009f]/u.test(candidate),model=(candidate:unknown)=>identity(candidate,256),categories=new Set(["auth","rate_limit","quota","timeout","network","provider_unavailable"]);
   if(!identity(value.taskId,1024)||!identity(value.sessionId,1024)||!identity(value.projectId,32768))return;const taskId=value.taskId as string,projectId=value.projectId as string,owner=this.#fallbackOwners.get(taskId);
@@ -61,14 +67,14 @@ export class AgentRuntime{
    for(const listener of this.#terminalListeners)try{listener(structuredClone(entry.record));}catch{/* The durable result remains queryable. */}
   }catch{/* A failed storage read must never produce a success notification. */}
  }
-  #dispatch(request:AgentRequest,signal?:AbortSignal,startBefore?:number,validateStart?:()=>Promise<void>):void{
-  const sessionId=request.isolationKey??"default",projectId=request.repository,owner=Object.freeze({sessionId,projectId,projectKey:workspaceIdentityPathKey(projectId)});
+  #dispatch(request:AgentRequest,signal?:AbortSignal,startBefore?:number,validateStart?:()=>Promise<void>,fallbackHost?:AgentSessionIdentity):void{
+  const sessionId=request.isolationKey??"default",projectId=request.repository,owner=Object.freeze({sessionId,projectId,projectKey:workspaceIdentityPathKey(projectId),host:Object.freeze({...fallbackHost??{sessionId,projectId}}),role:request.role,alternatives:Object.freeze(request.modelFallback?.chain.map(step=>step.model)??[]),...(validateStart?{validateStart}:{})});
   const onAbort=()=>{this.dispatcher.cancel(request.id,sessionId,projectId);};
   signal?.addEventListener("abort",onAbort,{once:true});this.#fallbackOwners.set(request.id,owner);
   const execution=this.dispatcher.dispatch(request,startBefore,validateStart);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);if(this.#fallbackOwners.get(request.id)===owner)this.#fallbackOwners.delete(request.id);});
  }
- async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;validateStart?:()=>Promise<void>;validateAdHocStart?:()=>Promise<void>;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;fallbackHost?:AgentSessionIdentity;validateStart?:()=>Promise<void>;validateAdHocStart?:()=>Promise<void>;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId||input.onPrepared&&input.onQueued)throw new Error("An active Pi session and project with one launch boundary is required");
   const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role as Exclude<typeof input.role,"clarifier">];
   if(input.role==="clarifier"&&input.skillSelection)throw new Error("clarifier dispatch cannot receive a skill phase");
@@ -102,7 +108,7 @@ export class AgentRuntime{
   }
   let enqueued=false,dispatched=false;
   const enqueue=async()=>{if(enqueued)throw new Error("Agent launch may enqueue only once");await this.store.enqueue(request,request.owner!,signal);enqueued=true;};
-  const dispatch=()=>{if(!enqueued)throw new Error("Agent launch must be durably enqueued before dispatch");if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal,undefined,input.validateStart);dispatched=true;};
+  const dispatch=()=>{if(!enqueued)throw new Error("Agent launch must be durably enqueued before dispatch");if(dispatched)throw new Error("Agent launch may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal,undefined,input.validateStart,input.fallbackHost);dispatched=true;};
   try{
    if(input.onPrepared)await input.onPrepared(request.id,enqueue,dispatch);
    else{await enqueue();if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});if(input.onQueued)await input.onQueued(request.id,dispatch);else dispatch();}

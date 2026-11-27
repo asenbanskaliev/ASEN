@@ -69,8 +69,9 @@ export interface PiProcessOptions{
  onNativeReviewEvent?:(event:PiNativeReviewEvent)=>void;
  /** Emitted only after this child accepts a configured model switch. */
  onModelFallback?:AgentFallbackListener;
- /** Consentimiento del anfitrión para el intento exacto; nunca se serializa. */
- authorizeModelFallback?:(input:Readonly<{taskId:string;sessionId:string;projectId:string;role:AgentRequest["role"];to:string}>,signal?:AbortSignal)=>boolean|Promise<boolean>;
+ /** Consentimiento del anfitrión para el intento exacto; nunca se serializa.
+  * El host de producción devuelve una comprobación viva, no una autorización reutilizable. */
+ authorizeModelFallback?:(input:Readonly<{taskId:string;sessionId:string;projectId:string;role:AgentRequest["role"];to:string}>,signal?:AbortSignal)=>boolean|(()=>boolean|Promise<boolean>)|Promise<boolean|(()=>boolean|Promise<boolean>)>;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -610,15 +611,23 @@ export class PiProcessRunner implements AgentRunner{
         role:request.role,to:candidate.pick.model!
        }),signal);
        if(!alive())return;
-       if(authorized!==true){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback requires explicit consent"});return;}
+       if(authorized!==true&&typeof authorized!=="function"){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback requires explicit consent"});return;}
+       const consentCurrent=async()=>{
+        if(!alive())return false;
+        let valid=false;try{valid=authorized===true||typeof authorized==="function"&&await authorized()===true;}catch{/* Una autorización no comprobable no habilita gasto. */}
+        if(!alive())return false;
+        if(!valid){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback consent scope is no longer live"});return false;}
+        return true;
+       };
+       if(!await consentCurrent()||!alive())return;
        // Cada RPC mantiene su propio presupuesto, sin competir con el diálogo.
        disarmPhase();
-       const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!alive())return;
+       const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!await consentCurrent()||!alive())return;
       if(switched.success!==true||switched.command!=="set_model")continue;
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
-      if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!alive())return;if(effort.success===true)appliedThinking=thinking;}
+      if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!await consentCurrent()||!alive())return;if(effort.success===true)appliedThinking=thinking;}
       // Confirmar el modelo seleccionado realmente por Pi antes de otra inferencia.
-      const state=await sendRpc({type:"get_state"});if(!alive())return;
+      const state=await sendRpc({type:"get_state"});if(!await consentCurrent()||!alive())return;
       const stateModel=(state.data as {model?:{provider?:unknown;id?:unknown}}|undefined)?.model;
       const expected=splitPiModelIdentity(to);
       const selected=typeof stateModel?.provider==="string"&&typeof stateModel.id==="string"?splitPiModelIdentity(stateModel.provider+"/"+stateModel.id):undefined;
@@ -633,6 +642,7 @@ export class PiProcessRunner implements AgentRunner{
       lastAssistantFailure=undefined;finalFailure=undefined;finalAgentSettled=false;
       continuationPromptId=undefined;continuationAcked=false;
       continuationMessageEnded=false;continuationAgentEnded=false;deferredContinuationSettled=false;
+      if(!await consentCurrent()||!alive())return;
       continuationTurnPending=true;
       armPhase("turn");
       const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."},id=>{continuationPromptId=id;});
