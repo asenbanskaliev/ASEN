@@ -147,8 +147,12 @@ test("G02 oculta la presión si falta la API pública y la marca desconocida si 
  const extension=readFileSync(new URL("../extensions/asen.ts",import.meta.url),"utf8");
  assert.match(extension,/projectHostStatus\(ctx,undefined,typeof pi\.getSettings==="function"\?\(\)=>settings:undefined\)/u);
  assert.match(extension,/let hostStatusSettingsFingerprint:string\|undefined;/u);
- assert.match(extension,/publishedSettingsFingerprint=observation===hostObservationGeneration\?settingsSnapshot:hostStatusSettingsFingerprint\?\?settingsSnapshot/u);
- assert.match(extension,/if\(observation===hostObservationGeneration\)hostStatusSettingsFingerprint=settingsSnapshot/u);
+ // La muestra se ordena al leer el host, no al iniciar la consulta asíncrona.
+ assert.match(extension,/hostStatus=observeHostStatus\(ctx,settings\),sample=\+\+hostSampleGeneration/u);
+ assert.match(extension,/const newest=sample>=hostPublishedSample/u);
+ assert.match(extension,/publishedHostStatus=newest\?hostStatus:hostStatusSnapshot\?\.hostStatus\?\?hostStatus/u);
+ assert.match(extension,/publishedSettingsFingerprint=newest\?settingsSnapshot:hostStatusSettingsFingerprint\?\?settingsSnapshot/u);
+ assert.match(extension,/if\(newest\)\{hostStatusSettingsFingerprint=settingsSnapshot;hostPublishedSample=sample;\}/u);
  assert.match(extension,/ensureHostCompactionObserver\(ctx,publishedSettingsFingerprint\)/u);
  assert.ok(extension.includes("const observeHostStatus=(ctx:CommandContext,settings:unknown)=>"),"captured undefined must not trigger a second settings read");
  assert.ok(extension.includes("const hostStatus=observeHostStatus(ctx,hostSettings());assertCurrent();"),"explicit panel inspection must capture settings once");
