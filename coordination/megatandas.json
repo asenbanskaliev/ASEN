@@ -138,23 +138,7 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": {
-        "id": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
-        "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127",
-        "files": [
-          "scripts/t06-nvidia-free-api-probe.mjs",
-          "tests/t06-nvidia-free-api-probe.test.mjs",
-          ".github/workflows/ci.yml",
-          ".github/workflows/t06-permission-probe.yml",
-          "tests/flujo-agentes-nvidia-workflow.test.ts"
-        ],
-        "phase": "Nuevo candidato separado, preservar intento consumido",
-        "startedAt": "2026-11-27T09:44:44.075Z"
-      },
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -199,7 +183,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Consolidar M3/M4 en candidato separado sobre base técnicamente validada #159, sin afirmar M2 cerrada ni repetir consumo. B audita identidad declarada y G03, C seguridad y Fix. Mantener M2 evidencia real parcial y solicitar nueva autorización solo cuando exista propuesta exacta y verificada.",
+      "next": "Validar candidato #160 Nano Omni, conservar #159 y reserva consumida; no aplicar etiqueta hasta pruebas y revisión exactas. Continuar M3–M5 sin modelos.",
       "blocker": "T06 consumido: MODEL_MISMATCH en segundo modelo, Pi omitido. Sin reintentos. Continuar trabajos independientes M3–M5.",
       "generation": 2,
       "pr": 159,
@@ -825,35 +809,31 @@
       },
       "state": "liberada",
       "reason": "Primera y única aplicación de etiqueta intentada; no repetir"
+    },
+    {
+      "team": "E",
+      "reservation": {
+        "id": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+        "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127",
+        "files": [
+          "scripts/t06-nvidia-free-api-probe.mjs",
+          "tests/t06-nvidia-free-api-probe.test.mjs",
+          ".github/workflows/ci.yml",
+          ".github/workflows/t06-permission-probe.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts"
+        ],
+        "phase": "Nuevo candidato separado, preservar intento consumido",
+        "startedAt": "2026-11-27T09:44:44.075Z"
+      },
+      "state": "liberada",
+      "reason": "Nuevo candidato separado: 4/4 cambios adicionales publicados, sin consumo"
     }
   ],
-  "temporaryOwnership": {
-    "scripts/t06-nvidia-free-api-probe.mjs": {
-      "team": "E",
-      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
-      "scope": "M2"
-    },
-    "tests/t06-nvidia-free-api-probe.test.mjs": {
-      "team": "E",
-      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
-      "scope": "M2"
-    },
-    ".github/workflows/ci.yml": {
-      "team": "E",
-      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
-      "scope": "M2"
-    },
-    ".github/workflows/t06-permission-probe.yml": {
-      "team": "E",
-      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
-      "scope": "M2"
-    },
-    "tests/flujo-agentes-nvidia-workflow.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-nuevo-ensayo-nano-omni-20261127",
-      "scope": "M2"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -2953,7 +2933,7 @@
       "labelRemoved": true
     },
     "nextTrialProposal": {
-      "state": "preparacion-sin-consumo",
+      "state": "candidato-preparado-espera-ci-revision",
       "source": "Usuario: Hazlo. Revisa cuáles hemos usado; respuesta a propuesta de alternativa y repetición.",
       "priorAttemptSha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "priorAttemptPreserved": true,
@@ -2976,11 +2956,14 @@
         }
       ],
       "limits": "2 solicitudes API de máximo 128 tokens, 2 sesiones Pi solo lectura, sin reintentos, sin pago ni nuevos modelos automáticos; verificar exactitud y revisión del nuevo candidato antes de etiqueta.",
-      "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127"
+      "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127",
+      "pr": 160,
+      "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
+      "newAuthorizationRequired": true
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T09:30:28.151Z",
+  "updatedAt": "2026-11-27T09:45:24.456Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3062,7 +3045,7 @@
         "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
         "owner": "E",
         "support": "B/C",
-        "next": "Conservar SHA y artefacto. El segundo proveedor declara private/nvidia/nemotron-3.5-super-120b-a12b en vez del modelo VL solicitado. No homologar alias ni identidad sin evidencia oficial; analizar catálogo y contrato de identidad sin llamar modelos. No repetir T06 ni rearmar. Requiere nueva autorización específica antes de un nuevo ensayo. M3/M4 pueden preparar candidato separado sobre base técnicamente admitida, nunca afirmar cierre M2."
+        "next": "Candidato #160 separado: Lightning + Nano Omni. Verificar CI exacta y revisión independiente; mantener #159 histórico con ensayo parcial. Ensayo nuevo solo tras puertas y consentimiento de alcance exacto."
       },
       {
         "id": "M3",
