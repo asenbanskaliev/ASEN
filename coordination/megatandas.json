@@ -1952,12 +1952,57 @@
     },
     "ci": {
       "sha": "c12c2a928abcf3b3893566228711088a63b27b9d",
-      "conclusion": "pendiente"
+      "conclusion": "pendiente",
+      "latest": [
+        {
+          "name": "Phase 0 Architecture",
+          "id": 45959424822,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "Pi Free Smoke",
+          "id": 45959424796,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Release Gate",
+          "id": 45959424692,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "CI rápida",
+          "id": 45959424748,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "Pi 1.2 runtime evidence",
+          "id": 45959424740,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "CI",
+          "id": 45959424698,
+          "status": "pending",
+          "conclusion": null
+        },
+        {
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 45959424758,
+          "status": "pending",
+          "conclusion": null
+        }
+      ]
     },
     "review": {
       "sha": "c12c2a928abcf3b3893566228711088a63b27b9d",
       "confirmed": false,
-      "scope": "Corrección de prueba y revisión pendiente del candidato exacto."
+      "scope": "Corrección de prueba y revisión pendiente del candidato exacto.",
+      "requestedCommentId": 7212611936
     },
     "audit": {
       "scope": "Orden temporal de revisión/consentimiento y revalidación tras escritura running. Pruebas nuevas; CI pendiente."
@@ -2298,7 +2343,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T07:34:43.229Z",
+  "updatedAt": "2026-11-27T07:34:55.248Z",
   "workHandoff": {
     "state": "corregido-espera-ci-revision",
     "source": "Usuario indica que Work agotó cuota",
@@ -2323,12 +2368,6 @@
           "conclusion": null
         },
         {
-          "name": "T06 comprobar permisos sin modelos",
-          "id": 45959328956,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
           "name": "Release Gate",
           "id": 45959328961,
           "status": "queued",
@@ -2347,9 +2386,15 @@
           "conclusion": "skipped"
         },
         {
+          "name": "T06 comprobar permisos sin modelos",
+          "id": 45959328956,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
           "name": "CI rápida",
           "id": 45959328972,
-          "status": "pending",
+          "status": "in_progress",
           "conclusion": null
         }
       ]
