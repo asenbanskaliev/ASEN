@@ -67,7 +67,7 @@ export class AgentRuntime{
    for(const listener of this.#terminalListeners)try{listener(structuredClone(entry.record));}catch{/* The durable result remains queryable. */}
   }catch{/* A failed storage read must never produce a success notification. */}
  }
-  #dispatch(request:AgentRequest,signal?:AbortSignal,startBefore?:number,validateStart?:()=>Promise<void>,fallbackHost?:AgentSessionIdentity,onPreStartValidationRejected?:()=>Promise<void>):void{
+  #dispatch(request:AgentRequest,signal?:AbortSignal,startBefore?:number,validateStart?:()=>Promise<void>,fallbackHost?:AgentSessionIdentity,onPreStartValidationRejected?:(proof:object)=>Promise<void>):void{
   const sessionId=request.isolationKey??"default",projectId=request.repository,owner=Object.freeze({sessionId,projectId,projectKey:workspaceIdentityPathKey(projectId),host:Object.freeze({...fallbackHost??{sessionId,projectId}}),role:request.role,alternatives:Object.freeze(request.modelFallback?.chain.map(step=>step.model)??[]),...(validateStart?{validateStart}:{})});
   const onAbort=()=>{this.dispatcher.cancel(request.id,sessionId,projectId);};
   signal?.addEventListener("abort",onAbort,{once:true});this.#fallbackOwners.set(request.id,owner);
@@ -157,7 +157,7 @@ export class AgentRuntime{
   const request=await this.store.enqueueContinuation(id,identity.sessionId,identity.projectId,{kind:"user",id:`pi:${identity.sessionId}`},signal);
   if(signal?.aborted){await this.store.cancelled(request.id,"Pi cancelled the continuation after durable enqueue and before dispatch");throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});}
   let dispatched=false;
-  const dispatch=()=>{if(dispatched)throw new Error("Agent continuation may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal,undefined,validateStart,undefined,!onQueued&&validateStart?()=>this.store.rejectContinuationBeforeStart(request.id):undefined);dispatched=true;};
+  const dispatch=()=>{if(dispatched)throw new Error("Agent continuation may dispatch only once");if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});this.#dispatch(request,signal,undefined,validateStart,undefined,!onQueued&&validateStart?proof=>this.store.rejectContinuationBeforeStart(request.id,proof):undefined);dispatched=true;};
   try{if(onQueued){await onQueued(request.id,dispatch);if(!dispatched)throw new Error("Trusted Todo binding did not start the continuation");}else dispatch();}
   catch(error){if(!dispatched)await this.store.cancelled(request.id,"Agent binding or continuation was cancelled before dispatch").catch(()=>{});throw error;}
   return request.id;
