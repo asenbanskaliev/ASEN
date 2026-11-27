@@ -36,7 +36,7 @@ test("T07 Pi TUI auténtico observa dos hijos persistidos y refresca el panel",{
   }));
  assert.ok(evidence,"El ensayo no guardó el recibo");
  assert.equal(evidence.sha,sha);
- assert.equal(evidence.piVersion,"1.2.0");
+ assert.equal(evidence.piVersion,"1.6.0");
  assert.equal(evidence.realPiTuiObserved,true);
  assert.equal(evidence.childJournalsVerified,true);
  assert.equal(evidence.initialRunningObserved,true);

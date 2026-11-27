@@ -58,7 +58,7 @@ test("managed CLI cancellation after program readiness closes without a false ob
 test("managed CLI post-execution drift is ambiguous and changed data is not repaired",async()=>{
  const f=await fixture("drift"),before=await snapshot(f,true),{probeManagedCliVersion}=await api();
  const report=await probeManagedCliVersion({prefix:f.prefix,version:"0.1.0",confirmed:true});
- baseReport(report);assert.equal(report.cliVersion,"ambiguous");assert.equal(report.reason,"candidate-drift");
+ baseReport(report);assert.equal(report.cliVersion,"ambiguous");assert.equal(report.reason,"candidate-drift-after-launch");
  assert.equal(report.stdout,"0.1.0\n");assert.equal(report.stderr,"");assert.equal(report.exitCode,0);assert.equal(report.launchAttempts,1);
  assert.equal(await readFile(f.bin,"utf8"),"CHANGED");await preserved(before);await invocation(f);
  assert.equal((await inspectManagedInstall({prefix:f.prefix})).status,"foreign");

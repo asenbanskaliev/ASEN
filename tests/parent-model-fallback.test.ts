@@ -27,6 +27,7 @@ function fixture(overrides:Partial<ParentModelFallbackHost>={}){
   currentModel:()=>currentModel,
   getThinking:()=>thinking,
   findModel:model=>models.get(model),
+  authorizeFallback:()=>true, // Consentimiento explícito del doble de prueba.
   setModel:async model=>{calls.push(`set:${model.id}`);currentModel=`${model.provider}/${model.id}`;return true;},
   setThinking:level=>{calls.push(`think:${level}`);thinking=level as typeof thinking;},
   notify:(change,prices)=>{calls.push(`notice:${change.to}:${prices?.to?.input??"unknown"}`);},
@@ -112,7 +113,7 @@ test("fallback-parent freezes profile and chain for an episode",async()=>{
  f.setIdentity(identity("other"));
  adapter.onAgentEnd({messages:failure()});
  assert.equal(await adapter.onAgentSettled(),false,"identity drift blocks the frozen episode");
- assert.equal(loads,1);
+ assert.equal(loads,3);
  assert.equal(f.calls.some(call=>call.includes("other")),false);
 });
 
@@ -168,7 +169,7 @@ test("fallback-parent coalesces duplicate in-flight settled events",async()=>{
 test("fallback-parent rejects stale event scopes before caching or abort invalidation",async()=>{
  const scopeA={sessionId:"session-a",projectId:"/project"},scopeB={sessionId:"session-b",projectId:"/project"};
  let loads=0;
- const f=fixture({loadChain:async()=>++loads===1?[{model:"provider/backup"},{model:"provider/last"}]:[]}),adapter:any=createParentModelFallback(f.host);
+ const f=fixture({loadChain:async()=>{loads++;return [{model:"provider/backup"},{model:"provider/last"}];}}),adapter:any=createParentModelFallback(f.host);
  f.setIdentity({sessionId:scopeB.sessionId,projectId:scopeB.projectId,profile:"main"});adapter.activate?.(scopeB);
  adapter.onAgentEnd({messages:failure()},scopeA);
  assert.equal(await adapter.onAgentSettled({},undefined,scopeB),false,"a delayed A end cannot feed B settled");
@@ -177,7 +178,7 @@ test("fallback-parent rejects stale event scopes before caching or abort invalid
  adapter.onAgentSettled({aborted:true},undefined,scopeA);
  adapter.onAgentEnd({messages:failure("fetch failed")},scopeB);
  assert.equal(await adapter.onAgentSettled({},undefined,scopeB),true,"a stale A abort cannot clear B episode");
- assert.equal(loads,1);assert.ok(f.calls.map(String).includes("set:last"));
+ assert.equal(loads,5);assert.ok(f.calls.map(String).includes("set:last"));
 });
 
 test("fallback-parent invalidated chain rejections resolve inertly after clear or abort",async()=>{
@@ -202,3 +203,100 @@ test("fallback-parent notice and continuation are bounded, structured, and do no
  const continuation=formatModelFallbackContinuation({...change,to:"provider/"+"x".repeat(500)});
  assert.ok(continuation.length<800);assert.doesNotMatch(continuation,/429|secret|raw/i);
 });
+
+
+test("M2: el padre no cambia a un modelo de coste desconocido sin consentimiento",async()=>{
+ for(const authorizeFallback of [()=>false,()=>{throw Error("diálogo fallido");}]){
+  const f=fixture({authorizeFallback});const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+  assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
+ }
+ const f=fixture();delete f.host.authorizeFallback;
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
+});
+
+test("M2: cambiar de sesión durante el consentimiento invalida la alternativa del padre",async()=>{
+ const f=fixture();f.host.authorizeFallback=()=>{f.setIdentity({...identity(),sessionId:"otra-sesion"});return true;};
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+ assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
+});
+
+
+test("M2: una respuesta de consentimiento obsoleta no borra el fallo de la sesión nueva",async()=>{
+ let resolve!: (value:boolean)=>void,entered!:()=>void;const held=new Promise<boolean>(r=>{resolve=r;}),started=new Promise<void>(r=>{entered=r;});let calls=0;
+ const f=fixture({authorizeFallback:()=>{if(++calls===1){entered();return held;}return true;}});
+ const adapter=createParentModelFallback(f.host),a={sessionId:"session-1",projectId:"/project"},b={sessionId:"session-2",projectId:"/project"};
+ adapter.activate(a);adapter.onAgentEnd({messages:failure()},a);const pending=adapter.onAgentSettled({},undefined,a);await started;
+ f.setIdentity({...identity(),...b});adapter.activate(b);adapter.onAgentEnd({messages:failure()},b);
+ assert.equal(await adapter.onAgentSettled({},undefined,b),true,"B no debe esperar a la autorización obsoleta de A");
+ const before=Array.from(f.calls);resolve(true);
+ assert.equal(await pending,false);assert.deepEqual(f.calls,before);assert.ok(before.some(x=>x.startsWith("set:")));
+});
+
+
+test("M2: el cambio de sesión drena una mutación de modelo anterior sin continuar su turno",async()=>{
+ let release!:()=>void,started!:()=>void;
+ const gate=new Promise<void>(resolve=>{release=resolve;}),entered=new Promise<void>(resolve=>{started=resolve;});
+ const f=fixture({setModel:async model=>{f.calls.push("set:"+model.id);started();await gate;f.setModel(model.provider+"/"+model.id);return true;}});
+ const adapter=createParentModelFallback(f.host),scope={sessionId:"session-1",projectId:"/project"};
+ adapter.activate(scope);adapter.onAgentEnd({messages:failure()},scope);
+ const pending=adapter.onAgentSettled({},undefined,scope);await entered;
+ adapter.activate(undefined);let drained=false;
+ const transition=adapter.drainMutation()!.then(()=>{drained=true;});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(drained,false);
+ release();await transition;assert.equal(await pending,false);assert.equal(drained,true);
+ assert.deepEqual(f.calls,["set:backup"]);
+});
+
+
+test("M2: rechazar una alternativa retirada durante el consentimiento del padre",async()=>{
+ let chain:readonly {model:string}[]=[{model:"provider/backup"}];
+ const f=fixture({loadChain:async()=>chain,authorizeFallback:async()=>{chain=[];return true;}});
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+ assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
+});
+
+
+test("M2: omitir modelos virtuales antes de pedir consentimiento al padre",async()=>{
+ const approvals:string[]=[];
+ const f=fixture({loadChain:async()=>[{model:"router/auto"},{model:"provider/last"}],findModel:model=>model==="router/auto"?{provider:"router",id:"auto",api:"pi-virtual"}:{provider:"provider",id:"last",api:"openai-completions"},authorizeFallback:model=>{approvals.push(model.provider+"/"+model.id);return true;}});
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+ assert.equal(await adapter.onAgentSettled(),true);assert.deepEqual(approvals,["provider/last"]);assert.equal(f.calls.includes("set:auto"),false);assert.ok(f.calls.includes("set:last"));
+});
+
+
+test("M2: cancelar durante la lectura de alternativas impide cambiar el modelo",async()=>{
+ for(const cancel of [true,false]){
+  const controller=new AbortController();let reads=0;
+  const f=fixture({isCancelled:()=>controller.signal.aborted,loadChain:async()=>{if(++reads===2&&cancel)controller.abort();return [{model:"provider/backup"}];}});
+  const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+  assert.equal(await adapter.onAgentSettled(),!cancel);assert.equal(f.host.currentModel(),cancel?"provider/primary":"provider/backup");
+ }
+});
+
+test("M2: retirar la alternativa durante setModel impide enviar la continuación",async()=>{
+ let chain:readonly {model:string}[]=[{model:"provider/backup"}];
+ const f=fixture({loadChain:async()=>chain,setModel:async model=>{f.setModel(model.provider+"/"+model.id);chain=[];return true;}});
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+ assert.equal(await adapter.onAgentSettled(),false);assert.equal(f.calls.some(call=>call.startsWith("follow:")),false);
+});
+
+
+test("M2: un cambio de perfil durante una lectura posterior al consentimiento impide mutar o continuar",async()=>{
+ for(const boundary of [2,3]){
+  let reads=0;
+  const f=fixture({loadChain:async()=>{if(++reads===boundary)f.setIdentity(identity("otro"));return [{model:"provider/backup",thinking:"low"},{model:"provider/last"}];}});
+  const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+  assert.equal(await adapter.onAgentSettled(),false);assert.equal(f.calls.some(call=>call.startsWith("follow:")),false);
+  if(boundary===2)assert.equal(f.host.currentModel(),"provider/primary");
+ }
+});
+
+ test("M2: recomendar un modelo manualmente no lo consume ni salta al siguiente",async()=>{
+  const recommendations:string[]=[];
+  const f=fixture({recommendManualModel:model=>recommendations.push(model.id)}),adapter=createParentModelFallback(f.host);
+  adapter.onAgentEnd({messages:failure()});assert.equal(await adapter.onAgentSettled(),false);
+  adapter.onAgentEnd({messages:failure()});assert.equal(await adapter.onAgentSettled(),false);
+  assert.deepEqual(recommendations,["backup","backup"]);assert.deepEqual(f.calls,[]);
+  f.setModel("provider/backup");adapter.onAgentEnd({messages:failure()});assert.equal(await adapter.onAgentSettled(),false);
+  assert.deepEqual(recommendations,["backup","backup","last"]);assert.deepEqual(f.calls,[]);
+ });

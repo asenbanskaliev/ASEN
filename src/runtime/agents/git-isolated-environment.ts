@@ -3,6 +3,7 @@
 import {mkdtempSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {execFileSync} from "node:child_process";
 
 let windowsEmptyConfig:string|undefined;
 function emptyWindowsGitConfig():string{
@@ -36,4 +37,21 @@ export function isolatedGitEnvironment(extra:NodeJS.ProcessEnv={}):NodeJS.Proces
   "GIT_COMMITTER_EMAIL","GIT_AUTHOR_DATE","GIT_COMMITTER_DATE"])
   if(extra[key]!==undefined)env[key]=extra[key];
  return env;
+}
+
+// Solo se consulta configuración escalar; nunca ejecutar Git operativo con el
+// entorno del usuario. Mantener aislados filtros, credenciales e índices.
+export function checkoutEolSettings(repository:string):Readonly<{autocrlf:string;eol:string;args:readonly string[]}>{
+ const readEnv=isolatedGitEnvironment();
+ delete readEnv.GIT_CONFIG_NOSYSTEM;delete readEnv.GIT_CONFIG_GLOBAL;
+ for(const key of ["HOME","USERPROFILE","XDG_CONFIG_HOME","GIT_CONFIG_GLOBAL","GIT_CONFIG_SYSTEM","GIT_CONFIG_NOSYSTEM"])
+  if(process.env[key]!==undefined)readEnv[key]=process.env[key];
+ const read=(key:string)=>{
+  try{return execFileSync("git",["-C",repository,"config","--get",key],{env:readEnv,encoding:"utf8",timeout:5000,maxBuffer:4096,windowsHide:true,stdio:["ignore","pipe","pipe"]}).trim().toLowerCase();}
+  catch(error){if((error as {status?:number})?.status===1)return "";throw error;}
+ };
+ const raw=read("core.autocrlf"),eol=read("core.eol");
+ const autocrlf=["true","yes","on","1"].includes(raw)?"true":["false","no","off","0"].includes(raw)?"false":raw;
+ if(!["","true","false","input"].includes(autocrlf)||!["","lf","crlf","native"].includes(eol))throw Error("Configuración Git de fin de línea no admitida");
+ return Object.freeze({autocrlf,eol,args:Object.freeze([...(autocrlf?["-c","core.autocrlf="+autocrlf]:[]),...(eol?["-c","core.eol="+eol]:[])])});
 }

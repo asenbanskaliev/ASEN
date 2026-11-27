@@ -129,8 +129,8 @@ test("E3: a named escalation keeps candidate acceptance gated after author tests
    assert.equal(result.taskId,verifier.taskId);
    assert.deepEqual(requests.map(r=>r.role),["worker","reviewer","verifier"]);
    const beforeVerifierAcceptance=prompts.length;
-   await command("asen-accept-review",result.taskId);
-   assert.equal(prompts.length,beforeVerifierAcceptance+1);
+   const acceptance=await command("asen-accept-review",result.taskId);
+   assert.equal(prompts.length,beforeVerifierAcceptance+1,String(acceptance));
    assert.equal((await rows()).find(row=>row.taskId===result.taskId)?.current.state,"done");
   }else{
    assert.equal((await invoke("asen_plan_dispatch_next")).status,"blocked");

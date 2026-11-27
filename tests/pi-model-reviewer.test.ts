@@ -122,13 +122,14 @@ test("T03 rechaza modelos Pi falsificados, controles y duplicados antes de ofrec
   {provider:"nvidia",id:""},
   {provider:"nvidia",id:"model\u0000evil"}
  ];
- const entries=[author,valid,{...valid},...malformed];
+ const unique={provider:"nvidia",id:"modelo-unico"};
+ const entries=[author,valid,{...valid},unique,...malformed];
  const eligible=availableIndependentPiReviewers({
   getAvailable:()=>entries,
   hasConfiguredAuth:()=>true,
   streamSimple:()=>{throw new Error("No se debe ejecutar ninguna llamada");}
  },author);
- assert.deepEqual(eligible,[valid]);
+ assert.deepEqual(eligible,[unique]);
  assert.equal(Object.isFrozen(eligible),true);
  assert.equal(Object.isFrozen(eligible[0]!),true);
  assert.deepEqual(availableIndependentPiReviewers({
@@ -136,4 +137,59 @@ test("T03 rechaza modelos Pi falsificados, controles y duplicados antes de ofrec
   hasConfiguredAuth:()=>true,
   streamSimple:()=>{throw new Error("Sin ejecución");}
  },author),[]);
+});
+
+
+test("Excluye modelos virtuales de Pi 1.2 sin llamar al transporte",async t=>{
+ const {workspace,evidence}=fixture(t);
+ const virtual={provider:"nvidia",id:"alias",api:"pi-virtual"};
+ let calls=0;
+ const models:PiReviewRegistry={getAvailable:()=>[virtual,reviewer],hasConfiguredAuth:()=>true,streamSimple(){calls++;return (async function*(){})();}};
+ assert.deepEqual(availableIndependentPiReviewers(models,author),[reviewer]);
+ await assert.rejects(()=>runIndependentPiReview({registry:models,model:virtual,author,evidence,requirements:"Comprobar independencia"}),/unavailable/u);
+ assert.equal(calls,0);closeWorkspaceReview(workspace);
+});
+
+
+test("Pi 1.2: el razonamiento separado no forma parte del veredicto y las herramientas siguen bloqueadas",async t=>{
+ const {workspace,evidence}=fixture(t);
+ const execute=(content:unknown[])=>runIndependentPiReview({registry:registry("",[{type:"done",reason:"stop",message:{content}}]).value,model:reviewer,author,evidence,requirements:"Revisión exacta"});
+ const final={type:"text",text:response()};
+ const valid=await execute([{type:"thinking",thinking:"No copiar este razonamiento",thinkingSignature:"opaco"},final]);
+ assert.equal(valid.verdict,"pass");assert.equal(valid.summary,"Reviewed exact candidate bytes");assert.equal(JSON.stringify(valid).includes("No copiar"),false);
+ await assert.rejects(()=>execute([{type:"thinking",thinking:"x".repeat(24001)},final]),/exceeds its bound/u);
+ await assert.rejects(()=>execute([{type:"thinking",thinking:"x",name:"write"},final]),/non-text output/u);
+ await assert.rejects(()=>execute([{type:"toolCall",id:"1",name:"write",arguments:{}},final]),/non-text output/u);
+ await assert.rejects(()=>execute([{type:"thinking",thinking:"{\"verdict\":\"pass\"}"}]),SyntaxError);
+ closeWorkspaceReview(workspace);
+});
+
+test("B+: excluye equivalencias NVIDIA del autor y del catálogo sin llamadas",()=>{
+ const modelo={provider:"nvidia",id:"nemotron-3-ultra-550b-a55b"};
+ const alias={provider:"nvidia",id:"nvidia/nemotron-3-ultra-550b-a55b"};
+ const otro={provider:"nvidia",id:"nemotron-3-nano-omni-30b-a3b-reasoning"};
+ const catalog=(entries:PiReviewerModel[]):PiReviewRegistry=>({getAvailable:()=>entries,hasConfiguredAuth:()=>true,streamSimple(){throw Error("No se debe llamar");}});
+ assert.deepEqual(availableIndependentPiReviewers(catalog([alias,otro]),modelo),[otro]);
+ assert.deepEqual(availableIndependentPiReviewers(catalog([modelo,alias,otro]),undefined),[otro]);
+});
+test("B+: distingue identidad declarada, desconocida e incompatible sin guardar razonamiento",async t=>{
+ const {workspace,evidence}=fixture(t);
+ const execute=(metadata:Record<string,unknown>)=>runIndependentPiReview({registry:registry("",[{type:"done",reason:"stop",message:{...metadata,content:[{type:"text",text:response()}]}}]).value,model:reviewer,author,evidence,requirements:"Revisión"});
+ const matched=await execute({provider:reviewer.provider,model:reviewer.id,responseModel:reviewer.id});
+ assert.equal(matched.identity?.status,"declared-match");
+ assert.equal(matched.identity?.requested,reviewer.provider+"/"+reviewer.id);
+ assert.equal((await execute({})).identity?.status,"unknown");
+ await assert.rejects(()=>execute({provider:"otro",model:reviewer.id}),/identity mismatch/u);
+ await assert.rejects(()=>execute({provider:reviewer.provider,model:"otro"}),/identity mismatch/u);
+ await assert.rejects(()=>execute({provider:reviewer.provider,model:reviewer.id,responseModel:"otro"}),/identity mismatch/u);
+ closeWorkspaceReview(workspace);
+});
+
+
+test("B+ la declaración con prefijo ajeno no une identidades distintas",async()=>{
+ const {inspectReviewIdentity,reviewModelIdentityKey}=await import("../src/review/model-identity.js");
+ const short={provider:"p",id:"judge"},long={provider:"p",id:"p/judge"};
+ assert.notEqual(reviewModelIdentityKey(short),reviewModelIdentityKey(long));
+ assert.throws(()=>inspectReviewIdentity(short,short,{provider:"p",model:"p/judge"}),/identity mismatch/u);
+ assert.equal(inspectReviewIdentity(long,long,{provider:"p",model:"p/judge"}).status,"declared-match");
 });

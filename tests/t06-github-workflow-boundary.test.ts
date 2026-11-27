@@ -84,7 +84,8 @@ test("T06: los dos Writers y los revisores exigen modelo Pi antes de consumir NV
  }
  assert.match(writer,/oneShotWritePath:target/u);
  assert.match(reviewer,/noTools:true,requireFinalSettlement:true/u);
- assert.match(pi,/if\(!strictModelPreflight\)/u,
+ assert.match(pi,/const needsModelPreflight=strictModelPreflight\|\|scopedFallback/u);
+ assert.match(pi,/if\(!needsModelPreflight\)/u,
   "El prompt sin selección solo se permite a ejecuciones que no exigen el control");
  assert.match(pi,/Pi child model selection was not confirmed before prompt/u);
  // Sin aprobación humana real no se eleva ninguna autoridad de escritura.

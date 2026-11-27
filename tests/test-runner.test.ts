@@ -66,6 +66,7 @@ const processFiles=[
  "tests/pi-session-recovery-e2e.test.ts",
  "tests/skill-registry-restart.test.ts",
  "tests/pi-agent-runtime.test.ts",
+ "tests/keymaps.test.ts",
  "tests/spawn-contained.test.ts",
  "tests/lifecycle-tdd-completion.test.ts",
  "tests/workspace-attribution.test.ts",
@@ -110,7 +111,8 @@ test("Windows separates the exact process-heavy files into a serial second run",
   {name:"process-heavy-1",args:["--import","tsx","--test","--test-name-pattern=timeout","--test-concurrency=1",...processFiles.slice(0,4)]},
   {name:"process-heavy-2",args:["--import","tsx","--test","--test-name-pattern=timeout","--test-concurrency=1",...processFiles.slice(4,8)]},
   {name:"process-heavy-3",args:["--import","tsx","--test","--test-name-pattern=timeout","--test-concurrency=1",...processFiles.slice(8,12)]},
-  {name:"process-heavy-4",args:["--import","tsx","--test","--test-name-pattern=timeout","--test-concurrency=1",...processFiles.slice(12)]},
+  {name:"process-heavy-4",args:["--import","tsx","--test","--test-name-pattern=timeout","--test-concurrency=1",...processFiles.slice(12,16)]},
+  {name:"process-heavy-5",args:["--import","tsx","--test","--test-name-pattern=timeout","--test-concurrency=1",...processFiles.slice(16)]},
  ]);
  assert.deepEqual(runs.flatMap(run=>run.args.filter(arg=>arg.endsWith(".test.ts"))).sort(),files.sort());
 });
@@ -126,7 +128,7 @@ test("Windows splits ordinary and process-heavy test files into bounded chunks",
   assert.match(run.name,/^remaining-\d+$/);
   assert.ok(run.args.filter((arg:string)=>arg.endsWith(".test.ts")).length<=50);
  }
- assert.equal(processRuns.length,4);
+ assert.equal(processRuns.length,5);
  for(const run of processRuns){
   assert.equal(run.args.includes("--test-concurrency=1"),true);
   assert.ok(run.args.filter((arg:string)=>arg.endsWith(".test.ts")).length<=4);

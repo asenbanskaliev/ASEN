@@ -180,3 +180,12 @@ test("Resilience: un perfil Fix inaccesible bloquea el siguiente paso sin perder
  assert.equal(handoff.autoLaunch,false);
  closeWorkspaceReview(workspace);
 });
+
+test("B+: dos nombres del mismo modelo NVIDIA no forman una pareja de jueces",async t=>{
+ const {workspace,evidence}=fixture(t);
+ const judgeA={provider:"nvidia",id:"nemotron-3-ultra-550b-a55b"},judgeB={provider:"nvidia",id:"nvidia/nemotron-3-ultra-550b-a55b"};
+ let calls=0;
+ const actual:PiReviewRegistry={getAvailable:()=>[judgeA,judgeB],hasConfiguredAuth:()=>true,streamSimple(){calls++;throw Error("No se debe llamar");}};
+ await assert.rejects(()=>runJudgmentDay({registry:actual,author,judgeA,judgeB,evidence,requirements:"Comprobar independencia"}),/distinct independent/u);
+ assert.equal(calls,0);closeWorkspaceReview(workspace);
+});

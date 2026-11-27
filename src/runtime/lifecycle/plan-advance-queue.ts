@@ -7,9 +7,11 @@ export class PlanAdvanceQueue {
  readonly #pending=new Map<string,Set<string|undefined>>();
 
  /** Devuelve false cuando otro avance está activo; la señal se conserva. */
- enter(key:string,blockedTodoId?:string):boolean{
+ enter(key:string,blockedTodoId?:string,retainOnBusy=true):boolean{
   if(!key||!key.includes("\0"))throw new Error("El avance requiere sesión y proyecto exactos");
   if(this.#busy.has(key)){
+   // Una selección exacta no se transforma en una señal genérica que pueda iniciar otra tarea.
+   if(!retainOnBusy)return false;
    const signals=this.#pending.get(key)??new Set<string|undefined>();
    signals.add(blockedTodoId);
    this.#pending.set(key,signals);

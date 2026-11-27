@@ -6,6 +6,7 @@
   "include": [
     "src/**/*.ts",
     "scripts/t08-github-real-fix.ts",
+    "scripts/m2-nvidia-0910.ts",
     "tests/helpers/odd-routing.ts",
     "tests/t08-isolated-repository.test.ts",
     "tests/t08-github-approvals.test.ts",

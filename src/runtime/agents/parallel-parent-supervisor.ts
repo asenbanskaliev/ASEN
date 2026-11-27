@@ -3,6 +3,7 @@
  * planned with their own ODD, not names forged by this parent controller.
  * Only the existing trusted plan dispatcher may start a scoped Worker. */
 import {realpathSync} from "node:fs";
+import {createHash} from "node:crypto";
 import type {TodoContext} from "../lifecycle/todo-store.js";
 import type {SourceTodoRow} from "./parallel-todo-bindings.js";
 import type {PublicAgentRecord} from "./agent-lifecycle.js";
@@ -15,6 +16,7 @@ import {ParentSupervisorClaimJournal} from "./parallel-parent-supervisor-claims.
 import {inspectParallelWorktreeChanges} from "./parallel-worktree-change-inspection.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import {inspectPlannedWorkerModelRoute} from "./parallel-worker-model-route.js";
+import {assertNativeChildPlanningSession} from "./pi-native-child-session.js";
 
 export interface ParentSupervisorReadyWorker{
  readonly sourceTodoId:string;
@@ -25,9 +27,11 @@ export interface ParentSupervisorReadyWorker{
  readonly baseRevision:string;
  readonly writeSurfaces:readonly string[];
  readonly model:string;
+ readonly instruction:string;
+ readonly sourceFingerprint:string;readonly childFingerprint:string;
  readonly modelActual:"unknown";readonly modelConsumedProven:false;
  readonly costVerified:false;
- readonly authorization:"fresh-per-worker-confirmation-required";
+ readonly authorization:"fresh-per-worker-confirmation-required"|"exact-batch-confirmation-required";
  readonly grantsAuthority:false;
 }
 export type ParentSupervisorPreview=Readonly<{
@@ -40,7 +44,10 @@ export type ParentSupervisorPreview=Readonly<{
 export type ParentSupervisorResult=Readonly<{
  status:"started"|"partial-needs-review"|"blocked"|"declined";
  batchId:string;
+ /** Identidades admitidas por el despachador; no acreditan el inicio de Pi. */
  started:readonly Readonly<{sourceTodoId:string;childTodoId:string;agentId:string}>[];
+ dispatchAdmissions:readonly Readonly<{sourceTodoId:string;childTodoId:string;agentId:string}>[];
+ nativeExecutionObserved:false;
  blockers:readonly string[];
  grantsAuthority:false;autoRetry:false;autoMerge:false;
  acceptance:"not-accepted";
@@ -57,18 +64,21 @@ export interface ParentSupervisorInput{
  readonly loadTaskAgentLinks:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>;
  readonly validateParent:()=>Promise<void>;
  readonly confirmBatch:(ready:ParentSupervisorPreview)=>Promise<boolean>;
+ /** El host interactivo muestra todas las instrucciones exactas y los ámbitos antes de consentir. */
+ readonly exactBatchConsent?:boolean;
  /** Must call the existing plan dispatcher (not AgentRuntime directly), and
   * request new Pi UI approval for this exact child Worker before writing. */
  readonly launchChild:(worker:ParentSupervisorReadyWorker,
    confirm:(task:Readonly<{id:string;title:string;role:string;instruction:string;
      writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean>,
-   validateExact:()=>Promise<void>
+   validateExact:()=>Promise<void>,startBefore?:number
  )=>Promise<{status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>;
  readonly confirmWorker:(worker:ParentSupervisorReadyWorker,
    task:Readonly<{id:string;title:string;role:string;instruction:string;
      writeSurfaces?:readonly string[];candidateRevision?:string}>)=>Promise<boolean|undefined>;
 }
 const same=(a:string,b:string)=>sameWorkspaceIdentityPath(a,b);
+const fingerprint=(value:unknown)=>createHash("sha256").update(JSON.stringify(value)).digest("hex");
 /** Un único enlace exacto puede sostener la autorización. La identidad
  * completa se compara sin transferir ni generar permisos. */
 export function enlacePiHijoIntacto(
@@ -105,7 +115,7 @@ function sameAuthorizedChildTodo(before:SourceTodoRow|undefined,after:SourceTodo
 }
 function nonAuthorizing(status:ParentSupervisorResult["status"],batchId:string,
  started:ParentSupervisorResult["started"],blockers:ParentSupervisorResult["blockers"]):ParentSupervisorResult{
- return Object.freeze({status,batchId,started:Object.freeze([...started]),
+ return Object.freeze({status,batchId,started:Object.freeze([...started]),dispatchAdmissions:Object.freeze([...started]),nativeExecutionObserved:false as const,
   blockers:Object.freeze([...blockers]),grantsAuthority:false as const,
   autoRetry:false as const,autoMerge:false as const,acceptance:"not-accepted" as const});
 }
@@ -145,6 +155,12 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    link.autoDispatch===false&&link.autoMerge===false);
   if(links.length!==1){blockers.push(label+"Child Pi session is not uniquely attached");continue;}
   const link=links[0]!;
+  if(input.exactBatchConsent===true&&!link.nativeSessionFile){
+   blockers.push(label+"Exact batch consent requires native Pi child planning sessions");continue;
+  }
+  if(link.nativeSessionFile)try{
+   await assertNativeChildPlanningSession({sessionId:link.childSessionId,projectId:link.childProjectId,sessionFile:link.nativeSessionFile});
+  }catch{blockers.push(label+"Native Pi child session could not be verified");continue;}
   if(link.childSessionId===input.source.sessionId||childSessions.has(link.childSessionId)){
    blockers.push(label+"Child Pi session is reused or equals the parent session");continue;
   }
@@ -175,12 +191,15 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    blockers.push(label+"Child Worker was already attempted; no duplicate or automatic resume");continue;
   }
   const byId=new Map(todos.map(row=>[row.taskId,row]));
-  const ready=todos.filter(row=>row.requestId?.startsWith("asen-plan:")&&
+  const ready=todos.filter(row=>row.requestId===source.requestId&&
    row.current.state==="planned"&&
    (row.dependsOn??[]).every(id=>["succeeded","done"].includes(byId.get(id)?.current.state??"")));
-  ready.sort((a,b)=>(a.plan?.priority??Number.MAX_SAFE_INTEGER)-
-   (b.plan?.priority??Number.MAX_SAFE_INTEGER));
-  const next=ready[0],candidate=next?.plan?.candidate;
+  const next=ready.length===1?ready[0]:undefined,candidate=next?.plan?.candidate;
+  if(link.nativeSessionFile&&next)try{
+   const basis=JSON.parse(next.plan?.writerAuthorizationBasis??"null");
+   if(typeof basis?.instruction!=="string")throw new Error("Missing delegated instruction");
+   await assertNativeChildPlanningSession({sessionId:link.childSessionId,projectId:link.childProjectId,sessionFile:link.nativeSessionFile},basis.instruction);
+  }catch{blockers.push(label+"Native Pi delegated instruction changed");continue;}
   if(!next||next.plan?.role!=="worker"||!next.requestId?.endsWith(":worker")||
    // El plan del hijo debe proceder de la MISMA petición ODD de origen.
    // Coincidir en modelo, SHA y rutas no basta para autorizar otra instrucción.
@@ -202,9 +221,10 @@ async function prepare(input:ParentSupervisorInput):Promise<ParentSupervisorPrev
    batchId:batch.id,sourceTodoId:task.taskId,childTodoId:next.taskId,
    childSessionId:link.childSessionId,childProjectId:canonical,
    baseRevision:batch.sourceHead,writeSurfaces:Object.freeze([...task.writeSurfaces]),
-   model:route.requested,modelActual:"unknown" as const,
+   model:route.requested,instruction:next.description,
+   sourceFingerprint:fingerprint(source),childFingerprint:fingerprint(next),modelActual:"unknown" as const,
    modelConsumedProven:false as const,costVerified:false as const,
-   authorization:"fresh-per-worker-confirmation-required" as const,grantsAuthority:false as const
+   authorization:input.exactBatchConsent?"exact-batch-confirmation-required" as const:"fresh-per-worker-confirmation-required" as const,grantsAuthority:false as const
   }));
  }
  await input.validateParent();
@@ -225,6 +245,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
  const declinedIndependent:string[]=[];
  if(initial.status!=="ready")return nonAuthorizing("blocked",initial.batchId,started,initial.blockers);
  if(await input.confirmBatch(initial)!==true)return nonAuthorizing("declined",initial.batchId,started,[]);
+ const consentExpiresAt=performance.now()+5*60_000;
  await input.validateParent();
  const fresh=await prepare(input);
  if(JSON.stringify(fresh)!==JSON.stringify(initial))
@@ -267,6 +288,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
      link.authority!=="none"||link.autoDispatch!==false||link.autoMerge!==false)
    return nonAuthorizing("partial-needs-review",initial.batchId,started,
     [unit.sourceTodoId+": El enlace Pi hijo cambió o está duplicado; revisar antes de ejecutar"]);
+  if(link.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:link.childSessionId,projectId:link.childProjectId,sessionFile:link.nativeSessionFile},unit.instruction.replace(/^Perform only the authorized, scoped work for: /u,""));
   enlaceAutorizado=JSON.stringify(link);
 
   const [rows,agents,links]=await Promise.all([
@@ -277,7 +299,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    sourceRoot:input.source.projectId,worktreeRoot:unit.childProjectId,
    baseRevision:unit.baseRevision,writeSurfaces:unit.writeSurfaces
   });
-  if(!link||!todo||todo.current.state!=="planned"||todo.plan?.role!=="worker"||
+  if(!link||!todo||fingerprint(todo)!==unit.childFingerprint||todo.current.state!=="planned"||todo.plan?.role!=="worker"||
    todo.plan.candidate?.revision!==unit.baseRevision||
    (todo.plan.model??"unknown")!==unit.model||
    !same(todo.plan.candidate.repository,unit.childProjectId)||
@@ -299,12 +321,15 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
   // user consent, including while TrustedTaskAgentBinder performs its CAS.
   const validateExact=async()=>{
    await input.validateParent();
+   if(input.exactBatchConsent===true&&performance.now()>=consentExpiresAt)throw new Error("Exact batch consent expired");
    const batches=await input.sourceJournal.list(input.source),
     currentBatch=batches.find(b=>b.id===unit.batchId),
     sourceTask=currentBatch?.tasks.find(t=>t.taskId===unit.sourceTodoId);
    const linksNow=await input.sessionJournal.listSource(input.source);
    const enlaceIntacto=enlacePiHijoIntacto(
     linksNow,unit.batchId,unit.sourceTodoId,enlaceAutorizado);
+   const native=linksNow.find(l=>l.batchId===unit.batchId&&l.sourceTodoId===unit.sourceTodoId);
+   if(native?.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:native.childSessionId,projectId:native.childProjectId,sessionFile:native.nativeSessionFile},unit.instruction.replace(/^Perform only the authorized, scoped work for: /u,""));
    const currentSource=(await input.loadTodos(input.source)).find(t=>t.taskId===unit.sourceTodoId);
    const claims=await input.claimJournal.listSource(input.source,linksNow);
    const childRows=await input.loadTodos(child),
@@ -315,7 +340,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
    });
    if(!currentBatch||currentBatch.state!=="prepared"||
     currentBatch.sourceHead!==unit.baseRevision||
-    !sourceTask||!currentSource||
+    !sourceTask||!currentSource||fingerprint(currentSource)!==unit.sourceFingerprint||
     sourceTask.taskRevision!==currentSource.current.revision||
     currentSource.current.state!=="planned"||
     sourceTask.requestId!==currentSource.requestId||
@@ -339,6 +364,7 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     !currentGit.headMatchesBase)
     throw new Error("Child Pi provenance changed after parent Worker authorization; no new launch");
    await input.validateParent();
+   if(input.exactBatchConsent===true&&performance.now()>=consentExpiresAt)throw new Error("Exact batch consent expired");
   };
   try{await validateExact();}
   catch{
@@ -346,24 +372,28 @@ export async function launchParentApprovedWorkers(input:ParentSupervisorInput):P
     unit.sourceTodoId+": Child Pi identity changed before consent; inspect durable child Todo/Agent records and do not retry"
    ]);
   }
-  let wasApproved=false,explicitlyDeclined=false;
+  let wasApproved=false,explicitlyDeclined=false,consentUsed=false;
   let outcome:Awaited<ReturnType<ParentSupervisorInput["launchChild"]>>;
   try{
    outcome=await input.launchChild(unit,async task=>{
     await input.validateParent();
-    if(task.id!==unit.childTodoId||task.role!=="worker"||
+    if(consentUsed||task.id!==unit.childTodoId||task.role!=="worker"||
+     (input.exactBatchConsent===true&&task.instruction!==unit.instruction)||
      task.candidateRevision!==unit.baseRevision||
      task.writeSurfaces?.length!==unit.writeSurfaces.length||
      task.writeSurfaces.some((v,i)=>v!==unit.writeSurfaces[i]))
      return false;
-    const decision:unknown=await input.confirmWorker(unit,task);
+    // Un permiso individual se deriva como máximo una vez del diálogo exacto del lote.
+    await validateExact();
+    consentUsed=true;
+    const decision:unknown=input.exactBatchConsent===true?true:await input.confirmWorker(unit,task);
     wasApproved=decision===true;
     // Solo el booleano false equivale a rechazo humano expreso.
     // Cancelación, valores indefinidos y respuestas ambiguas detienen la tanda.
     explicitlyDeclined=decision===false;
     await validateExact();
     return wasApproved;
-   },validateExact);
+   },validateExact,input.exactBatchConsent===true?consentExpiresAt:undefined);
    // El lanzamiento ya pudo comenzar: registrar su identidad ANTES de cualquier
    // comprobación asíncrona posterior del padre para no ocultar un Worker real.
    if(outcome.status==="dispatched"&&outcome.role==="worker"&&

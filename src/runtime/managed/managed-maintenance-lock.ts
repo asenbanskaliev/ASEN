@@ -43,9 +43,11 @@ function wait(ms:number,signal?:AbortSignal):Promise<void>{
  });
 }
 async function physicalRoot(root:string):Promise<Stats>{
- const info=await lstat(root);
- if(!info.isDirectory()||info.isSymbolicLink()||canonical(await realpath(root))!==canonical(root))fail("ROOT_CHANGED","Managed maintenance root is not a canonical regular directory");
- return info;
+ const lexical=path.resolve(root),info=await lstat(lexical);
+ if(!info.isDirectory()||info.isSymbolicLink())fail("ROOT_CHANGED","Managed maintenance root is not a regular directory");
+ const resolved=await realpath(lexical),resolvedInfo=await lstat(resolved);
+ if(!resolvedInfo.isDirectory()||resolvedInfo.isSymbolicLink()||!same(info,resolvedInfo))fail("ROOT_CHANGED","Managed maintenance root identity changed during canonicalization");
+ return resolvedInfo;
 }
 async function unchangedRoot(root:string,expected:Stats):Promise<void>{
  if(!same(expected,await physicalRoot(root)))fail("ROOT_CHANGED","Managed maintenance root identity changed");
@@ -55,7 +57,7 @@ async function stillOwned(prefix:string,root:string,expected:Stats,allowPartialI
  const inventory=await inspectManagedInstall({prefix});
  if(allowPartialInventory){
   const records=await readManagedOwnershipRecords(root);
-  if(!records||canonical(records.canonicalManagedRoot)!==canonical(root))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires valid ownership records");
+  if(!records||canonical(records.canonicalManagedRoot)!==canonical(await realpath(root)))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires valid ownership records");
  }else if(inventory.status!=="owned"||canonical(inventory.managedRoot)!==canonical(root))fail("OWNED_ROOT_REQUIRED","Managed maintenance requires an existing owned installation");
  await unchangedRoot(root,expected);
 }
@@ -63,11 +65,19 @@ async function ownMarker(root:string,rootIdentity:Stats,lock:string,fileIdentity
  try{
   await unchangedRoot(root,rootIdentity);
   const before=await lstat(lock,{bigint:true});
-  if(!before.isFile()||before.isSymbolicLink()||!sameManagedMaintenanceMarkerIdentity(before,fileIdentity)||canonical(await realpath(lock))!==canonical(lock))return false;
+  if(!before.isFile()||before.isSymbolicLink()||!sameManagedMaintenanceMarkerIdentity(before,fileIdentity))return false;
+  const resolvedBefore=await realpath(lock),rootPhysical=await realpath(root);
+  if(canonical(path.dirname(resolvedBefore))!==canonical(rootPhysical))return false;
+  const targetBefore=await lstat(resolvedBefore,{bigint:true});
+  if(!targetBefore.isFile()||targetBefore.isSymbolicLink()||!sameManagedMaintenanceMarkerIdentity(targetBefore,fileIdentity))return false;
   if(await readFile(lock,"utf8")!==bytes)return false;
-  const after=await lstat(lock,{bigint:true});
+  const after=await lstat(lock,{bigint:true}),resolvedAfter=await realpath(lock);
+  if(canonical(resolvedAfter)!==canonical(resolvedBefore))return false;
+  const targetAfter=await lstat(resolvedAfter,{bigint:true});
   await unchangedRoot(root,rootIdentity);
-  return after.isFile()&&!after.isSymbolicLink()&&sameManagedMaintenanceMarkerIdentity(after,fileIdentity)&&sameManagedMaintenanceMarkerIdentity(after,before);
+  return after.isFile()&&!after.isSymbolicLink()&&sameManagedMaintenanceMarkerIdentity(after,fileIdentity)
+   &&sameManagedMaintenanceMarkerIdentity(after,before)&&targetAfter.isFile()&&!targetAfter.isSymbolicLink()
+   &&sameManagedMaintenanceMarkerIdentity(targetAfter,fileIdentity)&&sameManagedMaintenanceMarkerIdentity(targetAfter,after);
  }catch{return false;}
 }
 
@@ -81,7 +91,7 @@ export async function withManagedMaintenanceLock<T>(request:ManagedMaintenanceLo
  const inventory=await inspectManagedInstall({prefix});
  const ownership=request.allowPartialInventory?await readManagedOwnershipRecords(root):undefined;
  if(request.allowPartialInventory
-  ?!ownership||canonical(ownership.canonicalManagedRoot)!==canonical(root)
+  ?!ownership||canonical(ownership.canonicalManagedRoot)!==canonical(await realpath(root))
   :inventory.status!=="owned"||canonical(inventory.managedRoot)!==canonical(root)){
   fail("OWNED_ROOT_REQUIRED",request.allowPartialInventory?"Managed maintenance requires valid ownership records":"Managed maintenance requires an existing owned installation");
  }

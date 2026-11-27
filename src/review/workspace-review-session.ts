@@ -1,13 +1,14 @@
 import {createHash,randomUUID} from "node:crypto";
-import {inspectCandidateGitTree,type CandidateGitTreeManifest} from "./review-tree-inspection.js";
+import {inspectCandidateGitTree,inspectSelectedCandidateGitTree,type CandidateGitTreeManifest} from "./review-tree-inspection.js";
 import {openReviewSession,bindReviewSessionWorkspaceSource,type ReviewSession,assertReviewSessionOpen,closeReviewSession} from "./review-session.js";
 import {captureWorkspaceReviewProjection,diffWorkspaceReviewProjection,isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection,type WorkspaceReviewProjectionRequest,type WorkspaceCorrectionConstraint} from "./workspace-review-projection.js";
 export {WorkspaceReviewScopeError} from "./workspace-review-projection.js";
 import {isProxy} from "node:util/types";
-import type {ReviewLens,ReviewRiskInput} from "./review-risk.js";
+import {planReviewRisk,type ReviewLens,type ReviewRiskInput} from "./review-risk.js";
 import {lstatSync,realpathSync} from "node:fs";
 import {isAbsolute,relative,sep} from "node:path";
 import {readReviewViewFile} from "./review-view.js";
+import {isIssuedNativeIntegrationCandidate,readNativeIntegrationDiff,type NativeIntegrationCandidate} from "../runtime/agents/parallel-native-integration.js";
 
 export interface WorkspaceReviewSessionInput extends WorkspaceReviewProjectionRequest{
  readonly sessionId:string;
@@ -137,4 +138,49 @@ export function closeWorkspaceReview(value:unknown):void{
  if(typeof value!=="object"||value===null)throw new Error("Workspace review session is not genuine");
  const claim=liveWorkspaceReviews.get(value);if(!claim)throw new Error("Workspace review session is not genuine");
  closeReviewSession(claim.session);liveWorkspaceReviews.delete(value);
+}
+
+/** Evidencia genuina de dos árboles inmutables del lote. No se inventa un
+ * índice de trabajo ni se modifican el checkout o la rama para revisar. */
+export function readFrozenIntegrationReviewEvidence(candidate:NativeIntegrationCandidate,sessionId:string,reviewerId:string,_viewParent:string):WorkspaceReviewEvidence{
+ if(!isIssuedNativeIntegrationCandidate(candidate)||!sessionId||!reviewerId)
+  throw new Error("Frozen integration review requires a genuine candidate and owner");
+ const inspected=readNativeIntegrationDiff(candidate);
+ const manifest=inspectSelectedCandidateGitTree({repositoryRoot:candidate.repository,treeIdentity:candidate.tree},candidate.paths);
+ const baseline=inspectSelectedCandidateGitTree({repositoryRoot:candidate.repository,treeIdentity:inspected.baseTree},candidate.paths);
+ const after=new Map(manifest.entries.map(entry=>[entry.path,entry]));
+ const before=new Map(baseline.entries.map(entry=>[entry.path,entry]));
+ // El manifiesto ya contiene blobs verificados. No materializar enlaces o
+ // submódulos sin cambios en la vista del juez.
+ const risk=planReviewRisk({
+  riskId:"native-partition-integration",reason:"Revisar los resultados combinados de Writers independientes",severity:"high",lenses:["risk","resilience","reliability"]
+ });
+  const modifiedFiles=Object.freeze(candidate.paths.map(path=>{
+   const current=after.get(path),previous=before.get(path);
+   if(!current&&!previous||current&&current.kind!=="regular"||previous&&previous.kind!=="regular")
+    throw new Error("Frozen integration contains unsupported file type");
+   return Object.freeze({path,change:!current?"deleted":previous?"modified":"added",
+    mode:(current??previous)!.mode,objectId:current?.objectId??null,contentSha256:current?.contentSha256??null});
+  }));
+  const candidateFiles=Object.freeze(modifiedFiles.filter(entry=>entry.change!=="deleted").map(entry=>{
+   const blob=after.get(entry.path);
+   if(blob?.kind!=="regular"||typeof blob.bytesBase64!=="string")throw Error("Frozen regular blob missing");
+   const bytes=Buffer.from(blob.bytesBase64,"base64");
+   if(!entry.contentSha256||createHash("sha256").update(bytes).digest("hex")!==entry.contentSha256)
+    throw new Error("Frozen integrated review bytes changed");
+   try{return Object.freeze({path:entry.path,encoding:"utf8" as const,content:new TextDecoder("utf-8",{fatal:true}).decode(bytes)});}
+   catch{return Object.freeze({path:entry.path,encoding:"base64" as const,content:bytes.toString("base64")});}
+  }));
+  readNativeIntegrationDiff(candidate);
+  const requestId=createHash("sha256").update(JSON.stringify([randomUUID(),sessionId,reviewerId,candidate.commit,candidate.tree])).digest("hex");
+  const evidence:WorkspaceReviewEvidence=Object.freeze({
+   schemaVersion:1,requestId,sessionId,reviewerId,
+   candidate:Object.freeze({revision:candidate.tree,treeIdentity:candidate.tree,parentIdentity:candidate.baseCommit,repositoryRoot:candidate.repository}),
+   repositoryState:Object.freeze({baseCommit:candidate.baseCommit,baseTree:inspected.baseTree,candidateTree:candidate.tree,
+    indexIdentity:"not-applicable:frozen-commit",sourceIdentity:manifest.treeSha256,intendedUntracked:Object.freeze([] as string[]),unexpectedUntracked:Object.freeze([] as string[])}),
+   modifiedFiles,candidateFiles,diff:inspected.diff,
+   tests:Object.freeze({status:"not-run" as const,records:Object.freeze([] as string[])}),risks:risk,
+   evidence:Object.freeze({manifestTreeSha256:manifest.treeSha256,manifestEntries:manifest.entries.length,viewIdentity:"frozen-git:"+candidate.tree})
+  });
+  issuedWorkspaceEvidence.add(evidence);return evidence;
 }

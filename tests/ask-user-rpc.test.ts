@@ -32,7 +32,7 @@ ctx.ui.notify("ASEN_PROBE:"+JSON.stringify({...result.details,credentialNames}),
   const outcomes=await new Promise<any[]>((done,reject)=>{
     // macOS compartido puede tardar más en cargar Pi bajo pruebas paralelas.
     // Es un plazo finito: registra la última etapa y nunca llama al modelo.
-    const deadline=process.platform==="darwin"?30000:15000;
+    const deadline=process.platform==="darwin"||process.platform==="win32"?30000:15000;
     let phase="get_commands";
     const timer=setTimeout(()=>reject(Error("RPC probe timed out at "+phase+": "+stderr.slice(-1000))),deadline),results:any[]=[];
     child.once("error",reject);child.once("close",(code,signal)=>{if(results.length!==2)reject(Error(`Pi closed before probe (code=${code}, signal=${signal}): ${stderr.slice(-1000)}`));});

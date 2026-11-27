@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {dispatchNextPlanTask} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {confirmWithAbort} from "../src/agents/pi-agent-tools.js";
 
-test("T06 el supervisor no puede lanzar otro Todo listo del proyecto hijo",async()=>{
+test("T06 el supervisor bloquea el Todo exacto sin instrucción y no elige otro",async()=>{
  let confirmations=0,agents=0,identities=0;
  const rows=[
   {taskId:"worker-ajeno",requestId:"asen-plan:otro:worker",
@@ -21,10 +21,10 @@ test("T06 el supervisor no puede lanzar otro Todo listo del proyecto hijo",async
   confirm:async()=>{confirmations++;return true;}
  });
  assert.equal(result.status,"blocked");
- assert.match(result.status==="blocked"?result.reason:"",/not the next dependency-ready Todo/u);
+ assert.match(result.status==="blocked"?result.reason:"",/no exact instruction/u);
  assert.equal(confirmations,0,"No pedir consentimiento para un Worker distinto");
  assert.equal(agents,0,"No arrancar agentes ajenos");
- assert.equal(identities,0,"No avanzar al despacho si la selección es incorrecta");
+ assert.equal(identities,0,"No avanzar al despacho si falta la instrucción exacta");
 });
 
 test("T06 un Todo hijo ausente o que no está listo no puede provocar otro lanzamiento",async()=>{
@@ -78,4 +78,21 @@ test("E0 consentimiento Pi: una respuesta parecida a sí no inicia un agente",as
  assert.equal(accepted.status,"dispatched");
  assert.equal(launches,1);
  assert.equal(validations>0,true);
+});
+
+
+test("T06 la selección exacta precede a la prioridad y conserva el consentimiento",async()=>{
+ const row=(taskId:string,priority:number)=>({taskId,requestId:`asen-plan:${taskId}:clarifier`,title:taskId,description:`Instrucción de ${taskId}`,current:{state:"planned",revision:1},dependsOn:[],plan:{role:"clarifier",priority,skillPaths:[]}});
+ const rows=[row("ajeno",1),row("autorizado",2)];
+ const approvals:string[]=[],prompts:string[]=[];
+ const result=await dispatchNextPlanTask({
+  todos:{list:async()=>rows} as any,links:{} as any,
+  agents:{startReadOnly:async(args:{prompt:string})=>{prompts.push(args.prompt);return "agente-exacto";}} as any,
+  identity:{sessionId:"hijo",projectId:"/repo-hijo"},expectedTodoId:"autorizado",
+  validateIdentity:async()=>{},confirm:async(request)=>{approvals.push(request.id);return true;}
+ });
+ assert.equal(result.status,"dispatched");
+ if(result.status==="dispatched")assert.equal(result.todoId,"autorizado");
+ assert.deepEqual(approvals,["autorizado"]);
+ assert.deepEqual(prompts,["Instrucción de autorizado"]);
 });

@@ -1,0 +1,83 @@
+name: T06 comprobar permisos sin modelos
+on:
+  pull_request:
+    types: [labeled]
+permissions:
+  contents: read
+concurrency:
+  group: t06-permission-probe-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  probe:
+    name: Comprobar etiquetas y comentarios sin NVIDIA
+    if: >-
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.number == 160 &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127' &&
+      github.event.pull_request.draft == false &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-t06-permission-check-request' &&
+      github.actor == 'asenbanskaliev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Verificar identidad de PR y autorización de metadatos
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          repo="repos/$GITHUB_REPOSITORY"
+          pr="$repo/pulls/$PR_NUMBER"
+          issue="$repo/issues/$PR_NUMBER"
+          label="asen-t06-permission-check"
+          test "$(gh api "$pr" --jq '.head.sha')" = "$EXPECTED_SHA"
+          # La concurrencia por PR serializa los diagnósticos. La etiqueta es
+          # exclusivamente de diagnóstico; nunca concede permiso de modelos.
+          diagnostic_label() {
+            gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name'
+          }
+          cleanup_label() {
+            local present
+            present=$(diagnostic_label) || return 1
+            if test "$present" = "$label"; then
+              gh api --method DELETE "$issue/labels/$label" >/dev/null || return 1
+            elif test -n "$present"; then
+              return 1
+            fi
+            present=$(diagnostic_label) || return 1
+            test -z "$present"
+          }
+          cleanup_on_exit() {
+            local status=$?
+            trap - EXIT
+            if ! cleanup_label; then
+              echo "::error::No se pudo retirar la etiqueta de diagnóstico; la próxima ejecución volverá a comprobarla"
+              exit 1
+            fi
+            exit "$status"
+          }
+          trap cleanup_on_exit EXIT
+          cleanup_label
+          test "$(diagnostic_label)" = ""
+          test "$(gh api "$repo/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = "$label"
+          # La etiqueta exclusiva de diagnóstico nunca concede permiso de modelos.
+          printf '%s\n' '{"labels":["asen-t06-permission-check"]}' | gh api --method POST "$issue/labels" --input - >/dev/null
+          test "$(gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = "$label"
+          gh api --method DELETE "$issue/labels/$label" >/dev/null
+          test "$(gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = ""
+          marker="<!-- asen-t06-diagnostico-permisos:$EXPECTED_SHA:$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT -->"
+          comment=$(gh api --method POST "$issue/comments" -f body="$marker" --jq '.id')
+          test "$(gh api "$repo/issues/comments/$comment" --jq '.user.login')" = "github-actions[bot]"
+          test "$(gh api "$repo/issues/comments/$comment" --jq '.body')" = "$marker"
+          test "$(gh api "$pr" --jq '.head.sha')" = "$EXPECTED_SHA"
+          echo "Etiquetas y comentarios comprobados con el token de Actions; ninguna llamada a modelos."

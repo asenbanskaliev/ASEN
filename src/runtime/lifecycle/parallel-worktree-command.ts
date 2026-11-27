@@ -1,4 +1,7 @@
 import {execFileSync} from "node:child_process";
+import {createHash} from "node:crypto";
+import {preparePrivateFile} from "../../io/private-file.js";
+import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
 import {existsSync,mkdirSync,realpathSync,rmdirSync} from "node:fs";
 import path from "node:path";
 import {prepareParallelWorkerWorktrees,type ParallelWorkerUnit} from "../agents/parallel-worktrees.js";
@@ -14,6 +17,7 @@ import {inspectParallelBatchWorkerOutcomes} from "../agents/parallel-batch-coord
 import {launchParentApprovedWorkers,type ParentSupervisorReadyWorker} from "../agents/parallel-parent-supervisor.js";
 import {ParentSupervisorClaimJournal} from "../agents/parallel-parent-supervisor-claims.js";
 import {attributeParallelChildWorker} from "../agents/parallel-worker-attribution.js";
+import {buildNativeIntegrationCandidate,type NativeIntegrationCandidate} from "../agents/parallel-native-integration.js";
 import type {PublicAgentRecord} from "../agents/agent-lifecycle.js";
 import type {TaskAgentLink} from "../agents/task-agent-link-store.js";
 import {controlledInstructionPlanCommand} from "./route-command.js";
@@ -21,9 +25,9 @@ import type {ProfileLayer} from "./profiles.js";
 import type {TodoContext} from "./todo-store.js";
 
 export const ASEN_WORKTREES_COMMAND="asen-worktrees";
-const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | attach | plan-todo | supervise | collect | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
+const usage="Uso: /asen-worktrees prepare | prepare-todos | prepare-auto | prepare-native <lote> | attach | attach-plan | plan-todo | supervise | collect [lote] | integration | integration-test | integration-review | integration-review-dual | integration-continue | integration-auto | integration-auto-dual | status | review (prepare-auto selecciona las dos tareas sin editor; nunca autoriza escrituras)";
 type WorktreeContext={
- cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal;
+ cwd:string;hasUI?:boolean;mode?:string;signal?:AbortSignal|undefined;
  sessionManager?:{getSessionId?:()=>string};
  ui:{notify:(message:string,kind:"info"|"error"|"warning")=>void;
   editor?:(title:string,prefill?:string)=>Promise<string|undefined>;
@@ -51,29 +55,70 @@ function readRequest(value:string):{parentDir:string;units:readonly ParallelWork
 export function registerParallelWorktreeCommand(
  register:(name:string,command:WorktreeCommand)=>void,
  options?:{journalFile?:string;sessionLinksFile?:string;planClaimsFile?:string;observationFile?:string;supervisorClaimsFile?:string;
+  testIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,signal?:AbortSignal)=>Promise<unknown>;
+  reviewIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,signal?:AbortSignal)=>Promise<unknown>;
+  reviewIntegratedCandidateDual?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,signal?:AbortSignal)=>Promise<unknown>;
+  continueIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,signal?:AbortSignal)=>Promise<unknown>;
+  advanceIntegratedCandidate?:(candidate:NativeIntegrationCandidate,context:WorktreeContext,validate:()=>void,reviewMode:"proportional"|"dual",signal?:AbortSignal)=>Promise<unknown>;
+  integrationFlowLockDirectory?:string;
+  prepareNativeChildren?:(batchId:string,context:WorktreeContext,validate:()=>void)=>Promise<unknown>;
   planChildTodo?:(input:string,context:WorktreeContext)=>Promise<unknown>;
   childProfiles?:(identity:TodoContext)=>Promise<ProfileLayer>;
   loadTodos?:(identity:TodoContext)=>Promise<readonly SourceTodoRow[]>;
   loadChildAgents?:(identity:TodoContext)=>Promise<readonly {id:string;role:string;state:string}[]>;
   loadChildAgentRecords?:(identity:TodoContext)=>Promise<readonly PublicAgentRecord[]>;
+  reconcileNativeChild?:(record:PublicAgentRecord)=>Promise<unknown>;
   loadChildTaskAgentLinks?:(identity:TodoContext)=>Promise<readonly TaskAgentLink[]>;
   launchChildWorker?:(unit:ParentSupervisorReadyWorker,confirm:(task:Readonly<{
    id:string;title:string;role:string;instruction:string;
    writeSurfaces?:readonly string[];candidateRevision?:string
-  }>)=>Promise<boolean>,validateParent:()=>Promise<void>)=>Promise<
+  }>)=>Promise<boolean>,validateParent:()=>Promise<void>,startBefore?:number,signal?:AbortSignal)=>Promise<
    {status:"dispatched";todoId:string;agentId:string;role:string}|{status:"blocked";reason:string}>}
-):void{
- register(ASEN_WORKTREES_COMMAND,{
-  description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
-  handler:async(args,ctx)=>{
-   const action=args?.trim();
-   if(action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="status"&&action!=="review"){
+):Readonly<{preparePartition:(ctx:WorktreeContext,exactTodoIds:readonly string[],signal?:AbortSignal)=>Promise<unknown>;
+ supervisePartition:(ctx:WorktreeContext,batchId:string,signal?:AbortSignal)=>Promise<unknown>;
+ advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode?:"proportional"|"dual",signal?:AbortSignal)=>Promise<unknown>}>{
+ // La selección exacta solo existe en el cableado interno, no en los argumentos
+ // del comando ni en los parámetros generados por el modelo.
+ const handler=async(args:string|undefined,ctx:WorktreeContext,exactTodoIds?:readonly string[],exactBatchId?:string,toolSignal?:AbortSignal):Promise<unknown>=>{
+   const signal=toolSignal&&ctx.signal?AbortSignal.any([ctx.signal,toolSignal]):toolSignal??ctx.signal;
+   const cancelled=()=>ctx.signal?.aborted===true||toolSignal?.aborted===true;
+   const raw=args?.trim()??"";
+   const integrationMatch=/^(integration(?:-test|-review-dual|-review|-continue|-auto-dual|-auto)?|prepare-native|collect)(?: ([0-9a-f-]{36}))?$/u.exec(raw);
+   const action=integrationMatch?.[1]??raw;
+   if(action!=="prepare-native"&&action!=="prepare"&&action!=="prepare-todos"&&action!=="prepare-auto"&&action!=="attach"&&action!=="attach-plan"&&action!=="plan-todo"&&action!=="supervise"&&action!=="collect"&&action!=="integration"&&action!=="integration-test"&&action!=="integration-review"&&action!=="integration-review-dual"&&action!=="integration-continue"&&action!=="integration-auto"&&action!=="integration-auto-dual"&&action!=="status"&&action!=="review"){
     ctx.ui.notify(usage,"info");return usage;
    }
    const id=ctx.sessionManager?.getSessionId?.();
+   if(action==="prepare-native"){
+    const batchId=integrationMatch?.[2];
+    if(!id||!batchId||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||!options?.prepareNativeChildren){
+     const result={status:"unavailable",reason:"Indicar el lote exacto en /asen-worktrees prepare-native <lote> desde su sesión Pi original."};
+     ctx.ui.notify(result.reason,"warning");return result;
+    }
+    const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
+    const validate=()=>{
+     if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||realpathSync(path.resolve(ctx.cwd))!==root)
+      throw Error("La sesión o el proyecto cambió; revisar el lote.");
+    };
+    validate();
+    const result=await options.prepareNativeChildren(batchId,ctx,validate);
+    validate();ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
+   }
+   if(action==="attach-plan"){
+    // Se usa la sesión Pi que realmente está abierta en el worktree.
+    // Vinculación y reconstrucción siguen siendo pasos no autorizantes.
+    const manager=ctx.sessionManager,cwd=ctx.cwd;
+    const attached=await handler("attach",ctx) as {status?:string};
+    if(attached.status!=="attached")return attached;
+    if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||ctx.cwd!==cwd)
+     throw new Error("Child Pi session changed after attachment; inspect the saved link");
+    const planned=await handler("plan-todo",ctx) as {status?:string};
+    if(planned.status==="declined"||planned.status==="cancelled")ctx.ui.notify("Vinculación guardada. Para continuar, usa /asen-worktrees plan-todo; no repitas attach.","info");
+    return planned;
+   }
    if(action==="supervise"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||
-     !ctx.ui.confirm||!ctx.ui.select||!options?.journalFile||!options.sessionLinksFile||
+     !ctx.ui.confirm||(!exactBatchId&&!ctx.ui.select)||!options?.journalFile||!options.sessionLinksFile||
      !options.planClaimsFile||!options.supervisorClaimsFile||!options.loadTodos||!options.loadChildAgentRecords||
      !options.loadChildTaskAgentLinks||!options.launchChildWorker){
      const denied={status:"unavailable" as const,reason:"T06 supervisor requires the active parent Pi TUI, prepared child ODD, trusted AgentRuntime and a fresh confirmation per Worker"};
@@ -82,7 +127,7 @@ export function registerParallelWorktreeCommand(
     const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager,
      identity:TodoContext={sessionId:id,projectId:root};
     const validateParent=async()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+     if(cancelled()||ctx.sessionManager!==manager||
       manager?.getSessionId?.()!==id||realpathSync(path.resolve(ctx.cwd))!==root)
       throw new Error("Parent Pi session or worktree changed; stop supervised Worker launches");
     };
@@ -90,7 +135,7 @@ export function registerParallelWorktreeCommand(
      sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
      claimJournal=new ParallelChildPlanClaimJournal(options.planClaimsFile),
      attemptJournal=new ParentSupervisorClaimJournal(options.supervisorClaimsFile),
-     batch=(await sourceJournal.list(identity)).at(-1);
+     batches=await sourceJournal.list(identity),batch=exactBatchId?batches.find(item=>item.id===exactBatchId):batches.at(-1);
     await validateParent();
     if(!batch||batch.state!=="prepared"){
      const denied={status:"blocked" as const,reason:"No latest fully prepared source ODD batch; review worktrees before launching"};
@@ -100,17 +145,27 @@ export function registerParallelWorktreeCommand(
      source:identity,batchId:batch.id,sourceJournal,sessionJournal,claimJournal,attemptJournal,
      loadTodos:options.loadTodos,loadAgents:options.loadChildAgentRecords,
      loadTaskAgentLinks:options.loadChildTaskAgentLinks,validateParent,
+     ...(exactBatchId?{exactBatchConsent:true}:{}),
      confirmBatch:async ready=>{
       await validateParent();
-      const answer=await ctx.ui.confirm!("Preparar lanzamiento Pi de Workers hijos?",[
+      const answer=await ctx.ui.confirm!(exactBatchId?"Autorizar las dos escrituras ODD exactas de este lote?":"Preparar lanzamiento Pi de Workers hijos?",[
        "Lote ODD original: "+batch.id,
        ...ready.tasks.map(unit=>unit.sourceTodoId+" · child: "+unit.childSessionId+
         " · modelo solicitado: "+unit.model+" · scope: "+unit.writeSurfaces.join(", ")),
-       "Solo se usarán worktrees preparados y sesiones Pi hijas ya adjuntadas por el usuario.",
-       "Se solicitará una confirmación INDIVIDUAL por Worker con su instrucción y el candidato exacto.",
+       ...(exactBatchId?[
+        "Proyecto padre: "+root,"SHA exacto: "+batch.sourceHead,
+        ...ready.tasks.map(unit=>["Todo hijo: "+unit.childTodoId,"Sesión: "+unit.childSessionId,"Worktree: "+unit.childProjectId,
+         "Modelo solicitado: "+unit.model,"Ámbito exacto: "+unit.writeSurfaces.join(", "),
+         "Instrucción íntegra: "+unit.instruction].join("\n")),
+        "Permite un único intento por cada Writer indicado, solo lectura/edición/escritura dentro de sus ámbitos. Caduca en cinco minutos para iniciar. No se reutiliza tras fallo o reinicio.",
+        "Esta autorización se deriva individualmente dentro del despachador ODD real; no se amplían rutas ni se copian permisos del padre."
+       ]:[
+        "Solo se usarán worktrees preparados y sesiones Pi hijas ya adjuntadas por el usuario.",
+        "Se solicitará una confirmación INDIVIDUAL por Worker con su instrucción y el candidato exacto."
+       ]),
        "El coste real/monetario del modelo es DESCONOCIDO; consulta proveedor antes de consentir.",
        "Los Workers pueden ejecutarse simultáneamente tras lanzarse, bajo los límites del AgentRuntime.",
-       "Una denegación explícita comprobada permite ofrecer otro Worker independiente, pero solo con una aprobación individual nueva.",
+       ...(exactBatchId?[]:["Una denegación explícita comprobada permite ofrecer otro Worker independiente, pero solo con una aprobación individual nueva."]),
        "Si hay un fallo o resultado incierto, se detiene el lote. Ningún Worker iniciado se repite automáticamente.",
        "No se crearán sesiones ficticias, no habrá modelo de pago implícito, retry, PASS, limpieza ni merge."
       ].join("\n"));
@@ -120,6 +175,7 @@ export function registerParallelWorktreeCommand(
       await validateParent();
       const approvedLabel="Sí, autorizar únicamente este Worker";
       const declinedLabel="No, rechazar expresamente este Worker";
+      if(exactBatchId)return undefined; // No pedir otra autorización en la ruta exacta.
       const selected=await ctx.ui.select!([
        "Autorizar Worker Pi separado?",
        "Todo original: "+unit.sourceTodoId,"Todo hijo: "+unit.childTodoId,
@@ -130,16 +186,68 @@ export function registerParallelWorktreeCommand(
        "Instrucción exacta de planificación (dato no confiable): "+task.instruction,
        "Solo autoriza este único intento Writer. Se aplica el Dispatcher ODD existente.",
        "No se transferirán credenciales ni permisos del padre; no se ejecutará merge ni reintento."
-      ].join("\n"),[approvedLabel,declinedLabel],ctx.signal?{signal:ctx.signal}:undefined);
+      ].join("\n"),[approvedLabel,declinedLabel],signal?{signal}:undefined);
       await validateParent();
       // Escape devuelve undefined. Solo una selección explícita puede denegar.
       return selected===approvedLabel?true:selected===declinedLabel?false:undefined;
      },
-     launchChild:(unit,confirm,validateExact)=>options.launchChildWorker!(unit,confirm,validateExact)
+     launchChild:(unit,confirm,validateExact,startBefore)=>options.launchChildWorker!(unit,confirm,validateExact,startBefore,signal)
     });
     ctx.ui.notify(JSON.stringify(result,null,2),
      result.status==="started"?"info":"warning");
     return result;
+   }
+   if(action==="integration"||action==="integration-test"||action==="integration-review"||action==="integration-review-dual"||action==="integration-continue"||action==="integration-auto"||action==="integration-auto-dual"){
+    if(!id||!ctx.cwd||!options?.journalFile||!options.sessionLinksFile||!options.observationFile)
+     return {status:"unavailable",reason:"No existe una sesión propietaria y sus diarios de lote."};
+    const source=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
+    const identity={sessionId:id,projectId:source};
+    const validate=()=>{
+     if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+      realpathSync(path.resolve(ctx.cwd))!==source)throw new Error("La sesión del lote cambió.");
+    };
+    const sourceJournal=new ParallelTodoWorktreeJournal(options.journalFile);
+    const sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal);
+    const observations=new ParallelWorkerObservationJournal(options.observationFile);
+    try{
+     const batches=(await sourceJournal.list(identity)).filter(row=>row.state==="prepared");
+     validate();
+     const selected=integrationMatch?.[2]??(batches.length===1?batches[0]!.id:ctx.hasUI&&ctx.ui.select?await ctx.ui.select("Selecciona el lote ODD preparado",batches.map(row=>row.id)):undefined);
+     validate();
+     const batch=batches.find(row=>row.id===selected);
+     if(!batch)throw new Error("Selecciona un lote ODD propio por su identificador exacto.");
+     const candidate=await buildNativeIntegrationCandidate({identity,batchId:batch.id,sourceJournal,sessionJournal,observations});
+     validate();
+     if(action!=="integration"){
+      const automatic=action==="integration-auto"||action==="integration-auto-dual";
+      const run=automatic?options.advanceIntegratedCandidate:action==="integration-test"?options.testIntegratedCandidate:action==="integration-review"?options.reviewIntegratedCandidate:action==="integration-review-dual"?options.reviewIntegratedCandidateDual:options.continueIntegratedCandidate;
+      if(!run||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm)return {status:"unavailable",reason:"Se necesita la sesión Pi propietaria y confirmación interactiva."};
+      const execute=async()=>{
+       validate();
+       const result=automatic?await options.advanceIntegratedCandidate!(candidate,ctx,validate,action==="integration-auto-dual"?"dual":"proportional",signal):
+        await (run as NonNullable<typeof options.testIntegratedCandidate>)(candidate,ctx,validate,signal);
+       validate();return result;
+      };
+      // El bloqueo compartido abarca también los comandos manuales: dos
+      // sesiones/procesos no pueden consumir otra revisión del mismo candidato
+      // mientras esperan el consentimiento o realizan la transición Git.
+      let result:unknown;
+      if(options.integrationFlowLockDirectory){
+       const key=createHash("sha256").update(JSON.stringify([source,candidate.commit])).digest("hex");
+       const lock=path.join(options.integrationFlowLockDirectory,"native-flow-"+key);
+       await preparePrivateFile(lock,true);validate();
+       result=await withExclusiveFileLock(lock,execute,1000,signal);
+      }else result=await execute();
+      validate();ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
+     }
+     const result={status:"candidate-prepared",candidate,
+      next:"Ejecutar /asen-worktrees integration-test <lote>, revisar el candidato y obtener aprobación antes de integrar; las sucesoras siguen bloqueadas."};
+     ctx.ui.notify(JSON.stringify(result,null,2),"info");return result;
+    }catch(error){
+     validate();
+     const result={status:"blocked",reason:error instanceof Error?error.message:"No se pudo construir el candidato exacto.",autoMerge:false};
+     ctx.ui.notify(result.reason,"warning");return result;
+    }
    }
    if(action==="collect"){
     if(!id||!ctx.cwd||ctx.mode!=="tui"||ctx.hasUI!==true||!ctx.ui.confirm||
@@ -152,7 +260,7 @@ export function registerParallelWorktreeCommand(
     const source=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager,
      sourceIdentity={sessionId:id,projectId:source};
     const current=()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+     if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==source)
       throw new Error("Source Pi session or project changed during Worker evidence collection");
     };
@@ -160,10 +268,13 @@ export function registerParallelWorktreeCommand(
      sessionJournal=new ParallelChildSessionJournal(options.sessionLinksFile,sourceJournal),
      claimJournal=new ParallelChildPlanClaimJournal(options.planClaimsFile),
      observations=new ParallelWorkerObservationJournal(options.observationFile);
-    const batches=await sourceJournal.list(sourceIdentity),batch=batches.at(-1);
+    const batches=(await sourceJournal.list(sourceIdentity)).filter(row=>row.state==="prepared");
     current();
+    const selected=integrationMatch?.[2]??(batches.length===1?batches[0]!.id:ctx.ui.select?await ctx.ui.select("Selecciona el lote ODD a recuperar",batches.map(row=>row.id)):undefined);
+    current();
+    const batch=batches.find(row=>row.id===selected);
     if(!batch||batch.state!=="prepared"){
-     const blocked={status:"blocked" as const,reason:"No last fully prepared parent ODD batch to collect; inspect the journal manually"};
+     const blocked={status:"blocked" as const,reason:"Selecciona un lote ODD preparado propio por su identificador exacto."};
      ctx.ui.notify(blocked.reason,"warning");return blocked;
     }
     const inspect=()=>inspectParallelBatchWorkerOutcomes({
@@ -171,6 +282,43 @@ export function registerParallelWorktreeCommand(
      loadTodos:options!.loadTodos!,loadAgents:options!.loadChildAgentRecords!,
      loadTaskAgentLinks:options!.loadChildTaskAgentLinks!
     });
+    // La recuperación nativa no depende de que el otro hijo sea legible.
+    const nativeLinks=(await sessionJournal.listSource(sourceIdentity)).filter(link=>link.batchId===batch.id&&link.nativeSessionFile);
+    if(nativeLinks.length&&!options.reconcileNativeChild){
+     const blocked={status:"blocked" as const,batchId:batch.id,reason:"Falta el reconciliador nativo; no guardar recibos genéricos.",grantsAuthority:false,autoMerge:false};
+     ctx.ui.notify(blocked.reason,"warning");return blocked;
+    }
+    if(nativeLinks.length&&options.reconcileNativeChild){
+     // La recuperación manual utiliza el mismo registro autenticado del
+     // runtime, no un árbol reconstruido tras finalizar el Writer.
+     const reads=await Promise.allSettled(nativeLinks.map(link=>options.loadChildAgentRecords!({sessionId:link.childSessionId,projectId:link.childProjectId})));
+     const failures=reads.filter(item=>item.status==="rejected").length;
+     const records=reads.flatMap(item=>item.status==="fulfilled"?item.value:[])
+      .filter(record=>record.role==="worker"&&["completed","failed","cancelled","interrupted"].includes(record.state));
+     const before=(await observations.listSource(sourceIdentity,nativeLinks)).filter(row=>row.batchId===batch.id);
+     current();
+     const pending=records.filter(record=>!before.some(row=>row.agentId===record.id));
+     let recoveryFailures=0;
+     if(pending.length){
+      const approved=await ctx.ui.confirm("Recuperar recibos terminales del lote?",[
+       "Lote: "+batch.id,"Solo resultados duraderos de Workers ya terminados.",
+       "No lanzar, repetir, sustituir recibos ni integrar un lote incompleto."
+      ].join("\n"));
+      current();if(approved!==true)return {status:"declined",grantsAuthority:false,autoMerge:false};
+      for(const record of pending){
+       current();try{await options.reconcileNativeChild(record);}catch{recoveryFailures++;}
+       current();
+      }
+     }
+     const saved=(await observations.listSource(sourceIdentity,nativeLinks)).filter(row=>row.batchId===batch.id);
+     current();
+     const complete=saved.length===batch.tasks.length;
+     const output={status:complete?"observed-needs-independent-review":"partial-needs-review",batchId:batch.id,
+      observed:saved.map(row=>({sourceTodoId:row.sourceTodoId,agentState:row.agentState,changeState:row.worktreeChangeState,modelActual:"unknown"})),
+      expected:batch.tasks.length,blockers:complete?[]:["Faltan recibos terminales auténticos; no repetir Writers."],
+      lookupFailures:failures,reconciliationFailures:recoveryFailures,acceptance:"not-accepted",grantsAuthority:false,autoRetry:false,autoMerge:false};
+     ctx.ui.notify(JSON.stringify(output,null,2),complete?"info":"warning");return output;
+    }
     const preview=await inspect();current();
     if(preview.status!=="ready-to-record"){
      const blocked={status:"blocked" as const,batchId:batch.id,
@@ -210,7 +358,7 @@ export function registerParallelWorktreeCommand(
     }
     const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
     const verifyContext=()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
+     if(cancelled()||ctx.sessionManager!==manager||manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
       throw new Error("Child Pi session or worktree changed before ODD planning");
     };
@@ -299,7 +447,7 @@ export function registerParallelWorktreeCommand(
     }
     const root=realpathSync(path.resolve(ctx.cwd)),manager=ctx.sessionManager;
     const validate=()=>{
-     if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+     if(cancelled()||ctx.sessionManager!==manager||
       manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
       throw new Error("Child Pi session or Git worktree changed during attachment");
@@ -431,7 +579,7 @@ export function registerParallelWorktreeCommand(
    }
    const owner:TodoContext={sessionId:id,projectId:root};
    const checkIdentity=()=>{
-    if(ctx.signal?.aborted||ctx.sessionManager!==manager||
+    if(cancelled()||ctx.sessionManager!==manager||
       manager?.getSessionId?.()!==id||
       realpathSync(path.resolve(ctx.cwd))!==root)
      throw new Error("Worktree preparation session or project changed; inspect any already-created worktrees");
@@ -446,10 +594,26 @@ export function registerParallelWorktreeCommand(
     ctx.ui.notify(blocked.reason,"warning");return blocked;
    }
 
+   // El plan natural ya conoce las dos raíces guardadas. Nunca se
+   // seleccionan tareas de otro plan para completar un lote exacto.
+   const exactRows=exactTodoIds?exactTodoIds.map(todoId=>planned.find(todo=>todo.taskId===todoId)):undefined;
+   if(exactTodoIds&&(exactTodoIds.length!==2||new Set(exactTodoIds).size!==2||
+    exactRows?.some(row=>!row||!!row.dependsOn?.length))){
+    const blocked={status:"blocked" as const,reason:"Las dos unidades ODD originales ya no están disponibles; no se preparan otras tareas."};
+    ctx.ui.notify(blocked.reason,"warning");return blocked;
+   }
+   if(exactTodoIds&&journal){
+    const prior=await journal.list(owner);
+    checkIdentity();
+    if(prior.some(batch=>batch.tasks.some(task=>exactTodoIds.includes(task.taskId)))){
+     const blocked={status:"blocked" as const,reason:"Las unidades de este plan ya tienen una reserva; revisar el lote existente sin repetirlo."};
+     ctx.ui.notify(blocked.reason,"warning");return blocked;
+    }
+   }
    const proposed=planned.map(todo=>({taskId:todo.taskId,writeSurfaces:todo.plan!.writeSurfaces!}));
    const excluded=linked?await journal!.blockedSourceTodoIds(owner,proposed):undefined;
    checkIdentity();
-   const compatible=linked?selectReadyParallelSourcePair({identity:owner,expectedHead:head,rows:currentTodos,
+   const compatible=linked?selectReadyParallelSourcePair({identity:owner,expectedHead:head,rows:exactRows?exactRows.map(row=>row!):currentTodos,
     ...(excluded?{excludedTaskIds:excluded}:{})}):[];
    if(automatic&&compatible.length!==2){
     const blocked={status:"blocked" as const,reason:"No hay dos Writers listos, sin dependencias pendientes ni ámbitos solapados o reservados; no se crean carpetas ni se solicitan permisos."};
@@ -495,7 +659,7 @@ export function registerParallelWorktreeCommand(
     sourceRoot:root,parentDir:selection.parentDir,expectedHead:head,units:selection.units,
     onBeforeWorktreeAdd:()=>{gitAddAttempted=true;},
     ...(batchId?{batchId}:{}),
-    ...(ctx.signal?{signal:ctx.signal}:{}),
+    ...(signal?{signal}:{}),
     confirm:async summary=>{
      checkIdentity();
      const message=[
@@ -561,6 +725,12 @@ export function registerParallelWorktreeCommand(
     grantsAuthority:false as const,autoMerge:false as const,
     next:automatic?"Dos tareas ODD aisladas preparadas sin editar JSON. Faltan sesiones Pi hijas reales y consentimiento Worker individual.":"Abrir una sesión Pi por worktree, preparar ODD y obtener consentimiento Worker individual. Revisión e integración manuales."};
    ctx.ui.notify(JSON.stringify(display,null,2),"info");return display;
-  }
+  };
+ register(ASEN_WORKTREES_COMMAND,{
+  description:"Prepare 2–4 isolated Git worktrees after explicit confirmation; Worker authority and integration remain separate",
+  handler:(args,ctx)=>handler(args,ctx)
  });
+ return Object.freeze({preparePartition:(ctx:WorktreeContext,ids:readonly string[],signal?:AbortSignal)=>handler("prepare-auto",ctx,Object.freeze([...ids]),undefined,signal),
+  supervisePartition:(ctx:WorktreeContext,batchId:string,signal?:AbortSignal)=>handler("supervise",ctx,undefined,batchId,signal),
+  advancePartition:(ctx:WorktreeContext,batchId?:string,reviewMode:"proportional"|"dual"="proportional",signal?:AbortSignal)=>handler((reviewMode==="dual"?"integration-auto-dual":"integration-auto")+(batchId?" "+batchId:""),ctx,undefined,undefined,signal)});
 }

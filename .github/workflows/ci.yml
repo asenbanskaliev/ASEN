@@ -37,6 +37,19 @@ jobs:
         run: |
           npm run typecheck
           npx --no-install tsc -p tsconfig.t08.json
+          node --check scripts/e1-natural-pi-nvidia.mjs
+          npx --no-install tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck --types node scripts/e1-budget-explorer-nvidia.ts
+          node --import tsx --test tests/e1-candidate-fallback-regression.test.ts
+          # El ensayo integral debe compilar antes de autorizar modelos reales.
+          npx --no-install tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --strict --noUncheckedIndexedAccess --exactOptionalPropertyTypes --skipLibCheck --types node scripts/e2a-native-partition-nvidia.ts
+      - name: Ensayo previo del objetivo 09 con Pi 1.2 y pasarela local sin secretos
+        if: github.event.pull_request.number == 161
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          pi --version
+          ASEN_M2_NATIVE_OFFLINE=1 tsx --test tests/m2-controlled-failure.test.ts
       - name: Pruebas específicas de la Megatanda B sin modelos externos
         run: |
           node --import tsx --test \
@@ -462,7 +475,7 @@ jobs:
       - name: Pack exact candidate
         shell: bash
         run: npm pack --silent > matrix-package.txt
-      - name: Run eight real Pi host cells
+      - name: Comprobar ocho celdas reales de Pi por sistema
         shell: bash
         run: npm run verify:pi-matrix -- "$(cat matrix-package.txt)" matrix-evidence
       - name: Record executed contract and host evidence
@@ -720,26 +733,188 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # Ensayos autenticados solo cuando asenbanskaliev AÑADE el label de un uso
-  # asen-t06-nvidia-una-vez. Un synchronize/push visual no consume proveedor.
-  # El label persistente NO concede consentimiento Writer ni ejecuta en pushes.
-  # Prueba de API NVIDIA para la PR #61. No ejecuta herramientas Pi ni escribe
-  # código del proyecto. Dos solicitudes de prueba con 128 tokens de salida máximo.
-  # No se amplía la autorización del escenario T04/T05 ni se acepta un modelo de pago.
-  t06-nvidia-free-api:
+  # M2: autorización humana de un SHA revisado; sin checkout ni secretos.
+  # Objetivo 09: una respuesta 429 local, seguida de una petición real acotada.
+  # No repite los dos sondeos API anteriores ni consume el modelo primario.
+  t06-nvidia-09-controlled:
+    needs: [t06-m2-authorization]
+    if: >-
+      !cancelled() && needs.t06-m2-authorization.result == 'success' &&
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 161 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-t06-nvidia-09-controlado' &&
+      github.actor == 'asenbanskaliev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    concurrency:
+      group: t06-nvidia-09-controlled-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Preparar Pi y comprobar la pasarela sin credenciales
+        shell: bash
+        env:
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-09-local-config
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$PR_NUMBER" = 161
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          pi --version
+          ASEN_M2_NATIVE_OFFLINE=1 tsx --test tests/m2-controlled-failure.test.ts
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node scripts/t12-pi-retry-settings.mjs
+      - name: Revalidar revisión exacta y ejecución única
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
+      - name: Fallo local 429 y una respuesta NVIDIA real de Nano Omni
+        shell: bash
+        env:
+          PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-09-local-config
+          ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-t06-09-controlled/receipt.json
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test -n "$NVIDIA_API_KEY"
+          ASEN_M2_CONTROLLED_FAILURE=1 ASEN_M2_TRIAL_AUTHORIZED="$ASEN_EXPECTED_SHA" timeout 250s tsx scripts/m2-nvidia-0910.ts
+      - name: Conservar informe objetivo 09 del SHA exacto
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: t06-nvidia-09-controlled-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/asen-t06-09-controlled/receipt.json
+          if-no-files-found: warn
+          retention-days: 7
+
+
+  t06-m2-authorization:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 61 &&
+      github.event.pull_request.number == 161 &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'feat/flujo-de-agentes-20261115' &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127' &&
+      github.event.pull_request.draft == false &&
+      github.event.action == 'labeled' &&
+      (github.event.label.name == 'asen-t06-nvidia-una-vez' ||
+       github.event.label.name == 'asen-t06-nvidia-09-controlado') &&
+      github.actor == 'asenbanskaliev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    concurrency:
+      group: t06-m2-auth-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Verificar CI exacta y reservar autorización de un solo uso
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BRANCH: ${{ github.head_ref }}
+          TRIAL_LABEL: ${{ github.event.label.name }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          [[ "$ASEN_EXPECTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          repo="repos/$GITHUB_REPOSITORY"
+          pr="$repo/pulls/$PR_NUMBER"
+          issue="$repo/issues/$PR_NUMBER"
+          test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
+          approval="asen-t06-autorizar:$ASEN_EXPECTED_SHA:nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+          case "$TRIAL_LABEL" in
+            asen-t06-nvidia-una-vez) ;;
+            asen-t06-nvidia-09-controlado) approval="asen-t06-autorizar-09-controlado:$ASEN_EXPECTED_SHA:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning" ;;
+            *) exit 1 ;;
+          esac
+          gh api "$issue/comments" --paginate --jq '.[]' > "$RUNNER_TEMP/t06-approval.jsonl"
+          approval_time=$(jq -ser --arg approval "$approval" 'map(select(.user.login == "asenbanskaliev" and .body == $approval)) | sort_by(.id) | last | .created_at | select(type == "string")' "$RUNNER_TEMP/t06-approval.jsonl")
+          # El consentimiento delegado es del propietario; no equivale a revisión técnica.
+          gh api "$pr/reviews" --paginate --jq '.[]' > "$RUNNER_TEMP/t06-reviews.jsonl"
+          jq -se --arg sha "$ASEN_EXPECTED_SHA" --arg cutoff "$approval_time" --slurpfile comments "$RUNNER_TEMP/t06-approval.jsonl" 'def report: (.body // "") as $body | ($body | contains("<!-- coderabbit-review-publication v1 ")) and (([$body | scan("\\*\\*Actionable comments posted: ([0-9]+)\\*\\*") | .[0]]) as $counts | ($counts == ["0"] or ($counts == [] and ($body | contains("Nitpick comments:")) and ($body | contains("**Actionable comments posted:") | not)))); def clean_summary: .user.login == "coderabbitai[bot]" and ((.updated_at | type) == "string") and .updated_at < $cutoff and ((.body // "") | contains("<!-- recent_review_status_start -->\n\nNo actionable comments were generated in the recent review.\n\n<!-- recent_review_status_end -->")) and (try ((.body | capture("<!-- final_review_risk_coverage:(?<data>[^\\n]+) -->").data | fromjson) | .sourceCommitId == $sha and .coveredCommitId == $sha and .kind == "reviewed") catch false); (map(select(.user.login == "coderabbitai[bot]" and .commit_id == $sha))) as $reviews | ($reviews | sort_by(.id) | last) as $latest | ($reviews | map(select(.state != "COMMENTED" or (.body // "") != "")) | sort_by(.id) | last) as $substantive | if $latest == null then any($comments[]; clean_summary) elif ($latest.submitted_at | type) != "string" or $latest.submitted_at >= $cutoff then false elif $substantive == null then any($comments[]; clean_summary) else $substantive | (.submitted_at | type) == "string" and .submitted_at < $cutoff and (.state == "APPROVED" or (.state == "COMMENTED" and report)) end' "$RUNNER_TEMP/t06-reviews.jsonl" >/dev/null
+          # Un informe sin observaciones nuevas no resuelve hilos anteriores.
+          gh api graphql --paginate -F owner="${GITHUB_REPOSITORY%/*}" -F name="${GITHUB_REPOSITORY#*/}" -F number="$PR_NUMBER" -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){repository(owner:$owner,name:$name){pullRequest(number:$number){headRefOid reviewThreads(first:100,after:$endCursor){nodes{isResolved} pageInfo{hasNextPage endCursor}}}}}' > "$RUNNER_TEMP/t06-review-threads.jsonl"
+          jq -se --arg sha "$ASEN_EXPECTED_SHA" 'length > 0 and all(.[]; ((.errors // []) | length) == 0 and .data.repository.pullRequest.headRefOid == $sha and (.data.repository.pullRequest.reviewThreads.nodes | type) == "array" and all(.data.repository.pullRequest.reviewThreads.nodes[]; .isResolved == true)) and (last.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage == false)' "$RUNNER_TEMP/t06-review-threads.jsonl" >/dev/null
+          # Solo validaciones anteriores al consentimiento: la etiqueta dispara otras CI.
+          gh api "$repo/actions/runs?head_sha=$ASEN_EXPECTED_SHA&event=pull_request&per_page=100" --paginate --jq '.workflow_runs[]' > "$RUNNER_TEMP/t06-runs.jsonl"
+          jq -s --arg sha "$ASEN_EXPECTED_SHA" --arg branch "$EXPECTED_BRANCH" --arg cutoff "$approval_time" 'map(select(.head_sha == $sha and .head_branch == $branch and .created_at < $cutoff))' "$RUNNER_TEMP/t06-runs.jsonl" > "$RUNNER_TEMP/t06-exact-runs.json"
+          for name in 'CI' 'CI rápida' 'Release Gate' 'Phase 0 Architecture' 'Pi 1.2 runtime evidence' 'Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos'; do
+            jq -e --arg name "$name" --arg cutoff "$approval_time" 'map(select(.name == $name)) | sort_by(.id) | last | .status == "completed" and .conclusion == "success" and .updated_at <= $cutoff' "$RUNNER_TEMP/t06-exact-runs.json" >/dev/null
+          done
+          ci_run=$(jq -er 'map(select(.name == "CI")) | sort_by(.id) | last | .id' "$RUNNER_TEMP/t06-exact-runs.json")
+          gh api "$repo/actions/runs/$ci_run/jobs?filter=latest&per_page=100" --paginate --jq '.jobs[]' > "$RUNNER_TEMP/t06-jobs.jsonl"
+          jq -se 'any(.[]; .name == "G08 actualización administrada aislada (Windows)" and .conclusion == "success") and any(.[]; .name == "Megatanda T02–T10 y T11 (pruebas integradas sin modelos)" and .conclusion == "success")' "$RUNNER_TEMP/t06-jobs.jsonl" >/dev/null
+          test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
+          test "$(gh api "$issue/labels" --paginate --jq '.[] | .name' | grep -Fx -- "$TRIAL_LABEL")" = "$TRIAL_LABEL"
+          api_marker="<!-- asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA -->"
+          pi_marker="<!-- asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA -->"
+          gh api "$issue/comments" --paginate --jq '.[] | select(.user.login == "github-actions[bot]") | .body' > "$RUNNER_TEMP/t06-consumed.txt"
+          if grep -Fqx -- "$api_marker" "$RUNNER_TEMP/t06-consumed.txt" || grep -Fqx -- "$pi_marker" "$RUNNER_TEMP/t06-consumed.txt"; then
+            echo '::error::El SHA ya tiene una reserva de consumo'
+            exit 1
+          fi
+          # Reservar el SHA para un único modo de ensayo; no repetir ni alternar modos.
+          gh api --method POST "$issue/comments" -f body="$api_marker" >/dev/null
+          gh api --method POST "$issue/comments" -f body="$pi_marker" >/dev/null
+          gh api --method DELETE "$issue/labels/$TRIAL_LABEL" >/dev/null
+          remaining_labels=$(gh api "$issue/labels" --paginate --jq '.[] | .name')
+          if grep -Fxq -- "$TRIAL_LABEL" <<< "$remaining_labels"; then exit 1; fi
+          test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
+
+  t06-nvidia-free-api:
+    needs: [t06-m2-authorization]
+    if: >-
+      always() && !cancelled() &&
+      (github.event.pull_request.number == 61 || needs.t06-m2-authorization.result == 'success') &&
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'pull_request' &&
+      (
+       (github.event.pull_request.number == 61 &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.head_ref == 'feat/flujo-de-agentes-20261115') ||
+       (github.event.pull_request.number == 161 &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127')
+      ) &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'asen-t06-nvidia-una-vez' &&
       github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    concurrency:
+      group: t06-nvidia-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
     permissions:
       contents: read
+      pull-requests: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -757,19 +932,28 @@ jobs:
           test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
           node --test tests/t06-nvidia-free-api-probe.test.mjs
+      - name: Revalidar SHA y primer intento antes de usar NVIDIA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
       - name: NVIDIA gratuita — dos solicitudes reales en paralelo
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           ASEN_NVIDIA_PROBE_REPORT: ${{ runner.temp }}/asen-t06-nvidia/probe.json
+          ASEN_NVIDIA_PROBE_MODELS: nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
         run: |
           set -euo pipefail
           if [ -z "$NVIDIA_API_KEY" ]; then
             echo "::error::NVIDIA_API_KEY no existe en Secrets del repositorio; llamadas reales BLOQUEADAS"
             exit 1
           fi
-          # Usa únicamente nvidia/nemotron-3.5-lightning-30b-a3b, sin
-          # reintentos, sin fallback a proveedores de pago ni código privado.
+          # Usa solo los dos modelos autorizados, sin reintentos ni cambio de proveedor.
           node scripts/t06-nvidia-free-api-probe.mjs
       - name: Conservar informe acotado del SHA exacto
         if: always()
@@ -785,18 +969,30 @@ jobs:
   t06-nvidia-pi-native:
     needs: [t06-nvidia-free-api]
     if: >-
+      !cancelled() && needs.t06-nvidia-free-api.result == 'success' &&
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 61 &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      github.head_ref == 'feat/flujo-de-agentes-20261115' &&
+      (
+       (
+        (github.event.pull_request.number == 61 &&
+         github.event.pull_request.head.repo.full_name == github.repository &&
+         github.head_ref == 'feat/flujo-de-agentes-20261115') ||
+        (github.event.pull_request.number == 161 &&
+         github.event.pull_request.head.repo.full_name == github.repository &&
+         github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127')
+       )
+      ) &&
       github.event.action == 'labeled' &&
       github.event.label.name == 'asen-t06-nvidia-una-vez' &&
       github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 9
+    concurrency:
+      group: t06-nvidia-pi-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
     permissions:
       contents: read
+      pull-requests: read
     env:
       ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
@@ -815,17 +1011,32 @@ jobs:
           test "$(git -C "$GITHUB_WORKSPACE" rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
           npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
           pi --version
+      - name: Revalidar SHA y primer intento antes de usar NVIDIA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
       - name: Explorer y Verifier Pi simultáneos con NVIDIA (solo lectura)
         shell: bash
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-pi-config
           ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-t06-nvidia-pi/receipt.json
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           test -n "$NVIDIA_API_KEY" || { echo "::error::NVIDIA_API_KEY ausente; prueba Pi auténtica bloqueada"; exit 1; }
           mkdir -p "$PI_CODING_AGENT_DIR"
-          timeout 250s tsx scripts/t06-nvidia-pi-concurrent.ts
+          if test "$PR_NUMBER" = 161; then
+            node scripts/t12-pi-retry-settings.mjs
+            ASEN_M2_TRIAL_AUTHORIZED="$ASEN_EXPECTED_SHA" timeout 250s tsx scripts/m2-nvidia-0910.ts
+          else
+            timeout 250s tsx scripts/t06-nvidia-pi-concurrent.ts
+          fi
       - name: Conservar informe de agentes Pi del SHA exacto
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
@@ -834,6 +1045,52 @@ jobs:
           path: ${{ runner.temp }}/asen-t06-nvidia-pi/receipt.json
           if-no-files-found: warn
           retention-days: 7
+
+
+  managed-update-windows:
+    name: G08 actualización administrada aislada (Windows)
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      ((github.event.pull_request.number == 149 &&
+        github.head_ref == 'feat/asen-equipo-E-M2-g2-compactacion-148') ||
+       github.head_ref == 'feat/asen-equipo-E-M3-g2-continuidad-nativa-149' ||
+       github.head_ref == 'feat/asen-equipo-E-M3-g2-correlacion-pi-150' ||
+       github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151' ||
+       github.head_ref == 'feat/asen-equipo-E-M2-g2-reparar-admision-152' ||
+       github.head_ref == 'feat/asen-equipo-E-M2-g2-limites-154' ||
+       github.head_ref == 'feat/asen-equipo-E-M2-g2-rutas-vigentes-155' ||
+       (github.event.pull_request.number == 161 && github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127'))
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "24"
+      - name: Instalar dependencias sin ejecutar scripts externos
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verificar SHA y tipos del candidato
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD).Trim() -ne $env:ASEN_EXPECTED_SHA) { throw "SHA de G08 no coincide" }
+          npm run typecheck
+      - name: Probar instalación y actualización real con rollback en Windows
+        shell: pwsh
+        run: |
+          node --import tsx --test tests/managed-install.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --import tsx --test tests/managed-maintenance-lock.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --import tsx --test --test-name-pattern="upgrade prepares signed version|upgrade stage-only|upgrade activates v2|fails its pre-activation|breaks only after activation|interrupted upgrade|unhealthy automatic rollback" tests/t09-lifecycle.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   # Igual que el flujo nativo habitual: Docker NO se ejecuta por defecto.
   # Ensayo adicional exclusivamente por etiqueta manual de un solo evento,

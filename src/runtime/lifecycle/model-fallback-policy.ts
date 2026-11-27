@@ -48,6 +48,24 @@ function categoryFromSignals(message:{errorMessage?:unknown;rawStopReason?:unkno
   typeof message.rawStopReason==="string"&&ERROR_IDENTIFIER.test(message.rawStopReason)?message.rawStopReason:"",
   ...diagnosticCodes(message.diagnostics),
  ].filter(signal=>signal.length>0);
+ // Los códigos estructurados tienen prioridad sobre el texto libre del proveedor.
+ // Un HTTP 400 no debe provocar otra llamada porque su mensaje mencione un 429.
+ for(const code of diagnosticCodes(message.diagnostics)){
+  if(/^[45]\d\d$/u.test(code)){
+   const status=Number(code),detail=typeof message.errorMessage==="string"?message.errorMessage.slice(0,ERROR_SCAN_MAX):"";
+   if(status===400&&ERROR_KEYWORDS[0]![1].test(detail))return TERMINAL_ERROR_CATEGORY.CONTEXT_LENGTH;
+   if(status===429&&ERROR_KEYWORDS[1]![1].test(detail))return TERMINAL_ERROR_CATEGORY.QUOTA;
+   return statusCategory(status);
+  }
+ }
+ const status=typeof message.errorMessage==="string"?HTTP_STATUS.exec(message.errorMessage.slice(0,ERROR_SCAN_MAX))?.[1]:undefined;
+ if(status){
+  // Conservar causas específicas compatibles, sin convertir un 400 en un reintento.
+  const code=Number(status),detail=message.errorMessage as string;
+  if(code===400&&ERROR_KEYWORDS[0]![1].test(detail.slice(0,ERROR_SCAN_MAX)))return TERMINAL_ERROR_CATEGORY.CONTEXT_LENGTH;
+  if(code===429&&ERROR_KEYWORDS[1]![1].test(detail.slice(0,ERROR_SCAN_MAX)))return TERMINAL_ERROR_CATEGORY.QUOTA;
+  return statusCategory(code);
+ }
  for(const [category,pattern] of ERROR_KEYWORDS)if(signals.some(signal=>pattern.test(signal)))return category;
  for(const signal of signals){const status=HTTP_STATUS.exec(signal)?.[1];if(status)return statusCategory(Number(status));}
  return TERMINAL_ERROR_CATEGORY.UNAVAILABLE;

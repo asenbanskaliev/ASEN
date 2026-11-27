@@ -10,6 +10,7 @@ import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../../io/private-file.js";
 import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import {ParallelTodoWorktreeJournal} from "./parallel-todo-journal.js";
+import {assertNativeChildPlanningSession} from "./pi-native-child-session.js";
 
 const SCHEMA="asen.parallel-worktree-sessions/v1" as const;
 const stringIdentity=(s:unknown):s is string=>typeof s==="string"&&s.length>0&&s.length<=1024&&
@@ -21,6 +22,7 @@ export interface ParallelChildSessionLink{
  readonly batchId:string;readonly sourceSessionId:string;readonly sourceProjectId:string;
  readonly sourceTodoId:string;readonly sourceRequestId:string;readonly sourceTodoRevision:number;
  readonly childSessionId:string;readonly childProjectId:string;readonly sourceHead:string;
+ readonly nativeSessionFile?:string;
  readonly attachedAt:string;readonly authority:"none";readonly autoDispatch:false;readonly autoMerge:false;
 }
 interface Journal{schema:typeof SCHEMA;revision:number;links:ParallelChildSessionLink[];}
@@ -33,11 +35,13 @@ function parse(raw:string):Journal{
   throw new Error("Invalid parallel child session journal");
  const seenRoots=new Set<string>(),seenSessions=new Set<string>();
  for(const row of x.links){
-  if(!exact(row,keys)||![
+  const native=!!row&&typeof row==="object"&&Object.hasOwn(row,"nativeSessionFile");
+  if(!exact(row,[...keys,...(native?["nativeSessionFile"]:[])])||![ 
    row.batchId,row.sourceSessionId,row.sourceProjectId,row.sourceTodoId,row.sourceRequestId,
    row.childSessionId,row.childProjectId
   ].every(stringIdentity)||!sha.test(String(row.sourceHead))||
    !isAbsolute(row.sourceProjectId as string)||!isAbsolute(row.childProjectId as string)||
+   (native&&(!stringIdentity(row.nativeSessionFile)||!isAbsolute(row.nativeSessionFile)))||
    !Number.isSafeInteger(row.sourceTodoRevision)||Number(row.sourceTodoRevision)<1||
    typeof row.attachedAt!=="string"||!Number.isFinite(Date.parse(row.attachedAt))||
    new Date(row.attachedAt as string).toISOString()!==row.attachedAt||
@@ -77,13 +81,14 @@ export class ParallelChildSessionJournal{
  constructor(readonly file:string,readonly sourceJournal:ParallelTodoWorktreeJournal){
   if(!isAbsolute(file))throw new Error("Child session journal path must be absolute");
  }
- async attach(input:{childSessionId:string;childProjectId:string;
+ async attach(input:{childSessionId:string;childProjectId:string;nativeSessionFile?:string;
   confirm:(owner:Readonly<{sourceTodoId:string;sourceHead:string;worktreeRoot:string;
    sourceProjectId:string;writeSurfaces:readonly string[];grantsAuthority:false}>)=>Promise<boolean>;
   validateSession?:()=>void|Promise<void>}):Promise<Readonly<{status:"attached"|"declined";link?:ParallelChildSessionLink;grantsAuthority:false}>>{
   if(!stringIdentity(input.childSessionId)||!isAbsolute(input.childProjectId)||typeof input.confirm!=="function")
    throw new Error("Invalid Pi child session attachment");
-  await input.validateSession?.();
+  const validateNative=async()=>{if(input.nativeSessionFile)await assertNativeChildPlanningSession({sessionId:input.childSessionId,projectId:input.childProjectId,sessionFile:input.nativeSessionFile});};
+  await input.validateSession?.();await validateNative();
   const canonical=realpathSync(input.childProjectId),owner=await this.sourceJournal.findPreparedWorktree(canonical);
   if(!owner)throw new Error("Worktree has no prepared source ODD Todo; manual reconciliation required");
   verifyChildRoot(canonical,owner.sourceProjectId,owner.sourceHead);
@@ -101,11 +106,12 @@ export class ParallelChildSessionJournal{
    batchId:fresh.batchId,sourceSessionId:fresh.sourceSessionId,sourceProjectId:fresh.sourceProjectId,
    sourceTodoId:fresh.taskId,sourceRequestId:fresh.requestId,sourceTodoRevision:fresh.taskRevision,
    childSessionId:input.childSessionId,childProjectId:canonical,sourceHead:fresh.sourceHead,
+   ...(input.nativeSessionFile?{nativeSessionFile:input.nativeSessionFile}:{}),
    attachedAt:new Date().toISOString(),authority:"none",autoDispatch:false,autoMerge:false
   };
   await preparePrivateFile(this.file,true);
   return withExclusiveFileLock(this.file,async()=>{
-   await input.validateSession?.();
+   await input.validateSession?.();await validateNative();
    const persisted=await load(this.file),prior=persisted.links.find(existing=>
     sameWorkspaceIdentityPath(existing.childProjectId,canonical)||
     existing.childSessionId===input.childSessionId);

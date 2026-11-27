@@ -10,6 +10,7 @@ import {sameWorkspaceIdentityPath} from "../workspace-store.js";
 import type {ParallelChildSessionLink} from "./parallel-todo-session-links.js";
 import type {AttributedParallelWorker} from "./parallel-worker-attribution.js";
 import type {ParallelWorktreeChangeInspection} from "./parallel-worktree-change-inspection.js";
+import {validNativeWriterCompletion,type NativeWriterCompletion} from "./native-writer-completion.js";
 
 const SCHEMA="asen.parallel-worker-observations/v1" as const;
 const allowed=new Set(["completed","failed","cancelled","interrupted"]);
@@ -54,6 +55,10 @@ export interface ParallelWorkerObservation{
  readonly agentUpdatedAt:string;readonly childTodoState:string;
  readonly worktreeChangeState:ParallelWorktreeChangeInspection["status"];
  readonly changedPaths:readonly string[];
+ /** Estado vivo al recoger el resultado; no reemplaza la captura autenticada. */
+ readonly currentWorktree?:ParallelWorktreeChangeInspection;
+ readonly candidateTree?:string;
+ readonly authorModelsObserved?:readonly string[];
  readonly recordedAt:string;
  readonly modelActual:"unknown";readonly modelConsumedProven:false;
  readonly acceptance:"not-accepted";readonly grantsAuthority:false;readonly autoRetry:false;readonly autoMerge:false;
@@ -71,7 +76,13 @@ function parse(raw:string):Journal{
   throw new Error("Invalid parallel Worker observation journal");
  const seen=new Set<string>();
  for(const row of x.receipts){
-  if(!exact(row,keys)||![
+  const withTree=!!row&&typeof row==="object"&&Object.hasOwn(row,"candidateTree");
+  const withModels=!!row&&typeof row==="object"&&Object.hasOwn(row,"authorModelsObserved");
+  const withCurrent=!!row&&typeof row==="object"&&Object.hasOwn(row,"currentWorktree");
+  if(!exact(row,[...keys,...(withTree?["candidateTree"]:[]),...(withModels?["authorModelsObserved"]:[]),...(withCurrent?["currentWorktree"]:[])])||
+   (withCurrent&&(!withTree||!validChanges(row.currentWorktree as ParallelWorktreeChangeInspection)))||
+   (withModels&&(!withTree||!validAuthorModels(row.authorModelsObserved)))||
+   (withTree&&(!/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/u.test(String(row.candidateTree))||row.agentState!=="completed"||row.childTodoState!=="succeeded"||row.worktreeChangeState!=="scoped-changes"))||![
    row.batchId,row.sourceSessionId,row.sourceProjectId,row.sourceTodoId,
    row.childSessionId,row.childProjectId,row.childTodoId,row.agentId,row.childTodoState
   ].every(safe)||!isAbsolute(row.sourceProjectId as string)||!isAbsolute(row.childProjectId as string)||
@@ -99,11 +110,15 @@ async function load(file:string):Promise<Journal>{
  if(!await preparePrivateFile(file))return {schema:SCHEMA,revision:0,receipts:[]};
  return parse(await readFile(file,"utf8"));
 }
+function validAuthorModels(value:unknown):value is readonly string[]{
+ return Array.isArray(value)&&value.length>=1&&value.length<=9&&new Set(value).size===value.length&&value.every(model=>typeof model==="string"&&/^[a-z0-9][a-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u.test(model));
+}
 export interface ParallelWorkerObservationInput{
  readonly link:ParallelChildSessionLink;
  readonly worker:AttributedParallelWorker;
  readonly sourceTodoRevision:number;
  readonly changes:ParallelWorktreeChangeInspection;
+ readonly nativeCompletion?:NativeWriterCompletion;
 }
 function createObservationReceipt(input:ParallelWorkerObservationInput):ParallelWorkerObservation{
   const {link,worker,sourceTodoRevision,changes}=input;
@@ -114,6 +129,11 @@ function createObservationReceipt(input:ParallelWorkerObservationInput):Parallel
    !changes||changes.acceptance!=="not-accepted"||changes.autoMerge!==false||
    !validChanges(changes))
    throw new Error("Only a terminal exact native child Worker observation may be recorded");
+  const completion=input.nativeCompletion;
+  if(completion&&(!validNativeWriterCompletion(completion)||
+   completion.baseCommit!==link.sourceHead||
+   worker.agentState!=="completed"||worker.childTodoState!=="succeeded"))
+   throw new Error("Invalid native Worker completion evidence");
   const receipt:ParallelWorkerObservation={
    batchId:link.batchId,sourceSessionId:link.sourceSessionId,sourceProjectId:link.sourceProjectId,
    sourceTodoId:link.sourceTodoId,sourceTodoRevision,
@@ -121,7 +141,9 @@ function createObservationReceipt(input:ParallelWorkerObservationInput):Parallel
    childTodoId:worker.childTodoId,agentId:worker.agentId,
    agentState:worker.agentState as ParallelWorkerObservation["agentState"],
    agentUpdatedAt:worker.agentUpdatedAt,childTodoState:worker.childTodoState,
-   worktreeChangeState:changes.status,changedPaths:[...changes.changedPaths],
+   worktreeChangeState:completion?"scoped-changes":changes.status,changedPaths:[...(completion?.paths??changes.changedPaths)],
+   ...(completion?{candidateTree:completion.candidateTree,currentWorktree:structuredClone(changes)}:{}),
+   ...(completion&&validAuthorModels(completion.authorModelsObserved)?{authorModelsObserved:[...completion.authorModelsObserved]}:{}),
    recordedAt:new Date().toISOString(),
    modelActual:"unknown",modelConsumedProven:false,acceptance:"not-accepted",
    grantsAuthority:false,autoRetry:false,autoMerge:false
