@@ -287,6 +287,22 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    return binding;
   };
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
+  // Una aprobación por intento: no guardar ni heredar permisos de gasto.
+  let fallbackConsentPending=false;
+  const confirmFallbackAttempt=async(ctx:CommandContext|undefined,scope:{sessionId:string;projectId:string},model:string,signal?:AbortSignal):Promise<boolean>=>{
+   if(!ctx||ctx.hasUI!==true||typeof ctx.ui?.confirm!=="function"||ctx.signal?.aborted||signal?.aborted||fallbackConsentPending)return false;
+   if(!/^[a-z0-9][a-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u.test(model)||model.split("/").some(part=>part==="."||part===".."||!part))return false;
+   const owner=agentDeliveryIdentity;
+   if(agentDeliveryContext!==ctx||!owner||owner.sessionId!==scope.sessionId||owner.projectId!==scope.projectId)return false;
+   fallbackConsentPending=true;
+   try{
+    const before=await sessionIdentity(ctx);
+    if(before.sessionId!==scope.sessionId||before.projectId!==scope.projectId||agentDeliveryIdentity!==owner||agentDeliveryContext!==ctx||ctx.signal?.aborted||signal?.aborted)return false;
+    const approved=await ctx.ui.confirm("Autorizar un cambio de modelo",`Modelo exacto: ${model}\n\nEl coste real y su inclusión en la suscripción no están verificados. ¿Autorizas este único intento de continuación con este modelo? No autoriza otros modelos ni intentos posteriores.`);
+    const after=await sessionIdentity(ctx);
+    return approved===true&&agentDeliveryIdentity===owner&&agentDeliveryContext===ctx&&after.sessionId===scope.sessionId&&after.projectId===scope.projectId&&!ctx.signal?.aborted&&!signal?.aborted;
+   }catch{return false;}finally{fallbackConsentPending=false;}
+  };
   const agentProviderCredential=dependencies.agentProviderCredential??configuredPiProviderCredential(process.env);
   const notificationProjection=new PiNotificationProjection();
   const backgroundJobs=new BackgroundJobRegistry(new BackgroundJobJournal(dependencies.backgroundJobJournalFile??path.join(home(),".asen","background-jobs.json")),dependencies.backgroundExecutor);
@@ -317,7 +333,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const sessionDirectory=dependencies.enableWorkspaceRuntime?new SharedSessionDirectory(path.join(home(),".asen","session-directory")):new SessionDirectory();
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
-  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,requirePartitionModelBeforePrompt:true,...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
+  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,requirePartitionModelBeforePrompt:true,authorizeModelFallback:(attempt,signal)=>confirmFallbackAttempt(agentDeliveryContext,attempt,attempt.to,signal),...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
   // El transporte Pi registra los modelos en el resultado autenticado del
   // Writer. Mantener un observador de selección para la comprobación previa.
@@ -352,6 +368,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    loadChain:async profile=>profile?resolveProfileFallbackChain(await profileFallbacksReader(profileFallbacksFile),profile,"orchestrator"):[],
    currentModel:host=>{const model=(host as CommandContext|undefined)?.model;return model?`${model.provider}/${model.id}`:undefined;},
    findModel:(model,host)=>{const split=model.indexOf("/");if(split<=0||split===model.length-1)return undefined;return (host as CommandContext|undefined)?.modelRegistry?.find(model.slice(0,split),model.slice(split+1));},
+   authorizeFallback:async(model,host)=>{const ctx=host as CommandContext|undefined,scope=agentDeliveryIdentity;return !!scope&&await confirmFallbackAttempt(ctx,scope,model.provider+"/"+model.id);},
    setModel:model=>pi.setModel?pi.setModel(model):false,
    getThinking:()=>pi.getThinkingLevel?.(),setThinking:level=>pi.setThinkingLevel?.(level),
    notify:(change,pricing,host)=>(host as CommandContext|undefined)?.ui?.notify(formatModelFallbackNotice(change,pricing),"warning"),
