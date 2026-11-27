@@ -348,7 +348,8 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   },authorizeModelFallback:async(attempt,signal)=>{
    const owner=agentDeliveryIdentity,context=agentDeliveryContext,generation=parentBindingGeneration;
    if(!fallbackSessionReady||!owner||!context||owner.sessionId!==attempt.sessionId||signal?.aborted)return false;
-   const live=()=>fallbackSessionReady&&agentDeliveryIdentity===owner&&agentDeliveryContext===context&&generation===parentBindingGeneration&&!context.signal?.aborted&&!signal?.aborted&&context.sessionManager?.getSessionId?.()===owner.sessionId;
+   const manager=context.sessionManager,cwd=context.cwd;
+   const live=()=>fallbackSessionReady&&!hostStatusClosed&&agentDeliveryIdentity===owner&&agentDeliveryContext===context&&generation===parentBindingGeneration&&!context.signal?.aborted&&!signal?.aborted&&context.sessionManager===manager&&context.cwd===cwd&&manager?.getSessionId?.()===owner.sessionId;
    const validate=async()=>{
     if(!live())return false;
     try{const before=await sessionIdentity(context);if(before.sessionId!==owner.sessionId||before.projectId!==owner.projectId||!live())return false;
@@ -357,7 +358,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
     }catch{return false;}
    };
    if(!await confirmFallbackAttempt(context,attempt,attempt.to,signal,validate))return false;
-   return validate;
+   return Object.assign(validate,{stillOwned:live});
   },...(existsSync(path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"))?{command:process.execPath,rpcArgs:[path.join(packageRoot,"node_modules","@earendil-works","pi-coding-agent","dist","cli.js"),"--mode","rpc"],validateRuntimeVersion:true}:{command:"pi"}),...(agentProviderCredential?{providerCredential:agentProviderCredential}:{})})):undefined;
   const childSelectionSource=composedAgentRunner&&"subscribeChildSelection" in composedAgentRunner&&typeof composedAgentRunner.subscribeChildSelection==="function"?composedAgentRunner as AgentRunner&Pick<PiProcessRunner,"subscribeChildSelection">:undefined;
   // El transporte Pi registra los modelos en el resultado autenticado del
