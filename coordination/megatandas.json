@@ -38,7 +38,7 @@
       "scope": "Selección de modelos, alternativas e independencia",
       "pr": 153,
       "sha": "6a71abdbbccbe1479f6238da9d9712c78d88bdd8",
-      "next": "M3/P04: preparar prueba pública de recuperación histórica y G03 en candidato acumulativo desde #160, solo con reserva E; M5 después. No modelos.",
+      "next": "M2: auditar ruta de coste/consentimiento de alternativas (AUD-M2-03), preparar pruebas offline 09/10 de fallo y perfil, sin llamadas, con reserva exclusiva si hay defecto reproducible. M3 independiente después.",
       "files": [
         "src/runtime/lifecycle/todo-store.ts",
         "src/runtime/lifecycle/plan-dispatcher.ts",
@@ -183,7 +183,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Consolidar #156 en rama separada desde #160 admitida para M3/M4; comprobar ocho rutas y prueba pública de recuperación histórica. No repetir ensayos NVIDIA.",
+      "next": "Prioridad auditoría AUD-M2-03 de consentimiento para alternativas de coste no acreditado; coordinar B para pruebas dirigidas de 09/10, sin repetir T06 ni usar modelos. No declarar M2 completa.",
       "blocker": "Ningún bloqueo T06; falta consolidación y aceptación integral de etapas posteriores.",
       "generation": 2,
       "pr": 159,
@@ -2794,7 +2794,7 @@
       "M6 Aceptación"
     ],
     "globalFull": false,
-    "candidate": 159
+    "candidate": 160
   },
   "currentSnapshot": {
     "capturedAt": "2026-11-26",
@@ -2817,13 +2817,13 @@
         "unresolved": 0
       }
     },
-    "m2": "CI anterior verde; dos hallazgos corregidos en #159; validación del SHA nuevo pendiente; sin NVIDIA.",
+    "m2": "T06 API y Pi correctas; 09/10 pendientes de ensayo real; revisar gate de coste de alternativas",
     "m3": "CI y revisión independiente #156 correctas, candidata separada pendiente de consolidación y evidencia real.",
     "globalFull": false,
-    "updatedAt": "2026-11-26T22:00:00Z",
+    "updatedAt": "2026-11-27T11:10:18.781Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
-    "candidate": 159,
-    "candidateSha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25"
+    "candidate": 160,
+    "candidateSha": "9261479fa5affb16e5d02a5beedd506b97bca9fb"
   },
   "modelCallException": {
     "enabled": false,
@@ -3118,7 +3118,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T11:06:48.950Z",
+  "updatedAt": "2026-11-27T11:10:18.784Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3188,19 +3188,19 @@
     "stages": [
       {
         "id": "M1",
-        "state": "estabilizacion-tecnica-validada",
+        "state": "auditada-aprobada-base-tecnica",
         "pr": 144,
         "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
         "next": "Conservar evidencia y ancestros, no volver a integrar piezas históricas; sin aceptación global."
       },
       {
         "id": "M2",
-        "state": "T06-real-validado-cierre-acotado",
+        "state": "auditada-tecnica-y-T06-aprobados-09-10-pendientes",
         "pr": 159,
         "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
         "owner": "E",
         "support": "B/C",
-        "next": "Conservar #159 y #160 inmutables; T06 supera aceptación acotada. Consolidar M3/M4 sobre candidato #160 en rama separada; validar objetivos 9/10/18 contra matriz completa antes de globalFull. No repetir modelos.",
+        "next": "Cerrar AUD-M2-01/02/03: auditar autorización de alternativas de pago, preparar pruebas dirigidas offline de perfil/fallback, solicitar nueva autorización acotada solo cuando sea necesario. M3/M4 pueden avanzar en auditoría independiente, sin declarar M2 completa ni integrar antes de resolver hallazgo de admisión de coste.",
         "pendingTrial": {
           "pr": 160,
           "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
@@ -3388,6 +3388,212 @@
           "scope": "T06 API dos identidades exactas y Pi dos sesiones nativas de lectura simultáneas con Lightning; no acredita dos modelos distintos dentro de Pi, Writer, factura, fallback integral ni aceptación global."
         }
       }
+    },
+    "auditM1M2": {
+      "date": "2026-11-27",
+      "candidate": {
+        "pr": 160,
+        "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb"
+      },
+      "plan": {
+        "pr": 61,
+        "sha": "a1c6bb318388771a7c3298205535b4801a1d2c8a",
+        "paths": [
+          "odd/tasks/gentle-shell-5.0.0-mejoras-asen-20261126.md",
+          "odd/tasks/flujo-agentes-18-objetivos-12-puntos-aceptacion-20261123.md",
+          "odd/tasks/flujo-agentes-refuerzo-quirurgico-ab-20261124.md"
+        ]
+      },
+      "M1": {
+        "result": "APROBADA_BASE_TECNICA",
+        "ancestry": {
+          "checked": [
+            127,
+            128,
+            129,
+            130,
+            131,
+            132,
+            133,
+            134,
+            135,
+            136,
+            137,
+            138,
+            141,
+            142,
+            143,
+            144,
+            159
+          ],
+          "allAncestors": true,
+          "behind": 0
+        },
+        "historicalCi": {
+          "sha": "ef3a91053b553f01e22e8d396ac3173a10357caf",
+          "ci": 45832618191,
+          "release": 45832618290,
+          "matrix": 45832618166,
+          "architecture": 45832618249,
+          "quick": 45832618271,
+          "pi": 45832618256
+        },
+        "limitation": "Ancestría no equivale a identidad de blobs ni aceptación global. Recuperación completa y sucesora pública pertenecen a M3/P04; no se certifican aquí."
+      },
+      "M2": {
+        "result": "VALIDACION_TECNICA_Y_T06_APROBADAS; ACEPTACION_OBJETIVOS_09_10_PENDIENTE",
+        "criteria": [
+          {
+            "id": "G01/18",
+            "status": "PASS_COMPATIBILIDAD_REAL_HOST_SIN_MODELOS",
+            "versions": [
+              "1.2.0",
+              "1.5.2",
+              "1.6.0"
+            ],
+            "systems": [
+              "Linux",
+              "Windows",
+              "macOS"
+            ],
+            "modes": [
+              "tui",
+              "rpc",
+              "json",
+              "print"
+            ],
+            "cells": 36,
+            "passed": 36,
+            "jobs": [
+              140429086559,
+              140429086904,
+              140429086981
+            ],
+            "lock": "1.6.0",
+            "peer": ">=1.2.0",
+            "limitation": "No ejecutar inferencia en 36 celdas; aceptación natural integral M6."
+          },
+          {
+            "id": "G08",
+            "status": "PASS_WINDOWS_AISLADO",
+            "job": 140429205034,
+            "tests": {
+              "install": 34,
+              "lock": 12,
+              "lifecycle": 8
+            },
+            "fail": 0,
+            "coverage": "EPERM/EBUSY/EACCES acotados, alias 8.3, lock, rollback, fallo previo/posterior, crash, firma y stage-only; sin instalación personal"
+          },
+          {
+            "id": "P02",
+            "status": "IMPLEMENTADO_PRUEBAS_POSITIVAS_NEGATIVAS_Y_T06_ACOTADO",
+            "paths": [
+              "src/review/model-identity.ts",
+              "src/agents/pi-process-runner.ts"
+            ],
+            "limitation": "Identidad declarada, no física; responseModel opcional, sin evidencia real completa en todos los roles. Mantener P01/M4 y P03/M6."
+          },
+          {
+            "id": "09",
+            "status": "IMPLEMENTADO_PRUEBA_INSTRUMENTADA; FALLO_REAL_PENDIENTE",
+            "paths": [
+              "src/runtime/lifecycle/model-fallback-policy.ts",
+              "src/runtime/lifecycle/plan-dispatcher.ts",
+              "src/agents/pi-process-runner.ts",
+              "src/agents/interrupted-explorer-continuation.ts",
+              "tests/asen-b-planned-fallback.test.ts"
+            ],
+            "coverage": "8 alternativas máximo, cooldown, ámbito y vigencia, deduplicación, revocación antes de despacho, snapshot congelado, RPC de continuación; falta fallo auténtico 429/credencial y modelo alternativo observado en el mismo proceso. No provocar consumo o errores reales sin autorización."
+          },
+          {
+            "id": "10",
+            "status": "IMPLEMENTADO_PRUEBA_INSTRUMENTADA; REANUDACION_REAL_PENDIENTE",
+            "coverage": "Modelo y origen persistidos, ruta por perfil, revocación y continuación. T06 pasa model explícito a startReadOnly; no prueba selección del principal por perfil ni reanudación auténtica."
+          },
+          {
+            "id": "T06",
+            "status": "PASS_REAL_ACOTADO",
+            "run": 45986966034,
+            "apiJob": 140465086952,
+            "piJob": 140465199964,
+            "apiModels": [
+              "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+            ],
+            "apiTokens": [
+              58,
+              69
+            ],
+            "piModels": [
+              "nvidia/nemotron-3.5-lightning-30b-a3b",
+              "nvidia/nemotron-3.5-lightning-30b-a3b"
+            ],
+            "piSessions": 2,
+            "limitation": "Dos modelos API, dos sesiones Pi del mismo modelo. No afirmar dos modelos diferentes en Pi, fallback, selección de perfil ni coste facturado."
+          }
+        ],
+        "gates": {
+          "ci": 45976410535,
+          "quick": 45976410780,
+          "release": 45976410678,
+          "architecture": 45976362521,
+          "pi": 45976362484,
+          "matrix": 45976362645,
+          "review": 7215050762,
+          "unresolvedThreads": 0,
+          "integrated": {
+            "job": 140429204247,
+            "pass": 446,
+            "fail": 0
+          },
+          "linux": {
+            "job": 140429204591,
+            "tests": 4906,
+            "pass": 4890,
+            "fail": 0,
+            "skipped": 16
+          },
+          "omitted": [
+            "Pi Free Smoke",
+            "T12 real Pi TUI dialog",
+            "T07 real CodeGraph",
+            "T12 integrated security",
+            "T06/T08 optional sandbox",
+            "otros ensayos opcionales sin autorización"
+          ]
+        }
+      },
+      "findings": [
+        {
+          "id": "AUD-M2-01",
+          "priority": "alta",
+          "status": "brecha-evidencia",
+          "description": "Objetivo 09 no probado con fallo real, 429 o credencial; el ensayo T06 es paralelo, no fallback.",
+          "acceptance": "Ensayo limitado con fallo controlado y respuesta real alternativa, registro del modelo observado y un único resultado; primero pruebas offline, nueva autorización exacta para proveedor."
+        },
+        {
+          "id": "AUD-M2-02",
+          "priority": "alta",
+          "status": "brecha-evidencia",
+          "description": "Objetivo 10: script T06 usa modelo explícito, no perfil principal o reanudación. Ambas sesiones Pi usan Lightning.",
+          "acceptance": "Fixture de perfil real, elegir principal a través de ruta de producción y reabrir sesión; comprobar recibo exacto y variante dos modelos Pi si requerida."
+        },
+        {
+          "id": "AUD-M2-03",
+          "priority": "alta",
+          "status": "auditoria-pendiente-de-gate-coste",
+          "description": "profile-fallback-store.ts guarda modelo/esfuerzo y pi-process-runner.ts 485-510 cambia al modelo configurado sin comprobar coste en ese tramo. No se ha acreditado una confirmación específica de modelo de pago/indeterminado aguas arriba; no concluir vulnerabilidad sin verificar consumidores.",
+          "acceptance": "Auditar admisión de alternativas de pago/indeterminadas, perfil de proyecto y autorización humana; prueba negativa de cero llamadas si no existe consentimiento aplicable; no bloquear alternativas legítimas ya autorizadas."
+        },
+        {
+          "id": "AUD-M1-04",
+          "priority": "media",
+          "status": "registro-desactualizado",
+          "description": "currentSnapshot y roadmap mantienen candidato 159 y estados históricos, corregir punteros sin borrar evidencias."
+        }
+      ],
+      "limitations": "Auditoría documental y de código dirigida por criterios M1/M2, no inspección línea por línea de todo el repositorio; no reejecutar CI ni consumir modelos. globalFull:false."
     }
   }
 }
