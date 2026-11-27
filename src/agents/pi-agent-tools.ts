@@ -105,7 +105,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   // Usar la misma selección persistida que el despachador automático; el
   // modelo no puede elegir un ámbito ni introducir alternativas.
   let validateFallback:(()=>Promise<void>)|undefined;
-  if(persistedPlan&&dispatchRole==="explorer"&&loadExplorerFallbackConfig){
+  if(persistedPlan?.model&&persistedPlan.explorerProfileOrigin&&dispatchRole==="explorer"&&loadExplorerFallbackConfig){
    const selection={role:dispatchRole,...(persistedPlan.model?{model:persistedPlan.model}:{}),...(persistedPlan.explorerProfileOrigin?{origin:persistedPlan.explorerProfileOrigin}:{}),...await loadExplorerFallbackConfig(session)};
    modelFallback=plannedExplorerFallback(selection);
    if(modelFallback){
