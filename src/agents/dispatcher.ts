@@ -102,7 +102,7 @@ export class Dispatcher {
  }
  /** Cancel a queued or running task. The runner receives the abort signal and must stop its owned work. */
  cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||!sameWorkspaceIdentityPath(control.projectId,projectId)||control.controller.signal.aborted)return false;control.controller.abort();return true;}
- async dispatch(request:AgentRequest,startBefore?:number,validateStart?:()=>Promise<void>):Promise<AgentResult>{
+ async dispatch(request:AgentRequest,startBefore?:number,validateStart?:()=>Promise<void>,onPreStartValidationRejected?:()=>Promise<void>):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
   let runnerRequest:AgentRequest,writerLease:{verify:()=>void;release:()=>void}|undefined;
   try{
@@ -125,10 +125,11 @@ export class Dispatcher {
   const lifecycleInput={id:request.id,role:request.role,owner:request.owner??{kind:"system" as const,id:"asen-dispatcher"},sessionId:request.isolationKey??"default",projectId:request.repository,createdAt:this.lifecycle?.createdAt()??new Date().toISOString()};
   try{const pending=this.lifecycle?.queued(lifecycleInput);if(isPromise(pending))await pending;}catch(error){this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);throw error;}
   let grant:WriteGrant|undefined,lifecycleRunning=false,acquired=false,terminalState=false;
+  const validateBeforeRunner=async()=>{try{await validateStart?.();}catch(error){if(!controller.signal.aborted&&request.role==="explorer"&&request.parentId&&onPreStartValidationRejected){try{await onPreStartValidationRejected();terminalState=true;}catch{/* Si no se acredita el rechazo, conservar la reclamación. */}}throw error;}};
   try{
    await this.#acquire(controller.signal);acquired=true;
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before execution");
-   if(validateStart)await validateStart();
+   if(validateStart)await validateBeforeRunner();
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled after validation");
    const starting=this.lifecycle?.running(request.id);if(isPromise(starting))await starting;lifecycleRunning=true;
    if(request.writeSurfaces&&request.role!=="worker") throw new Error("Only worker agents may receive write authority");
@@ -166,7 +167,7 @@ export class Dispatcher {
    if(receiver)runnerReceivers.set(receiver,{request:runnerRequest,used:false});
    const nativeBaseline=isNativePartitionWriter(request)?await captureNativeWriterBaseline(request):undefined;
    // El diario puede haber esperado un bloqueo; volver a comprobar toda autorización vigente.
-   if(validateStart)await validateStart();
+   if(validateStart)await validateBeforeRunner();
    writerLease?.verify();
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before Writer execution");
    if(startBefore!==undefined&&(!Number.isFinite(startBefore)||performance.now()>=startBefore))throw new Error("Exact batch consent expired before Writer execution");
