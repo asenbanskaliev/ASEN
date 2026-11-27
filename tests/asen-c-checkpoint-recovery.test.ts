@@ -36,5 +36,11 @@ test("G06 rechaza recibos y referencias Fix que no estén ligados de forma exact
 test("G04 exige dos jueces distintos y estados coherentes con sus dictámenes",()=>{
  assert.throws(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-reviewed",attemptStarted:true,judges:[judge,judge],findingsCount:0} as any),/inválido/u);
  assert.throws(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-reviewed",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b",verdict:"fail"}],findingsCount:0} as any),/inválido/u);
- assert.throws(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-findings",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b"}],findingsCount:1} as any),/inválido/u);
+ // Ambos jueces pueden dar pass con hallazgos leves: conservarlos, nunca aprobar el candidato.
+ const findings={...base,phase:"dual-findings",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b"}]};
+ assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...findings,findingsCount:1} as any));
+ assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...findings,judges:[judge,{...judge,route:"nvidia/judge-b",verdict:"fail"}],findingsCount:1} as any));
+ assert.throws(()=>assertNativeReviewCheckpointProgress({...findings,findingsCount:0} as any),/inválido/u);
+ assert.throws(()=>assertNativeReviewCheckpointProgress(findings as any),/inválido/u);
+ assert.throws(()=>assertNativeReviewCheckpointProgress({...findings,phase:"dual-reviewed",findingsCount:1} as any),/inválido/u);
 });
