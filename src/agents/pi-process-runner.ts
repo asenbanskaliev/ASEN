@@ -23,6 +23,8 @@ import {summarizePiInvalidRequest,type PiInvalidRequestFacts} from "../runtime/a
 export type PiNativeReviewEvent=
  |Readonly<{type:"assistant_end";stopReason:"stop"|"error"|"length"|"toolUse"|"unknown";textBlocks:number}>
  |Readonly<{type:"agent_settled"}>;
+/** La validación asíncrona verifica la configuración; la guarda síncrona protege el envío exacto. */
+export type PiFallbackConsentCheck=(()=>boolean|Promise<boolean>)&{readonly stillOwned?:()=>boolean};
 export interface PiProcessOptions{
  command?:string;
  rpcArgs?:string[];
@@ -73,7 +75,7 @@ export interface PiProcessOptions{
  onFallbackUnavailable?:(scope:Readonly<{taskId:string;sessionId:string;projectId:string}>)=>void;
  /** Consentimiento del anfitrión para el intento exacto; nunca se serializa.
   * El host de producción devuelve una comprobación viva, no una autorización reutilizable. */
- authorizeModelFallback?:(input:Readonly<{taskId:string;sessionId:string;projectId:string;role:AgentRequest["role"];to:string}>,signal?:AbortSignal)=>boolean|(()=>boolean|Promise<boolean>)|Promise<boolean|(()=>boolean|Promise<boolean>)>;
+ authorizeModelFallback?:(input:Readonly<{taskId:string;sessionId:string;projectId:string;role:AgentRequest["role"];to:string}>,signal?:AbortSignal)=>boolean|PiFallbackConsentCheck|Promise<boolean|PiFallbackConsentCheck>;
 }
 export interface PiChildSelectionObservation{
  readonly taskId:string;readonly sessionId:string;readonly projectId:string;
@@ -616,7 +618,7 @@ export class PiProcessRunner implements AgentRunner{
    const disarmPhase=()=>{if(timer)clearTimeout(timer);timer=undefined;};
    // One serialized writer keeps RPC order and honors stdin backpressure.
    let writeChain:Promise<void>=Promise.resolve();
-   const writeLine=(line:string,startsTurn=false,beforeWrite?:()=>Promise<boolean>):Promise<void>=>{
+   const writeLine=(line:string,startsTurn=false,beforeWrite?:()=>Promise<boolean>,stillOwned?:()=>boolean):Promise<void>=>{
     // Comprobar de nuevo al despachar: la cancelación puede llegar cuando
     // el comando ya está en cola, incluso tras confirmar get_state.
     const next=writeChain.then(async()=>{
@@ -626,6 +628,10 @@ export class PiProcessRunner implements AgentRunner{
      if(startsTurn&&deadline!==undefined&&performance.now()>=deadline){
       stop({id:request.id,ok:false,output:"Exact batch consent expired before Pi prompt"});return;
      }
+     // Sin await entre esta comprobación y stream.write: el anfitrión
+     // puede haber cambiado durante la validación asíncrona precedente.
+     if(stillOwned){let owned=false;try{owned=stillOwned()===true;}catch{/* Rechazo seguro. */}if(!owned){stop({id:request.id,ok:false,output:"Pi fallback consent scope is no longer live"});return;}}
+     if(!alive())return;
      return writeStdinLine(child.stdin,line);
     }).catch(()=>{/* stdin errors stop the run through the stdin error handler */});
     writeChain=next;
@@ -633,7 +639,7 @@ export class PiProcessRunner implements AgentRunner{
    };
    armPhase("spawn",spawnStartedAt);
    child.once("spawn",()=>{armPhase("preflight",spawnStartedAt);});
-   const sendRpc=(payload:Record<string,unknown>,onIssued?:(id:string)=>void,beforeWrite?:()=>Promise<boolean>):Promise<Record<string,unknown>>=>{
+   const sendRpc=(payload:Record<string,unknown>,onIssued?:(id:string)=>void,beforeWrite?:()=>Promise<boolean>,stillOwned?:()=>boolean):Promise<Record<string,unknown>>=>{
     if(!alive())return Promise.resolve({success:false,error:"task is not running"});
     const id=`asen-fallback:${request.id}:${++rpcSequence}`;
     onIssued?.(id);
@@ -653,7 +659,7 @@ export class PiProcessRunner implements AgentRunner{
       rpcFailure=`rpc timeout after ${budget}ms (${String(payload.type)})`;
       settle({success:false,error:rpcFailure});
      },budget);
-     void writeLine(JSON.stringify({id,...payload})+"\n",payload.type==="prompt",beforeWrite);
+     void writeLine(JSON.stringify({id,...payload})+"\n",payload.type==="prompt",beforeWrite,stillOwned);
     });
    };
    const publishFallback=(change:Omit<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">)=>{
@@ -694,6 +700,7 @@ export class PiProcessRunner implements AgentRunner{
        }),consentSignal);
        if(!alive())return;
        if(authorized!==true&&typeof authorized!=="function"){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback requires explicit consent"});return;}
+       const stillOwned=typeof authorized==="function"?authorized.stillOwned:undefined;
        const consentCurrent=async()=>{
         if(!alive())return false;
         armPhase("turn");
@@ -706,11 +713,11 @@ export class PiProcessRunner implements AgentRunner{
        if(!await consentCurrent()||!alive())return;
        // Cada RPC mantiene su propio presupuesto, sin competir con el diálogo.
        disarmPhase();
-       const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!await consentCurrent()||!alive())return;
+       const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId},undefined,undefined,stillOwned);if(!await consentCurrent()||!alive())return;
       if(switched.command!=="set_model"){fallbackInProgress=false;stop({id:request.id,ok:false,output:rpcFailure??"Pi fallback model change response could not be correlated"});return;}
       if(switched.success!==true)continue;
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
-      if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!await consentCurrent()||!alive())return;if(effort.success===true)appliedThinking=thinking;}
+      if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking},undefined,undefined,stillOwned);if(!await consentCurrent()||!alive())return;if(effort.success===true)appliedThinking=thinking;}
       // Confirmar el modelo seleccionado realmente por Pi antes de otra inferencia.
       const state=await sendRpc({type:"get_state"});if(!await consentCurrent()||!alive())return;
       const stateModel=(state.data as {model?:{provider?:unknown;id?:unknown;api?:unknown}}|undefined)?.model;
@@ -730,7 +737,7 @@ export class PiProcessRunner implements AgentRunner{
       continuationTurnPending=true;
       armPhase("turn");
       // Revalidar al salir de la cola de escritura, justo antes del prompt.
-      const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."},id=>{continuationPromptId=id;},async()=>{if(!await consentCurrent()||!alive())return false;armPhase("turn");return true;});
+      const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."},id=>{continuationPromptId=id;},async()=>{if(!await consentCurrent()||!alive())return false;armPhase("turn");return true;},stillOwned);
       if(!alive())return;
       if(resumed.success!==true||!continuationAcked){
        continuationPromptId=undefined;continuationTurnPending=false;fallbackInProgress=false;closeSettled(category);return;
