@@ -726,6 +726,80 @@ jobs:
           retention-days: 30
 
   # M2: autorización humana de un SHA revisado; sin checkout ni secretos.
+  # Objetivo 09: una respuesta 429 local, seguida de una petición real acotada.
+  # No repite los dos sondeos API anteriores ni consume el modelo primario.
+  t06-nvidia-09-controlled:
+    needs: [t06-m2-authorization]
+    if: >-
+      !cancelled() && needs.t06-m2-authorization.result == 'success' &&
+      github.repository == 'asenbanskaliev/ASEN' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.number == 161 &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-t06-nvidia-09-controlado' &&
+      github.actor == 'asenbanskaliev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    concurrency:
+      group: t06-nvidia-09-controlled-${{ github.event.pull_request.head.sha }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+      PI_CODING_AGENT_DIR: ${{ runner.temp }}/asen-t06-09-local-config
+      ASEN_NVIDIA_PI_REPORT: ${{ runner.temp }}/asen-t06-09-controlled/receipt.json
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.1.6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
+        with:
+          node-version: "22.19.0"
+      - name: Preparar Pi y comprobar la pasarela sin credenciales
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$PR_NUMBER" = 161
+          test "$(git rev-parse HEAD)" = "$ASEN_EXPECTED_SHA"
+          npm install -g --ignore-scripts tsx@4.23.15 @earendil-works/pi-coding-agent@1.2.0
+          pi --version
+          tsx --test tests/m2-controlled-failure.test.ts
+          mkdir -p "$PI_CODING_AGENT_DIR"
+          node scripts/t12-pi-retry-settings.mjs
+      - name: Revalidar revisión exacta y ejecución única
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
+      - name: Fallo local 429 y una respuesta NVIDIA real de Nano Omni
+        shell: bash
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test -n "$NVIDIA_API_KEY"
+          ASEN_M2_CONTROLLED_FAILURE=1 ASEN_M2_TRIAL_AUTHORIZED="$ASEN_EXPECTED_SHA" timeout 250s tsx scripts/m2-nvidia-0910.ts
+      - name: Conservar informe objetivo 09 del SHA exacto
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.4.3
+        with:
+          name: t06-nvidia-09-controlled-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/asen-t06-09-controlled/receipt.json
+          if-no-files-found: warn
+          retention-days: 7
+
+
   t06-m2-authorization:
     if: >-
       github.repository == 'asenbanskaliev/ASEN' &&
@@ -735,7 +809,8 @@ jobs:
       github.head_ref == 'feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127' &&
       github.event.pull_request.draft == false &&
       github.event.action == 'labeled' &&
-      github.event.label.name == 'asen-t06-nvidia-una-vez' &&
+      (github.event.label.name == 'asen-t06-nvidia-una-vez' ||
+       github.event.label.name == 'asen-t06-nvidia-09-controlado') &&
       github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -755,6 +830,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           ASEN_EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
           EXPECTED_BRANCH: ${{ github.head_ref }}
+          TRIAL_LABEL: ${{ github.event.label.name }}
         run: |
           set -euo pipefail
           test "$GITHUB_RUN_ATTEMPT" = 1
@@ -764,6 +840,11 @@ jobs:
           issue="$repo/issues/$PR_NUMBER"
           test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
           approval="asen-t06-autorizar:$ASEN_EXPECTED_SHA:nvidia/nemotron-3.5-lightning-30b-a3b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+          case "$TRIAL_LABEL" in
+            asen-t06-nvidia-una-vez) ;;
+            asen-t06-nvidia-09-controlado) approval="asen-t06-autorizar-09-controlado:$ASEN_EXPECTED_SHA:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning" ;;
+            *) exit 1 ;;
+          esac
           gh api "$issue/comments" --paginate --jq '.[]' > "$RUNNER_TEMP/t06-approval.jsonl"
           approval_time=$(jq -ser --arg approval "$approval" 'map(select(.user.login == "asenbanskaliev" and .body == $approval)) | sort_by(.id) | last | .created_at | select(type == "string")' "$RUNNER_TEMP/t06-approval.jsonl")
           # El consentimiento delegado es del propietario; no equivale a revisión técnica.
@@ -782,7 +863,7 @@ jobs:
           gh api "$repo/actions/runs/$ci_run/jobs?filter=latest&per_page=100" --paginate --jq '.jobs[]' > "$RUNNER_TEMP/t06-jobs.jsonl"
           jq -se 'any(.[]; .name == "G08 actualización administrada aislada (Windows)" and .conclusion == "success") and any(.[]; .name == "Megatanda T02–T10 y T11 (pruebas integradas sin modelos)" and .conclusion == "success")' "$RUNNER_TEMP/t06-jobs.jsonl" >/dev/null
           test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
-          test "$(gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-nvidia-una-vez") | .name')" = 'asen-t06-nvidia-una-vez'
+          test "$(gh api "$issue/labels" --paginate --jq '.[] | .name' | grep -Fx -- "$TRIAL_LABEL")" = "$TRIAL_LABEL"
           api_marker="<!-- asen-t06-nvidia-consumido:$ASEN_EXPECTED_SHA -->"
           pi_marker="<!-- asen-t06-nvidia-pi-consumido:$ASEN_EXPECTED_SHA -->"
           gh api "$issue/comments" --paginate --jq '.[] | select(.user.login == "github-actions[bot]") | .body' > "$RUNNER_TEMP/t06-consumed.txt"
@@ -790,11 +871,11 @@ jobs:
             echo '::error::El SHA ya tiene una reserva de consumo'
             exit 1
           fi
-          # Reservar ambas fases antes de cualquier llamada; no repetir tras fallo.
+          # Reservar el SHA para un único modo de ensayo; no repetir ni alternar modos.
           gh api --method POST "$issue/comments" -f body="$api_marker" >/dev/null
           gh api --method POST "$issue/comments" -f body="$pi_marker" >/dev/null
-          gh api --method DELETE "$issue/labels/asen-t06-nvidia-una-vez" >/dev/null
-          test -z "$(gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-nvidia-una-vez") | .name')"
+          gh api --method DELETE "$issue/labels/$TRIAL_LABEL" >/dev/null
+          test -z "$(gh api "$issue/labels" --paginate --jq '.[] | .name' | grep -Fx -- "$TRIAL_LABEL" || true)"
           test "$(gh api "$pr" --jq '.head.sha')" = "$ASEN_EXPECTED_SHA"
 
   t06-nvidia-free-api:
