@@ -138,32 +138,6 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": {
-        "id": "manual-E-M2-161-regresiones-1127",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "fa873cbd0bb7e313f10491bb70d50ed15ecbf997",
-        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "files": [
-          "src/agents/dispatcher.ts",
-          "src/agents/interrupted-explorer-continuation.ts",
-          "src/agents/pi-agent-tools.ts",
-          "src/runtime/lifecycle/parent-model-fallback.ts",
-          "src/runtime/lifecycle/plan-dispatcher.ts",
-          "src/agents/pi-process-runner.ts",
-          "extensions/asen.ts",
-          "tests/interrupted-explorer-continuation.test.ts",
-          "tests/parent-model-fallback.test.ts",
-          "tests/pi-process-runner-budget.test.ts",
-          "tests/pi-process-runner-rpc-timeout.test.ts",
-          "tests/extension-state-commands.test.ts",
-          "tests/p11-child-fallback-wiring.test.ts",
-          "tests/asen-b-planned-fallback.test.ts"
-        ],
-        "phase": "Corregir cinco regresiones CI y seis observaciones CodeRabbit",
-        "startedAt": "2026-11-27T11:28:09.599Z"
-      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -208,11 +182,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar PR 161 exacta; completar pruebas de reanudación perfil y fallo proveedor controlado, no declarar M2 cerrada, no repetir T06. Corregir regresiones del candidato propio.",
-      "blocker": "Ningún bloqueo T06; falta consolidación y aceptación integral de etapas posteriores.",
+      "next": "Validar PR #161 y objectives0910Trial; ejecutar una sola vez exclusivamente si CI exacta y revisión independiente están completas y limpias. Si falla, diagnosticar sin consumir; no rearmar #159/#160. Recoger recibo específico 09/10, distinguir fallo natural, recuperación de registro y reinicio completo.",
+      "blocker": "CI y revisión independiente del nuevo SHA pendientes.",
       "generation": 2,
-      "pr": 159,
-      "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+      "pr": 161,
+      "sha": "ca4717af6f3f3d5a62fbe0971923ee58cc47066c",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -270,7 +244,7 @@
         4712769637,
         4712769641
       ],
-      "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
       "tests": "El SHA 315fc98 tuvo CI/gates correctos y CodeRabbit sin hallazgos nuevos. SHA 472547ae añade filtro github-actions[bot] a la lectura de marcadores T06 y prueba negativa contra comentarios ajenos; se valida de nuevo desde cero. La CI rápida del SHA 472547ae detectó que tests/ci-specialized-gates.test.ts rechazaba cualquier comparación == con texto entre comillas; se acotó la regla a comparaciones de github.head_ref en 3eafc195. La aceptación automática y CodeRabbit deben repetirse sobre este SHA. CodeRabbit full review sobre 3eafc195 completada sin hilos abiertos. Validación exacta 3eafc195 completa, CodeRabbit cero hilos abiertos. Intento acotado T06 run 45895263733/job 140167464412 detenido antes de llamadas por 403 al retirar la etiqueta con GITHUB_TOKEN. NVIDIA API requests=0; Pi sessions=0; etiqueta retirada manualmente.",
       "files": [
         "extensions/asen.ts",
@@ -372,8 +346,8 @@
       },
       "validationOwner": {
         "team": "E",
-        "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
-        "sha": "3eafc1951776d19c8a21d525904be95acded984b",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "sha": "ca4717af6f3f3d5a62fbe0971923ee58cc47066c",
         "phase": "CI y revisión independiente",
         "writeReservation": false
       }
@@ -894,80 +868,38 @@
       },
       "state": "liberada",
       "reason": "Código y pruebas publicados, liberar antes de CI"
+    },
+    {
+      "id": "manual-E-M2-161-regresiones-1127",
+      "team": "E",
+      "generation": 2,
+      "package": "E1",
+      "base": "fa873cbd0bb7e313f10491bb70d50ed15ecbf997",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+      "files": [
+        "src/agents/dispatcher.ts",
+        "src/agents/interrupted-explorer-continuation.ts",
+        "src/agents/pi-agent-tools.ts",
+        "src/runtime/lifecycle/parent-model-fallback.ts",
+        "src/runtime/lifecycle/plan-dispatcher.ts",
+        "src/agents/pi-process-runner.ts",
+        "extensions/asen.ts",
+        "tests/interrupted-explorer-continuation.test.ts",
+        "tests/parent-model-fallback.test.ts",
+        "tests/pi-process-runner-budget.test.ts",
+        "tests/pi-process-runner-rpc-timeout.test.ts",
+        "tests/extension-state-commands.test.ts",
+        "tests/p11-child-fallback-wiring.test.ts",
+        "tests/asen-b-planned-fallback.test.ts"
+      ],
+      "phase": "Corregir cinco regresiones CI y seis observaciones CodeRabbit",
+      "startedAt": "2026-11-27T11:28:09.599Z",
+      "status": "liberada-tras-publicar",
+      "resultSha": "ca4717af6f3f3d5a62fbe0971923ee58cc47066c",
+      "finishedAt": "2026-11-27T11:59:22Z"
     }
   ],
-  "temporaryOwnership": {
-    "src/agents/dispatcher.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "src/agents/interrupted-explorer-continuation.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "src/agents/pi-agent-tools.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "src/runtime/lifecycle/parent-model-fallback.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "src/runtime/lifecycle/plan-dispatcher.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "src/agents/pi-process-runner.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "extensions/asen.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "tests/interrupted-explorer-continuation.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "tests/parent-model-fallback.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "tests/pi-process-runner-budget.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "tests/pi-process-runner-rpc-timeout.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "tests/extension-state-commands.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "tests/p11-child-fallback-wiring.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    },
-    "tests/asen-b-planned-fallback.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-regresiones-1127",
-      "scope": "M2"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -2935,13 +2867,13 @@
         "unresolved": 0
       }
     },
-    "m2": "T06 API y Pi correctas; 09/10 pendientes de ensayo real; revisar gate de coste de alternativas",
+    "m2": "PR 161: seis correcciones publicadas; pendiente CI, CodeRabbit y ensayo 09/10 acotado. T06 #160 preservado.",
     "m3": "CI y revisión independiente #156 correctas, candidata separada pendiente de consolidación y evidencia real.",
     "globalFull": false,
-    "updatedAt": "2026-11-27T11:10:18.781Z",
+    "updatedAt": "2026-11-27T11:59:22Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
-    "candidate": 160,
-    "candidateSha": "9261479fa5affb16e5d02a5beedd506b97bca9fb"
+    "candidate": 161,
+    "candidateSha": "ca4717af6f3f3d5a62fbe0971923ee58cc47066c"
   },
   "modelCallException": {
     "enabled": false,
@@ -3233,10 +3165,73 @@
         ],
         "scope": "T06 API dos identidades exactas y Pi dos sesiones nativas de lectura simultáneas con Lightning; no acredita dos modelos distintos dentro de Pi, Writer, factura, fallback integral ni aceptación global."
       }
+    },
+    "objectives0910Trial": {
+      "pr": 161,
+      "sha": "ca4717af6f3f3d5a62fbe0971923ee58cc47066c",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+      "state": "pendiente-validaciones-exactas",
+      "source": "Usuario: «Adaptadolo y ejecutar», «Activa el real y verifícalo», «Hazlo asi» tras plan de corregir y activar únicamente con validaciones satisfactorias.",
+      "scope": "Un ensayo M2 09/10 en #161; dos solicitudes API NVIDIA de hasta 128 tokens cada una y una sesión Pi Explorer en proyecto desechable, máximo una continuación alternativa ante fallo natural. Sin escrituras, herramientas, modelos de pago, reintentos automáticos ni repetición de ensayo. No provocar 429 ni confundir recuperación del registro con reinicio completo del orquestador.",
+      "modelAllowlist": [
+        "nvidia/nemotron-3.5-lightning-30b-a3b",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+      ],
+      "requiredOwnerComment": "asen-t06-autorizar:ca4717af6f3f3d5a62fbe0971923ee58cc47066c",
+      "requiredLabel": "asen-t06-nvidia-una-vez",
+      "independentReviewRequired": true,
+      "previousConsumedTrialsPreserved": true,
+      "consumptionReserved": false,
+      "reviewRequested": 7217696811,
+      "validationRuns": [
+        {
+          "name": "Pi Free Smoke",
+          "id": 45994818918,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 45994818889,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Phase 0 Architecture",
+          "id": 45994818938,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Release Gate",
+          "id": 45994818904,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Pi 1.2 runtime evidence",
+          "id": 45994818883,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "CI",
+          "id": 45994818784,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "CI rápida",
+          "id": 45994819020,
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "globalFull": false
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T11:16:04.195Z",
+  "updatedAt": "2026-11-27T11:59:22Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
