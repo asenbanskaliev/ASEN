@@ -139,7 +139,7 @@ function withoutModelComments(input:string):string{
  }
  return result;
 }
-function privateFallbackSettings(directory:string,source:string,request:AgentRequest,chain:readonly {model:string}[]):{authPath?:string;model:string}{
+function privateFallbackSettings(directory:string,source:string,request:AgentRequest,chain:readonly {model:string}[],sharedOAuthAvailable:boolean):{authPath?:string;model:string;alternativesUnavailable?:boolean}{
  const object=(value:unknown):Record<string,unknown>=>{
   if(!value||typeof value!=="object"||Array.isArray(value))throw Error("Invalid Pi fallback settings");
   return value as Record<string,unknown>;
@@ -167,6 +167,17 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
  const primary=model?splitPiModelIdentity(model):undefined;
  if(!model||!primary)throw Error("Pi fallback requires an exact primary model");
  providers.add(primary.provider);
+ const auth=read("auth.json");
+ const oauthProvider=(key:string)=>{const value=auth?.[key];return !!value&&typeof value==="object"&&!Array.isArray(value)&&(value as Record<string,unknown>).type==="oauth";};
+ const hasOAuth=[...providers].some(oauthProvider);
+ const proxyUnsupported=settings.httpProxy!==undefined||settings.httpIdleTimeoutMs!==undefined;
+ let alternativesUnavailable=false;
+ if(hasOAuth&&(proxyUnsupported||!sharedOAuthAvailable)){
+  // No copiar tokens ni usar el SDK sin garantías. Si OAuth solo pertenece
+  // a una alternativa, mantener el primario exacto aislado y sin reintentos.
+  if(oauthProvider(primary.provider))throw Error(proxyUnsupported?"Pi OAuth shared auth cannot preserve custom HTTP proxy or idle timeout":"Pi OAuth fallback requires a compatible native SDK and one exact primary model; no credentials were copied");
+  providers.clear();providers.add(primary.provider);alternativesUnavailable=true;
+ }
  mkdirSync(directory,{mode:0o700});
  const save=(name:string,value:unknown)=>writeFileSync(join(directory,name),JSON.stringify(value)+"\n",{mode:0o600,flag:"wx"});
  save("settings.json",{...settings,cacheWarming:"off",packages:[],extensions:[],skills:[],promptTemplates:[],themes:[],compaction:{...compaction,enabled:false},retry:{...retry,enabled:false,maxRetries:0,provider:{...provider,maxRetries:0}}});
@@ -175,7 +186,6 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
   const configured=models.providers===undefined?{}:object(models.providers);
   save("models.json",{...models,providers:Object.fromEntries(Object.entries(configured).filter(([key])=>providers.has(key)))});
  }
- const auth=read("auth.json");
  // Si una ruta usa OAuth, Pi debe acceder al almacén original con su propio
  // bloqueo de renovación. No copiar tokens, enlazar auth.json ni guardar
  // credenciales OAuth en el directorio temporal del hijo.
@@ -193,7 +203,7 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
   });
   save("auth.json",Object.fromEntries(keys));
  }
- return {model};
+ return {model,...(alternativesUnavailable?{alternativesUnavailable:true}:{})};
 }
 
 /** Dar a Pi la oportunidad de persistir la renovación OAuth antes de matar el proceso.
@@ -447,17 +457,18 @@ export class PiProcessRunner implements AgentRunner{
    catch{rmSync(policyDirectory,{recursive:true,force:true});return Promise.resolve({id:request.id,ok:false,output:"Invalid Pi configuration directory"});}
   const scopedFallback=!!fallbackConfig?.chain.length;
    const needsModelPreflight=strictModelPreflight||scopedFallback;
-  let sharedAuthPath:string|undefined,effectivePrimary=request.model;
+  let sharedAuthPath:string|undefined,effectivePrimary=request.model,alternativesUnavailable=false;
   if(scopedFallback){
    try{
     const isolatedConfig=join(policyDirectory,"agent");
-    const prepared=privateFallbackSettings(isolatedConfig,configHome,request,fallbackConfig!.chain);
+    const prepared=privateFallbackSettings(isolatedConfig,configHome,request,fallbackConfig!.chain,extra.length===0&&!!nativePiSdk(command,this.options.rpcArgs,childEnvironment));
+    alternativesUnavailable=prepared.alternativesUnavailable===true;
     sharedAuthPath=prepared.authPath;effectivePrimary=prepared.model;
     routeArgs=piRuntimeRouteArgs({...request,model:effectivePrimary});
     childEnvironment.PI_CODING_AGENT_DIR=isolatedConfig;
    }catch(error){
     rmSync(policyDirectory,{recursive:true,force:true});
-    const output=error instanceof Error&&error.message==="Pi OAuth shared auth cannot preserve custom HTTP proxy or idle timeout"?error.message:"Pi fallback requires an exact primary model and an isolated configuration without automatic retries";
+    const output=error instanceof Error&&(error.message==="Pi OAuth shared auth cannot preserve custom HTTP proxy or idle timeout"||error.message==="Pi OAuth fallback requires a compatible native SDK and one exact primary model; no credentials were copied")?error.message:"Pi fallback requires an exact primary model and an isolated configuration without automatic retries";
     return Promise.resolve({id:request.id,ok:false,output});
    }
   }
@@ -515,7 +526,7 @@ export class PiProcessRunner implements AgentRunner{
    }
    if(child.pid!==undefined){try{this.options.onProcessStart?.(child.pid);}catch{/* Evidence observers cannot alter Pi execution. */}}
    let stdout="",stderr="",settled=false,overflow=false,buffer="",policyLoaded=false,toolAttempted=false,agentEnded=false,streamBytes=0,retainedBytes=0,stopResult:AgentResult|undefined;
-   const fallbackChain=fallbackConfig?.chain??[],fallbackEnabled=fallbackChain.length>0,triedModels=new Set<string>(),cooldown=getProcessModelFallbackCooldown();
+   const fallbackChain=alternativesUnavailable?[]:fallbackConfig?.chain??[],fallbackEnabled=scopedFallback,triedModels=new Set<string>(),cooldown=getProcessModelFallbackCooldown();
    // Compatibilidad: la ruta antigua sin fallback conserva su contrato.
    // T08 puede exigir agent_settled incluso sin cambiar de modelo: agent_end
    // solo cierra una tentativa de Pi y puede preceder a una recuperación.
@@ -548,6 +559,7 @@ export class PiProcessRunner implements AgentRunner{
    const consentSignal=signal?AbortSignal.any([signal,consentAbort.signal]):consentAbort.signal;
    const finish=(result:AgentResult)=>{
     if(settled)return;
+    if(alternativesUnavailable){const notice="Alternativas OAuth no disponibles; solo se permite el modelo principal exacto.";result={...result,output:result.ok?result.output+"\n"+JSON.stringify({type:"asen_fallback_unavailable",message:notice})+"\n":result.output+"; "+notice};}
     consentAbort.abort();
     settled=true;
     clearTimeout(timer);
