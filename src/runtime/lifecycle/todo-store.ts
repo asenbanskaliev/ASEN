@@ -217,7 +217,14 @@ export class SessionTodoStore{
    const newItems:TodoItem[]=[],byRequest=new Map(existingByRequest);
    for(const draft of drafts){
     const dependencies=draft.dependsOn.map((request:string)=>{const id=plannedIds.get(request);if(!id)throw new Error("ASEN Todo plan dependency is missing");const prior=byRequest.get(request);if(prior&&(!prior.events[0]||prior.events[0].sessionId!==context.sessionId||!sameWorkspaceIdentityPath(prior.events[0].projectId,context.projectId)))throw new Error("Todo dependency must belong to the current session and project");return id;});
-    const existing=byRequest.get(draft.requestId);if(existing){if(existing.title!==draft.title||JSON.stringify(existing.dependsOn??[])!==JSON.stringify(dependencies)||existing.description!==draft.description||JSON.stringify(existing.plan??null)!==JSON.stringify(draft.plan))throw new Error("Todo request id conflicts with the existing task");continue;}
+    const existing=byRequest.get(draft.requestId);if(existing){
+     // Un plan anterior al registro de procedencia conserva sus permisos originales.
+     // Admitir solo la repetición idéntica sin adquirir alternativas nuevas.
+     const {explorerProfileOrigin,...withoutOrigin}=draft.plan;
+     const replayPlan=existing.plan?.role==="explorer"&&existing.plan.explorerProfileOrigin===undefined&&explorerProfileOrigin!==undefined?withoutOrigin:draft.plan;
+     if(existing.title!==draft.title||JSON.stringify(existing.dependsOn??[])!==JSON.stringify(dependencies)||existing.description!==draft.description||JSON.stringify(existing.plan??null)!==JSON.stringify(replayPlan))throw new Error("Todo request id conflicts with the existing task");
+     continue;
+    }
     const taskId=plannedIds.get(draft.requestId)!;if(dependencies.includes(taskId))throw new Error("Todo dependency cycle rejected");
     const item:TodoItem={taskId,title:draft.title,events:[{taskId,sessionId:context.sessionId,projectId:context.projectId,revision:1,state:"planned",at:this.now()}],requestId:draft.requestId,...(dependencies.length?{dependsOn:dependencies}:{}),description:draft.description,plan:structuredClone(draft.plan)};
     newItems.push(item);byRequest.set(draft.requestId,item);
