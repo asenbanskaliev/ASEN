@@ -184,7 +184,7 @@
         "openReviewThreads": 0
       },
       "next": "Verificar nuevo SHA exacto #159, CI y revisión independiente sin hilos accionables. Aplicar consentimiento delegado y etiqueta única solo después de todas las puertas y verificar evidencias. En paralelo reconciliar candidato separado #156 M3/M4 tras CI/revisión; no mezclar hasta admisión de M2.",
-      "blocker": "M2: terminar CI y confirmar revisión independiente del SHA exacto. M3/M4: validar corrección de checkpoints con hallazgos. Sin consumo NVIDIA.",
+      "blocker": "M2: predicados jq corregidos, CI y revisión exacta pendientes; #156 validada como candidata separada. Sin NVIDIA hasta puertas completas.",
       "generation": 2,
       "pr": 159,
       "sha": "e74245b48408888adb09ab2c2e8daea63bc5e887",
@@ -2134,12 +2134,57 @@
     },
     "ci": {
       "sha": "e74245b48408888adb09ab2c2e8daea63bc5e887",
-      "conclusion": "pendiente"
+      "conclusion": "pendiente",
+      "latest": [
+        {
+          "id": 45963764883,
+          "name": "Pi Free Smoke",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 45963764937,
+          "name": "Pi 1.2 runtime evidence",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45963764890,
+          "name": "CI rápida",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45963764888,
+          "name": "Release Gate",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45963764872,
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45963764919,
+          "name": "Phase 0 Architecture",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45963764880,
+          "name": "CI",
+          "status": "in_progress",
+          "conclusion": null
+        }
+      ]
     },
     "review": {
       "sha": "e74245b48408888adb09ab2c2e8daea63bc5e887",
       "confirmed": false,
-      "scope": "Formato real CodeRabbit y predicados jq; mantener todos los hilos resueltos antes de autorizar."
+      "scope": "Formato real CodeRabbit y predicados jq; mantener todos los hilos resueltos antes de autorizar.",
+      "requestedCommentId": 7213256042
     },
     "audit": {
       "scope": "Orden temporal de revisión/consentimiento y revalidación tras escritura running. Pruebas nuevas; CI pendiente."
@@ -2480,7 +2525,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T08:11:25.413Z",
+  "updatedAt": "2026-11-27T08:11:47.182Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
