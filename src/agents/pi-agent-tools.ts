@@ -66,10 +66,10 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
   const launchManager=context?.sessionManager,launchHost=await identity(context),requestedRoot=(params as {root?:unknown}).root;
   const session=await selectedIdentity(requestedRoot,context,true,signal);
-  const validateHost=async()=>{
+  const validateHost=async(diagnostic="La sesión cambió antes de ejecutar la exploración")=>{
    throwIfCancelled(signal);
    const current=await identity(context);
-   if(context?.sessionManager!==launchManager||current.sessionId!==launchHost.sessionId||session.sessionId!==launchHost.sessionId||!sameWorkspaceIdentityPath(current.projectId,launchHost.projectId))throw Error("La sesión cambió antes de ejecutar la exploración");
+   if(context?.sessionManager!==launchManager||current.sessionId!==launchHost.sessionId||session.sessionId!==launchHost.sessionId||!sameWorkspaceIdentityPath(current.projectId,launchHost.projectId))throw Error(diagnostic);
    const target=await selectedIdentity(requestedRoot,context,false,signal);
    if(target.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(target.projectId,session.projectId))throw Error("El proyecto autorizado cambió antes de ejecutar la exploración");
    throwIfCancelled(signal);
@@ -154,7 +154,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const binding=todoSnapshot?{
    onPrepared:async(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>{
     const validate=async()=>{
-     await validateHost();
+     await validateHost("Pi session or project changed before Todo agent dispatch");
      if(persistedPlan)assertCurrentReadOnlyCandidate(persistedPlan,session.projectId);
      await validateFallback?.();
     };
