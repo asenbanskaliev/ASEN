@@ -150,3 +150,10 @@ test("locked read-modify-write prevents lost updates and revalidates callback ou
  await assert.rejects(()=>updateProfileFallbacksFile(file,()=>({schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{worker:[step("x"),step("x")]}}} as ProfileFallbacksFile)),/Invalid profile fallback file/);
  assert.equal(await readFile(file,"utf8"),before);
 });
+
+ test("M2: la lectura rechaza directorios y archivos demasiado grandes",async t=>{
+  const {directory,file}=await fixture(t);
+  await assert.rejects(()=>readProfileFallbacksFile(directory),/Invalid profile fallback file/);
+  await writeFile(file,Buffer.alloc(1024*1024+1,32));
+  await assert.rejects(()=>readProfileFallbacksFile(file),/Invalid profile fallback file/);
+ });
