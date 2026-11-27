@@ -138,7 +138,19 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": null,
+      "lease": {
+        "id": "manual-E-g2-m2-prueba-sink-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "2a3a5ee850eae90acf8c0b062ed924e613141a39",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "phase": "corregir doble de prueba inmutable",
+        "files": [
+          "tests/dispatcher.test.ts"
+        ],
+        "startedAt": "2026-11-27T07:34:34.762Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -685,7 +697,13 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "tests/dispatcher.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-m2-prueba-sink-1127",
+      "scope": "M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
