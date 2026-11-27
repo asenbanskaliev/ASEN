@@ -210,6 +210,42 @@ const recoveredBindings=new WeakMap<object,{input:CheckpointInput;serialized:str
 const digest=(text:string)=>createHash("sha256").update(text).digest("hex");
 const checkpointFile=(input:CheckpointInput)=>join(input.storageDir,"native-review-"+digest(integrationKey(input.candidate,input.sessionId))+".json");
 const checkpointMac=(key:Buffer,body:string)=>createHmac("sha256",key).update("asen.native-review/v1\0"+body).digest("hex");
+const receiptSignature=/^(?:hmac-sha256:)?[a-f0-9]{64}$/u;
+/** Los checkpoints son recuperables, pero nunca pueden transformar un intento
+ * incompleto en una revisión completa. Esta validación semántica se aplica
+ * antes de que métricas, reanudación o aceptación observen el registro. */
+export function assertNativeReviewCheckpointProgress(data:ReviewCheckpoint):void{
+ const signature=data.receiptSignature;
+ const judges=data.judges;
+ const route=(value:unknown)=>typeof value==="string"&&value.length>0&&value.length<=512&&value===value.trim()&&!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(value);
+ const judgment=(value:unknown)=>value===undefined||value==="pass"||value==="fail";
+ if(judges.some(judge=>!route(judge.route)||!['provider-response-match','requested-descriptor-only','unknown'].includes(judge.evidence)||!judgment(judge.verdict)))throw Error("Checkpoint de revisión inválido");
+ if(new Set(judges.map(judge=>judge.route)).size!==judges.length)throw Error("Checkpoint de revisión inválido");
+ if(data.fixProposalId!==undefined&&!/^[a-f0-9]{64}$/u.test(data.fixProposalId))throw Error("Checkpoint de revisión inválido");
+ if(data.phase==="joint-tests-reviewed"){
+  // Las pruebas conjuntas históricas pueden no haber emitido una firma de
+  // recibo; el informe `analysis-complete` también conserva observaciones
+  // de jueces como contexto, aunque el modo efectivo sea pruebas conjuntas.
+  // Su MAC y la revalidación posterior siguen siendo obligatorias.
+  if((signature!==null&&(typeof signature!=="string"||!receiptSignature.test(signature)))||data.attemptStarted!==undefined||data.fixProposalId!==undefined||
+   (data.findingsCount!==undefined&&(!Number.isSafeInteger(data.findingsCount)||data.findingsCount<0)))throw Error("Checkpoint de revisión inválido");
+  return;
+ }
+ if(typeof signature!=="string"||!receiptSignature.test(signature))throw Error("Checkpoint de revisión inválido");
+ if(data.phase==="dual-pending"){
+  // Tras iniciar la inferencia el diario puede contener cero, uno o dos
+  // dictámenes antes de guardar el estado terminal. Es recuperable solo para
+  // diagnóstico y bloqueo: nunca habilita un nuevo intento.
+  if(data.attemptStarted===false&&judges.length===0)return;
+  if(data.attemptStarted===true&&judges.length<=2&&judges.every(judge=>judge.verdict!==undefined))return;
+  throw Error("Checkpoint de revisión incompleto o inválido");
+ }
+ // Las terminales históricas no incluían attemptStarted. Se leen de forma
+ // compatible, pero todas las nuevas escrituras sí lo dejan explícito.
+ if((data.attemptStarted!==true&&data.attemptStarted!==undefined)||judges.length!==2||judges.some(judge=>judge.verdict===undefined))throw Error("Checkpoint de revisión incompleto o inválido");
+ if(data.phase==="dual-reviewed"&&((data.findingsCount??0)!==0||judges.some(judge=>judge.verdict!=="pass")))throw Error("Checkpoint de revisión inválido");
+ if(data.phase==="dual-findings"&&(!Number.isSafeInteger(data.findingsCount)||data.findingsCount!<1))throw Error("Checkpoint de revisión inválido");
+}
 async function readSignedCheckpoint(file:string,storageDir:string):Promise<ReviewCheckpoint|undefined>{
  if(!await preparePrivateFile(file))return;
  if((await lstat(file)).size>65536)throw Error("Checkpoint de revisión demasiado grande");
@@ -220,6 +256,7 @@ async function readSignedCheckpoint(file:string,storageDir:string):Promise<Revie
  const data=JSON.parse(value.body) as ReviewCheckpoint;
  if(data.schema!=="asen.native-review/v1"||typeof data.key!=="string"||!["dual-pending","dual-findings","joint-tests-reviewed","dual-reviewed"].includes(data.phase)||!Array.isArray(data.judges)||data.judges.length>2||!/^[a-f0-9]{64}$/u.test(data.policyHash))
   throw Error("Checkpoint de revisión inválido");
+ assertNativeReviewCheckpointProgress(data);
  return data;
 }
 async function readCheckpoint(input:CheckpointInput){
@@ -348,7 +385,7 @@ export async function saveNativeReviewCheckpoint(input:CheckpointInput&{report:N
   if(receipt.signature!==(await exactPassingReceipt(input.candidate,input.receipts)).signature)throw Error("Cambió el recibo antes de guardar la revisión");
   if(initial!==await checkpointPolicy(input))throw Error("La política cambió antes de guardar la revisión");
   await writeCheckpoint(input,{schema:"asen.native-review/v1",key:integrationKey(input.candidate,input.sessionId),policyHash:initial,
-   phase,receiptSignature:receipt.signature,judges,...(report.status!=="joint-tests-reviewed"?{findingsCount:report.findings.length}:{}),...(input.fixProposalId?{fixProposalId:input.fixProposalId}:{})});
+  phase,receiptSignature:receipt.signature,judges,...(phase==="dual-reviewed"||phase==="dual-findings"?{attemptStarted:true}:{}),...(report.status!=="joint-tests-reviewed"?{findingsCount:report.findings.length}:{}),...(input.fixProposalId?{fixProposalId:input.fixProposalId}:{})});
  });
 }
 async function verifyCheckpoint(input:CheckpointInput,expected?:string){

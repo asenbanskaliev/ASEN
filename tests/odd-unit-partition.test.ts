@@ -89,6 +89,10 @@ test("La partición con candidato real materializa dos raíces Writer y una suce
  assert.deepEqual(ui.dependsOn,[]);
  assert.equal(api.status,"ready");
  assert.equal(ui.status,"ready");
+ // El límite es de dos Writers arrancables: la integración permanece
+ // bloqueada aunque el plan conserve sus tres unidades.
+ assert.equal(tasks.filter((task:{role:string;status:string})=>task.role==="worker"&&task.status==="ready").length,2);
+ assert.equal(tasks.filter((task:{dependsOn:string[]})=>task.dependsOn.length>0).length,1);
  assert.deepEqual(api.writeSurfaces,["src/api.ts","tests/api.test.ts"]);
  assert.deepEqual(ui.writeSurfaces,["src/ui.ts","tests/ui.test.ts"]);
  assert.equal(new Set(tasks.map((task:{id:string})=>task.id)).size,3);

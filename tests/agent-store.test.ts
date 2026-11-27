@@ -243,17 +243,16 @@ test("P04 la apertura espera la transacción de otro escritor antes de reparar o
 });
 
 test("P04 dos aperturas concurrentes normalizan un recibo inválido una sola vez",async t=>{
- const file=await fixture(t),{store}=await PersistentAgentStore.open(file);
- await store.enqueue(req("recibo"),owner);
- await store.running("recibo");
- await store.completed("recibo",{id:"recibo",ok:true,output:"resultado"});
+ const file=await fixture(t),runtime=await AgentRuntime.open({storeFile:file,runner:{run:async request=>({id:request.id,ok:true,output:"resultado"})}});
+ const id=await runtime.startExplorer({prompt:"recibo",session:{sessionId:"session-a",projectId:"/repo"},owner});
+ await until(()=>runtime.snapshot().find(row=>row.id===id)?.state==="completed",3000);
  const raw=JSON.parse(await readFile(file,"utf8"));
  delete raw.entries[0].result;
  await writeFile(file,JSON.stringify(raw),{mode:0o600});
  const [a,b]=await Promise.all([PersistentAgentStore.open(file),PersistentAgentStore.open(file)]);
  for(const opened of [a,b]){
   assert.equal(opened.quarantined,undefined);
-  const entry=await opened.store.get("recibo","session-a","/repo");
+  const entry=await opened.store.get(id,"session-a","/repo");
   assert.equal(entry?.record.state,"interrupted");
   assert.equal(entry?.events.filter(event=>event.state==="interrupted").length,1);
   assert.equal(entry?.result,undefined);
