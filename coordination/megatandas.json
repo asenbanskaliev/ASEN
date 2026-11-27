@@ -183,7 +183,7 @@
         "openReviewThreads": 0
       },
       "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
-      "blocker": "Correcciones de CodeRabbit publicadas. Validar CI y revisión exacta; no ejecutar NVIDIA antes de cumplir controles. OAuth real y aceptación 09/10 siguen pendientes.",
+      "blocker": "CI en curso: fallo de recibos Windows después de ocho celdas Pi PASS. GitHub impide repetir mientras CI está activa. Repetir únicamente job 140601890432 cuando termine, una vez, sin modelos; esperar CodeRabbit exacto.",
       "generation": 2,
       "pr": 161,
       "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
@@ -3358,7 +3358,7 @@
       "pr": 161,
       "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
       "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-      "state": "pendiente-validaciones-exactas",
+      "state": "pendiente-ci-y-revision",
       "source": "Usuario: «Adaptadolo y ejecutar», «Activa el real y verifícalo», «Hazlo asi» tras plan de corregir y activar únicamente con validaciones satisfactorias.",
       "scope": "Un ensayo M2 09/10 en #161; dos solicitudes API NVIDIA de hasta 128 tokens cada una y una sesión Pi Explorer en proyecto desechable, máximo una continuación alternativa ante fallo natural. Sin escrituras, herramientas, modelos de pago, reintentos automáticos ni repetición de ensayo. No provocar 429 ni confundir recuperación del registro con reinicio completo del orquestador.",
       "modelAllowlist": [
@@ -3373,46 +3373,46 @@
       "reviewRequested": 7222391713,
       "validationRuns": [
         {
+          "name": "Pi 1.2 runtime evidence",
+          "id": 46027300802,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
           "name": "Pi Free Smoke",
           "id": 46027300958,
           "status": "completed",
           "conclusion": "skipped"
         },
         {
-          "name": "CI rápida",
-          "id": 46027300870,
-          "status": "in_progress",
-          "conclusion": null
+          "name": "Phase 0 Architecture",
+          "id": 46027300868,
+          "status": "completed",
+          "conclusion": "success"
         },
         {
           "name": "CI",
           "id": 46027300764,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "Phase 0 Architecture",
-          "id": 46027300868,
           "status": "in_progress",
           "conclusion": null
         },
         {
-          "name": "Pi 1.2 runtime evidence",
-          "id": 46027300802,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-          "id": 46027300768,
-          "status": "in_progress",
-          "conclusion": null
+          "name": "CI rápida",
+          "id": 46027300870,
+          "status": "completed",
+          "conclusion": "success"
         },
         {
           "name": "Release Gate",
           "id": 46027300855,
-          "status": "in_progress",
-          "conclusion": null
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 46027300768,
+          "status": "completed",
+          "conclusion": "success"
         }
       ],
       "globalFull": false,
@@ -3519,6 +3519,14 @@
         "integrated": 140575700900,
         "result": "six-required-workflows-passed",
         "real0910": "not-executed"
+      },
+      "windowsReceiptFailure": {
+        "run": 46027300764,
+        "job": 140601890432,
+        "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+        "observed": "8 celdas Pi Windows PASS; 60 contratos PASS; generación de recibos posterior termina con status null en admitTapResult, probable timeout de spawnSync (60s) no confirmado",
+        "rerun": "403: workflow still running",
+        "retryPolicy": "Una sola repetición del trabajo fallido sin modelos cuando CI termine; si repite el fallo, diagnosticar causa y no relajar controles."
       }
     }
   },
@@ -4099,46 +4107,46 @@
         },
         "checks": [
           {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 46027300802,
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
             "name": "Pi Free Smoke",
             "id": 46027300958,
             "status": "completed",
             "conclusion": "skipped"
           },
           {
-            "name": "CI rápida",
-            "id": 46027300870,
-            "status": "in_progress",
-            "conclusion": null
+            "name": "Phase 0 Architecture",
+            "id": 46027300868,
+            "status": "completed",
+            "conclusion": "success"
           },
           {
             "name": "CI",
             "id": 46027300764,
-            "status": "queued",
-            "conclusion": null
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 46027300868,
             "status": "in_progress",
             "conclusion": null
           },
           {
-            "name": "Pi 1.2 runtime evidence",
-            "id": 46027300802,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-            "id": 46027300768,
-            "status": "in_progress",
-            "conclusion": null
+            "name": "CI rápida",
+            "id": 46027300870,
+            "status": "completed",
+            "conclusion": "success"
           },
           {
             "name": "Release Gate",
             "id": 46027300855,
-            "status": "in_progress",
-            "conclusion": null
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+            "id": 46027300768,
+            "status": "completed",
+            "conclusion": "success"
           }
         ],
         "reviewRequested": 7222391713,
@@ -4298,7 +4306,16 @@
           "integrated": 140575700900,
           "result": "six-required-workflows-passed",
           "real0910": "not-executed"
-        }
+        },
+        "windowsReceiptFailure": {
+          "run": 46027300764,
+          "job": 140601890432,
+          "sha": "dffb799d6f95147c8b9abe84bb039bb429989151",
+          "observed": "8 celdas Pi Windows PASS; 60 contratos PASS; generación de recibos posterior termina con status null en admitTapResult, probable timeout de spawnSync (60s) no confirmado",
+          "rerun": "403: workflow still running",
+          "retryPolicy": "Una sola repetición del trabajo fallido sin modelos cuando CI termine; si repite el fallo, diagnosticar causa y no relajar controles."
+        },
+        "openReviewThreads": 11
       }
     }
   }
