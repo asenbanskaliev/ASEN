@@ -183,10 +183,10 @@
         "openReviewThreads": 0
       },
       "next": "Validar PR #161 y objectives0910Trial; ejecutar una sola vez exclusivamente si CI exacta y revisión independiente están completas y limpias. Si falla, diagnosticar sin consumir; no rearmar #159/#160. Recoger recibo específico 09/10, distinguir fallo natural, recuperación de registro y reinicio completo.",
-      "blocker": "Revalidar el contrato de diagnóstico y la revisión independiente del SHA nuevo.",
+      "blocker": "Validar correcciones macOS, cancelación, ámbito y aislamiento OAuth del SHA nuevo.",
       "generation": 2,
       "pr": 161,
-      "sha": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
+      "sha": "68a3f74d39eb0734492c908dd159a786a566a0df",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -347,27 +347,9 @@
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "sha": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
+        "sha": "68a3f74d39eb0734492c908dd159a786a566a0df",
         "phase": "CI y revisión independiente",
         "writeReservation": false
-      },
-      "lease": {
-        "id": "manual-E-M2-161-dialogo-ambito-auth-macos",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
-        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "files": [
-          "extensions/asen.ts",
-          "src/agents/pi-agent-tools.ts",
-          "src/agents/agent-runtime.ts",
-          "src/agents/pi-process-runner.ts",
-          "tests/p11-child-fallback-wiring.test.ts",
-          "tests/pi-process-runner.test.ts",
-          "tests/extension-state-commands.test.ts"
-        ],
-        "phase": "Corrección agrupada de tres hallazgos y carrera macOS"
       }
     }
   },
@@ -930,45 +912,30 @@
       "status": "liberada-tras-publicar",
       "resultSha": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
       "finishedAt": "2026-11-27T12:05:14Z"
+    },
+    {
+      "id": "manual-E-M2-161-dialogo-ambito-auth-macos",
+      "team": "E",
+      "generation": 2,
+      "package": "E1",
+      "base": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+      "files": [
+        "extensions/asen.ts",
+        "src/agents/pi-agent-tools.ts",
+        "src/agents/agent-runtime.ts",
+        "src/agents/pi-process-runner.ts",
+        "tests/p11-child-fallback-wiring.test.ts",
+        "tests/pi-process-runner.test.ts",
+        "tests/extension-state-commands.test.ts"
+      ],
+      "phase": "Corrección agrupada de tres hallazgos y carrera macOS",
+      "status": "liberada-tras-publicar",
+      "resultSha": "68a3f74d39eb0734492c908dd159a786a566a0df",
+      "finishedAt": "2026-11-27T12:29:43Z"
     }
   ],
-  "temporaryOwnership": {
-    "extensions/asen.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-dialogo-ambito-auth-macos",
-      "scope": "M2"
-    },
-    "src/agents/pi-agent-tools.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-dialogo-ambito-auth-macos",
-      "scope": "M2"
-    },
-    "src/agents/agent-runtime.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-dialogo-ambito-auth-macos",
-      "scope": "M2"
-    },
-    "src/agents/pi-process-runner.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-dialogo-ambito-auth-macos",
-      "scope": "M2"
-    },
-    "tests/p11-child-fallback-wiring.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-dialogo-ambito-auth-macos",
-      "scope": "M2"
-    },
-    "tests/pi-process-runner.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-dialogo-ambito-auth-macos",
-      "scope": "M2"
-    },
-    "tests/extension-state-commands.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-dialogo-ambito-auth-macos",
-      "scope": "M2"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -2936,13 +2903,13 @@
         "unresolved": 0
       }
     },
-    "m2": "Corregido contrato de diagnóstico Todo; CI y CodeRabbit exactos pendientes. NVIDIA no activado.",
+    "m2": "Tres hallazgos y carrera de prueba macOS corregidos; espera CI y revisión exactas. Sin nuevos consumos NVIDIA.",
     "m3": "CI y revisión independiente #156 correctas, candidata separada pendiente de consolidación y evidencia real.",
     "globalFull": false,
-    "updatedAt": "2026-11-27T12:05:14Z",
+    "updatedAt": "2026-11-27T12:29:43Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
     "candidate": 161,
-    "candidateSha": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e"
+    "candidateSha": "68a3f74d39eb0734492c908dd159a786a566a0df"
   },
   "modelCallException": {
     "enabled": false,
@@ -3237,7 +3204,7 @@
     },
     "objectives0910Trial": {
       "pr": 161,
-      "sha": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
+      "sha": "68a3f74d39eb0734492c908dd159a786a566a0df",
       "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
       "state": "pendiente-validaciones-exactas",
       "source": "Usuario: «Adaptadolo y ejecutar», «Activa el real y verifícalo», «Hazlo asi» tras plan de corregir y activar únicamente con validaciones satisfactorias.",
@@ -3246,69 +3213,69 @@
         "nvidia/nemotron-3.5-lightning-30b-a3b",
         "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
       ],
-      "requiredOwnerComment": "asen-t06-autorizar:9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
+      "requiredOwnerComment": "asen-t06-autorizar:68a3f74d39eb0734492c908dd159a786a566a0df",
       "requiredLabel": "asen-t06-nvidia-una-vez",
       "independentReviewRequired": true,
       "previousConsumedTrialsPreserved": true,
       "consumptionReserved": false,
-      "reviewRequested": 7217826632,
+      "reviewRequested": 7218312372,
       "validationRuns": [
         {
-          "name": "Phase 0 Architecture",
-          "id": 45995718586,
-          "status": "in_progress",
+          "name": "CI",
+          "id": 45999104017,
+          "status": "queued",
           "conclusion": null
         },
         {
           "name": "Release Gate",
-          "id": 45995718496,
-          "status": "in_progress",
+          "id": 45999104025,
+          "status": "queued",
           "conclusion": null
         },
         {
-          "name": "Pi 1.2 runtime evidence",
-          "id": 45995718541,
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 45999104007,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "Pi Free Smoke",
+          "id": 45999104099,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Phase 0 Architecture",
+          "id": 45999104011,
           "status": "in_progress",
           "conclusion": null
         },
         {
           "name": "CI rápida",
-          "id": 45995718893,
+          "id": 45999104049,
           "status": "in_progress",
           "conclusion": null
         },
         {
-          "name": "Pi Free Smoke",
-          "id": 45995718648,
-          "status": "completed",
-          "conclusion": "skipped"
-        },
-        {
-          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-          "id": 45995718616,
-          "status": "pending",
-          "conclusion": null
-        },
-        {
-          "name": "CI",
-          "id": 45995718852,
-          "status": "pending",
+          "name": "Pi 1.2 runtime evidence",
+          "id": 45999104009,
+          "status": "in_progress",
           "conclusion": null
         }
       ],
       "globalFull": false,
       "previousValidation": {
-        "sha": "ca4717af6f3f3d5a62fbe0971923ee58cc47066c",
+        "sha": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
         "failedJobs": [
-          140491579052,
-          140491579179
+          140494723646,
+          140503693507
         ],
-        "reason": "Mensaje de error de protección Todo cambió; no se permitió lanzamiento."
+        "reason": "Carrera temporal al inspeccionar agents.json.lock en prueba macOS; cobertura agregada fallida. Linux, Windows, G08, integradas y demás puertas correctas."
       }
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T12:05:14Z",
+  "updatedAt": "2026-11-27T12:29:43Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
