@@ -183,10 +183,10 @@
         "openReviewThreads": 0
       },
       "next": "Validar PR #161 y objectives0910Trial; ejecutar una sola vez exclusivamente si CI exacta y revisión independiente están completas y limpias. Si falla, diagnosticar sin consumir; no rearmar #159/#160. Recoger recibo específico 09/10, distinguir fallo natural, recuperación de registro y reinicio completo.",
-      "blocker": "Validar correcciones macOS, cancelación, ámbito y aislamiento OAuth del SHA nuevo.",
+      "blocker": "Confirmar CI y revisión de OAuth nativo, permisos entre sesiones y hallazgos previos. No activar NVIDIA hasta éxito exacto; OAuth real no autorizado.",
       "generation": 2,
       "pr": 161,
-      "sha": "68a3f74d39eb0734492c908dd159a786a566a0df",
+      "sha": "09bc99ecf477f6a312f2e412eca5fa5d9e15dff7",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -347,24 +347,9 @@
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "sha": "68a3f74d39eb0734492c908dd159a786a566a0df",
+        "sha": "09bc99ecf477f6a312f2e412eca5fa5d9e15dff7",
         "phase": "CI y revisión independiente",
         "writeReservation": false
-      },
-      "lease": {
-        "id": "manual-E-M2-161-oauth-sdk-nativo",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "68a3f74d39eb0734492c908dd159a786a566a0df",
-        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "files": [
-          "src/agents/pi-process-runner.ts",
-          "src/agents/pi-agent-tools.ts",
-          "tests/pi-process-runner.test.ts",
-          "src/agents/pi-shared-auth-rpc.ts"
-        ],
-        "phase": "Recuperar OAuth con API pública y almacén original de Pi; reparar permisos concurrentes"
       }
     }
   },
@@ -948,30 +933,27 @@
       "status": "liberada-tras-publicar",
       "resultSha": "68a3f74d39eb0734492c908dd159a786a566a0df",
       "finishedAt": "2026-11-27T12:29:43Z"
+    },
+    {
+      "id": "manual-E-M2-161-oauth-sdk-nativo",
+      "team": "E",
+      "generation": 2,
+      "package": "E1",
+      "base": "68a3f74d39eb0734492c908dd159a786a566a0df",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+      "files": [
+        "src/agents/pi-process-runner.ts",
+        "src/agents/pi-agent-tools.ts",
+        "tests/pi-process-runner.test.ts",
+        "src/agents/pi-shared-auth-rpc.ts"
+      ],
+      "phase": "Recuperar OAuth con API pública y almacén original de Pi; reparar permisos concurrentes",
+      "status": "liberada-tras-publicar",
+      "resultSha": "09bc99ecf477f6a312f2e412eca5fa5d9e15dff7",
+      "finishedAt": "2026-11-27T12:55:08Z"
     }
   ],
-  "temporaryOwnership": {
-    "src/agents/pi-process-runner.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-oauth-sdk-nativo",
-      "scope": "M2"
-    },
-    "src/agents/pi-agent-tools.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-oauth-sdk-nativo",
-      "scope": "M2"
-    },
-    "tests/pi-process-runner.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-oauth-sdk-nativo",
-      "scope": "M2"
-    },
-    "src/agents/pi-shared-auth-rpc.ts": {
-      "team": "E",
-      "lease": "manual-E-M2-161-oauth-sdk-nativo",
-      "scope": "M2"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -2939,13 +2921,13 @@
         "unresolved": 0
       }
     },
-    "m2": "Tres hallazgos y carrera de prueba macOS corregidos; espera CI y revisión exactas. Sin nuevos consumos NVIDIA.",
+    "m2": "OAuth mediante SDK y almacén original de Pi, sin copia; ajuste de concurrencia en permisos; nueva CI y revisión exactas. Sin consumo NVIDIA nuevo ni OAuth real.",
     "m3": "CI y revisión independiente #156 correctas, candidata separada pendiente de consolidación y evidencia real.",
     "globalFull": false,
-    "updatedAt": "2026-11-27T12:29:43Z",
+    "updatedAt": "2026-11-27T12:55:08Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
     "candidate": 161,
-    "candidateSha": "68a3f74d39eb0734492c908dd159a786a566a0df"
+    "candidateSha": "09bc99ecf477f6a312f2e412eca5fa5d9e15dff7"
   },
   "modelCallException": {
     "enabled": false,
@@ -3240,7 +3222,7 @@
     },
     "objectives0910Trial": {
       "pr": 161,
-      "sha": "68a3f74d39eb0734492c908dd159a786a566a0df",
+      "sha": "09bc99ecf477f6a312f2e412eca5fa5d9e15dff7",
       "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
       "state": "pendiente-validaciones-exactas",
       "source": "Usuario: «Adaptadolo y ejecutar», «Activa el real y verifícalo», «Hazlo asi» tras plan de corregir y activar únicamente con validaciones satisfactorias.",
@@ -3249,69 +3231,72 @@
         "nvidia/nemotron-3.5-lightning-30b-a3b",
         "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
       ],
-      "requiredOwnerComment": "asen-t06-autorizar:68a3f74d39eb0734492c908dd159a786a566a0df",
+      "requiredOwnerComment": "asen-t06-autorizar:09bc99ecf477f6a312f2e412eca5fa5d9e15dff7",
       "requiredLabel": "asen-t06-nvidia-una-vez",
       "independentReviewRequired": true,
       "previousConsumedTrialsPreserved": true,
       "consumptionReserved": false,
-      "reviewRequested": 7218312372,
+      "reviewRequested": 7218836464,
       "validationRuns": [
         {
-          "name": "CI",
-          "id": 45999104017,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "Release Gate",
-          "id": 45999104025,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-          "id": 45999104007,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
           "name": "Pi Free Smoke",
-          "id": 45999104099,
+          "id": 46002637773,
           "status": "completed",
           "conclusion": "skipped"
         },
         {
-          "name": "Phase 0 Architecture",
-          "id": 45999104011,
+          "name": "Pi 1.2 runtime evidence",
+          "id": 46002637896,
           "status": "in_progress",
           "conclusion": null
         },
         {
           "name": "CI rápida",
-          "id": 45999104049,
-          "status": "in_progress",
+          "id": 46002637483,
+          "status": "pending",
           "conclusion": null
         },
         {
-          "name": "Pi 1.2 runtime evidence",
-          "id": 45999104009,
+          "name": "CI",
+          "id": 46002637592,
+          "status": "pending",
+          "conclusion": null
+        },
+        {
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 46002637646,
+          "status": "pending",
+          "conclusion": null
+        },
+        {
+          "name": "Release Gate",
+          "id": 46002637479,
+          "status": "queued",
+          "conclusion": null
+        },
+        {
+          "name": "Phase 0 Architecture",
+          "id": 46002637520,
           "status": "in_progress",
           "conclusion": null
         }
       ],
       "globalFull": false,
       "previousValidation": {
-        "sha": "9829c82a99cf8bf9a2f25ab59a3cc3eea2ea767e",
+        "sha": "68a3f74d39eb0734492c908dd159a786a566a0df",
         "failedJobs": [
-          140494723646,
-          140503693507
+          140505919705,
+          140505919839,
+          140505919922,
+          140505920028,
+          140514514765
         ],
-        "reason": "Carrera temporal al inspeccionar agents.json.lock en prueba macOS; cobertura agregada fallida. Linux, Windows, G08, integradas y demás puertas correctas."
+        "reason": "Validaciones asíncronas de proyectos podían reiniciar la caché de permisos de otra sesión intercalada. Corrección publicada; además se recupera OAuth con SDK nativo."
       }
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T12:29:43Z",
+  "updatedAt": "2026-11-27T12:55:08Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
