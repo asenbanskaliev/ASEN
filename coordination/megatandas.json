@@ -137,21 +137,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "reparacion-evidencia",
-      "lease": {
-        "id": "manual-E-g2-evidencia-nvidia-158",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "739e97dc32e0936d83f5a8b122d6a3363afec085",
-        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
-        "phase": "correccion-evidencia-M2",
-        "files": [
-          "scripts/t06-nvidia-free-api-probe.mjs",
-          "tests/t06-nvidia-free-api-probe.test.mjs"
-        ],
-        "startedAt": "2026-11-27T06:05:46.466Z"
-      },
+      "state": "espera-ci-y-revision",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -196,8 +183,8 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar #158 exacta, revisar CodeRabbit y frontera de permisos. Coordinar prueba pública histórica con M3/Work sin editar su rama. No repetir #157 ni armar NVIDIA hasta puertas y autorización exactas.",
-      "blocker": "CI #157 falló por perfil global malformado; corrección #158 pendiente de validar. Hallazgo histórico M3 pendiente. NVIDIA deshabilitado.",
+      "next": "Esperar CI exacta #158 y revisión solicitada; evaluar e incorporar corrección aislada #159 tras comprobar diferencias y sin repetir candidato anterior. Antes de NVIDIA resolver autorización que solo admite #61/#149, G08 omitido en nueva rama y diagnóstico de permisos de confianza. No ampliar permisos ni activar modelos; no tocar #153/#156.",
+      "blocker": "CI #158 pendiente; prueba histórica M3 coordinada aparte; autorización NVIDIA vigente deshabilitada y puerta T06 no admite #158.",
       "generation": 2,
       "pr": 158,
       "sha": "739e97dc32e0936d83f5a8b122d6a3363afec085",
@@ -608,20 +595,28 @@
       },
       "reason": "Corrección publicada #158, sin reserva durante CI y revisión.",
       "state": "liberada"
+    },
+    {
+      "team": "E",
+      "reservation": {
+        "id": "manual-E-g2-evidencia-nvidia-158",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "739e97dc32e0936d83f5a8b122d6a3363afec085",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "phase": "correccion-evidencia-M2",
+        "files": [
+          "scripts/t06-nvidia-free-api-probe.mjs",
+          "tests/t06-nvidia-free-api-probe.test.mjs"
+        ],
+        "startedAt": "2026-11-27T06:05:46.466Z"
+      },
+      "reason": "Publicados dos archivos en PR borrador #159, pendiente de validación; no reservar durante CI.",
+      "state": "liberada"
     }
   ],
-  "temporaryOwnership": {
-    "scripts/t06-nvidia-free-api-probe.mjs": {
-      "team": "E",
-      "lease": "manual-E-g2-evidencia-nvidia-158",
-      "scope": "M2 evidencia NVIDIA sin llamadas, no modificar ramas M3/M4"
-    },
-    "tests/t06-nvidia-free-api-probe.test.mjs": {
-      "team": "E",
-      "lease": "manual-E-g2-evidencia-nvidia-158",
-      "scope": "M2 evidencia NVIDIA sin llamadas, no modificar ramas M3/M4"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -1405,16 +1400,75 @@
       }
     },
     "ci": {
+      "sha": "739e97dc32e0936d83f5a8b122d6a3363afec085",
+      "latest": [
+        {
+          "id": 45949485918,
+          "name": "Release Gate",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45949485979,
+          "name": "Pi Free Smoke",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 45949485946,
+          "name": "T06 comprobar permisos sin modelos",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 45949485988,
+          "name": "Phase 0 Architecture",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45949485954,
+          "name": "Pi 1.2 runtime evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45949485981,
+          "name": "CI rápida",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45949485962,
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45949485917,
+          "name": "CI",
+          "status": "in_progress",
+          "conclusion": null
+        }
+      ],
       "conclusion": "pendiente"
     },
     "review": {
       "confirmed": false,
       "carriedFinding": 4713955031,
       "scope": "M3: prueba pública de cierre histórico; coordinar con Work sin tocar su rama",
-      "securityConcern": "Diagnóstico con permiso de metadatos en PR requiere revisión de frontera de confianza antes de admisión"
+      "securityConcern": "Diagnóstico con permiso de metadatos en PR requiere revisión de frontera de confianza antes de admisión",
+      "requestedCommentId": 7211202989,
+      "sha": "739e97dc32e0936d83f5a8b122d6a3363afec085"
     },
     "audit": {
       "scope": "M2: no leer perfiles para Explorer persistido sin modelo y origen de alternativas. CI previa falló en tres SO y pruebas integradas; no reejecutar #157."
+    },
+    "pendingCorrection": {
+      "pr": 159,
+      "sha": "2984cc190cada63d7fcf7b2dd400e017b891947b",
+      "base": "739e97dc32e0936d83f5a8b122d6a3363afec085",
+      "scope": "Evidencia de identidades NVIDIA realmente confirmadas, rechazo de redirecciones y ausencia de prueba de facturación. Dos archivos, sin llamadas; borrador pendiente de validación."
     }
   },
   "gentleShell5": {
@@ -1682,7 +1736,7 @@
   },
   "modelCallException": {
     "enabled": false,
-    "state": "espera-ci-revision-candidato-158",
+    "state": "espera-ci-revision-y-puerta-exacta-M2",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 149,
     "branch": "feat/asen-equipo-E-M2-g2-compactacion-148",
@@ -1741,5 +1795,5 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T06:05:46.470Z"
+  "updatedAt": "2026-11-27T06:06:21.122Z"
 }
