@@ -137,21 +137,8 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "reparacion-m34",
-      "lease": {
-        "id": "manual-E-g2-m34-dictamen-1127",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "8c15dde53a64759e46034ec83eb8b77e95e26920",
-        "branch": "integration/asen-megatandas-3-4-20261126",
-        "files": [
-          "src/runtime/lifecycle/native-integration-review.ts",
-          "tests/asen-c-checkpoint-recovery.test.ts"
-        ],
-        "phase": "M3/M4: preservar hallazgos leves firmados",
-        "startedAt": "2026-11-27T07:44:03.656Z"
-      },
+      "state": "espera-ci-y-revision",
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -714,20 +701,28 @@
       },
       "reason": "Ajuste de prueba publicado; liberada antes de CI.",
       "state": "liberada"
+    },
+    {
+      "team": "E",
+      "reservation": {
+        "id": "manual-E-g2-m34-dictamen-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "8c15dde53a64759e46034ec83eb8b77e95e26920",
+        "branch": "integration/asen-megatandas-3-4-20261126",
+        "files": [
+          "src/runtime/lifecycle/native-integration-review.ts",
+          "tests/asen-c-checkpoint-recovery.test.ts"
+        ],
+        "phase": "M3/M4: preservar hallazgos leves firmados",
+        "startedAt": "2026-11-27T07:44:03.656Z"
+      },
+      "reason": "Corrección dictámenes con hallazgos: 2/2 archivos publicados; no retener durante CI.",
+      "state": "liberada"
     }
   ],
-  "temporaryOwnership": {
-    "src/runtime/lifecycle/native-integration-review.ts": {
-      "team": "E",
-      "lease": "manual-E-g2-m34-dictamen-1127",
-      "scope": "M3/M4 traspaso Work"
-    },
-    "tests/asen-c-checkpoint-recovery.test.ts": {
-      "team": "E",
-      "lease": "manual-E-g2-m34-dictamen-1127",
-      "scope": "M3/M4 traspaso Work"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -2288,7 +2283,7 @@
       }
     },
     "m2": "CI anterior verde; dos hallazgos corregidos en #159; validación del SHA nuevo pendiente; sin NVIDIA.",
-    "m3": "Work retomado en #156; corregidos dos fallos CI heredados y documento dañado. Validación nueva pendiente.",
+    "m3": "Corregida recuperación de dictámenes con hallazgos; validación pendiente.",
     "globalFull": false,
     "updatedAt": "2026-11-26T22:00:00Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
@@ -2367,13 +2362,13 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T07:34:55.248Z",
+  "updatedAt": "2026-11-27T07:44:10.955Z",
   "workHandoff": {
     "state": "corregido-espera-ci-revision",
     "source": "Usuario indica que Work agotó cuota",
     "pr": 156,
     "base": 153,
-    "sha": "8c15dde53a64759e46034ec83eb8b77e95e26920",
+    "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
     "scope": "Recuperar trabajo publicado, mantener ramas separadas de M2 hasta validar.",
     "findings": [
       "CI heredada #153: prueba P04 intenta completar directamente sin recibo Dispatcher",
@@ -2381,52 +2376,16 @@
       "Documento Markdown dañado",
       "Checkpoint dual histórico: productor y lector ya corregidos en #156; pendiente confirmación independiente"
     ],
-    "expectedSha": "8c15dde53a64759e46034ec83eb8b77e95e26920",
+    "expectedSha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
     "ci": {
-      "sha": "8c15dde53a64759e46034ec83eb8b77e95e26920",
-      "latest": [
-        {
-          "name": "Phase 0 Architecture",
-          "id": 45959329071,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "Release Gate",
-          "id": 45959328961,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "CI",
-          "id": 45959328874,
-          "status": "pending",
-          "conclusion": null
-        },
-        {
-          "name": "Pi Free Smoke",
-          "id": 45959328875,
-          "status": "completed",
-          "conclusion": "skipped"
-        },
-        {
-          "name": "T06 comprobar permisos sin modelos",
-          "id": 45959328956,
-          "status": "completed",
-          "conclusion": "skipped"
-        },
-        {
-          "name": "CI rápida",
-          "id": 45959328972,
-          "status": "in_progress",
-          "conclusion": null
-        }
-      ]
+      "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
+      "conclusion": "pendiente"
     },
     "review": {
-      "requestedCommentId": 7212600402,
-      "confirmed": false
+      "confirmed": false,
+      "scope": "Dictámenes con hallazgos aun con dos pass; mantener bloqueo de aceptación."
     },
-    "next": "Auditar CI y CodeRabbit exactos #156. Validar checkpoint productor y lector, recuperación P04, matriz RPC y restricciones de dos raíces/una sucesora. Comparar con M2 admitido antes de integrar. No tocar main ni activar modelos en M3/M4."
+    "next": "Verificar CI y revisión exacta; confirmar regresión de dictámenes con hallazgos y no aceptación. No mezclar M2 hasta admisión.",
+    "previousSha": "8c15dde53a64759e46034ec83eb8b77e95e26920"
   }
 }
