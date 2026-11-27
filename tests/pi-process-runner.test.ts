@@ -762,7 +762,7 @@ test("coalesced continuation response and agent_settled cannot be lost by fallba
    });
   assert.equal(result.ok,true,result.output);
   const trace=JSON.parse(await readFile(log,"utf8"));
-  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","get_state","prompt"]);
+  assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","get_state","prompt","set_model","get_state","prompt"]);
   assert.equal(observed.length,1);
   assert.match(result.output,/fallback completed/);
  }
@@ -776,7 +776,7 @@ test("stale first-turn settled and unaccompanied completion never attest a new t
   model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}
  });
  const trace=JSON.parse(await readFile(log,"utf8"));
- assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","prompt","set_model","get_state","prompt"]);
+ assert.deepEqual(trace.commands.map((x:{type:string})=>x.type),["get_commands","get_state","prompt","set_model","get_state","prompt"]);
  assert.equal(result.ok,false);
  assert.match(result.output,/timed out/);
 });
@@ -795,7 +795,7 @@ test("rejected continuation prompt cannot be made successful by forged completio
 test("fallback-child keeps one RPC process and conversation through an accepted fallback",async t=>{
  const {d,p,log}=await fallbackRpcFixture({refuse:["provider/refused"]});t.after(()=>rm(d,{recursive:true,force:true}));const starts:number[]=[],changes:unknown[]=[];
  const result=await runner(p,{timeoutMs:10_000,onProcessStart:pid=>starts.push(pid),onModelFallback:change=>changes.push(change)}).run({id:"fallback-same-child",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",thinking:"medium",modelFallback:{profile:"child",chain:[{model:"provider/refused"},{model:"provider/final",thinking:"low"}]}});
- assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt","set_model","set_model","set_thinking_level","get_state","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
+ assert.equal(result.ok,true,result.output);assert.deepEqual(starts.length,1);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.pid,starts[0]);assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","get_state","prompt","set_model","set_model","set_thinking_level","get_state","prompt"]);assert.equal(new Set(trace.commands.map((command:any)=>command.id)).size,trace.commands.length);assert.deepEqual(changes,[{taskId:"fallback-same-child",sessionId:"default",projectId:d,from:"provider/primary",to:"provider/final",category:"rate_limit",thinking:"low"}]);assert.match(result.output,/fallback completed/u);
 });
 
 test("fallback-thinking-refusal omits an effort level rejected by RPC",async t=>{
@@ -807,7 +807,7 @@ test("fallback-child preserves the ordinary no-chain process path",async t=>{
 });
 
 test("fallback-child does not continue for a noneligible final failure",async t=>{
- const {d,p,log}=await fallbackRpcFixture({category:"context_length"});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-noneligible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}});assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","prompt"]);
+ const {d,p,log}=await fallbackRpcFixture({category:"context_length"});t.after(()=>rm(d,{recursive:true,force:true}));const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-noneligible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/next"}]}});assert.equal(result.ok,false);const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((command:any)=>command.type),["get_commands","get_state","prompt"]);
 });
 
 test("fallback-child aborts before settled without sending a continuation RPC",async t=>{
@@ -901,7 +901,7 @@ test("M2: un cambio aceptado sin selección coincidente no consume la alternativ
  const {d,p,log}=await fallbackRpcFixture({fallbackStateMismatch:true});t.after(()=>rm(d,{recursive:true,force:true}));
  const result=await runner(p,{timeoutMs:10_000}).run({id:"seleccion-incompatible",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
  assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
- const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","prompt","set_model","get_state"]);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state","prompt","set_model","get_state"]);
 });
 
 test("M2: tras un 429 instrumentado la respuesta queda atribuida a la alternativa exacta",async t=>{
@@ -1008,7 +1008,7 @@ test("M2: una alternativa virtual seleccionada por Pi no recibe otro prompt",asy
  const {d,p,log}=await fallbackRpcFixture({fallbackStateVirtual:true});t.after(()=>rm(d,{recursive:true,force:true}));
  const result=await runner(p,{timeoutMs:10_000}).run({id:"fallback-virtual-denied",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
  assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
- const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","prompt","set_model","get_state"]);
+ const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state","prompt","set_model","get_state"]);
 });
 
 
@@ -1043,3 +1043,18 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
  const result=await runner(p).run({id:"oauth-proxy",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/backup"}]}});
  assert.equal(result.ok,false);assert.match(result.output,/cannot preserve custom HTTP proxy/u);await assert.rejects(access(log));
 });
+
+ test("M2: el modelo inicial debe coincidir antes de cualquier petición con alternativas",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"provider",id:"primary-pro"},initialSuccess:true});t.after(()=>rm(d,{recursive:true,force:true}));
+  const result=await runner(p,{timeoutMs:10_000}).run({id:"primary-partial",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/primary-pro"}]}});
+  assert.equal(result.ok,false);assert.match(result.output,/primary model selection was not confirmed/);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","get_state"]);
+ });
+ test("M2: una URL de archivo conserva la configuración Pi original",async t=>{
+  const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});const source=join(d,"original pi");await mkdir(source);
+  await writeFile(join(source,"settings.json"),JSON.stringify({defaultProvider:"provider",defaultModel:"primary"}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=(await import("node:url")).pathToFileURL(source).href;
+  t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const result=await runner(p,{timeoutMs:10_000}).run({id:"config-url",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"provider/backup"}]}});
+  assert.equal(result.ok,true,result.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.args[trace.args.indexOf("--model")+1],"provider/primary");
+ });
