@@ -1091,5 +1091,15 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
   const first=await runner(p,{timeoutMs:10_000}).run(request);assert.equal(first.ok,true,first.output);assert.match(first.output,/asen_fallback_unavailable/);
   const marker=first.output.indexOf("\n{\"type\":\"asen_fallback_unavailable\"");assert.ok(marker>0);const original=first.output.slice(0,marker),notices:unknown[]=[];
   const second=await runner(p,{timeoutMs:10_000,maxOutputBytes:Buffer.byteLength(original),onFallbackUnavailable:notice=>notices.push(notice)}).run(request);
-  assert.equal(second.ok,true,second.output);assert.equal(second.output,original);assert.equal(notices.length,1);for(const line of second.output.trim().split(/\r?\n/))JSON.parse(line);
+  assert.equal(second.ok,true,second.output);assert.equal(Buffer.byteLength(second.output),Buffer.byteLength(original));assert.equal(notices.length,1);
+  const records=(output:string)=>output.trim().split(/\r?\n/).map(line=>{
+   const record=JSON.parse(line);
+   if(record.type==="response"&&record.command==="get_commands"){
+    const authority=record.data.commands.find((command:{name:string})=>command.name==="asen-authority-status");
+    assert.ok(authority?.sourceInfo?.path);assert.match(authority.sourceInfo.path,/asen-policy-[^\\/]+[\\/]extensions[\\/]authority\.ts$/u);
+    authority.sourceInfo.path="ruta-temporal";
+   }
+   return record;
+  });
+  assert.deepEqual(records(second.output),records(original));
  });
