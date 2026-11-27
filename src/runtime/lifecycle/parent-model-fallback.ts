@@ -101,11 +101,11 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
   for(;;){
    if(!current())return false;
    const pick=activeEpisode.pick();if(!pick?.fallback||!pick.model)return false;
-   activeEpisode.markTried(pick.model);if(!current())return false;
+   if(!current())return false;
    const found=host.findModel?.(pick.model,context);if(!current())return false;
    // Pi 1.2–1.6 identifica los modelos virtuales con api=pi-virtual.
    // La aprobación de una referencia de enrutamiento no identifica un modelo físico.
-   if(!found||found.api==="pi-virtual"||modelRef(found)!==pick.model)continue;
+   if(!found||found.api==="pi-virtual"||modelRef(found)!==pick.model){activeEpisode.markTried(pick.model);continue;}
    const source=activeModel?host.findModel?.(activeModel,context):undefined;if(!current())return false;
    const beforeResult=await wait(currentIdentity(context));if(!beforeResult.valid)return false;
    if(!sameIdentity(beforeResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
@@ -117,7 +117,9 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
     if(current())host.recommendManualModel(found,context);
     return false;
    }
-   // Ni la presencia en el catálogo ni una tarifa cero acreditan gratuidad.
+   // Una recomendación manual no consume ni marca un intento.
+    activeEpisode.markTried(pick.model);
+    // Ni la presencia en el catálogo ni una tarifa cero acreditan gratuidad.
    const authorized=await wait(Promise.resolve().then(()=>host.authorizeFallback?.(found,context)).catch(()=>false));
    if(!authorized.valid)return false;
    if(authorized.value!==true){invalidate("aborted");return false;}
