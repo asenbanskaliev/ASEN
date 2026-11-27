@@ -138,17 +138,7 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": {
-        "id": "manual-E-g2-T06-etiqueta-1127",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
-        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
-        "files": [],
-        "phase": "Completar autorización ya publicada, primera y única etiqueta",
-        "startedAt": "2026-11-27T09:24:28.763Z"
-      },
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -194,7 +184,7 @@
         "openReviewThreads": 0
       },
       "next": "V6: cierre M2 exacto y ensayo acotado; después rama acumulativa M3/M4 basada en M2 admitido y #156. No modificar #159 una vez acreditado salvo defecto real. Coordinar M5 y M6, preservar plan rector.",
-      "blocker": "Comprobar intento incierto sin repetir: Error: No se pudo confirmar autor y fecha del consentimiento exacto",
+      "blocker": "Recoger evidencia API/Pi del único ensayo T06; no repetir ni modificar SHA.",
       "generation": 2,
       "pr": 159,
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
@@ -803,6 +793,22 @@
       },
       "state": "liberada",
       "reason": "Reserva única de consentimiento; no rearmar ni repetir"
+    },
+    {
+      "team": "E",
+      "reservation": {
+        "id": "manual-E-g2-T06-etiqueta-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "files": [],
+        "phase": "Completar autorización ya publicada, primera y única etiqueta",
+        "startedAt": "2026-11-27T09:24:28.763Z"
+      },
+      "state": "liberada",
+      "reason": "Primera y única aplicación de etiqueta intentada; no repetir"
     }
   ],
   "temporaryOwnership": {},
@@ -855,7 +861,7 @@
       157,
       158
     ],
-    "status": "admitido-tecnicamente-autorizacion-bloqueada",
+    "status": "admitido-tecnicamente-ensayo-real-en-curso",
     "globalFull": false,
     "previousCandidate": {
       "pr": 159,
@@ -2744,7 +2750,7 @@
   },
   "modelCallException": {
     "enabled": false,
-    "state": "reserva-etiqueta-unica",
+    "state": "ensayo-autorizado-etiqueta-aplicada-espera-evidencia",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 159,
     "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
@@ -2817,18 +2823,18 @@
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "owner": "asenbanskaliev",
       "summaryId": 7211220125,
-      "phase": "consentimiento-confirmado-antes-de-etiqueta",
+      "phase": "etiqueta-aplicada",
       "noRetry": true,
       "commentId": 7214634323,
-      "labelApplied": false,
-      "error": "Error: No se pudo confirmar autor y fecha del consentimiento exacto",
+      "labelApplied": true,
+      "error": null,
       "consentCreatedAt": "2026-11-27T09:24:00Z",
       "verificationSource": "fetch_pr_comments",
       "labelReservation": "manual-E-g2-T06-etiqueta-1127"
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T09:24:02.141Z",
+  "updatedAt": "2026-11-27T09:24:35.159Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -2905,7 +2911,7 @@
       },
       {
         "id": "M2",
-        "state": "admitido-tecnicamente-autorizacion-bloqueada",
+        "state": "admitido-tecnicamente-ensayo-real-en-curso",
         "pr": 159,
         "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
         "owner": "E",
