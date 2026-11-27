@@ -27,6 +27,7 @@ function fixture(overrides:Partial<ParentModelFallbackHost>={}){
   currentModel:()=>currentModel,
   getThinking:()=>thinking,
   findModel:model=>models.get(model),
+  authorizeFallback:()=>true, // Consentimiento explícito del doble de prueba.
   setModel:async model=>{calls.push(`set:${model.id}`);currentModel=`${model.provider}/${model.id}`;return true;},
   setThinking:level=>{calls.push(`think:${level}`);thinking=level as typeof thinking;},
   notify:(change,prices)=>{calls.push(`notice:${change.to}:${prices?.to?.input??"unknown"}`);},
@@ -201,4 +202,20 @@ test("fallback-parent notice and continuation are bounded, structured, and do no
  assert.match(unknown,/catalog pricing is unavailable/i);assert.ok(unknown.length<800);
  const continuation=formatModelFallbackContinuation({...change,to:"provider/"+"x".repeat(500)});
  assert.ok(continuation.length<800);assert.doesNotMatch(continuation,/429|secret|raw/i);
+});
+
+
+test("M2: el padre no cambia a un modelo de coste desconocido sin consentimiento",async()=>{
+ for(const authorizeFallback of [()=>false,()=>{throw Error("diálogo fallido");}]){
+  const f=fixture({authorizeFallback});const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+  assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
+ }
+ const f=fixture();delete f.host.authorizeFallback;
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
+});
+
+test("M2: cambiar de sesión durante el consentimiento invalida la alternativa del padre",async()=>{
+ const f=fixture();f.host.authorizeFallback=()=>{f.setIdentity({...identity(),sessionId:"otra-sesion"});return true;};
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+ assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
 });
