@@ -137,8 +137,20 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-revision",
-      "lease": null,
+      "state": "reparacion-ci",
+      "lease": {
+        "id": "manual-E-g2-157-ruta-persistida-20261127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "a5d6699b38cab6186efe51e7d9d9b7cdaf0516c4",
+        "branch": "feat/asen-equipo-E-M2-g2-157-ruta-persistida-20261127",
+        "phase": "reparacion-ci-M2",
+        "files": [
+          "src/agents/pi-agent-tools.ts"
+        ],
+        "startedAt": "2026-11-27T06:02:00Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -579,7 +591,13 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "src/agents/pi-agent-tools.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-157-ruta-persistida-20261127",
+      "scope": "Solo corregir lectura innecesaria de perfil en ruta persistida; no tocar M3/M4"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -1653,5 +1671,5 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-26T23:50:00Z"
+  "updatedAt": "2026-11-27T06:02:00Z"
 }
