@@ -124,7 +124,22 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
 /** Una alternativa consentida no autoriza reintentos. Pi guarda set_auto_retry
  * en los ajustes globales: aislar los ajustes del hijo sin cambiar los del usuario.
  */
-function privateFallbackSettings(directory:string,source:string,request:AgentRequest,chain:readonly {model:string}[]):string|undefined{
+// Pi admite comentarios en models.json. Retirar solo comentarios fuera de
+// cadenas, conservando separadores y saltos de línea para que JSON.parse
+// siga rechazando documentos ambiguos o malformados.
+function withoutModelComments(input:string):string{
+ let result="",quoted=false,escaped=false;
+ for(let i=0;i<input.length;i++){
+  const ch=input[i]!,next=input[i+1];
+  if(quoted){result+=ch;if(escaped)escaped=false;else if(ch==="\\")escaped=true;else if(ch==='"')quoted=false;continue;}
+  if(ch==='"'){quoted=true;result+=ch;continue;}
+  if(ch==="/"&&next==="/"){result+="  ";i+=2;while(i<input.length&&input[i]!=="\n"&&input[i]!=="\r"){result+=" ";i++;}i--;continue;}
+  if(ch==="/"&&next==="*"){const end=input.indexOf("*/",i+2);if(end<0)throw Error("Unterminated models.json comment");result+=input.slice(i,end+2).replace(/[^\r\n]/gu," ");i=end+1;continue;}
+  result+=ch;
+ }
+ return result;
+}
+function privateFallbackSettings(directory:string,source:string,request:AgentRequest,chain:readonly {model:string}[]):{authPath?:string;model:string}{
  const object=(value:unknown):Record<string,unknown>=>{
   if(!value||typeof value!=="object"||Array.isArray(value))throw Error("Invalid Pi fallback settings");
   return value as Record<string,unknown>;
@@ -132,10 +147,11 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
  const read=(name:string):Record<string,unknown>|undefined=>{
   const path=join(source,name);
   try{
-   const target=name==="settings.json"?realpathSync(path):path;
+   const target=realpathSync(path);
    const stat=lstatSync(target);
    if(!stat.isFile()||stat.size>4*1024*1024)throw Error("Invalid Pi fallback configuration file");
-   return object(JSON.parse(readFileSync(target,"utf8").replace(/^\uFEFF/u,"")));
+   const content=readFileSync(target,"utf8").replace(/^\uFEFF/u,"");
+   return object(JSON.parse(name==="models.json"?withoutModelComments(content):content));
   }catch(error){
    if((error as NodeJS.ErrnoException).code==="ENOENT")return;
    throw Error("Unable to read private Pi fallback configuration");
@@ -146,8 +162,11 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
  const provider=retry.provider===undefined?{}:object(retry.provider);
  const compaction=settings.compaction===undefined?{}:object(settings.compaction);
  const providers=new Set(chain.map(step=>step.model.split("/")[0]).filter((value):value is string=>!!value));
- const primary=request.model?request.model.split("/")[0]:settings.defaultProvider;
- if(typeof primary==="string"&&primary)providers.add(primary);
+ const configuredPrimary=typeof settings.defaultProvider==="string"&&typeof settings.defaultModel==="string"?settings.defaultProvider+"/"+settings.defaultModel:undefined;
+ const model=request.model??configuredPrimary;
+ const primary=model?splitPiModelIdentity(model):undefined;
+ if(!model||!primary)throw Error("Pi fallback requires an exact primary model");
+ providers.add(primary.provider);
  mkdirSync(directory,{mode:0o700});
  const save=(name:string,value:unknown)=>writeFileSync(join(directory,name),JSON.stringify(value)+"\n",{mode:0o600,flag:"wx"});
  save("settings.json",{...settings,cacheWarming:"off",packages:[],extensions:[],skills:[],promptTemplates:[],themes:[],compaction:{...compaction,enabled:false},retry:{...retry,enabled:false,maxRetries:0,provider:{...provider,maxRetries:0}}});
@@ -160,7 +179,7 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
  // Si una ruta usa OAuth, Pi debe acceder al almacén original con su propio
  // bloqueo de renovación. No copiar tokens, enlazar auth.json ni guardar
  // credenciales OAuth en el directorio temporal del hijo.
- if(auth&&Object.entries(auth).some(([key,value])=>providers.has(key)&&value&&typeof value==="object"&&!Array.isArray(value)&&(value as Record<string,unknown>).type==="oauth"))return realpathSync(join(source,"auth.json"));
+ if(auth&&Object.entries(auth).some(([key,value])=>providers.has(key)&&value&&typeof value==="object"&&!Array.isArray(value)&&(value as Record<string,unknown>).type==="oauth"))return {authPath:realpathSync(join(source,"auth.json")),model};
  if(auth){
   const keys=Object.entries(auth).flatMap(([provider,value])=>{
    if(!providers.has(provider)||!value||typeof value!=="object"||Array.isArray(value))return [];
@@ -169,7 +188,7 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
   });
   save("auth.json",Object.fromEntries(keys));
  }
- return undefined;
+ return {model};
 }
 
 /** Usar la instalación nativa de Pi elegida, no importar código del proyecto de trabajo. */
@@ -411,15 +430,17 @@ export class PiProcessRunner implements AgentRunner{
   const override=childEnvironment.PI_CODING_AGENT_DIR;
   const configHome=override?resolvePath(override==="~"?userHome:override.startsWith("~/")||override.startsWith("~\\")?join(userHome,override.slice(2)):override):join(userHome,".pi","agent");
   const scopedFallback=!!fallbackConfig?.chain.length;
-  let sharedAuthPath:string|undefined;
+  let sharedAuthPath:string|undefined,effectivePrimary=request.model;
   if(scopedFallback){
    try{
     const isolatedConfig=join(policyDirectory,"agent");
-    sharedAuthPath=privateFallbackSettings(isolatedConfig,configHome,request,fallbackConfig!.chain);
+    const prepared=privateFallbackSettings(isolatedConfig,configHome,request,fallbackConfig!.chain);
+    sharedAuthPath=prepared.authPath;effectivePrimary=prepared.model;
+    routeArgs=piRuntimeRouteArgs({...request,model:effectivePrimary});
     childEnvironment.PI_CODING_AGENT_DIR=isolatedConfig;
    }catch{
     rmSync(policyDirectory,{recursive:true,force:true});
-    return Promise.resolve({id:request.id,ok:false,output:"Pi fallback requires an isolated configuration without automatic retries"});
+    return Promise.resolve({id:request.id,ok:false,output:"Pi fallback requires an exact primary model and an isolated configuration without automatic retries"});
    }
   }
   const baseTools=writer?["read","edit","write"]:["read"];
@@ -434,10 +455,10 @@ export class PiProcessRunner implements AgentRunner{
   if(sharedAuthPath){
    try{
     const sdk=nativePiSdk(command,this.options.rpcArgs,childEnvironment);
-    if(!sdk||extra.length||!request.model)throw Error("Pi native SDK required for OAuth");
+    if(!sdk||extra.length||!effectivePrimary)throw Error("Pi native SDK required for OAuth");
     const launchFile=join(policyDirectory,"shared-auth-launch.json");
     // Solo rutas y configuración de ejecución; nunca datos de credenciales.
-    writeFileSync(launchFile,JSON.stringify({sdk,authPath:sharedAuthPath,agentDir:childEnvironment.PI_CODING_AGENT_DIR,cwd:request.repository,model:request.model,thinking:request.thinking,tools:this.options.noTools?[]:effectiveTools,extensions:[policy,...(providerExtension?[providerExtension]:[])],skills:(request.skillPaths??[]).map(path=>resolvePath(request.repository,path))}),{mode:0o600,flag:"wx"});
+    writeFileSync(launchFile,JSON.stringify({sdk,authPath:sharedAuthPath,agentDir:childEnvironment.PI_CODING_AGENT_DIR,cwd:request.repository,model:effectivePrimary,thinking:request.thinking,tools:this.options.noTools?[]:effectiveTools,extensions:[policy,...(providerExtension?[providerExtension]:[])],skills:(request.skillPaths??[]).map(path=>resolvePath(request.repository,path))}),{mode:0o600,flag:"wx"});
     const sourceEntry=fileURLToPath(new URL("./pi-shared-auth-rpc.ts",import.meta.url));
     const compiledEntry=fileURLToPath(new URL(import.meta.url.endsWith(".ts")?"../../dist/agents/pi-shared-auth-rpc.js":"./pi-shared-auth-rpc.js",import.meta.url));
     const installed=sourceEntry.split(/[\\/]/u).includes("node_modules");
@@ -483,7 +504,7 @@ export class PiProcessRunner implements AgentRunner{
    let strictNativeSettlement=this.options.requireFinalSettlement===true&&!fallbackEnabled;
    let settlementRequired=fallbackEnabled||strictNativeSettlement;
    let nativeRetryAwaitingStart=false;
-   let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!settlementRequired,rpcSequence=0,currentModel=request.model;
+   let assistantStreamActive=false,lastAssistantFailure:TerminalErrorCategory|undefined,finalFailure:TerminalErrorCategory|undefined,fallbackInProgress=false,finalAgentSettled=!settlementRequired,rpcSequence=0,currentModel=effectivePrimary;
    // Solo se usan marcadores del hijo Pi, nunca texto del modelo como prueba
    // de cierre. La respuesta RPC debe pertenecer a la petición actual.
    let strictPromptAck=false,strictMessageEnd=false,strictAgentEnd=false,

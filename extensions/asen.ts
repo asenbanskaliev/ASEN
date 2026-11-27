@@ -387,6 +387,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    currentModel:host=>{const model=(host as CommandContext|undefined)?.model;return model?`${model.provider}/${model.id}`:undefined;},
    findModel:(model,host)=>{const split=model.indexOf("/");if(split<=0||split===model.length-1)return undefined;return (host as CommandContext|undefined)?.modelRegistry?.find(model.slice(0,split),model.slice(split+1));},
    authorizeFallback:async(model,host)=>{const ctx=host as CommandContext|undefined,scope=agentDeliveryIdentity;return !!scope&&await confirmFallbackAttempt(ctx,scope,model.provider+"/"+model.id);},
+   isCancelled:host=>(host as CommandContext|undefined)?.signal?.aborted===true,
    canAutoContinue:()=>{const settings=hostSettings() as {retry?:{enabled?:boolean;maxRetries?:number;provider?:{maxRetries?:number}};compaction?:{enabled?:boolean};cacheWarming?:string}|undefined;return settings?.cacheWarming==="off"&&settings?.retry?.enabled===false&&settings.retry.maxRetries===0&&settings.retry.provider?.maxRetries===0&&settings.compaction?.enabled===false;},
    onManualContinuation:host=>(host as CommandContext|undefined)?.ui?.notify("ASEN: el modelo alternativo está disponible, pero no se inicia otro turno sin garantías de un único intento. Continúa manualmente o desactiva reintentos, compactación automática y calentamiento de caché en Pi.","warning"),
    setModel:model=>pi.setModel?pi.setModel(model):false,

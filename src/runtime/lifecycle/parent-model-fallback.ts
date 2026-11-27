@@ -28,6 +28,7 @@ export interface ParentModelFallbackHost{
  setThinking?(level:Thinking):void;
  notify?(change:ModelFallbackChange,pricing:{from?:ModelCatalogRates;to?:ModelCatalogRates},context?:unknown):void;
  followUp?(message:string,context?:unknown):void;
+ isCancelled?(context?:unknown):boolean;
  canAutoContinue?():boolean;
  onManualContinuation?(context?:unknown):void;
  cooldown?:ModelFallbackCooldown;
@@ -73,7 +74,7 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
   epoch+=1;inFlight=undefined;episode?.clear(outcome);episode=undefined;episodeIdentity=undefined;episodeThinking=undefined;lastMessages=[];lastScope=undefined;
  };
  const run=async(messages:readonly unknown[],settled:{aborted?:boolean},context:unknown,operation:number,origin:ParentFallbackScope|undefined):Promise<boolean>=>{
-  const current=()=>operation===epoch&&accepts(origin);
+  const current=()=>operation===epoch&&accepts(origin)&&host.isCancelled?.(context)!==true;
   const wait=async<T>(promise:Promise<T>):Promise<{valid:true;value:T}|{valid:false}>=>{
    try{const value=await promise;return current()?{valid:true,value}:{valid:false};}
    catch(error){if(!current())return {valid:false};throw error;}
@@ -133,7 +134,9 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    host.notify?.(change,pricing,context);if(!current())return false;
    const continuationResult=await wait(currentIdentity(context));if(!continuationResult.valid)return false;
    if(!sameIdentity(continuationResult.value,activeEpisodeIdentity)){invalidate("aborted");return false;}
-   if(host.currentModel(context)!==modelRef(found)){invalidate("aborted");return false;}
+   const dispatchChain=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
+   if(!dispatchChain.valid)return false;
+   if(!dispatchChain.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)||host.currentModel(context)!==modelRef(found)||host.findModel?.(pick.model,context)?.api==="pi-virtual"){invalidate("aborted");return false;}
    if(host.canAutoContinue&&!host.canAutoContinue()){host.onManualContinuation?.(context);invalidate("aborted");return false;}
    host.followUp?.(formatModelFallbackContinuation(change),context);
    return true;

@@ -213,6 +213,7 @@ test("Pi guarda las tres unidades en el diario real y no despacha la raíz en la
  const result=JSON.parse(controlledInstructionPlanCommand(JSON.stringify({instruction:"Completar dos unidades independientes",...facts}),repo,candidate));
  assert.equal(result.partitionExecution,"supervised-worktrees-required");
  assert.equal(result.executablePlan.tasks.length,2);
+ assert.deepEqual(result.executablePlan.tasks.map((task:{writeSurfaces?:string[]})=>task.writeSurfaces).sort(),[["src/api.ts","tests/api.test.ts"],["src/ui.ts","tests/ui.test.ts"]]);
  assert.ok(result.executablePlan.tasks.every((task:{role:string;dependsOn:string[];status:string})=>task.role==="worker"&&task.dependsOn.length===0&&task.status==="ready"));
  assert.deepEqual(result.execution,{started:false,authorized:false});
 });

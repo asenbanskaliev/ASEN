@@ -146,3 +146,11 @@ test("M2: la retirada de alternativa durante la última comprobación de identid
  await assert.rejects(()=>continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{started++;return "unused";}},resolveCurrentIdentity:async()=>{if(++reads===3)active=undefined;return identity;},readCurrentDirectFallback:async()=>active}),/alternativas del perfil cambiaron/u);
  assert.equal(started,0);
 });
+
+
+test("M2: un cambio de sesión durante la lectura de alternativas impide reanudar",async()=>{
+ const model="nvidia/modelo-a",saved={profile:"perfil",chain:[{model:"nvidia/modelo-b"}],origin:{scope:"global" as const,name:"perfil",model}};
+ let current=identity,started=0;
+ await assert.rejects(()=>continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>({...interruptedEntry,spec:{model,modelFallback:saved}}),continue:async()=>{started++;return "unused";}},resolveCurrentIdentity:async()=>current,readCurrentDirectFallback:async()=>{current={...identity,sessionId:"otra"};return saved;}}),/session or project changed before agent continuation dispatch/u);
+ assert.equal(started,0);
+});

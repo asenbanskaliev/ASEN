@@ -58,23 +58,27 @@ export async function continueInterruptedExplorer(input:InterruptedExplorerConti
  let continuationEnqueued=false,validationRejectedBeforeEnqueue=false;
  const validateStart=input.resolveCurrentIdentity||savedFallback||linkedTodo?.plan?.candidateRevision?async()=>{try{
   throwIfCancelled(signal);
-  if(input.resolveCurrentIdentity){
-   const current=await input.resolveCurrentIdentity();
-   if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw Error("Pi session or project changed before agent continuation dispatch");
-  }
-  if(input.resolveCurrentIdentity){
-   const current=await input.resolveCurrentIdentity();
-   if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw Error("Pi session or project changed before agent continuation dispatch");
-  }
-  // La última lectura de configuración debe producirse después de la
-  // comprobación de identidad, antes de la invocación del runner.
-  if(savedFallback&&linkedTodo?.plan){
-   const plan=linkedTodo.plan;
-   if(!input.readCurrentExplorerFallbackConfig||!plan.explorerProfileOrigin||!plan.model||prior.spec?.model!==plan.model)throw Error("No se puede comprobar la vigencia de las alternativas del perfil");
-   await assertPlannedExplorerFallbackCurrent(savedFallback,{role:"explorer",model:plan.model,origin:plan.explorerProfileOrigin},input.readCurrentExplorerFallbackConfig);
-  }else if(savedFallback){
-   if(link||!savedFallback.origin||savedFallback.origin.model!==prior.spec?.model||!input.readCurrentDirectFallback||JSON.stringify(await input.readCurrentDirectFallback())!==JSON.stringify(savedFallback))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
-  }
+  const verifyIdentity=async()=>{
+   if(input.resolveCurrentIdentity){
+    const current=await input.resolveCurrentIdentity();
+    if(current.sessionId!==identity.sessionId||current.projectId!==identity.projectId)throw Error("Pi session or project changed before agent continuation dispatch");
+   }
+  };
+  const verifyFallback=async()=>{
+   if(savedFallback&&linkedTodo?.plan){
+    const plan=linkedTodo.plan;
+    if(!input.readCurrentExplorerFallbackConfig||!plan.explorerProfileOrigin||!plan.model||prior.spec?.model!==plan.model)throw Error("No se puede comprobar la vigencia de las alternativas del perfil");
+    await assertPlannedExplorerFallbackCurrent(savedFallback,{role:"explorer",model:plan.model,origin:plan.explorerProfileOrigin},input.readCurrentExplorerFallbackConfig);
+   }else if(savedFallback){
+    if(link||!savedFallback.origin||savedFallback.origin.model!==prior.spec?.model||!input.readCurrentDirectFallback||JSON.stringify(await input.readCurrentDirectFallback())!==JSON.stringify(savedFallback))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
+   }
+  };
+  await verifyIdentity();
+  await verifyFallback();
+  await verifyIdentity();
+  // Comprobar ambas fuentes de nuevo si el perfil es revocable. La
+  // autorización viva del intento se revalida también antes de otro prompt.
+  if(savedFallback&&input.resolveCurrentIdentity){await verifyFallback();await verifyIdentity();}
   if(linkedTodo?.plan?.candidateRevision&&currentRevision(identity.projectId)!==linkedTodo.plan.candidateRevision)throw Error("El candidato de exploración cambió; actualizar el plan");
   throwIfCancelled(signal);
  }catch(error){if(!continuationEnqueued)validationRejectedBeforeEnqueue=true;throw error;}}:undefined;

@@ -33,10 +33,10 @@ test("fallback-parent extension rejects delayed prior-session end and abort even
  await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxA);
  await emit("agent_settled",{aborted:false},ctxB);assert.deepEqual(calls,[],"A end cannot feed B settled");
  await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);assert.ok(calls.map(String).includes("model:backup"));
- await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup"}]}}});
+ await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"fetch failed"}]},ctxB);
  await emit("agent_settled",{aborted:true},ctxA);
- await emit("agent_end",{messages:[{role:"assistant",stopReason:"error",errorMessage:"fetch failed"}]},ctxB);await emit("agent_settled",{aborted:false},ctxB);
- assert.equal(calls.map(String).includes("model:last"),false,"a removed alternative must not be selected after a stale A event");assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,1);
+ await emit("agent_settled",{aborted:false},ctxB);
+ assert.ok(calls.map(String).includes("model:last"),"stale A abort cannot clear B episode");assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,2);
 });
 
 test("fallback-parent extension suppresses stale deferred chain rejection notices",async t=>{

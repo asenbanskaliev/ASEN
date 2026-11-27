@@ -199,6 +199,8 @@ test("M2 T06: predicado real jq exige revisión independiente exacta y anterior 
  check([review],[],true);
  check([{...review,state:"COMMENTED",body:nitpick}],[],true);
  check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 0**\n"+publication}],[],true);
+ check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 1**\n"+publication+"\n> **Actionable comments posted: 0**"}],[],false);
+ check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 0**\n"+publication+"\n**Actionable comments posted: 1**"}],[],false);
  check([{...review,commit_id:"b".repeat(40)}],[],false);
  check([{...review,submitted_at:cutoff}],[],false);
  check([{...review,state:"CHANGES_REQUESTED"}],[],false);

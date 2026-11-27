@@ -113,7 +113,7 @@ test("fallback-parent freezes profile and chain for an episode",async()=>{
  f.setIdentity(identity("other"));
  adapter.onAgentEnd({messages:failure()});
  assert.equal(await adapter.onAgentSettled(),false,"identity drift blocks the frozen episode");
- assert.equal(loads,2);
+ assert.equal(loads,3);
  assert.equal(f.calls.some(call=>call.includes("other")),false);
 });
 
@@ -178,7 +178,7 @@ test("fallback-parent rejects stale event scopes before caching or abort invalid
  adapter.onAgentSettled({aborted:true},undefined,scopeA);
  adapter.onAgentEnd({messages:failure("fetch failed")},scopeB);
  assert.equal(await adapter.onAgentSettled({},undefined,scopeB),true,"a stale A abort cannot clear B episode");
- assert.equal(loads,3);assert.ok(f.calls.map(String).includes("set:last"));
+ assert.equal(loads,5);assert.ok(f.calls.map(String).includes("set:last"));
 });
 
 test("fallback-parent invalidated chain rejections resolve inertly after clear or abort",async()=>{
@@ -261,4 +261,21 @@ test("M2: omitir modelos virtuales antes de pedir consentimiento al padre",async
  const f=fixture({loadChain:async()=>[{model:"router/auto"},{model:"provider/last"}],findModel:model=>model==="router/auto"?{provider:"router",id:"auto",api:"pi-virtual"}:{provider:"provider",id:"last",api:"openai-completions"},authorizeFallback:model=>{approvals.push(model.provider+"/"+model.id);return true;}});
  const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
  assert.equal(await adapter.onAgentSettled(),true);assert.deepEqual(approvals,["provider/last"]);assert.equal(f.calls.includes("set:auto"),false);assert.ok(f.calls.includes("set:last"));
+});
+
+
+test("M2: cancelar durante la lectura de alternativas impide cambiar el modelo",async()=>{
+ for(const cancel of [true,false]){
+  const controller=new AbortController();let reads=0;
+  const f=fixture({isCancelled:()=>controller.signal.aborted,loadChain:async()=>{if(++reads===2&&cancel)controller.abort();return [{model:"provider/backup"}];}});
+  const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+  assert.equal(await adapter.onAgentSettled(),!cancel);assert.equal(f.host.currentModel(),cancel?"provider/primary":"provider/backup");
+ }
+});
+
+test("M2: retirar la alternativa durante setModel impide enviar la continuación",async()=>{
+ let chain:readonly {model:string}[]=[{model:"provider/backup"}];
+ const f=fixture({loadChain:async()=>chain,setModel:async model=>{f.setModel(model.provider+"/"+model.id);chain=[];return true;}});
+ const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
+ assert.equal(await adapter.onAgentSettled(),false);assert.equal(f.calls.some(call=>call.startsWith("follow:")),false);
 });

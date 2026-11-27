@@ -1010,3 +1010,17 @@ test("M2: una alternativa virtual seleccionada por Pi no recibe otro prompt",asy
  assert.equal(result.ok,false);assert.match(result.output,/selection was not confirmed/u);
  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.commands.map((c:{type:string})=>c.type),["get_commands","prompt","set_model","get_state"]);
 });
+
+
+test("M2: no iniciar una alternativa como primaria cuando falta una selección exacta",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});const source=join(d,"original-pi");await mkdir(source);
+ await writeFile(join(source,"auth.json"),JSON.stringify({alternative:{type:"api_key",key:"ficticia"}}));
+ const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+ t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+ const child=runner(p,{timeoutMs:10_000});const result=await child.run({id:"primary-missing",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"alternative/backup"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/exact primary model/u);await assert.rejects(access(log));
+ await writeFile(join(source,"settings.json"),JSON.stringify({defaultProvider:"provider",defaultModel:"primary"}));
+ const originalModels='{ // comentario\n "providers": { /* local */ } }';await writeFile(join(source,"models.json"),originalModels);
+ const accepted=await child.run({id:"primary-configured",role:"explorer",prompt:"inspect",repository:d,modelFallback:{chain:[{model:"alternative/backup"}]}});
+ assert.equal(accepted.ok,true,accepted.output);const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.args[trace.args.indexOf("--model")+1],"provider/primary");assert.equal(await readFile(join(source,"models.json"),"utf8"),originalModels);
+});
