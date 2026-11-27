@@ -288,7 +288,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
   // Una aprobación por intento: no guardar ni heredar permisos de gasto.
-  let fallbackConsentPending:{owner:object;attempt:object}|undefined;
+  let fallbackConsentPending:{owner:object;controller:AbortController}|undefined;
    let fallbackSessionReady=false;
   const confirmFallbackAttempt=async(ctx:CommandContext|undefined,scope:{sessionId:string;projectId:string},model:string,signal?:AbortSignal,validateTarget?:()=>Promise<boolean>):Promise<boolean>=>{
    if(!fallbackSessionReady||!ctx||ctx.hasUI!==true||typeof ctx.ui?.confirm!=="function"||ctx.signal?.aborted||signal?.aborted)return false;
@@ -296,9 +296,9 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    const owner=agentDeliveryIdentity,delivery=agentDeliveryContext,generation=parentBindingGeneration;
    if(!owner||!delivery||ctx.sessionManager!==delivery.sessionManager||owner.sessionId!==scope.sessionId||(!validateTarget&&owner.projectId!==scope.projectId)||fallbackConsentPending?.owner===owner)return false;
    const currentOwner=()=>fallbackSessionReady&&agentDeliveryIdentity===owner&&agentDeliveryContext===delivery&&parentBindingGeneration===generation&&ctx.sessionManager===delivery.sessionManager;
-   const pending={owner,attempt:{}};
+   const pending={owner,controller:new AbortController()};
    fallbackConsentPending=pending;
-   const dialogSignal=ctx.signal&&signal?AbortSignal.any([ctx.signal,signal]):signal??ctx.signal;
+   const dialogSignal=AbortSignal.any([pending.controller.signal,...(ctx.signal?[ctx.signal]:[]),...(signal?[signal]:[])]);
    try{
     const before=await sessionIdentity(ctx);
     if(before.sessionId!==owner.sessionId||before.projectId!==owner.projectId||!currentOwner()||ctx.signal?.aborted||signal?.aborted)return false;
@@ -868,7 +868,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
-   fallbackSessionReady=false;
+   fallbackSessionReady=false;fallbackConsentPending?.controller.abort();
     const parentGeneration=++parentBindingGeneration;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=false;clearHostStatus();
    const pendingModelMutation=parentFallback.drainMutation();if(pendingModelMutation)await pendingModelMutation;
    t11Preset=readAsenAppearance(home()).preset;
@@ -1370,7 +1370,7 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    t11ChildExpiry?.stop();t11ChildExpiry=undefined;
    t11Rail?.dispose();t11Rail=undefined;t11Snapshot=undefined;t11ActivityCache.clear();t11GitObservation.clear();++workRowGeneration;++todoWidgetGeneration;t11ActivityUnavailable=false;t11ChildFlowUnavailable=false;t11ChildObservedAt=0;
    t11ChromeInfo=undefined;t11ChromeTheme=undefined;
-   fallbackSessionReady=false;parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
+   fallbackSessionReady=false;fallbackConsentPending?.controller.abort();parentBindingGeneration++;parentFallback.activate(undefined);panelEpoch++;hostStatusClosed=true;clearHostStatus();
    // Pi 1.2–1.6 espera session_shutdown antes de invalidar la sesión anterior.
    // No dejar un setModel autenticando mientras se instala el nuevo host.
    const pendingModelMutation=parentFallback.drainMutation();if(pendingModelMutation)await pendingModelMutation;
