@@ -183,10 +183,10 @@
         "openReviewThreads": 0
       },
       "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
-      "blocker": "CI y revisión exacta nuevas; probar cierre OAuth, alternativa real y reanudación. No adelantar ensayo.",
+      "blocker": "Nueva CI exacta y CodeRabbit. No adelantar consumo 09/10.",
       "generation": 2,
       "pr": 161,
-      "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+      "sha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -347,21 +347,9 @@
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+        "sha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
         "phase": "Validación definitiva M1/M2",
         "writeReservation": false
-      },
-      "lease": {
-        "id": "manual-E-M1M2-161-g02-prueba-orden-muestra",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
-        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "files": [
-          "tests/host-status-projection.test.ts"
-        ],
-        "phase": "Alinear prueba G02 con orden de muestra; sin cambios productivos"
       }
     }
   },
@@ -1011,15 +999,24 @@
       "status": "liberada-tras-publicar",
       "resultSha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
       "finishedAt": "2026-11-27T14:15:03Z"
+    },
+    {
+      "id": "manual-E-M1M2-161-g02-prueba-orden-muestra",
+      "team": "E",
+      "generation": 2,
+      "package": "E1",
+      "base": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+      "files": [
+        "tests/host-status-projection.test.ts"
+      ],
+      "phase": "Alinear prueba G02 con orden de muestra; sin cambios productivos",
+      "status": "liberada-tras-publicar",
+      "resultSha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
+      "finishedAt": "2026-11-27T14:22:13Z"
     }
   ],
-  "temporaryOwnership": {
-    "tests/host-status-projection.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-g02-prueba-orden-muestra",
-      "scope": "M2"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -2965,7 +2962,7 @@
     ],
     "globalFull": false,
     "candidate": 161,
-    "candidateSha": "23588aca4c4897f5e794c4a8876c4fe376f641ea"
+    "candidateSha": "36309ed7870fad0ffb2efeb4ab19816b694802f3"
   },
   "currentSnapshot": {
     "capturedAt": "2026-11-26",
@@ -2988,14 +2985,14 @@
         "unresolved": 0
       }
     },
-    "m2": "Correcciones de consentimiento, OAuth y continuidad publicadas; CI/revisión y 09/10 pendientes",
+    "m2": "G08 e integrada superadas en 23588ac; prueba G02 ajustada sin cambiar producción; revisión y ensayo pendientes",
     "m3": "CI y revisión independiente #156 correctas, candidata separada pendiente de consolidación y evidencia real.",
     "globalFull": false,
-    "updatedAt": "2026-11-27T14:15:03Z",
+    "updatedAt": "2026-11-27T14:22:13Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
     "candidate": 161,
-    "candidateSha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
-    "m1": "Base histórica aprobada; dos pruebas de Windows corregidas; nueva CI exacta pendiente"
+    "candidateSha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
+    "m1": "Release Gate del candidato anterior superado en los tres sistemas; CI exacta pendiente"
   },
   "modelCallException": {
     "enabled": false,
@@ -3290,7 +3287,7 @@
     },
     "objectives0910Trial": {
       "pr": 161,
-      "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+      "sha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
       "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
       "state": "pendiente-validaciones-exactas",
       "source": "Usuario: «Adaptadolo y ejecutar», «Activa el real y verifícalo», «Hazlo asi» tras plan de corregir y activar únicamente con validaciones satisfactorias.",
@@ -3299,72 +3296,74 @@
         "nvidia/nemotron-3.5-lightning-30b-a3b",
         "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
       ],
-      "requiredOwnerComment": "asen-t06-autorizar:23588aca4c4897f5e794c4a8876c4fe376f641ea",
+      "requiredOwnerComment": "asen-t06-autorizar:36309ed7870fad0ffb2efeb4ab19816b694802f3",
       "requiredLabel": "asen-t06-nvidia-una-vez",
       "independentReviewRequired": true,
       "previousConsumedTrialsPreserved": true,
       "consumptionReserved": false,
-      "reviewRequested": 7220544991,
+      "reviewRequested": 7220701678,
       "validationRuns": [
         {
           "name": "Release Gate",
-          "id": 46014194316,
+          "id": 46015309856,
           "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-          "id": 46014194293,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "CI",
-          "id": 46014194292,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "Phase 0 Architecture",
-          "id": 46014194319,
-          "status": "in_progress",
           "conclusion": null
         },
         {
           "name": "Pi Free Smoke",
-          "id": 46014194311,
+          "id": 46015309951,
           "status": "completed",
           "conclusion": "skipped"
         },
         {
-          "name": "CI rápida",
-          "id": 46014194331,
-          "status": "in_progress",
+          "name": "CI",
+          "id": 46015309928,
+          "status": "pending",
           "conclusion": null
         },
         {
           "name": "Pi 1.2 runtime evidence",
-          "id": 46014194294,
+          "id": 46015310005,
           "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Phase 0 Architecture",
+          "id": 46015309840,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "CI rápida",
+          "id": 46015309842,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "id": 46015309849,
+          "status": "queued",
           "conclusion": null
         }
       ],
       "globalFull": false,
       "previousValidation": {
-        "sha": "a732ed89899a3df98d4ae0e96cde9d3646de2372",
-        "ci": 46003468340,
-        "releaseGate": 46003468168,
+        "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+        "ci": 46014194292,
+        "releaseGate": 46014194316,
+        "releaseGateResult": "success",
+        "g08Job": 140557021710,
+        "integratedJob": 140557021281,
         "failedJobs": [
-          140520945821,
-          140520680500,
-          140528293415
+          140557021965,
+          140557022224
         ],
-        "reason": "Pruebas de límite Windows todavía esperaban 60 s; corregidas sin relajar límite de verificación de 30 s. Compatibilidad Pi, arquitectura, CI rápida y Pi 1.2 correctas en SHA anterior."
+        "reason": "Prueba estática G02 esperaba contrato anterior de orden de invocación; se ajusta a orden de muestreo y coherencia de fingerprint."
       }
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T14:15:03Z",
+  "updatedAt": "2026-11-27T14:22:13Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3423,7 +3422,7 @@
   },
   "executionPlan": {
     "version": "V6",
-    "updatedAt": "2026-11-27T14:15:03Z",
+    "updatedAt": "2026-11-27T14:22:13Z",
     "source": {
       "pr": 61,
       "sha": "a1c6bb318388771a7c3298205535b4801a1d2c8a",
@@ -3440,7 +3439,7 @@
         "next": "Preservar base #144; exigir candidato definitivo limpio y Release Gate incluyendo paquete Windows.",
         "currentCandidate": {
           "pr": 161,
-          "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+          "sha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
           "ancestry": {
             "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
             "behind": 0,
@@ -3453,7 +3452,7 @@
         "id": "M2",
         "state": "reparaciones-publicadas-espera-validacion-exacta-y-09-10",
         "pr": 161,
-        "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+        "sha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
         "owner": "E",
         "support": "B/C",
         "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
@@ -3464,7 +3463,7 @@
         },
         "currentTrial": {
           "pr": 161,
-          "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+          "sha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
           "state": "pendiente-validaciones-exactas"
         }
       },
@@ -3873,7 +3872,7 @@
       },
       "latest": {
         "pr": 161,
-        "sha": "23588aca4c4897f5e794c4a8876c4fe376f641ea",
+        "sha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
         "ancestry": {
           "m1": {
             "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
@@ -3889,50 +3888,50 @@
         "checks": [
           {
             "name": "Release Gate",
-            "id": 46014194316,
+            "id": 46015309856,
             "status": "queued",
-            "conclusion": null
-          },
-          {
-            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-            "id": 46014194293,
-            "status": "queued",
-            "conclusion": null
-          },
-          {
-            "name": "CI",
-            "id": 46014194292,
-            "status": "queued",
-            "conclusion": null
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 46014194319,
-            "status": "in_progress",
             "conclusion": null
           },
           {
             "name": "Pi Free Smoke",
-            "id": 46014194311,
+            "id": 46015309951,
             "status": "completed",
             "conclusion": "skipped"
           },
           {
-            "name": "CI rápida",
-            "id": 46014194331,
-            "status": "in_progress",
+            "name": "CI",
+            "id": 46015309928,
+            "status": "pending",
             "conclusion": null
           },
           {
             "name": "Pi 1.2 runtime evidence",
-            "id": 46014194294,
+            "id": 46015310005,
             "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 46015309840,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "CI rápida",
+            "id": 46015309842,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+            "id": 46015309849,
+            "status": "queued",
             "conclusion": null
           }
         ],
-        "reviewRequested": 7220544991,
-        "m1": "base técnica histórica aprobada, nueva validación pendiente",
-        "m2": "09/10, revisión exacta y CI pendientes",
+        "reviewRequested": 7220701678,
+        "m1": "Release Gate anterior correcto, nueva validación exacta pendiente",
+        "m2": "G02 corregido; 09/10, revisión y CI exactas pendientes",
         "globalFull": false
       }
     }
