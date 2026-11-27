@@ -184,7 +184,7 @@
         "openReviewThreads": 0
       },
       "next": "Verificar nuevo SHA exacto #159, CI y revisión independiente sin hilos accionables. Aplicar consentimiento delegado y etiqueta única solo después de todas las puertas y verificar evidencias. En paralelo reconciliar candidato separado #156 M3/M4 tras CI/revisión; no mezclar hasta admisión de M2.",
-      "blocker": "M2: CI/revisión del nuevo SHA pendientes. M3/M4: CI/revisión del nuevo SHA #156 pendientes. NVIDIA aún no ejecutado.",
+      "blocker": "M2: terminar CI y confirmar revisión independiente del SHA exacto. M3/M4: validar corrección de checkpoints con hallazgos. Sin consumo NVIDIA.",
       "generation": 2,
       "pr": 159,
       "sha": "c12c2a928abcf3b3893566228711088a63b27b9d",
@@ -1974,54 +1974,106 @@
       "conclusion": "pendiente",
       "latest": [
         {
-          "name": "Phase 0 Architecture",
-          "id": 45959424822,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "Pi Free Smoke",
           "id": 45959424796,
+          "name": "Pi Free Smoke",
           "status": "completed",
           "conclusion": "skipped"
         },
         {
-          "name": "Release Gate",
-          "id": 45959424692,
-          "status": "queued",
-          "conclusion": null
+          "id": 45959424822,
+          "name": "Phase 0 Architecture",
+          "status": "completed",
+          "conclusion": "success"
         },
         {
-          "name": "CI rápida",
-          "id": 45959424748,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "Pi 1.2 runtime evidence",
-          "id": 45959424740,
-          "status": "queued",
-          "conclusion": null
-        },
-        {
-          "name": "CI",
-          "id": 45959424698,
-          "status": "pending",
-          "conclusion": null
-        },
-        {
-          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
           "id": 45959424758,
-          "status": "pending",
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "status": "in_progress",
           "conclusion": null
+        },
+        {
+          "id": 45959424748,
+          "name": "CI rápida",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45959424740,
+          "name": "Pi 1.2 runtime evidence",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45959424698,
+          "name": "CI",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45959424692,
+          "name": "Release Gate",
+          "status": "completed",
+          "conclusion": "success"
         }
-      ]
+      ],
+      "integrated": {
+        "job": 140373564181,
+        "conclusion": "success"
+      },
+      "g08": {
+        "job": 140373564733,
+        "conclusion": "success"
+      }
     },
     "review": {
       "sha": "c12c2a928abcf3b3893566228711088a63b27b9d",
       "confirmed": false,
       "scope": "Corrección de prueba y revisión pendiente del candidato exacto.",
-      "requestedCommentId": 7212611936
+      "requestedCommentId": 7212611936,
+      "threads": [
+        {
+          "id": "PRRT_kwDOUt6rUc68qw_-",
+          "path": ".github/workflows/ci.yml",
+          "resolved": true,
+          "outdated": true
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68qxAB",
+          "path": ".github/workflows/ci.yml",
+          "resolved": false,
+          "outdated": true
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68qxAF",
+          "path": ".github/workflows/ci.yml",
+          "resolved": false,
+          "outdated": false
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68qxAM",
+          "path": "extensions/asen.ts",
+          "resolved": true,
+          "outdated": false
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68qxAS",
+          "path": "src/agents/interrupted-explorer-continuation.ts",
+          "resolved": false,
+          "outdated": false
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68rBtf",
+          "path": ".github/workflows/ci.yml",
+          "resolved": true,
+          "outdated": true
+        },
+        {
+          "id": "PRRT_kwDOUt6rUc68rBtj",
+          "path": "src/agents/agent-runtime.ts",
+          "resolved": true,
+          "outdated": false
+        }
+      ]
     },
     "audit": {
       "scope": "Orden temporal de revisión/consentimiento y revalidación tras escritura running. Pruebas nuevas; CI pendiente."
@@ -2362,7 +2414,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T07:44:10.955Z",
+  "updatedAt": "2026-11-27T07:44:26.795Z",
   "workHandoff": {
     "state": "corregido-espera-ci-revision",
     "source": "Usuario indica que Work agotó cuota",
@@ -2379,11 +2431,50 @@
     "expectedSha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
     "ci": {
       "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
-      "conclusion": "pendiente"
+      "conclusion": "pendiente",
+      "latest": [
+        {
+          "id": 45960510872,
+          "name": "T06 comprobar permisos sin modelos",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 45960510851,
+          "name": "Pi Free Smoke",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 45960510816,
+          "name": "Phase 0 Architecture",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45960510811,
+          "name": "CI",
+          "status": "pending",
+          "conclusion": null
+        },
+        {
+          "id": 45960510895,
+          "name": "CI rápida",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45960510880,
+          "name": "Release Gate",
+          "status": "in_progress",
+          "conclusion": null
+        }
+      ]
     },
     "review": {
       "confirmed": false,
-      "scope": "Dictámenes con hallazgos aun con dos pass; mantener bloqueo de aceptación."
+      "scope": "Dictámenes con hallazgos aun con dos pass; mantener bloqueo de aceptación.",
+      "requestedCommentId": 7212770402
     },
     "next": "Verificar CI y revisión exacta; confirmar regresión de dictámenes con hallazgos y no aceptación. No mezclar M2 hasta admisión.",
     "previousSha": "8c15dde53a64759e46034ec83eb8b77e95e26920"
