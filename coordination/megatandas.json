@@ -2316,46 +2316,46 @@
         "conclusion": "pendiente",
         "latest": [
           {
-            "name": "Pi 1.2 runtime evidence",
             "id": 45968644270,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "Phase 0 Architecture",
-            "id": 45968644261,
+            "name": "Pi 1.2 runtime evidence",
             "status": "completed",
             "conclusion": "success"
           },
           {
-            "name": "Release Gate",
-            "id": 45968644257,
-            "status": "in_progress",
-            "conclusion": null
+            "id": 45968644261,
+            "name": "Phase 0 Architecture",
+            "status": "completed",
+            "conclusion": "success"
           },
           {
-            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-            "id": 45968644301,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "CI rápida",
-            "id": 45968644276,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "CI",
-            "id": 45968644548,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "Pi Free Smoke",
             "id": 45968644421,
+            "name": "Pi Free Smoke",
             "status": "completed",
             "conclusion": "skipped"
+          },
+          {
+            "id": 45968644276,
+            "name": "CI rápida",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 45968644257,
+            "name": "Release Gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "id": 45968644548,
+            "name": "CI",
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "id": 45968644301,
+            "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+            "status": "completed",
+            "conclusion": "success"
           }
         ],
         "integrated": {
@@ -2383,12 +2383,57 @@
     },
     "ci": {
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
-      "conclusion": "pendiente"
+      "conclusion": "pendiente",
+      "latest": [
+        {
+          "id": 45970210790,
+          "name": "CI",
+          "status": "pending",
+          "conclusion": null
+        },
+        {
+          "id": 45970210810,
+          "name": "Release Gate",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45970210822,
+          "name": "CI rápida",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45970210694,
+          "name": "Phase 0 Architecture",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45970210740,
+          "name": "Pi 1.2 runtime evidence",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45970210875,
+          "name": "Pi Free Smoke",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 45970210949,
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "status": "in_progress",
+          "conclusion": null
+        }
+      ]
     },
     "review": {
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "confirmed": false,
-      "scope": "Corregir dependencia directa Pi: API exitosa y ejecución no cancelada; sin ampliar autorización ni permisos."
+      "scope": "Corregir dependencia directa Pi: API exitosa y ejecución no cancelada; sin ampliar autorización ni permisos.",
+      "requestedCommentId": 7214187950
     },
     "audit": {
       "scope": "Orden temporal de revisión/consentimiento y revalidación tras escritura running. Pruebas nuevas; CI pendiente."
@@ -2729,7 +2774,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T09:01:07.472Z",
+  "updatedAt": "2026-11-27T09:01:22.381Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
