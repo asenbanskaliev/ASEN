@@ -137,8 +137,21 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-revision",
-      "lease": null,
+      "state": "reparacion-evidencia",
+      "lease": {
+        "id": "manual-E-g2-evidencia-nvidia-158",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "739e97dc32e0936d83f5a8b122d6a3363afec085",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "phase": "correccion-evidencia-M2",
+        "files": [
+          "scripts/t06-nvidia-free-api-probe.mjs",
+          "tests/t06-nvidia-free-api-probe.test.mjs"
+        ],
+        "startedAt": "2026-11-27T06:05:46.466Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -597,7 +610,18 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "scripts/t06-nvidia-free-api-probe.mjs": {
+      "team": "E",
+      "lease": "manual-E-g2-evidencia-nvidia-158",
+      "scope": "M2 evidencia NVIDIA sin llamadas, no modificar ramas M3/M4"
+    },
+    "tests/t06-nvidia-free-api-probe.test.mjs": {
+      "team": "E",
+      "lease": "manual-E-g2-evidencia-nvidia-158",
+      "scope": "M2 evidencia NVIDIA sin llamadas, no modificar ramas M3/M4"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -1717,5 +1741,5 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T06:04:00Z"
+  "updatedAt": "2026-11-27T06:05:46.470Z"
 }
