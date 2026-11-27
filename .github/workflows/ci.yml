@@ -876,6 +876,7 @@ jobs:
   t06-nvidia-pi-native:
     needs: [t06-nvidia-free-api]
     if: >-
+      !cancelled() && needs.t06-nvidia-free-api.result == 'success' &&
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
       (
