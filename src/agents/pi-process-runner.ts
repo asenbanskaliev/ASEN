@@ -713,7 +713,10 @@ export class PiProcessRunner implements AgentRunner{
        if(!await consentCurrent()||!alive())return;
        // Cada RPC mantiene su propio presupuesto, sin competir con el diálogo.
        disarmPhase();
-       const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId},undefined,undefined,stillOwned);if(!await consentCurrent()||!alive())return;
+       // Pi registra NVIDIA con el identificador completo nvidia/modelo en su catálogo nativo.
+       // Conservar la forma observada en el mismo proveedor, sin cambiar la identidad autorizada.
+       const modelId=candidate.provider==="nvidia"&&selectedIdentity?.provider==="nvidia"&&selectedIdentity.id.startsWith("nvidia/")&&!candidate.modelId.startsWith("nvidia/")?"nvidia/"+candidate.modelId:candidate.modelId;
+       const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId},undefined,undefined,stillOwned);if(!await consentCurrent()||!alive())return;
       if(switched.command!=="set_model"){fallbackInProgress=false;stop({id:request.id,ok:false,output:rpcFailure??"Pi fallback model change response could not be correlated"});return;}
       if(switched.success!==true)continue;
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
