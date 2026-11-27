@@ -183,10 +183,10 @@
         "openReviewThreads": 0
       },
       "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
-      "blocker": "Nueva CI y revisión exactas, aceptación 09/10 pendiente; sin consumo autorizado hasta puertas verdes.",
+      "blocker": "Último candidato de seguridad requiere CI exacta y revisión independiente; OAuth rotación/paquete pendiente de evidencia específica. 09/10 no consumido.",
       "generation": 2,
       "pr": 161,
-      "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+      "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -347,27 +347,9 @@
       "validationOwner": {
         "team": "E",
         "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+        "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
         "phase": "Validación definitiva M1/M2",
         "writeReservation": false
-      },
-      "lease": {
-        "id": "manual-E-M1M2-161-tanda-final-modelos-exactos",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
-        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
-        "files": [
-          "src/runtime/lifecycle/parent-model-fallback.ts",
-          "src/agents/pi-process-runner.ts",
-          "src/agents/interrupted-explorer-continuation.ts",
-          "tests/parent-model-fallback.test.ts",
-          "tests/pi-process-runner.test.ts",
-          "tests/interrupted-explorer-continuation.test.ts",
-          "tests/p11-child-fallback-wiring.test.ts"
-        ],
-        "phase": "Tanda de cierre tras seis validaciones correctas: modelos virtuales, revocación final y pruebas acotadas"
       }
     }
   },
@@ -1055,45 +1037,30 @@
       "status": "liberada-tras-publicar",
       "resultSha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
       "finishedAt": "2026-11-27T14:30:26Z"
+    },
+    {
+      "id": "manual-E-M1M2-161-tanda-final-modelos-exactos",
+      "team": "E",
+      "generation": 2,
+      "package": "E1",
+      "base": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+      "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+      "files": [
+        "src/runtime/lifecycle/parent-model-fallback.ts",
+        "src/agents/pi-process-runner.ts",
+        "src/agents/interrupted-explorer-continuation.ts",
+        "tests/parent-model-fallback.test.ts",
+        "tests/pi-process-runner.test.ts",
+        "tests/interrupted-explorer-continuation.test.ts",
+        "tests/p11-child-fallback-wiring.test.ts"
+      ],
+      "phase": "Tanda de cierre tras seis validaciones correctas: modelos virtuales, revocación final y pruebas acotadas",
+      "status": "liberada-tras-publicar",
+      "resultSha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
+      "finishedAt": "2026-11-27T14:51:20Z"
     }
   ],
-  "temporaryOwnership": {
-    "src/runtime/lifecycle/parent-model-fallback.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
-      "scope": "M1/M2"
-    },
-    "src/agents/pi-process-runner.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
-      "scope": "M1/M2"
-    },
-    "src/agents/interrupted-explorer-continuation.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
-      "scope": "M1/M2"
-    },
-    "tests/parent-model-fallback.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
-      "scope": "M1/M2"
-    },
-    "tests/pi-process-runner.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
-      "scope": "M1/M2"
-    },
-    "tests/interrupted-explorer-continuation.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
-      "scope": "M1/M2"
-    },
-    "tests/p11-child-fallback-wiring.test.ts": {
-      "team": "E",
-      "lease": "manual-E-M1M2-161-tanda-final-modelos-exactos",
-      "scope": "M1/M2"
-    }
-  },
+  "temporaryOwnership": {},
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -3039,7 +3006,7 @@
     ],
     "globalFull": false,
     "candidate": 161,
-    "candidateSha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7"
+    "candidateSha": "f60bae7023cce4f7e802aed896797f6c51979cd3"
   },
   "currentSnapshot": {
     "capturedAt": "2026-11-26",
@@ -3062,14 +3029,14 @@
         "unresolved": 0
       }
     },
-    "m2": "Diagnóstico RPC, consentimiento, recuperación y cacheWarming corregidos; CI/revisión y 09/10 pendientes",
+    "m2": "Tanda final de modelos virtuales, revocación y prueba acotada publicada; revisión independiente y ensayo 09/10 pendientes",
     "m3": "CI y revisión independiente #156 correctas, candidata separada pendiente de consolidación y evidencia real.",
     "globalFull": false,
-    "updatedAt": "2026-11-27T14:30:26Z",
+    "updatedAt": "2026-11-27T14:51:20Z",
     "g02Head": "3eafc1951776d19c8a21d525904be95acded984b",
     "candidate": 161,
-    "candidateSha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
-    "m1": "Release Gate anterior correcto; revalidación final pendiente"
+    "candidateSha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
+    "m1": "Seis flujos y validación multiplataforma aprobados en c6f32b7; candidato histórico conservado; revalidación exacta del candidato final pendiente"
   },
   "modelCallException": {
     "enabled": false,
@@ -3364,7 +3331,7 @@
     },
     "objectives0910Trial": {
       "pr": 161,
-      "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+      "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
       "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
       "state": "pendiente-validaciones-exactas",
       "source": "Usuario: «Adaptadolo y ejecutar», «Activa el real y verifícalo», «Hazlo asi» tras plan de corregir y activar únicamente con validaciones satisfactorias.",
@@ -3373,73 +3340,76 @@
         "nvidia/nemotron-3.5-lightning-30b-a3b",
         "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
       ],
-      "requiredOwnerComment": "asen-t06-autorizar:c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+      "requiredOwnerComment": "asen-t06-autorizar:f60bae7023cce4f7e802aed896797f6c51979cd3",
       "requiredLabel": "asen-t06-nvidia-una-vez",
       "independentReviewRequired": true,
       "previousConsumedTrialsPreserved": true,
       "consumptionReserved": false,
-      "reviewRequested": 7220875751,
+      "reviewRequested": 7221321861,
       "validationRuns": [
         {
-          "name": "Phase 0 Architecture",
-          "id": 46016548847,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "name": "Pi 1.2 runtime evidence",
-          "id": 46016548991,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "name": "CI rápida",
-          "id": 46016548870,
-          "status": "in_progress",
-          "conclusion": null
-        },
-        {
-          "name": "Pi Free Smoke",
-          "id": 46016548749,
-          "status": "completed",
-          "conclusion": "skipped"
-        },
-        {
           "name": "CI",
-          "id": 46016548912,
-          "status": "pending",
+          "id": 46019662200,
+          "status": "queued",
           "conclusion": null
         },
         {
           "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-          "id": 46016548738,
+          "id": 46019662208,
           "status": "in_progress",
           "conclusion": null
         },
         {
           "name": "Release Gate",
-          "id": 46016548871,
+          "id": 46019662245,
           "status": "in_progress",
           "conclusion": null
+        },
+        {
+          "name": "Pi Free Smoke",
+          "id": 46019662735,
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Pi 1.2 runtime evidence",
+          "id": 46019662185,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "CI rápida",
+          "id": 46019662335,
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Phase 0 Architecture",
+          "id": 46019662193,
+          "status": "completed",
+          "conclusion": "success"
         }
       ],
       "globalFull": false,
       "previousValidation": {
-        "sha": "36309ed7870fad0ffb2efeb4ab19816b694802f3",
-        "ci": 46015309928,
-        "releaseGate": 46015309856,
-        "releaseGateResult": "success",
-        "g08Job": 140561042619,
-        "integratedJob": 140561042678,
-        "failedJobs": [
-          140561042708
-        ],
-        "reason": "El cierre por timeout de set_model perdía su diagnóstico específico. Corregido junto con nuevos hallazgos de consentimiento y continuidad."
+        "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+        "ci": 46016548912,
+        "releaseGate": 46016548871,
+        "quick": 46016548870,
+        "architecture": 46016548847,
+        "pi12": 46016548991,
+        "pi15Pi16": 46016548738,
+        "g08Job": 140565360073,
+        "integratedJob": 140565359522,
+        "coverageJob": 140573004223,
+        "result": "six-required-workflows-passed",
+        "real0910": "not-executed",
+        "review": "pending-independent"
       }
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T14:30:26Z",
+  "updatedAt": "2026-11-27T14:51:20Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3498,7 +3468,7 @@
   },
   "executionPlan": {
     "version": "V6",
-    "updatedAt": "2026-11-27T14:30:26Z",
+    "updatedAt": "2026-11-27T14:51:20Z",
     "source": {
       "pr": 61,
       "sha": "a1c6bb318388771a7c3298205535b4801a1d2c8a",
@@ -3515,20 +3485,35 @@
         "next": "Preservar base #144; exigir candidato definitivo limpio y Release Gate incluyendo paquete Windows.",
         "currentCandidate": {
           "pr": 161,
-          "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+          "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
           "ancestry": {
             "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
             "behind": 0,
             "mergeBase": "ef3a91053b553f01e22e8d396ac3173a10357caf"
           },
           "state": "revalidacion-final-pendiente"
+        },
+        "lastPassedCandidate": {
+          "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+          "ci": 46016548912,
+          "releaseGate": 46016548871,
+          "quick": 46016548870,
+          "architecture": 46016548847,
+          "pi12": 46016548991,
+          "pi15Pi16": 46016548738,
+          "g08Job": 140565360073,
+          "integratedJob": 140565359522,
+          "coverageJob": 140573004223,
+          "result": "six-required-workflows-passed",
+          "real0910": "not-executed",
+          "review": "pending-independent"
         }
       },
       {
         "id": "M2",
         "state": "reparaciones-publicadas-espera-validacion-exacta-y-09-10",
         "pr": 161,
-        "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+        "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
         "owner": "E",
         "support": "B/C",
         "next": "Cerrar M1/M2: verificar exactamente CI, Release Gate, matriz y CodeRabbit; reparar solo fallos reproducidos. Si revisión limpia y puertas exactas, ejecutar autorización 09/10 una vez y conservar recibo. No reutilizar ensayos consumidos. Integración únicamente tras evidencia.",
@@ -3539,7 +3524,7 @@
         },
         "currentTrial": {
           "pr": 161,
-          "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+          "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
           "state": "pendiente-validaciones-exactas"
         }
       },
@@ -3948,7 +3933,7 @@
       },
       "latest": {
         "pr": 161,
-        "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+        "sha": "f60bae7023cce4f7e802aed896797f6c51979cd3",
         "ancestry": {
           "m1": {
             "base": "ef3a91053b553f01e22e8d396ac3173a10357caf",
@@ -3963,52 +3948,117 @@
         },
         "checks": [
           {
-            "name": "Phase 0 Architecture",
-            "id": 46016548847,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "Pi 1.2 runtime evidence",
-            "id": 46016548991,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "CI rápida",
-            "id": 46016548870,
-            "status": "in_progress",
-            "conclusion": null
-          },
-          {
-            "name": "Pi Free Smoke",
-            "id": 46016548749,
-            "status": "completed",
-            "conclusion": "skipped"
-          },
-          {
             "name": "CI",
-            "id": 46016548912,
-            "status": "pending",
+            "id": 46019662200,
+            "status": "queued",
             "conclusion": null
           },
           {
             "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
-            "id": 46016548738,
+            "id": 46019662208,
             "status": "in_progress",
             "conclusion": null
           },
           {
             "name": "Release Gate",
-            "id": 46016548871,
+            "id": 46019662245,
             "status": "in_progress",
             "conclusion": null
+          },
+          {
+            "name": "Pi Free Smoke",
+            "id": 46019662735,
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Pi 1.2 runtime evidence",
+            "id": 46019662185,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "CI rápida",
+            "id": 46019662335,
+            "status": "in_progress",
+            "conclusion": null
+          },
+          {
+            "name": "Phase 0 Architecture",
+            "id": 46019662193,
+            "status": "completed",
+            "conclusion": "success"
           }
         ],
-        "reviewRequested": 7220875751,
-        "m1": "Release Gate previo correcto; nueva validación pendiente",
-        "m2": "Correcciones publicadas; CI, revisión y ensayo pendientes",
-        "globalFull": false
+        "reviewRequested": 7221321861,
+        "m1": "Validación técnica completa en c6f32b7; admisión exacta final pendiente",
+        "m2": "Nuevas correcciones publicadas; revisión y 09/10 pendientes",
+        "globalFull": false,
+        "previousPassedCandidate": {
+          "sha": "c6f32b7258bc199fcd48056b3fb2596b0b3defc7",
+          "ci": 46016548912,
+          "releaseGate": 46016548871,
+          "quick": 46016548870,
+          "architecture": 46016548847,
+          "pi12": 46016548991,
+          "pi15Pi16": 46016548738,
+          "g08Job": 140565360073,
+          "integratedJob": 140565359522,
+          "coverageJob": 140573004223,
+          "result": "six-required-workflows-passed",
+          "real0910": "not-executed",
+          "review": "pending-independent"
+        },
+        "threadAudit": [
+          {
+            "id": "PRRT_kwDOUt6rUc68xAw0",
+            "assessment": "Corregido previamente: identidad de sessionManager y ámbito, no igualdad del objeto de evento; prueba de eventos con contexto nuevo."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc68xlk_",
+            "assessment": "Corregido previamente: confirmWithAbort y AbortSignal de intento; runner aborta al terminar."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc68xllM",
+            "assessment": "Corregido previamente: almacén original OAuth vía SDK nativo; no copia de refresh tokens."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc68x--o",
+            "assessment": "Corregido previamente: drainMutation antes de transición de sesión y prueba de mutación pendiente."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc68zLvA",
+            "assessment": "Mitigación previa: cierre RPC por EOF y gracia de 15 s antes de matar. Falta comprobar drenaje con rotación sintética; una terminación forzada no garantiza persistencia."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc68zLvC",
+            "assessment": "Corregido previamente: dist/agents/pi-shared-auth-rpc.js si instalación bajo node_modules; falta confirmar ejecución instalada OAuth sin red."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc68zLvO",
+            "assessment": "Corregido y validado: plazos Windows y pruebas de paquete, Release Gate 46016548871."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc680nvk",
+            "assessment": "Corregido previamente: realpath settings.json y validación de archivo regular/tamaño."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc680nwG",
+            "assessment": "Corregido y validado: rpcFailure conserva timeout set_model; CI 46016548912 correcta."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc6808ud",
+            "assessment": "Cambio actual: excluir api=pi-virtual antes de consentir padre y rechazar selección virtual antes del segundo prompt hijo, con regresiones."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc6808uh",
+            "assessment": "Corregido previamente: canAutoContinue exige cacheWarming=off, reintentos y compactación desactivados."
+          },
+          {
+            "id": "PRRT_kwDOUt6rUc6808ul",
+            "assessment": "Cambio actual: espera de registro terminal por ID con plazo 10 s."
+          }
+        ]
       }
     }
   }
