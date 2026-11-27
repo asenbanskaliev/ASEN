@@ -86,7 +86,7 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  const begin=ci.indexOf("\n  t06-m2-authorization:"),end=ci.indexOf("\n  t06-nvidia-free-api:",begin);
  assert.ok(begin>=0&&end>begin);
  const gate=ci.slice(begin,end);
- for(const required of ["pull_request.number == 159","feat/asen-equipo-E-M2-g2-evidencia-nvidia-158","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","actions: read","gh api --method DELETE","ASEN_EXPECTED_SHA","asen-t06-autorizar:$ASEN_EXPECTED_SHA","head_sha=$ASEN_EXPECTED_SHA","G08 actualización administrada aislada (Windows)","Megatanda T02–T10 y T11 (pruebas integradas sin modelos)"]){assert.ok(gate.includes(required),"Falta puerta NVIDIA M2: "+required);}
+ for(const required of ["pull_request.number == 160","feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127","pull_request.head.repo.full_name == github.repository","event.label.name == 'asen-t06-nvidia-una-vez'","github.actor == 'asenbanskaliev'","issues: write","actions: read","gh api --method DELETE","ASEN_EXPECTED_SHA","asen-t06-autorizar:$ASEN_EXPECTED_SHA","head_sha=$ASEN_EXPECTED_SHA","G08 actualización administrada aislada (Windows)","Megatanda T02–T10 y T11 (pruebas integradas sin modelos)"]){assert.ok(gate.includes(required),"Falta puerta NVIDIA M2: "+required);}
  assert.ok(gate.includes('.user.login == "asenbanskaliev" and .body == $approval'));
  assert.ok(gate.includes('select(.user.login == "github-actions[bot]")'));
  assert.ok(gate.includes('.user.login == "coderabbitai[bot]" and .commit_id == $sha'));
@@ -121,7 +121,7 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
  assert.ok(apiCondition.includes("(github.event.pull_request.number == 61 || needs.t06-m2-authorization.result == 'success')"));
  for(const job of [api,piNative]){
   assert.ok(job.includes("pull_request.number == 61"));
-  assert.ok(job.includes("pull_request.number == 159"));
+  assert.ok(job.includes("pull_request.number == 160"));
   assert.ok(!job.includes("pull_request.number == 149"));
   assert.ok(job.includes("event.label.name == 'asen-t06-nvidia-una-vez'"));
   assert.ok(job.includes('test "$GITHUB_RUN_ATTEMPT" = 1'));
@@ -129,15 +129,15 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
   assert.doesNotMatch(job,/issues: write|pull-requests: write|gh api --method POST|gh api --method DELETE/u);
  }
  const probe=readFileSync(new URL("../scripts/t06-nvidia-free-api-probe.mjs",import.meta.url),"utf8");
- for(const model of ["nvidia/nemotron-3.5-lightning-30b-a3b","nvidia/nemotron-3.5-super-vl-120b-a12b"])assert.ok(probe.includes(model));
+ for(const model of ["nvidia/nemotron-3.5-lightning-30b-a3b","nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"])assert.ok(probe.includes(model));
  assert.ok(probe.includes("distinctModelIdsVerified"));assert.ok(probe.includes("retryCount:0"));
  const windowsStart=ci.indexOf("\n  managed-update-windows:");
  const windowsEnd=ci.indexOf("\n  generated-code-docker-sandbox:",windowsStart);
  assert.ok(windowsStart>=0&&windowsEnd>windowsStart);
  const windows=ci.slice(windowsStart,windowsEnd);
  assert.ok(windows.includes("runs-on: windows-latest"));
- assert.ok(windows.includes("pull_request.number == 159"));
- assert.ok(windows.includes("feat/asen-equipo-E-M2-g2-evidencia-nvidia-158"));
+ assert.ok(windows.includes("pull_request.number == 160"));
+ assert.ok(windows.includes("feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127"));
  assert.ok(windows.includes("tests/managed-install.test.ts"));
  assert.ok(windows.includes("tests/managed-maintenance-lock.test.ts"));
  assert.ok(windows.includes("tests/t09-lifecycle.test.ts"));
@@ -148,7 +148,7 @@ test("M2 T06: autorización exacta, de una ejecución y sin secretos",()=>{
 
 test("T06 el diagnóstico de permisos está aislado y no concede autorización de modelos",()=>{
  const probe=readFileSync(new URL("../.github/workflows/t06-permission-probe.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
- assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M2-g2-evidencia-nvidia-158'"));
+ assert.ok(probe.includes("github.head_ref == 'feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127'"));
  assert.ok(probe.includes("types: [labeled]"));
  assert.ok(probe.includes("github.event.action == 'labeled'"));
  assert.ok(probe.includes("github.event.label.name == 'asen-t06-permission-check-request'"));
