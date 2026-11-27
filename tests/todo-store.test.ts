@@ -262,3 +262,17 @@ test("a Todo commit failure preserves durable history and permits a clean retry"
   await assert.rejects(()=>store.addPlan([{...draft,requestId:"asen-plan:origin-bad",plan:{...plan,explorerProfileOrigin:bad as typeof plan.explorerProfileOrigin}}],one),/Invalid ASEN Todo plan task/);
  }
  });
+
+
+test("repetir un plan Explorer antiguo conserva su identidad y no concede alternativas nuevas",async t=>{
+ const file=await fixture(t),store=await SessionTodoStore.open(file);
+ const plan={role:"explorer" as const,skillPaths:[],skillSelection:{phase:"explore" as const},model:"nvidia/modelo"};
+ const draft={title:"Explorar",requestId:"asen-plan:legacy-origin:explorer",dependsOn:[],description:"Inspección original",plan};
+ const [original]=await store.addPlan([draft],one);
+ const reopened=await SessionTodoStore.open(file),before=await readFile(file,"utf8");
+ const upgraded={...draft,plan:{...plan,explorerProfileOrigin:{scope:"global" as const,name:"perfil"}}};
+ const [replayed]=await reopened.addPlan([upgraded],one);
+ assert.equal(replayed?.taskId,original?.taskId);assert.equal(replayed?.plan?.explorerProfileOrigin,undefined);
+ assert.equal((await reopened.list(one)).length,1);assert.equal(await readFile(file,"utf8"),before);
+ await assert.rejects(()=>reopened.addPlan([{...upgraded,plan:{...upgraded.plan,model:"nvidia/otro"}}],one),/request id conflicts/u);
+});
