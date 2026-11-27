@@ -138,17 +138,7 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": {
-        "id": "manual-E-g2-T06-consentimiento-unico-1127",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
-        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
-        "files": [],
-        "phase": "Reserva única de consentimiento delegado T06",
-        "startedAt": "2026-11-27T09:23:52.183Z"
-      },
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -194,7 +184,7 @@
         "openReviewThreads": 0
       },
       "next": "V6: cierre M2 exacto y ensayo acotado; después rama acumulativa M3/M4 basada en M2 admitido y #156. No modificar #159 una vez acreditado salvo defecto real. Coordinar M5 y M6, preservar plan rector.",
-      "blocker": "Última observación CodeRabbit sobre dependencia Pi corregida; CI/revisión exactas pendientes. Sin consumo.",
+      "blocker": "Comprobar intento incierto sin repetir: Error: No se pudo confirmar autor y fecha del consentimiento exacto",
       "generation": 2,
       "pr": 159,
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
@@ -787,6 +777,22 @@
       },
       "reason": "2/2 archivos publicados, liberar antes de CI",
       "state": "liberada"
+    },
+    {
+      "team": "E",
+      "reservation": {
+        "id": "manual-E-g2-T06-consentimiento-unico-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "files": [],
+        "phase": "Reserva única de consentimiento delegado T06",
+        "startedAt": "2026-11-27T09:23:52.183Z"
+      },
+      "state": "liberada",
+      "reason": "Reserva única de consentimiento; no rearmar ni repetir"
     }
   ],
   "temporaryOwnership": {},
@@ -839,7 +845,7 @@
       157,
       158
     ],
-    "status": "admitido-tecnicamente-pendiente-ensayo-real",
+    "status": "admitido-tecnicamente-autorizacion-bloqueada",
     "globalFull": false,
     "previousCandidate": {
       "pr": 159,
@@ -2728,7 +2734,7 @@
   },
   "modelCallException": {
     "enabled": false,
-    "state": "reserva-delegada-en-curso",
+    "state": "autorizacion-intentada-bloqueada-sin-repeticion",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 159,
     "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
@@ -2801,12 +2807,15 @@
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "owner": "asenbanskaliev",
       "summaryId": 7211220125,
-      "phase": "reservada-antes-de-comentario",
-      "noRetry": true
+      "phase": "bloqueada",
+      "noRetry": true,
+      "commentId": 7214634323,
+      "labelApplied": false,
+      "error": "Error: No se pudo confirmar autor y fecha del consentimiento exacto"
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T09:23:52.188Z",
+  "updatedAt": "2026-11-27T09:24:02.141Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -2883,7 +2892,7 @@
       },
       {
         "id": "M2",
-        "state": "admitida-tecnicamente-pendiente-ensayo-real",
+        "state": "admitido-tecnicamente-autorizacion-bloqueada",
         "pr": 159,
         "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
         "owner": "E",
