@@ -137,8 +137,25 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-y-revision",
-      "lease": null,
+      "state": "reparacion-revision",
+      "lease": {
+        "id": "manual-E-g2-159-revision-delegada-t06",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "0d3b8f04f3f2f4286a0fbe8db9778bb480cd5a9e",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "files": [
+          ".github/workflows/ci.yml",
+          "tests/flujo-agentes-nvidia-workflow.test.ts",
+          "src/runtime/lifecycle/todo-store.ts",
+          "tests/todo-store.test.ts",
+          "src/agents/interrupted-explorer-continuation.ts",
+          "tests/interrupted-explorer-continuation.test.ts"
+        ],
+        "phase": "correccion-revision-M2",
+        "startedAt": "2026-11-27T06:34:04.485Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -636,7 +653,38 @@
       "state": "liberada"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    ".github/workflows/ci.yml": {
+      "team": "E",
+      "lease": "manual-E-g2-159-revision-delegada-t06",
+      "scope": "M2, revisión #159, sin tocar M3/M4"
+    },
+    "tests/flujo-agentes-nvidia-workflow.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-159-revision-delegada-t06",
+      "scope": "M2, revisión #159, sin tocar M3/M4"
+    },
+    "src/runtime/lifecycle/todo-store.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-159-revision-delegada-t06",
+      "scope": "M2, revisión #159, sin tocar M3/M4"
+    },
+    "tests/todo-store.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-159-revision-delegada-t06",
+      "scope": "M2, revisión #159, sin tocar M3/M4"
+    },
+    "src/agents/interrupted-explorer-continuation.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-159-revision-delegada-t06",
+      "scope": "M2, revisión #159, sin tocar M3/M4"
+    },
+    "tests/interrupted-explorer-continuation.test.ts": {
+      "team": "E",
+      "lease": "manual-E-g2-159-revision-delegada-t06",
+      "scope": "M2, revisión #159, sin tocar M3/M4"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
@@ -1855,7 +1903,7 @@
   },
   "modelCallException": {
     "enabled": false,
-    "state": "espera-ci-revision-autorizacion-humana-exacta",
+    "state": "consentimiento-delegado-recibido-espera-correcciones-y-validacion",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 159,
     "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
@@ -1915,8 +1963,15 @@
       ]
     },
     "sha": "0d3b8f04f3f2f4286a0fbe8db9778bb480cd5a9e",
-    "requiredOwnerComment": "asen-t06-autorizar:0d3b8f04f3f2f4286a0fbe8db9778bb480cd5a9e"
+    "requiredOwnerComment": "asen-t06-autorizar:0d3b8f04f3f2f4286a0fbe8db9778bb480cd5a9e",
+    "delegatedConsent": {
+      "source": "mensaje explícito del usuario en este chat",
+      "scope": "Un ensayo T06 M2 con NVIDIA real sobre candidato exacto admitido; dos solicitudes API y dos sesiones Pi sin herramientas ni escrituras, sin modelos de pago, sin reintentos",
+      "mayApplyViaAuthenticatedOwnerConnector": true,
+      "independentReviewRequired": true,
+      "recordedAt": "2026-11-27T06:34:04.485Z"
+    }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T06:14:52.495Z"
+  "updatedAt": "2026-11-27T06:34:04.485Z"
 }
