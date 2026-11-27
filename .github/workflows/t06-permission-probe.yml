@@ -1,7 +1,7 @@
 name: T06 comprobar permisos sin modelos
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [labeled]
 permissions:
   contents: read
 concurrency:
@@ -14,10 +14,12 @@ jobs:
       github.repository == 'asenbanskaliev/ASEN' &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
-      (github.head_ref == 'feat/asen-equipo-E-M3-g2-permisos-t06-151' ||
-       github.head_ref == 'feat/asen-equipo-E-M2-g2-reparar-admision-152' ||
-       github.head_ref == 'feat/asen-equipo-E-M2-g2-limites-154' ||
-       github.head_ref == 'feat/asen-equipo-E-M2-g2-rutas-vigentes-155')
+      github.event.pull_request.number == 159 &&
+      github.head_ref == 'feat/asen-equipo-E-M2-g2-evidencia-nvidia-158' &&
+      github.event.pull_request.draft == false &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'asen-t06-permission-check-request' &&
+      github.actor == 'asenbanskaliev'
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     permissions:
@@ -33,6 +35,7 @@ jobs:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
           repo="repos/$GITHUB_REPOSITORY"
           pr="$repo/pulls/$PR_NUMBER"
           issue="$repo/issues/$PR_NUMBER"
@@ -66,9 +69,7 @@ jobs:
           trap cleanup_on_exit EXIT
           cleanup_label
           test "$(diagnostic_label)" = ""
-          if test "$(gh api "$repo/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = ""; then
-            gh api --method POST "$repo/labels" -f name="$label" -f color="ededed" -f description="Diagnóstico de permisos sin modelos" >/dev/null
-          fi
+          test "$(gh api "$repo/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = "$label"
           # La etiqueta exclusiva de diagnóstico nunca concede permiso de modelos.
           printf '%s\n' '{"labels":["asen-t06-permission-check"]}' | gh api --method POST "$issue/labels" --input - >/dev/null
           test "$(gh api "$issue/labels" --paginate --jq '.[] | select(.name == "asen-t06-permission-check") | .name')" = "$label"
