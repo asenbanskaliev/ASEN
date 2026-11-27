@@ -1103,3 +1103,13 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
   });
   assert.deepEqual(records(second.output),records(original));
  });
+
+ test("M2: omitir OAuth incompatible conserva una alternativa API expresamente autorizada",async t=>{
+  const {d,p,log}=await fallbackRpcFixture(),source=join(d,"original-pi");await mkdir(source);
+  const auth=JSON.stringify({provider:{type:"api_key",key:"ficticia"},oauth:{type:"oauth",access:"ficticio",refresh:"ficticio",expires:0},api:{type:"api_key",key:"ficticia-2"}});
+  await writeFile(join(source,"auth.json"),auth);await writeFile(join(source,"settings.json"),JSON.stringify({httpProxy:"http://localhost:1234"}));
+  const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+  const approvals:string[]=[];const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return attempt.to==="api/backup";}}).run({id:"oauth-mixto",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"oauth/backup"},{model:"api/backup"}]}});
+  assert.equal(result.ok,true,result.output);assert.deepEqual(approvals,["api/backup"]);assert.match(result.output,/asen_fallback_unavailable/);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.authTypes,{provider:"api_key",api:"api_key"});assert.equal(await readFile(join(source,"auth.json"),"utf8"),auth);
+ });
