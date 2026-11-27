@@ -616,11 +616,12 @@ export class PiProcessRunner implements AgentRunner{
    const disarmPhase=()=>{if(timer)clearTimeout(timer);timer=undefined;};
    // One serialized writer keeps RPC order and honors stdin backpressure.
    let writeChain:Promise<void>=Promise.resolve();
-   const writeLine=(line:string,startsTurn=false):Promise<void>=>{
+   const writeLine=(line:string,startsTurn=false,beforeWrite?:()=>Promise<boolean>):Promise<void>=>{
     // Comprobar de nuevo al despachar: la cancelación puede llegar cuando
     // el comando ya está en cola, incluso tras confirmar get_state.
-    const next=writeChain.then(()=>{
+    const next=writeChain.then(async()=>{
      if(!alive())return;
+     if(beforeWrite&&(!await beforeWrite()||!alive()))return;
      const deadline=runnerStartDeadline(request);
      if(startsTurn&&deadline!==undefined&&performance.now()>=deadline){
       stop({id:request.id,ok:false,output:"Exact batch consent expired before Pi prompt"});return;
@@ -632,7 +633,7 @@ export class PiProcessRunner implements AgentRunner{
    };
    armPhase("spawn",spawnStartedAt);
    child.once("spawn",()=>{armPhase("preflight",spawnStartedAt);});
-   const sendRpc=(payload:Record<string,unknown>,onIssued?:(id:string)=>void):Promise<Record<string,unknown>>=>{
+   const sendRpc=(payload:Record<string,unknown>,onIssued?:(id:string)=>void,beforeWrite?:()=>Promise<boolean>):Promise<Record<string,unknown>>=>{
     if(!alive())return Promise.resolve({success:false,error:"task is not running"});
     const id=`asen-fallback:${request.id}:${++rpcSequence}`;
     onIssued?.(id);
@@ -652,7 +653,7 @@ export class PiProcessRunner implements AgentRunner{
       rpcFailure=`rpc timeout after ${budget}ms (${String(payload.type)})`;
       settle({success:false,error:rpcFailure});
      },budget);
-     void writeLine(JSON.stringify({id,...payload})+"\n",payload.type==="prompt");
+     void writeLine(JSON.stringify({id,...payload})+"\n",payload.type==="prompt",beforeWrite);
     });
    };
    const publishFallback=(change:Omit<AgentFallbackObservation,"taskId"|"sessionId"|"projectId">)=>{
@@ -726,10 +727,10 @@ export class PiProcessRunner implements AgentRunner{
       lastAssistantFailure=undefined;finalFailure=undefined;finalAgentSettled=false;
       continuationPromptId=undefined;continuationAcked=false;
       continuationMessageEnded=false;continuationAgentEnded=false;deferredContinuationSettled=false;
-      if(!await consentCurrent()||!alive())return;
       continuationTurnPending=true;
       armPhase("turn");
-      const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."},id=>{continuationPromptId=id;});
+      // Revalidar al salir de la cola de escritura, justo antes del prompt.
+      const resumed=await sendRpc({type:"prompt",message:"Continue the same task using the existing conversation context."},id=>{continuationPromptId=id;},async()=>{if(!await consentCurrent()||!alive())return false;armPhase("turn");return true;});
       if(!alive())return;
       if(resumed.success!==true||!continuationAcked){
        continuationPromptId=undefined;continuationTurnPending=false;fallbackInProgress=false;closeSettled(category);return;
