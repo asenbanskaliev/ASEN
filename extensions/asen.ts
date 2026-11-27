@@ -59,7 +59,7 @@ import {TrustedTaskAgentBinder} from "../src/runtime/agents/trusted-task-agent-b
 import {TaskAgentTodoReconciler} from "../src/runtime/agents/task-agent-reconciler.js";
 import {acceptIndependentReview,type ReviewVerification} from "../src/runtime/lifecycle/review-acceptance.js";
 import {ReceiptVerifierService} from "../src/evidence/receipt-verifier.js";
-import {dispatchNextPlanTask,plannedExplorerProfileOrigin} from "../src/runtime/lifecycle/plan-dispatcher.js";
+import {dispatchNextPlanTask,plannedExplorerProfileOrigin,plannedExplorerFallback} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {reviewNativePartitionWithTests,reviewNativeIntegratedCandidate,inspectPartitionPolicy,acceptNativeIntegration,verifyNativeIntegrationAcceptance,exactPassingReceipt,nativeReviewCheckpointStatus,markNativeDualReviewPending,assertNativeDualReviewReceipt,canResumeUnstartedDualReview,markNativeDualReviewAttemptStarted,saveNativeReviewCheckpoint,restoreNativeIntegrationReview,readNativeReviewMetrics} from "../src/runtime/lifecycle/native-integration-review.js";
 import {summarizeParentFlow,summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
 import type {NativeIntegrationCandidate} from "../src/runtime/agents/parallel-native-integration.js";
@@ -714,9 +714,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   const resetAgentProjectAccess=agentRuntimePromise?registerAgentTools(pi,getAgentRuntime,taskAgentLinks&&todoStorePromise?{todos:async()=>todoStorePromise,binder:async()=>new TrustedTaskAgentBinder(await todoStorePromise,await agentRuntimePromise!,taskAgentLinks),links:async()=>taskAgentLinks}:undefined,async(role,identity,directExplorer)=>{
    const layers=await profileLayer(identity),route=resolveRuntimeRoute(layers,role);
    if(!directExplorer)return route;
-   const profile=(route.source==="default"?layers.session??layers.project??layers.global:layers[route.source])?.active;
-   const chain=resolveProfileFallbackChain(await readProfileFallbacksFile(profileFallbacksFile),profile,role);
-   return {...route,...(profile&&chain.length?{modelFallback:{profile,chain}}:{})};
+   // La misma procedencia de perfil y ámbito que las rutas planificadas.
+   // Un perfil de proyecto no hereda alternativas de un perfil global homónimo.
+   const model=route.choice?.model,origin=plannedExplorerProfileOrigin(role,model,layers);
+   const modelFallback=plannedExplorerFallback({role,...(model?{model}:{}),profiles:layers,...(origin?{origin}:{}),fallbacksByScope:await readFallbacksByScope(identity)});
+   return {...route,...(modelFallback?{modelFallback}:{})};
   },agentNoticeJournal,identity=>{
    const budget=explorerBudget;
    return !!budget&&budget.sessionId===identity.sessionId&&
