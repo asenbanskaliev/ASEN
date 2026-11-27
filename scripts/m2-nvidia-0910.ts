@@ -153,7 +153,9 @@ if(process.argv[2]==="--seed"){
    catch{report.gitClean=false;}
    fixture.cleanup();rmSync(base,{recursive:true,force:true});
   }
-  if(proxy){await proxy.close();controlledReport.proxy=proxy.receipt();}
+  if(proxy){await proxy.close();controlledReport.proxy=proxy.receipt();
+   if(controlledReport.proxy.rejectedRequests!==0||controlledReport.proxy.upstreamRequests!==1||controlledReport.proxy.local429!==1){report.stage="blocked-controlled-final-count";}
+  }
   if(!report.gitClean||report.stage!=="complete"){report.objective09="BLOCKED";report.objective10="BLOCKED";}
   mkdirSync(resolve(output,".."),{recursive:true,mode:0o700});
   writeFileSync(output,JSON.stringify({...report,controlled:controlledReport},null,2)+"\n",{mode:0o600,flag:"wx"});
