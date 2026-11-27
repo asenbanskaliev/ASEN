@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {spawnSync} from "node:child_process";
 
 const entry=readFileSync(new URL("../.github/workflows/memory-openrouter-e2e.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
 const flow=readFileSync(new URL("../.github/workflows/asen-flujo-agentes-nvidia.yml",import.meta.url),"utf8").replace(/\r\n/gu,"\n");
@@ -165,4 +166,41 @@ test("T06 el diagnóstico de permisos está aislado y no concede autorización d
  }
  const tui=ci.slice(ci.indexOf("\n  t12-real-pi-tui-dialog:"),ci.indexOf("\n  architecture:"));
  assert.doesNotMatch(tui,/issues: write|pull-requests: write|group: t06-nvidia/u);
+});
+
+
+test("M2 T06: predicado real jq exige revisión independiente exacta y anterior al consentimiento",t=>{
+ const available=spawnSync("jq",["--version"],{encoding:"utf8"});
+ if(available.error&&(available.error as NodeJS.ErrnoException).code==="ENOENT"){
+  assert.ok(!(process.env.GITHUB_ACTIONS==="true"&&process.platform==="linux"),"jq obligatorio en CI Linux");
+  t.skip("jq no instalado en este entorno local");return;
+ }
+ assert.equal(available.status,0);
+ const line=ci.split("\n").find(value=>value.includes("jq -se --arg sha")&&value.includes("t06-reviews.jsonl"));
+ assert.ok(line);const predicate=line.split("'")[1];assert.ok(predicate);
+ const sha="a".repeat(40),cutoff="2026-11-27T09:00:00Z",before="2026-11-27T08:00:00Z";
+ const bot={login:"coderabbitai[bot]"},review={id:1,user:bot,commit_id:sha,submitted_at:before,state:"APPROVED",body:""};
+ const publication="<!-- coderabbit-review-publication v1 publication=abc attempt=def batch=1/1 -->";
+ const nitpick="Nitpick comments: 1\n"+publication;
+ const summary={user:bot,updated_at:before,body:"<!-- recent_review_status_start -->\n\nNo actionable comments were generated in the recent review.\n\n<!-- recent_review_status_end -->\n<!-- final_review_risk_coverage:"+JSON.stringify({sourceCommitId:sha,coveredCommitId:sha,kind:"reviewed"})+" -->"};
+ const check=(rows:unknown[],comments:unknown[],accepted:boolean)=>{
+  const result=spawnSync("jq",["-se","--arg","sha",sha,"--arg","cutoff",cutoff,"--argjson","comments",JSON.stringify(comments),predicate],{input:rows.map(row=>JSON.stringify(row)).join("\n"),encoding:"utf8"});
+  assert.equal(result.error,undefined);assert.ok(result.status===0||result.status===1||result.status===4,result.stderr);
+  assert.equal(result.status===0,accepted,JSON.stringify({rows,comments,stdout:result.stdout,stderr:result.stderr}));
+ };
+ check([review],[],true);
+ check([{...review,state:"COMMENTED",body:nitpick}],[],true);
+ check([{...review,state:"COMMENTED",body:"**Actionable comments posted: 0**\n"+publication}],[],true);
+ check([{...review,commit_id:"b".repeat(40)}],[],false);
+ check([{...review,submitted_at:cutoff}],[],false);
+ check([{...review,state:"CHANGES_REQUESTED"}],[],false);
+ check([{...review,user:{login:"asenbanskaliev"}}],[],false);
+ check([{...review,state:"COMMENTED",body:""}],[],false);
+ check([{...review,state:"COMMENTED",body:nitpick+"\n**Actionable comments posted: 1**"}],[],false);
+ check([review,{...review,id:2,state:"CHANGES_REQUESTED"}],[summary],false);
+ check([],[summary],true);
+ check([],[{...summary,updated_at:cutoff}],false);
+ check([],[{...summary,user:{login:"asenbanskaliev"}}],false);
+ check([],[{...summary,body:summary.body.replaceAll(sha,"b".repeat(40))}],false);
+ check([],[{...summary,body:summary.body.replace('"kind":"reviewed"','"kind":"partial"')}],false);
 });
