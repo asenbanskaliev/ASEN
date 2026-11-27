@@ -51,7 +51,7 @@ import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {Candidate} from "../src/core/types.js";
 import {PiProcessRunner,configuredPiProviderCredential,type PiProviderCredential} from "../src/agents/pi-process-runner.js";
 import type {AgentRunner} from "../src/agents/dispatcher.js";
-import {registerAgentTools,ASEN_AGENT_TOOL_NAMES} from "../src/agents/pi-agent-tools.js";
+import {registerAgentTools,ASEN_AGENT_TOOL_NAMES,confirmWithAbort} from "../src/agents/pi-agent-tools.js";
 import {SessionTodoStore} from "../src/runtime/lifecycle/todo-store.js";
 import {TaskAgentCoordinator} from "../src/runtime/agents/task-agent-coordinator.js";
 import {TaskAgentLinkStore} from "../src/runtime/agents/task-agent-link-store.js";
@@ -129,7 +129,7 @@ import {isAsenPermissionMode,readPermissionModeDefault,savePermissionModeDefault
 import type {PrimaryModeOptions} from "../src/security/primary-tool-policy.js";
 
 type CreateProfileCatalogModel=ParentCatalogModel&{reasoning?:boolean|undefined;thinkingLevelMap?:Partial<Record<Thinking,string|null|undefined>>|undefined};
-type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string;getEntries?:()=>readonly unknown[]};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string)=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
+type CommandContext=HostStatusInput&{cwd:string;hasUI?:boolean;mode?:string;isIdle?:()=>boolean;signal?:AbortSignal|undefined;model?:ParentCatalogModel|undefined;modelRegistry?:{getAll?:()=>readonly CreateProfileCatalogModel[];find(provider:string,id:string):ParentCatalogModel|undefined}|undefined;sessionManager?:{getSessionId?:()=>string;getSessionDir?:()=>string;getEntries?:()=>readonly unknown[]};ui:{theme?:{fg:(color:"warning"|"error",text:string)=>string};setTheme?:ExtensionContext["ui"]["setTheme"];setHeader?:ExtensionContext["ui"]["setHeader"];notify(message:string,level:"info"|"error"|"warning"):void;select?:(title:string,options:string[],opts?:{signal?:AbortSignal})=>Promise<string|undefined>;input?:(title:string,placeholder?:string,opts?:{signal?:AbortSignal})=>Promise<string|undefined>;confirm?:(title:string,message:string,opts?:{signal?:AbortSignal})=>Promise<boolean>;editor?:(title:string,prefill?:string)=>Promise<string|undefined>;setWidget?:(key:string,content:string[]|undefined,options?:{placement?:"aboveEditor"|"belowEditor"})=>void;setStatus?:(key:string,value:string|undefined)=>void;pasteToEditor?:(text:string)=>void;custom?:(...args:any[])=>Promise<any>}};
 type PiLike={getSettings?:()=>unknown;getCommands?:()=>readonly PublicInventoryRow[];getAllTools?:()=>readonly PublicInventoryRow[];on?:(event:string,handler:(...args:any[])=>unknown)=>void;getFlag?:(name:string)=>unknown;registerCommand?:(name:string,command:{description:string;handler:(...args:any[])=>unknown})=>void;registerTool?:(tool:ToolDefinition<any>)=>void;registerShortcut?:(shortcut:string,options:{description?:string;handler:(context:any)=>Promise<void>|void})=>void;sendMessage?:(message:{customType:string;content:string;display:boolean;details?:unknown},options?:{triggerTurn?:boolean;deliverAs?:"steer"|"followUp"|"nextTurn"})=>void;setModel?:(model:ParentCatalogModel)=>boolean|Promise<boolean>;getThinkingLevel?:()=>Thinking;setThinkingLevel?:(level:Thinking)=>void;sendUserMessage?:(message:string,options?:{deliverAs?:"steer"|"followUp"})=>void};
 type Refresh=typeof refreshSkillRegistry;
 const activationRegistryKey=Symbol.for("asen.pi.activation.registry.v1");
@@ -288,21 +288,23 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
   // Una aprobación por intento: no guardar ni heredar permisos de gasto.
-  let fallbackConsentPending:object|undefined;
+  let fallbackConsentPending:{owner:object;attempt:object}|undefined;
   const confirmFallbackAttempt=async(ctx:CommandContext|undefined,scope:{sessionId:string;projectId:string},model:string,signal?:AbortSignal):Promise<boolean>=>{
    if(!ctx||ctx.hasUI!==true||typeof ctx.ui?.confirm!=="function"||ctx.signal?.aborted||signal?.aborted)return false;
    if(!/^[a-z0-9][a-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u.test(model)||model.split("/").some(part=>part==="."||part===".."||!part))return false;
    const owner=agentDeliveryIdentity,delivery=agentDeliveryContext,generation=parentBindingGeneration;
-   if(!owner||!delivery||ctx.sessionManager!==delivery.sessionManager||owner.sessionId!==scope.sessionId||owner.projectId!==scope.projectId||fallbackConsentPending===owner)return false;
+   if(!owner||!delivery||ctx.sessionManager!==delivery.sessionManager||owner.sessionId!==scope.sessionId||owner.projectId!==scope.projectId||fallbackConsentPending?.owner===owner)return false;
    const currentOwner=()=>agentDeliveryIdentity===owner&&agentDeliveryContext===delivery&&parentBindingGeneration===generation&&ctx.sessionManager===delivery.sessionManager;
-   fallbackConsentPending=owner;
+   const pending={owner,attempt:{}};
+   fallbackConsentPending=pending;
+   const dialogSignal=ctx.signal&&signal?AbortSignal.any([ctx.signal,signal]):signal??ctx.signal;
    try{
     const before=await sessionIdentity(ctx);
     if(before.sessionId!==scope.sessionId||before.projectId!==scope.projectId||!currentOwner()||ctx.signal?.aborted||signal?.aborted)return false;
-    const approved=await ctx.ui.confirm("Autorizar un cambio de modelo",`Modelo exacto: ${model}\n\nEl coste real y su inclusión en la suscripción no están verificados. ¿Autorizas este único intento de continuación con este modelo? No autoriza otros modelos ni intentos posteriores.`);
+    const approved=await confirmWithAbort(dialogAbort=>ctx.ui.confirm!("Autorizar un cambio de modelo",`Modelo exacto: ${model}\n\nEl coste real y su inclusión en la suscripción no están verificados. ¿Autorizas este único intento de continuación con este modelo? No autoriza otros modelos ni intentos posteriores.`,dialogAbort?{signal:dialogAbort}:undefined),dialogSignal);
     const after=await sessionIdentity(ctx);
     return approved===true&&currentOwner()&&after.sessionId===scope.sessionId&&after.projectId===scope.projectId&&!ctx.signal?.aborted&&!signal?.aborted;
-   }catch{return false;}finally{if(fallbackConsentPending===owner)fallbackConsentPending=undefined;}
+   }catch{return false;}finally{if(fallbackConsentPending===pending)fallbackConsentPending=undefined;}
   };
   const agentProviderCredential=dependencies.agentProviderCredential??configuredPiProviderCredential(process.env);
   const notificationProjection=new PiNotificationProjection();

@@ -603,7 +603,7 @@ async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_lengt
  for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(join(root,source),target);}
  await writeFile(p,`import {writeFileSync,readFileSync} from "node:fs";import {resolve} from "node:path";
 const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true},initialSuccess=${options.initialSuccess===true};let buffer="",turn=0,commands=[],stateReady=false,activeModel=stateModel;
-const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>{let retry=null;try{retry=JSON.parse(readFileSync(resolve(process.env.PI_CODING_AGENT_DIR,"settings.json"),"utf8")).retry;}catch{}writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands,retry}));};
+const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>{let retry=null,authTypes={};try{retry=JSON.parse(readFileSync(resolve(process.env.PI_CODING_AGENT_DIR,"settings.json"),"utf8")).retry;}catch{}try{const auth=JSON.parse(readFileSync(resolve(process.env.PI_CODING_AGENT_DIR,"auth.json"),"utf8"));authTypes=Object.fromEntries(Object.entries(auth).map(([key,value])=>[key,value.type]));}catch{}writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands,retry,authTypes}));};
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
  if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:activeModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
@@ -923,4 +923,19 @@ test("M2: las alternativas desactivan los reintentos Pi y HTTP en una configurac
  assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,2);
  assert.ok(trace.args.includes("--no-approve"));
  assert.equal(trace.retry.enabled,false);assert.equal(trace.retry.maxRetries,0);assert.equal(trace.retry.provider.maxRetries,0);
+});
+
+
+test("M2: configuración privada conserva claves API permitidas y excluye sesiones OAuth",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({initialSuccess:true});
+ const source=join(d,"original-pi");await mkdir(source);
+ const original=JSON.stringify({provider:{type:"oauth",access:"simulado",refresh:"rotatorio",expires:0},alternative:{type:"api_key",key:"clave-de-prueba"},unrelated:{type:"api_key",key:"otra-clave-de-prueba"}});
+ await writeFile(join(source,"auth.json"),original);
+ const previous=process.env.PI_CODING_AGENT_DIR;process.env.PI_CODING_AGENT_DIR=source;
+ t.after(async()=>{if(previous===undefined)delete process.env.PI_CODING_AGENT_DIR;else process.env.PI_CODING_AGENT_DIR=previous;await rm(d,{recursive:true,force:true});});
+ const result=await runner(p,{timeoutMs:10000}).run({id:"fallback-oauth-isolated",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"alternative/backup"}]}});
+ assert.equal(result.ok,true,result.output);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.deepEqual(trace.authTypes,{alternative:"api_key"});
+ assert.equal(await readFile(join(source,"auth.json"),"utf8"),original);
 });

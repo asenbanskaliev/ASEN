@@ -154,7 +154,17 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
   save("models.json",{...models,providers:Object.fromEntries(Object.entries(configured).filter(([key])=>providers.has(key)))});
  }
  const auth=read("auth.json");
- if(auth)save("auth.json",Object.fromEntries(Object.entries(auth).filter(([key])=>providers.has(key))));
+ // Nunca duplicar credenciales OAuth: su renovación puede invalidar el inicio
+ // de sesión original. Las alternativas aisladas admiten claves API estáticas
+ // y la credencial de entorno seleccionada; no heredan una sesión OAuth.
+ if(auth){
+  const keys=Object.entries(auth).flatMap(([provider,value])=>{
+   if(!providers.has(provider)||!value||typeof value!=="object"||Array.isArray(value))return [];
+   const credential=value as Record<string,unknown>;
+   return credential.type==="api_key"&&typeof credential.key==="string"&&credential.key.length>0?[[provider,{type:"api_key",key:credential.key}]]:[];
+  });
+  save("auth.json",Object.fromEntries(keys));
+ }
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.

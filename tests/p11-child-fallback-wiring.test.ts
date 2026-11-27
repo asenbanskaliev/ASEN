@@ -44,7 +44,7 @@ async function bytesUnder(root: string, prefix = ""): Promise<Record<string, str
  }
  return found;
 }
-async function fixture(t: TestContext, stored?: ProfileFallbacksFile) {
+async function fixture(t: TestContext, stored?: ProfileFallbacksFile, beforeResult?:()=>Promise<void>) {
  const root = await mkdtemp(path.join(BASE!, "case-")), home = path.join(root, "home");
  const project = path.join(root, "project"), foreign = path.join(root, "foreign");
  await mkdir(path.join(home, ".asen"), {recursive: true}); await mkdir(project); await mkdir(foreign);
@@ -71,13 +71,13 @@ async function fixture(t: TestContext, stored?: ProfileFallbacksFile) {
  let runtime: AgentRuntime | undefined, terminal!: () => void;
  const finished = new Promise<void>(resolve => {terminal = resolve;});
  const runner: AgentRunner = {run: async request => {
-  requests.push(request); return {id: request.id, ok: true, output: "P11 bounded read-only result"};
+  requests.push(request); await beforeResult?.(); return {id: request.id, ok: true, output: "P11 bounded read-only result"};
  }};
  // Existing DI only; real startReadOnly/store/dispatcher snapshot, no producer or emitted behavior stub.
  createPiExtension({homeDir: () => home, packageRoot: root, profilesFile, profileFallbacksFile: fallbackFile,
   backgroundJobJournalFile: path.join(home, ".asen/jobs.json"), autoAdvancePlans: false,
   agentRuntimeFactory: async () => {
-   runtime = await AgentRuntime.open({storeFile: path.join(home, ".asen/agents.json"), runner});
+   runtime = await AgentRuntime.open({storeFile: path.join(home, ".asen/agents.json"), runner,maxConcurrency:1});
    runtime.subscribeTerminal(() => terminal()); return runtime;
   }, enableTodoRuntime: false, enableWorkspaceRuntime: false, enableMemoryRuntime: false})(pi);
  const emit = async (name: string) => {for (const fn of [...events.get(name) ?? []]) await fn({}, ctx);};
@@ -113,7 +113,7 @@ async function fixture(t: TestContext, stored?: ProfileFallbacksFile) {
   for (const key of ["candidate", "writeSurfaces", "writerAdmission", "phaseGrant", "runnerWriteReceiver"]) assert.equal(Object.hasOwn(request, key), false);
   return {request, query};
  };
- return {home, foreign, profilesFile, fallbackFile, state, launch, complete, queryTask, requests, ctx, identity, partition,
+ return {home, foreign, profilesFile, fallbackFile, state, launch, complete, queryTask, requests, ctx, identity, partition,finished,confirmations:()=>confirmations,records:()=>runtime!.snapshot(),
   setSession: (value: string) => {sessionId = value;}, setConfirm: (value: () => Promise<boolean>) => {confirm = value;}};
 }
 
@@ -186,7 +186,30 @@ test("M2: Explorer con alternativas conserva el proyecto externo autorizado",asy
  assert.equal(f.requests[0]!.repository,await realpath(f.foreign));
  assert.equal(f.requests[0]!.isolationKey,f.identity.sessionId);
  assert.equal(f.requests[0]!.modelFallback?.origin?.model,PRIMARY.model);
- assert.equal((await f.state()).confirmations,1);
- for(let i=0;i<200;i++){if((await f.state()).records.some(record=>record.id===result.details.id&&record.state==="completed"))return;await new Promise(resolve=>setTimeout(resolve,20));}
- assert.fail("No se completó la lectura autorizada");
+ await f.finished;
+ assert.equal(f.confirmations(),1);
+ assert.ok(f.records().some(record=>record.id===result.details.id&&record.state==="completed"));
+});
+
+
+test("M2: Explorer directo sin alternativas conserva la reutilización y no arranca después de cambiar de sesión",async t=>{
+ let release!:()=>void;
+ const held=new Promise<void>(resolve=>{release=resolve;});
+ const f=await fixture(t,undefined,()=>held);
+ try{
+  const first=await f.launch(undefined,{prompt:"Primera lectura"});
+  const reused=await f.launch(undefined,{prompt:"Primera lectura"});
+  assert.equal(reused.details.id,first.details.id);
+  for(let i=0;i<200&&f.requests.length===0;i++)await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal(f.requests.length,1);
+  const next=await f.launch(undefined,{prompt:"Segunda lectura en cola"});
+  assert.notEqual(next.details.id,first.details.id);
+  f.setSession("otra-sesion");release();
+  for(let i=0;i<200;i++){
+   const record=f.records().find(row=>row.id===next.details.id);
+   if(record&&["failed","cancelled"].includes(record.state)){assert.equal(f.requests.length,1);return;}
+   await new Promise(resolve=>setTimeout(resolve,20));
+  }
+  assert.fail("La lectura pendiente no fue rechazada después del cambio de sesión");
+ }finally{release();f.setSession(f.identity.sessionId);}
 });

@@ -8,7 +8,8 @@ test("fallback-parent extension handles the real parent event path with a fake P
  await writeProfileFallbacksFile(fallbacksFile,{schema:ASEN_PROFILE_FALLBACKS_SCHEMA,profiles:{main:{orchestrator:[{model:"provider/backup",thinking:"low"}]}}});
  const commands=new Map<string,any>(),events=new Map<string,Function[]>(),calls:string[]=[],notices:string[]=[];
  const pi:any={registerCommand:(name:string,command:any)=>commands.set(name,command),registerTool(){},on:(name:string,handler:Function)=>events.set(name,[...(events.get(name)??[]),handler]),getCommands:()=>[],getAllTools:()=>[],getThinkingLevel:()=>"high",setThinkingLevel:(level:string)=>calls.push(`thinking:${level}`),setModel:async(model:any)=>{calls.push(`model:${model.provider}/${model.id}`);ctx.model=model;return true;},sendUserMessage:(message:string,options:any)=>calls.push(`followUp:${options.deliverAs}:${message}`)};
- const ctx:any={cwd:project,hasUI:true,model:{provider:"provider",id:"primary",cost:{input:1,output:2}},modelRegistry:{find:(provider:string,id:string)=>provider==="provider"&&id==="backup"?{provider,id,cost:{input:2,output:4}}:undefined},sessionManager:{getSessionId:()=>"fallback-parent-session"},ui:{confirm:async()=>true,notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}};
+ const consentSignal=new AbortController();let dialogSignal:AbortSignal|undefined;
+ const ctx:any={cwd:project,hasUI:true,signal:consentSignal.signal,model:{provider:"provider",id:"primary",cost:{input:1,output:2}},modelRegistry:{find:(provider:string,id:string)=>provider==="provider"&&id==="backup"?{provider,id,cost:{input:2,output:4}}:undefined},sessionManager:{getSessionId:()=>"fallback-parent-session"},ui:{confirm:async(_title:string,_message:string,options?:{signal?:AbortSignal})=>{dialogSignal=options?.signal;return true;},notify:(message:string)=>notices.push(message),setWidget(){},setStatus(){}}};
  createAsenExtension({homeDir:()=>root,profilesFile,profileFallbacksFile:fallbacksFile,enableAgentRuntime:false,enableTodoRuntime:false,enableMemoryRuntime:false})(pi);
  t.after(async()=>{try{for(const handler of events.get("session_shutdown")??[])await handler({},ctx);}finally{await rm(root,{recursive:true,force:true});}});
  for(const handler of events.get("session_start")??[])await handler({},ctx);
@@ -16,6 +17,7 @@ test("fallback-parent extension handles the real parent event path with a fake P
  assert.deepEqual(calls,[],"agent_end only caches the last attempt");
  for(const handler of events.get("agent_settled")??[])await handler({aborted:false},{...ctx});
  assert.deepEqual(calls.map(call=>String(call).split(":",1)[0]),["model","thinking","followUp"]);
+ assert.equal(dialogSignal,consentSignal.signal);
  assert.match(calls[2]!,/^followUp:followUp:/);assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,1);
 });
 test("fallback-parent extension rejects delayed prior-session end and abort events",async t=>{

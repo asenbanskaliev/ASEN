@@ -68,7 +68,7 @@ export class AgentRuntime{
   const execution=this.dispatcher.dispatch(request,startBefore,validateStart);this.#executions.set(request.id,execution);
   void execution.then(()=>this.#publishTerminal(request),()=>this.#publishTerminal(request)).finally(()=>{signal?.removeEventListener("abort",onAbort);if(this.#executions.get(request.id)===execution)this.#executions.delete(request.id);if(this.#fallbackOwners.get(request.id)===owner)this.#fallbackOwners.delete(request.id);});
  }
- async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;validateStart?:()=>Promise<void>;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
+ async startReadOnly(input:{role:"clarifier"|"explorer"|"reviewer"|"verifier";prompt:string;session:AgentSessionIdentity;owner?:PublicAgentRecord["owner"];skillSelection?:SkillSelectionContext;model?:string;thinking?:AgentRequest["thinking"];modelFallback?:AgentModelFallback;validateStart?:()=>Promise<void>;validateAdHocStart?:()=>Promise<void>;onPrepared?:(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>Promise<void>;onQueued?:(agentId:string,dispatch:()=>void)=>Promise<void>},signal?:AbortSignal):Promise<string>{
   if(!input.session.sessionId||!input.session.projectId||input.onPrepared&&input.onQueued)throw new Error("An active Pi session and project with one launch boundary is required");
   const requiredPhase={explorer:"explore",reviewer:"adversarial-review",verifier:"verify"}[input.role as Exclude<typeof input.role,"clarifier">];
   if(input.role==="clarifier"&&input.skillSelection)throw new Error("clarifier dispatch cannot receive a skill phase");
@@ -77,19 +77,26 @@ export class AgentRuntime{
   if(input.skillSelection){request.skillContext=issueSkillContext(request.id,request.repository,undefined,input.skillSelection);request.skillPaths=selectSkills(request.skillContext).map(skill=>skill.path);}
   // Only unaffiliated ad-hoc Explorer work may reuse the identical active task.
   // Planned jobs and all reviewers/verifiers always retain unique identity.
-  if(input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared&&!input.validateStart){
+  const adHoc=input.role==="explorer"&&!input.owner&&!input.skillSelection&&!input.onQueued&&!input.onPrepared&&!input.validateStart;
+  if(input.validateAdHocStart&&(!adHoc||modelFallback))throw new Error("Live ad-hoc validation requires an unplanned Explorer without alternatives");
+  if(adHoc){
+   await input.validateAdHocStart?.();
    const dedupeKey=createHash("sha256").update(JSON.stringify([
     "asen.explorer.active.v1",input.session.sessionId,workspaceIdentityPathKey(input.session.projectId),
     input.role,input.prompt,request.model??null,request.thinking??null,request.modelFallback??null,
    ])).digest("hex");
    const claim=await this.store.enqueueAdHocExplorerOrReuse({...request,dedupeKey},request.owner!,signal);
-   if(claim.reused)return claim.id;
+   try{await input.validateAdHocStart?.();}catch(error){
+    if(!claim.reused)await this.store.cancelled(request.id,"Explorer host changed before dispatch").catch(()=>{});
+    throw error;
+   }
+   if(claim.reused){if(signal?.aborted)throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});return claim.id;}
 
    if(signal?.aborted){
     await this.store.cancelled(request.id,"Explorer launch cancelled before dispatch").catch(()=>{});
     throw Object.assign(new Error("Agent task cancelled before execution"),{name:"AbortError"});
    }
-   try{this.#dispatch(request,signal);}
+   try{this.#dispatch(request,signal,undefined,input.validateAdHocStart);}
    catch(error){await this.store.cancelled(request.id,"Explorer launch could not dispatch").catch(()=>{});throw error;}
    return claim.id;
   }
