@@ -175,3 +175,18 @@ test("P11 stale identity at existing foreign-project confirmation guard cannot a
  assert.deepEqual(await f.state(), {...before, confirmations: before.confirmations + 1});
  assert.equal(await readSessionProfile(f.partition, {sessionId: "stale-session", projectId: await realpath(f.foreign)}), undefined);
 });
+
+
+test("M2: Explorer con alternativas conserva el proyecto externo autorizado",async t=>{
+ const f=await fixture(t,configured());
+ const result=await f.launch(undefined,{prompt:"Inspección aislada autorizada",root:f.foreign});
+ assert.equal(result.details.state,"queued");
+ for(let i=0;i<200&&f.requests.length===0;i++)await new Promise(resolve=>setTimeout(resolve,20));
+ assert.equal(f.requests.length,1);
+ assert.equal(f.requests[0]!.repository,await realpath(f.foreign));
+ assert.equal(f.requests[0]!.isolationKey,f.identity.sessionId);
+ assert.equal(f.requests[0]!.modelFallback?.origin?.model,PRIMARY.model);
+ assert.equal((await f.state()).confirmations,1);
+ for(let i=0;i<200;i++){if((await f.state()).records.some(record=>record.id===result.details.id&&record.state==="completed"))return;await new Promise(resolve=>setTimeout(resolve,20));}
+ assert.fail("No se completó la lectura autorizada");
+});

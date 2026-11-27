@@ -33,7 +33,7 @@ process.stdin.on("data",chunk=>{
 
 const abandonSettlement=`
 const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");
-let buffer="",prompts=0;
+let buffer="",prompts=0,selected;
 process.stdin.on("data",chunk=>{
  buffer+=String(chunk);
  let end;
@@ -57,7 +57,12 @@ process.stdin.on("data",chunk=>{
    continue;
   }
   if(record.type==="set_model"){
+   selected={provider:record.provider,id:record.modelId};
    emit({type:"response",id:record.id,success:true,command:"set_model"});
+   continue;
+  }
+  if(record.type==="get_state"){
+   emit({type:"response",id:record.id,success:true,command:"get_state",data:{model:selected}});
    continue;
   }
  }
@@ -75,7 +80,7 @@ test("T2.5 without a fallback chain a correlated response and a clean exit compl
 test("T2.5 with a fallback chain the run is rejected when the turn never settles",async t=>{
  const fixture=await createPiRpcFixture(t,abandonSettlement);
  const models=uniqueModelNames(1);
- const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:10_000});
+ const runner=new PiProcessRunner({command:process.execPath,rpcArgs:[],extraArgs:[fixture.pi],timeoutMs:10_000,authorizeModelFallback:()=>true});
  const result=await runner.run({
   id:"settlement-fallback",role:"explorer",prompt:"work",repository:fixture.repository,
   model:models.primary,

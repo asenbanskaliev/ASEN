@@ -288,20 +288,21 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const finishActiveMemory=()=>{if(!activeMemory||activeMemory.closed)return;finishPiMemorySession(activeMemory);activeMemory=undefined;};
   // Una aprobación por intento: no guardar ni heredar permisos de gasto.
-  let fallbackConsentPending=false;
+  let fallbackConsentPending:object|undefined;
   const confirmFallbackAttempt=async(ctx:CommandContext|undefined,scope:{sessionId:string;projectId:string},model:string,signal?:AbortSignal):Promise<boolean>=>{
-   if(!ctx||ctx.hasUI!==true||typeof ctx.ui?.confirm!=="function"||ctx.signal?.aborted||signal?.aborted||fallbackConsentPending)return false;
+   if(!ctx||ctx.hasUI!==true||typeof ctx.ui?.confirm!=="function"||ctx.signal?.aborted||signal?.aborted)return false;
    if(!/^[a-z0-9][a-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9_./:@-]{0,190}$/u.test(model)||model.split("/").some(part=>part==="."||part===".."||!part))return false;
-   const owner=agentDeliveryIdentity;
-   if(agentDeliveryContext!==ctx||!owner||owner.sessionId!==scope.sessionId||owner.projectId!==scope.projectId)return false;
-   fallbackConsentPending=true;
+   const owner=agentDeliveryIdentity,delivery=agentDeliveryContext,generation=parentBindingGeneration;
+   if(!owner||!delivery||ctx.sessionManager!==delivery.sessionManager||owner.sessionId!==scope.sessionId||owner.projectId!==scope.projectId||fallbackConsentPending===owner)return false;
+   const currentOwner=()=>agentDeliveryIdentity===owner&&agentDeliveryContext===delivery&&parentBindingGeneration===generation&&ctx.sessionManager===delivery.sessionManager;
+   fallbackConsentPending=owner;
    try{
     const before=await sessionIdentity(ctx);
-    if(before.sessionId!==scope.sessionId||before.projectId!==scope.projectId||agentDeliveryIdentity!==owner||agentDeliveryContext!==ctx||ctx.signal?.aborted||signal?.aborted)return false;
+    if(before.sessionId!==scope.sessionId||before.projectId!==scope.projectId||!currentOwner()||ctx.signal?.aborted||signal?.aborted)return false;
     const approved=await ctx.ui.confirm("Autorizar un cambio de modelo",`Modelo exacto: ${model}\n\nEl coste real y su inclusión en la suscripción no están verificados. ¿Autorizas este único intento de continuación con este modelo? No autoriza otros modelos ni intentos posteriores.`);
     const after=await sessionIdentity(ctx);
-    return approved===true&&agentDeliveryIdentity===owner&&agentDeliveryContext===ctx&&after.sessionId===scope.sessionId&&after.projectId===scope.projectId&&!ctx.signal?.aborted&&!signal?.aborted;
-   }catch{return false;}finally{fallbackConsentPending=false;}
+    return approved===true&&currentOwner()&&after.sessionId===scope.sessionId&&after.projectId===scope.projectId&&!ctx.signal?.aborted&&!signal?.aborted;
+   }catch{return false;}finally{if(fallbackConsentPending===owner)fallbackConsentPending=undefined;}
   };
   const agentProviderCredential=dependencies.agentProviderCredential??configuredPiProviderCredential(process.env);
   const notificationProjection=new PiNotificationProjection();

@@ -27,7 +27,7 @@ test("Conserva el consumo observado de un prefijo válido aunque una línea post
  const row=summarizeChildFlow({
   record:{id:"agent",role:"explorer",state:"completed",createdAt:at,updatedAt:end},
   events:[{state:"running",at}],
-  result:{output:[JSON.stringify(message),JSON.stringify(settled),"{json inválido"].join("\n")}
+  result:{output:[JSON.stringify(message),JSON.stringify({type:"message_end",message:{id:"m2",role:"assistant",provider:"nvidia",model:"modelo"}}),JSON.stringify(settled),"{json inválido"].join("\n")}
  });
  assert.equal(row.completeInventory,false);
  assert.equal(row.inputTokens,null);
@@ -35,6 +35,8 @@ test("Conserva el consumo observado de un prefijo válido aunque una línea post
  assert.equal(row.totalTokens,null);
  assert.equal(row.reportedCostUsd,null);
  assert.equal(row.observedUsage.totalTokens,12);
+ assert.equal(row.observedUsage.assistantTurns,2);assert.equal(row.observedUsage.observedUsageTurns,1);
+ assert.equal(row.observedUsage.inputTokens,10);assert.equal(row.observedUsage.outputTokens,2);
  assert.equal(row.observedUsage.reportedCostUsd,0.01);
  assert.equal(row.source,"saved-pi-rpc-result");
 });

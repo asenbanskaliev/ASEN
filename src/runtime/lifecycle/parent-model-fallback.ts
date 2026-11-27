@@ -65,7 +65,7 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
  const accepts=(scope:ParentFallbackScope|undefined)=>!bindingRequired||sameScope(activeScope,scope);
  const currentIdentity=async(context?:unknown)=>{const value=await host.identity(context);return validIdentity(value)?value:undefined;};
  const invalidate=(outcome:"success"|"aborted")=>{
-  epoch+=1;episode?.clear(outcome);episode=undefined;episodeIdentity=undefined;episodeThinking=undefined;lastMessages=[];lastScope=undefined;
+  epoch+=1;inFlight=undefined;episode?.clear(outcome);episode=undefined;episodeIdentity=undefined;episodeThinking=undefined;lastMessages=[];lastScope=undefined;
  };
  const run=async(messages:readonly unknown[],settled:{aborted?:boolean},context:unknown,operation:number,origin:ParentFallbackScope|undefined):Promise<boolean>=>{
   const current=()=>operation===epoch&&accepts(origin);

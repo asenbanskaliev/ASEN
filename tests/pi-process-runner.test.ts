@@ -596,14 +596,14 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;fallbackStateMismatch?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
+async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;fallbackStateMismatch?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
  for(const source of ["src/runtime/workspace-store.ts","src/runtime/workspace-attribution.ts","src/runtime/responsive-layout.ts","src/io/atomic-write.ts","src/io/exclusive-file-lock.ts","src/io/private-file.ts","src/security/path-safety.ts"]){const target=join(d,source);await mkdir(target.slice(0,target.lastIndexOf("/")),{recursive:true});await copyFile(join(root,source),target);}
- await writeFile(p,`import {writeFileSync} from "node:fs";import {resolve} from "node:path";
+ await writeFile(p,`import {writeFileSync,readFileSync} from "node:fs";import {resolve} from "node:path";
 const log=${JSON.stringify(log)},refused=new Set(${JSON.stringify(options.refuse??[])}),refuseThinking=${options.refuseThinking===true},category=${JSON.stringify(options.category??"rate_limit")},settleDelay=${options.settleDelayMs??0},coalesceSecondTurn=${options.coalesceSecondTurn===true},duplicateContinuationResponse=${options.duplicateContinuationResponse===true},staleSettledOnly=${options.staleSettledOnly===true},rejectContinuation=${options.rejectContinuation===true},stateDelay=${options.stateDelayMs??0},stateAccepted=${options.stateAccepted!==false},stateModel=${JSON.stringify(options.stateModel??{provider:"provider",id:"primary"})},stateRequired=${options.stateRequiredBeforePrompt===true},initialSuccess=${options.initialSuccess===true};let buffer="",turn=0,commands=[],stateReady=false,activeModel=stateModel;
-const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands}));
+const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=()=>{let retry=null;try{retry=JSON.parse(readFileSync(resolve(process.env.PI_CODING_AGENT_DIR,"settings.json"),"utf8")).retry;}catch{}writeFileSync(log,JSON.stringify({pid:process.pid,args:process.argv.slice(2),commands,retry}));};
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
  if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:activeModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
@@ -614,6 +614,7 @@ process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.
   turn++;
   const reply={type:"response",id:request.id,command:"prompt",success:turn===1||!rejectContinuation};
   if(turn===1){emit(reply);if(initialSuccess){emit({type:"message_end",message:{role:"assistant",stopReason:"stop",...${JSON.stringify(options.assistantIdentity??{})},content:[{type:"text",text:"respuesta de prueba completada"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});}else{const message=category==="context_length"?"maximum context length":"429 rate limit";emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:message}});emit({type:"agent_end"});setTimeout(()=>emit({type:"agent_settled"}),settleDelay);}}
+  else if(${options.nativeRetryAfterFallback===true}){emit(reply);emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:"429 rate limit",provider:activeModel.provider,model:activeModel.id}});emit({type:"agent_end",willRetry:true});emit({type:"auto_retry_start"});}
   else if(coalesceSecondTurn){
    const records=[reply];
    if(duplicateContinuationResponse)records.push({...reply});
@@ -909,4 +910,17 @@ test("M2: tras un 429 instrumentado la respuesta queda atribuida a la alternativ
  const result=await runner(p,{timeoutMs:10_000}).run({id:"identidad-alternativa",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
  assert.equal(result.ok,true,result.output);const receipt=readPiChildIdentityEvidence(result).at(-1);
  assert.equal(receipt?.requested,"provider/final");assert.equal(receipt?.selected,"provider/final");assert.equal(receipt?.responseModel,"final");assert.equal(receipt?.status,"declared-match");
+});
+
+
+test("M2: las alternativas desactivan los reintentos Pi y HTTP en una configuración privada",async t=>{
+ const {d,p,log}=await fallbackRpcFixture({nativeRetryAfterFallback:true});t.after(()=>rm(d,{recursive:true,force:true}));
+ const approvals:string[]=[];
+ const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return true;}}).run({id:"fallback-native-retry",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+ assert.equal(result.ok,false);assert.match(result.output,/native retry is not authorized/);
+ const trace=JSON.parse(await readFile(log,"utf8"));
+ assert.deepEqual(approvals,["provider/final"]);
+ assert.equal(trace.commands.filter((command:{type:string})=>command.type==="prompt").length,2);
+ assert.ok(trace.args.includes("--no-approve"));
+ assert.equal(trace.retry.enabled,false);assert.equal(trace.retry.maxRetries,0);assert.equal(trace.retry.provider.maxRetries,0);
 });

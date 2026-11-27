@@ -14,7 +14,7 @@ test("fallback-parent extension handles the real parent event path with a fake P
  for(const handler of events.get("session_start")??[])await handler({},ctx);
  for(const handler of events.get("agent_end")??[])await handler({messages:[{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}]},ctx);
  assert.deepEqual(calls,[],"agent_end only caches the last attempt");
- for(const handler of events.get("agent_settled")??[])await handler({aborted:false},ctx);
+ for(const handler of events.get("agent_settled")??[])await handler({aborted:false},{...ctx});
  assert.deepEqual(calls.map(call=>String(call).split(":",1)[0]),["model","thinking","followUp"]);
  assert.match(calls[2]!,/^followUp:followUp:/);assert.equal(notices.filter(message=>/switched parent/i.test(message)).length,1);
 });

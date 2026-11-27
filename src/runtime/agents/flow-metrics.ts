@@ -17,9 +17,12 @@ function sample(message:unknown):Sample|undefined{
  const model=typeof v.provider==="string"&&typeof v.model==="string"&&/^[a-z0-9._/-]{1,256}$/iu.test(v.provider+"/"+v.model)?v.provider+"/"+v.model:undefined;
  return {...(usage?{usage}:{}),...(model?{model}:{})};
 }
-export function summarizeFlowUsage(samples:readonly Sample[]){
+export function summarizeFlowUsage(samples:readonly Sample[],observationsOnly=false){
  const known=samples.flatMap(row=>row.usage?[row.usage]:[]);
- const sum=(field:"input"|"output"|"total"|"costUsd")=>known.length===samples.length&&known.length>0&&known.every(row=>row[field]!==null)?known.reduce((total,row)=>total+row[field]!,0):null;
+ const sum=(field:"input"|"output"|"total"|"costUsd")=>{
+  const available=known.flatMap(row=>row[field]===null?[]:[row[field]!]);
+  return available.length>0&&(observationsOnly||available.length===samples.length)?available.reduce((total,value)=>total+value,0):null;
+ };
  return Object.freeze({assistantTurns:samples.length,observedUsageTurns:known.length,models:[...new Set(samples.flatMap(row=>row.model?[row.model]:[]))],
   inputTokens:sum("input"),outputTokens:sum("output"),totalTokens:sum("total"),reportedCostUsd:sum("costUsd"),billingVerified:false});
 }
@@ -72,7 +75,7 @@ export function summarizeChildFlow(entry:{record:{id:string;role:string;state:st
   }
  }else valid=false;
  // Las muestras válidas del prefijo siguen siendo observaciones, no totales completos.
- const observed=summarizeFlowUsage(messages);
+ const observed=summarizeFlowUsage(messages,true),totals=summarizeFlowUsage(messages);
  // El resultado persistido y completado acredita la salida limpia del runner.
  // En lectura sin alternativas, este acepta una única respuesta correlacionada
  // sin exigir agent_settled. Para acreditar inventario completo exigimos agent_end.
@@ -86,7 +89,7 @@ export function summarizeChildFlow(entry:{record:{id:string;role:string;state:st
   starts.length===1&&entry.record.state==="completed"&&messages.length>0;
  return Object.freeze({id:entry.record.id,role:entry.record.role,state:entry.record.state,
   elapsedMs:Number.isFinite(elapsed)&&elapsed>=0?elapsed:null,observedAttempts:starts.length,
-  ...observed,
+  ...totals,
   ...(!completeInventory?{inputTokens:null,outputTokens:null,totalTokens:null,reportedCostUsd:null}:{}),
   observedUsage:observed,
   source:messages.length?"saved-pi-rpc-result":"usage-unavailable",completeInventory});

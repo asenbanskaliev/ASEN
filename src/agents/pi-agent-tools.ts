@@ -64,7 +64,17 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
  pi.registerTool?.({name:"asen_agent_start",label:"Start ASEN agent",description:"Queue an isolated read-only Pi Explorer. With budgetExplorer=true, require real same-session exhaustion and the exact Explorer model configured in the active profile, without writing.",executionMode:"sequential",parameters:{type:"object",additionalProperties:false,required:["prompt"],properties:{prompt:text,root:rootSchema,todoId:idSchema,budgetExplorer:{type:"boolean"}}},execute:async(_id,params,signal,_update,context)=>{
   throwIfCancelled(signal);
   const prompt=(params as {prompt?:unknown})?.prompt;if(typeof prompt!=="string"||!prompt.trim()||prompt.length>32000)throw new Error("Invalid agent prompt");
-  const session=await selectedIdentity((params as {root?:unknown}).root,context,true,signal);
+  const launchManager=context?.sessionManager,launchHost=await identity(context),requestedRoot=(params as {root?:unknown}).root;
+  const session=await selectedIdentity(requestedRoot,context,true,signal);
+  const validateHost=async()=>{
+   throwIfCancelled(signal);
+   const current=await identity(context);
+   if(context?.sessionManager!==launchManager||current.sessionId!==launchHost.sessionId||session.sessionId!==launchHost.sessionId||!sameWorkspaceIdentityPath(current.projectId,launchHost.projectId))throw Error("La sesión cambió antes de ejecutar la exploración");
+   const target=await selectedIdentity(requestedRoot,context,false,signal);
+   if(target.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(target.projectId,session.projectId))throw Error("El proyecto autorizado cambió antes de ejecutar la exploración");
+   throwIfCancelled(signal);
+  };
+  await validateHost();
   const todoId=(params as {todoId?:unknown}).todoId;
   const budgetExplorer=(params as {budgetExplorer?:unknown}).budgetExplorer===true;
   if(budgetExplorer&&todoId!==undefined)throw new Error("Budget Explorer cannot reuse a planned Todo or its authority");
@@ -111,11 +121,9 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    if(modelFallback){
     const expected=modelFallback;
     validateFallback=async()=>{
-     const current=await identity(context);
-     if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId))throw Error("La sesión cambió antes de ejecutar la exploración");
+     await validateHost();
      await assertPlannedExplorerFallbackCurrent(expected,selection,()=>loadExplorerFallbackConfig(session));
-     const after=await identity(context);
-     if(after.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(after.projectId,session.projectId))throw Error("La sesión cambió antes de ejecutar la exploración");
+     await validateHost();
      assertCurrentReadOnlyCandidate(persistedPlan!,session.projectId);
     };
     await validateFallback();
@@ -125,19 +133,17 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
    const expected=modelFallback;
    validateFallback=async()=>{
     throwIfCancelled(signal);
-    const before=await identity(context);
-    if(before.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(before.projectId,session.projectId))throw Error("La sesión cambió antes de ejecutar la exploración");
+    await validateHost();
     const current=await resolveRouting?.("explorer",session,true);
-    const after=await identity(context);
-    if(after.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(after.projectId,session.projectId)||!expected.origin||expected.origin.model!==resolved.model||current?.choice?.model!==resolved.model||JSON.stringify(current?.modelFallback)!==JSON.stringify(expected))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
+    await validateHost();
+    if(!expected.origin||expected.origin.model!==resolved.model||current?.choice?.model!==resolved.model||JSON.stringify(current?.modelFallback)!==JSON.stringify(expected))throw Error("Las alternativas del perfil cambiaron antes de ejecutar la exploración; actualizar el plan");
     throwIfCancelled(signal);
    };
    await validateFallback();
   }
   const validateReadOnlyStart=async()=>{
    await validateFallback?.();
-   const current=await identity(context);
-   if(current.sessionId!==session.sessionId||!sameWorkspaceIdentityPath(current.projectId,session.projectId))throw Error("Pi session or project changed before agent dispatch");
+   await validateHost();
    if(persistedPlan)assertCurrentReadOnlyCandidate(persistedPlan,session.projectId);
    throwIfCancelled(signal);
   };
@@ -148,9 +154,7 @@ export function registerAgentTools(pi:{registerTool?:(tool:ToolDefinition<any>)=
   const binding=todoSnapshot?{
    onPrepared:async(agentId:string,enqueue:()=>Promise<void>,dispatch:()=>void)=>{
     const validate=async()=>{
-     const current=await identity(context);
-     if(current.sessionId!==session.sessionId||current.projectId!==session.projectId)
-      throw new Error("Pi session or project changed before Todo agent dispatch");
+     await validateHost();
      if(persistedPlan)assertCurrentReadOnlyCandidate(persistedPlan,session.projectId);
      await validateFallback?.();
     };

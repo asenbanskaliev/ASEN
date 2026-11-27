@@ -3,8 +3,8 @@ import {bindNativeRunnerModels,isNativePartitionWriter} from "../runtime/agents/
 import {splitPiModelIdentity,reviewModelIdentityKey,inspectReviewIdentity,bindPiChildIdentityEvidence,type PiChildIdentityObservation,type PiModelIdentity} from "../review/model-identity.js";
 import {spawn,spawnSync,type ChildProcess,type ChildProcessWithoutNullStreams} from "node:child_process";import {isAbsolute,join,resolve as resolvePath} from "node:path";
 import {performance} from "node:perf_hooks";
-import {mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
-import {tmpdir} from "node:os";
+import {lstatSync,mkdirSync,mkdtempSync,readFileSync,realpathSync,rmSync,writeFileSync} from "node:fs";
+import {homedir,tmpdir} from "node:os";
 import {createHash} from "node:crypto";
 import {snapshotAgentModelFallback,type AgentFallbackListener,type AgentFallbackObservation,type AgentRequest,type AgentResult,type AgentRunner} from "./dispatcher.js";
 import {matchesIssuedSkillContext} from "../skills/context.js";
@@ -117,6 +117,44 @@ export function piRuntimeRouteArgs(request:Pick<AgentRequest,"model"|"thinking">
  if(request.model!==undefined){if(typeof request.model!=="string"||!request.model.trim()||request.model!==request.model.trim()||request.model.length>256||/[\u0000-\u001f\u007f]/u.test(request.model))throw new Error("Invalid routed Pi model");args.push("--model",request.model);}
  if(request.thinking!==undefined){if(!isThinking(request.thinking))throw new Error("Invalid routed Pi thinking level");args.push("--thinking",request.thinking);}
  return args;
+}
+
+/** Una alternativa consentida no autoriza reintentos. Pi guarda set_auto_retry
+ * en los ajustes globales: aislar los ajustes del hijo sin cambiar los del usuario.
+ */
+function privateFallbackSettings(directory:string,source:string,request:AgentRequest,chain:readonly {model:string}[]):void{
+ const object=(value:unknown):Record<string,unknown>=>{
+  if(!value||typeof value!=="object"||Array.isArray(value))throw Error("Invalid Pi fallback settings");
+  return value as Record<string,unknown>;
+ };
+ const read=(name:string):Record<string,unknown>|undefined=>{
+  const path=join(source,name);
+  try{
+   const stat=lstatSync(path);
+   if(!stat.isFile()||stat.size>4*1024*1024)throw Error("Invalid Pi fallback configuration file");
+   return object(JSON.parse(readFileSync(path,"utf8")));
+  }catch(error){
+   if((error as NodeJS.ErrnoException).code==="ENOENT")return;
+   throw Error("Unable to read private Pi fallback configuration");
+  }
+ };
+ const settings=read("settings.json")??{};
+ const retry=settings.retry===undefined?{}:object(settings.retry);
+ const provider=retry.provider===undefined?{}:object(retry.provider);
+ const compaction=settings.compaction===undefined?{}:object(settings.compaction);
+ const providers=new Set(chain.map(step=>step.model.split("/")[0]).filter((value):value is string=>!!value));
+ const primary=request.model?request.model.split("/")[0]:settings.defaultProvider;
+ if(typeof primary==="string"&&primary)providers.add(primary);
+ mkdirSync(directory,{mode:0o700});
+ const save=(name:string,value:unknown)=>writeFileSync(join(directory,name),JSON.stringify(value)+"\n",{mode:0o600,flag:"wx"});
+ save("settings.json",{...settings,compaction:{...compaction,enabled:false},retry:{...retry,enabled:false,maxRetries:0,provider:{...provider,maxRetries:0}}});
+ const models=read("models.json");
+ if(models){
+  const configured=models.providers===undefined?{}:object(models.providers);
+  save("models.json",{...models,providers:Object.fromEntries(Object.entries(configured).filter(([key])=>providers.has(key)))});
+ }
+ const auth=read("auth.json");
+ if(auth)save("auth.json",Object.fromEntries(Object.entries(auth).filter(([key])=>providers.has(key))));
 }
 
 // This digest pins the reviewed policy source. Update it only after auditing extensions/authority.ts.
@@ -325,14 +363,25 @@ export class PiProcessRunner implements AgentRunner{
    return Promise.resolve({id:request.id,ok:false,output:`pi authority extension preparation failed: ${String(error)}`});
   }
   const policy=join(policyDirectory,"extensions","authority.ts");
-  const configHome=childEnvironment.PI_CODING_AGENT_DIR??join(childEnvironment.HOME??childEnvironment.USERPROFILE??request.repository,".pi","agent");
+  const configHome=childEnvironment.PI_CODING_AGENT_DIR??join(childEnvironment.HOME??childEnvironment.USERPROFILE??homedir(),".pi","agent");
+  const scopedFallback=!!fallbackConfig?.chain.length;
+  if(scopedFallback){
+   try{
+    const isolatedConfig=join(policyDirectory,"agent");
+    privateFallbackSettings(isolatedConfig,configHome,request,fallbackConfig!.chain);
+    childEnvironment.PI_CODING_AGENT_DIR=isolatedConfig;
+   }catch{
+    rmSync(policyDirectory,{recursive:true,force:true});
+    return Promise.resolve({id:request.id,ok:false,output:"Pi fallback requires an isolated configuration without automatic retries"});
+   }
+  }
   const baseTools=writer?["read","edit","write"]:["read"];
   // Los complementos pueden retirar herramientas, pero no dar acceso a
   // comandos que la autoridad Pi bloquearía después de anunciarlos al modelo.
   const requestedTools=applyToolOverlay(baseTools,loadToolOverlays(configHome,request.repository));
   const effectiveTools=requestedTools.filter(tool=>baseTools.includes(tool));
   const toolArgs=this.options.noTools||effectiveTools.length===0?["--no-tools"]:["--tools",effectiveTools.join(",")];
-  const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,
+  const args=[...(this.options.rpcArgs??["--mode","rpc"]),...extra,...routeArgs,...(scopedFallback?["--no-approve"]:[]),
    "--no-extensions","--extension",policy,...(providerExtension?["--extension",providerExtension]:[]),"--no-skills",...toolArgs,...(request.skillPaths??[]).flatMap(path=>["--skill",path])];
   const timeoutMs=this.options.timeoutMs??120_000;
   const max=this.options.maxOutputBytes??1_000_000;
@@ -587,6 +636,10 @@ export class PiProcessRunner implements AgentRunner{
        if(response.id===continuationPromptId)continuationAcked=response.success===true;
        pendingRpc.delete(response.id);pending.resolve(record as Record<string,unknown>);continue;
       }
+     }
+     // Detener el hijo si anuncia un reintento pese al aislamiento.
+     if(policyLoaded&&fallbackEnabled&&(type==="auto_retry_start"||type==="agent_end"&&(record as {willRetry?:unknown}).willRetry===true)){
+      stop({id:request.id,ok:false,output:"Pi fallback native retry is not authorized"});return;
      }
      // G03: un reintento nativo explícito mantiene el mismo turno abierto.
      // No se reenvía el prompt ni se inventa una sesión recuperada.
