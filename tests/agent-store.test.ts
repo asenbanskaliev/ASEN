@@ -212,3 +212,19 @@ test("EF-603 never accepts forged or authority-bearing deduplication receipts",a
  await assert.rejects(()=>store.enqueueAdHocExplorerOrReuse({...base,dedupeKey:"a".repeat(64),role:"worker"} as any,owner),/unaffiliated|read-only/u);
  await assert.rejects(()=>store.enqueueAdHocExplorerOrReuse({...base,dedupeKey:"a".repeat(64),skillPaths:["untrusted"]} as any,owner),/unaffiliated/u);
 });
+
+ test("M2: revocación en cola libera solo la continuación no ejecutada y conserva el historial",async t=>{
+  const file=await fixture(t),session={sessionId:"session-crash",projectId:"/repo"},crash=spawnSync(process.execPath,["--import","tsx",resolve("tests/fixtures/agent-crash-process.ts"),file,"running"],{encoding:"utf8",timeout:30000});assert.equal(crash.status,0,crash.stderr);
+  let release!:()=>void,holding=false,valid=true;const calls:string[]=[];
+  const runner:AgentRunner={run:async request=>{calls.push(request.id);if(request.prompt==="hold"){holding=true;await new Promise<void>(resolve=>{release=resolve;});}return {id:request.id,ok:true,output:"done"};}};
+  const runtime=await AgentRuntime.open({storeFile:file,runner,maxConcurrency:1});
+  const hold=await runtime.startExplorer({prompt:"hold",session});await until(()=>holding,2000);
+  const validate=async()=>{if(!valid)throw Error("alternativa retirada");};
+  const first=await runtime.continue("crash-recovery-task",session,undefined,undefined,validate);valid=false;release();
+  await until(()=>runtime.snapshot().find(row=>row.id===first)?.state==="failed",2000);
+  assert.deepEqual(calls,[hold]);assert.deepEqual((await runtime.store.get(first,session.sessionId,session.projectId))?.events.map(row=>row.state),["queued","failed"]);
+  valid=true;const reopened=await AgentRuntime.open({storeFile:file,runner,maxConcurrency:1});
+  const next=await reopened.continue("crash-recovery-task",session,undefined,undefined,validate);assert.notEqual(next,first);
+  await until(()=>reopened.snapshot().find(row=>row.id===next)?.state==="completed",2000);
+  assert.deepEqual(calls,[hold,next]);await assert.rejects(()=>reopened.continue("crash-recovery-task",session,undefined,undefined,validate),/already has a continuation/);
+ });
