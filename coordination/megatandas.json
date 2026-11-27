@@ -138,7 +138,17 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": null,
+      "lease": {
+        "id": "manual-E-g2-T06-etiqueta-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
+        "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
+        "files": [],
+        "phase": "Completar autorización ya publicada, primera y única etiqueta",
+        "startedAt": "2026-11-27T09:24:28.763Z"
+      },
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -2734,7 +2744,7 @@
   },
   "modelCallException": {
     "enabled": false,
-    "state": "autorizacion-intentada-bloqueada-sin-repeticion",
+    "state": "reserva-etiqueta-unica",
     "purpose": "Cerrar M2: validar identidad real y dos modelos NVIDIA distintos",
     "pullRequest": 159,
     "branch": "feat/asen-equipo-E-M2-g2-evidencia-nvidia-158",
@@ -2807,11 +2817,14 @@
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "owner": "asenbanskaliev",
       "summaryId": 7211220125,
-      "phase": "bloqueada",
+      "phase": "consentimiento-confirmado-antes-de-etiqueta",
       "noRetry": true,
       "commentId": 7214634323,
       "labelApplied": false,
-      "error": "Error: No se pudo confirmar autor y fecha del consentimiento exacto"
+      "error": "Error: No se pudo confirmar autor y fecha del consentimiento exacto",
+      "consentCreatedAt": "2026-11-27T09:24:00Z",
+      "verificationSource": "fetch_pr_comments",
+      "labelReservation": "manual-E-g2-T06-etiqueta-1127"
     }
   },
   "globalFull": false,
