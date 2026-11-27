@@ -248,3 +248,17 @@ test("M2: no reutilizar un Explorer externo admitido por otro anfitrión",async 
   assert.fail("No se publicó el resultado del segundo anfitrión");
  }finally{release();f.ctx.cwd=original;}
 });
+
+ test("M2: el ámbito seleccionado rechaza alternativas inválidas y distingue un archivo ausente",async()=>{
+  const {plannedExplorerFallback,assertPlannedExplorerFallbackCurrent}=await import("../src/runtime/lifecycle/plan-dispatcher.js");
+  const {parseRuntimeProfiles}=await import("../src/runtime/lifecycle/profiles.js");
+  const global=parseRuntimeProfiles(JSON.stringify(profiles()));assert.ok(global);
+  const config=configured(),selection={role:"explorer",model:PRIMARY.model,profiles:{global},origin:{scope:"global" as const,name:"A"}};
+  assert.throws(()=>plannedExplorerFallback({...selection,fallbacksByScope:{global:null,project:config}}),/ámbito global/);
+  const expected=plannedExplorerFallback({...selection,fallbacksByScope:{global:config,project:null}});assert.deepEqual(expected?.chain,ROLE);
+  assert.equal(plannedExplorerFallback({...selection,fallbacksByScope:{project:null}}),undefined);
+  await assert.rejects(()=>assertPlannedExplorerFallbackCurrent(undefined,selection,async()=>({profiles:{global},fallbacksByScope:{global:null}})),/ámbito global/);
+  const local={...selection,profiles:{global,project:global},origin:{scope:"project" as const,name:"A"}};
+  assert.throws(()=>plannedExplorerFallback({...local,fallbacksByScope:{global:config,project:null}}),/ámbito project/);
+  assert.deepEqual(plannedExplorerFallback({...local,fallbacksByScope:{global:null,project:config}})?.chain,ROLE);
+ });
