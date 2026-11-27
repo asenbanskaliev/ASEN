@@ -1,7 +1,7 @@
 import {isNativePartitionWriterIdentity,validNativeWriterCompletion,type NativeWriterCompletion} from "./native-writer-completion.js";
 import {createHmac,randomBytes,randomUUID,timingSafeEqual} from "node:crypto";
 import {open,readFile,rename} from "node:fs/promises";
-import {snapshotAgentModelFallback,type AgentModelFallback,type AgentRequest,type AgentResult} from "../../agents/dispatcher.js";
+import {consumePreStartRejection,snapshotAgentModelFallback,type AgentModelFallback,type AgentRequest,type AgentResult} from "../../agents/dispatcher.js";
 import {atomicWriteText} from "../../io/atomic-write.js";
 import {withExclusiveFileLock} from "../../io/exclusive-file-lock.js";
 import {preparePrivateFile} from "../../io/private-file.js";
@@ -84,7 +84,7 @@ function receiptDigest(key:Buffer,entry:AgentStoreEntry,output:string,nativeComp
 function preStartDigest(key:Buffer,entry:AgentStoreEntry):string{return createHmac("sha256",key).update(JSON.stringify(["asen.continuation.pre-start/v1",entry.request,entry.record,entry.events])).digest("hex");}
 function unusedContinuation(entry:AgentStoreEntry,key?:Buffer):boolean{
  const proof=entry.preStartRejection;
- if(!key||!entry.request.continuationOf||entry.record.role!=="explorer"||entry.record.state!=="failed"||entry.result||!proof||!/^[a-f0-9]{64}$/u.test(proof))return false;
+ if(!key||!entry.request.continuationOf||entry.record.role!=="explorer"||entry.record.state!=="failed"||entry.result||typeof proof!=="string"||!/^[a-f0-9]{64}$/u.test(proof))return false;
  const states=entry.events.map(event=>event.state).join(",");
  return (states==="queued,failed"||states==="queued,running,failed")&&timingSafeEqual(Buffer.from(proof,"hex"),Buffer.from(preStartDigest(key,entry),"hex"));
 }
@@ -224,9 +224,9 @@ export class PersistentAgentStore implements AgentLifecycleSink{
   if(completed)this.#records.set(id,structuredClone(completed));
  }
  /** Solo se invoca desde la validación del Dispatcher anterior a runner.run. */
- async rejectContinuationBeforeStart(id:string):Promise<void>{
+ async rejectContinuationBeforeStart(id:string,proof:unknown):Promise<void>{
   let updated:PublicAgentRecord|undefined;
-  await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry||!entry.request.continuationOf||entry.record.role!=="explorer"||!["queued","running"].includes(entry.record.state)||entry.result)throw Error("No unused continuation claim");
+  await this.#mutate(data=>{const entry=data.entries.find(x=>x.record.id===id);if(!entry||!entry.request.continuationOf||entry.record.role!=="explorer"||!["queued","running"].includes(entry.record.state)||entry.result||!consumePreStartRejection(proof,this,id,entry.record.sessionId,entry.record.projectId,entry.request.continuationOf))throw Error("No unused continuation claim");
    updated=transitionAgent(entry.record,"failed",this.now(),"La continuación no se inició: autorización vigente rechazada; puede solicitarse de nuevo.");entry.record=updated;entry.events.push(event(updated,entry.events.length+1));entry.preStartRejection=preStartDigest(this.#receiptKey,entry);
   });if(updated)this.#records.set(id,structuredClone(updated));
  }
