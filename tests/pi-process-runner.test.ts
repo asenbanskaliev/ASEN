@@ -596,7 +596,7 @@ test("EF-604 Pi stream witness rejects fabricated or empty deltas and never elev
  assert.doesNotMatch(JSON.stringify(observations),/spoof|thinking|safe/u);
 });
 
-async function fallbackRpcFixture(options:{category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;initialText?:string;fallbackStateMismatch?:boolean;fallbackStateVirtual?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
+async function fallbackRpcFixture(options:{catalog?:{provider:string;id:string;api?:string}[];category?:"rate_limit"|"context_length";refuse?:string[];refuseThinking?:boolean;settleDelayMs?:number;selectionThinking?:unknown;coalesceSecondTurn?:boolean;duplicateContinuationResponse?:boolean;staleSettledOnly?:boolean;rejectContinuation?:boolean;stateDelayMs?:number;stateAccepted?:boolean;stateModel?:{provider:string;id:string};stateRequiredBeforePrompt?:boolean;initialSuccess?:boolean;initialText?:string;fallbackStateMismatch?:boolean;fallbackStateVirtual?:boolean;nativeRetryAfterFallback?:boolean;assistantIdentity?:{provider?:string;model?:string;responseModel?:string}}={}){
  const d=await realpath(await mkdtemp(join(tmpdir(),"asen-fallback-child-"))),p=join(d,"fallback-rpc.mjs"),log=join(d,"commands.json"),root=fileURLToPath(new URL("..",import.meta.url));
  await assertOwnedFixturePath(d);
  await mkdir(join(d,"extensions"));await copyFile(join(root,"extensions/authority.ts"),join(d,"extensions/authority.ts"));
@@ -607,6 +607,7 @@ const emit=value=>process.stdout.write(JSON.stringify(value)+"\\n");const save=(
 process.stdin.on("data",chunk=>{buffer+=String(chunk);let end;while((end=buffer.indexOf("\\n"))>=0){const line=buffer.slice(0,end);buffer=buffer.slice(end+1);if(!line.trim())continue;const request=JSON.parse(line);commands.push(request);save();
  if(request.type==="get_commands"){const pos=process.argv.indexOf("--extension"),path=process.argv[pos+1];emit({type:"response",id:request.id,command:"get_commands",success:true,data:{commands:[{name:"asen-authority-status",source:"extension",sourceInfo:{path}}]}});continue;}
  if(request.type==="get_state"){const send=()=>{stateReady=true;emit({type:"response",id:request.id,command:"get_state",success:stateAccepted,...(stateAccepted?{data:{model:activeModel,thinkingLevel:${JSON.stringify(options.selectionThinking)??"undefined"}}}:{})});};if(stateDelay>0)setTimeout(send,stateDelay);else send();continue;}
+ if(request.type==="get_available_models"){emit({type:"response",id:request.id,command:"get_available_models",success:true,data:{models:${JSON.stringify(options.catalog??[])}}});continue;}
  if(request.type==="set_model"){const model=request.provider+"/"+request.modelId;if(!refused.has(model)&&!${options.fallbackStateMismatch===true})activeModel={provider:request.provider,id:request.modelId,...(${options.fallbackStateVirtual===true}?{api:"pi-virtual"}:{})};emit({type:"response",id:request.id,command:"set_model",success:!refused.has(model),...(refused.has(model)?{error:"unavailable"}:{})});if(staleSettledOnly)emit({type:"agent_settled"});continue;}
  if(request.type==="set_thinking_level"){emit({type:"response",id:request.id,command:"set_thinking_level",success:!refuseThinking,...(refuseThinking?{error:"PRIVATE_THINKING_REJECTION"}:{})});continue;}
  if(request.type==="prompt"){
@@ -1125,7 +1126,7 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
 
 test("M2: NVIDIA conserva el identificador nativo completo en set_model sin ampliar consentimiento",async t=>{
  const primary="nvidia/nemotron-3.5-lightning-30b-a3b",alternative="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
- const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"nvidia",id:primary},refuse:[alternative]});
+ const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"nvidia",id:primary},catalog:[{provider:"nvidia",id:primary},{provider:"nvidia",id:alternative}],refuse:[alternative]});
  t.after(()=>rm(d,{recursive:true,force:true}));
  const approvals:string[]=[];
  const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return true;}}).run({id:"nvidia-id-nativo",role:"explorer",prompt:"inspect",repository:d,model:primary,modelFallback:{chain:[{model:alternative}]}});
@@ -1134,4 +1135,20 @@ test("M2: NVIDIA conserva el identificador nativo completo en set_model sin ampl
  const trace=JSON.parse(await readFile(log,"utf8"));
  assert.deepEqual(trace.commands.filter((c:{type:string})=>c.type==="set_model").map((c:{modelId:string})=>c.modelId),[alternative]);
  assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,2);
+});
+
+test("M2: catálogo NVIDIA mixto y ambiguo no infiere el prefijo del primario",async t=>{
+ const primary="nvidia/nemotron-3.5-lightning-30b-a3b",alternative="nvidia/meta/llama";
+ for(const ambiguous of [false,true]){
+  const {d,p,log}=await fallbackRpcFixture({stateModel:{provider:"nvidia",id:primary},catalog:[{provider:"nvidia",id:primary},{provider:"nvidia",id:"meta/llama"},...(ambiguous?[{provider:"nvidia",id:"nvidia/meta/llama"}]:[])]});
+  t.after(()=>rm(d,{recursive:true,force:true}));
+  const approvals:string[]=[];
+  const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:attempt=>{approvals.push(attempt.to);return true;}}).run({id:"nvidia-catalogo-"+ambiguous,role:"explorer",prompt:"inspect",repository:d,model:primary,modelFallback:{chain:[{model:alternative}]}});
+  assert.deepEqual(approvals,[alternative]);
+  const trace=JSON.parse(await readFile(log,"utf8"));
+  assert.equal(result.ok,!ambiguous,result.output);
+  assert.equal(trace.commands.filter((c:{type:string})=>c.type==="get_available_models").length,1);
+  assert.deepEqual(trace.commands.filter((c:{type:string})=>c.type==="set_model").map((c:{modelId:string})=>c.modelId),ambiguous?[]:["meta/llama"]);
+  assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,ambiguous?1:2);
+ }
 });
