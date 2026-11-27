@@ -713,9 +713,28 @@ export class PiProcessRunner implements AgentRunner{
        if(!await consentCurrent()||!alive())return;
        // Cada RPC mantiene su propio presupuesto, sin competir con el diálogo.
        disarmPhase();
-       // Pi registra NVIDIA con el identificador completo nvidia/modelo en su catálogo nativo.
-       // Conservar la forma observada en el mismo proveedor, sin cambiar la identidad autorizada.
-       const modelId=candidate.provider==="nvidia"&&selectedIdentity?.provider==="nvidia"&&selectedIdentity.id.startsWith("nvidia/")&&!candidate.modelId.startsWith("nvidia/")?"nvidia/"+candidate.modelId:candidate.modelId;
+       // NVIDIA admite IDs completos y de otros fabricantes en el mismo catálogo.
+       // Resolver la identidad de la alternativa, nunca inferirla del modelo anterior.
+       let modelId=candidate.modelId;
+       if(candidate.provider==="nvidia"){
+        const catalog=await sendRpc({type:"get_available_models"});
+        if(!await consentCurrent()||!alive())return;
+        const models=(catalog.data as {models?:unknown}|undefined)?.models;
+        if(catalog.command!=="get_available_models"||catalog.success!==true||!Array.isArray(models)){
+         fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback catalog could not be confirmed"});return;
+        }
+        const expected=splitPiModelIdentity(candidate.pick.model);
+        const matches=models.filter((raw:unknown)=>{
+         if(!raw||typeof raw!=="object")return false;
+         const model=raw as {provider?:unknown;id?:unknown};
+         const actual=typeof model.provider==="string"&&typeof model.id==="string"?splitPiModelIdentity(model.provider+"/"+model.id):undefined;
+         return !!actual&&!!expected&&reviewModelIdentityKey(actual)===reviewModelIdentityKey(expected);
+        }) as {id:string;api?:unknown}[];
+        if(matches.length!==1||matches[0]?.api==="pi-virtual"){
+         fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback catalog model is missing or ambiguous"});return;
+        }
+        modelId=matches[0]!.id;
+       }
        const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId},undefined,undefined,stillOwned);if(!await consentCurrent()||!alive())return;
       if(switched.command!=="set_model"){fallbackInProgress=false;stop({id:request.id,ok:false,output:rpcFailure??"Pi fallback model change response could not be correlated"});return;}
       if(switched.success!==true)continue;
