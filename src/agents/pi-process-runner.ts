@@ -211,7 +211,8 @@ function nativePiSdk(command:string,rpcArgs:readonly string[]|undefined,env:Node
    const real=realpathSync(cli),normalized=real.replace(/\\/gu,"/");
    if(!/\/@earendil-works\/pi-coding-agent\/dist\/(?:bundle\/)?cli\.js$/u.test(normalized))return;
    const dist=normalized.endsWith("/bundle/cli.js")?dirname(dirname(real)):dirname(real),manifest=JSON.parse(readFileSync(join(dist,"..","package.json"),"utf8"));
-   if(manifest.name!=="@earendil-works/pi-coding-agent"||typeof manifest.version!=="string"||!checkPiVersion(manifest.version).ok)return;
+   // Solo el SDK 1.6 o posterior garantiza el drenaje de escrituras OAuth al cerrar RPC.
+   if(manifest.name!=="@earendil-works/pi-coding-agent"||typeof manifest.version!=="string"||!/^\d+\.\d+\.\d+$/u.test(manifest.version)||!checkPiVersion(manifest.version,"1.6.0").ok)return;
    const entry=realpathSync(join(dist,"index.js"));
    if(!lstatSync(entry).isFile())return;
    return pathToFileURL(entry).href;
