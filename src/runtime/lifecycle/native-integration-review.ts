@@ -244,7 +244,7 @@ export function assertNativeReviewCheckpointProgress(data:ReviewCheckpoint):void
  // compatible, pero todas las nuevas escrituras sí lo dejan explícito.
  if((data.attemptStarted!==true&&data.attemptStarted!==undefined)||judges.length!==2||judges.some(judge=>judge.verdict===undefined))throw Error("Checkpoint de revisión incompleto o inválido");
  if(data.phase==="dual-reviewed"&&((data.findingsCount??0)!==0||judges.some(judge=>judge.verdict!=="pass")))throw Error("Checkpoint de revisión inválido");
- if(data.phase==="dual-findings"&&(!Number.isSafeInteger(data.findingsCount)||data.findingsCount!<1||!judges.some(judge=>judge.verdict==="fail")))throw Error("Checkpoint de revisión inválido");
+ if(data.phase==="dual-findings"&&(!Number.isSafeInteger(data.findingsCount)||data.findingsCount!<1))throw Error("Checkpoint de revisión inválido");
 }
 async function readSignedCheckpoint(file:string,storageDir:string):Promise<ReviewCheckpoint|undefined>{
  if(!await preparePrivateFile(file))return;
