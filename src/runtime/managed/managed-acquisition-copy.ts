@@ -15,10 +15,12 @@ import {
  * full ancestor identity recheck for every manifest file. Windows hosted
  * runners can exceed the verifier's 30-second budget despite successful
  * per-file operations. Keep verification at 30 seconds; give COPY a separate,
- * still strictly finite 60-second monotonic cooperative deadline.
+ * still strictly finite monotonic cooperative deadline: 60 seconds on Unix,
+ * 90 on Windows (observed packed HTTPS upgrade exceeded 60 seconds while
+ * retaining the active version). Verification remains unchanged.
  * This does not skip any path, hash, descriptor or ownership checks.
  */
-export const MANAGED_ACQUISITION_COPY_DEADLINE_MS=60_000;
+export const MANAGED_ACQUISITION_COPY_DEADLINE_MS=process.platform==="win32"?90_000:60_000;
 
 export class ManagedAcquisitionCopyError extends Error {
  constructor(message:string,options?:ErrorOptions){
@@ -173,11 +175,17 @@ async function revalidateAncestors(
  destinationRoot:Seen,
  start:number,
 ):Promise<void>{
- for(const item of sourceAncestors.values()){
-  await sourceUnchanged(item,start,item===sourceRoot?undefined:sourceRoot.canonical);
- }
- for(const item of destinationAncestors.values()){
-  await destinationUnchanged(item,start,item===destinationRoot?undefined:destinationRoot.canonical);
+ // Mantener todas las comprobaciones de ancestros por archivo. Agrupar solo
+ // lecturas independientes (máximo cuatro), sin copiar archivos concurrentes.
+ // Esperar incluso las lecturas fallidas antes de permitir la limpieza.
+ const checks=[
+  ...Array.from(sourceAncestors.values(),item=>()=>sourceUnchanged(item,start,item===sourceRoot?undefined:sourceRoot.canonical)),
+  ...Array.from(destinationAncestors.values(),item=>()=>destinationUnchanged(item,start,item===destinationRoot?undefined:destinationRoot.canonical)),
+ ];
+ for(let index=0;index<checks.length;index+=4){
+  const results=await Promise.allSettled(checks.slice(index,index+4).map(check=>check()));
+  const failure=results.find(result=>result.status==="rejected");
+  if(failure?.status==="rejected")throw failure.reason;
  }
 }
 
