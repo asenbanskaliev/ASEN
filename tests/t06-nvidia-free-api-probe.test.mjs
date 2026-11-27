@@ -31,6 +31,8 @@ test("T06 NVIDIA: dos solicitudes gratuitas empiezan a la vez y se identifican p
   assert.equal(body.model,NVIDIA_FREE_MODELS[calls]);
   assert.equal(body.max_tokens,NVIDIA_MAX_TOKENS);
   assert.equal(body.stream,false);
+  if(body.model===NVIDIA_FREE_MODEL){assert.deepEqual(body.chat_template_kwargs,{enable_thinking:false});assert.equal(body.reasoning_budget,undefined);}
+  else{assert.equal(body.reasoning_budget,0);assert.equal(body.chat_template_kwargs,undefined);}
   assert.equal(body.messages.length,2);
   calls++;
   if(calls===2)entered();
@@ -129,4 +131,16 @@ test("T06 NVIDIA: una sola identidad confirmada no acredita dos modelos",async()
  assert.equal(report.results.filter(r=>r.status==="api-confirmed").length,1);
  assert.equal(report.costVerified,false);
  assert.equal(report.retryCount,0);
+});
+
+
+test("T06 NVIDIA: no aceptar identificadores privados ni reutilizar Super VL",async()=>{
+ const old="nvidia/nemotron-3.5-super-vl-120b-a12b";
+ assert.ok(!NVIDIA_FREE_MODELS.includes(old));
+ await assert.rejects(()=>probeNvidiaFreeApi({apiKey:"test",models:[NVIDIA_FREE_MODEL,old],request:async()=>assert.fail("No llamar a red")}),/fuera de la lista/u);
+ const report=await probeNvidiaFreeApi({apiKey:"test",timeoutMs:900,request:async(_,options)=>{
+  const body=JSON.parse(options.body);
+  return mockResponse(options,body.model===NVIDIA_FREE_MODELS[1]?{model:"private/"+body.model}:{});
+ }});
+ assert.equal(report.status,"BLOCKED");assert.equal(report.distinctModelIdsVerified,false);assert.equal(report.results[1].errorCode,"MODEL_MISMATCH");assert.equal(report.retryCount,0);
 });
