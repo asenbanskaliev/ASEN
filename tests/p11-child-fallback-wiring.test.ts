@@ -227,8 +227,8 @@ test("M2: reutiliza un Explorer directo con alternativas idénticas",async t=>{
 });
 
 
-test("M2: configuración opcional de alternativas ilegible no bloquea el modelo principal",async t=>{
- const f=await fixture(t);await writeFile(f.fallbackFile,"{configuración inválida");
+test("M2: configuración de otro ámbito ilegible no bloquea el modelo principal global",async t=>{
+ const f=await fixture(t);const unrelated=path.join(f.ctx.cwd,".asen");await mkdir(unrelated,{recursive:true});await writeFile(path.join(unrelated,"profile-fallbacks.json"),"{configuración inválida");
  const result=await f.launch();const {request}=await f.complete(result);assert.equal(request.model,PRIMARY.model);assert.equal(request.modelFallback,undefined);
 });
 
@@ -237,6 +237,9 @@ test("M2: no reutilizar un Explorer externo admitido por otro anfitrión",async 
  const original=f.ctx.cwd;
  try{
   const first=await f.launch(undefined,{prompt:"Lectura externa",root:f.foreign});
+  const started=Date.now()+10_000;
+  while(!f.requests.some(request=>request.id===first.details.id)&&Date.now()<started)await new Promise(resolve=>setTimeout(resolve,20));
+  assert.ok(f.requests.some(request=>request.id===first.details.id),"El primer Explorer debe seguir ejecutándose antes de comprobar la reutilización");
   f.ctx.cwd=f.foreign;
   const second=await f.launch(undefined,{prompt:"Lectura externa",root:f.foreign});
   assert.notEqual(second.details.id,first.details.id);
