@@ -183,7 +183,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar candidato #160 Nano Omni, conservar #159 y reserva consumida; no aplicar etiqueta hasta pruebas y revisión exactas. Continuar M3–M5 sin modelos.",
+      "next": "Completar CI/revisión #160; nuevo ensayo exacto y separado solo con todas las puertas, no rearmar #159. Mantener el candidato anterior intacto.",
       "blocker": "T06 consumido: MODEL_MISMATCH en segundo modelo, Pi omitido. Sin reintentos. Continuar trabajos independientes M3–M5.",
       "generation": 2,
       "pr": 159,
@@ -2933,7 +2933,7 @@
       "labelRemoved": true
     },
     "nextTrialProposal": {
-      "state": "candidato-preparado-espera-ci-revision",
+      "state": "espera-ci-y-revision",
       "source": "Usuario: Hazlo. Revisa cuáles hemos usado; respuesta a propuesta de alternativa y repetición.",
       "priorAttemptSha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "priorAttemptPreserved": true,
@@ -2959,11 +2959,57 @@
       "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127",
       "pr": 160,
       "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
-      "newAuthorizationRequired": true
+      "newAuthorizationRequired": true,
+      "reviewRequested": 7215065302,
+      "ci": [
+        {
+          "id": 45976362484,
+          "name": "Pi 1.2 runtime evidence",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45976362711,
+          "name": "CI",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45976362576,
+          "name": "Pi Free Smoke",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 45976362482,
+          "name": "CI rápida",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "id": 45976362507,
+          "name": "Release Gate",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "id": 45976362521,
+          "name": "Phase 0 Architecture",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 45976362645,
+          "name": "Comprobar compatibilidad Pi 1.5 y 1.6 sin modelos",
+          "status": "in_progress",
+          "conclusion": null
+        }
+      ],
+      "consentRecorded": "El usuario solicita «Hazlo. Revisa cuáles hemos usado» tras propuesta expresa de repetir con modelo alternativo gratuito. Nueva autorización de alcance acotado, no reutilizar reserva anterior. No aplicar etiqueta hasta admitir SHA exacto."
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T09:45:24.456Z",
+  "updatedAt": "2026-11-27T09:45:49.604Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
