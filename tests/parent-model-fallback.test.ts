@@ -227,5 +227,5 @@ test("M2: una respuesta de consentimiento obsoleta no borra el fallo de la sesiÃ
  const adapter=createParentModelFallback(f.host),a={sessionId:"session-1",projectId:"/project"},b={sessionId:"session-2",projectId:"/project"};
  adapter.activate(a);adapter.onAgentEnd({messages:failure()},a);const pending=adapter.onAgentSettled({},undefined,a);await started;
  f.setIdentity({...identity(),...b});adapter.activate(b);adapter.onAgentEnd({messages:failure()},b);resolve(true);
- assert.equal(await pending,false);assert.deepEqual(f.calls,[]);assert.equal(await adapter.onAgentSettled({},undefined,b),true);assert.ok(f.calls.some(x=>x.startsWith("set:")));
+ assert.equal(await pending,false);assert.equal(f.calls.length,0);assert.equal(await adapter.onAgentSettled({},undefined,b),true);assert.ok(f.calls.some(x=>x.startsWith("set:")));
 });
