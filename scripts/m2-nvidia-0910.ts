@@ -20,6 +20,7 @@ import {readProfileFallbacksFile} from "../src/runtime/lifecycle/profile-fallbac
 import {plannedExplorerFallback,plannedExplorerProfileOrigin} from "../src/runtime/lifecycle/plan-dispatcher.js";
 import {classifyAssistantError} from "../src/runtime/lifecycle/model-fallback-policy.js";
 import type {AgentFallbackObservation} from "../src/agents/dispatcher.js";
+import {startControlledFailure} from "./m2-controlled-failure.js";
 
 const primary="nvidia/nemotron-3.5-lightning-30b-a3b";
 const alternative="nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
@@ -45,6 +46,8 @@ if(process.argv[2]==="--seed"){
  await store.running(parentId);
 }else{
  const sha=process.env.ASEN_EXPECTED_SHA,output=process.env.ASEN_NVIDIA_PI_REPORT,piDir=process.env.PI_CODING_AGENT_DIR;
+ const controlled=process.env.ASEN_M2_CONTROLLED_FAILURE==="1";
+ assert.ok(process.env.ASEN_M2_CONTROLLED_FAILURE===undefined||controlled);
  assert.ok(sha&&/^[a-f0-9]{40}$/u.test(sha)&&process.env.ASEN_M2_TRIAL_AUTHORIZED===sha&&process.env.GITHUB_RUN_ATTEMPT==="1"&&process.env.PR_NUMBER==="161");
  assert.ok(output&&piDir&&process.env.NVIDIA_API_KEY);
  const root=realpathSync(resolve(process.env.GITHUB_WORKSPACE??process.cwd()));
@@ -55,6 +58,8 @@ if(process.argv[2]==="--seed"){
  const fixture=createT06ReadOnlyGitFixture();
  const identity:AgentSessionIdentity={sessionId,projectId:realpathSync(fixture.children[0])};
  const report={schema:"asen.m2.0910/v1",sha,profile,sessionId,projectId:identity.projectId,continuationOf:parentId,resumedTaskId:null as string|null,primary,alternative,objective09:"BLOCKED",objective10:"BLOCKED",stage:"seed",providerFailureCategory:null as string|null,primarySelected:false,alternativeConsents:0,alternativeSwitches:0,interruptedRecordSeeded:true,storeReopened:false,nativeParentRestartProven:false,providerResponseVerified:false,gitClean:false,billingVerified:false,globalFull:false};
+ let proxy:Awaited<ReturnType<typeof startControlledFailure>>|undefined;
+ const controlledReport={mode:controlled?"controlled-local-429":"natural",proxy:null as ReturnType<Awaited<ReturnType<typeof startControlledFailure>>["receipt"]>|null};
  let runtime:AgentRuntime|undefined;
  let started:Promise<unknown>|undefined;
  let childId:string|undefined;
@@ -68,9 +73,16 @@ if(process.argv[2]==="--seed"){
   const seeded=spawnSync("tsx",[fileURLToPath(import.meta.url),"--seed",base,identity.projectId],{env,timeout:30000,stdio:"ignore"});
   assert.equal(seeded.status,0,"No se pudo crear el registro aislado");
   report.stage="recovery";
-  const runner=new PiProcessRunner({command:"pi",policyRoot:root,noTools:true,requireChildModelBeforePrompt:true,providerCredential:"NVIDIA_API_KEY",timeoutMs:65000,maxOutputBytes:96000,maxRpcRecordBytes:64000,maxStreamBytes:256000,
+  if(controlled){
+   proxy=await startControlledFailure({apiKey:process.env.NVIDIA_API_KEY!,marker,prompt,authorized:()=>consentCount===1&&switches.length===1&&switches[0]?.from===primary&&switches[0]?.to===alternative&&switches[0]?.category==="rate_limit"});
+   // Pi conserva sus modelos NVIDIA nativos; solo cambia la URL y la clave local.
+   writeFileSync(join(piDir,"models.json"),JSON.stringify({providers:{nvidia:{baseUrl:proxy.baseUrl,apiKey:proxy.localKey}}}),{mode:0o600,flag:"wx"});
+   delete process.env.NVIDIA_API_KEY;
+  }
+  const runner=new PiProcessRunner({command:"pi",policyRoot:root,noTools:true,requireChildModelBeforePrompt:true,...(controlled?{}:{providerCredential:"NVIDIA_API_KEY" as const}),timeoutMs:65000,maxOutputBytes:96000,maxRpcRecordBytes:64000,maxStreamBytes:256000,
    authorizeModelFallback:(request,signal)=>{
     if(signal?.aborted||!selectedPrimary||consentCount!==0||request.role!=="explorer"||request.sessionId!==sessionId||request.projectId!==identity.projectId||request.to!==alternative)return false;
+    if(controlled&&proxy?.receipt().local429!==1)return false;
     consentCount++;return true;
    },
    onModelFallback:event=>{switches.push(event);}
@@ -118,9 +130,17 @@ if(process.argv[2]==="--seed"){
    assert.ok(category&&category===switches[0]!.category);
    assert.equal(switches[0]!.from,primary);assert.equal(switches[0]!.to,alternative);assert.equal(switches[0]!.taskId,childId);
    report.providerFailureCategory=category;
-   report.objective09="PASS_NATURAL_FAILURE_CHILD_FALLBACK";
-   report.objective10="PRIMARY_SELECTED_BEFORE_NATURAL_FAILURE";
+   if(controlled){
+    const proof=proxy?.receipt();
+    assert.ok(proof&&proof.local429===1&&proof.upstreamRequests===1&&proof.rejectedRequests===0&&proof.contextPreserved&&proof.upstreamStatus===200&&proof.upstreamModel===alternative&&proof.usage&&category==="rate_limit");
+    report.objective09="PASS_CONTROLLED_429_REAL_CHILD_FALLBACK";
+    report.objective10="PRIMARY_SELECTED_BEFORE_CONTROLLED_FAILURE";
+   }else{
+    report.objective09="PASS_NATURAL_FAILURE_CHILD_FALLBACK";
+    report.objective10="PRIMARY_SELECTED_BEFORE_NATURAL_FAILURE";
+   }
   }
+  if(controlled)assert.equal(report.objective09,"PASS_CONTROLLED_429_REAL_CHILD_FALLBACK");
   report.stage="complete";
  }catch{report.stage="blocked-"+report.stage;}
  finally{
@@ -133,10 +153,11 @@ if(process.argv[2]==="--seed"){
    catch{report.gitClean=false;}
    fixture.cleanup();rmSync(base,{recursive:true,force:true});
   }
-  if(!report.gitClean){report.objective09="BLOCKED";report.objective10="BLOCKED";}
+  if(proxy){await proxy.close();controlledReport.proxy=proxy.receipt();}
+  if(!report.gitClean||report.stage!=="complete"){report.objective09="BLOCKED";report.objective10="BLOCKED";}
   mkdirSync(resolve(output,".."),{recursive:true,mode:0o700});
-  writeFileSync(output,JSON.stringify(report,null,2)+"\n",{mode:0o600,flag:"wx"});
-  console.log(JSON.stringify(report));
+  writeFileSync(output,JSON.stringify({...report,controlled:controlledReport},null,2)+"\n",{mode:0o600,flag:"wx"});
+  console.log(JSON.stringify({...report,controlled:controlledReport}));
  }
  // No convertir ausencia de fallo ni evidencia parcial en aceptación global.
  if(report.stage!=="complete"||!report.gitClean||!report.providerResponseVerified)process.exitCode=1;
