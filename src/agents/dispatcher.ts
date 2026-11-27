@@ -20,6 +20,14 @@ export interface AgentRequest { id:string; role:"clarifier"|"explorer"|"worker"|
 export interface AgentArtifactProof { readonly requestId:string; readonly role:AgentRequest["role"]; readonly repository:string; readonly candidateId?:string; readonly candidateRevision?:string; readonly skillPaths:readonly string[]; }
 export interface AgentResult { id:string; ok:boolean; output:string; artifactProof?:AgentArtifactProof; nativeCompletion?:NativeWriterCompletion; }
 export interface AgentRunner { run(request:AgentRequest,signal?:AbortSignal):Promise<AgentResult>; subscribeModelFallback?(listener:AgentFallbackListener):()=>void; }
+const unusedContinuationProofs=new WeakMap<object,{lifecycle:AgentLifecycleSink|undefined;id:string;sessionId:string;projectId:string;parentId:string}>();
+/** Solo un rechazo real anterior a runner.run puede emitir esta prueba de un uso. */
+export function consumePreStartRejection(value:unknown,lifecycle:unknown,id:string,sessionId:string,projectId:string,parentId:string):boolean{
+ if(typeof value!=="object"||value===null)return false;
+ const proof=unusedContinuationProofs.get(value);
+ if(!proof||proof.lifecycle!==lifecycle||proof.id!==id||proof.sessionId!==sessionId||proof.projectId!==projectId||proof.parentId!==parentId)return false;
+ unusedContinuationProofs.delete(value);return true;
+}
 const validatedRunnerResults=new WeakMap<object,{lifecycle:AgentLifecycleSink|undefined;id:string;sessionId:string;projectId:string;consumed:boolean}>();
 function isPromise(value:void|Promise<void>):value is Promise<void>{return !!value&&typeof value==="object"&&"then" in value&&typeof value.then==="function";}
 /** Lifecycle code consumes a dispatcher result once, bound to one sink and exact task identity. */
@@ -102,7 +110,7 @@ export class Dispatcher {
  }
  /** Cancel a queued or running task. The runner receives the abort signal and must stop its owned work. */
  cancel(id:string,sessionId:string,projectId:string):boolean{const control=this.#controls.get(id);if(!control||control.sessionId!==sessionId||!sameWorkspaceIdentityPath(control.projectId,projectId)||control.controller.signal.aborted)return false;control.controller.abort();return true;}
- async dispatch(request:AgentRequest,startBefore?:number,validateStart?:()=>Promise<void>,onPreStartValidationRejected?:()=>Promise<void>):Promise<AgentResult>{
+ async dispatch(request:AgentRequest,startBefore?:number,validateStart?:()=>Promise<void>,onPreStartValidationRejected?:(proof:object)=>Promise<void>):Promise<AgentResult>{
   const token=typeof request==="object"&&request!==null&&!types.isProxy(request)?Object.getOwnPropertyDescriptor(request,"writerAdmission")?.value:undefined;
   let runnerRequest:AgentRequest,writerLease:{verify:()=>void;release:()=>void}|undefined;
   try{
@@ -125,7 +133,10 @@ export class Dispatcher {
   const lifecycleInput={id:request.id,role:request.role,owner:request.owner??{kind:"system" as const,id:"asen-dispatcher"},sessionId:request.isolationKey??"default",projectId:request.repository,createdAt:this.lifecycle?.createdAt()??new Date().toISOString()};
   try{const pending=this.lifecycle?.queued(lifecycleInput);if(isPromise(pending))await pending;}catch(error){this.#controls.delete(request.id);retireRunnerWriteReceiver(receiver);retirePhaseGrant(request);throw error;}
   let grant:WriteGrant|undefined,lifecycleRunning=false,acquired=false,terminalState=false;
-  const validateBeforeRunner=async()=>{try{await validateStart?.();}catch(error){if(!controller.signal.aborted&&request.role==="explorer"&&request.parentId&&onPreStartValidationRejected){try{await onPreStartValidationRejected();terminalState=true;}catch{/* Si no se acredita el rechazo, conservar la reclamación. */}}throw error;}};
+  const validateBeforeRunner=async()=>{try{await validateStart?.();}catch(error){if(!controller.signal.aborted&&request.role==="explorer"&&request.parentId&&onPreStartValidationRejected){const proof=Object.freeze({});
+    unusedContinuationProofs.set(proof,{lifecycle:this.lifecycle,id:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,parentId:request.parentId});
+    try{await onPreStartValidationRejected(proof);terminalState=true;}catch{/* Si no se acredita el rechazo, conservar la reclamación. */}
+    finally{unusedContinuationProofs.delete(proof);}}throw error;}};
   try{
    await this.#acquire(controller.signal);acquired=true;
    if(controller.signal.aborted)throw new Error("Agent dispatch cancelled before execution");
