@@ -339,7 +339,13 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
   };
   const sessionDirectory=dependencies.enableWorkspaceRuntime?new SharedSessionDirectory(path.join(home(),".asen","session-directory")):new SessionDirectory();
   const suppliedAgentRuntime=dependencies.agentRuntimeFactory?.();
-  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,requirePartitionModelBeforePrompt:true,authorizeModelFallback:async(attempt,signal)=>{
+  const composedAgentRunner=!suppliedAgentRuntime&&dependencies.enableAgentRuntime?(dependencies.agentRunner??new PiProcessRunner({attributionFile:workspaceFile,policyRoot:packageRoot,requirePartitionModelBeforePrompt:true,onFallbackUnavailable:scope=>{
+   const ctx=agentDeliveryContext,owner=agentDeliveryIdentity,generation=parentBindingGeneration;
+   if(!fallbackSessionReady||!ctx||!owner||owner.sessionId!==scope.sessionId||owner.projectId!==scope.projectId)return;
+   void sessionIdentity(ctx).then(current=>{
+    if(fallbackSessionReady&&generation===parentBindingGeneration&&agentDeliveryContext===ctx&&agentDeliveryIdentity===owner&&current.sessionId===scope.sessionId&&current.projectId===scope.projectId)ctx.ui?.notify("Alternativas OAuth no disponibles; se conserva el modelo principal.","warning");
+   }).catch(()=>{});
+  },authorizeModelFallback:async(attempt,signal)=>{
    const owner=agentDeliveryIdentity,context=agentDeliveryContext,generation=parentBindingGeneration;
    if(!fallbackSessionReady||!owner||!context||owner.sessionId!==attempt.sessionId||signal?.aborted)return false;
    const live=()=>fallbackSessionReady&&agentDeliveryIdentity===owner&&agentDeliveryContext===context&&generation===parentBindingGeneration&&!context.signal?.aborted&&!signal?.aborted&&context.sessionManager?.getSessionId?.()===owner.sessionId;
