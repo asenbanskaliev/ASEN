@@ -138,17 +138,7 @@
     },
     "E": {
       "state": "espera-ci-y-revision",
-      "lease": {
-        "id": "manual-E-g2-T06-nano-omni-unico-1127",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
-        "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127",
-        "files": [],
-        "phase": "Reserva única nuevo ensayo #160",
-        "startedAt": "2026-11-27T11:01:07.334Z"
-      },
+      "lease": null,
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -193,8 +183,8 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "M2: #160 es el nuevo candidato de ensayo, leer modelCallException.nextTrialProposal (no usar consolidation.pr=159 como candidato de consumo). Verificar SHA exacto y revisión independiente, aplicar consentimiento del usuario ya registrado una sola vez tras todas las puertas; preservar intento anterior. No ampliar límites ni repetir.",
-      "blocker": "T06 consumido: MODEL_MISMATCH en segundo modelo, Pi omitido. Sin reintentos. Continuar trabajos independientes M3–M5.",
+      "next": "Recoger resultados del único ensayo #160; no rearmar #159 ni #160. Consolidar M3/M4 cuando corresponda.",
+      "blocker": "Ensayo nuevo iniciado; falta evidencia de API y Pi.",
       "generation": 2,
       "pr": 159,
       "sha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
@@ -841,6 +831,22 @@
       },
       "state": "liberada",
       "reason": "Nuevo candidato separado: 4/4 cambios adicionales publicados, sin consumo"
+    },
+    {
+      "team": "E",
+      "reservation": {
+        "id": "manual-E-g2-T06-nano-omni-unico-1127",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
+        "branch": "feat/asen-equipo-E-M2-g2-nvidia-nano-omni-20261127",
+        "files": [],
+        "phase": "Reserva única nuevo ensayo #160",
+        "startedAt": "2026-11-27T11:01:07.334Z"
+      },
+      "state": "liberada",
+      "reason": "Intento único de nuevo ensayo #160; no repetir"
     }
   ],
   "temporaryOwnership": {},
@@ -2943,7 +2949,7 @@
       "labelRemoved": true
     },
     "nextTrialProposal": {
-      "state": "reserva-consentimiento-nuevo-ensayo",
+      "state": "ensayo-autorizado-espera-evidencia",
       "source": "Usuario: Hazlo. Revisa cuáles hemos usado; respuesta a propuesta de alternativa y repetición.",
       "priorAttemptSha": "f1a6d3b0a072da0dc9154366f4763c1ff5811c25",
       "priorAttemptPreserved": true,
@@ -3046,13 +3052,17 @@
         "id": "manual-E-g2-T06-nano-omni-unico-1127",
         "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
         "owner": "asenbanskaliev",
-        "phase": "reservada-antes-de-comentario",
-        "noRetry": true
+        "phase": "etiqueta-aplicada",
+        "noRetry": true,
+        "commentId": 7216582337,
+        "consentAt": "2026-11-27T11:01:13Z",
+        "labelApplied": true,
+        "error": null
       }
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27T11:01:07.336Z",
+  "updatedAt": "2026-11-27T11:01:18.586Z",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3138,8 +3148,7 @@
         "pendingTrial": {
           "pr": 160,
           "sha": "9261479fa5affb16e5d02a5beedd506b97bca9fb",
-          "state": "espera-CI-y-CodeRabbit",
-          "oldAttempt": 159
+          "state": "ensayo-autorizado-espera-evidencia"
         }
       },
       {
