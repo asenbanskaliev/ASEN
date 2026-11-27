@@ -1113,3 +1113,12 @@ test("M2: OAuth compartido no omite un proxy HTTP configurado",async t=>{
   assert.equal(result.ok,true,result.output);assert.deepEqual(approvals,["api/backup"]);assert.match(result.output,/asen_fallback_unavailable/);
   const trace=JSON.parse(await readFile(log,"utf8"));assert.deepEqual(trace.authTypes,{provider:"api_key",api:"api_key"});assert.equal(await readFile(join(source,"auth.json"),"utf8"),auth);
  });
+
+ test("M2: un cambio de anfitrión posterior a la última validación impide escribir el prompt",async t=>{
+  const {d,p,log}=await fallbackRpcFixture();t.after(()=>rm(d,{recursive:true,force:true}));
+  let owned=true,validations=0,guards=0;
+  const validate=Object.assign(async()=>{if(++validations===4)queueMicrotask(()=>{owned=false;});return true;},{stillOwned:()=>{guards++;return owned;}});
+  const result=await runner(p,{timeoutMs:10000,authorizeModelFallback:()=>validate}).run({id:"revocacion-envio-exacto",role:"explorer",prompt:"inspect",repository:d,model:"provider/primary",modelFallback:{chain:[{model:"provider/final"}]}});
+  assert.equal(result.ok,false,result.output);assert.match(result.output,/scope is no longer live/u);assert.equal(validations,4);assert.ok(guards>=2);
+  const trace=JSON.parse(await readFile(log,"utf8"));assert.equal(trace.commands.filter((row:{type:string})=>row.type==="prompt").length,1);assert.equal(trace.commands.filter((row:{type:string})=>row.type==="set_model").length,1);
+ });
