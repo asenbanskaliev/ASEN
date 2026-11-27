@@ -132,9 +132,10 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
  const read=(name:string):Record<string,unknown>|undefined=>{
   const path=join(source,name);
   try{
-   const stat=lstatSync(path);
+   const target=name==="settings.json"?realpathSync(path):path;
+   const stat=lstatSync(target);
    if(!stat.isFile()||stat.size>4*1024*1024)throw Error("Invalid Pi fallback configuration file");
-   return object(JSON.parse(readFileSync(path,"utf8").replace(/^\uFEFF/u,"")));
+   return object(JSON.parse(readFileSync(target,"utf8").replace(/^\uFEFF/u,"")));
   }catch(error){
    if((error as NodeJS.ErrnoException).code==="ENOENT")return;
    throw Error("Unable to read private Pi fallback configuration");
@@ -149,7 +150,7 @@ function privateFallbackSettings(directory:string,source:string,request:AgentReq
  if(typeof primary==="string"&&primary)providers.add(primary);
  mkdirSync(directory,{mode:0o700});
  const save=(name:string,value:unknown)=>writeFileSync(join(directory,name),JSON.stringify(value)+"\n",{mode:0o600,flag:"wx"});
- save("settings.json",{...settings,packages:[],extensions:[],skills:[],promptTemplates:[],themes:[],compaction:{...compaction,enabled:false},retry:{...retry,enabled:false,maxRetries:0,provider:{...provider,maxRetries:0}}});
+ save("settings.json",{...settings,cacheWarming:"off",packages:[],extensions:[],skills:[],promptTemplates:[],themes:[],compaction:{...compaction,enabled:false},retry:{...retry,enabled:false,maxRetries:0,provider:{...provider,maxRetries:0}}});
  const models=read("models.json");
  if(models){
   const configured=models.providers===undefined?{}:object(models.providers);
@@ -504,8 +505,11 @@ export class PiProcessRunner implements AgentRunner{
    const closed=new Promise<void>(resolveClosed=>{child.once("close",()=>resolveClosed());child.once("error",()=>{if(child.pid===undefined)resolveClosed();});});
    let timer:ReturnType<typeof setTimeout>|undefined;
 
+   const consentAbort=new AbortController();
+   const consentSignal=signal?AbortSignal.any([signal,consentAbort.signal]):consentAbort.signal;
    const finish=(result:AgentResult)=>{
     if(settled)return;
+    consentAbort.abort();
     settled=true;
     clearTimeout(timer);
     signal?.removeEventListener("abort",onAbort);
@@ -520,6 +524,7 @@ export class PiProcessRunner implements AgentRunner{
    const stop=(result:AgentResult)=>{
     if(stopResult)return;
     stopResult=result;
+    consentAbort.abort();
     void (async()=>{
      if(sharedAuthPath){
       // La entrada RPC nativa cierra la sesión y Pi 1.6 drena escrituras
@@ -624,7 +629,7 @@ export class PiProcessRunner implements AgentRunner{
        const authorized=await this.options.authorizeModelFallback?.(Object.freeze({
         taskId:request.id,sessionId:request.isolationKey??"default",projectId:request.repository,
         role:request.role,to:candidate.pick.model!
-       }),signal);
+       }),consentSignal);
        if(!alive())return;
        if(authorized!==true&&typeof authorized!=="function"){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback requires explicit consent"});return;}
        const consentCurrent=async()=>{
@@ -640,7 +645,7 @@ export class PiProcessRunner implements AgentRunner{
        // Cada RPC mantiene su propio presupuesto, sin competir con el diálogo.
        disarmPhase();
        const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!await consentCurrent()||!alive())return;
-      if(switched.command!=="set_model"){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback model change timed out or could not be correlated"});return;}
+      if(switched.command!=="set_model"){fallbackInProgress=false;stop({id:request.id,ok:false,output:rpcFailure??"Pi fallback model change response could not be correlated"});return;}
       if(switched.success!==true)continue;
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
       if(thinking){const effort=await sendRpc({type:"set_thinking_level",level:thinking});if(!await consentCurrent()||!alive())return;if(effort.success===true)appliedThinking=thinking;}

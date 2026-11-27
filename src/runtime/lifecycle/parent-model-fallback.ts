@@ -108,6 +108,9 @@ export function createParentModelFallback(host:ParentModelFallbackHost):ParentMo
    const authorized=await wait(Promise.resolve().then(()=>host.authorizeFallback?.(found,context)).catch(()=>false));
    if(!authorized.valid)return false;
    if(authorized.value!==true){invalidate("aborted");return false;}
+   const liveChain=await wait(Promise.resolve(host.loadChain(activeEpisodeIdentity.profile,context)));
+   if(!liveChain.valid)return false;
+   if(!liveChain.value.some(step=>step.model===pick.model&&step.thinking===pick.thinking)){invalidate("aborted");return false;}
    const consentIdentity=await wait(currentIdentity(context));if(!consentIdentity.valid)return false;
    if(!sameIdentity(consentIdentity.value,activeEpisodeIdentity)||host.currentModel(context)!==activeModel){invalidate("aborted");return false;}
    // La operación irreversible debe terminar antes de que Pi sustituya el host.

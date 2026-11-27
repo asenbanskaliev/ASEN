@@ -56,7 +56,7 @@ export async function continueInterruptedExplorer(input:InterruptedExplorerConti
  // incorporar opciones nuevas a un intento ya persistido.
  const savedFallback=prior.spec?.modelFallback;
  let continuationEnqueued=false,validationRejectedBeforeEnqueue=false;
- const validateStart=savedFallback||linkedTodo?.plan?.candidateRevision?async()=>{try{
+ const validateStart=input.resolveCurrentIdentity||savedFallback||linkedTodo?.plan?.candidateRevision?async()=>{try{
   throwIfCancelled(signal);
   if(input.resolveCurrentIdentity){
    const current=await input.resolveCurrentIdentity();

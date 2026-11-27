@@ -12,11 +12,11 @@ test("interrupted Explorer continuation service preserves the public queued resu
  let queryCount=0,continueCount=0,identityChecks=0;
  const result=await continueInterruptedExplorer({
   agentId:"parent",identity,
-  runtime:{query:async()=>{queryCount++;return interruptedEntry;},continue:async()=>{continueCount++;return "child";}},
+  runtime:{query:async()=>{queryCount++;return interruptedEntry;},continue:async(_id,_identity,_signal,_onQueued,validateStart)=>{continueCount++;assert.ok(validateStart);await validateStart();return "child";}},
   resolveCurrentIdentity:async()=>{identityChecks++;return identity;},
  });
  assert.deepEqual(result,{id:"child",state:"queued",continuedFrom:"parent",role:"explorer"});
- assert.equal(queryCount,1);assert.equal(continueCount,1);assert.equal(identityChecks,1);
+ assert.equal(queryCount,1);assert.equal(continueCount,1);assert.equal(identityChecks,5);
 });
 
 test("interrupted Explorer continuation service rejects other lifecycle states without coordination or dispatch",async()=>{
@@ -131,4 +131,10 @@ test("M2: una alternativa directa antigua o de otro ámbito no autoriza reanudar
   await assert.rejects(()=>continueInterruptedExplorer({runtime,agentId:"parent",identity,readCurrentDirectFallback:async()=>({profile:"perfil",chain,origin:{...origin,scope:"global"}})}),/alternativas del perfil cambiaron/u);
  }
  assert.equal(starts,0);
+});
+
+
+test("M2: no reanudar un Explorer sin alternativas tras cambiar la sesión en cola",async()=>{
+ let current=identity;
+ await assert.rejects(()=>continueInterruptedExplorer({agentId:"parent",identity,runtime:{query:async()=>interruptedEntry,continue:async(_id,_identity,_signal,_onQueued,validateStart)=>{current={...identity,sessionId:"otra"};assert.ok(validateStart);await validateStart();assert.fail("No debe iniciar el agente");}},resolveCurrentIdentity:async()=>current}),/session or project changed before agent continuation dispatch/u);
 });

@@ -218,5 +218,6 @@ test("M2: Explorer directo sin alternativas conserva la reutilización y no arra
 test("M2: reutiliza un Explorer directo con alternativas idénticas",async t=>{
  let release!:()=>void;const hold=new Promise<void>(resolve=>{release=resolve;});
  const f=await fixture(t,configured(),()=>hold);
- try{const first=await f.launch(undefined,{prompt:"Lectura con alternativas"});const second=await f.launch(undefined,{prompt:"Lectura con alternativas"});assert.equal(second.details.id,first.details.id);for(let i=0;i<200&&f.requests.length===0;i++)await new Promise(resolve=>setTimeout(resolve,20));assert.equal(f.requests.length,1);}finally{release();await f.finished;}
+ let admitted=false;
+ try{const first=await f.launch(undefined,{prompt:"Lectura con alternativas"});admitted=true;const second=await f.launch(undefined,{prompt:"Lectura con alternativas"});assert.equal(second.details.id,first.details.id);for(let i=0;i<200&&f.requests.length===0;i++)await new Promise(resolve=>setTimeout(resolve,20));assert.equal(f.requests.length,1);}finally{release();if(admitted){let timer:ReturnType<typeof setTimeout>|undefined;try{await Promise.race([f.finished,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(Error("Explorer no alcanzó estado terminal")),10_000);})]);}finally{if(timer)clearTimeout(timer);}}}
 });
