@@ -14,10 +14,22 @@ test("G06 no convierte una revisión doble interrumpida en una revisión recuper
 test("G06 conserva únicamente los dos estados recuperables completos",()=>{
  assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,phase:"joint-tests-reviewed",judges:[]} as any));
  assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-reviewed",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b"}],findingsCount:0} as any));
+ assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-reviewed",judges:[judge,{...judge,route:"nvidia/judge-b"}],findingsCount:0} as any),"los terminales históricos siguen siendo legibles");
+});
+
+test("G05 conserva un intento iniciado como bloqueo recuperable, sin repetir jueces",()=>{
+ assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-pending",attemptStarted:true,judges:[]} as any));
+ assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-pending",attemptStarted:true,judges:[judge]} as any));
+ assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-pending",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b"}]} as any));
+});
+
+test("G06 conserva la firma autenticada del recibo en checkpoints recuperables",()=>{
+ assert.throws(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:"hmac-sha256-incorrecto",phase:"dual-pending",attemptStarted:false,judges:[]} as any),/inválido/u);
+ assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:"hmac-sha256:"+hash,phase:"dual-pending",attemptStarted:false,judges:[]} as any));
 });
 
 test("G06 rechaza recibos y referencias Fix que no estén ligados de forma exacta",()=>{
- assert.throws(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:null,phase:"joint-tests-reviewed",judges:[]} as any),/inválido/u);
+ assert.throws(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:null,phase:"dual-pending",attemptStarted:false,judges:[]} as any),/inválido/u);
  assert.throws(()=>assertNativeReviewCheckpointProgress({...base,phase:"dual-findings",attemptStarted:true,judges:[judge,{...judge,route:"nvidia/judge-b",verdict:"fail"}],findingsCount:1,fixProposalId:"no-firmado"} as any),/inválido/u);
 });
 
