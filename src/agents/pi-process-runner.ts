@@ -503,7 +503,9 @@ export class PiProcessRunner implements AgentRunner{
         role:request.role,to:candidate.pick.model!
        }),signal);
        if(!alive())return;
-       if(authorized!==true){fallbackInProgress=false;closeSettled(category);return;}
+       if(authorized!==true){fallbackInProgress=false;stop({id:request.id,ok:false,output:"Pi fallback requires explicit consent"});return;}
+       // Cada RPC mantiene su propio presupuesto, sin competir con el diálogo.
+       disarmPhase();
        const switched=await sendRpc({type:"set_model",provider:candidate.provider,modelId:candidate.modelId});if(!alive())return;
       if(switched.success!==true||switched.command!=="set_model")continue;
       const from=currentModel,to=candidate.pick.model!,thinking=candidate.pick.thinking??request.thinking;currentModel=to;let appliedThinking:typeof thinking;
