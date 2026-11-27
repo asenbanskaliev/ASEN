@@ -350,6 +350,21 @@
         "sha": "68a3f74d39eb0734492c908dd159a786a566a0df",
         "phase": "CI y revisión independiente",
         "writeReservation": false
+      },
+      "lease": {
+        "id": "manual-E-M2-161-oauth-sdk-nativo",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "68a3f74d39eb0734492c908dd159a786a566a0df",
+        "branch": "feat/asen-equipo-E-M2-g2-auditoria-coste-0910-20261127",
+        "files": [
+          "src/agents/pi-process-runner.ts",
+          "src/agents/pi-agent-tools.ts",
+          "tests/pi-process-runner.test.ts",
+          "src/agents/pi-shared-auth-rpc.ts"
+        ],
+        "phase": "Recuperar OAuth con API pública y almacén original de Pi; reparar permisos concurrentes"
       }
     }
   },
@@ -935,7 +950,28 @@
       "finishedAt": "2026-11-27T12:29:43Z"
     }
   ],
-  "temporaryOwnership": {},
+  "temporaryOwnership": {
+    "src/agents/pi-process-runner.ts": {
+      "team": "E",
+      "lease": "manual-E-M2-161-oauth-sdk-nativo",
+      "scope": "M2"
+    },
+    "src/agents/pi-agent-tools.ts": {
+      "team": "E",
+      "lease": "manual-E-M2-161-oauth-sdk-nativo",
+      "scope": "M2"
+    },
+    "tests/pi-process-runner.test.ts": {
+      "team": "E",
+      "lease": "manual-E-M2-161-oauth-sdk-nativo",
+      "scope": "M2"
+    },
+    "src/agents/pi-shared-auth-rpc.ts": {
+      "team": "E",
+      "lease": "manual-E-M2-161-oauth-sdk-nativo",
+      "scope": "M2"
+    }
+  },
   "jointCorrection": {
     "id": "manual-g2-perfil-BE-4701179615",
     "teams": [
