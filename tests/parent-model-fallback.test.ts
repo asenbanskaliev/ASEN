@@ -219,3 +219,13 @@ test("M2: cambiar de sesión durante el consentimiento invalida la alternativa d
  const adapter=createParentModelFallback(f.host);adapter.onAgentEnd({messages:failure()});
  assert.equal(await adapter.onAgentSettled(),false);assert.deepEqual(f.calls,[]);
 });
+
+
+test("M2: una respuesta de consentimiento obsoleta no borra el fallo de la sesión nueva",async()=>{
+ let resolve!: (value:boolean)=>void,entered!:()=>void;const held=new Promise<boolean>(r=>{resolve=r;}),started=new Promise<void>(r=>{entered=r;});let calls=0;
+ const f=fixture({authorizeFallback:()=>{if(++calls===1){entered();return held;}return true;}});
+ const adapter=createParentModelFallback(f.host),a={sessionId:"session-1",projectId:"/project"},b={sessionId:"session-2",projectId:"/project"};
+ adapter.activate(a);adapter.onAgentEnd({messages:failure()},a);const pending=adapter.onAgentSettled({},undefined,a);await started;
+ f.setIdentity({...identity(),...b});adapter.activate(b);adapter.onAgentEnd({messages:failure()},b);resolve(true);
+ assert.equal(await pending,false);assert.deepEqual(f.calls,[]);assert.equal(await adapter.onAgentSettled({},undefined,b),true);assert.ok(f.calls.some(x=>x.startsWith("set:")));
+});
