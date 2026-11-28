@@ -437,7 +437,30 @@
           "nvidiaCalls": 0
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M3-M5-g2-ack-p05-91e34d64",
+        "team": "E",
+        "generation": 2,
+        "package": "M3-M5",
+        "base": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
+        "branch": "feat/asen-equipo-E-M3-g2-pi-local-ack-reinicio",
+        "phase": "G03-acuse-tras-reinicio",
+        "files": [
+          "tests/agent-rpc-tui-handoff.test.ts",
+          "scripts/agent-flow-asen-scaling.ts",
+          "tests/agent-flow-asen-scaling.test.ts",
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M5-g2-pi-local-p05-offline",
+          "base": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
+          "phase": "P05-comparacion-sintetica-uno-dos",
+          "files": [
+            "scripts/agent-flow-asen-scaling.ts",
+            "tests/agent-flow-asen-scaling.test.ts"
+          ]
+        }
+      }
     }
   },
   "packages": {
