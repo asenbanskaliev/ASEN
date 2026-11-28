@@ -50,6 +50,7 @@ test("stats command returns unavailable when Pi does not expose a session direct
  const result=JSON.parse(await runPiHistoryStatsCommand(""));assert.equal(result.state,"unavailable");assert.equal(result.sessions,0);
  assert.deepEqual([result.inputTokens,result.outputTokens,result.totalTokens,result.costUsd],[null,null,null,null],"unavailable history must not claim measured zero");assert.equal(result.schema,"asen.pi-history-stats/v2");assert.deepEqual(result.measurementCounts,{inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0});
  assert.deepEqual(JSON.parse(await runPiHistoryStatsCommand("--by-day")),{...result,byDay:{timezone:"UTC",unbucketedUsageEntries:0,truncated:false,days:[]}});
+ assert.deepEqual(JSON.parse(await runPiHistoryStatsCommand("--by-model")),{...result,byModel:{timezone:"UTC",unbucketedUsageEntries:0,truncated:false,rows:[]}});
 });
 
 test("available history without usage reports unknown measurements without changing source files",async t=>{
@@ -102,6 +103,76 @@ test("Pi /asen-stats --by-day groups accepted usage by UTC event day without cha
  ]});
  assert.doesNotMatch(output,/synthetic-session-id|excluded-entry-id|synthetic-provider-label|synthetic-model-label|synthetic private text|a-source\.jsonl/u);assert.ok(!output.includes(JSON.stringify(root).slice(1,-1)));
  for(const args of ["--by-day --by-day","--by-day from=2026-10-01","--by-day extra"])await assert.rejects(()=>run(args),/Usage/);
+});
+
+test("Pi /asen-stats --by-model attributes only exact active metadata on accepted UTC events",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-stats-model-")),sessionDir=path.join(root,"sessions");t.after(()=>rm(root,{recursive:true,force:true}));await mkdir(sessionDir);
+ const session={...header("private-session-marker","2026-09-30T12:00:00.000Z"),cwd:root};
+ const provider="synthetic-public",id="example/public-model-v1";
+ const assistant=(entryId:string,metadata:Record<string,unknown>,usage?:Record<string,unknown>,timestamp="2026-10-02T01:30:00+02:00")=>entry("message",entryId,{timestamp,message:{role:"assistant",...metadata,content:"private-content-marker",usage}});
+ const exact={provider,model:id};
+ const excluded=assistant("private-excluded-marker",exact,{input:900});
+ await writeFile(path.join(sessionDir,"a-private-file-marker.jsonl"),jsonl(session,
+  assistant("private-entry-marker",exact,{input:0,output:0,cost:{total:0}}),assistant("partial",exact,{input:7}),
+  assistant("history-only",{provider:"private-provider-marker",model:"private-model-marker"},{input:5}),
+  assistant("missing-provider",{model:id}),assistant("prefix",{provider,model:id+"-other"}),
+  assistant("case",{provider:provider.toUpperCase(),model:id}),assistant("suffix",{provider,model:id+"\n"}),
+  assistant("missing-all",{},undefined,"2026-10-02T02:00:00Z"),
+  entry("compaction","unattributed",{timestamp:"2026-10-02T01:00:00Z",...exact,usage:{totalTokens:4}}),
+  assistant("ambiguous",exact,{input:2},"2026-10-02T02:00:00")));
+ await writeFile(path.join(sessionDir,"b-duplicate.jsonl"),jsonl(session,excluded));
+ await writeFile(path.join(sessionDir,"c-duplicate-entry.jsonl"),jsonl({...session,id:"duplicate-entry"},excluded,excluded));
+ await writeFile(path.join(sessionDir,"d-corrupt.jsonl"),jsonl({...session,id:"corrupt"},excluded)+"{broken\n");
+ await writeFile(path.join(sessionDir,"e-outside.jsonl"),jsonl({...session,id:"outside",cwd:path.join(root,"outside")},excluded));
+ const commands=new Map<string,{handler:(...args:any[])=>any}>();createAsenExtension({homeDir:()=>root,packageRoot:root})({registerCommand:(name:string,command:any)=>commands.set(name,command)});
+ let modelReads=0,registryReads=0,otherMetadataReads=0;
+ const model={provider,id,get name(){otherMetadataReads++;throw new Error("Do not read model name");},get baseUrl(){otherMetadataReads++;throw new Error("Do not read model URLs");},get cost(){otherMetadataReads++;throw new Error("Do not read model prices");}};
+ const run=(args:string,activeModel:unknown)=>commands.get("asen-stats")!.handler(args,{cwd:root,ui:{notify(){}},sessionManager:{getSessionId:()=>session.id,getSessionDir:()=>sessionDir},get model(){modelReads++;return activeModel;},get modelRegistry(){registryReads++;throw new Error("Do not access modelRegistry");}});
+ const legacy={schema:"asen.pi-history-stats/v2",range:{},state:"available",roots:1,outOfScopeFiles:1,sessions:1,entries:10,userMessages:0,assistantMessages:9,toolCalls:0,inputTokens:14,outputTokens:0,totalTokens:4,costUsd:0,measurementCounts:{inputTokens:4,outputTokens:1,totalTokens:1,costUsd:1},corruptFiles:1,duplicateFiles:2,oversizedFiles:0,unreadableFiles:0,truncated:false};
+ assert.equal(await run("",model),JSON.stringify(legacy,null,2));
+ assert.equal(await run("from=2026-09-30 to=2026-09-30",model),JSON.stringify({...legacy,range:{from:"2026-09-30",to:"2026-09-30"}},null,2));
+ assert.equal(await run("--by-day",model),JSON.stringify({...legacy,byDay:{timezone:"UTC",unbucketedUsageEntries:1,truncated:false,days:[
+  {day:"2026-10-01",inputTokens:12,outputTokens:0,totalTokens:null,costUsd:0,measurementCounts:{inputTokens:3,outputTokens:1,totalTokens:0,costUsd:1}},
+  {day:"2026-10-02",inputTokens:null,outputTokens:null,totalTokens:4,costUsd:null,measurementCounts:{inputTokens:0,outputTokens:0,totalTokens:1,costUsd:0}}
+ ]}},null,2));
+ for(const args of ["--by-model --by-day","--by-day --by-model","--by-model from=2026-10-01","to=2026-10-02 --by-model","--by-model --by-model","--by-model extra"])await assert.rejects(()=>run(args,model),/Usage/);
+ assert.equal(modelReads,0);
+ const output=await run("--by-model",model),{byModel,...summary}=JSON.parse(output);
+ assert.deepEqual(summary,legacy);
+ assert.deepEqual(byModel,{timezone:"UTC",unbucketedUsageEntries:1,truncated:false,rows:[
+  {day:"2026-10-01",model:{provider,id},usageEntries:2,inputTokens:7,outputTokens:0,totalTokens:null,costUsd:0,measurementCounts:{inputTokens:2,outputTokens:1,totalTokens:0,costUsd:1}},
+  {day:"2026-10-01",model:null,usageEntries:5,inputTokens:5,outputTokens:null,totalTokens:null,costUsd:null,measurementCounts:{inputTokens:1,outputTokens:0,totalTokens:0,costUsd:0}},
+  {day:"2026-10-02",model:null,usageEntries:2,inputTokens:null,outputTokens:null,totalTokens:4,costUsd:null,measurementCounts:{inputTokens:0,outputTokens:0,totalTokens:1,costUsd:0}}
+ ]});
+ const accessor={provider,get id(){otherMetadataReads++;throw new Error("Do not invoke metadata getters");}};
+ for(const invalid of [undefined,{id},accessor,{provider,id:"https://private-url-marker/path"},{provider,id:"../private-path-marker"},{provider,id:"private-newline-marker\n"},{provider:"private/provider-marker",id},{provider,id:"x".repeat(129)}]){
+  const fallback=await run("--by-model",invalid);
+  assert.deepEqual(JSON.parse(fallback).byModel.rows.map((row:any)=>[row.day,row.model,row.usageEntries]),[["2026-10-01",null,7],["2026-10-02",null,2]]);
+  assert.doesNotMatch(fallback,/private-|synthetic-public|public-model-v1/u);
+ }
+ assert.doesNotMatch(output,/private-|outside-session|public-model-v1-other/u);assert.ok(!output.includes(JSON.stringify(root).slice(1,-1)));
+ const mutable={provider,id},pending=run("--by-model",mutable);mutable.id="changed-model-marker";
+ assert.equal(await pending,output);
+ assert.deepEqual([modelReads,registryReads,otherMetadataReads],[10,0,0]);
+});
+
+test("model view caps rows even within a day, merges retained rows, and never echoes unsafe active labels",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-stats-model-cap-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const limit=PI_HISTORY_STATS_LIMITS.maxModelRows,start=Date.UTC(2020,0,1),iso=(day:number)=>new Date(start+day*86_400_000).toISOString();
+ const model={provider:"synthetic-public",id:"public-model"};
+ const assistant=(id:string,timestamp:string,identity:{provider:string;id:string},input:number)=>entry("message",id,{timestamp,message:{role:"assistant",provider:identity.provider,model:identity.id,usage:{input}}});
+ const events=Array.from({length:limit},(_,i)=>assistant(`entry-${i}`,iso(Math.floor(i/2)),i%2?{...model,id:"synthetic-history-marker"}:model,1));
+ const unsafe={...model,id:"https://private-url-marker/path"};
+ await writeFile(path.join(root,"a.jsonl"),jsonl({...header("many-model-rows",iso(0)),cwd:root},...events,assistant("past-cap",iso(limit),unsafe,2)));
+ await writeFile(path.join(root,"b.jsonl"),jsonl({...header("later-file",iso(0)),cwd:root},assistant("retained",iso(0),model,3)));
+ const result=JSON.parse(await runPiHistoryStatsCommand("--by-model",root,root,model));
+ assert.equal(result.inputTokens,limit+5);assert.equal(result.truncated,false);
+ assert.equal(result.byModel.truncated,true);assert.equal(result.byModel.rows.length,limit);
+ assert.deepEqual(result.byModel.rows.slice(0,2).map((row:any)=>[row.day,row.model,row.usageEntries,row.inputTokens]),[[iso(0).slice(0,10),model,2,4],[iso(0).slice(0,10),null,1,1]]);
+ assert.equal(result.byModel.rows.at(-1).day,iso(Math.floor((limit-1)/2)).slice(0,10));
+ const output=await runPiHistoryStatsCommand("--by-model",root,root,unsafe),fallback=JSON.parse(output);
+ assert.equal(fallback.byModel.truncated,false);assert.equal(fallback.byModel.rows.at(-1).model,null);assert.equal(fallback.byModel.rows.at(-1).inputTokens,2);
+ assert.doesNotMatch(output,/private-url-marker|synthetic-history-marker|synthetic-public|public-model/u);
 });
 
 test("day output stays bounded without dropping observations from the summary or retained days",async t=>{

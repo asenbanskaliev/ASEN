@@ -44,6 +44,7 @@ import {parseUsageFile,emptyUsageFile} from "../src/runtime/lifecycle/usage-stor
 import {runHistoryCommand,recordHistoryInput,type HistoryCommandResult} from "../src/runtime/lifecycle/history-command.js";
 import {runUsageCommand} from "../src/runtime/lifecycle/usage-command.js";
 import {runPiHistoryStatsCommand} from "../src/stats/pi-history-command.js";
+import {snapshotPiHistoryModel} from "../src/stats/pi-history-stats.js";
 import {incrementUsageFile} from "../src/runtime/lifecycle/usage-store.js";
 import {VERSION,Theme,type ExtensionAPI,type ExtensionContext} from "@earendil-works/pi-coding-agent";
 import {validatePiHost,validatePiRegistrationCollisions,validatePiExecutionContext} from "../src/runtime/pi-host.js";
@@ -2662,7 +2663,11 @@ export function createAsenExtension(dependencies:AsenExtensionDependencies={}):(
    try{const result=await runUsageCommand(args,{storePath:usageFile,hasUI:ctx.hasUI===true,...(ctx.ui.confirm?{confirm:ctx.ui.confirm.bind(ctx.ui)}:{})});ctx.ui.notify(result,"info");return result;}
    catch(error){ctx.ui.notify(`ASEN usage failed: ${safeErrorMessage(error)}`,"error");throw error;}
   }});
-  registerData("asen-stats",{description:"Show fresh read-only Pi history aggregates for the active project and optional local date range",handler:async(args:string|undefined,ctx:CommandContext)=>{const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.();if(!sessionId)return runPiHistoryStatsCommand(args??"");return runPiHistoryStatsCommand(args??"",manager?.getSessionDir?.(),await canonical(ctx.cwd));}});
+  registerData("asen-stats",{description:"Show read-only Pi history for the active project: use a local date range, --by-day, or --by-model (alone, UTC day and active model)",handler:async(args:string|undefined,ctx:CommandContext)=>{
+   const manager=ctx.sessionManager,sessionId=manager?.getSessionId?.();if(!sessionId)return runPiHistoryStatsCommand(args??"");
+   const activeModel=args?.trim()==="--by-model"?snapshotPiHistoryModel(ctx.model):null;
+   return runPiHistoryStatsCommand(args??"",manager?.getSessionDir?.(),await canonical(ctx.cwd),activeModel);
+  }});
   pi.registerCommand?.("asen-skill-registry",{description:"Refresh the generated ASEN skill registry",handler:async(args:string|undefined,ctx:CommandContext)=>{
    if(args?.trim()!=="refresh"){ctx.ui.notify(usage,"info");return usage;}
    try{
