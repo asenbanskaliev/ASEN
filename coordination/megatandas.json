@@ -350,7 +350,19 @@
         "phase": "M1-M2-integradas",
         "writeReservation": false
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M3-g2-writer-restart-7b8c727b",
+        "team": "E",
+        "generation": 2,
+        "package": "M3",
+        "base": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
+        "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart",
+        "phase": "G03-P04-prueba-reinicio-padre-sin-proveedor",
+        "files": [
+          "odd/tasks/asen-pi-local-megatandas.md",
+          "tests/ef604-native-pi-headless-restart.test.ts"
+        ]
+      }
     }
   },
   "packages": {
