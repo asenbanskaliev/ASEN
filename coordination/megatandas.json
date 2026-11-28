@@ -599,8 +599,17 @@
         "files": [
           "tests/fixtures/g05-posix/private-store.c",
           "tests/native-fix-posix-storage.test.mjs",
-          ".github/workflows/g05-posix-evidence.yml"
-        ]
+          ".github/workflows/g05-posix-evidence.yml",
+          "tests/native-partition-flow.test.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M3-g2-pi-local-terminal-reinicio",
+          "base": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
+          "phase": "T6-P04-diagnostico-sin-relanzar-writer",
+          "files": [
+            "tests/native-partition-flow.test.ts"
+          ]
+        }
       }
     }
   },
