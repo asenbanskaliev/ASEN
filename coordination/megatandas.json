@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "G06 vista interna sin lanzamiento. P04 preconsentimiento observado; diagnóstico ConPTY 124 sin Pi. G04 no acredita identidad terminal con RPC Pi 1.6.0.",
+        "next": "G06 exige decidir un contrato explícito de autorización de lectura candidato-Verifier; no inferir acceso de rutas cambiadas. P04 ConPTY requiere cierre seguro y fase manual. G05 integración autenticada pendiente.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -639,21 +639,14 @@
           "base": "444559ff9abf2951c32e392c96c50c8f972653e0",
           "state": "revisado-y-no-publicado-correlacion-RPC-ausente",
           "testsPassed": 8
+        },
+        "g06Verifier": {
+          "base": "444559ff9abf2951c32e392c96c50c8f972653e0",
+          "state": "bloqueado-por-emisor-de-lectura-ausente",
+          "codeChanged": false
         }
       },
-      "lease": {
-        "id": "pi-local-E-M4-g2-g06-vista-verifier-444559ff",
-        "team": "E",
-        "generation": 2,
-        "package": "M4",
-        "base": "444559ff9abf2951c32e392c96c50c8f972653e0",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g06-vista-verifier",
-        "phase": "T6-G06-capacidad-interna-vista-candidato-no-activa",
-        "files": [
-          "src/review/verifier-candidate-view.ts",
-          "tests/verifier-candidate-view.test.ts"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
