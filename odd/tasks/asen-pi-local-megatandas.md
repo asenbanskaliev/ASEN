@@ -12,6 +12,7 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 - S5: «Publica los cambios en GitHub.» «Revisa CI, Release Gate y CodeRabbit.»
 - S6: «Guarda el progreso para poder continuar tras cualquier interrupción.»
 - S7: «No modifiques main ni dupliques desarrollos.» «Respeta las autorizaciones y los límites de consumo NVIDIA.»
+- S8: «Ampliar G05 con un contrato versionado». «Autorizar la implementación y pruebas sintéticas de linaje, dictámenes por hallazgo y límite durable de dos rondas; conservar v1, sin permisos nuevos ni llamadas a proveedores.»
 
 ## Tasks
 
@@ -21,6 +22,7 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 - T6 [S1–S4,S6–S7] M3/M4 pendientes: matriz G04/P01 `d7fb89e5`, acuse M3 `7d137c7b`, vista ordinaria G06 `c2d09243`; quedan Verifier, linaje y límite durable G05/P06 y fronteras restantes G03/P04.
 - T4 [S1,S3,S6–S7] M5: costes `20af9866`, P05 sintético `6fc98ef2`, P05 runtime local `c4ddd1e0`, G02 sin llamadas `f23b6774`, G07 día UTC `39749c89`. Faltan desglose por proveedor/modelo, mediciones reales P05 y CTX.
 - T5 [S1,S3,S5–S7] M6: aceptación integral y límites de la evidencia; rama y reserva por definir; commit pendiente.
+- T7 [S1,S3–S4,S6–S8] G05: contrato versionado que autentique hallazgos, árbol reparado y consumo durable de dos rondas; conservar v1; en diseño; reserva y commit pendientes.
 
 ## Log
 
@@ -116,3 +118,9 @@ M4 identidad observada: aún no se integra. Las 26 pruebas funcionales pasaron e
 ### L14
 
 `88ea4176`: CI `46147655688`, Release Gate `46147655721` y check CodeRabbit correctos, sin hilos. G02 `f23b6774`: presión activa conserva porcentaje de ventana y consume la misma muestra sin llamadas de inferencia, compactación ni accesos a historial; 73/73 en pruebas relacionadas. G07 `39749c89`: `/asen-stats --by-day` (sin `from`/`to`) añade días UTC por instante de evento; por defecto no cambia JSON v2 ni el filtro histórico por sesión. RED 1, GREEN 12/12 y revisión independiente favorable; seis invocaciones históricas conservan stdout, stderr y código de salida (job-112). Sin etiquetas privadas, costes inferidos o cambios en los archivos de historial. G07 por proveedor/modelo, aceptación P05/CTX y `globalFull:false` no cambian.
+
+### L15
+
+Selección del usuario: «Ampliar G05 con un contrato versionado». Se autorizaron linaje, dictámenes por hallazgo y dos rondas con pruebas sintéticas, conservando v1 y sin permisos ni proveedor. T7 se separa en contrato de datos/transiciones, luego almacenamiento y cableado autenticados. El checkpoint v1 solo acredita origen y conteo de hallazgos, no reparación ni rejuicio; no se inferirá un dictamen por ausencia.
+
+`26f30eb8`: CI `46149659344` y Release Gate `46149659316` correctos. G07 `6e9578c2` añade `/asen-stats --by-model`, optativo y excluyente. Agrupa por día UTC y par exacto del modelo activo entregado por Pi o `null` si no coincide. No consulta registro, disponibilidad ni autenticación; no publica etiquetas crudas. RED 1, GREEN 14/14, revisión independiente favorable y diferencial de seis modos anteriores sin diferencias. No acredita modelo que sirvió la petición, catálogo completo, P05/CTX ni facturación. `globalFull:false`.
