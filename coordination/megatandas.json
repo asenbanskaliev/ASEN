@@ -582,7 +582,18 @@
           "releaseGate": 46151881784
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M5-g2-g07-odd-review-01c487ec",
+        "team": "E",
+        "generation": 2,
+        "package": "M5",
+        "base": "01c487ec01a8d2d0841494f6b96be5029524ce0a",
+        "branch": "feat/asen-equipo-E-M5-g2-pi-local-g07-modelo-activo",
+        "phase": "G07-CodeRabbit-4727361914-documentacion",
+        "files": [
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
+      }
     }
   },
   "packages": {
