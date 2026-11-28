@@ -17,8 +17,8 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 
 - T1 [S1–S4,S6–S7] M3 G03/P04: ensayo de reinicio de padre Pi tras escritura parcial, sin proveedor; inline; evidencia local obtenida; `9eadc6d3`.
 - T2 [S1–S4,S6–S7] M4 G05/P06 parcial: bloquear rejuicio de Todo Fix sin linaje verificable; worker y verificador independiente; `5100fb01`, consolidado `b344b54a`.
-- T3 [S4–S7] Consolidar, verificar y publicar la primera tanda M3/M4; coordinador E; `b344b54a`, validación en curso.
-- T6 [S1–S4,S6–S7] M3/M4 pendientes: matriz pública y proporcional G04/P01, identidad canónica del Verifier, linaje y límite durable G05/P06, vistas G06 y evidencia restante de G03/P04; nueva reserva por unidad; commit pendiente.
+- T3 [S4–S7] Publicar y verificar las tandas parciales M3/M4; coordinador E; `08b72241` publicado; `b0959476` corrige la ayuda histórica.
+- T6 [S1–S4,S6–S7] M3/M4 pendientes: la matriz pública G04/P01 está en `d7fb89e5`; quedan identidad canónica del Verifier, linaje y límite durable G05/P06, rutas G06 de vistas/Verifier y evidencia restante de G03/P04; reserva por unidad.
 - T4 [S1,S3,S6–S7] M5 G02/G07/CTX/P05; rama y reserva por definir; commit pendiente.
 - T5 [S1,S3,S5–S7] M6: aceptación integral y límites de la evidencia; rama y reserva por definir; commit pendiente.
 
@@ -80,3 +80,13 @@ T6, auditoría `mx07h3xd-5-aixv`: el servicio interno ya contempla 1/2/3 identid
 ### L6
 
 `job-20`: `check:fast`, `build`, import cycles y typecheck correctos; la suite local frenó con 1 fallo en `tests/lifecycle-applicability.test.ts:163`. El test compara una expresión regular que incluye `git` contra un JSON con rutas del candidato. El árbol se había creado debajo de `.git`, y esa cadena aparecía dos veces, sin que cambiara ningún permiso. Se movió mediante `git worktree move` a `C:/ASEN/worktrees/pr163` conservando rama, commits y dependencias, sin modificar el test ni `main`.
+
+### L7
+
+`08b72241`: lifecycle 15/15 tras mover el árbol; las siete auditorías pasaron. La suite local no quedó verde: Pi nativo M2 `0xC0000409` con proveedor simulado, idéntico en base y candidato (`job-25`). La PR #163 se actualizó; Release Gate `46133172796` correcto. El control Pi `46133172744` y cuatro shards CI detectaron que la ayuda añadida cambió la salida exacta histórica. RED `job-33`; `b0959476` preserva la salida sin argumentos y mantiene la nota en `help`. GREEN: 97 pruebas de compatibilidad, 7 de UI, typecheck y fachada Pi correctos. CodeRabbit omitido e hilo histórico abierto.
+
+### L8
+
+G04/P01 `d7fb89e5`: matriz pública adicional sin proveedor. El modo proporcional separa el consentimiento de integración; el dual bloquea identidades insuficientes o alias del autor; con tres identidades válidas muestra el candidato y los dos jueces, y se deniega antes de transporte. No prueba independencia real ni el camino del Verifier E3. G06 se acota al contrato de rutas: staging ya rechaza sensibles cambiadas antes de blobs; el Verifier lee el repo del proyecto y la vista completa merece una comprobación separada para sensibles ya rastreadas. G06 no exige reescribir contenido de archivos permitidos. M5 auditado en solo lectura: falta prueba pública de coste cero versus desconocido y evidencia pareada P05/CTX. `globalFull:false`.
+
+Validación estándar: `job-41` pasó ciclos, typecheck y las 8 pruebas de `tests/native-partition-flow.test.ts`, sin omisiones. Las menciones Git a un lock corresponden al negativo ya existente. No se repitió la suite completa local tras el fallo reproducido en el SHA base.
