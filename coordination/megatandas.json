@@ -560,7 +560,23 @@
           "nvidiaCalls": 0
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M5-g2-g07-modelo-activo-26f30eb8",
+        "team": "E",
+        "generation": 2,
+        "package": "M5",
+        "base": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
+        "branch": "feat/asen-equipo-E-M5-g2-pi-local-g07-modelo-activo",
+        "phase": "G07-opt-in-modelo-activo-sin-catalogo",
+        "files": [
+          "extensions/asen.ts",
+          "src/stats/pi-history-stats.ts",
+          "src/stats/pi-history-command.ts",
+          "tests/pi-history-stats.test.ts",
+          "docs/runtime-tools.md",
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
+      }
     }
   },
   "packages": {
