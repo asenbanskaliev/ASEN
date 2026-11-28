@@ -16,3 +16,11 @@ No se han lanzado nuevos ensayos de modelos ni declarado éxito por CI. globalFu
 
 - Corregir inventarios de comandos y herramientas Pi; registrar asen-flow-metrics y reservar asen_plan_resume_batch para impedir colisiones. La CI 45639738580 detectó cuatro fallos de inventario, propagados a los tres sistemas. No dar por validado el nuevo SHA hasta la CI.
 - Conservar dictámenes dobles existentes. La recuperación solo acepta checkpoints firmados del mismo candidato. Serializar avance automático y comandos manuales con el bloqueo privado existente, sin reintento de inferencia ante contención. La doble revisión se puede solicitar desde el flujo natural sin comando manual, con consentimiento específico. No repetir una revisión doble pendiente automáticamente.
+
+
+## Reanudación de megatandas 3 y 4 · 27/11/2026
+
+- PR #156 conserva dos Writers raíz y una sucesora dependiente de ambos, y valida los checkpoints firmados. Los terminales históricos sin attemptStarted siguen siendo legibles; las nuevas escrituras terminales lo fijan en true. Un intento doble iniciado con cero resultados sigue pendiente, nunca es una aprobación.
+- Base #153: la prueba de recuperación concurrente genera el recibo con AgentRuntime y Dispatcher instrumentados, sin completar directamente el diario. Conserva la prueba de una sola normalización.
+- Recuperada la evidencia RPC correlacionada de la prueba de matriz de M2, sin reducir el contrato de evidencia.
+- CI anterior #156 fallida (45953455227), Release Gate correcto (45953455262). Nueva validación y revisión requeridas. No se acredita ejecución real ni cierre global.

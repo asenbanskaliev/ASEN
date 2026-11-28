@@ -8,6 +8,7 @@ import {join,resolve} from "node:path";
 import {AgentRuntime} from "../src/agents/agent-runtime.js";
 import type {AgentRequest,AgentRunner} from "../src/agents/dispatcher.js";
 import {PersistentAgentStore,parseAgentStore} from "../src/runtime/agents/agent-store.js";
+import {withExclusiveFileLock} from "../src/io/exclusive-file-lock.js";
 
 async function fixture(t:import("node:test").TestContext){const dir=await mkdtemp(join(tmpdir(),"asen-agent-store-"));t.after(()=>rm(dir,{recursive:true,force:true}));return join(dir,"agents.json");}
 const owner={kind:"user" as const,id:"pi:session-a"};
@@ -230,3 +231,48 @@ test("EF-603 never accepts forged or authority-bearing deduplication receipts",a
   await until(()=>reopened.snapshot().find(row=>row.id===next)?.state==="completed",2000);
   assert.deepEqual(calls,[hold,next]);await assert.rejects(()=>reopened.continue("crash-recovery-task",session,undefined,undefined,validate),/already has a continuation/);
  });
+
+test("P04 la apertura espera la transacción de otro escritor antes de reparar o poner en cuarentena",async t=>{
+ const file=await fixture(t),{store}=await PersistentAgentStore.open(file);
+ await store.enqueue(req("preservar"),owner);
+ const good=await readFile(file,"utf8");
+ let release!:()=>void,entered!:()=>void;
+ const hold=new Promise<void>(resolve=>{release=resolve;}),ready=new Promise<void>(resolve=>{entered=resolve;});
+ const transaction=withExclusiveFileLock(file,async()=>{
+  await writeFile(file,"{provisional",{mode:0o600});
+  entered();
+  await hold;
+  await writeFile(file,good,{mode:0o600});
+ });
+ await ready;
+ let settled=false;
+ const opening=PersistentAgentStore.open(file).finally(()=>{settled=true;});
+ // Se observa la espera bajo un bloqueo real, no una simulación del almacén.
+ try{
+  await new Promise<void>(resolve=>setTimeout(resolve,150));
+  assert.equal(settled,false,"La reparación no debe leer mientras otro escritor posee el bloqueo");
+  assert.equal(await readFile(file,"utf8"),"{provisional");
+ }finally{release();await transaction;await opening.catch(()=>{});}
+ const reopened=await opening;
+ assert.equal(reopened.quarantined,undefined);
+ assert.equal((await reopened.store.get("preservar","session-a","/repo"))?.record.state,"queued");
+ const persisted=parseAgentStore(await readFile(file,"utf8"),await readFile(file+".receipt-key"));
+ assert.equal(persisted.entries.length,1);
+});
+
+test("P04 dos aperturas concurrentes normalizan un recibo inválido una sola vez",async t=>{
+ const file=await fixture(t),runtime=await AgentRuntime.open({storeFile:file,runner:{run:async request=>({id:request.id,ok:true,output:"resultado"})}});
+ const id=await runtime.startExplorer({prompt:"recibo",session:{sessionId:"session-a",projectId:"/repo"},owner});
+ await until(()=>runtime.snapshot().find(row=>row.id===id)?.state==="completed",3000);
+ const raw=JSON.parse(await readFile(file,"utf8"));
+ delete raw.entries[0].result;
+ await writeFile(file,JSON.stringify(raw),{mode:0o600});
+ const [a,b]=await Promise.all([PersistentAgentStore.open(file),PersistentAgentStore.open(file)]);
+ for(const opened of [a,b]){
+  assert.equal(opened.quarantined,undefined);
+  const entry=await opened.store.get(id,"session-a","/repo");
+  assert.equal(entry?.record.state,"interrupted");
+  assert.equal(entry?.events.filter(event=>event.state==="interrupted").length,1);
+  assert.equal(entry?.result,undefined);
+ }
+});
