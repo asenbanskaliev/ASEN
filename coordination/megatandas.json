@@ -412,7 +412,21 @@
           }
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M4-g2-g06-vistas-3904bed0",
+        "team": "E",
+        "generation": 2,
+        "package": "M4",
+        "base": "3904bed0ea03262e87698838083b9c375d2c5e89",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g06-vistas",
+        "phase": "G06-excluir-rutas-sensibles-en-vistas",
+        "files": [
+          "src/review/review-view.ts",
+          "tests/review-view.test.ts",
+          "tests/workspace-review-session.test.ts",
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
+      }
     }
   },
   "packages": {
