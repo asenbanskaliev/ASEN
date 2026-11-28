@@ -137,7 +137,7 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "espera-ci-revision-M3-M4",
+      "state": "M3-M4-tanda-publicada-espera-CI",
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -182,11 +182,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar CI y revisión independiente de #163; completar recuperación pública y ensayos M3/M4. Trabajo manual: cinco tareas pausadas por el usuario.",
+      "next": "Validar recuperación pública, firma y rutas sensibles del SHA; diagnosticar CI y auditar G03/G04/G05/P01/P06 antes de aceptación real.",
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "58084fcea90f4eec107078002a638f2101f0c7b4",
+      "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -350,22 +350,7 @@
         "phase": "M1-M2-integradas",
         "writeReservation": false
       },
-      "lease": {
-        "id": "manual-E-M3-M4-g2-bloque-58084fc",
-        "team": "E",
-        "generation": 2,
-        "package": "M3-M4",
-        "base": "58084fcea90f4eec107078002a638f2101f0c7b4",
-        "branch": "feat/asen-equipo-E-M3-M4-g2-consolidacion-20261128",
-        "phase": "implementacion-conjunta",
-        "files": [
-          "tests/native-partition-flow.test.ts",
-          "src/runtime/lifecycle/native-integration-review.ts",
-          "tests/asen-c-checkpoint-recovery.test.ts",
-          "src/review/workspace-review-projection.ts",
-          "tests/workspace-review-session.test.ts"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
@@ -3766,7 +3751,7 @@
       },
       {
         "id": "M3",
-        "state": "candidato-acumulativo-publicado-espera-ci-revision",
+        "state": "tanda-publicada-pendiente-ci-revision",
         "pr": 156,
         "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
         "owner": "B",
@@ -3803,13 +3788,13 @@
         },
         "currentCandidate": {
           "pr": 163,
-          "sha": "58084fcea90f4eec107078002a638f2101f0c7b4",
-          "state": "espera-ci-revision"
+          "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+          "state": "tanda-publicada-pendiente-ci-revision"
         }
       },
       {
         "id": "M4",
-        "state": "candidato-acumulativo-publicado-espera-ci-revision",
+        "state": "tanda-publicada-pendiente-ci-revision",
         "pr": 156,
         "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
         "owner": "C",
@@ -3822,8 +3807,8 @@
         },
         "currentCandidate": {
           "pr": 163,
-          "sha": "58084fcea90f4eec107078002a638f2101f0c7b4",
-          "state": "espera-ci-revision"
+          "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+          "state": "tanda-publicada-pendiente-ci-revision"
         }
       },
       {
@@ -4512,6 +4497,19 @@
       "date": "2026-11-28",
       "owner": "E",
       "rule": "Continuar solo desde el chat por petición del usuario, no reactivar tareas automáticamente."
+    },
+    "lastImplementationBatch": {
+      "pr": 163,
+      "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+      "paths": [
+        "tests/native-partition-flow.test.ts",
+        "src/runtime/lifecycle/native-integration-review.ts",
+        "tests/asen-c-checkpoint-recovery.test.ts",
+        "src/review/workspace-review-projection.ts",
+        "tests/workspace-review-session.test.ts"
+      ],
+      "scope": "Regresión de entrada pública histórica; firmas hex válidas; rechazo de rutas sensibles modificadas antes de persistir blobs Git. Pendientes G03 real, revisión proporcional y Fix integral, seguridad de vistas completas y aceptación.",
+      "globalFull": false
     }
   }
 }
