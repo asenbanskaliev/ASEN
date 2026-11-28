@@ -443,7 +443,7 @@
         "fourthBatch": {
           "sha": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
           "base": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
-          "state": "publicada-espera-ci-y-revision",
+          "state": "CI-ReleaseGate-correctos-sin-hilos-abiertos",
           "commits": [
             "ae0d41af",
             "7d137c7b",
@@ -457,7 +457,19 @@
             "src/agents/pi-authority-assets.ts"
           ],
           "checks": "142/142 sin omisiones al aislar suite en serie. Corrida paralela 141/142 por escaneo del temporal global; tipos, ciclos y build bien. Siete pins íntegros y verificación independiente favorable. M3 host simulado, P05 solo sintético; sin aceptación real.",
-          "nvidiaCalls": 0
+          "nvidiaCalls": 0,
+          "ci": 46141315723,
+          "releaseGate": 46141315701,
+          "piRuntime": 46141315732,
+          "codeRabbitCheck": "success",
+          "openReviewThreads": 0,
+          "structuralM6": {
+            "artifactId": 15261184583,
+            "point16": "blocked",
+            "point17": "blocked",
+            "point18": "12 celdas listas para auditoría independiente",
+            "globalFull": false
+          }
         }
       },
       "lease": {
