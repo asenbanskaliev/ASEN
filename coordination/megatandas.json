@@ -350,7 +350,24 @@
         "phase": "M1-M2-integradas",
         "writeReservation": false
       },
-      "lease": null
+      "lease": {
+        "id": "manual-E-g2-M3-M4-consolidacion-20261128",
+        "team": "E",
+        "generation": 2,
+        "package": "E1",
+        "base": "ca0ff94d62c0f3cf81cf2e2287b5631c1dc38f0c",
+        "branch": "feat/asen-equipo-E-M3-M4-g2-consolidacion-20261128",
+        "phase": "consolidacion-manual-M3-M4",
+        "files": [
+          "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md",
+          "src/runtime/agents/agent-store.ts",
+          "src/runtime/lifecycle/native-integration-review.ts",
+          "src/runtime/lifecycle/odd-unit-plan.ts",
+          "tests/agent-store.test.ts",
+          "tests/asen-c-checkpoint-recovery.test.ts",
+          "tests/odd-unit-partition.test.ts"
+        ]
+      }
     }
   },
   "packages": {
