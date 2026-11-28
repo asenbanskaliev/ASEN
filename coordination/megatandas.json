@@ -551,8 +551,17 @@
           "src/stats/pi-history-command.ts",
           "tests/pi-history-stats.test.ts",
           "docs/runtime-tools.md",
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
+          "odd/tasks/asen-pi-local-megatandas.md",
+          "tests/compaction-pressure.test.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M5-g2-pi-local-g02-sin-llamadas",
+          "base": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
+          "phase": "G02-indicador-activo-sin-llamadas-ni-historial",
+          "files": [
+            "tests/compaction-pressure.test.ts"
+          ]
+        }
       }
     }
   },
