@@ -3,11 +3,12 @@ import test from "node:test";
 import {execFileSync} from "node:child_process";
 import {cpSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,renameSync,rmSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
-import {join,resolve} from "node:path";
+import {dirname,join,resolve} from "node:path";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "../src/review/workspace-review-session.js";
 import {assertReviewSessionOpen} from "../src/review/review-session.js";
 import {readReviewViewFile} from "../src/review/review-view.js";
 import {awaitNativeRddResult,bindNativeRddResult} from "../src/review/native-rdd-result.js";
+import {hasSensitiveName,sensitivePath} from "../src/security/path-safety.js";
 
 function repository(t:unknown):{root:string;git:(...args:string[])=>string}{
  const root=mkdtempSync(join(tmpdir(),"asen-workspace-review-session-"));
@@ -157,24 +158,38 @@ test("workspace session rejects a two-dot child view parent before snapshotting 
  }finally{rmSync(parent,{recursive:true,force:true});}
 });
 
-test("G06 rechaza rutas sensibles antes de persistir blobs o abrir la revisión",t=>{
- const {root,git}=repository(t);
- const parent=mkdtempSync(join(tmpdir(),"asen-sensitive-review-"));
- t.after(()=>rmSync(parent,{recursive:true,force:true}));
- const input={repositoryRoot:root,intendedUntracked:[".ENV.synthetic"],sessionId:"pi-session",reviewerId:"reviewer-model",viewParent:parent,risk};
- const secret="ASEN dato sintético no persistir\n";
- writeFileSync(join(root,".ENV.synthetic"),secret);
- const objectId=git("hash-object","--no-filters",".ENV.synthetic");
- const before={head:git("rev-parse","HEAD"),index:git("write-tree")};
- assert.throws(()=>openWorkspaceReview(input),/Sensitive path/u);
- assert.throws(()=>git("cat-file","-e",objectId));
- assert.deepEqual(readdirSync(parent),[]);
- assert.deepEqual({head:git("rev-parse","HEAD"),index:git("write-tree")},before);
- git("add","-f",".ENV.synthetic");git("commit","-qm","dato sintético rastreado");
- writeFileSync(join(root,".ENV.synthetic"),secret+"modificado");
- const modified=git("hash-object","--no-filters",".ENV.synthetic"),trackedBefore={head:git("rev-parse","HEAD"),index:git("write-tree")};
- assert.throws(()=>openWorkspaceReview({...input,intendedUntracked:[]}),/Sensitive path/u);
- assert.throws(()=>git("cat-file","-e",modified));
- assert.deepEqual(readdirSync(parent),[]);
- assert.deepEqual({head:git("rev-parse","HEAD"),index:git("write-tree")},trackedBefore);
+test("G06 predicado Docker clasifica rutas sintéticas sin acceder al disco",()=>{
+ for(const predicate of [sensitivePath,hasSensitiveName]){
+  for(const path of [".docker/config.json",".docker\\config.json","fixture/.docker/config.json",resolve("fixture",".docker","config.json")]){
+   assert.equal(predicate(path),true,`${predicate.name}: ${path}`);
+  }
+  for(const path of ["docker/config.json","fixture/not.docker/config.json",".docker/settings.json",".docker/config.json.bak"]){
+   assert.equal(predicate(path),false,`${predicate.name}: ${path}`);
+  }
+ }
 });
+
+for(const relativePath of [".ENV.synthetic",".docker/config.json"]){
+ test(`G06 rechaza ${relativePath} antes de persistir objetos o abrir la revisión`,t=>{
+  const {root,git}=repository(t);
+  const parent=mkdtempSync(join(tmpdir(),"asen-sensitive-review-"));
+  t.after(()=>rmSync(parent,{recursive:true,force:true}));
+  const input={repositoryRoot:root,intendedUntracked:[relativePath],sessionId:"pi-session",reviewerId:"reviewer-model",viewParent:parent,risk};
+  const selection={reviewPaths:[relativePath]},file=join(root,relativePath);
+  const state=()=>({head:git("rev-parse","HEAD"),index:git("write-tree"),objects:git("count-objects","-v")});
+  mkdirSync(dirname(file),{recursive:true});
+  function assertRejected(intendedUntracked:string[]){
+   const objectId=git("hash-object","--no-filters",relativePath),before=state();
+   assert.throws(()=>git("cat-file","-e",objectId));
+   assert.throws(()=>openWorkspaceReview({...input,intendedUntracked},selection),/Sensitive path/u);
+   assert.throws(()=>git("cat-file","-e",objectId));
+   assert.deepEqual(readdirSync(parent),[]);
+   assert.deepEqual(state(),before);
+  }
+  writeFileSync(file,"ASEN fixture inocuo inicial\n");
+  assertRejected([relativePath]);
+  git("add","-f",relativePath);git("commit","-qm","fixture rastreado");
+  writeFileSync(file,"ASEN fixture inocuo modificado\n");
+  assertRejected([]);
+ });
+}
