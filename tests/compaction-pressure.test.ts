@@ -4,7 +4,7 @@ import {createCompactionPressureObserver,projectCompactionPressure} from "../src
 import {projectHostStatus} from "../src/runtime/ui/host-status-projection.js";
 import {renderAsenStatusLine} from "../src/runtime/ui/ide-panel.js";
 import {renderAsenT11CompactStatus} from "../src/runtime/ui/t11-compact-status.js";
-import {SettingsManager} from "@earendil-works/pi-coding-agent";
+import {SettingsManager,type ExtensionAPI,type ExtensionContext} from "@earendil-works/pi-coding-agent";
 
 const model={provider:"proveedor",id:"modelo"};
 const usage={tokens:40_000,contextWindow:100_000};
@@ -61,7 +61,29 @@ test("G02 coincide con la reserva efectiva del SDK Pi instalado",()=>{
 test("G02 observa una sola vez el contexto y separa presión de ocupación",()=>{
  let calls=0,reads=0;
  let settings:unknown={compaction:{reserveTokens:50_000}},current:unknown={...usage,percent:40};
- const host={model,getContextUsage(){calls++;assert.equal(this,host);return current;}};
+ const forbiddenCalls={modelRegistry:0,setModel:0,sendUserMessage:0,sendMessage:0,compact:0,sessionManager:0,getEntries:0,getBranch:0};
+ const forbid=(surface:keyof typeof forbiddenCalls):never=>{
+  forbiddenCalls[surface]++;
+  throw Error(`Acceso inesperado al host: ${surface}`);
+ };
+ const actions={
+  setModel:()=>forbid("setModel"),
+  sendUserMessage:()=>forbid("sendUserMessage"),
+  sendMessage:()=>forbid("sendMessage"),
+ } satisfies Pick<ExtensionAPI,"setModel"|"sendUserMessage"|"sendMessage">;
+ const history={
+  getEntries:()=>forbid("getEntries"),
+  getBranch:()=>forbid("getBranch"),
+ } satisfies Pick<ExtensionContext["sessionManager"],"getEntries"|"getBranch">;
+ // Expone también acciones de pi al proyector, sin conectar un host real.
+ const host={
+  ...actions,
+  model,
+  get modelRegistry():ExtensionContext["modelRegistry"]{return forbid("modelRegistry");},
+  compact:(()=>forbid("compact")) satisfies ExtensionContext["compact"],
+  get sessionManager(){forbiddenCalls.sessionManager++;return history;},
+  getContextUsage(){calls++;assert.equal(this,host);return current;},
+ };
  const read=()=>{reads++;return settings;};
  const snapshot=()=>({todos:[],agents:[],jobs:[],hostStatus:projectHostStatus(host,undefined,read)});
  const first=snapshot();
@@ -72,6 +94,7 @@ test("G02 observa una sola vez el contexto y separa presión de ocupación",()=>
   const line=render(first,139);
   assert.match(line,/ctx 40%/u);assert.match(line,/compact\. 80%/u);
  }
+ assert.equal(calls,1);assert.equal(reads,1);
  current={tokens:50_000,contextWindow:100_000,percent:50};
  assert.match(renderAsenT11CompactStatus(snapshot(),139),/! compact\. 100%/u);
  settings={compaction:{enabled:false}};
@@ -80,6 +103,8 @@ test("G02 observa una sola vez el contexto y separa presión de ocupación",()=>
  assert.match(renderAsenT11CompactStatus(snapshot(),139),/compact\. \?/u);
  assert.deepEqual(projectHostStatus(host,undefined,()=>{throw Error("secreto");}).compactionPressure,{state:"unknown",reason:"settings"});
  assert.equal(projectHostStatus(host).compactionPressure,undefined);
+ // Los contadores detectan un intento incluso si el proyector captura el error.
+ assert.deepEqual(forbiddenCalls,{modelRegistry:0,setModel:0,sendUserMessage:0,sendMessage:0,compact:0,sessionManager:0,getEntries:0,getBranch:0});
 });
 
 test("G02 actualiza el estado al cambiar ajustes en ambos sentidos sin iniciar modelos",()=>{
