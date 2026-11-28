@@ -1,6 +1,7 @@
 import test,{type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
 import {mkdtempSync,realpathSync,rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -40,6 +41,57 @@ function fixture(t:TestContext){
   readCount:()=>reads,writeCount:()=>writes,
   setSession:(value:string)=>{session=value;}};
 }
+test("M4 bloquea Judgment Day del Todo enlazado a Fix sin evidencia congelada",async (t:TestContext)=>{
+ const projectId=realpathSync(process.cwd()),sessionId="pi-propietaria";
+ const taskId="todo-12345678-1234-4123-8123-123456789abc";
+ const revision=execFileSync("git",["rev-parse","HEAD"],{cwd:projectId,encoding:"utf8"}).trim();
+ const at="2026-11-16T00:00:00.000Z",proposalId="a".repeat(64);
+ const current={taskId,sessionId,projectId,revision:3,state:"succeeded" as const,at};
+ const plan={role:"worker" as const,skillPaths:[],writeSurfaces:["src/reparar.ts"],
+  writerAuthorizationBasis:"{}",candidate:{id:"candidato",repository:projectId,revision,createdAt:at}};
+ const todo:ScopedOddTodo={taskId,title:"Reparar",events:[current],current,plan,
+  requestId:`asen-plan:fix-${proposalId.slice(0,24)}:worker`};
+ let row=todo,routeLookups=0;
+ const commands=new Map<string,Command>();
+ registerOrdinaryReviewCommand((name,command)=>commands.set(name,command),undefined,
+  async()=>{routeLookups++;return undefined;},async()=>[row]);
+ const notices:Array<{message:string;level?:string}> = [];
+ const context={cwd:projectId,hasUI:true,sessionManager:{getSessionId:()=>sessionId},
+  ui:{notify:(message:string,level?:string)=>notices.push({message,...(level?{level}:{})})}};
+ const run=(mode:string)=>commands.get("asen-review")!.handler(`todo ${taskId} ${mode}`,context);
+ const source={proposalId,treeIdentity:"b".repeat(40)};
+ await t.test("la ayuda indica qué exige el rejuicio de un Todo Fix",async()=>{
+  const usage=await commands.get("asen-review")!.handler("help",context);
+  assert.match(String(usage),/Judgment Day de un Todo vinculado a Fix requiere linaje de reparación verificado y evidencia por cada hallazgo congelado\./u);
+  assert.deepEqual(notices,[{message:usage,level:"info"}]);
+ });
+ for(const [name,fixSource] of [
+  ["origen presente, sin hallazgos congelados",source],
+  ["árbol malformado",{...source,treeIdentity:"inválido"}],
+  ["propuesta ajena al identificador del Todo",{...source,proposalId:"c".repeat(64)}]
+ ] as const)await t.test(name,async()=>{
+  routeLookups=0;
+  notices.length=0;
+  row={...todo,plan:{...plan,fixSource}};
+  const reason="Fix-linked Todo Judgment Day requires verified repair lineage and explicit evidence for each frozen finding";
+  assert.deepEqual(await run("judgment-day"),{status:"blocked",reason});
+  assert.deepEqual(notices,[{message:reason,level:"error"}]);
+  assert.equal(routeLookups,0,"El rechazo debe ocurrir antes de resolver perfiles o preparar la revisión");
+ });
+ await t.test("un Todo normal no se clasifica por un prefijo parecido a Fix",async()=>{
+  routeLookups=0;
+  row=todo;
+  assert.equal((await run("judgment-day") as {status:string}).status,"unavailable","Sin registro de modelos se conserva la salida ordinaria");
+  assert.equal(routeLookups,4);
+ });
+ await t.test("la revisión adaptativa del Todo Fix sigue el flujo ordinario",async()=>{
+  routeLookups=0;
+  row={...todo,plan:{...plan,fixSource:source}};
+  assert.equal((await run("adaptive") as {status:string}).status,"unavailable");
+  assert.equal(routeLookups,4);
+ });
+});
+
 test("T04/T08 el comando real enlaza Fix con el borrador ODD sin crear tareas",async t=>{
  const f=fixture(t);
  f.register(async()=>[f.proposal]);

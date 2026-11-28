@@ -691,6 +691,12 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     const first=(await readOddTodos(context)).find(row=>row.taskId===oddMatch[1]);
     validate();
     if(!first)throw new Error("The requested ODD Todo is absent from the owning session");
+    // The Fix link pins a source tree, but the proposal journal keeps paths, not
+    // frozen findings. Do not silently turn this re-judgment into a new review.
+    if(oddMatch[2]==="judgment-day"&&first.plan&&Object.hasOwn(first.plan,"fixSource")){
+     const reason="Fix-linked Todo Judgment Day requires verified repair lineage and explicit evidence for each frozen finding";
+     context.ui.notify(reason,"error");return {status:"blocked",reason};
+    }
     const head=gitHead();
     const lenses=["risk","resilience","reliability","readability"] as const;
     const profiles=await Promise.all(lenses.map(async lens=>{
@@ -731,7 +737,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review todo <id> 4r | /asen-review todo <id> judgment-day | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review fix-plan <id> status | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review todo <id> 4r | /asen-review todo <id> judgment-day | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review fix-plan <id> status | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go). Judgment Day de un Todo vinculado a Fix requiere linaje de reparación verificado y evidencia por cada hallazgo congelado.";context.ui.notify(usage,"info");return usage;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");
