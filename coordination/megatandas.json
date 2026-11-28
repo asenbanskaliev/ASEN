@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
+      "sha": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Cerrar verificación de G06 acotada; P04 terminal solo con nueva hipótesis reproducible.",
+        "next": "Validar puertas de 0ce7708e; quedan alcance Verifier, identidad durable, Fix, P04, P05/CTX reales y aceptación M6",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -479,27 +479,29 @@
           ],
           "state": "bloqueada-sin-publicar",
           "reason": "Tipos correctos en primer ajuste; job-79 llegó a recuperación pero registró .asen/ no contemplado. Tras acotar metadatos esperados, hubo timeout y fallo de Writer simulado; job-86 fue bloqueado antes del despacho. No hay causa estable ni validación verde; se preserva diff local y no se debilitan controles."
+        },
+        "fifthBatch": {
+          "sha": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
+          "base": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
+          "state": "publicada-espera-ci-y-revision",
+          "commits": [
+            "c2d09243"
+          ],
+          "paths": [
+            "src/review/review-tree-inspection.ts",
+            "src/review/review-view.ts",
+            "src/review/review-session.ts",
+            "src/review/workspace-review-session.ts",
+            "src/review/ordinary-review-command.ts",
+            "tests/ordinary-review-workspace-flow.test.ts",
+            "tests/workspace-review-session.test.ts",
+            "odd/tasks/asen-pi-local-megatandas.md"
+          ],
+          "checks": "90 correctas, 7 POSIX omitidas y 0 fallos; pin, ciclos, tipos y build correctos. Revisión independiente favorable al diff final (5/5), diferencial para vista completa preservado. P04 terminal no incluido.",
+          "nvidiaCalls": 0
         }
       },
-      "lease": {
-        "id": "pi-local-E-M4-g2-vista-acotada-9a45d980",
-        "team": "E",
-        "generation": 2,
-        "package": "M4",
-        "base": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-vista-acotada",
-        "phase": "G06-vista-ordinaria-acotada-arbol-exacto",
-        "files": [
-          "src/review/review-tree-inspection.ts",
-          "src/review/review-view.ts",
-          "src/review/review-session.ts",
-          "src/review/workspace-review-session.ts",
-          "src/review/ordinary-review-command.ts",
-          "tests/ordinary-review-workspace-flow.test.ts",
-          "tests/workspace-review-session.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
