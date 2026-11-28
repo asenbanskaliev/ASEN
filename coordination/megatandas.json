@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Validar puertas de 0ce7708e; quedan alcance Verifier, identidad durable, Fix, P04, P05/CTX reales y aceptación M6",
+        "next": "Conservar G06 del Verifier abierto; continuar carril P05 sin proveedor y confirmar puertas de 0ce7708e.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -499,25 +499,15 @@
           ],
           "checks": "90 correctas, 7 POSIX omitidas y 0 fallos; pin, ciclos, tipos y build correctos. Revisión independiente favorable al diff final (5/5), diferencial para vista completa preservado. P04 terminal no incluido.",
           "nvidiaCalls": 0
+        },
+        "verifierIgnore": {
+          "sha": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-verifier-ignorados",
+          "state": "pendiente-sin-editar",
+          "reason": "El hijo recibe solo la ruta viva, no identidad candidata ni ubicación autenticada de metadatos Git. No seguir redirecciones de worktrees enlazados ni bloquear sus lecturas válidas. Requiere vincular alcance y metadatos desde el padre autorizado."
         }
       },
-      "lease": {
-        "id": "pi-local-E-M4-g2-verifier-ignorados-0ce7708e",
-        "team": "E",
-        "generation": 2,
-        "package": "M4",
-        "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-verifier-ignorados",
-        "phase": "G06-lectura-Verifier-ignorado-no-rastreado",
-        "files": [
-          "extensions/authority.ts",
-          "src/agents/pi-authority-assets.ts",
-          "src/security/verifier-read-scope.ts",
-          "tests/pi-authority.test.ts",
-          "tests/pi-authority-temp-load.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
