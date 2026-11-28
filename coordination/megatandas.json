@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "08b72241db0880ea5e6730e9f32c6e3da77edf44",
+      "sha": "3904bed0ea03262e87698838083b9c375d2c5e89",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Verificar CI, Release Gate y CodeRabbit por SHA exacto; abrir nueva reserva independiente para matriz pública G04/P01",
+        "next": "Consultar puertas de 3904bed0; reservar unidad G06 de rutas sensibles de vistas. Siguen pendientes identidad Verifier, G05 durable, G03 integral y M5/M6.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -389,31 +389,30 @@
           "localFull": "FALLO: Pi nativo M2 offline termina 0xC0000409 en base y candidato con el mismo comprobante simulado. Lifecycle 15/15 y siete auditorías correctas. Sin suite completa verde.",
           "risk": "2: guard; verificador independiente favorable solo como protección parcial",
           "nvidiaCalls": 0
-        }
-      },
-      "lease": {
-        "id": "pi-local-E-M4-g2-g04-catalogo-08b72241",
-        "team": "E",
-        "generation": 2,
-        "package": "M4",
-        "base": "08b72241db0880ea5e6730e9f32c6e3da77edf44",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g04-catalogo",
-        "phase": "G04-P01-matriz-publica-sin-proveedor",
-        "files": [
-          "tests/native-partition-flow.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md",
-          "src/review/ordinary-review-command.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-ayuda-compatible",
+        },
+        "secondBatch": {
+          "sha": "3904bed0ea03262e87698838083b9c375d2c5e89",
+          "state": "publicada-espera-ci-y-revision",
           "base": "08b72241db0880ea5e6730e9f32c6e3da77edf44",
-          "phase": "correccion-compatibilidad-ayuda-publica",
-          "files": [
+          "commits": [
+            "b0959476",
+            "d7fb89e5"
+          ],
+          "paths": [
+            "tests/native-partition-flow.test.ts",
+            "odd/tasks/asen-pi-local-megatandas.md",
             "src/review/ordinary-review-command.ts"
           ],
-          "failureRun": 46133172744
+          "checks": "97 pruebas de ayuda/Fix, 7 UI, fachada Pi, ciclos, typecheck y 8 de partición correctas; sin suite completa local verde ni llamadas a NVIDIA.",
+          "previousCi": {
+            "run": 46133172777,
+            "pi": 46133172744,
+            "releaseGate": 46133172796,
+            "reason": "Salida histórica sin argumentos alterada en 08b72241; corregida en b0959476. Release Gate anterior correcto."
+          }
         }
-      }
+      },
+      "lease": null
     }
   },
   "packages": {
