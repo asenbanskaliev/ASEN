@@ -19,7 +19,7 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 - T2 [S1–S4,S6–S7] M4 G05/P06 parcial: bloquear rejuicio de Todo Fix sin linaje verificable; worker y verificador independiente; `5100fb01`, consolidado `b344b54a`.
 - T3 [S4–S7] Publicar y verificar las tandas parciales M3/M4; coordinador E; `08b72241` publicado; `b0959476` corrige la ayuda histórica.
 - T6 [S1–S4,S6–S7] M3/M4 pendientes: matriz G04/P01 `d7fb89e5`, acuse M3 `7d137c7b`, vista ordinaria G06 `c2d09243`; quedan Verifier, linaje y límite durable G05/P06 y fronteras restantes G03/P04.
-- T4 [S1,S3,S6–S7] M5 G02/G07/CTX/P05; costes `20af9866`, comparador sintético `6fc98ef2` y ensayo pareado de runtime local `c4ddd1e0`. Faltan mediciones reales de modelos y CTX.
+- T4 [S1,S3,S6–S7] M5: costes `20af9866`, P05 sintético `6fc98ef2`, P05 runtime local `c4ddd1e0`, G02 sin llamadas `f23b6774`, G07 día UTC `39749c89`. Faltan desglose por proveedor/modelo, mediciones reales P05 y CTX.
 - T5 [S1,S3,S5–S7] M6: aceptación integral y límites de la evidencia; rama y reserva por definir; commit pendiente.
 
 ## Log
@@ -112,3 +112,7 @@ G06 `c2d09243`: revisión ordinaria y corrección materializan solo los archivos
 `0ce7708e`: CI `46145560859`, Release Gate `46145560946` y CodeRabbit correctos para el SHA exacto, sin hilos abiertos. M5 `c4ddd1e0` ejecutó la misma carga de dos Explorers sintéticos con una y dos plazas. En `job-101` se observaron picos 1 y 2, solapamiento 0 y 4,17 ms, dos terminales exactos por corrida y ninguna repetición. Typecheck y batería M5: 16/16, sin omisiones. Es una observación del runtime local con barreras de prueba, no una medición de Pi, inferencia, CTX, calidad de modelo o ahorro. Coste desconocido, `globalFull:false`.
 
 M4 identidad observada: aún no se integra. Las 26 pruebas funcionales pasaron en local, pero la inspección de seguridad detectó que el lector del anexo no liga la preparación de la ruta al descriptor abierto. El HMAC no evita lecturas de rutas sustituidas. Falta también justificar el límite de anexos huérfanos. No se modifican recibos históricos ni permisos en esta tanda.
+
+### L14
+
+`88ea4176`: CI `46147655688`, Release Gate `46147655721` y check CodeRabbit correctos, sin hilos. G02 `f23b6774`: presión activa conserva porcentaje de ventana y consume la misma muestra sin llamadas de inferencia, compactación ni accesos a historial; 73/73 en pruebas relacionadas. G07 `39749c89`: `/asen-stats --by-day` (sin `from`/`to`) añade días UTC por instante de evento; por defecto no cambia JSON v2 ni el filtro histórico por sesión. RED 1, GREEN 12/12 y revisión independiente favorable; seis invocaciones históricas conservan stdout, stderr y código de salida (job-112). Sin etiquetas privadas, costes inferidos o cambios en los archivos de historial. G07 por proveedor/modelo, aceptación P05/CTX y `globalFull:false` no cambian.
