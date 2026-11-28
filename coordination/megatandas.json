@@ -350,7 +350,22 @@
         "phase": "M1-M2-integradas",
         "writeReservation": false
       },
-      "lease": null
+      "lease": {
+        "id": "manual-E-M3-M4-g2-bloque-58084fc",
+        "team": "E",
+        "generation": 2,
+        "package": "M3-M4",
+        "base": "58084fcea90f4eec107078002a638f2101f0c7b4",
+        "branch": "feat/asen-equipo-E-M3-M4-g2-consolidacion-20261128",
+        "phase": "implementacion-conjunta",
+        "files": [
+          "tests/native-partition-flow.test.ts",
+          "src/runtime/lifecycle/native-integration-review.ts",
+          "tests/asen-c-checkpoint-recovery.test.ts",
+          "src/review/workspace-review-projection.ts",
+          "tests/workspace-review-session.test.ts"
+        ]
+      }
     }
   },
   "packages": {
