@@ -574,8 +574,19 @@
           "src/stats/pi-history-command.ts",
           "tests/pi-history-stats.test.ts",
           "docs/runtime-tools.md",
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
+          "odd/tasks/asen-pi-local-megatandas.md",
+          "src/runtime/lifecycle/native-fix-lineage-contract.ts",
+          "tests/native-fix-lineage-contract.test.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
+          "base": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
+          "phase": "T7-G05-v2-contrato-y-transiciones-sinteticas-sin-activar",
+          "files": [
+            "src/runtime/lifecycle/native-fix-lineage-contract.ts",
+            "tests/native-fix-lineage-contract.test.ts"
+          ]
+        }
       }
     }
   },
