@@ -391,7 +391,19 @@
           "nvidiaCalls": 0
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M4-g2-g04-catalogo-08b72241",
+        "team": "E",
+        "generation": 2,
+        "package": "M4",
+        "base": "08b72241db0880ea5e6730e9f32c6e3da77edf44",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g04-catalogo",
+        "phase": "G04-P01-matriz-publica-sin-proveedor",
+        "files": [
+          "tests/native-partition-flow.test.ts",
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
+      }
     }
   },
   "packages": {
