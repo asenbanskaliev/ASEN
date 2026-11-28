@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "01c487ec01a8d2d0841494f6b96be5029524ce0a",
+      "sha": "444559ff9abf2951c32e392c96c50c8f972653e0",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "G05 v2 sin activación: contrato local, prueba 4/4, revisión y comprobaciones locales en curso sin reserva. Validar CodeRabbit de G07 antes de declarar la tanda cerrada.",
+        "next": "Verificar puertas de 444559ff; T6/P04 y T7/G05 en carriles independientes; M6 punto 18 con 12/12 recibos de anfitrión, aceptación 16/17 y modelos pendiente.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -564,7 +564,7 @@
         "eighthBatch": {
           "sha": "01c487ec01a8d2d0841494f6b96be5029524ce0a",
           "base": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
-          "state": "CI-y-ReleaseGate-correctos-CodeRabbit-en-curso",
+          "state": "CI-ReleaseGate-CodeRabbit-correctos-con-hallazgo-documental",
           "commits": [
             "6e9578c2"
           ],
@@ -579,21 +579,16 @@
           "checks": "65 correctas 1 POSIX omitida. Pin, typecheck, ciclos y build correctos. Revisión independiente G07 favorable 14/14. Seis modos previos idénticos, no consulta a modelo/registro/proveedor.",
           "nvidiaCalls": 0,
           "ci": 46151881840,
-          "releaseGate": 46151881784
+          "releaseGate": 46151881784,
+          "reviewThread": 4727361914,
+          "documentationFollowup": {
+            "sha": "444559ff9abf2951c32e392c96c50c8f972653e0",
+            "scope": "odd/tasks/asen-pi-local-megatandas.md",
+            "state": "publicado-espera-controles-exactos"
+          }
         }
       },
-      "lease": {
-        "id": "pi-local-E-M5-g2-g07-odd-review-01c487ec",
-        "team": "E",
-        "generation": 2,
-        "package": "M5",
-        "base": "01c487ec01a8d2d0841494f6b96be5029524ce0a",
-        "branch": "feat/asen-equipo-E-M5-g2-pi-local-g07-modelo-activo",
-        "phase": "G07-CodeRabbit-4727361914-documentacion",
-        "files": [
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
