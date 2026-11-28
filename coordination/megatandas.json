@@ -401,8 +401,18 @@
         "phase": "G04-P01-matriz-publica-sin-proveedor",
         "files": [
           "tests/native-partition-flow.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
+          "odd/tasks/asen-pi-local-megatandas.md",
+          "src/review/ordinary-review-command.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-ayuda-compatible",
+          "base": "08b72241db0880ea5e6730e9f32c6e3da77edf44",
+          "phase": "correccion-compatibilidad-ayuda-publica",
+          "files": [
+            "src/review/ordinary-review-command.ts"
+          ],
+          "failureRun": 46133172744
+        }
       }
     }
   },
