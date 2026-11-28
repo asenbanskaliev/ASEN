@@ -654,7 +654,7 @@
           },
           "parentTransport": {
             "base": "c29f379b72c5faddea9de9219139f3c861f9d853",
-            "state": "5-5-local-espera-verificacion-independiente",
+            "state": "revision-bloquea-ventana-final-de-revocacion",
             "activation": false
           }
         },
@@ -665,7 +665,19 @@
           "commit": "0a14aa02"
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M4-g2-g06-revocacion-c29f379b",
+        "team": "E",
+        "generation": 2,
+        "package": "M4",
+        "base": "c29f379b72c5faddea9de9219139f3c861f9d853",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g06-vista-verifier",
+        "phase": "T6-G06-S9-cerrar-ventana-revocacion-antes-IPC",
+        "files": [
+          "src/agents/verifier-read-transport.ts",
+          "tests/verifier-read-transport.test.ts"
+        ]
+      }
     }
   },
   "packages": {
