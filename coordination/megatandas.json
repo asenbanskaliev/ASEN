@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
+      "sha": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Conservar G06 del Verifier abierto; continuar carril P05 sin proveedor y confirmar puertas de 0ce7708e.",
+        "next": "Validar 88ea4176 en CI y revalidar de forma independiente el anexo M4 en su base separada antes de portar.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -483,7 +483,7 @@
         "fifthBatch": {
           "sha": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
           "base": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
-          "state": "publicada-espera-ci-y-revision",
+          "state": "CI-ReleaseGate-y-CodeRabbit-correctos",
           "commits": [
             "c2d09243"
           ],
@@ -498,42 +498,47 @@
             "odd/tasks/asen-pi-local-megatandas.md"
           ],
           "checks": "90 correctas, 7 POSIX omitidas y 0 fallos; pin, ciclos, tipos y build correctos. Revisión independiente favorable al diff final (5/5), diferencial para vista completa preservado. P04 terminal no incluido.",
-          "nvidiaCalls": 0
+          "nvidiaCalls": 0,
+          "ci": 46145560859,
+          "releaseGate": 46145560946,
+          "piRuntime": 46145560987,
+          "openReviewThreads": 0
         },
         "verifierIgnore": {
           "sha": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
           "branch": "feat/asen-equipo-E-M4-g2-pi-local-verifier-ignorados",
           "state": "pendiente-sin-editar",
           "reason": "El hijo recibe solo la ruta viva, no identidad candidata ni ubicación autenticada de metadatos Git. No seguir redirecciones de worktrees enlazados ni bloquear sus lecturas válidas. Requiere vincular alcance y metadatos desde el padre autorizado."
+        },
+        "sixthBatch": {
+          "sha": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
+          "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
+          "state": "publicada-espera-ci-y-revision",
+          "commits": [
+            "c4ddd1e0"
+          ],
+          "paths": [
+            "tests/megatanda-b-parallel-runtime.test.ts",
+            "odd/tasks/asen-pi-local-megatandas.md"
+          ],
+          "checks": "Typecheck y 16/16 M5. Picos 1/2 en carga sintética local; coste desconocido. M4 no incluido por bloqueo de lectura de anexo/retención.",
+          "nvidiaCalls": 0
         }
       },
       "lease": {
-        "id": "pi-local-E-M5-g2-runtime-pareado-0ce7708e",
+        "id": "pi-local-E-M4-g2-identidad-observada-0ce7708e",
         "team": "E",
         "generation": 2,
-        "package": "M5",
+        "package": "M4",
         "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
-        "branch": "feat/asen-equipo-E-M5-g2-pi-local-runtime-pareado",
-        "phase": "P05-evidencia-pareada-runtime-sin-proveedor",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-identidad-observada",
+        "phase": "G04-requisito-identidad-observada-durable-sin-autoridad",
         "files": [
-          "tests/megatanda-b-parallel-runtime.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md",
           "src/agents/dispatcher.ts",
           "src/runtime/agents/agent-store.ts",
           "src/agents/agent-runtime.ts",
           "tests/agent-store.test.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-identidad-observada",
-          "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
-          "phase": "G04-requisito-identidad-observada-durable-sin-autoridad",
-          "files": [
-            "src/agents/dispatcher.ts",
-            "src/runtime/agents/agent-store.ts",
-            "src/agents/agent-runtime.ts",
-            "tests/agent-store.test.ts"
-          ]
-        }
+        ]
       }
     }
   },
