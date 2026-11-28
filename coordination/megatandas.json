@@ -350,17 +350,39 @@
         "phase": "M1-M2-integradas",
         "writeReservation": false
       },
+      "localPiProgress": {
+        "pr": 163,
+        "candidate": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
+        "m3": {
+          "sha": "9eadc6d35124d035fcd512072c9a50af03b3e727",
+          "paths": [
+            "odd/tasks/asen-pi-local-megatandas.md",
+            "tests/ef604-native-pi-headless-restart.test.ts"
+          ],
+          "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
+          "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
+        },
+        "next": "M4 G05/P06: comprobar e integrar límite de rejuicio en el Fix público sin ampliar autoridad",
+        "globalFull": false
+      },
       "lease": {
-        "id": "pi-local-E-M3-g2-writer-restart-7b8c727b",
+        "id": "pi-local-E-M4-g2-fix-rounds-7b8c727b",
         "team": "E",
         "generation": 2,
-        "package": "M3",
+        "package": "M4",
         "base": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
-        "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart",
-        "phase": "G03-P04-prueba-reinicio-padre-sin-proveedor",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-fix-rounds",
+        "phase": "G05-P06-consumidor-limite-de-rejuicio",
         "files": [
           "odd/tasks/asen-pi-local-megatandas.md",
-          "tests/ef604-native-pi-headless-restart.test.ts"
+          "src/review/ordinary-review-command.ts",
+          "src/review/dual-rejudgment.ts",
+          "src/review/judgment-fix-proposal-journal.ts",
+          "src/review/judgment-fix-odd-preflight.ts",
+          "tests/judgment-fix-odd-save.test.ts",
+          "tests/judgment-fix-odd-command.test.ts",
+          "tests/judgment-fix-proposal-journal.test.ts",
+          "tests/dual-rejudgment-two-rounds-negative.test.ts"
         ]
       }
     }
