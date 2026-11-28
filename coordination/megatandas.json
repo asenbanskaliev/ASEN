@@ -460,7 +460,25 @@
           "nvidiaCalls": 0
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M4-g2-vista-acotada-9a45d980",
+        "team": "E",
+        "generation": 2,
+        "package": "M4",
+        "base": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-vista-acotada",
+        "phase": "G06-vista-ordinaria-acotada-arbol-exacto",
+        "files": [
+          "src/review/review-tree-inspection.ts",
+          "src/review/review-view.ts",
+          "src/review/review-session.ts",
+          "src/review/workspace-review-session.ts",
+          "src/review/ordinary-review-command.ts",
+          "tests/ordinary-review-workspace-flow.test.ts",
+          "tests/workspace-review-session.test.ts",
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
+      }
     }
   },
   "packages": {
