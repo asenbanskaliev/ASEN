@@ -507,7 +507,19 @@
           "reason": "El hijo recibe solo la ruta viva, no identidad candidata ni ubicación autenticada de metadatos Git. No seguir redirecciones de worktrees enlazados ni bloquear sus lecturas válidas. Requiere vincular alcance y metadatos desde el padre autorizado."
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M5-g2-runtime-pareado-0ce7708e",
+        "team": "E",
+        "generation": 2,
+        "package": "M5",
+        "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
+        "branch": "feat/asen-equipo-E-M5-g2-pi-local-runtime-pareado",
+        "phase": "P05-evidencia-pareada-runtime-sin-proveedor",
+        "files": [
+          "tests/megatanda-b-parallel-runtime.test.ts",
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
+      }
     }
   },
   "packages": {
