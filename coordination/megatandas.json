@@ -362,37 +362,45 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "M4 G05/P06: establecer primero un enlace verificable de hallazgos y propuesta para rejuicio; sin aumentar autoridad Writer",
+        "next": "Publicar lote agrupado en PR #163 tras validación local y liberar reserva antes de esperar CI",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
           "previousLease": "pi-local-E-M4-g2-fix-rounds-7b8c727b",
           "result": "Sin cambios: falta ligar fixSource del Todo con el informe y dictámenes explícitos sobre hallazgos originales; no inferir por sesión ni omisión.",
           "task": "mx06r7kg-2-0ff5"
+        },
+        "batch": {
+          "sha": "08b72241db0880ea5e6730e9f32c6e3da77edf44",
+          "branch": "feat/asen-equipo-E-M3-M4-g2-pi-local-tanda01",
+          "paths": [
+            "odd/tasks/asen-pi-local-megatandas.md",
+            "src/review/ordinary-review-command.ts",
+            "tests/ef604-native-pi-headless-restart.test.ts",
+            "tests/judgment-fix-odd-command.test.ts"
+          ],
+          "commits": [
+            "9eadc6d35124d035fcd512072c9a50af03b3e727",
+            "b344b54a"
+          ],
+          "checks": "M3: 4 correctas, 1 POSIX omitida. M4: 24 correctas de Fix, 17 de comando/ayuda; diferencial idéntico; verificador independiente favorable al bloqueo parcial. check:fast, build, import cycles y typecheck correctos; suite completa reubicada tras fallo por .git en ruta candidata.",
+          "state": "validacion-local-en-curso",
+          "remaining": "G03/P04 integral, G04/P01 catálogo público e identidad Verifier, G05/P06 linaje y límite durable, G06 residual; M5/M6 sin cerrar"
         }
       },
       "lease": {
-        "id": "pi-local-E-M4-g2-fix-lineage-7b8c727b",
+        "id": "pi-local-E-M3-M4-g2-tanda01-08b72241",
         "team": "E",
         "generation": 2,
-        "package": "M4",
+        "package": "M3-M4",
         "base": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-fix-lineage",
-        "phase": "G05-P06-evidencia-de-linaje-y-dictamen",
+        "branch": "feat/asen-equipo-E-M3-M4-g2-pi-local-tanda01",
+        "phase": "consolidacion-publicacion-tanda01",
         "files": [
           "odd/tasks/asen-pi-local-megatandas.md",
           "src/review/ordinary-review-command.ts",
-          "src/review/dual-rejudgment.ts",
-          "src/review/judgment-fix-proposal-journal.ts",
-          "src/review/judgment-fix-odd-preflight.ts",
-          "tests/judgment-fix-odd-save.test.ts",
-          "tests/judgment-fix-odd-command.test.ts",
-          "tests/judgment-fix-proposal-journal.test.ts",
-          "tests/dual-rejudgment-two-rounds-negative.test.ts",
-          "src/review/judgment-day.ts",
-          "src/review/pi-model-reviewer.ts",
-          "tests/judgment-day.test.ts",
-          "tests/pi-model-reviewer.test.ts"
+          "tests/ef604-native-pi-headless-restart.test.ts",
+          "tests/judgment-fix-odd-command.test.ts"
         ]
       }
     }
