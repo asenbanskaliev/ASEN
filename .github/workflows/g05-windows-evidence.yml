@@ -1,0 +1,48 @@
+name: G05 Windows storage evidence
+
+on:
+  push:
+    branches:
+      - feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2
+    paths:
+      - '.github/workflows/g05-windows-evidence.yml'
+      - 'tests/fixtures/g05-windows/**'
+      - 'tests/native-fix-windows-storage.test.mjs'
+
+permissions: {}
+
+jobs:
+  synthetic-ntfs:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify synthetic NTFS privacy without skips
+        shell: pwsh
+        run: |
+          if ((git rev-parse HEAD) -cne $env:GITHUB_SHA) { throw 'Wrong candidate SHA' }
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $vsRoot = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vsRoot) { throw 'Preinstalled MSVC not found' }
+          $env:G05_VSDEV = Join-Path $vsRoot 'Common7\Tools\VsDevCmd.bat'
+          $driver = Join-Path $env:RUNNER_TEMP 'g05-ntfs.cmd'
+          $tap = Join-Path $env:RUNNER_TEMP 'g05-ntfs.tap'
+          @'
+          @echo off
+          call "%G05_VSDEV%" -no_logo -arch=x64
+          if errorlevel 1 exit /b 1
+          where cl.exe
+          if errorlevel 1 exit /b 1
+          node --test --test-reporter=tap tests/native-fix-windows-storage.test.mjs
+          exit /b %errorlevel%
+          '@ | Set-Content -LiteralPath $driver -Encoding ascii
+          & cmd.exe /d /c ('"{0}"' -f $driver) | Tee-Object -FilePath $tap
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $result = Get-Content -LiteralPath $tap
+          if (-not ($result -cmatch '^# pass [1-9][0-9]*$') -or $result -cnotcontains '# skipped 0') {
+            throw 'Missing successful Windows tests or skips detected'
+          }
