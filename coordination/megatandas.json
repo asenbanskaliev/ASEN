@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Verificar CI/Release Gate/CodeRabbit de 91e34d64 y acotar dos unidades disjuntas G03 y P05, sin proveedores.",
+        "next": "Regenerar pin exacto y validar antes de agrupar con los dos carriles reservados.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -423,7 +423,7 @@
         "thirdBatch": {
           "sha": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
           "base": "3904bed0ea03262e87698838083b9c375d2c5e89",
-          "state": "publicada-espera-ci-y-revision",
+          "state": "CI-fallida-release-gate-correcta",
           "commits": [
             "20af9866",
             "91e34d64"
@@ -434,7 +434,11 @@
             "tests/workspace-review-session.test.ts"
           ],
           "checks": "88 de 90 correctas, 2 fixtures POSIX omitidos en Windows, 0 fallos; ciclos, tipos y build correctos. G06 verificación independiente favorable y diferencial de 12 decisiones. Audit EF: 8 verificadas, 15 parciales, 5 bloqueadas; solo estructural.",
-          "nvidiaCalls": 0
+          "nvidiaCalls": 0,
+          "ci": 46139246834,
+          "releaseGate": 46139246770,
+          "codeRabbitReply": 4726756449,
+          "reason": "Pin de integridad de path-safety.ts desactualizado; RED local confirmado; no desactivar guard."
         }
       },
       "lease": {
@@ -449,7 +453,8 @@
           "tests/agent-rpc-tui-handoff.test.ts",
           "scripts/agent-flow-asen-scaling.ts",
           "tests/agent-flow-asen-scaling.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md"
+          "odd/tasks/asen-pi-local-megatandas.md",
+          "src/agents/pi-authority-assets.ts"
         ],
         "pairedUnit": {
           "branch": "feat/asen-equipo-E-M5-g2-pi-local-p05-offline",
@@ -459,6 +464,15 @@
             "scripts/agent-flow-asen-scaling.ts",
             "tests/agent-flow-asen-scaling.test.ts"
           ]
+        },
+        "correctionUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-pin-g06",
+          "base": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
+          "phase": "G06-actualizar-pin-sin-cambiar-validacion",
+          "files": [
+            "src/agents/pi-authority-assets.ts"
+          ],
+          "failureRun": 46139246834
         }
       }
     }
