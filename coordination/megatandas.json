@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "G06 exige decidir un contrato explícito de autorización de lectura candidato-Verifier; no inferir acceso de rutas cambiadas. P04 ConPTY requiere cierre seguro y fase manual. G05 integración autenticada pendiente.",
+        "next": "S9 autorización humana por candidato; S10 desarrollo gestionado apagado, no firma/distribución de producción. Dos unidades sintéticas disjuntas.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -642,11 +642,34 @@
         },
         "g06Verifier": {
           "base": "444559ff9abf2951c32e392c96c50c8f972653e0",
-          "state": "bloqueado-por-emisor-de-lectura-ausente",
+          "state": "S9-aprobado-implementar-emisor-sin-despacho",
           "codeChanged": false
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M4-g2-g06-g05-S9-S10-444559ff",
+        "team": "E",
+        "generation": 2,
+        "package": "M4",
+        "base": "444559ff9abf2951c32e392c96c50c8f972653e0",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g06-vista-verifier",
+        "phase": "T6-G06-S9-emisor-local-sin-despacho",
+        "files": [
+          "src/runtime/lifecycle/verifier-read-approval.ts",
+          "tests/verifier-read-approval.test.ts",
+          "src/runtime/managed/managed-fix-storage-backend.ts",
+          "tests/managed-fix-storage-backend.test.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
+          "base": "922de0a4ee2e04ece4b9d114bfd8d8bde6d0eae4",
+          "phase": "T7-G05-S10-preflight-backend-firmado-sintetico-apagado",
+          "files": [
+            "src/runtime/managed/managed-fix-storage-backend.ts",
+            "tests/managed-fix-storage-backend.test.ts"
+          ]
+        }
+      }
     }
   },
   "packages": {
