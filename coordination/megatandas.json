@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
+      "sha": "01c487ec01a8d2d0841494f6b96be5029524ce0a",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Comprobar CI/Release Gate/CodeRabbit de 26f30eb8. G07 dimensiones de identidad requieren privacidad explícita. Pendientes M3/M4 y M6 no cerrados.",
+        "next": "Validar 01c487ec; trabajar en T7/G05 v2 según autorización exacta registrada en ODD, sin activar v2 ni modificar v1 prematuramente.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -543,7 +543,7 @@
         "seventhBatch": {
           "sha": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
           "base": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
-          "state": "publicada-espera-ci-y-revision",
+          "state": "CI-y-ReleaseGate-correctos",
           "commits": [
             "39749c89",
             "f23b6774"
@@ -557,36 +557,41 @@
             "tests/compaction-pressure.test.ts"
           ],
           "checks": "112/112 sin omisiones; pin, tipos, ciclos, build correctos; revisión independiente G07 favorable y diferencial seis modos históricos byte a byte. G02 confirma cero llamadas o historial. G07 solo fecha UTC, no proveedor/modelo ni CTX real.",
+          "nvidiaCalls": 0,
+          "ci": 46149659344,
+          "releaseGate": 46149659316
+        },
+        "eighthBatch": {
+          "sha": "01c487ec01a8d2d0841494f6b96be5029524ce0a",
+          "base": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
+          "state": "publicada-espera-ci-y-revision",
+          "commits": [
+            "6e9578c2"
+          ],
+          "paths": [
+            "extensions/asen.ts",
+            "src/stats/pi-history-stats.ts",
+            "src/stats/pi-history-command.ts",
+            "tests/pi-history-stats.test.ts",
+            "docs/runtime-tools.md",
+            "odd/tasks/asen-pi-local-megatandas.md"
+          ],
+          "checks": "65 correctas 1 POSIX omitida. Pin, typecheck, ciclos y build correctos. Revisión independiente G07 favorable 14/14. Seis modos previos idénticos, no consulta a modelo/registro/proveedor.",
           "nvidiaCalls": 0
         }
       },
       "lease": {
-        "id": "pi-local-E-M5-g2-g07-modelo-activo-26f30eb8",
+        "id": "pi-local-E-M4-g2-g05-contrato-v2-26f30eb8",
         "team": "E",
         "generation": 2,
-        "package": "M5",
+        "package": "M4",
         "base": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
-        "branch": "feat/asen-equipo-E-M5-g2-pi-local-g07-modelo-activo",
-        "phase": "G07-opt-in-modelo-activo-sin-catalogo",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
+        "phase": "T7-G05-v2-contrato-y-transiciones-sinteticas-sin-activar",
         "files": [
-          "extensions/asen.ts",
-          "src/stats/pi-history-stats.ts",
-          "src/stats/pi-history-command.ts",
-          "tests/pi-history-stats.test.ts",
-          "docs/runtime-tools.md",
-          "odd/tasks/asen-pi-local-megatandas.md",
           "src/runtime/lifecycle/native-fix-lineage-contract.ts",
           "tests/native-fix-lineage-contract.test.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
-          "base": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
-          "phase": "T7-G05-v2-contrato-y-transiciones-sinteticas-sin-activar",
-          "files": [
-            "src/runtime/lifecycle/native-fix-lineage-contract.ts",
-            "tests/native-fix-lineage-contract.test.ts"
-          ]
-        }
+        ]
       }
     }
   },
