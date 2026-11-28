@@ -615,8 +615,22 @@
         "phase": "T6-P04-PTY-nativo-con-autoridad-separada-de-fixture",
         "files": [
           "tests/p04-pi-tui-terminal-restart.test.ts",
-          "tests/fixtures/p04-tui-terminal-extension.ts"
-        ]
+          "tests/fixtures/p04-tui-terminal-extension.ts",
+          "tests/fixtures/g05-windows/private-store.c",
+          "tests/native-fix-windows-storage.test.mjs",
+          ".github/workflows/g05-windows-evidence.yml"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
+          "base": "52be1411094b14f1abdc115ae044169e5d79b476",
+          "candidate": "3fb8c75bd7bb09d545bad9c27d6475741fd6dedb",
+          "phase": "T7-G05-NTFS-CI-sintetico-exacto",
+          "files": [
+            "tests/fixtures/g05-windows/private-store.c",
+            "tests/native-fix-windows-storage.test.mjs",
+            ".github/workflows/g05-windows-evidence.yml"
+          ]
+        }
       }
     }
   },
