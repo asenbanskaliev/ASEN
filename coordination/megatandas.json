@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
+      "sha": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Regenerar pin exacto y validar antes de agrupar con los dos carriles reservados.",
+        "next": "Verificar CI/Release Gate/CodeRabbit del nuevo SHA. Sigue pendiente identidad ejecutada para Verifier, linaje de Fix, G06 vistas acotadas, fronteras P04, comparación real y M6.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -439,42 +439,28 @@
           "releaseGate": 46139246770,
           "codeRabbitReply": 4726756449,
           "reason": "Pin de integridad de path-safety.ts desactualizado; RED local confirmado; no desactivar guard."
-        }
-      },
-      "lease": {
-        "id": "pi-local-E-M3-M5-g2-ack-p05-91e34d64",
-        "team": "E",
-        "generation": 2,
-        "package": "M3-M5",
-        "base": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
-        "branch": "feat/asen-equipo-E-M3-g2-pi-local-ack-reinicio",
-        "phase": "G03-acuse-tras-reinicio",
-        "files": [
-          "tests/agent-rpc-tui-handoff.test.ts",
-          "scripts/agent-flow-asen-scaling.ts",
-          "tests/agent-flow-asen-scaling.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md",
-          "src/agents/pi-authority-assets.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M5-g2-pi-local-p05-offline",
-          "base": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
-          "phase": "P05-comparacion-sintetica-uno-dos",
-          "files": [
-            "scripts/agent-flow-asen-scaling.ts",
-            "tests/agent-flow-asen-scaling.test.ts"
-          ]
         },
-        "correctionUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-pin-g06",
+        "fourthBatch": {
+          "sha": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
           "base": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
-          "phase": "G06-actualizar-pin-sin-cambiar-validacion",
-          "files": [
+          "state": "publicada-espera-ci-y-revision",
+          "commits": [
+            "ae0d41af",
+            "7d137c7b",
+            "6fc98ef2"
+          ],
+          "paths": [
+            "tests/agent-rpc-tui-handoff.test.ts",
+            "scripts/agent-flow-asen-scaling.ts",
+            "tests/agent-flow-asen-scaling.test.ts",
+            "odd/tasks/asen-pi-local-megatandas.md",
             "src/agents/pi-authority-assets.ts"
           ],
-          "failureRun": 46139246834
+          "checks": "142/142 sin omisiones al aislar suite en serie. Corrida paralela 141/142 por escaneo del temporal global; tipos, ciclos y build bien. Siete pins íntegros y verificación independiente favorable. M3 host simulado, P05 solo sintético; sin aceptación real.",
+          "nvidiaCalls": 0
         }
-      }
+      },
+      "lease": null
     }
   },
   "packages": {
