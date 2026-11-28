@@ -538,7 +538,22 @@
           "verification": "mx0f1uad-z-hbgg; mx0f6f3f-10-aj25"
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M5-g2-g07-dia-utc-88ea4176",
+        "team": "E",
+        "generation": 2,
+        "package": "M5",
+        "base": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
+        "branch": "feat/asen-equipo-E-M5-g2-pi-local-g07-dia-utc",
+        "phase": "G07-desglose-optativo-por-evento-UTC",
+        "files": [
+          "src/stats/pi-history-stats.ts",
+          "src/stats/pi-history-command.ts",
+          "tests/pi-history-stats.test.ts",
+          "docs/runtime-tools.md",
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
+      }
     }
   },
   "packages": {
