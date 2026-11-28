@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "G06 adaptador padre en revisión sin reserva; no despacho real. Sin avance en aprobación manual P04, G04 RPC o carga G05.",
+        "next": "G06 S11 validar conjunto firmado de runtime sintético. Falta primitiva de generación sellada para activarlo. P04 manual no ejecutado.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -654,9 +654,11 @@
           },
           "parentTransport": {
             "base": "c29f379b72c5faddea9de9219139f3c861f9d853",
-            "state": "revocacion-RED-1-GREEN-6-6-espera-verificacion",
-            "activation": false
-          }
+            "state": "revocacion-cerrada-6-6-verificado",
+            "activation": false,
+            "commit": "142b61350870e3d54d5366aeae948c9144280225"
+          },
+          "managedRuntime": "S11 aprobado; preparar verificación previa sin lanzamiento ni concesiones"
         },
         "g05Managed": {
           "base": "922de0a4ee2e04ece4b9d114bfd8d8bde6d0eae4",
@@ -665,7 +667,19 @@
           "commit": "0a14aa02"
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M4-g2-g06-generacion-S11-142b6135",
+        "team": "E",
+        "generation": 2,
+        "package": "M4",
+        "base": "142b61350870e3d54d5366aeae948c9144280225",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g06-vista-verifier",
+        "phase": "T6-G06-S11-preflight-generacion-sintetica-sin-lanzamiento",
+        "files": [
+          "src/runtime/managed/managed-verifier-runtime.ts",
+          "tests/managed-verifier-runtime.test.ts"
+        ]
+      }
     }
   },
   "packages": {
