@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Canal IPC G06 en revisión sin reserva, aún no conecta Verifier real. G05 sin garantía de carga; P04 y G04 siguen abiertos.",
+        "next": "G06 conectar el emisor verificado con adaptador padre IPC, sin activar despacho ni TUI; G05, G04 y P04 conservan fronteras pendientes.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -645,7 +645,13 @@
           "state": "emisor-interno-verificado-sin-despacho",
           "codeChanged": false,
           "commit": "f56a1ec6306efd5e2d8b9adadbfee73851f3874d",
-          "privateChannel": "IPC-Node-Windows-sintetico-1-1-en-revision; raw-pipe-timeout"
+          "privateChannel": {
+            "sha": "c29f379b72c5faddea9de9219139f3c861f9d853",
+            "windowsPass": 1,
+            "independentPass": 1,
+            "skipped": 0,
+            "rawPipe": "timeout-reportado-no-repetido"
+          }
         },
         "g05Managed": {
           "base": "922de0a4ee2e04ece4b9d114bfd8d8bde6d0eae4",
@@ -654,7 +660,19 @@
           "commit": "0a14aa02"
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M4-g2-g06-transporte-c29f379b",
+        "team": "E",
+        "generation": 2,
+        "package": "M4",
+        "base": "c29f379b72c5faddea9de9219139f3c861f9d853",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g06-vista-verifier",
+        "phase": "T6-G06-S9-adaptador-padre-IPC-candidato-sin-activar",
+        "files": [
+          "src/agents/verifier-read-transport.ts",
+          "tests/verifier-read-transport.test.ts"
+        ]
+      }
     }
   },
   "packages": {
