@@ -639,19 +639,8 @@
         "phase": "T6-P04-PTY-nativo-con-autoridad-separada-de-fixture",
         "files": [
           "tests/p04-pi-tui-terminal-restart.test.ts",
-          "tests/fixtures/p04-tui-terminal-extension.ts",
-          "src/agents/pi-artifact-runner.ts",
-          "tests/pi-artifact-runner-recovery.test.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g04-identidad-observada",
-          "base": "444559ff9abf2951c32e392c96c50c8f972653e0",
-          "phase": "T6-G04-observacion-final-transporte-sin-autoridad",
-          "files": [
-            "src/agents/pi-artifact-runner.ts",
-            "tests/pi-artifact-runner-recovery.test.ts"
-          ]
-        }
+          "tests/fixtures/p04-tui-terminal-extension.ts"
+        ]
       }
     }
   },
