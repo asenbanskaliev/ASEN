@@ -182,7 +182,7 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar CI y revisión exacta #163; auditar G04 existente, pruebas reales G03 y Fix E3, no declarar cierre integral.",
+      "next": "Traspaso Pi local: leer guía y registro vigente, verificar #163, CI exacta correcta, revisión independiente pendiente, completar M3/M4 y continuar M5/M6. No repetir M1/M2.",
       "blocker": null,
       "generation": 2,
       "pr": 163,
@@ -4493,10 +4493,30 @@
       "globalFull": false
     },
     "manualExecution": {
-      "state": "tareas-programadas-pausadas",
+      "state": "traspaso-hibrido-pi-local-preparado",
       "date": "2026-11-28",
       "owner": "E",
-      "rule": "Continuar solo desde el chat por petición del usuario, no reactivar tareas automáticamente."
+      "executor": "Pi Agent local C:\\ASEN",
+      "supervisor": "ChatGPT",
+      "candidate": {
+        "pr": 163,
+        "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
+        "branch": "feat/asen-equipo-E-M3-M4-g2-consolidacion-20261128"
+      },
+      "guide": "coordination/continuacion-local-pi.md",
+      "rule": "Cinco tareas pausadas. Pi local único ejecutor coordinado; ChatGPT supervisa/audita sin escribir mientras Pi tenga reserva. No reactivar tareas. Reservar antes de editar; no hay reserva activa de ejecución hasta que Pi la reclame.",
+      "globalFull": false,
+      "ci": {
+        "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
+        "run": 46124949068,
+        "releaseGate": 46124949035,
+        "architecture": 46124949021,
+        "quick": 46124949023,
+        "pi": 46124949018,
+        "smoke": "skipped",
+        "result": "success",
+        "review": "hilo de firma pendiente de confirmación"
+      }
     },
     "lastImplementationBatch": {
       "pr": 163,
