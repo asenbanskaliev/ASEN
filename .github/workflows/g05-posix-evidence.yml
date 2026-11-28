@@ -1,0 +1,39 @@
+name: G05 POSIX storage evidence
+
+on:
+  push:
+    branches:
+      - feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2
+    paths:
+      - '.github/workflows/g05-posix-evidence.yml'
+      - 'tests/fixtures/g05-posix/**'
+      - 'tests/native-fix-posix-storage.test.mjs'
+
+permissions: {}
+
+jobs:
+  synthetic-storage:
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify synthetic storage without skips
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          uname -sm
+          cc --version
+          node --version
+          result="$RUNNER_TEMP/g05-posix.tap"
+          node --test --test-reporter=tap tests/native-fix-posix-storage.test.mjs | tee "$result"
+          grep -Eq '^# pass [1-9][0-9]*$' "$result"
+          grep -Fx '# skipped 0' "$result"
