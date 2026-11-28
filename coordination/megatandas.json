@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "P04 prueba PTY nativa reservada, sin automatizar consentimientos reales. G05 NTFS en revisión sin reserva: compilación aún no observada.",
+        "next": "Validar MSVC/NTFS en 3fb8c75b sin reserva; P04 TUI conserva su ámbito de implementación.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -603,6 +603,12 @@
           "sha": "444559ff9abf2951c32e392c96c50c8f972653e0",
           "changedFiles": 0,
           "testsRun": 0
+        },
+        "g05Ntfs": {
+          "sha": "3fb8c75bd7bb09d545bad9c27d6475741fd6dedb",
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
+          "state": "borrador-estatico-verificado-candidato-sintetico-espera-ci",
+          "activation": false
         }
       },
       "lease": {
@@ -615,22 +621,8 @@
         "phase": "T6-P04-PTY-nativo-con-autoridad-separada-de-fixture",
         "files": [
           "tests/p04-pi-tui-terminal-restart.test.ts",
-          "tests/fixtures/p04-tui-terminal-extension.ts",
-          "tests/fixtures/g05-windows/private-store.c",
-          "tests/native-fix-windows-storage.test.mjs",
-          ".github/workflows/g05-windows-evidence.yml"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
-          "base": "52be1411094b14f1abdc115ae044169e5d79b476",
-          "candidate": "3fb8c75bd7bb09d545bad9c27d6475741fd6dedb",
-          "phase": "T7-G05-NTFS-CI-sintetico-exacto",
-          "files": [
-            "tests/fixtures/g05-windows/private-store.c",
-            "tests/native-fix-windows-storage.test.mjs",
-            ".github/workflows/g05-windows-evidence.yml"
-          ]
-        }
+          "tests/fixtures/p04-tui-terminal-extension.ts"
+        ]
       }
     }
   },
