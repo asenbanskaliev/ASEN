@@ -501,7 +501,23 @@
           "nvidiaCalls": 0
         }
       },
-      "lease": null
+      "lease": {
+        "id": "pi-local-E-M4-g2-verifier-ignorados-0ce7708e",
+        "team": "E",
+        "generation": 2,
+        "package": "M4",
+        "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-verifier-ignorados",
+        "phase": "G06-lectura-Verifier-ignorado-no-rastreado",
+        "files": [
+          "extensions/authority.ts",
+          "src/agents/pi-authority-assets.ts",
+          "src/security/verifier-read-scope.ts",
+          "tests/pi-authority.test.ts",
+          "tests/pi-authority-temp-load.test.ts",
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
+      }
     }
   },
   "packages": {
