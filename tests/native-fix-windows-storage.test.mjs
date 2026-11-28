@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import {spawnSync} from "node:child_process";
-import {linkSync, mkdtempSync, renameSync, rmSync, symlinkSync} from "node:fs";
+import {spawn, spawnSync} from "node:child_process";
+import {once} from "node:events";
+import {linkSync, mkdtempSync, readdirSync, renameSync, rmSync, symlinkSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
@@ -59,5 +60,88 @@ test("G05: descriptores de objetos sintéticos privados en NTFS local", async (t
       throw error;
     }
     probe(cwd, "origin:reparse");
+  });
+
+  function session(sub, cwd, mode) {
+    const child = spawn(binary, [mode], {cwd, timeout: 30000});
+    let stdout = "", stderr = "", stdinError;
+    const done = once(child, "close");
+    const closed = done.then(([code, signal]) => ({code, signal, stdout, stderr, stdinError}));
+    // A launch error will be asserted by the consumer or the cleanup hook.
+    closed.catch(() => {});
+    sub.after(async () => {
+      if (child.exitCode === null && child.signalCode === null) child.kill();
+      await closed;
+    });
+    child.stdin.on("error", (error) => { stdinError = error; });
+    child.stderr.setEncoding("utf8").on("data", (data) => { stderr += data; });
+    const first = new Promise((resolve) => {
+      child.stdout.setEncoding("utf8").on("data", (data) => {
+        stdout += data;
+        if (stdout.includes("\n")) resolve(stdout.split("\n", 1)[0].trimEnd());
+      });
+    });
+    return {
+      child, closed,
+      async expect(line) {
+        const marker = await Promise.race([first, closed]);
+        assert.equal(marker, line, `barrera ${line}: ${JSON.stringify(marker)}`);
+      },
+    };
+  }
+  function snapshot(cwd, byte) {
+    const result = run(binary, ["snapshot"], cwd);
+    assert.deepEqual([result.status, result.stderr], [0, ""]);
+    const line = result.stdout.trim();
+    assert.match(line, new RegExp(`^state ${byte} [A-F0-9]{8}:[A-F0-9]{8}:[A-F0-9]{8}$`));
+    return line;
+  }
+  function entries(cwd) {
+    return readdirSync(join(cwd, "root", "origin")).sort();
+  }
+
+  await t.test("dos escritores se serializan y solo el CAS vigente publica", async (sub) => {
+    const cwd = setup("seed");
+    const old = snapshot(cwd, "0");
+    const first = session(sub, cwd, "write-a");
+    await first.expect("flushed");
+    const second = session(sub, cwd, "write-b");
+    await second.expect("blocked");
+    first.child.stdin.end("g");
+    const a = await first.closed;
+    const b = await second.closed;
+    assert.ifError(a.stdinError);
+    assert.deepEqual([a.code, a.signal, a.stderr], [0, null, ""]);
+    assert.deepEqual([b.code, b.signal, b.stdout.trim(), b.stderr.trim()], [1, null, "blocked", "stale"]);
+    const committed = snapshot(cwd, "A");
+    assert.equal(a.stdout.trim().replace(/^flushed\r?\n/, ""), committed);
+    assert.notEqual(old.split(" ")[2], committed.split(" ")[2]);
+    assert.deepEqual(entries(cwd), ["lock", "state"]);
+  });
+
+  await t.test("terminar tras el flush conserva estado e identidad y rechaza el temporal huérfano", async (sub) => {
+    const cwd = setup("seed");
+    const old = snapshot(cwd, "0");
+    const writer = session(sub, cwd, "write-a");
+    await writer.expect("flushed");
+    assert.equal(writer.child.kill("SIGKILL"), true);
+    const killed = await writer.closed;
+    assert.deepEqual([killed.code, killed.signal, killed.stdout.trim(), killed.stderr],
+      [null, "SIGKILL", "flushed", ""]);
+    assert.equal(snapshot(cwd, "0"), old);
+    assert.deepEqual(entries(cwd), ["lock", "pending", "state"]);
+    const retry = run(binary, ["write-b"], cwd);
+    assert.deepEqual([retry.status, retry.stdout, retry.stderr.trim()], [1, "", "orphan"]);
+    assert.equal(snapshot(cwd, "0"), old);
+    assert.deepEqual(entries(cwd), ["lock", "pending", "state"]);
+  });
+
+  await t.test("el CAS no usa un lock con un segundo enlace duro", () => {
+    const cwd = setup("seed");
+    snapshot(cwd, "0");
+    linkSync(join(cwd, "root", "origin", "lock"), join(cwd, "root", "alias"));
+    const retry = run(binary, ["write-b"], cwd);
+    assert.deepEqual([retry.status, retry.stdout, retry.stderr.trim()], [1, "", "lock:links"]);
+    assert.deepEqual(entries(cwd), ["lock", "state"]);
   });
 });
