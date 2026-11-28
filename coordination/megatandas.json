@@ -590,9 +590,13 @@
         "g05Posix": {
           "sha": "52be1411094b14f1abdc115ae044169e5d79b476",
           "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
-          "state": "candidato-sintetico-espera-ubuntu-y-macos",
+          "state": "POSIX-sintetico-verificado",
           "kernel": "b4c45518",
-          "activation": false
+          "activation": false,
+          "ci": 46155106643,
+          "ubuntuPass": 12,
+          "macosPass": 12,
+          "skipped": 0
         }
       },
       "lease": {
@@ -605,8 +609,21 @@
         "phase": "T6-P04-RPC-proceso-real-con-Writers-sinteticos",
         "files": [
           "tests/ef604-native-pi-headless-restart.test.ts",
-          "tests/fixtures/p04-rpc-terminal-extension.ts"
-        ]
+          "tests/fixtures/p04-rpc-terminal-extension.ts",
+          "tests/fixtures/g05-windows/private-store.c",
+          "tests/native-fix-windows-storage.test.mjs",
+          ".github/workflows/g05-windows-evidence.yml"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
+          "base": "52be1411094b14f1abdc115ae044169e5d79b476",
+          "phase": "T7-G05-NTFS-raiz-privada-y-hojas-por-handle-sin-activar",
+          "files": [
+            "tests/fixtures/g05-windows/private-store.c",
+            "tests/native-fix-windows-storage.test.mjs",
+            ".github/workflows/g05-windows-evidence.yml"
+          ]
+        }
       }
     }
   },
