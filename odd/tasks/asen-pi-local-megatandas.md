@@ -19,7 +19,7 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 - T2 [S1–S4,S6–S7] M4 G05/P06 parcial: bloquear rejuicio de Todo Fix sin linaje verificable; worker y verificador independiente; `5100fb01`, consolidado `b344b54a`.
 - T3 [S4–S7] Publicar y verificar las tandas parciales M3/M4; coordinador E; `08b72241` publicado; `b0959476` corrige la ayuda histórica.
 - T6 [S1–S4,S6–S7] M3/M4 pendientes: la matriz pública G04/P01 está en `d7fb89e5`; quedan identidad canónica del Verifier, linaje y límite durable G05/P06, rutas G06 de vistas/Verifier y evidencia restante de G03/P04; reserva por unidad.
-- T4 [S1,S3,S6–S7] M5 G02/G07/CTX/P05; rama y reserva por definir; commit pendiente.
+- T4 [S1,S3,S6–S7] M5 G02/G07/CTX/P05; contrato de costes en `20af9866` y comparador sintético en `6fc98ef2`; faltan mediciones pareadas reales.
 - T5 [S1,S3,S5–S7] M6: aceptación integral y límites de la evidencia; rama y reserva por definir; commit pendiente.
 
 ## Log
@@ -90,3 +90,11 @@ T6, auditoría `mx07h3xd-5-aixv`: el servicio interno ya contempla 1/2/3 identid
 G04/P01 `d7fb89e5`: matriz pública adicional sin proveedor. El modo proporcional separa el consentimiento de integración; el dual bloquea identidades insuficientes o alias del autor; con tres identidades válidas muestra el candidato y los dos jueces, y se deniega antes de transporte. No prueba independencia real ni el camino del Verifier E3. G06 se acota al contrato de rutas: staging ya rechaza sensibles cambiadas antes de blobs; el Verifier lee el repo del proyecto y la vista completa merece una comprobación separada para sensibles ya rastreadas. G06 no exige reescribir contenido de archivos permitidos. M5 auditado en solo lectura: falta prueba pública de coste cero versus desconocido y evidencia pareada P05/CTX. `globalFull:false`.
 
 Validación estándar: `job-41` pasó ciclos, typecheck y las 8 pruebas de `tests/native-partition-flow.test.ts`, sin omisiones. Las menciones Git a un lock corresponden al negativo ya existente. No se repitió la suite completa local tras el fallo reproducido en el SHA base.
+
+### L9
+
+En `3904bed0` pasaron CI `46135817672` y Release Gate `46135817554`. CodeRabbit señaló la ruta Docker raíz (`4726622134`); la corrección exacta está en `91e34d64`, con 88 pruebas correctas y 2 omisiones POSIX, más verificación independiente y diferencial. CodeRabbit confirmó el cambio en `4726756449`, sin ejecutar pruebas ni resolver el hilo. Release Gate `46139246770` pasó; CI `46139246834` falló porque faltaba actualizar el hash de `path-safety.ts`. RED local reproducido; `ae0d41af` actualiza solo ese hash, con los siete assets verificados y sin alterar guardas. Las vistas exactas y el Verifier de G06 siguen abiertos: no se materializaron archivos sensibles rastreados para probar esa brecha.
+
+### L10
+
+M3 `7d137c7b`: la TUI simulada se vuelve a registrar entre inspección y acuse; conserva IDs y diario, rechaza inspección anterior y no repite avisos o despachos. Es otra frontera del diario real, no una caída de TUI nativa ni prueba de consentimiento humano. M5/P05 `6fc98ef2`: `node --import tsx scripts/agent-flow-asen-scaling.ts <synthetic-pair.json>`. El objeto debe contener `observations`: dos filas con `system:"asen"`, `synthetic:true`, `requirementPassed:true`, `runId` distinto, `workerCount` 1 y 2, y `durationMs` positivo finito. Ambas deben compartir `commit` (SHA hexadecimal completo de 40 caracteres) y `taskDigest`, `toolsDigest`, `permissionsDigest`, `configDigest` (SHA-256 hexadecimal de 64 caracteres). Devuelve delta `t1−t2`, razón `t1/t2`, `costUsd:null`, `costConclusion:"unknown"` y `acceptance:"not-accepted"`. Sin proveedor, datos reales, recibo ni afirmación de mejora; rechaza 3 y 4 Workers. `globalFull:false`.
