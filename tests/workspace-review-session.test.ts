@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {cpSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,renameSync,rmSync,writeFileSync} from "node:fs";
+import {cpSync,mkdirSync,mkdtempSync,readdirSync,realpathSync,renameSync,rmSync,symlinkSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname,join,resolve} from "node:path";
 import {openWorkspaceReview,readWorkspaceReviewEvidence,closeWorkspaceReview,WorkspaceReviewScopeError} from "../src/review/workspace-review-session.js";
@@ -19,7 +19,7 @@ function repository(t:unknown):{root:string;git:(...args:string[])=>string}{
  return {root:resolve(root),git};
 }
 const risk={riskId:"T05-workspace",reason:"Review exact workspace candidate",severity:"high" as const,lenses:["risk" as const,"reliability" as const]};
-function open(t:unknown,root:string,git:(...args:string[])=>string){
+function open(t:unknown,root:string,_git:(...args:string[])=>string){
  const parent=mkdtempSync(join(tmpdir(),"asen-workspace-review-view-parent-"));
  (t as {after(callback:()=>void):void}).after(()=>rmSync(parent,{recursive:true,force:true}));
  return openWorkspaceReview({repositoryRoot:root,intendedUntracked:["new.txt"],sessionId:"pi-session",reviewerId:"reviewer-model",viewParent:parent,risk});
@@ -53,6 +53,40 @@ test("workspace review composes an exact tree, manifest, view, and RDD binding w
   assert.deepEqual(evidence.tests,{status:"not-run",records:[]});
   assert.equal(evidence.candidate.treeIdentity,review.projection.candidateTree);
  }finally{closeWorkspaceReview(review);}
+});
+
+test("G06 empty and deleted-only reviews keep full tree metadata with an empty scoped view",t=>{
+ const {root,git}=repository(t),parent=realpathSync(mkdtempSync(join(tmpdir(),"asen-empty-scoped-review-")));
+ t.after(()=>rmSync(parent,{recursive:true,force:true}));
+ writeFileSync(join(root,"unchanged.txt"),"not part of the change\n");
+ git("add","unchanged.txt");git("commit","-qm","record unchanged fixture");
+ const input={repositoryRoot:root,intendedUntracked:[],sessionId:"pi-session",reviewerId:"reviewer-model",viewParent:parent,risk};
+ const head=git("rev-parse","HEAD"),base=git("rev-parse","HEAD^{tree}"),index=git("write-tree");
+ for(const deleted of [false,true]){
+  if(deleted)unlinkSync(join(root,"target.txt"));
+  const review=openWorkspaceReview(input,{reviewPaths:deleted?["target.txt"]:[]});
+  try{
+   const {view}=review.session,evidence=readWorkspaceReviewEvidence(review);
+   assert.equal(view.scope,"workspace-changes");assert.deepEqual(view.paths,[]);assert.deepEqual(readdirSync(view.root),[]);
+   assert.deepEqual(review.manifest.entries,[]);assert.equal(review.manifest.treeEntryCount,deleted?1:2);
+   if(evidence.evidence.viewScope!=="workspace-changes")throw new Error("Workspace evidence must identify its view scope");
+   assert.equal(evidence.evidence.manifestTreeSha256,review.manifest.treeSha256);
+   assert.equal(evidence.evidence.viewManifestDigest,view.manifestDigest);assert.notEqual(view.manifestDigest,review.manifest.treeSha256);
+   assert.equal(evidence.candidate.treeIdentity,view.candidateTree);assert.equal(view.candidateTree===base,!deleted);
+   assert.deepEqual(evidence.candidateFiles,[]);assert.deepEqual(evidence.modifiedFiles.map(file=>[file.path,file.change]),deleted?[["target.txt","deleted"]]:[]);
+   assert.equal(evidence.diff.includes("unchanged.txt"),false);
+  }finally{closeWorkspaceReview(review);}
+  assert.deepEqual(readdirSync(parent),[]);assert.equal(git("rev-parse","HEAD"),head);assert.equal(git("write-tree"),index);
+ }
+});
+
+test("G06 omitting unchanged paths from the scoped view never hides a tracked symlink from validation",{skip:process.platform==="win32"},t=>{
+ const {root,git}=repository(t),parent=realpathSync(mkdtempSync(join(tmpdir(),"asen-symlink-scoped-review-")));
+ t.after(()=>rmSync(parent,{recursive:true,force:true}));
+ symlinkSync("target.txt",join(root,"linked"));git("add","linked");git("commit","-qm","record unchanged symlink");
+ writeFileSync(join(root,"target.txt"),"permitted candidate\n");
+ assert.throws(()=>openWorkspaceReview({repositoryRoot:root,intendedUntracked:[],sessionId:"pi-session",reviewerId:"reviewer-model",viewParent:parent,risk},{reviewPaths:["target.txt"]}),/links and gitlinks/u);
+ assert.deepEqual(readdirSync(parent),[]);
 });
 
 test("workspace drift after capture invalidates the session and rejects its prior result",t=>{
@@ -92,7 +126,7 @@ test("Git replacement objects cannot substitute the candidate diff",t=>{
 });
 
 test("workspace review supports a linked Git worktree with a stable relationship",t=>{
- const {root,git}=repository(t),parent=mkdtempSync(join(tmpdir(),"asen-linked-review-")),linked=join(parent,"checkout");
+ const {git}=repository(t),parent=mkdtempSync(join(tmpdir(),"asen-linked-review-")),linked=join(parent,"checkout");
  t.after(()=>rmSync(parent,{recursive:true,force:true}));
  git("worktree","add","--detach",linked,"HEAD");
  writeFileSync(join(linked,"target.txt"),"linked candidate\n");writeFileSync(join(linked,"new.txt"),"untracked candidate\n");

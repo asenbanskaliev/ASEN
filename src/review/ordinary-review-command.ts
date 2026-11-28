@@ -83,9 +83,8 @@ interface BoundOddReview{
 }
 interface CorrectionState{
  readonly request:CorrectionRequest;readonly repository:string;readonly sessionId:string;readonly priorRevision:string;readonly priorReviewerId:string;
- readonly baseCommit:string|null;readonly baseTree:string;
  readonly priorProjection:WorkspaceReviewProjection;
- readonly requirements:string;readonly reviewPaths:readonly string[];readonly intendedUntracked:readonly string[];readonly priorFiles:readonly Readonly<{path:string;mode:string;objectId:string}>[];
+ readonly requirements:string;readonly reviewPaths:readonly string[];readonly intendedUntracked:readonly string[];
  readonly allowedPaths:readonly string[];used:boolean;
 }
 const workspaceCorrections=new Map<string,CorrectionState>();
@@ -93,10 +92,6 @@ function reserveCorrectionSlot():{evicted?:readonly [string,CorrectionState]}|un
  if(workspaceCorrections.size<100)return {};
  for(const [id,state] of workspaceCorrections){if(!state.used){workspaceCorrections.delete(id);return {evicted:[id,state]};}}
  return undefined;
-}
-function changedCandidatePaths(before:readonly Readonly<{path:string;mode:string;objectId:string}>[],after:readonly Readonly<{path:string;mode:string;objectId:string}>[]):string[]{
- const previous=new Map(before.map(file=>[file.path,file.mode+":"+file.objectId])),current=new Map(after.map(file=>[file.path,file.mode+":"+file.objectId]));
- return [...new Set([...previous.keys(),...current.keys()])].filter(path=>previous.get(path)!==current.get(path)).sort();
 }
 function assertNoSensitiveReviewPaths(paths:readonly string[]):void{
  if(paths.some(hasSensitiveName))throw new Error("La revisión independiente no puede incluir rutas sensibles (.env*, *.pem, *.key)");
@@ -341,19 +336,6 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  try{
   const evidence=readWorkspaceReviewEvidence(workspace),paths=evidence.modifiedFiles.map(file=>file.path);
   assertNoSensitiveReviewPaths([...evidence.modifiedFiles.map(file=>file.path),...evidence.candidateFiles.map(file=>file.path)]);
-  if(correction){
-   const currentFiles=workspace.manifest.entries.map(entry=>({path:entry.path,mode:entry.mode,objectId:entry.objectId})),changed=changedCandidatePaths(correction.priorFiles,currentFiles);
-   if(workspace.projection.baseCommit!==correction.baseCommit||workspace.projection.baseTree!==correction.baseTree){
-    retireCorrection=true;
-    const result={status:"blocked",reason:"La base del candidato cambió; se requiere una revisión nueva."};
-    closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"error");return result;
-   }
-   if(evidence.candidate.treeIdentity===correction.priorRevision||changed.length===0||changed.some(path=>!correction.allowedPaths.includes(path))){
-    if(changed.some(path=>!correction.allowedPaths.includes(path))||paths.length===0)retireCorrection=true;
-    const result={status:"blocked",reason:"La corrección debe cambiar el candidato exacto y limitarse a los archivos señalados.",allowedPaths:correction.allowedPaths,changedPaths:changed};
-    closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"error");return result;
-   }
-  }
   if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
   const consent=await context.ui.confirm(judgmentDay?"Autorizar dos jueces independientes Judgment Day?":fourR?"Autorizar cuatro solicitudes de revisión 4R?":adaptive?`Autorizar ${selectedLenses.length} revisiones proporcionales?`:"Enviar el diff al modelo revisor?",[
    judgmentDay?"Pi enviará el mismo diff en DOS llamadas separadas a dos modelos independientes (posible coste por llamada):":fourR?"Pi enviará el mismo diff en CUATRO llamadas separadas a los modelos indicados abajo (posible coste por llamada):":adaptive?`Pi enviará el mismo diff en ${selectedLenses.length} llamadas separadas (posible coste por llamada):`:"Pi enviará el diff completo del candidato a:",
@@ -460,9 +442,9 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    if(!slot){status="blocked";}
    else{
     evictedCorrection=slot.evicted;
+    // Correction capture and revalidation compare the full private projection catalog, not the review view.
     const state:CorrectionState={request,repository:workspace.projection.repositoryRoot,sessionId:bound.sessionId,priorRevision:bound.revision,
-     priorReviewerId:bound.reviewerId,baseCommit:workspace.projection.baseCommit,baseTree:workspace.projection.baseTree,priorProjection:workspace.projection,requirements,reviewPaths,intendedUntracked:workspace.projection.intendedUntracked,
-     priorFiles:Object.freeze(workspace.manifest.entries.map(entry=>Object.freeze({path:entry.path,mode:entry.mode,objectId:entry.objectId}))),
+     priorReviewerId:bound.reviewerId,priorProjection:workspace.projection,requirements,reviewPaths,intendedUntracked:workspace.projection.intendedUntracked,
      allowedPaths:Object.freeze(findingPaths),used:false};
     workspaceCorrections.set(request.correctionId,state);
     issuedCorrectionId=request.correctionId;issuedCorrection=state;

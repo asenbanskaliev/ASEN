@@ -1,6 +1,6 @@
 import {createHash,randomUUID} from "node:crypto";
-import {inspectCandidateGitTree,inspectSelectedCandidateGitTree,type CandidateGitTreeManifest} from "./review-tree-inspection.js";
-import {openReviewSession,bindReviewSessionWorkspaceSource,type ReviewSession,assertReviewSessionOpen,closeReviewSession} from "./review-session.js";
+import {inspectSelectedCandidateGitTree,type ScopedWorkspaceReviewTree} from "./review-tree-inspection.js";
+import {openScopedWorkspaceReviewSession,bindReviewSessionWorkspaceSource,type ReviewSession,assertReviewSessionOpen,closeReviewSession} from "./review-session.js";
 import {captureWorkspaceReviewProjection,diffWorkspaceReviewProjection,isWorkspaceReviewProjectionGenuine,type WorkspaceReviewProjection,type WorkspaceReviewProjectionRequest,type WorkspaceCorrectionConstraint} from "./workspace-review-projection.js";
 export {WorkspaceReviewScopeError} from "./workspace-review-projection.js";
 import {isProxy} from "node:util/types";
@@ -20,7 +20,7 @@ export interface WorkspaceReviewSession{
  readonly requestId:string;
  readonly session:ReviewSession;
  readonly projection:WorkspaceReviewProjection;
- readonly manifest:CandidateGitTreeManifest;
+ readonly manifest:ScopedWorkspaceReviewTree;
 }
 export interface WorkspaceReviewEvidence{
  readonly schemaVersion:1;
@@ -34,9 +34,11 @@ export interface WorkspaceReviewEvidence{
  readonly diff:string;
  readonly tests:Readonly<{status:"not-run";records:readonly string[]}>;
  readonly risks:ReviewSession["risk"];
- readonly evidence:Readonly<{manifestTreeSha256:string;manifestEntries:number;viewIdentity:string}>;
+ readonly evidence:Readonly<{manifestTreeSha256:string;manifestEntries:number;viewIdentity:string}&(
+  {viewScope:"workspace-changes";viewManifestDigest:string;viewEntries:number}|{viewScope?:never}
+ )>;
 }
-interface WorkspaceClaim{readonly session:ReviewSession;readonly projection:WorkspaceReviewProjection;readonly request:WorkspaceReviewProjectionRequest;readonly requestId:string;readonly sessionId:string;readonly reviewerId:string;}
+interface WorkspaceClaim{readonly session:ReviewSession;readonly projection:WorkspaceReviewProjection;readonly manifest:ScopedWorkspaceReviewTree;readonly request:WorkspaceReviewProjectionRequest;readonly requestId:string;readonly sessionId:string;readonly reviewerId:string;}
 const liveWorkspaceReviews=new WeakMap<object,WorkspaceClaim>();
 const issuedWorkspaceEvidence=new WeakSet<object>();
 export function isWorkspaceReviewEvidenceGenuine(value:unknown):value is WorkspaceReviewEvidence{return typeof value==="object"&&value!==null&&issuedWorkspaceEvidence.has(value);}
@@ -78,8 +80,7 @@ export function openWorkspaceReview(input:WorkspaceReviewSessionInput,selection?
  if(parentIsInside)throw new Error("Workspace review view parent must be outside the repository");
  const projectionRequest=Object.freeze({repositoryRoot:root,intendedUntracked:Object.freeze([...input.intendedUntracked])});
  const projection=captureWorkspaceReviewProjection(projectionRequest,selected,correction);
- const manifest=inspectCandidateGitTree({repositoryRoot:projection.repositoryRoot,treeIdentity:projection.candidateTree});
- const session=openReviewSession(projection.repositoryRoot,manifest,parent,input.risk);
+ const {session,manifest}=openScopedWorkspaceReviewSession(projection,parent,input.risk);
  try{
   const requestId=createHash("sha256").update("asen.workspace-review.v1\0").update(JSON.stringify({
    attemptId:randomUUID(),
@@ -93,7 +94,7 @@ export function openWorkspaceReview(input:WorkspaceReviewSessionInput,selection?
   });
   assertReviewSessionOpen(session);
   const result=Object.freeze({requestId,session,projection,manifest});
-  liveWorkspaceReviews.set(result,{session,projection,request:projectionRequest,requestId,sessionId:input.sessionId,reviewerId:input.reviewerId});
+  liveWorkspaceReviews.set(result,{session,projection,manifest,request:projectionRequest,requestId,sessionId:input.sessionId,reviewerId:input.reviewerId});
   return result;
  }catch(error){
   try{closeReviewSession(session);}catch{/* Preserve the original failure; cleanup failure is fail-closed. */}
@@ -128,7 +129,8 @@ export function readWorkspaceReviewEvidence(value:unknown):WorkspaceReviewEviden
   modifiedFiles:Object.freeze(projection.entries.map(entry=>Object.freeze({path:entry.path,change:entry.change,mode:entry.mode,objectId:entry.objectId,contentSha256:entry.contentSha256}))),
   candidateFiles,
   diff,tests:Object.freeze({status:"not-run" as const,records:Object.freeze([] as string[])}),risks:session.risk,
-  evidence:Object.freeze({manifestTreeSha256:claim.session.view.manifestDigest,manifestEntries:claim.session.view.entryCount,viewIdentity:claim.session.view.viewIdentity}),
+  evidence:Object.freeze({manifestTreeSha256:claim.manifest.treeSha256,manifestEntries:claim.manifest.treeEntryCount,viewIdentity:session.view.viewIdentity,
+   viewScope:claim.manifest.scope,viewManifestDigest:session.view.manifestDigest,viewEntries:session.view.entryCount}),
  });
  issuedWorkspaceEvidence.add(evidence);return evidence;
 }
