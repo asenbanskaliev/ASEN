@@ -137,7 +137,7 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "M3-M4-tanda-publicada-espera-CI",
+      "state": "M3-M4-tanda-pi-publicada-espera-CI-revision",
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
+      "sha": "08b72241db0880ea5e6730e9f32c6e3da77edf44",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Publicar lote agrupado en PR #163 tras validación local y liberar reserva antes de esperar CI",
+        "next": "Verificar CI, Release Gate y CodeRabbit por SHA exacto; abrir nueva reserva independiente para matriz pública G04/P01",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -384,25 +384,14 @@
             "b344b54a"
           ],
           "checks": "M3: 4 correctas, 1 POSIX omitida. M4: 24 correctas de Fix, 17 de comando/ayuda; diferencial idéntico; verificador independiente favorable al bloqueo parcial. check:fast, build, import cycles y typecheck correctos; suite completa reubicada tras fallo por .git en ruta candidata.",
-          "state": "validacion-local-en-curso",
-          "remaining": "G03/P04 integral, G04/P01 catálogo público e identidad Verifier, G05/P06 linaje y límite durable, G06 residual; M5/M6 sin cerrar"
+          "state": "publicada-espera-ci-y-revision",
+          "remaining": "G03/P04 integral, G04/P01 catálogo público e identidad Verifier, G05/P06 linaje y límite durable, G06 residual; M5/M6 sin cerrar",
+          "localFull": "FALLO: Pi nativo M2 offline termina 0xC0000409 en base y candidato con el mismo comprobante simulado. Lifecycle 15/15 y siete auditorías correctas. Sin suite completa verde.",
+          "risk": "2: guard; verificador independiente favorable solo como protección parcial",
+          "nvidiaCalls": 0
         }
       },
-      "lease": {
-        "id": "pi-local-E-M3-M4-g2-tanda01-08b72241",
-        "team": "E",
-        "generation": 2,
-        "package": "M3-M4",
-        "base": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
-        "branch": "feat/asen-equipo-E-M3-M4-g2-pi-local-tanda01",
-        "phase": "consolidacion-publicacion-tanda01",
-        "files": [
-          "odd/tasks/asen-pi-local-megatandas.md",
-          "src/review/ordinary-review-command.ts",
-          "tests/ef604-native-pi-headless-restart.test.ts",
-          "tests/judgment-fix-odd-command.test.ts"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
