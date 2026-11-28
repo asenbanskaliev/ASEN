@@ -19,6 +19,7 @@ export interface CandidateGitTreeEntry{
 }
 export interface CandidateGitTreeManifest{
  readonly schemaVersion:1;
+ readonly scope?:never;
  readonly repositoryRoot:string;
  readonly gitDirectory:string;
  readonly objectFormat:"sha1"|"sha256";
@@ -26,6 +27,11 @@ export interface CandidateGitTreeManifest{
  readonly treeSize:number;
  readonly treeSha256:string;
  readonly entries:readonly CandidateGitTreeEntry[];
+}
+/** Full tree identity and validation metadata, with bytes for changed workspace files only. */
+export interface ScopedWorkspaceReviewTree extends Omit<CandidateGitTreeManifest,"scope">{
+ readonly scope:"workspace-changes";
+ readonly treeEntryCount:number;
 }
 
 interface InspectionRequest{repositoryRoot:string;treeIdentity:string;}
@@ -264,7 +270,7 @@ function freezeEntry(entry:CandidateGitTreeEntry):CandidateGitTreeEntry{return O
  * it creates no review view, grants no authority, and never traverses gitlinks.
  */
 export function inspectCandidateGitTree(input:unknown):CandidateGitTreeManifest{
- return inspectTree(input);
+ return inspectTree(input).manifest;
 }
 /** Inspección acotada a blobs de rutas exactas. Verifica el árbol raíz,
  * las rutas y objetos de directorio como en la inspección completa. */
@@ -272,9 +278,17 @@ export function inspectSelectedCandidateGitTree(input:unknown,paths:readonly str
  if(!Array.isArray(paths)||paths.length<1||paths.length>512)throw Error("Invalid selected tree paths");
  const selected=validatePortableReviewPaths([...paths]);
  if(selected.length!==paths.length||new Set(paths).size!==paths.length)throw Error("Invalid selected tree paths");
- return inspectTree(input,new Set(selected));
+ return inspectTree(input,new Set(selected)).manifest;
 }
-function inspectTree(input:unknown,selected?:ReadonlySet<string>):CandidateGitTreeManifest{
+/** Internal workspace view inspection; paths come from the genuine projection. */
+export function inspectScopedWorkspaceReviewTree(input:unknown,paths:readonly string[]):ScopedWorkspaceReviewTree{
+ const selected=new Set(validatePortableReviewPaths([...paths]));
+ if(selected.size!==paths.length)throw new Error("Invalid workspace view paths");
+ const {manifest,treeEntryCount}=inspectTree(input,selected,true);
+ if(manifest.entries.length!==selected.size)throw new Error("Workspace view paths do not bind the exact candidate tree");
+ return Object.freeze({...manifest,scope:"workspace-changes",treeEntryCount});
+}
+function inspectTree(input:unknown,selected?:ReadonlySet<string>,workspaceView=false):{manifest:CandidateGitTreeManifest;treeEntryCount:number}{
  const request=exactRequest(input);
  const deadline={expiresAt:monotonicMilliseconds()+operationLimit};
  if(!isAbsolute(request.repositoryRoot))throw new Error("Repository root must be canonical");
@@ -302,8 +316,15 @@ function inspectTree(input:unknown,selected?:ReadonlySet<string>):CandidateGitTr
    if(separator>=0)nonemptyDirectories.add(item.path.slice(0,separator));
   }
   const portablePaths:string[]=[];
+  let treeEntryCount=0;
   for(const item of listed){
    assertDeadline(deadline);
+   if(item.type!=="tree"){
+    treeEntryCount++;
+    // The old complete workspace view rejected these anywhere in the tree.
+    // Do not let the blob scope hide a link or gitlink from that validation.
+    if(workspaceView&&(item.type!=="blob"||(item.mode!=="100644"&&item.mode!=="100755")))throw new Error("Review view refuses links and gitlinks");
+   }
    if(item.type!=="tree"||!nonemptyDirectories.has(item.path))portablePaths.push(item.path);
   }
   validatePortableReviewPaths(portablePaths);
@@ -317,7 +338,8 @@ function inspectTree(input:unknown,selected?:ReadonlySet<string>):CandidateGitTr
     if(retained>aggregateLimit)throw new Error("Candidate tree exceeds aggregate inspection bounds");
     continue;
    }
-   if(selected&&!selected.has(item.path))continue;
+   const omitted=selected!==undefined&&!selected.has(item.path);
+   if(omitted&&!workspaceView)continue;
    if(item.type==="commit"){
     if(item.mode!=="160000")throw new Error("Git tree contains an unsupported commit entry");
     entries.push(freezeEntry({path:item.path,kind:"gitlink",mode:"160000",objectId:item.objectId,size:null,contentSha256:null,bytesBase64:null}));
@@ -325,8 +347,11 @@ function inspectTree(input:unknown,selected?:ReadonlySet<string>):CandidateGitTr
    }
    if(item.mode!=="100644"&&item.mode!=="100755"&&item.mode!=="120000")throw new Error("Git tree contains an unsupported blob mode");
    const bytes=readVerifiedObject(root,gitDirectory,scratch,deadline,binding,facts.format,"blob",item.objectId);
+   // Preserve the complete inspection's aggregate accounting even when the
+   // verified bytes are discarded here without creating an encoded entry.
    retained+=bytes.length+Math.ceil(bytes.length/3)*4;
    if(retained>aggregateLimit)throw new Error("Candidate tree exceeds aggregate inspection bounds");
+   if(omitted)continue;
    entries.push(freezeEntry({path:item.path,kind:item.mode==="120000"?"symlink":"regular",mode:item.mode,objectId:item.objectId,
     size:bytes.length,contentSha256:createHash("sha256").update(bytes).digest("hex"),bytesBase64:bytes.toString("base64")}));
   }
@@ -335,8 +360,9 @@ function inspectTree(input:unknown,selected?:ReadonlySet<string>):CandidateGitTr
   assertDeadline(deadline);
   if(!samePhysicalDirectory(root)||!samePhysicalDirectory(gitDirectory))throw new Error("Repository physical identity changed");
   assertRepositoryBinding(binding);
-  return Object.freeze({schemaVersion:1,repositoryRoot:root.realPath,gitDirectory:gitDirectory.realPath,objectFormat:facts.format,
+  const manifest=Object.freeze({schemaVersion:1 as const,repositoryRoot:root.realPath,gitDirectory:gitDirectory.realPath,objectFormat:facts.format,
    treeIdentity:request.treeIdentity,treeSize:rootBytes.length,treeSha256:createHash("sha256").update(rootBytes).digest("hex"),entries:Object.freeze(entries)});
+  return {manifest,treeEntryCount};
  }catch(error){primaryError=error;throw error;}
  finally{
   try{disposeScratch(scratch);}catch(cleanupError){

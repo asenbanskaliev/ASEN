@@ -1,6 +1,6 @@
 import {createHash} from "node:crypto";
-import type {CandidateGitTreeManifest} from "./review-tree-inspection.js";
-import {materializeReviewView,disposeReviewView,revalidateReviewView,type ReviewView} from "./review-view.js";
+import {inspectScopedWorkspaceReviewTree,type CandidateGitTreeManifest,type ScopedWorkspaceReviewTree} from "./review-tree-inspection.js";
+import {materializeReviewView,materializeScopedWorkspaceReviewView,disposeReviewView,revalidateReviewView,type ReviewView} from "./review-view.js";
 import {planReviewRisk,type ReviewPlan,type ReviewRiskInput} from "./review-risk.js";
 import {assertOrdinaryReviewCheckoutGenuine,revalidateOrdinaryReviewCheckout,type OrdinaryReviewCheckout} from "./ordinary-review-controller.js";
 import {isWorkspaceReviewProjectionGenuine,revalidateWorkspaceReviewProjection,type WorkspaceReviewProjection,type WorkspaceReviewProjectionRequest} from "./workspace-review-projection.js";
@@ -16,7 +16,7 @@ export interface ReviewSession{
  readonly inputDigest:string;
  readonly state:ReviewSessionState;
 }
-interface SessionClaim{state:"open"|"closed"|"invalid";manifest:CandidateGitTreeManifest;checkout?:OrdinaryReviewCheckout;workspace?:{projection:WorkspaceReviewProjection;request:WorkspaceReviewProjectionRequest;review:WorkspaceReviewIdentity};rddClaimed?:boolean;}
+interface SessionClaim{state:"open"|"closed"|"invalid";manifest:CandidateGitTreeManifest|ScopedWorkspaceReviewTree;viewProjection?:WorkspaceReviewProjection;checkout?:OrdinaryReviewCheckout;workspace?:{projection:WorkspaceReviewProjection;request:WorkspaceReviewProjectionRequest;review:WorkspaceReviewIdentity};rddClaimed?:boolean;}
 const claims=new WeakMap<object,SessionClaim>();
 export interface WorkspaceReviewIdentity{readonly requestId:string;readonly sessionId:string;readonly reviewerId:string;readonly revision:string;readonly treeIdentity:string;readonly parentIdentity:string;}
 function exactWorkspaceIdentity(value:unknown):WorkspaceReviewIdentity{
@@ -37,14 +37,35 @@ export function openReviewSession(repository:string,manifest:CandidateGitTreeMan
  if(typeof repository!=="string"||!repository)throw new Error("Review session repository is invalid");
  if(manifest.repositoryRoot!==repository)throw new Error("Review session manifest does not bind the checkout");
  const risk=planReviewRisk(riskInput);
- const view=materializeReviewView(manifest,parent);
+ return issueReviewSession(manifest,materializeReviewView(manifest,parent),risk);
+}
+
+/** The workspace projection, not the caller's requested paths, defines this view. */
+export function openScopedWorkspaceReviewSession(projection:WorkspaceReviewProjection,parent:string,riskInput:ReviewRiskInput):{session:ReviewSession;manifest:ScopedWorkspaceReviewTree}{
+ if(!isWorkspaceReviewProjectionGenuine(projection))throw new Error("Review session workspace projection is not genuine");
+ const {repositoryRoot, candidateTree:treeIdentity}=projection;
+ const changed=projection.entries.filter(entry=>entry.change!=="deleted"&&(entry.mode==="100644"||entry.mode==="100755"));
+ const expected=new Map(changed.map(entry=>[entry.path,entry]));
+ const manifest=inspectScopedWorkspaceReviewTree({repositoryRoot,treeIdentity},[...expected.keys()]);
+ for(const entry of manifest.entries){
+  const source=expected.get(entry.path);
+  if(!source||source.mode!==entry.mode||source.objectId!==entry.objectId||source.contentSha256!==entry.contentSha256)
+   throw new Error("Workspace review view does not bind the exact projected files");
+ }
+ const risk=planReviewRisk(riskInput);
+ const session=issueReviewSession(manifest,materializeScopedWorkspaceReviewView(manifest,parent),risk,projection);
+ return {session,manifest};
+}
+
+function issueReviewSession(manifest:SessionClaim["manifest"],view:ReviewView,risk:ReviewPlan,viewProjection?:WorkspaceReviewProjection):ReviewSession{
+ const repository=manifest.repositoryRoot;
  const session=Object.freeze({schemaVersion:1 as const,checkoutRepository:repository,checkoutTree:manifest.treeIdentity,view,risk,inputDigest:digest(repository,manifest.treeIdentity,risk),state:"open" as const});
- claims.set(session,{state:"open",manifest});return session;
+ claims.set(session,{state:"open",manifest,...(viewProjection?{viewProjection}:{})});return session;
 }
 
 /** Keeps source provenance private to the session; serialized clones cannot inherit it. */
 export function bindReviewSessionSource(session:ReviewSession,checkout:OrdinaryReviewCheckout):void{
- const claim=claims.get(session);if(!claim||claim.state!=="open"||claim.checkout)throw new Error("Review session source binding is unavailable");
+ const claim=claims.get(session);if(!claim||claim.state!=="open"||claim.checkout||claim.viewProjection)throw new Error("Review session source binding is unavailable");
  assertOrdinaryReviewCheckoutGenuine(checkout);
  if(checkout.repository!==session.checkoutRepository||checkout.treeIdentity!==session.checkoutTree)throw new Error("Review session source does not bind its exact candidate");
  revalidateOrdinaryReviewCheckout(checkout);claim.checkout=checkout;
@@ -54,6 +75,7 @@ export function bindReviewSessionSource(session:ReviewSession,checkout:OrdinaryR
 export function bindReviewSessionWorkspaceSource(session:ReviewSession,projection:WorkspaceReviewProjection,request:WorkspaceReviewProjectionRequest,identity:WorkspaceReviewIdentity):void{
  const claim=claims.get(session);if(!claim||claim.state!=="open"||claim.checkout||claim.workspace)throw new Error("Review session workspace binding is unavailable");
  if(!isWorkspaceReviewProjectionGenuine(projection))throw new Error("Review session workspace projection is not genuine");
+ if(claim.viewProjection&&claim.viewProjection!==projection)throw new Error("Review session workspace source does not bind its view projection");
  const boundIdentity=exactWorkspaceIdentity(identity);
  if(projection.repositoryRoot!==session.checkoutRepository||projection.candidateTree!==session.checkoutTree||boundIdentity.treeIdentity!==projection.candidateTree||boundIdentity.revision!==projection.candidateTree||boundIdentity.parentIdentity!==(projection.baseCommit??projection.baseTree))throw new Error("Review session workspace source does not bind its exact candidate");
  const current=revalidateWorkspaceReviewProjection(projection,request);

@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import {mkdtemp,rm} from "node:fs/promises";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+import test,{type TestContext} from "node:test";
+import {createAsenExtension} from "../extensions/asen.js";
 import {summarizeChildFlow} from "../src/runtime/agents/flow-metrics.js";
 const at="2026-01-01T00:00:00Z",end="2026-01-01T00:00:05Z";
 const message={type:"message_end",message:{id:"m1",role:"assistant",provider:"nvidia",model:"modelo",usage:{input:10,output:2,totalTokens:12,cost:{total:0.01}}}};
@@ -73,4 +77,44 @@ test("Responder a preguntas no añade intentos ni invalida un inventario complet
  const interrupted=build("completed",[...events.slice(0,-1),{state:"interrupted",at:end},{state:"running",at:end},{state:"completed",at:end}],[message,settled]);
  assert.equal(interrupted.observedAttempts,2);assert.equal(interrupted.completeInventory,false);assert.equal(interrupted.totalTokens,null);
  assert.equal(interrupted.observedUsage.totalTokens,12);
+});
+
+test("/asen-flow-metrics publica el coste cero, el desconocido y la suma mixta sin verificar facturación",async (t:TestContext)=>{
+ const root=await mkdtemp(join(tmpdir(),"asen-flow-usage-"));
+ t.after(()=>rm(root,{recursive:true,force:true}));
+ type PiHost=Parameters<ReturnType<typeof createAsenExtension>>[0];
+ type RegisteredCommand=Parameters<NonNullable<PiHost["registerCommand"]>>[1];
+ const commands=new Map<string,RegisteredCommand>();
+ createAsenExtension({homeDir:()=>root,packageRoot:root,deferSessionStart:true,enableAgentRuntime:false})({
+  registerCommand:(name,command)=>commands.set(name,command)
+ });
+ const command=commands.get("asen-flow-metrics");
+ if(!command)throw new Error("El comando público /asen-flow-metrics debe estar registrado");
+ const {cost,...tokens}=message.message.usage;
+ const entry=(id:string,usage:typeof tokens&{cost?:typeof cost})=>({
+  type:"message",id,message:{...message.message,id,provider:"fixture",usage}
+ });
+ const zero=entry("m1",{...tokens,cost:{total:0}});
+ const missing=entry("m2",{input:4,output:3,totalTokens:7});
+ const reported=entry("m3",message.message.usage);
+ for(const row of [
+  {name:"cero explícito",entries:[zero],tokens:[10,2,12],cost:0},
+  {name:"sin coste informado",entries:[missing],tokens:[4,3,7],cost:null},
+  {name:"mezcla de costes conocidos y desconocidos",entries:[zero,missing,reported],tokens:[24,7,31],cost:null}
+ ])await t.test(row.name,async()=>{
+  const notifications:Array<{text:string;level:string}>=[];
+  await command.handler("",{
+   cwd:root,sessionManager:{getSessionId:()=>"flow-usage-fixture",getEntries:()=>row.entries},
+   ui:{notify:(text:string,level:string)=>notifications.push({text,level})}
+  });
+  assert.equal(notifications.length,1);
+  assert.equal(notifications[0]!.level,"info");
+  const published=JSON.parse(notifications[0]!.text);
+  const {inputTokens,outputTokens,totalTokens,reportedCostUsd,billingVerified}=published.parent;
+  assert.deepEqual([inputTokens,outputTokens,totalTokens],row.tokens);
+  assert.equal(reportedCostUsd,row.cost,"coste informado en el JSON público");
+  assert.equal(billingVerified,false,"el consumo de la sesión no verifica facturación");
+  assert.equal(published.billingVerified,false,"el informe no verifica facturación");
+  assert.match(published.note,/no son facturas/u);
+ });
 });

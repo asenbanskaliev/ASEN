@@ -826,6 +826,11 @@ export class PiProcessRunner implements AgentRunner{
      // G03: un reintento nativo explícito mantiene el mismo turno abierto.
      // No se reenvía el prompt ni se inventa una sesión recuperada.
      if(policyLoaded&&!fallbackEnabled){
+      // El Writer nunca puede continuar una tentativa cuyo efecto es incierto.
+      // No depender solo de willRetry: Pi también anuncia auto_retry_start.
+      if(type==="auto_retry_start"&&writer){
+       stop({id:request.id,ok:false,output:"pi Writer announced a native retry; outcome requires inspection"});return;
+      }
       if(type==="response"&&response.id===request.id&&response.success===true)strictPromptAck=true;
       if(type==="agent_start"){
        agentEnded=false;nativeRetryAwaitingStart=false;

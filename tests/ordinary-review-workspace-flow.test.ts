@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {execFileSync} from "node:child_process";
-import {chmodSync,cpSync,mkdirSync,mkdtempSync,readdirSync,renameSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
+import {chmodSync,cpSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,renameSync,rmSync,unlinkSync,writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join,resolve} from "node:path";
 import {registerOrdinaryReviewCommand} from "../src/review/ordinary-review-command.js";
-import type {PiReviewEvent,PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-reviewer.js";
+import type {PiReviewRegistry,PiReviewerModel} from "../src/review/pi-model-reviewer.js";
 
 const author={provider:"author-provider",id:"writer"},reviewer1={provider:"review-provider",id:"reviewer-one"},reviewer2={provider:"review-provider",id:"reviewer-two"};
 function repo(t:unknown){
@@ -41,6 +41,60 @@ test("public Pi command runs independent review then one path-bounded correction
  assert.equal(second.candidate.treeIdentity!==first.candidate.treeIdentity,true);
  assert.equal(second.reviewerId,"pi-model:review-provider/reviewer-two");assert.equal(second.tests.status,"not-run");assert.equal(second.acceptance,"not-accepted");
  assert.equal(state.calls(),2);assert.equal(state.messages.length,2);
+});
+
+test("G06 public review and correction expose only genuine changed files, not unchanged tracked files",async t=>{
+ const state=setup(t,[{verdict:"fail",findings:[{id:"F-1",severity:"high",path:"target.txt",description:"Correct this changed file."}]},{verdict:"pass",findings:[]}]);
+ const root=state.context.cwd,parent=realpathSync(mkdtempSync(join(tmpdir(),"asen-g06-public-")));
+ t.after(()=>rmSync(parent,{recursive:true,force:true}));
+ const sensitive=".docker/config.json",marker="asen-invented-g06-marker-not-a-secret",unchanged="reference.txt";
+ const git=(...args:string[])=>execFileSync("git",["-C",root,...args],{encoding:"utf8",stdio:["ignore","pipe","pipe"]}).trim();
+ mkdirSync(join(root,".docker"));writeFileSync(join(root,sensitive),marker+"\n");writeFileSync(join(root,unchanged),"unchanged permitted file\n");
+ git("add","-f","--",sensitive,unchanged);git("commit","-qm","disposable G06 fixtures");
+ const head=git("rev-parse","HEAD"),index=readFileSync(join(root,".git","index"));
+ // A permitted but unchanged user selection must not expand the view.
+ state.context.ui.editor=async title=>title.includes("untracked")?"[]":title.includes("Rutas exactas")?JSON.stringify(["target.txt",unchanged]):"Check the task requirements";
+ const registry=state.context.modelRegistry,stream=registry.streamSimple.bind(registry);
+ const observed:{roots:number;onlyTarget:boolean;permittedBytes:boolean;privatePayload:boolean;payloadPaths:string[];tree:string}[]=[];
+ let expected="first candidate\n";
+ registry.streamSimple=(model,request,options)=>{
+  const roots=readdirSync(parent).filter(name=>name.startsWith("asen-review-view-"));
+  const view=roots.length===1?join(parent,roots[0]!):undefined;
+  const files=view?readdirSync(view):[];
+  const submitted=JSON.stringify(request),payload=JSON.parse(request.messages[0]!.content[0]!.text);
+  observed.push({roots:roots.length,onlyTarget:files.length===1&&files[0]==="target.txt",
+   permittedBytes:files.includes("target.txt")&&readFileSync(join(view!,"target.txt"),"utf8")===expected&&payload.candidateFiles[0]?.content===expected,
+   privatePayload:![sensitive,marker,unchanged].some(value=>submitted.includes(value)),
+   payloadPaths:payload.candidateFiles.map((file:{path:string})=>file.path),tree:payload.candidate.treeIdentity});
+  return stream(model,request,options);
+ };
+ const checkIdentity=(result:{candidate:{treeIdentity:string}},attempt:number)=>{
+  const tree=result.candidate.treeIdentity;
+  assert.equal(observed[attempt]?.tree,tree);
+  assert.deepEqual(git("ls-tree","-r","--name-only",tree).split(/\r?\n/u),[sensitive,unchanged,"target.txt"]);
+  assert.equal(git("rev-parse",`${tree}:${sensitive}`),git("rev-parse",`${head}:${sensitive}`));
+  assert.equal(git("rev-parse",`${tree}:${unchanged}`),git("rev-parse",`${head}:${unchanged}`));
+  assert.equal(git("rev-parse",`${tree}:target.txt`),git("hash-object","--no-filters","target.txt"));
+  assert.equal(git("rev-parse","HEAD"),head);assert.ok(index.equals(readFileSync(join(root,".git","index"))));
+  assert.deepEqual(readdirSync(parent),[]);
+ };
+ const tempKeys=["TMPDIR","TMP","TEMP"] as const,previous=tempKeys.map(key=>process.env[key]);
+ try{
+  for(const key of tempKeys)process.env[key]=parent;
+  const first=await state.handler("workspace",state.context);
+  assert.equal(first.status,"correction-required");assert.ok(first.correctionId);checkIdentity(first,0);
+  expected="corrected G06 candidate\n";writeFileSync(join(root,"target.txt"),expected);
+  const second=await state.handler("workspace correction "+first.correctionId,state.context);
+  assert.equal(second.status,"corrected-passed-awaiting-tests");checkIdentity(second,1);
+  assert.notEqual(first.candidate.treeIdentity,second.candidate.treeIdentity);assert.equal(state.calls(),2);
+  for(const capture of observed){
+   assert.equal(capture.roots,1);assert.equal(capture.onlyTarget,true,"review view must contain only the genuine changed target");
+   assert.equal(capture.permittedBytes,true);assert.equal(capture.privatePayload,true);assert.deepEqual(capture.payloadPaths,["target.txt"]);
+  }
+  assert.equal(state.messages.some(message=>message.includes(marker)||message.includes(sensitive)),false);
+ }finally{
+  for(const [i,key] of tempKeys.entries()){const value=previous[i];if(value===undefined)delete process.env[key];else process.env[key]=value;}
+ }
 });
 
 test("bounded correction blocks newly changed files outside reviewer findings",async t=>{

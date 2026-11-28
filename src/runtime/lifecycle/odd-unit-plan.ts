@@ -46,6 +46,24 @@ function unitPlan(facts:OddDerivedFacts,instruction:string,basis:string,candidat
   throw new Error("ODD partition must produce exactly one scoped Writer per unit");
  return {decision,plan,graph};
 }
+/** Defensa en profundidad para el único grafo que el supervisor puede abrir
+ * automáticamente: dos raíces independientes y, como mucho, una sucesora.
+ * `canMaterializeOddPartition` ya filtra esta forma, pero este control queda
+ * junto a la materialización para que una futura relajación del filtro no
+ * convierta tres Writers en ejecuciones simultáneas. */
+function assertBoundedPartition(tasks:readonly PlannedTask[]):void{
+ const roots=tasks.filter(task=>!task.dependsOn.length);
+ if((tasks.length!==2&&tasks.length!==3)||roots.length!==2||
+  roots.some(task=>task.role!=="worker"||task.status!=="ready"))
+  throw new Error("ODD partition must have exactly two ready Writer roots");
+ if(tasks.length===2)return;
+ const successors=tasks.filter(task=>task.dependsOn.length);
+ if(successors.length!==1||successors[0]?.role!=="worker"||successors[0]?.status!=="waiting"||
+  successors[0].dependsOn.length!==2||
+  new Set(successors[0].dependsOn).size!==2||
+  !roots.every(root=>successors[0]!.dependsOn.includes(root.id)))
+  throw new Error("ODD partition successor must depend on exactly both Writer roots");
+}
 /** Materializa el DAG en una sola transacción del almacén Todo existente.
  * Las raíces son preparables, pero solo el supervisor de hijos puede lanzarlas.
  * Una sucesora conserva su dependencia y requiere integrar y volver a planificar. */
@@ -68,6 +86,7 @@ export function materializeOddPartitionPlan(parent:OddDerivedFacts,request:Paren
   const dependencies=unit.dependsOn.map(id=>unitIds.get(id)!);
   return Object.freeze({...task,title:"Writer · "+unit.objective,dependsOn:Object.freeze(dependencies),status:dependencies.length?"waiting" as const:"ready" as const});
  });
+ assertBoundedPartition(mapped);
  const byId=new Map(mapped.map(task=>[task.id,task])),seen=new Set<string>(),order:string[]=[];
  const visit=(id:string)=>{if(seen.has(id))return;for(const dep of byId.get(id)!.dependsOn)visit(dep);seen.add(id);order.push(id);};
  for(const task of mapped)visit(task.id);

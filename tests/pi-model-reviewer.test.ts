@@ -60,10 +60,14 @@ test("requires findings for FAIL and rejects reviewer tool use",async t=>{
 });
 
 test("refuses sensitive-path evidence before calling the external reviewer",async t=>{
- const {workspace,evidence}=fixture(t,".env.local"),models=registry(response());
- await assert.rejects(()=>runIndependentPiReview({registry:models.value,model:reviewer,author,evidence,requirements:"review"}),/sensitive path/u);
+ const models=registry(response());
+ // El bloqueo se adelanta al staging: jamás se construye evidencia con el secreto.
+ await assert.rejects(async()=>{
+  const {workspace,evidence}=fixture(t,".env.local");
+  try{await runIndependentPiReview({registry:models.value,model:reviewer,author,evidence,requirements:"review"});}
+  finally{closeWorkspaceReview(workspace);}
+ },/sensitive path/iu);
  assert.equal(models.called(),undefined);
- closeWorkspaceReview(workspace);
 });
 
 test("a 4R specialist uses an isolated lens prompt and remains read-only",async t=>{

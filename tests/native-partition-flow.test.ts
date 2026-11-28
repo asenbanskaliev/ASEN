@@ -266,6 +266,76 @@ const terminalErrors:unknown[]=[];
    if(signed.status==="tests-signed")assert.equal(signed.tests,2);
    assert.equal(git("rev-parse","HEAD"),candidate.baseCommit);
    assert.equal(git("status","--porcelain"),"");
+   if(mode==="approved-roots"){
+    const resumeBatch=tools.get("asen_plan_resume_batch");
+    assert.ok(resumeBatch,"La extensión debe registrar la continuación pública");
+    const authorAlias={provider:"nvidia",id:"nvidia/modelo-simulado"};
+    const routes={worker:{model:"nvidia/modelo-simulado"},"jd-judge-a":{model:"prueba/juez-a"},"jd-judge-b":{model:"prueba/juez-b"}};
+    await writeFile(join(privateDir,"profiles.json"),JSON.stringify({schema:"asen.runtime-profiles/v1",active:"ensayo",profiles:[
+     {name:"ensayo",mode:"full-delegation",routes},
+     {name:"alias-autor",mode:"full-delegation",routes:{...routes,"jd-judge-b":{model:authorAlias.provider+"/"+authorAlias.id}}}
+    ]}));
+    const selectProfile=async(name:string)=>{
+     const selected=await commands.get("asen-profiles").handler("session "+name,context);
+     assert.equal(selected.sessionProfile.active,name);
+    };
+    await selectProfile("ensayo");
+    const models=registry.getAvailable();
+    let catalog=models,catalogReads=0,authChecks=0,transportCalls=0;
+    const modelRegistry:PiReviewRegistry={getAvailable:()=>{catalogReads++;return catalog;},
+     hasConfiguredAuth:()=>{authChecks++;return true;},streamSimple:()=>{transportCalls++;throw Error("Transporte no autorizado");}};
+    const scope=()=>Promise.all([todos.list(identity),todos.archived(identity),sourceJournal.list(identity),
+     sessionJournal.listSource(identity),agents.list(identity),...children.map(child=>agents.list(child)),receipts.readReceiptState(candidate.commit)]);
+    const scopeBefore=await scope();
+    const proportionalTitle="Revisar candidato y pruebas conjuntas según ODD?";
+    const integrationTitle="Integrar candidato verificado?";
+    const dualTitle="Revisión doble explícita del candidato?";
+    const resume=async(label:string,reviewMode?:"dual")=>{
+     const prompts:{title:string;message:string}[]=[];
+     const resumed=await resumeBatch.execute("resume-"+label,{batchId:batch.id,...(reviewMode?{reviewMode}:{})},undefined,undefined,{
+      ...context,modelRegistry,ui:{...context.ui,confirm:async(title:string,message:string)=>{
+       prompts.push({title,message});return title===proportionalTitle;
+      }}
+     });
+     assert.equal(transportCalls,0,label);
+     assert.equal(launched,2,label);
+     assert.equal(git("rev-parse","HEAD"),candidate.baseCommit,label);
+     assert.equal(git("rev-parse","refs/heads/main"),candidate.baseCommit,label);
+     assert.equal(git("status","--porcelain"),"",label);
+     assert.deepEqual(await scope(),scopeBefore,label);
+     return {detail:resumed.details,prompts};
+    };
+    // Primero el modo predeterminado: pedir revisión no equivale a autorizar integración.
+    const proportionalResume=await resume("proporcional");
+    assert.deepEqual(proportionalResume.detail,{status:"declined",integration:false});
+    assert.deepEqual(proportionalResume.prompts.map(p=>p.title),[proportionalTitle,integrationTitle]);
+    assert.ok(proportionalResume.prompts[0]!.message.includes("Pruebas conjuntas firmadas: 2"));
+    assert.ok(proportionalResume.prompts[1]!.message.includes(candidate.commit));
+    assert.equal(catalogReads,0);assert.equal(authChecks,0);
+    const assertDualBlocked=async(label:string)=>{
+     const blocked=await resume(label,"dual");
+     assert.equal(blocked.detail.status,"blocked",JSON.stringify(blocked.detail));
+     assert.match(blocked.detail.reason,/dos modelos juez autenticados, distintos entre sí y de todos los Writers/u);
+     assert.deepEqual(blocked.prompts,[],label);
+    };
+    for(const count of [1,2]){
+     catalog=models.slice(0,count);
+     await assertDualBlocked("identidades-"+count);
+    }
+    // Tres entradas no bastan si una ruta de juez apunta al alias del autor.
+    await selectProfile("alias-autor");
+    catalog=[authorAlias,...models.slice(1)];
+    await assertDualBlocked("alias-autor");
+    await selectProfile("ensayo");
+    catalog=models;
+    const dualResume=await resume("identidades-3","dual");
+    assert.deepEqual(dualResume.detail,{status:"declined",acceptance:"not-accepted",autoMerge:false});
+    assert.deepEqual(dualResume.prompts.map(p=>p.title),[dualTitle]);
+    const disclosure=dualResume.prompts[0]!.message.split("\n");
+    for(const line of ["Candidato exacto: "+candidate.commit,"Árbol: "+candidate.tree,"Archivos: a.txt, b.txt",
+     "Autores observados: nvidia/modelo-simulado","Juez A: prueba/juez-a","Juez B: prueba/juez-b"])
+     assert.ok(disclosure.includes(line),line);
+   }
    await assert.rejects(()=>testNativeIntegrationCandidate({...testInput,testPaths:["conjuntas.test.mjs"]}),/Ya existe/u);
    assert.equal((await reviewNativePartitionWithTests({...proportional,confirm:async()=>false})).status,"declined");
    const altered={list:async()=> (await todos.list(identity)).map(row=>row.taskId===candidate.sourceTodoIds[0]?{...row,current:{...row.current,revision:row.current.revision+1}}:row)};
@@ -278,7 +348,8 @@ const terminalErrors:unknown[]=[];
    assert.equal(judgeCalls,2,"La revisión proporcional no necesita llamadas adicionales de jueces");
    const jointProof={...proof,report:joint.report};
    assert.equal((await verifyNativeIntegrationAcceptance(jointProof)).reviewMode,"joint-tests");
-   const checkpoint={candidate,sessionId:identity.sessionId,todos,receipts,storageDir:receiptsDir};
+   // La petición pública doble queda pendiente tras denegarla: no degradarla para las pruebas internas.
+   const checkpoint={candidate,sessionId:identity.sessionId,todos,receipts,storageDir:mode==="approved-roots"?join(privateDir,"joint-checkpoint"):receiptsDir};
    await saveNativeReviewCheckpoint({...checkpoint,report:joint.report});
    const restored=await restoreNativeIntegrationReview(checkpoint);assert.ok(restored);
    assert.equal((await verifyNativeIntegrationAcceptance({...jointProof,report:restored})).reviewMode,"joint-tests");
@@ -427,6 +498,21 @@ const terminalErrors:unknown[]=[];
     assert.notEqual(git("rev-parse","HEAD"),candidate.commit);
     const historical=await inspectCompletedNativePartition(inspectInput);
     assert.equal(historical?.status,"partition-already-closed");assert.equal(historical?.writerAuthority,false);
+    // Probar los comandos públicos de la extensión tras el cierre histórico.
+    const headBefore=git("rev-parse","HEAD"),dialogCount=dialogs.length;
+    const archivedBefore=await todos.archived(identity),activeBefore=await todos.list(identity);
+    const journalNames=["parallel-todo-worktrees.json","parallel-worktree-sessions.json","parallel-worker-observations.json","agents.json"];
+    const journalBefore=await Promise.all(journalNames.map(name=>readFile(join(privateDir,name),"utf8")));
+    for(const action of ["integration-continue","integration-auto","integration-auto-dual"]){
+     const reopened=await commands.get("asen-worktrees").handler(action+" "+batch.id,context);
+     assert.equal(reopened.status,"partition-already-closed",JSON.stringify(reopened));
+     assert.equal(reopened.writerAuthority,false);assert.equal(reopened.autoRetry,false);
+     assert.equal(dialogs.length,dialogCount);assert.equal(launched,2);
+     assert.equal(git("rev-parse","HEAD"),headBefore);
+     assert.deepEqual(await todos.archived(identity),archivedBefore);
+     assert.deepEqual(await todos.list(identity),activeBefore);
+     assert.deepEqual(await Promise.all(journalNames.map(name=>readFile(join(privateDir,name),"utf8"))),journalBefore);
+    }
     assert.equal(launched,2);
     return;
    }

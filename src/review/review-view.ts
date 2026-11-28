@@ -2,13 +2,16 @@ import {execFileSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {chmodSync,lstatSync,mkdirSync,mkdtempSync,readFileSync,readdirSync,realpathSync,rmdirSync,unlinkSync,writeFileSync} from "node:fs";
 import {dirname,isAbsolute,join,relative,resolve,sep} from "node:path";
-import type {CandidateGitTreeManifest,CandidateGitTreeEntry} from "./review-tree-inspection.js";
+import type {CandidateGitTreeManifest,CandidateGitTreeEntry,ScopedWorkspaceReviewTree} from "./review-tree-inspection.js";
+type ViewManifest=CandidateGitTreeManifest|ScopedWorkspaceReviewTree;
 import {validatePortableReviewPaths} from "./review-tree-paths.js";
 
 export interface ReviewView {
  readonly schemaVersion:1;
  readonly root:string;
  readonly candidateTree:string;
+ /** Present only for a changed-file view; its digest is not a complete manifest. */
+ readonly scope?:"workspace-changes";
  readonly manifestDigest:string;
  readonly viewIdentity:string;
  readonly entryCount:number;
@@ -40,9 +43,11 @@ function assertDirectory(path:string,label:string):{realPath:string;dev:number;i
  return {realPath,dev:info.dev,ino:info.ino};
 }
 
-function digestManifest(manifest:CandidateGitTreeManifest):string {
- return createHash("sha256").update("asen.review-view.manifest.v1\0").update(JSON.stringify({
+function digestManifest(manifest:ViewManifest):string {
+ const scoped=manifest.scope==="workspace-changes";
+ return createHash("sha256").update(scoped?"asen.review-view.workspace-changes.v1\0":"asen.review-view.manifest.v1\0").update(JSON.stringify({
   treeIdentity:manifest.treeIdentity,objectFormat:manifest.objectFormat,
+  ...(scoped?{treeSha256:manifest.treeSha256,treeSize:manifest.treeSize,treeEntryCount:manifest.treeEntryCount}:{}),
   entries:manifest.entries.map(entry=>[entry.path,entry.kind,entry.mode,entry.objectId,entry.size,entry.contentSha256,entry.bytesBase64]),
  })).digest("hex");
 }
@@ -135,6 +140,16 @@ function ownedViewDirectories(view:ReviewView):string[] {
 
 /** Materializes one frozen Git tree as a private, read-only reviewer view. */
 export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:string):ReviewView {
+ if(manifest?.scope!==undefined)throw new Error("Complete review view requires a complete manifest");
+ return materializeView(manifest,parent);
+}
+
+export function materializeScopedWorkspaceReviewView(manifest:ScopedWorkspaceReviewTree,parent:string):ReviewView {
+ if(manifest?.scope!=="workspace-changes")throw new Error("Workspace review view requires a scoped manifest");
+ return materializeView(manifest,parent);
+}
+
+function materializeView(manifest:ViewManifest,parent:string):ReviewView {
  if(typeof manifest!=="object"||manifest===null||manifest.schemaVersion!==1)throw new Error("Review tree manifest is invalid");
  if(!isAbsolute(parent))throw new Error("Review view parent must be absolute");
  const parentClaim=assertDirectory(parent,"Review view parent");
@@ -172,6 +187,7 @@ export function materializeReviewView(manifest:CandidateGitTreeManifest,parent:s
   const info=lstatSync(root);
   if(!info.isDirectory()||info.isSymbolicLink())throw new Error("Review view root changed during materialization");
   const view=Object.freeze({schemaVersion:1 as const,root,candidateTree:manifest.treeIdentity,manifestDigest,
+   ...(manifest.scope===undefined?{}:{scope:manifest.scope}),
    viewIdentity:createHash("sha256").update(`${root}\0${info.dev}\0${info.ino}\0${manifestDigest}`).digest("hex"),
    entryCount:manifest.entries.length,platform:process.platform==="win32"?"windows" as const:"posix" as const,rootDev:info.dev,rootIno:info.ino,
    paths:Object.freeze(manifest.entries.map(entry=>entry.path)),
@@ -223,11 +239,12 @@ export function readReviewViewFile(view:ReviewView,path:string):Buffer {
 }
 
 /** Rejects a stale view before a new review or correction can consume it. */
-export function revalidateReviewView(view:ReviewView,manifest:CandidateGitTreeManifest):ReviewView {
+export function revalidateReviewView(view:ReviewView,manifest:ViewManifest):ReviewView {
  requireLiveClaim(view);
  const rootInfo=lstatSync(view.root,{throwIfNoEntry:false});
  if(!rootInfo||!rootInfo.isDirectory()||rootInfo.isSymbolicLink()||rootInfo.dev!==view.rootDev||rootInfo.ino!==view.rootIno)throw new Error("Review view ownership is uncertain");
- if(manifest.treeIdentity!==view.candidateTree||digestManifest(manifest)!==view.manifestDigest)throw new Error("Review view candidate drifted");
+ if(manifest.scope!==view.scope||manifest.treeIdentity!==view.candidateTree||digestManifest(manifest)!==view.manifestDigest)throw new Error("Review view candidate drifted");
+ if(view.scope==="workspace-changes")ownedViewDirectories(view);
  verifyMaterializedEntries(view,manifest.entries);
  return view;
 }

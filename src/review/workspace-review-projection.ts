@@ -8,6 +8,7 @@ import {isAbsolute, join, relative, resolve, sep} from "node:path";
 import {tmpdir} from "node:os";
 import {isProxy} from "node:util/types";
 import {captureReviewRepositoryBinding,assertReviewRepositoryBinding} from "./review-tree-inspection.js";
+import {hasSensitiveName} from "../security/path-safety.js";
 
 export type WorkspaceReviewEntryMode = "100644" | "100755" | "120000" | "160000";
 export type WorkspaceReviewEntryChange = "added" | "modified" | "deleted" | "gitlink";
@@ -390,6 +391,8 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
   const fsmonitorFlags = runGit(root, ["ls-files", "-f", "-z"]);
   const observedUntracked=records(runGit(root,["ls-files","--others","--exclude-standard","-z"])).map(record=>decoder.decode(record));
   if(observedUntracked.some(path=>!safePath(path))||new Set(observedUntracked).size!==observedUntracked.length)throw new Error("repository contains an unsafe untracked path");
+  // No introducir credenciales explícitas en objetos Git de revisión.
+  if(request.intendedUntracked.some(path=>hasSensitiveName(path.toLowerCase())))throw new Error("Sensitive path cannot enter review staging");
   const intendedSet=new Set(request.intendedUntracked),unexpectedUntracked=observedUntracked.filter(path=>!intendedSet.has(path)).sort();
   if(selected&&unexpectedUntracked.length)throw new WorkspaceReviewScopeError("unexpected-untracked",unexpectedUntracked);
   const indexEntries = new Map<string, TreeEntry>();
@@ -449,6 +452,10 @@ export function captureWorkspaceReviewProjection(input: WorkspaceReviewProjectio
       entries.push({path, mode: after.mode, objectId: after.objectId, contentSha256: after.contentSha256, change: before ? "modified" : "added"});
     }
   }
+
+  // Rechazar modificaciones y eliminaciones de rutas sensibles rastreadas
+  // antes de persistir blobs o generar un diff para un revisor.
+  if(entries.some(entry=>entry.change!=="gitlink"&&hasSensitiveName(entry.path.toLowerCase())))throw new Error("Sensitive path cannot enter review staging");
 
   // Compare the bytes captured for this projection before adding any changed
   // blobs or trees to Git. This does not make the workspace read atomic.

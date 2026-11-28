@@ -1152,3 +1152,25 @@ test("M2: catálogo NVIDIA mixto y ambiguo no infiere el prefijo del primario",a
   assert.equal(trace.commands.filter((c:{type:string})=>c.type==="prompt").length,ambiguous?1:2);
  }
 });
+
+test("G03 conserva un turno nativo abierto hasta el resultado definitivo sin reenviar el prompt",async t=>{
+ for(const premature of [false,true]){
+  const scenario=[
+   'let input="";process.stdin.on("data",chunk=>input+=chunk);',
+   'process.stdin.on("end",()=>{const req=JSON.parse(input.trim());',
+   'const emit=value=>console.log(JSON.stringify(value));',
+   'emit({type:"response",id:req.id,command:"prompt",success:true});',
+   'emit({type:"agent_start"});',
+   'emit({type:"message_end",message:{role:"assistant",stopReason:"error",errorMessage:"429 rate limit"}});',
+   'emit({type:"agent_end",willRetry:true});emit({type:"auto_retry_start"});',
+   premature?'emit({type:"agent_settled"});':'setTimeout(()=>{emit({type:"agent_start"});emit({type:"message_end",message:{role:"assistant",stopReason:"stop",content:[{type:"text",text:"resultado definitivo"}]}});emit({type:"agent_end"});emit({type:"agent_settled"});},50);',
+   '});'
+  ].join("\n");
+  const {d,p}=await fixture(scenario);
+  t.after(()=>rm(d,{recursive:true,force:true,maxRetries:10,retryDelay:100}));
+  const result=await runner(p,{timeoutMs:10_000}).run({id:"g03-turno-"+premature,role:"explorer",prompt:"inspeccionar",repository:d});
+  assert.equal(result.ok,!premature,result.output);
+  if(premature)assert.match(result.output,/without a completed final assistant turn|before final agent_settled/u);
+  else assert.match(result.output,/resultado definitivo/u);
+ }
+});

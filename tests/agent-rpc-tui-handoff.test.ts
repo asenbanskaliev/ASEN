@@ -4,7 +4,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import {mkdir,mkdtemp,realpath,rm} from "node:fs/promises";
+import {mkdir,mkdtemp,readFile,realpath,rm,stat} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {createPiExtension} from "../extensions/asen.js";
@@ -63,7 +63,7 @@ async function fileState(home:string,identity:{sessionId:string;projectId:string
  const rows=await new AgentNotificationJournal(path).list(identity);
  return {path,rows};
 }
-test("EF-604 a pending RPC completion moves to one TUI enqueue only after restart and exact inspection",
+test("EF-604 a pending RPC completion enqueues once and needs fresh TUI inspection after restart",
  {timeout:45000},async t=>{
  const home=await mkdtemp(join(tmpdir(),"asen-rpc-tui-handoff-"));
  t.after(()=>rm(home,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
@@ -91,21 +91,49 @@ test("EF-604 a pending RPC completion moves to one TUI enqueue only after restar
  assert.equal(results[0]!.message.details.agentId,taskId);
  assert.equal(results[0]!.message.details.deliveryConfirmed,false);
  assert.equal(results[0]!.options.triggerTurn,false);
- const delivered=(await fileState(home,identity)).rows;
+ const {path,rows:delivered}=await fileState(home,identity);
  assert.equal(delivered.length,1);
- assert.equal(delivered[0]!.eventId,pending[0]!.eventId);
- assert.equal(delivered[0]!.delivery,"enqueued");
- await assert.rejects(()=>tui.use("asen_agent_ack",{eventId:delivered[0]!.eventId}),
-  /Inspect this exact terminal agent/u);
+ const enqueued=delivered[0]!,{eventId}=enqueued;
+ assert.equal(eventId,pending[0]!.eventId);
+ assert.equal(enqueued.delivery,"enqueued");
+ await assert.rejects(()=>tui.use("asen_agent_ack",{eventId}),/Inspect this exact terminal agent/u);
  const seen=await tui.use("asen_agent_status",{id:taskId});
  assert.equal(seen.details.task.record.state,"completed");
  assert.equal(seen.details.task.record.id,taskId);
- const ack=await tui.use("asen_agent_ack",{eventId:delivered[0]!.eventId});
+ const enqueuedBytes=await readFile(path);
+ await tui.fire("session_shutdown");
+ const resumed=await open(home,identity,"tui",async()=>{
+  invocations++;throw Error("REPLAY_OF_COMPLETED_AGENT");
+ });
+ assert.deepEqual(await readFile(path),enqueuedBytes,"Reopening must not change the enqueued journal");
+ await assert.rejects(()=>resumed.use("asen_agent_ack",{eventId}),/Inspect this exact terminal agent/u,
+  "An exact inspection from the previous TUI registration cannot authorize ack");
+ assert.deepEqual(await readFile(path),enqueuedBytes,"The rejected ack must not change the journal");
+ const fresh=await resumed.use("asen_agent_status",{id:taskId});
+ assert.deepEqual(fresh.details.task.record,seen.details.task.record);
+ assert.deepEqual(await readFile(path),enqueuedBytes,"Fresh inspection must be read-only");
+ const ack=await resumed.use("asen_agent_ack",{eventId});
+ assert.equal(ack.details.eventId,eventId);
+ assert.equal(ack.details.agentId,taskId);
  assert.equal(ack.details.acknowledged,true);
+ assert.equal(ack.details.evidence,"COORDINATOR_ACTION_ONLY");
  assert.equal(ack.details.writerAuthorized,false);
  assert.equal(ack.details.humanReadConfirmed,false);
- assert.equal((await fileState(home,identity)).rows[0]!.delivery,"acknowledged");
- await tui.fire("session_shutdown");
+ const acknowledgedBytes=await readFile(path);
+ assert.equal(JSON.parse(acknowledgedBytes.toString("utf8")).revision,
+  JSON.parse(enqueuedBytes.toString("utf8")).revision+1);
+ const acknowledged=(await fileState(home,identity)).rows;
+ assert.deepEqual(acknowledged,[{...enqueued,delivery:"acknowledged",updatedAt:acknowledged[0]?.updatedAt}]);
+ const beforeRepeat=await stat(path,{bigint:true});
+ const repeat=await resumed.use("asen_agent_ack",{eventId});
+ assert.equal(repeat.details.acknowledged,false);
+ assert.deepEqual(await readFile(path),acknowledgedBytes);
+ const afterRepeat=await stat(path,{bigint:true});
+ assert.deepEqual([afterRepeat.ino,afterRepeat.mtimeNs],[beforeRepeat.ino,beforeRepeat.mtimeNs],
+  "The repeated ack must not rewrite the journal");
+ await new Promise(resolve=>setTimeout(resolve,100));
+ assert.deepEqual(resumed.sent,[],"The reopened registration must not repeat the result or wake");
+ await resumed.fire("session_shutdown");
  const reopened=await open(home,identity,"tui",async()=>{throw Error("REPLAY_OF_COMPLETED_AGENT");});
  assert.equal(reopened.sent.filter(x=>x.message.customType==="asen.agent.result").length,0,
   "An acknowledged event cannot be injected again on subsequent restart");

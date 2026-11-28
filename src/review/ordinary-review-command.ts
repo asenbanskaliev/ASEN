@@ -83,9 +83,8 @@ interface BoundOddReview{
 }
 interface CorrectionState{
  readonly request:CorrectionRequest;readonly repository:string;readonly sessionId:string;readonly priorRevision:string;readonly priorReviewerId:string;
- readonly baseCommit:string|null;readonly baseTree:string;
  readonly priorProjection:WorkspaceReviewProjection;
- readonly requirements:string;readonly reviewPaths:readonly string[];readonly intendedUntracked:readonly string[];readonly priorFiles:readonly Readonly<{path:string;mode:string;objectId:string}>[];
+ readonly requirements:string;readonly reviewPaths:readonly string[];readonly intendedUntracked:readonly string[];
  readonly allowedPaths:readonly string[];used:boolean;
 }
 const workspaceCorrections=new Map<string,CorrectionState>();
@@ -93,10 +92,6 @@ function reserveCorrectionSlot():{evicted?:readonly [string,CorrectionState]}|un
  if(workspaceCorrections.size<100)return {};
  for(const [id,state] of workspaceCorrections){if(!state.used){workspaceCorrections.delete(id);return {evicted:[id,state]};}}
  return undefined;
-}
-function changedCandidatePaths(before:readonly Readonly<{path:string;mode:string;objectId:string}>[],after:readonly Readonly<{path:string;mode:string;objectId:string}>[]):string[]{
- const previous=new Map(before.map(file=>[file.path,file.mode+":"+file.objectId])),current=new Map(after.map(file=>[file.path,file.mode+":"+file.objectId]));
- return [...new Set([...previous.keys(),...current.keys()])].filter(path=>previous.get(path)!==current.get(path)).sort();
 }
 function assertNoSensitiveReviewPaths(paths:readonly string[]):void{
  if(paths.some(hasSensitiveName))throw new Error("La revisión independiente no puede incluir rutas sensibles (.env*, *.pem, *.key)");
@@ -341,19 +336,6 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
  try{
   const evidence=readWorkspaceReviewEvidence(workspace),paths=evidence.modifiedFiles.map(file=>file.path);
   assertNoSensitiveReviewPaths([...evidence.modifiedFiles.map(file=>file.path),...evidence.candidateFiles.map(file=>file.path)]);
-  if(correction){
-   const currentFiles=workspace.manifest.entries.map(entry=>({path:entry.path,mode:entry.mode,objectId:entry.objectId})),changed=changedCandidatePaths(correction.priorFiles,currentFiles);
-   if(workspace.projection.baseCommit!==correction.baseCommit||workspace.projection.baseTree!==correction.baseTree){
-    retireCorrection=true;
-    const result={status:"blocked",reason:"La base del candidato cambió; se requiere una revisión nueva."};
-    closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"error");return result;
-   }
-   if(evidence.candidate.treeIdentity===correction.priorRevision||changed.length===0||changed.some(path=>!correction.allowedPaths.includes(path))){
-    if(changed.some(path=>!correction.allowedPaths.includes(path))||paths.length===0)retireCorrection=true;
-    const result={status:"blocked",reason:"La corrección debe cambiar el candidato exacto y limitarse a los archivos señalados.",allowedPaths:correction.allowedPaths,changedPaths:changed};
-    closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"error");return result;
-   }
-  }
   if(paths.length===0){const result={status:"not-required",reason:"El snapshot no contiene cambios revisables.",candidate:evidence.candidate};closeWorkspace();context.ui.notify(JSON.stringify(result,null,2),"info");return result;}
   const consent=await context.ui.confirm(judgmentDay?"Autorizar dos jueces independientes Judgment Day?":fourR?"Autorizar cuatro solicitudes de revisión 4R?":adaptive?`Autorizar ${selectedLenses.length} revisiones proporcionales?`:"Enviar el diff al modelo revisor?",[
    judgmentDay?"Pi enviará el mismo diff en DOS llamadas separadas a dos modelos independientes (posible coste por llamada):":fourR?"Pi enviará el mismo diff en CUATRO llamadas separadas a los modelos indicados abajo (posible coste por llamada):":adaptive?`Pi enviará el mismo diff en ${selectedLenses.length} llamadas separadas (posible coste por llamada):`:"Pi enviará el diff completo del candidato a:",
@@ -460,9 +442,9 @@ async function runWorkspaceReview(context:ReviewCommandContext,nativeRdd:NativeR
    if(!slot){status="blocked";}
    else{
     evictedCorrection=slot.evicted;
+    // Correction capture and revalidation compare the full private projection catalog, not the review view.
     const state:CorrectionState={request,repository:workspace.projection.repositoryRoot,sessionId:bound.sessionId,priorRevision:bound.revision,
-     priorReviewerId:bound.reviewerId,baseCommit:workspace.projection.baseCommit,baseTree:workspace.projection.baseTree,priorProjection:workspace.projection,requirements,reviewPaths,intendedUntracked:workspace.projection.intendedUntracked,
-     priorFiles:Object.freeze(workspace.manifest.entries.map(entry=>Object.freeze({path:entry.path,mode:entry.mode,objectId:entry.objectId}))),
+     priorReviewerId:bound.reviewerId,priorProjection:workspace.projection,requirements,reviewPaths,intendedUntracked:workspace.projection.intendedUntracked,
      allowedPaths:Object.freeze(findingPaths),used:false};
     workspaceCorrections.set(request.correctionId,state);
     issuedCorrectionId=request.correctionId;issuedCorrection=state;
@@ -499,6 +481,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
  plan?:(context:ReviewCommandContext,raw:string,source:Readonly<{proposalId:string;treeIdentity:string}>)=>Promise<string>;
 }>,readArchivedOddTodos?:(context:ReviewCommandContext)=>Promise<readonly ScopedOddTodo[]>):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
+ const activeFixSaves=new Set<string>();
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
   if(command==="native status"||command==="native assess")return nativeRdd.observe(command==="native status"?"status":"assess",context);
@@ -557,6 +540,17 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
       return {status:"blocked" as const,reason:"Fix disagreement requires human triage first"};
      if(!fixProposals.plan||!readOddTodos||!context.hasUI||!context.ui.editor||!context.ui.confirm)
       return {status:"unavailable" as const,reason:"Saving Fix ODD requires a live Pi editor, a bounded Todo planner and a readable Todo store"};
+     const saveKey=JSON.stringify([projectId,sessionId,draft.sourceProposalId]);
+     if(activeFixSaves.has(saveKey))return {status:"blocked" as const,reason:"Ya existe un guardado Fix en curso. Inspecciona su resultado antes de repetirlo."};
+     activeFixSaves.add(saveKey);
+     try{
+     const observeExisting=async()=>{
+      const active=await readOddTodos(context);validate();
+      const archived=readArchivedOddTodos?await readArchivedOddTodos(context):[];validate();
+      return inspectFixOddRecovery({draft,identity,todos:active,archivedTodos:archived});
+     };
+     const existing=await observeExisting();
+     if(existing.status!=="not-observed")return Object.freeze({...existing,reason:"Ya existe un registro Fix o su procedencia es incierta. Inspecciona el diario; no se guardará otro plan."});
      const baseline=inspectLiveFixCandidate(draft);
      const seed={
       instruction:"",taskIdentity:"fix-"+draft.sourceProposalId.slice(0,24),
@@ -588,6 +582,9 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
       draft.writeSurfaces.join(", ")+". Se guardará un plan nuevo; el permiso Writer se pedirá aparte."
      );
      if(!approved)return {status:"cancelled" as const,reason:"User declined new ODD plan persistence"};
+     await revalidate();
+     const beforeSave=await observeExisting();
+     if(beforeSave.status!=="not-observed")return Object.freeze({...beforeSave,reason:"El registro Fix cambió durante la confirmación. No se guardará otro plan."});
      await revalidate();
      const stored=await fixProposals.plan(context,prepared.raw,{
       proposalId:draft.sourceProposalId,treeIdentity:draft.sourceCandidateTree
@@ -647,6 +644,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
      });
      context.ui.notify(JSON.stringify(result,null,2),"info");
      return result;
+     }finally{activeFixSaves.delete(saveKey);}
     }
     // 'verify' reads the live Git candidate, without issuing write authority.
     const result=fixPlanMatch[2]==="verify"?
@@ -675,6 +673,12 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
     const first=(await readOddTodos(context)).find(row=>row.taskId===oddMatch[1]);
     validate();
     if(!first)throw new Error("The requested ODD Todo is absent from the owning session");
+    // The Fix link pins a source tree, but the proposal journal keeps paths, not
+    // frozen findings. Do not silently turn this re-judgment into a new review.
+    if(oddMatch[2]==="judgment-day"&&first.plan&&Object.hasOwn(first.plan,"fixSource")){
+     const reason="Fix-linked Todo Judgment Day requires verified repair lineage and explicit evidence for each frozen finding";
+     context.ui.notify(reason,"error");return {status:"blocked",reason};
+    }
     const head=gitHead();
     const lenses=["risk","resilience","reliability","readability"] as const;
     const profiles=await Promise.all(lenses.map(async lens=>{
@@ -715,7 +719,9 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
   const correctionMatch=/^workspace\s+correction\s+([a-f0-9]{64})$/u.exec(command);
   if(correctionMatch)return runWorkspaceReview(context,nativeRdd,correctionMatch[1]);
   if(typeof args!=="string"||! /^[a-f0-9]{64}$/.test(args)){
-   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review todo <id> 4r | /asen-review todo <id> judgment-day | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review fix-plan <id> status | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";context.ui.notify(usage,"info");return usage;
+   const usage="Uso: /asen-review <solicitud-id> | /asen-review workspace | /asen-review workspace 4r | /asen-review workspace adaptive | /asen-review workspace judgment-day | /asen-review todo <id> | /asen-review todo <id> adaptive | /asen-review todo <id> 4r | /asen-review todo <id> judgment-day | /asen-review fixes | /asen-review fix-plan <id> | /asen-review fix-plan <id> verify | /asen-review fix-plan <id> save | /asen-review fix-plan <id> status | /asen-review native status | /asen-review native assess (solo lectura; revisión manual ASEN no es aprobación Go)";
+   const message=command==="help"?`${usage}. Judgment Day de un Todo vinculado a Fix requiere linaje de reparación verificado y evidencia por cada hallazgo congelado.`:usage;
+   context.ui.notify(message,"info");return message;
   }
   const request=pending.get(args);
   if(!request)throw new Error("No existe solicitud pendiente en esta instancia de ASEN");

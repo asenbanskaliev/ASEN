@@ -36,7 +36,7 @@ export function sensitiveName(value:string):boolean{
 }
 export function sensitivePath(value:string):boolean{
  const normalized=path.normalize(value.replace(/\\/g,"/"));
- return sensitiveName(normalized)||/\/\.docker\/config\.json$/iu.test(normalized)||/\/\.aws\/.+/iu.test(normalized)||/\/\.ssh\/.+/iu.test(normalized)||/\/\.netrc$/iu.test(normalized);
+ return sensitiveName(normalized)||/(?:^|[/\\])\.docker[/\\]config\.json$/iu.test(normalized)||/\/\.aws\/.+/iu.test(normalized)||/\/\.ssh\/.+/iu.test(normalized)||/\/\.netrc$/iu.test(normalized);
 }
 export function hasSensitiveName(value:string):boolean{
  const normalized=path.normalize(value),root=path.parse(normalized).root;
