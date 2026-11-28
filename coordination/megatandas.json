@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
+      "sha": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Validar 88ea4176 y avanzar G07. Abrir otro alcance solo para contrato privado común si corresponde.",
+        "next": "Comprobar CI/Release Gate/CodeRabbit de 26f30eb8. G07 dimensiones de identidad requieren privacidad explícita. Pendientes M3/M4 y M6 no cerrados.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -513,7 +513,7 @@
         "sixthBatch": {
           "sha": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
           "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
-          "state": "publicada-espera-ci-y-revision",
+          "state": "CI-ReleaseGate-y-CodeRabbit-correctos",
           "commits": [
             "c4ddd1e0"
           ],
@@ -522,7 +522,10 @@
             "odd/tasks/asen-pi-local-megatandas.md"
           ],
           "checks": "Typecheck y 16/16 M5. Picos 1/2 en carga sintética local; coste desconocido. M4 no incluido por bloqueo de lectura de anexo/retención.",
-          "nvidiaCalls": 0
+          "nvidiaCalls": 0,
+          "ci": 46147655688,
+          "releaseGate": 46147655721,
+          "openReviewThreads": 0
         },
         "observedIdentity": {
           "sha": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
@@ -536,33 +539,28 @@
           "state": "bloqueada-sin-publicar",
           "reason": "26 pruebas y tipos verdes no resuelven la lectura por nombre, ancestros, enlaces duros ni publicación privada del anexo. El límite por archivo no acota huérfanos. Corrección acotada terminada sin nuevos cambios; diff local preservado. Requiere contrato de almacenamiento privado verificable sin romper recibos v1.",
           "verification": "mx0f1uad-z-hbgg; mx0f6f3f-10-aj25"
+        },
+        "seventhBatch": {
+          "sha": "26f30eb8e7cc56e39e85a08b2c2bc1ac2b1fa517",
+          "base": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
+          "state": "publicada-espera-ci-y-revision",
+          "commits": [
+            "39749c89",
+            "f23b6774"
+          ],
+          "paths": [
+            "src/stats/pi-history-stats.ts",
+            "src/stats/pi-history-command.ts",
+            "tests/pi-history-stats.test.ts",
+            "docs/runtime-tools.md",
+            "odd/tasks/asen-pi-local-megatandas.md",
+            "tests/compaction-pressure.test.ts"
+          ],
+          "checks": "112/112 sin omisiones; pin, tipos, ciclos, build correctos; revisión independiente G07 favorable y diferencial seis modos históricos byte a byte. G02 confirma cero llamadas o historial. G07 solo fecha UTC, no proveedor/modelo ni CTX real.",
+          "nvidiaCalls": 0
         }
       },
-      "lease": {
-        "id": "pi-local-E-M5-g2-g07-dia-utc-88ea4176",
-        "team": "E",
-        "generation": 2,
-        "package": "M5",
-        "base": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
-        "branch": "feat/asen-equipo-E-M5-g2-pi-local-g07-dia-utc",
-        "phase": "G07-desglose-optativo-por-evento-UTC",
-        "files": [
-          "src/stats/pi-history-stats.ts",
-          "src/stats/pi-history-command.ts",
-          "tests/pi-history-stats.test.ts",
-          "docs/runtime-tools.md",
-          "odd/tasks/asen-pi-local-megatandas.md",
-          "tests/compaction-pressure.test.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M5-g2-pi-local-g02-sin-llamadas",
-          "base": "88ea417695a8055b2acd33d44774bbd225f5b7c9",
-          "phase": "G02-indicador-activo-sin-llamadas-ni-historial",
-          "files": [
-            "tests/compaction-pressure.test.ts"
-          ]
-        }
-      }
+      "lease": null
     }
   },
   "packages": {
