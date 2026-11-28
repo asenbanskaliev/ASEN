@@ -517,8 +517,23 @@
         "phase": "P05-evidencia-pareada-runtime-sin-proveedor",
         "files": [
           "tests/megatanda-b-parallel-runtime.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
+          "odd/tasks/asen-pi-local-megatandas.md",
+          "src/agents/dispatcher.ts",
+          "src/runtime/agents/agent-store.ts",
+          "src/agents/agent-runtime.ts",
+          "tests/agent-store.test.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-identidad-observada",
+          "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
+          "phase": "G04-requisito-identidad-observada-durable-sin-autoridad",
+          "files": [
+            "src/agents/dispatcher.ts",
+            "src/runtime/agents/agent-store.ts",
+            "src/agents/agent-runtime.ts",
+            "tests/agent-store.test.ts"
+          ]
+        }
       }
     }
   },
