@@ -616,9 +616,13 @@
         "g05NtfsCas": {
           "sha": "995557a8665386384a594d8b625ca531c304b7e8",
           "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
-          "state": "CI-falla-compilacion-MSCV-C4701",
+          "state": "FAIL-compilacion-MSVC-C4701",
           "activation": false,
-          "ci": 46157448563
+          "ci": 46157448563,
+          "correction": {
+            "sha": "922de0a4ee2e04ece4b9d114bfd8d8bde6d0eae4",
+            "state": "publicada-espera-ci-exacta"
+          }
         }
       },
       "lease": {
@@ -631,17 +635,8 @@
         "phase": "T6-P04-PTY-nativo-con-autoridad-separada-de-fixture",
         "files": [
           "tests/p04-pi-tui-terminal-restart.test.ts",
-          "tests/fixtures/p04-tui-terminal-extension.ts",
-          "tests/fixtures/g05-windows/private-store.c"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
-          "base": "995557a8665386384a594d8b625ca531c304b7e8",
-          "phase": "T7-G05-NTFS-corregir-C4701-sin-relajar-WX",
-          "files": [
-            "tests/fixtures/g05-windows/private-store.c"
-          ]
-        }
+          "tests/fixtures/p04-tui-terminal-extension.ts"
+        ]
       }
     }
   },
