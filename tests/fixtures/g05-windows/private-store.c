@@ -219,7 +219,7 @@ static const char *compare_and_swap(HANDLE origin, PSID user, char next)
     if (state == INVALID_HANDLE_VALUE) return "state rejected";
     LARGE_INTEGER length;
     BY_HANDLE_FILE_INFORMATION id;
-    char current;
+    char current = '\0';
     DWORD read;
     BOOL ok = GetFileSizeEx(state, &length) && length.QuadPart == 1 &&
         ReadFile(state, &current, 1, &read, NULL) && read == 1 && GetFileInformationByHandle(state, &id);
