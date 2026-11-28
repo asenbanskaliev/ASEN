@@ -656,19 +656,8 @@
         "phase": "T6-G06-S9-emisor-local-sin-despacho",
         "files": [
           "src/runtime/lifecycle/verifier-read-approval.ts",
-          "tests/verifier-read-approval.test.ts",
-          "src/runtime/managed/managed-fix-storage-backend.ts",
-          "tests/managed-fix-storage-backend.test.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
-          "base": "922de0a4ee2e04ece4b9d114bfd8d8bde6d0eae4",
-          "phase": "T7-G05-S10-preflight-backend-firmado-sintetico-apagado",
-          "files": [
-            "src/runtime/managed/managed-fix-storage-backend.ts",
-            "tests/managed-fix-storage-backend.test.ts"
-          ]
-        }
+          "tests/verifier-read-approval.test.ts"
+        ]
       }
     }
   },
