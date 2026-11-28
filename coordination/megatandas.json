@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Validar 88ea4176 en CI y revalidar de forma independiente el anexo M4 en su base separada antes de portar.",
+        "next": "Validar 88ea4176 y avanzar G07. Abrir otro alcance solo para contrato privado común si corresponde.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -523,23 +523,22 @@
           ],
           "checks": "Typecheck y 16/16 M5. Picos 1/2 en carga sintética local; coste desconocido. M4 no incluido por bloqueo de lectura de anexo/retención.",
           "nvidiaCalls": 0
+        },
+        "observedIdentity": {
+          "sha": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-identidad-observada",
+          "paths": [
+            "src/agents/dispatcher.ts",
+            "src/runtime/agents/agent-store.ts",
+            "src/agents/agent-runtime.ts",
+            "tests/agent-store.test.ts"
+          ],
+          "state": "bloqueada-sin-publicar",
+          "reason": "26 pruebas y tipos verdes no resuelven la lectura por nombre, ancestros, enlaces duros ni publicación privada del anexo. El límite por archivo no acota huérfanos. Corrección acotada terminada sin nuevos cambios; diff local preservado. Requiere contrato de almacenamiento privado verificable sin romper recibos v1.",
+          "verification": "mx0f1uad-z-hbgg; mx0f6f3f-10-aj25"
         }
       },
-      "lease": {
-        "id": "pi-local-E-M4-g2-identidad-observada-0ce7708e",
-        "team": "E",
-        "generation": 2,
-        "package": "M4",
-        "base": "0ce7708eebac3bcb8975b624c8ca171dc916502c",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-identidad-observada",
-        "phase": "G04-requisito-identidad-observada-durable-sin-autoridad",
-        "files": [
-          "src/agents/dispatcher.ts",
-          "src/runtime/agents/agent-store.ts",
-          "src/agents/agent-runtime.ts",
-          "tests/agent-store.test.ts"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
