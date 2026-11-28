@@ -1,6 +1,6 @@
-/** EF-604: REAL installed Pi 1.6 RPC host restart, authenticated ASEN store,
- * and production notice journal. Child model execution and Writer are NOT tested here.
- * No provider credentials or model requests. All state lives in a disposable root.
+/** EF-604: real Pi RPC host restart, authenticated ASEN store and notice journal.
+ * Writer queue checkpoints and a partial edit are deterministic fixtures in the
+ * killed host, not live Writer admission or child inference. No provider calls.
  */
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -35,22 +35,43 @@ function scrubEnv(home:string,probeTrace:string){
 }
 const repo=fileURLToPath(new URL("../",import.meta.url));
 const extension=pathToFileURL(join(repo,"extensions","asen.ts")).href;
+const agentStoreModule=pathToFileURL(join(repo,"src","runtime","agents","agent-store.ts")).href;
+const queuedWriterId="ef604-queued-writer";
+const runningWriterId="ef604-partial-writer";
+const partialEdit="partial writer edit\n";
 function probeCode(){
  // The real Pi extension entry point is registered in this real native Pi host.
  // A replaced mock host cannot pass the native RPC session identity assertions.
  return [
   'import {appendFileSync} from "node:fs";',
+  'import {join} from "node:path";',
   'import {createAsenExtension} from '+JSON.stringify(extension)+';',
+  'import {PersistentAgentStore} from '+JSON.stringify(agentStoreModule)+';',
   'export default function(pi){',
-  ' createAsenExtension({homeDir:()=>process.env.ASEN_NATIVE_RESTART_HOME,',
-  '  enableAgentRuntime:true,enableTodoRuntime:false,enableWorkspaceRuntime:false,',
-  '  enableMemoryRuntime:false,autoAdvancePlans:false,',
-  '  agentRunner:{run:async()=>{throw Error("UNEXPECTED_AGENT_MODEL_OR_DISPATCH");}}',
-  ' })(pi);',
+  ' const home=process.env.ASEN_NATIVE_RESTART_HOME;',
   ' const track=(kind,ctx)=>appendFileSync(process.env.ASEN_NATIVE_RESTART_TRACE,',
   '  JSON.stringify({kind,pid:process.pid,sessionId:ctx?.sessionManager?.getSessionId?.()??null,',
   '   cwd:ctx?.cwd??null,mode:ctx?.mode??null})+"\\n");',
-  ' pi.on("session_start",(_event,ctx)=>track("native_session_start",ctx));',
+  ' createAsenExtension({homeDir:()=>home,',
+  '  enableAgentRuntime:true,enableTodoRuntime:false,enableWorkspaceRuntime:false,',
+  '  enableMemoryRuntime:false,autoAdvancePlans:false,',
+  '  agentRunner:{run:async()=>{track("unexpected_dispatch");throw Error("UNEXPECTED_AGENT_MODEL_OR_DISPATCH");}}',
+  ' })(pi);',
+  ' pi.on("session_start",async(_event,ctx)=>{',
+  '  const revision=process.env.ASEN_NATIVE_RESTART_WRITER_FIXTURE;',
+  '  if(revision){',
+  '   const repository=ctx.cwd,isolationKey=ctx.sessionManager.getSessionId();',
+  '   const {store}=await PersistentAgentStore.open(join(home,".asen","agents.json"));',
+  `   for(const id of ${JSON.stringify([queuedWriterId,runningWriterId])}){`,
+  '    await store.enqueueControlledWorker({id,role:"worker",prompt:"Disposable checkpoint fixture",',
+  '     repository,isolationKey,candidate:{id:"ef604",repository,revision},',
+  '     writeSurfaces:["README.md"],writerAdmission:{fixture:true}}, {kind:"user",id:"pi:"+isolationKey});',
+  '   }',
+  `   await store.running(${JSON.stringify(runningWriterId)});`,
+  `   appendFileSync(join(repository,"README.md"),${JSON.stringify(partialEdit)});`,
+  '  }',
+  '  track("native_session_start",ctx);',
+  ' });',
   ' pi.on("agent_start",(_event,ctx)=>track("unexpected_agent_start",ctx));',
   '}'
  ].join("\n")+"\n";
@@ -79,8 +100,9 @@ async function completedReadOnly(runtime:AgentRuntime,session:{sessionId:string;
 }
 test("EF-604 authentic Pi RPC host restart, forced process death and durable isolation never replay uncertain results",
  {timeout:180000},async t=>{
- const root=await mkdtemp(join(tmpdir(),"asen-native-pi-restart-"));
- t.after(()=>rm(root,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const scratch=await mkdtemp(join(tmpdir(),"asen-native-pi-restart-"));
+ t.after(()=>rm(scratch,{recursive:true,force:true,maxRetries:8,retryDelay:100}));
+ const root=await realpath(scratch);
  const home=join(root,"home"),project=join(root,"project"),sessions=join(root,"sessions");
  await Promise.all([mkdir(home),mkdir(project),mkdir(sessions)]);
  const git=(...args:string[])=>execFileSync("git",["-C",project,...args],
@@ -119,6 +141,7 @@ test("EF-604 authentic Pi RPC host restart, forced process death and durable iso
  const piEntrypoint=fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
  const binary=join(dirname(piEntrypoint),"bundle","cli.js");
  const env=scrubEnv(home,trace);
+ delete env.ASEN_NATIVE_RESTART_WRITER_FIXTURE;
  // Windows cold-starts the pinned Pi bundle plus a TypeScript probe extension.
  // The full suite runs several native Pi hosts concurrently, so a healthy
  // start can exceed the single-test budget: keep a strict, finite watchdog
@@ -176,11 +199,13 @@ test("EF-604 authentic Pi RPC host restart, forced process death and durable iso
  // A genuine Pi RPC process must survive a normal get_state response until
  // explicitly killed; this is a hard OS failure, not a clean session_shutdown.
  const cmdId="native-hard-kill";
+ const partialBytes="DISPOSABLE NATIVE PI RESTART FIXTURE\n"+partialEdit;
  const argv=[binary,"--mode","rpc","--session",sessionFile,
   "--no-extensions","--extension",probe,"--no-skills","--no-builtin-tools"];
  const killed=await new Promise<{pid:number;code:number|null;signal:NodeJS.Signals|null}>((resolve,reject)=>{
-  const child=spawn(process.execPath,argv,{cwd:project,env,stdio:["pipe","pipe","pipe"],
-   windowsHide:true});
+  const child=spawn(process.execPath,argv,{cwd:project,
+   env:{...env,ASEN_NATIVE_RESTART_WRITER_FIXTURE:baseline},
+   stdio:["pipe","pipe","pipe"],windowsHide:true});
   let stdout="",stderr="",answered=false,requestedKill=false,settled=false;
   const finish=(error?:Error,code:number|null=null,signal:NodeJS.Signals|null=null)=>{
    if(settled)return;
@@ -216,10 +241,30 @@ test("EF-604 authentic Pi RPC host restart, forced process death and durable iso
   child.stdin.write(JSON.stringify({id:cmdId,type:"get_state"})+"\n");
  });
  assert.ok(killed.pid>0,"A real native Pi OS process must have been forcibly terminated");
+ assert.equal(await readFile(join(project,"README.md"),"utf8"),partialBytes,
+  "The killed Pi process must have persisted one partial writer edit before the restart");
  const afterKill=run(sessionFile);
  assert.equal(afterKill.state.sessionId,sessionId);
  assert.equal(afterKill.state.sessionFile,sessionFile);
  assert.notEqual(afterKill.pid,killed.pid);
+ assert.equal(await readFile(join(project,"README.md"),"utf8"),partialBytes);
+ assert.equal(git("rev-parse","HEAD"),baseline);
+ assert.equal(git("status","--porcelain"),"M README.md");
+ const restartedRuntime=await AgentRuntime.open({storeFile:storePath,runner:{run:async()=>{
+  throw Error("RESTART_DISPATCH_FORBIDDEN");
+ }}});
+ const writers=(await restartedRuntime.list(scope)).filter(agent=>agent.role==="worker");
+ assert.deepEqual(writers.map(agent=>agent.id).sort(),[queuedWriterId,runningWriterId].sort());
+ for(const id of [queuedWriterId,runningWriterId]){
+  const entry=await restartedRuntime.query(id,scope);
+  assert.equal(entry?.record.state,"interrupted");
+  assert.equal(entry?.nativeCompletion,undefined);
+  assert.deepEqual(entry?.history.map(event=>[event.id,event.state]),
+   (id===queuedWriterId?["queued","interrupted"]:["queued","running","interrupted"])
+    .map(state=>[id,state]));
+  assert.equal(await restartedRuntime.query(id,{...scope,sessionId:foreign.state.sessionId}),null);
+  assert.equal(await restartedRuntime.query(id,{...scope,projectId:home}),null);
+ }
  assert.equal(await stableJournal(),baselineDigest,
   "Forced Pi death plus restart cannot mutate or replay uncertain notices");
  assert.deepEqual((await journal.list(scope)).map(row=>row.delivery),["attempted","pending"]);
