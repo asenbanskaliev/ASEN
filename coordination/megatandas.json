@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Consultar puertas de 3904bed0; reservar unidad G06 de rutas sensibles de vistas. Siguen pendientes identidad Verifier, G05 durable, G03 integral y M5/M6.",
+        "next": "Avanzar evidencia determinista M5 sin proveedor mientras G06 espera diseño acotado. Mantener abiertas M3/M4 y P05/CTX.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -410,20 +410,24 @@
             "releaseGate": 46133172796,
             "reason": "Salida histórica sin argumentos alterada en 08b72241; corregida en b0959476. Release Gate anterior correcto."
           }
+        },
+        "g06Views": {
+          "sha": "3904bed0ea03262e87698838083b9c375d2c5e89",
+          "state": "pendiente-de-contrato-de-vista-acotada",
+          "task": "mx0a1hey-9-iqcc",
+          "result": "Sin cambios. Bloqueo total impediría revisión ordinaria aun cuando los dos nombres rastreados sensibles no pertenecen a los cambios. No leer blobs ni presentar recorte como vista completa."
         }
       },
       "lease": {
-        "id": "pi-local-E-M4-g2-g06-vistas-3904bed0",
+        "id": "pi-local-E-M5-g2-coste-publico-3904bed0",
         "team": "E",
         "generation": 2,
-        "package": "M4",
+        "package": "M5",
         "base": "3904bed0ea03262e87698838083b9c375d2c5e89",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g06-vistas",
-        "phase": "G06-excluir-rutas-sensibles-en-vistas",
+        "branch": "feat/asen-equipo-E-M5-g2-pi-local-coste-publico",
+        "phase": "G02-metricas-publicas-cero-desconocido",
         "files": [
-          "src/review/review-view.ts",
-          "tests/review-view.test.ts",
-          "tests/workspace-review-session.test.ts",
+          "tests/asen-d-flow-usage.test.ts",
           "odd/tasks/asen-pi-local-megatandas.md"
         ]
       }
