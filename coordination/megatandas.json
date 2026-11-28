@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "G06 probar entrega por descriptor dedicado, sin cambios de runtime; G05 estudiar carga exacta; P04 y G04 siguen abiertos.",
+        "next": "Canal IPC G06 en revisión sin reserva, aún no conecta Verifier real. G05 sin garantía de carga; P04 y G04 siguen abiertos.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -644,7 +644,8 @@
           "base": "444559ff9abf2951c32e392c96c50c8f972653e0",
           "state": "emisor-interno-verificado-sin-despacho",
           "codeChanged": false,
-          "commit": "f56a1ec6306efd5e2d8b9adadbfee73851f3874d"
+          "commit": "f56a1ec6306efd5e2d8b9adadbfee73851f3874d",
+          "privateChannel": "IPC-Node-Windows-sintetico-1-1-en-revision; raw-pipe-timeout"
         },
         "g05Managed": {
           "base": "922de0a4ee2e04ece4b9d114bfd8d8bde6d0eae4",
@@ -653,19 +654,7 @@
           "commit": "0a14aa02"
         }
       },
-      "lease": {
-        "id": "pi-local-E-M4-g2-g06-canal-f56a1ec6",
-        "team": "E",
-        "generation": 2,
-        "package": "M4",
-        "base": "f56a1ec6306efd5e2d8b9adadbfee73851f3874d",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-g06-vista-verifier",
-        "phase": "T6-G06-S9-canal-heredado-aislado-dos-hijos-sinteticos",
-        "files": [
-          "tests/verifier-read-private-channel.test.ts",
-          "tests/fixtures/verifier-read-private-child.mjs"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
