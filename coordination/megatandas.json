@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Verificar MSVC y NTFS CAS/caída en 995557a8 sin reserva; P04 conserva su ámbito TUI SDK.",
+        "next": "G04 revisar y preservar solo observación final del transporte. P04 TUI SDK continúa. G05 pruebas sintéticas de proceso en tres SO; integración autenticada pendiente, sin activación.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -621,7 +621,11 @@
           "ci": 46157448563,
           "correction": {
             "sha": "922de0a4ee2e04ece4b9d114bfd8d8bde6d0eae4",
-            "state": "publicada-espera-ci-exacta"
+            "state": "PASS-MSVC-NTFS-sintetico",
+            "ci": 46157752477,
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0
           }
         }
       },
@@ -635,8 +639,19 @@
         "phase": "T6-P04-PTY-nativo-con-autoridad-separada-de-fixture",
         "files": [
           "tests/p04-pi-tui-terminal-restart.test.ts",
-          "tests/fixtures/p04-tui-terminal-extension.ts"
-        ]
+          "tests/fixtures/p04-tui-terminal-extension.ts",
+          "src/agents/pi-artifact-runner.ts",
+          "tests/pi-artifact-runner-recovery.test.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g04-identidad-observada",
+          "base": "444559ff9abf2951c32e392c96c50c8f972653e0",
+          "phase": "T6-G04-observacion-final-transporte-sin-autoridad",
+          "files": [
+            "src/agents/pi-artifact-runner.ts",
+            "tests/pi-artifact-runner-recovery.test.ts"
+          ]
+        }
       }
     }
   },
