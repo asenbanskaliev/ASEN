@@ -607,8 +607,11 @@
         "g05Ntfs": {
           "sha": "3fb8c75bd7bb09d545bad9c27d6475741fd6dedb",
           "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
-          "state": "borrador-estatico-verificado-candidato-sintetico-espera-ci",
-          "activation": false
+          "state": "privacidad-sintetica-por-descriptor-verificada",
+          "activation": false,
+          "ci": 46156259350,
+          "windowsPass": 6,
+          "skipped": 0
         }
       },
       "lease": {
@@ -621,8 +624,19 @@
         "phase": "T6-P04-PTY-nativo-con-autoridad-separada-de-fixture",
         "files": [
           "tests/p04-pi-tui-terminal-restart.test.ts",
-          "tests/fixtures/p04-tui-terminal-extension.ts"
-        ]
+          "tests/fixtures/p04-tui-terminal-extension.ts",
+          "tests/fixtures/g05-windows/private-store.c",
+          "tests/native-fix-windows-storage.test.mjs"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-g05-contrato-v2",
+          "base": "3fb8c75bd7bb09d545bad9c27d6475741fd6dedb",
+          "phase": "T7-G05-NTFS-CAS-concurrencia-caida-de-proceso-sintetica",
+          "files": [
+            "tests/fixtures/g05-windows/private-store.c",
+            "tests/native-fix-windows-storage.test.mjs"
+          ]
+        }
       }
     }
   },
