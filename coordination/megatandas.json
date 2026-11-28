@@ -186,7 +186,7 @@
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "3904bed0ea03262e87698838083b9c375d2c5e89",
+      "sha": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Corregir hallazgo de G06 y agrupar con cobertura M5; no cerrar M3/M4 ni M5",
+        "next": "Verificar CI/Release Gate/CodeRabbit de 91e34d64 y acotar dos unidades disjuntas G03 y P05, sin proveedores.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -419,33 +419,25 @@
           "state": "pendiente-de-contrato-de-vista-acotada",
           "task": "mx0a1hey-9-iqcc",
           "result": "Sin cambios. Bloqueo total impediría revisión ordinaria aun cuando los dos nombres rastreados sensibles no pertenecen a los cambios. No leer blobs ni presentar recorte como vista completa."
-        }
-      },
-      "lease": {
-        "id": "pi-local-E-M5-g2-coste-publico-3904bed0",
-        "team": "E",
-        "generation": 2,
-        "package": "M5",
-        "base": "3904bed0ea03262e87698838083b9c375d2c5e89",
-        "branch": "feat/asen-equipo-E-M5-g2-pi-local-coste-publico",
-        "phase": "G02-metricas-publicas-cero-desconocido",
-        "files": [
-          "tests/asen-d-flow-usage.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md",
-          "src/security/path-safety.ts",
-          "tests/workspace-review-session.test.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M4-g2-pi-local-docker-raiz",
+        },
+        "thirdBatch": {
+          "sha": "91e34d6491f5a71d45aeff65403cc664b86abb4c",
           "base": "3904bed0ea03262e87698838083b9c375d2c5e89",
-          "phase": "G06-CodeRabbit-proyeccion-ruta-Docker",
-          "files": [
+          "state": "publicada-espera-ci-y-revision",
+          "commits": [
+            "20af9866",
+            "91e34d64"
+          ],
+          "paths": [
+            "tests/asen-d-flow-usage.test.ts",
             "src/security/path-safety.ts",
             "tests/workspace-review-session.test.ts"
           ],
-          "reviewComment": 4726622134
+          "checks": "88 de 90 correctas, 2 fixtures POSIX omitidos en Windows, 0 fallos; ciclos, tipos y build correctos. G06 verificación independiente favorable y diferencial de 12 decisiones. Audit EF: 8 verificadas, 15 parciales, 5 bloqueadas; solo estructural.",
+          "nvidiaCalls": 0
         }
-      }
+      },
+      "lease": null
     }
   },
   "packages": {
