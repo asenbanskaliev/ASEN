@@ -499,6 +499,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
  plan?:(context:ReviewCommandContext,raw:string,source:Readonly<{proposalId:string;treeIdentity:string}>)=>Promise<string>;
 }>,readArchivedOddTodos?:(context:ReviewCommandContext)=>Promise<readonly ScopedOddTodo[]>):OrdinaryReviewCommandController{
  const pending=new Map<string,OrdinaryReviewRequest>();
+ const activeFixSaves=new Set<string>();
  register("asen-review",{description:"Revisión manual ASEN del workspace o candidato preparado; native status | native assess observa RDD en solo lectura, sin aprobación Go ni autorización de entrega; cancelar/confirmar cierra la vista, sin UI devuelve checkout",handler:(args,context)=>{
   const command=(args??"").trim();
   if(command==="native status"||command==="native assess")return nativeRdd.observe(command==="native status"?"status":"assess",context);
@@ -557,6 +558,17 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
       return {status:"blocked" as const,reason:"Fix disagreement requires human triage first"};
      if(!fixProposals.plan||!readOddTodos||!context.hasUI||!context.ui.editor||!context.ui.confirm)
       return {status:"unavailable" as const,reason:"Saving Fix ODD requires a live Pi editor, a bounded Todo planner and a readable Todo store"};
+     const saveKey=JSON.stringify([projectId,sessionId,draft.sourceProposalId]);
+     if(activeFixSaves.has(saveKey))return {status:"blocked" as const,reason:"Ya existe un guardado Fix en curso. Inspecciona su resultado antes de repetirlo."};
+     activeFixSaves.add(saveKey);
+     try{
+     const observeExisting=async()=>{
+      const active=await readOddTodos(context);validate();
+      const archived=readArchivedOddTodos?await readArchivedOddTodos(context):[];validate();
+      return inspectFixOddRecovery({draft,identity,todos:active,archivedTodos:archived});
+     };
+     const existing=await observeExisting();
+     if(existing.status!=="not-observed")return Object.freeze({...existing,reason:"Ya existe un registro Fix o su procedencia es incierta. Inspecciona el diario; no se guardará otro plan."});
      const baseline=inspectLiveFixCandidate(draft);
      const seed={
       instruction:"",taskIdentity:"fix-"+draft.sourceProposalId.slice(0,24),
@@ -588,6 +600,9 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
       draft.writeSurfaces.join(", ")+". Se guardará un plan nuevo; el permiso Writer se pedirá aparte."
      );
      if(!approved)return {status:"cancelled" as const,reason:"User declined new ODD plan persistence"};
+     await revalidate();
+     const beforeSave=await observeExisting();
+     if(beforeSave.status!=="not-observed")return Object.freeze({...beforeSave,reason:"El registro Fix cambió durante la confirmación. No se guardará otro plan."});
      await revalidate();
      const stored=await fixProposals.plan(context,prepared.raw,{
       proposalId:draft.sourceProposalId,treeIdentity:draft.sourceCandidateTree
@@ -647,6 +662,7 @@ export function registerOrdinaryReviewCommand(register:(name:string,command:Revi
      });
      context.ui.notify(JSON.stringify(result,null,2),"info");
      return result;
+     }finally{activeFixSaves.delete(saveKey);}
     }
     // 'verify' reads the live Git candidate, without issuing write authority.
     const result=fixPlanMatch[2]==="verify"?

@@ -148,3 +148,28 @@ test("T08 un recibo de plan sin Todo persistido no confirma reparación",async t
  assert.equal(f.plans(),1,"El plan puede haberse guardado: está prohibido reintentarlo automáticamente");
  assert.equal(f.confirms(),1);
 });
+
+test("G05 un Fix ya guardado no vuelve a pedir consentimiento ni duplica el plan",async t=>{
+ const f=setup(t);f.registration();
+ const first=await f.run("fix-plan "+f.proposal.id+" save") as {status:string};
+ assert.equal(first.status,"plan-saved-no-dispatch");
+ const recovered=await f.run("fix-plan "+f.proposal.id+" save") as {status:string;autoRetry:boolean;authorized:boolean};
+ assert.equal(recovered.status,"worker-observed");
+ assert.equal(recovered.autoRetry,false);assert.equal(recovered.authorized,false);
+ assert.equal(f.plans(),1);assert.equal(f.confirms(),1);
+});
+test("G05 dos peticiones simultáneas de guardar Fix no duplican el plan",async t=>{
+ const f=setup(t);f.registration();
+ let entered!:()=>void,release!:()=>void;
+ const ready=new Promise<void>(resolve=>{entered=resolve;});
+ const gate=new Promise<void>(resolve=>{release=resolve;});
+ f.context.ui.confirm=async()=>{entered();await gate;return true;};
+ const first=f.run("fix-plan "+f.proposal.id+" save");
+ await ready;
+ try{
+  const second=await f.run("fix-plan "+f.proposal.id+" save") as {status:string};
+  assert.equal(second.status,"blocked");assert.equal(f.plans(),0);
+ }finally{release();}
+ assert.equal((await first as {status:string}).status,"plan-saved-no-dispatch");
+ assert.equal(f.plans(),1);
+});
