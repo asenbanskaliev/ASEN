@@ -18,7 +18,7 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 - T1 [S1–S4,S6–S7] M3 G03/P04: ensayo de reinicio de padre Pi tras escritura parcial, sin proveedor; inline; evidencia local obtenida; `9eadc6d3`.
 - T2 [S1–S4,S6–S7] M4 G05/P06 parcial: bloquear rejuicio de Todo Fix sin linaje verificable; worker y verificador independiente; `5100fb01`, consolidado `b344b54a`.
 - T3 [S4–S7] Publicar y verificar las tandas parciales M3/M4; coordinador E; `08b72241` publicado; `b0959476` corrige la ayuda histórica.
-- T6 [S1–S4,S6–S7] M3/M4 pendientes: la matriz pública G04/P01 está en `d7fb89e5`; quedan identidad canónica del Verifier, linaje y límite durable G05/P06, rutas G06 de vistas/Verifier y evidencia restante de G03/P04; reserva por unidad.
+- T6 [S1–S4,S6–S7] M3/M4 pendientes: matriz G04/P01 `d7fb89e5`, acuse M3 `7d137c7b`, vista ordinaria G06 `c2d09243`; quedan Verifier, linaje y límite durable G05/P06 y fronteras restantes G03/P04.
 - T4 [S1,S3,S6–S7] M5 G02/G07/CTX/P05; contrato de costes en `20af9866` y comparador sintético en `6fc98ef2`; faltan mediciones pareadas reales.
 - T5 [S1,S3,S5–S7] M6: aceptación integral y límites de la evidencia; rama y reserva por definir; commit pendiente.
 
@@ -98,3 +98,11 @@ En `3904bed0` pasaron CI `46135817672` y Release Gate `46135817554`. CodeRabbit 
 ### L10
 
 M3 `7d137c7b`: la TUI simulada se vuelve a registrar entre inspección y acuse; conserva IDs y diario, rechaza inspección anterior y no repite avisos o despachos. Es otra frontera del diario real, no una caída de TUI nativa ni prueba de consentimiento humano. M5/P05 `6fc98ef2`: `node --import tsx scripts/agent-flow-asen-scaling.ts <synthetic-pair.json>`. El objeto debe contener `observations`: dos filas con `system:"asen"`, `synthetic:true`, `requirementPassed:true`, `runId` distinto, `workerCount` 1 y 2, y `durationMs` positivo finito. Ambas deben compartir `commit` (SHA hexadecimal completo de 40 caracteres) y `taskDigest`, `toolsDigest`, `permissionsDigest`, `configDigest` (SHA-256 hexadecimal de 64 caracteres). Devuelve delta `t1−t2`, razón `t1/t2`, `costUsd:null`, `costConclusion:"unknown"` y `acceptance:"not-accepted"`. Sin proveedor, datos reales, recibo ni afirmación de mejora; rechaza 3 y 4 Workers. `globalFull:false`.
+
+### L11
+
+`9a45d980` se publicó con 142/142 pruebas locales. Pasaron CI `46141315723`, Release Gate `46141315701`, Pi runtime `46141315732` y check de CodeRabbit, sin hilos abiertos. M6: se revalidaron individualmente los 12 recibos Pi 1.2.0 de Linux, Windows y macOS (artefacto agregado `15261184583`); punto 18 listo para auditoría independiente, puntos 16/17 bloqueados, `globalFull:false`. El caso P04 de terminal recuperado quedó sin publicar (registro `db6389e9`): fallos variables antes o después de la reconciliación, sin causa estable; diff preservado.
+
+### L12
+
+G06 `c2d09243`: revisión ordinaria y corrección materializan solo los archivos regulares cambiados autorizados. Se verifica localmente cada blob por bytes antes de descartar los omitidos, sin codificarlos en el manifiesto, copiarlos a la vista ni enviarlos al revisor. No se cambian árbol, recibo, límites, preparación de vista completa ni rechazo de enlaces/gitlinks. RED/GREEN público con fixture sintético; revisión independiente inicialmente detectó la comprobación de metadatos insuficiente, corregida y rerrevisada (5/5). Verificación G06 del Verifier y aceptación real quedan abiertas.
