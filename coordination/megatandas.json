@@ -137,7 +137,7 @@
       "branch": "feat/asen-equipo-D-D1-g2-4704551343-0726"
     },
     "E": {
-      "state": "M1-M2-cerradas-alcance-ensayado",
+      "state": "espera-ci-revision-M3-M4",
       "package": "E1",
       "scope": "Coordinación, auditoría de código, corrección compartida e integración exclusiva",
       "base": "815786af4d7b1f91cdc33c579ef78775b09761bf",
@@ -182,11 +182,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Verificar rama integrada y reconciliar #156/M3/M4 en candidato separado, preservar ocho rutas y no repetir pruebas 09/10; mantener revisión y riesgos residuales M6.",
+      "next": "Validar CI y revisión independiente de #163; completar recuperación pública y ensayos M3/M4. Trabajo manual: cinco tareas pausadas por el usuario.",
       "blocker": null,
       "generation": 2,
-      "pr": 161,
-      "sha": "6a75f8ef24bfaab941f25e8e749d7a57512aac83",
+      "pr": 163,
+      "sha": "58084fcea90f4eec107078002a638f2101f0c7b4",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -350,24 +350,7 @@
         "phase": "M1-M2-integradas",
         "writeReservation": false
       },
-      "lease": {
-        "id": "manual-E-g2-M3-M4-consolidacion-20261128",
-        "team": "E",
-        "generation": 2,
-        "package": "E1",
-        "base": "ca0ff94d62c0f3cf81cf2e2287b5631c1dc38f0c",
-        "branch": "feat/asen-equipo-E-M3-M4-g2-consolidacion-20261128",
-        "phase": "consolidacion-manual-M3-M4",
-        "files": [
-          "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md",
-          "src/runtime/agents/agent-store.ts",
-          "src/runtime/lifecycle/native-integration-review.ts",
-          "src/runtime/lifecycle/odd-unit-plan.ts",
-          "tests/agent-store.test.ts",
-          "tests/asen-c-checkpoint-recovery.test.ts",
-          "tests/odd-unit-partition.test.ts"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
@@ -3590,7 +3573,7 @@
     }
   },
   "globalFull": false,
-  "updatedAt": "2026-11-27",
+  "updatedAt": "2026-11-28",
   "workHandoff": {
     "state": "validado-candidato-separado",
     "source": "Usuario indica que Work agotó cuota",
@@ -3768,7 +3751,7 @@
       },
       {
         "id": "M3",
-        "state": "candidato-separado-validado",
+        "state": "candidato-acumulativo-publicado-espera-ci-revision",
         "pr": 156,
         "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
         "owner": "B",
@@ -3802,11 +3785,16 @@
           "pr": 161,
           "sha": "6a75f8ef24bfaab941f25e8e749d7a57512aac83",
           "mergeSha": "ca0ff94d62c0f3cf81cf2e2287b5631c1dc38f0c"
+        },
+        "currentCandidate": {
+          "pr": 163,
+          "sha": "58084fcea90f4eec107078002a638f2101f0c7b4",
+          "state": "espera-ci-revision"
         }
       },
       {
         "id": "M4",
-        "state": "candidato-separado-validado",
+        "state": "candidato-acumulativo-publicado-espera-ci-revision",
         "pr": 156,
         "sha": "853d105dd569903400a688cd65eb9f5ff3f0e401",
         "owner": "C",
@@ -3816,6 +3804,11 @@
           "pr": 161,
           "sha": "6a75f8ef24bfaab941f25e8e749d7a57512aac83",
           "mergeSha": "ca0ff94d62c0f3cf81cf2e2287b5631c1dc38f0c"
+        },
+        "currentCandidate": {
+          "pr": 163,
+          "sha": "58084fcea90f4eec107078002a638f2101f0c7b4",
+          "state": "espera-ci-revision"
         }
       },
       {
@@ -3956,6 +3949,27 @@
           ],
           "scope": "T06 API dos identidades exactas y Pi dos sesiones nativas de lectura simultáneas con Lightning; no acredita dos modelos distintos dentro de Pi, Writer, factura, fallback integral ni aceptación global."
         }
+      },
+      "currentCandidate": {
+        "pr": 163,
+        "sha": "58084fcea90f4eec107078002a638f2101f0c7b4",
+        "base": "ca0ff94d62c0f3cf81cf2e2287b5631c1dc38f0c",
+        "work": "853d105dd569903400a688cd65eb9f5ff3f0e401",
+        "branch": "feat/asen-equipo-E-M3-M4-g2-consolidacion-20261128",
+        "state": "publicado-espera-ci-revision",
+        "files": [
+          "odd/tasks/flujo-agentes-cierre-implementacion-megatanda-20261125.md",
+          "src/runtime/agents/agent-store.ts",
+          "src/runtime/lifecycle/native-integration-review.ts",
+          "src/runtime/lifecycle/odd-unit-plan.ts",
+          "tests/agent-store.test.ts",
+          "tests/asen-c-checkpoint-recovery.test.ts",
+          "tests/odd-unit-partition.test.ts"
+        ],
+        "retained": [
+          "tests/ecosystem-evidence-bundle.test.ts"
+        ],
+        "globalFull": false
       }
     },
     "auditM1M2": {
@@ -4477,6 +4491,12 @@
       },
       "scope": "M1 cierre técnico. M2 cierre de alcance ensayado: 429 local controlado, respuesta alternativa auténtica y recuperación de Explorer con principal. No fallo espontáneo acreditado, no factura, no aceptación global. Reinicio padre M3. Validaciones del commit de fusión se comprueban antes de siguiente integración; no repetir NVIDIA.",
       "globalFull": false
+    },
+    "manualExecution": {
+      "state": "tareas-programadas-pausadas",
+      "date": "2026-11-28",
+      "owner": "E",
+      "rule": "Continuar solo desde el chat por petición del usuario, no reactivar tareas automáticamente."
     }
   }
 }
