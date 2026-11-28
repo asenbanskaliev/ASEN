@@ -427,6 +427,21 @@ const terminalErrors:unknown[]=[];
     assert.notEqual(git("rev-parse","HEAD"),candidate.commit);
     const historical=await inspectCompletedNativePartition(inspectInput);
     assert.equal(historical?.status,"partition-already-closed");assert.equal(historical?.writerAuthority,false);
+    // Probar los comandos públicos de la extensión tras el cierre histórico.
+    const headBefore=git("rev-parse","HEAD"),dialogCount=dialogs.length;
+    const archivedBefore=await todos.archived(identity),activeBefore=await todos.list(identity);
+    const journalNames=["parallel-todo-worktrees.json","parallel-worktree-sessions.json","parallel-worker-observations.json","agents.json"];
+    const journalBefore=await Promise.all(journalNames.map(name=>readFile(join(privateDir,name),"utf8")));
+    for(const action of ["integration-continue","integration-auto","integration-auto-dual"]){
+     const reopened=await commands.get("asen-worktrees").handler(action+" "+batch.id,context);
+     assert.equal(reopened.status,"partition-already-closed",JSON.stringify(reopened));
+     assert.equal(reopened.writerAuthority,false);assert.equal(reopened.autoRetry,false);
+     assert.equal(dialogs.length,dialogCount);assert.equal(launched,2);
+     assert.equal(git("rev-parse","HEAD"),headBefore);
+     assert.deepEqual(await todos.archived(identity),archivedBefore);
+     assert.deepEqual(await todos.list(identity),activeBefore);
+     assert.deepEqual(await Promise.all(journalNames.map(name=>readFile(join(privateDir,name),"utf8"))),journalBefore);
+    }
     assert.equal(launched,2);
     return;
    }

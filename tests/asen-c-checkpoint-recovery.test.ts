@@ -25,7 +25,12 @@ test("G05 conserva un intento iniciado como bloqueo recuperable, sin repetir jue
 
 test("G06 conserva la firma autenticada del recibo en checkpoints recuperables",()=>{
  assert.throws(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:"hmac-sha256-incorrecto",phase:"dual-pending",attemptStarted:false,judges:[]} as any),/inválido/u);
- assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:"hmac-sha256:"+hash,phase:"dual-pending",attemptStarted:false,judges:[]} as any));
+ for(const signature of [hash,hash.toUpperCase(),"hmac-sha256:"+hash,"hmac-sha256:"+hash.toUpperCase()]){
+  assert.doesNotThrow(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:signature,phase:"dual-pending",attemptStarted:false,judges:[]} as any));
+ }
+ for(const signature of ["HMAC-SHA256:"+hash,"hmac-sha256:"+"g".repeat(64),"hmac-sha256:"+hash.slice(1)]){
+  assert.throws(()=>assertNativeReviewCheckpointProgress({...base,receiptSignature:signature,phase:"dual-pending",attemptStarted:false,judges:[]} as any),/inválido/u);
+ }
 });
 
 test("G06 rechaza recibos y referencias Fix que no estén ligados de forma exacta",()=>{

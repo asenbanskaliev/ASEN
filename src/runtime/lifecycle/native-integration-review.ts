@@ -210,7 +210,7 @@ const recoveredBindings=new WeakMap<object,{input:CheckpointInput;serialized:str
 const digest=(text:string)=>createHash("sha256").update(text).digest("hex");
 const checkpointFile=(input:CheckpointInput)=>join(input.storageDir,"native-review-"+digest(integrationKey(input.candidate,input.sessionId))+".json");
 const checkpointMac=(key:Buffer,body:string)=>createHmac("sha256",key).update("asen.native-review/v1\0"+body).digest("hex");
-const receiptSignature=/^(?:hmac-sha256:)?[a-f0-9]{64}$/u;
+const receiptSignature=/^(?:hmac-sha256:)?[a-fA-F0-9]{64}$/u;
 /** Los checkpoints son recuperables, pero nunca pueden transformar un intento
  * incompleto en una revisión completa. Esta validación semántica se aplica
  * antes de que métricas, reanudación o aceptación observen el registro. */

@@ -156,3 +156,25 @@ test("workspace session rejects a two-dot child view parent before snapshotting 
   assert.deepEqual({head:git("rev-parse","HEAD"),index:git("write-tree"),objects:git("count-objects","-v")},before);
  }finally{rmSync(parent,{recursive:true,force:true});}
 });
+
+test("G06 rechaza rutas sensibles antes de persistir blobs o abrir la revisión",t=>{
+ const {root,git}=repository(t);
+ const parent=mkdtempSync(join(tmpdir(),"asen-sensitive-review-"));
+ t.after(()=>rmSync(parent,{recursive:true,force:true}));
+ const input={repositoryRoot:root,intendedUntracked:[".ENV.synthetic"],sessionId:"pi-session",reviewerId:"reviewer-model",viewParent:parent,risk};
+ const secret="ASEN dato sintético no persistir\n";
+ writeFileSync(join(root,".ENV.synthetic"),secret);
+ const objectId=git("hash-object","--no-filters",".ENV.synthetic");
+ const before={head:git("rev-parse","HEAD"),index:git("write-tree")};
+ assert.throws(()=>openWorkspaceReview(input),/Sensitive path/u);
+ assert.throws(()=>git("cat-file","-e",objectId));
+ assert.deepEqual(readdirSync(parent),[]);
+ assert.deepEqual({head:git("rev-parse","HEAD"),index:git("write-tree")},before);
+ git("add","-f",".ENV.synthetic");git("commit","-qm","dato sintético rastreado");
+ writeFileSync(join(root,".ENV.synthetic"),secret+"modificado");
+ const modified=git("hash-object","--no-filters",".ENV.synthetic"),trackedBefore={head:git("rev-parse","HEAD"),index:git("write-tree")};
+ assert.throws(()=>openWorkspaceReview({...input,intendedUntracked:[]}),/Sensitive path/u);
+ assert.throws(()=>git("cat-file","-e",modified));
+ assert.deepEqual(readdirSync(parent),[]);
+ assert.deepEqual({head:git("rev-parse","HEAD"),index:git("write-tree")},trackedBefore);
+});
