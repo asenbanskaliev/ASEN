@@ -41,14 +41,15 @@ test("numeric totals saturate safely instead of overflowing",async t=>{
  const result=await collectPiHistoryStats([root]);assert.equal(result.inputTokens,Number.MAX_SAFE_INTEGER);assert.equal(result.totalTokens,Number.MAX_SAFE_INTEGER);assert.equal(result.costUsd,Number.MAX_SAFE_INTEGER);assert.equal(result.truncated,true);
 });
 
-test("history stats reject unsafe ranges and unavailable roots return structured data",async()=>{
+test("history stats reject unsafe ranges and unavailable roots return structured data",async t=>{
  assert.throws(()=>parsePiHistoryRange("from=2026-02-30"),/Usage/);assert.throws(()=>parsePiHistoryRange("from=2026-10-03 to=2026-10-01"),/starts after/);assert.throws(()=>parsePiHistoryRange("from=2026-10-01 from=2026-10-02"),/Usage/);
- const missing=path.join(tmpdir(),"asen-stats-missing-root");await rm(missing,{recursive:true,force:true});const result=await collectPiHistoryStats([missing]);assert.equal(result.state,"unavailable");assert.equal(result.roots,0);assert.equal(result.sessions,0);
+ const root=await mkdtemp(path.join(tmpdir(),"asen-stats-missing-"));t.after(()=>rm(root,{recursive:true,force:true}));const result=await collectPiHistoryStats([path.join(root,"missing")]);assert.equal(result.state,"unavailable");assert.equal(result.roots,0);assert.equal(result.sessions,0);
 });
 
 test("stats command returns unavailable when Pi does not expose a session directory",async()=>{
  const result=JSON.parse(await runPiHistoryStatsCommand(""));assert.equal(result.state,"unavailable");assert.equal(result.sessions,0);
  assert.deepEqual([result.inputTokens,result.outputTokens,result.totalTokens,result.costUsd],[null,null,null,null],"unavailable history must not claim measured zero");assert.equal(result.schema,"asen.pi-history-stats/v2");assert.deepEqual(result.measurementCounts,{inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0});
+ assert.deepEqual(JSON.parse(await runPiHistoryStatsCommand("--by-day")),{...result,byDay:{timezone:"UTC",unbucketedUsageEntries:0,truncated:false,days:[]}});
 });
 
 test("available history without usage reports unknown measurements without changing source files",async t=>{
@@ -73,4 +74,45 @@ test("Pi /asen-stats command uses only the active session directory",async t=>{
  const root=await mkdtemp(path.join(tmpdir(),"asen-pi-stats-command-")),sessionDir=path.join(root,"sessions"),foreignRoot=path.join(root,"elsewhere");t.after(()=>rm(root,{recursive:true,force:true}));await mkdir(sessionDir,{recursive:true});await writeFile(path.join(sessionDir,"active.jsonl"),jsonl({...header("active","2026-10-01T10:00:00.000Z"),cwd:root},entry("message","u1",{message:{role:"user",content:"private active prompt"}})));await writeFile(path.join(sessionDir,"foreign.jsonl"),jsonl({...header("foreign","2026-10-01T10:00:00.000Z"),cwd:foreignRoot},entry("message","u2",{message:{role:"user",content:"private foreign prompt"}})));
  const commands=new Map<string,{handler:(...args:any[])=>any}>();createAsenExtension({homeDir:()=>root,packageRoot:root})({registerCommand:(name:string,command:any)=>commands.set(name,command)});
  const result=JSON.parse(await commands.get("asen-stats")!.handler("",{cwd:root,ui:{notify(){},confirm:async()=>true},sessionManager:{getSessionId:()=>"active",getSessionDir:()=>sessionDir}}));assert.equal(result.sessions,1);assert.equal(result.userMessages,1);assert.equal(result.outOfScopeFiles,1);assert.doesNotMatch(JSON.stringify(result),/private active prompt|private foreign prompt|active\.jsonl|\/sessions/);
+});
+
+test("Pi /asen-stats --by-day groups accepted usage by UTC event day without changing legacy bytes",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-stats-utc-")),sessionDir=path.join(root,"sessions");t.after(()=>rm(root,{recursive:true,force:true}));await mkdir(sessionDir);
+ const session={...header("synthetic-session-id","2026-09-30T12:00:00.000Z"),cwd:root};
+ const excluded=entry("usage","excluded-entry-id",{timestamp:"2026-10-02T00:00:00.000Z",usage:{input:99}});
+ await writeFile(path.join(sessionDir,"a-source.jsonl"),jsonl(session,
+  entry("compaction","after-midnight",{timestamp:"2026-10-01T20:00:00.000-04:00",usage:{input:7}}),
+  entry("message","before-midnight",{timestamp:"2026-10-02T01:59:59.999+02:00",message:{role:"assistant",provider:"synthetic-provider-label",model:"synthetic-model-label",content:"synthetic private text",usage:{input:3,output:0,cost:{total:0}}}}),
+  entry("usage","ambiguous-time",{timestamp:"2026-10-02T02:00:00",usage:{totalTokens:9}}),
+  entry("usage","no-measurement",{timestamp:"2026-10-03T00:00:00.000Z",usage:{input:"99",totalTokens:-1}})));
+ await writeFile(path.join(sessionDir,"b-duplicate.jsonl"),jsonl(session,excluded));
+ await writeFile(path.join(sessionDir,"c-duplicate-entry.jsonl"),jsonl({...session,id:"duplicate-entry-session"},excluded,excluded));
+ await writeFile(path.join(sessionDir,"d-corrupt.jsonl"),jsonl({...session,id:"corrupt-session"},excluded)+"{broken\n");
+ await writeFile(path.join(sessionDir,"e-outside.jsonl"),jsonl({...session,id:"outside-session",cwd:path.join(root,"outside")},excluded));
+ const commands=new Map<string,{handler:(...args:any[])=>any}>();createAsenExtension({homeDir:()=>root,packageRoot:root})({registerCommand:(name:string,command:any)=>commands.set(name,command)});
+ const run=(args:string)=>commands.get("asen-stats")!.handler(args,{cwd:root,ui:{notify(){},confirm:async()=>true},sessionManager:{getSessionId:()=>session.id,getSessionDir:()=>sessionDir}});
+ const legacy={schema:"asen.pi-history-stats/v2",range:{},state:"available",roots:1,outOfScopeFiles:1,sessions:1,entries:4,userMessages:0,assistantMessages:1,toolCalls:0,inputTokens:10,outputTokens:0,totalTokens:9,costUsd:0,measurementCounts:{inputTokens:2,outputTokens:1,totalTokens:1,costUsd:1},corruptFiles:1,duplicateFiles:2,oversizedFiles:0,unreadableFiles:0,truncated:false};
+ assert.equal(await run(""),JSON.stringify(legacy,null,2));
+ assert.equal(await run("from=2026-09-30 to=2026-09-30"),JSON.stringify({...legacy,range:{from:"2026-09-30",to:"2026-09-30"}},null,2));
+ const output=await run("--by-day"),{byDay,...summary}=JSON.parse(output);
+ assert.deepEqual(summary,legacy);
+ assert.deepEqual(byDay,{timezone:"UTC",unbucketedUsageEntries:1,truncated:false,days:[
+  {day:"2026-10-01",inputTokens:3,outputTokens:0,totalTokens:null,costUsd:0,measurementCounts:{inputTokens:1,outputTokens:1,totalTokens:0,costUsd:1}},
+  {day:"2026-10-02",inputTokens:7,outputTokens:null,totalTokens:null,costUsd:null,measurementCounts:{inputTokens:1,outputTokens:0,totalTokens:0,costUsd:0}}
+ ]});
+ assert.doesNotMatch(output,/synthetic-session-id|excluded-entry-id|synthetic-provider-label|synthetic-model-label|synthetic private text|a-source\.jsonl/u);assert.ok(!output.includes(JSON.stringify(root).slice(1,-1)));
+ for(const args of ["--by-day --by-day","--by-day from=2026-10-01","--by-day extra"])await assert.rejects(()=>run(args),/Usage/);
+});
+
+test("day output stays bounded without dropping observations from the summary or retained days",async t=>{
+ const root=await mkdtemp(path.join(tmpdir(),"asen-stats-day-cap-"));t.after(()=>rm(root,{recursive:true,force:true}));
+ const maxDays=PI_HISTORY_STATS_LIMITS.maxDays,start=Date.UTC(2020,0,1),iso=(day:number)=>new Date(start+day*86_400_000).toISOString();
+ const events=Array.from({length:maxDays+1},(_,day)=>entry("usage",`day-${day}`,{timestamp:iso(day),usage:{input:1}}));
+ await writeFile(path.join(root,"a.jsonl"),jsonl({...header("many-days",iso(0)),cwd:root},...events));
+ await writeFile(path.join(root,"b.jsonl"),jsonl({...header("retained-day",iso(0)),cwd:root},entry("usage","extra-on-first-day",{timestamp:iso(0),usage:{input:2}})));
+ const result=JSON.parse(await runPiHistoryStatsCommand("--by-day",root,root));
+ assert.equal(result.inputTokens,maxDays+3);assert.equal(result.truncated,false);
+ assert.equal(result.byDay.truncated,true);assert.equal(result.byDay.unbucketedUsageEntries,0);assert.equal(result.byDay.days.length,maxDays);
+ assert.deepEqual([result.byDay.days[0].day,result.byDay.days[0].inputTokens,result.byDay.days[0].measurementCounts.inputTokens],[iso(0).slice(0,10),3,2]);
+ assert.equal(result.byDay.days.at(-1).day,iso(maxDays-1).slice(0,10));
 });

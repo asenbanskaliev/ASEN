@@ -25,12 +25,19 @@ export interface PiHistoryStats{
  oversizedFiles:number;
  unreadableFiles:number;
  truncated:boolean;
+ byDay?:DayStats;
 }
 
-export const PI_HISTORY_STATS_LIMITS=Object.freeze({maxRoots:16,maxDirectories:10_000,maxFiles:10_000,maxFileBytes:16*1024*1024,maxTotalBytes:128*1024*1024,maxLineBytes:1024*1024,maxEntriesPerFile:100_000,maxDirectoryEntries:2_000,maxDepth:12});
+export const PI_HISTORY_STATS_LIMITS=Object.freeze({maxRoots:16,maxDirectories:10_000,maxFiles:10_000,maxFileBytes:16*1024*1024,maxTotalBytes:128*1024*1024,maxLineBytes:1024*1024,maxEntriesPerFile:100_000,maxDirectoryEntries:2_000,maxDepth:12,maxDays:3_660});
 const SCHEMA="asen.pi-history-stats/v1" as const;
-const EMPTY=()=>({roots:0,outOfScopeFiles:0,sessions:0,entries:0,userMessages:0,assistantMessages:0,toolCalls:0,inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0,measurementCounts:{inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0},corruptFiles:0,duplicateFiles:0,oversizedFiles:0,unreadableFiles:0,truncated:false});
+const EMPTY_USAGE=()=>({inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0,measurementCounts:{inputTokens:0,outputTokens:0,totalTokens:0,costUsd:0}});
+const EMPTY=()=>({roots:0,outOfScopeFiles:0,sessions:0,entries:0,userMessages:0,assistantMessages:0,toolCalls:0,...EMPTY_USAGE(),corruptFiles:0,duplicateFiles:0,oversizedFiles:0,unreadableFiles:0,truncated:false});
 type Counters=ReturnType<typeof EMPTY>;
+type UsageCounters=ReturnType<typeof EMPTY_USAGE>&{truncated:boolean};
+type DayStats={timezone:"UTC";unbucketedUsageEntries:number;truncated:boolean;days:Array<{day:string}&UsageCounters>};
+type DayTotals=Map<string,UsageCounters>;
+const USAGE_KEYS=["inputTokens","outputTokens","totalTokens","costUsd"] as const;
+type ObservedUsage=Partial<Record<(typeof USAGE_KEYS)[number],number>>;
 class OversizedHistoryError extends Error{}
 class DuplicateHistoryError extends Error{}
 class CorruptHistoryError extends Error{}
@@ -47,14 +54,52 @@ export function parsePiHistoryRange(input:string):PiHistoryRange{
 }
 function included(timestamp:string,range:PiHistoryRange):boolean{const day=timestamp.slice(0,10);return (!range.from||day>=range.from)&&(!range.to||day<=range.to);}
 function observedCount(value:unknown):value is number{return typeof value==="number"&&Number.isSafeInteger(value)&&value>=0;}
-function addCount(target:Counters,key:"entries"|"userMessages"|"assistantMessages"|"toolCalls"|"inputTokens"|"outputTokens"|"totalTokens",value:number):void{const next=target[key]+value;if(!Number.isSafeInteger(next)||next>Number.MAX_SAFE_INTEGER){target[key]=Number.MAX_SAFE_INTEGER;target.truncated=true;}else target[key]=next;}
-function addCost(target:Counters,value:number):void{const next=target.costUsd+value;if(!Number.isFinite(next)||next>Number.MAX_SAFE_INTEGER){target.costUsd=Number.MAX_SAFE_INTEGER;target.truncated=true;}else target.costUsd=next;}
-function add(target:Counters,usage:unknown):void{
+function addCount<K extends "entries"|"userMessages"|"assistantMessages"|"toolCalls"|"inputTokens"|"outputTokens"|"totalTokens">(target:Record<K,number>&{truncated:boolean},key:K,value:number):void{
+ const counts:Record<K,number>=target,next=counts[key]+value;
+ if(!Number.isSafeInteger(next)||next>Number.MAX_SAFE_INTEGER){counts[key]=Number.MAX_SAFE_INTEGER;target.truncated=true;}else counts[key]=next;
+}
+function addCost(target:UsageCounters,value:number):void{const next=target.costUsd+value;if(!Number.isFinite(next)||next>Number.MAX_SAFE_INTEGER){target.costUsd=Number.MAX_SAFE_INTEGER;target.truncated=true;}else target.costUsd=next;}
+function readUsage(usage:unknown):ObservedUsage|undefined{
  if(!isRecord(usage))return;
- for(const [source,key] of [["input","inputTokens"],["output","outputTokens"],["totalTokens","totalTokens"]] as const){const value=usage[source];if(observedCount(value)){addCount(target,key,value);target.measurementCounts[key]++;}}
- if(isRecord(usage.cost)&&typeof usage.cost.total==="number"&&Number.isFinite(usage.cost.total)&&usage.cost.total>=0){addCost(target,usage.cost.total);target.measurementCounts.costUsd++;}
+ let measured:ObservedUsage|undefined;
+ for(const [source,key] of [["input","inputTokens"],["output","outputTokens"],["totalTokens","totalTokens"]] as const){const value=usage[source];if(observedCount(value))(measured??={})[key]=value;}
+ const cost=isRecord(usage.cost)?usage.cost.total:undefined;
+ if(typeof cost==="number"&&Number.isFinite(cost)&&cost>=0)(measured??={}).costUsd=cost;
+ return measured;
+}
+function add(target:UsageCounters,usage:ObservedUsage):void{
+ for(const key of USAGE_KEYS){const value=usage[key];if(value===undefined)continue;if(key==="costUsd")addCost(target,value);else addCount(target,key,value);target.measurementCounts[key]++;}
+}
+function mergeUsage(target:UsageCounters,source:UsageCounters):void{
+ for(const key of USAGE_KEYS){if(key==="costUsd")addCost(target,source[key]);else addCount(target,key,source[key]);target.measurementCounts[key]+=source.measurementCounts[key];}
+ target.truncated||=source.truncated;
 }
 function validTimestamp(value:unknown):value is string{return typeof value==="string"&&value.length<=64&&Number.isFinite(Date.parse(value));}
+function utcEventDay(timestamp:string):string|undefined{
+ if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})$/u.test(timestamp)||!validDate(timestamp.slice(0,10)))return;
+ const iso=new Date(timestamp).toISOString();
+ if(/^\d{4}-/u.test(iso))return iso.slice(0,10);
+}
+function addDayUsage(days:DayTotals,timestamp:string,usage:ObservedUsage):boolean{
+ const day=utcEventDay(timestamp);if(!day)return false;
+ let measurements=days.get(day);
+ if(!measurements){measurements={...EMPTY_USAGE(),truncated:false};days.set(day,measurements);}
+ add(measurements,usage);return true;
+}
+function mergeDays(target:DayTotals,source:DayTotals,report:DayStats):void{
+ for(const [day,measurements] of source){
+  const previous=target.get(day);
+  if(previous)mergeUsage(previous,measurements);
+  else if(target.size<PI_HISTORY_STATS_LIMITS.maxDays)target.set(day,measurements);
+  else report.truncated=true;
+ }
+}
+function finishDays(totals:DayTotals,report:DayStats):void{
+ for(const day of [...totals.keys()].sort()){
+  const measurements=totals.get(day)!;report.truncated||=measurements.truncated;
+  report.days.push({day,...measurements,costUsd:Number(measurements.costUsd.toFixed(8))});
+ }
+}
 function decodeLine(bytes:Buffer):string{const line=bytes.at(-1)===13?bytes.subarray(0,-1):bytes;try{return new TextDecoder("utf-8",{fatal:true}).decode(line);}catch{throw new CorruptHistoryError();}}
 async function* lines(file:string,byteLimit:number,totalBudgetLimit:boolean):AsyncGenerator<string>{
  let pending=Buffer.alloc(0),bytesSeen=0;const stream=createReadStream(file,{highWaterMark:64*1024});
@@ -63,22 +108,26 @@ async function* lines(file:string,byteLimit:number,totalBudgetLimit:boolean):Asy
  }finally{stream.destroy();}
 }
 function parseObject(line:string):Record<string,unknown>{let value:unknown;try{value=JSON.parse(line);}catch{throw new CorruptHistoryError();}if(!isRecord(value))throw new CorruptHistoryError();return value;}
-function accumulateEntry(target:Counters,entry:Record<string,unknown>):void{
+function countEntryAndReadUsage(target:Counters,entry:Record<string,unknown>):ObservedUsage|undefined{
  if(entry.type==="message"&&isRecord(entry.message)){
   const message=entry.message;if(message.role==="user")addCount(target,"userMessages",1);
-  if(message.role==="assistant"){addCount(target,"assistantMessages",1);add(target,message.usage);if(Array.isArray(message.content))addCount(target,"toolCalls",message.content.reduce((n,block)=>n+(isRecord(block)&&block.type==="toolCall"?1:0),0));}
+  if(message.role==="assistant"){addCount(target,"assistantMessages",1);if(Array.isArray(message.content))addCount(target,"toolCalls",message.content.reduce((n,block)=>n+(isRecord(block)&&block.type==="toolCall"?1:0),0));return readUsage(message.usage);}
  }
- if(entry.type==="usage"||entry.type==="compaction")add(target,entry.usage);
+ if(entry.type==="usage"||entry.type==="compaction")return readUsage(entry.usage);
 }
-async function parseFile(file:string,byteLimit:number,totalBudgetLimit:boolean):Promise<{sessionId:string;timestamp:string;cwd:string;stats:Counters}>{
- const stats=EMPTY(),ids=new Set<string>();let header:Record<string,unknown>|undefined;
+async function parseFile(file:string,byteLimit:number,totalBudgetLimit:boolean,byDay:boolean){
+ // Hold day totals per file until the entire file is validated and accepted.
+ const stats=EMPTY(),ids=new Set<string>(),days=byDay?new Map<string,UsageCounters>():undefined;
+ let header:Record<string,unknown>|undefined,unbucketedUsageEntries=0;
  for await(const line of lines(file,byteLimit,totalBudgetLimit)){
   const value=parseObject(line);
   if(!header){if(value.type!=="session"||typeof value.id!=="string"||!value.id||value.id.length>256||!validTimestamp(value.timestamp)||typeof value.cwd!=="string"||value.cwd.length>4096||!path.isAbsolute(value.cwd))throw new CorruptHistoryError();header=value;continue;}
   if(typeof value.type!=="string"||!value.type||value.type.length>64||typeof value.id!=="string"||!value.id||value.id.length>256||!(value.parentId===null||typeof value.parentId==="string"&&value.parentId.length<=256)||!validTimestamp(value.timestamp))throw new CorruptHistoryError();
-  if(ids.has(value.id))throw new DuplicateHistoryError();ids.add(value.id);stats.entries++;if(stats.entries>PI_HISTORY_STATS_LIMITS.maxEntriesPerFile)throw new OversizedHistoryError();accumulateEntry(stats,value);
+  if(ids.has(value.id))throw new DuplicateHistoryError();ids.add(value.id);stats.entries++;if(stats.entries>PI_HISTORY_STATS_LIMITS.maxEntriesPerFile)throw new OversizedHistoryError();
+  const usage=countEntryAndReadUsage(stats,value);if(!usage)continue;add(stats,usage);
+  if(days&&!addDayUsage(days,value.timestamp,usage))unbucketedUsageEntries++;
  }
- if(!header)throw new CorruptHistoryError();return {sessionId:header.id as string,timestamp:header.timestamp as string,cwd:header.cwd as string,stats};
+ if(!header)throw new CorruptHistoryError();return {sessionId:header.id as string,timestamp:header.timestamp as string,cwd:header.cwd as string,stats,days,unbucketedUsageEntries};
 }
 async function filesUnder(root:string,counters:Counters,seenFiles:Set<string>,remaining:number):Promise<string[]>{
  const files:string[]=[],queue:[string,number][]=[[root,0]],seenDirs=new Set<string>();
@@ -90,18 +139,26 @@ async function filesUnder(root:string,counters:Counters,seenFiles:Set<string>,re
  }
  return files;
 }
-export async function collectPiHistoryStats(roots:readonly string[],range:PiHistoryRange={},projectRoot?:string):Promise<PiHistoryStats>{
+export async function collectPiHistoryStats(roots:readonly string[],range:PiHistoryRange={},projectRoot?:string,{byDay=false}:{byDay?:boolean}={}):Promise<PiHistoryStats>{
  if(!Array.isArray(roots)||roots.length>PI_HISTORY_STATS_LIMITS.maxRoots)throw new Error("Invalid Pi history roots");
- if(range.from!==undefined&&!validDate(range.from)||range.to!==undefined&&!validDate(range.to)||range.from&&range.to&&range.from>range.to)throw new Error("Invalid Pi history range");
+ if(range.from!==undefined&&!validDate(range.from)||range.to!==undefined&&!validDate(range.to)||range.from&&range.to&&range.from>range.to||byDay&&(range.from!==undefined||range.to!==undefined))throw new Error("Invalid Pi history range");
  if(projectRoot!==undefined&&(typeof projectRoot!=="string"||!path.isAbsolute(projectRoot)||/[\u0000-\u001f\u007f]/u.test(projectRoot)))throw new Error("Invalid Pi history project");
  const result:PiHistoryStats&{measurementCounts:PiHistoryMeasurementCounts}={schema:SCHEMA,range:{...range},state:"available",...EMPTY()},canonicalRoots:string[]=[],seenRoots=new Set<string>();
+ const dayTotals=byDay?new Map<string,UsageCounters>():undefined;
+ if(byDay)result.byDay={timezone:"UTC",unbucketedUsageEntries:0,truncated:false,days:[]};
  for(const root of roots){if(typeof root!=="string"||!path.isAbsolute(root)||/[\u0000-\u001f\u007f]/u.test(root))throw new Error("Invalid Pi history root");try{const canonical=await realpath(root),info=await stat(canonical);if(!info.isDirectory()||seenRoots.has(canonical))continue;seenRoots.add(canonical);canonicalRoots.push(canonical);}catch{result.unreadableFiles++;}}
  result.roots=canonicalRoots.length;if(!canonicalRoots.length){result.state="unavailable";return result;}
  canonicalRoots.sort((a,b)=>a<b?-1:a>b?1:0);const seenFiles=new Set<string>(),allFiles:string[]=[];for(const root of canonicalRoots){if(allFiles.length>=PI_HISTORY_STATS_LIMITS.maxFiles){result.truncated=true;break;}const found=await filesUnder(root,result,seenFiles,PI_HISTORY_STATS_LIMITS.maxFiles-allFiles.length);allFiles.push(...found);}allFiles.sort((a,b)=>a<b?-1:a>b?1:0);
  const projectKey=projectRoot===undefined?undefined:await workspaceKey(projectRoot);let bytesRead=0;const seenSessionIds=new Set<string>();
  for(const file of allFiles){let size:number;try{size=(await stat(file)).size;}catch{result.unreadableFiles++;continue;}if(size>PI_HISTORY_STATS_LIMITS.maxFileBytes){result.oversizedFiles++;continue;}const remaining=PI_HISTORY_STATS_LIMITS.maxTotalBytes-bytesRead;if(size>remaining){result.truncated=true;break;}bytesRead+=size;const totalBudgetLimit=remaining<PI_HISTORY_STATS_LIMITS.maxFileBytes;
-  try{const parsed=await parseFile(file,Math.min(PI_HISTORY_STATS_LIMITS.maxFileBytes,remaining),totalBudgetLimit);if(seenSessionIds.has(parsed.sessionId)){result.duplicateFiles++;continue;}seenSessionIds.add(parsed.sessionId);if(projectKey!==undefined&&await workspaceKey(parsed.cwd)!==projectKey){result.outOfScopeFiles++;continue;}if(!included(parsed.timestamp,result.range))continue;result.sessions++;addCount(result,"entries",parsed.stats.entries);addCount(result,"userMessages",parsed.stats.userMessages);addCount(result,"assistantMessages",parsed.stats.assistantMessages);addCount(result,"toolCalls",parsed.stats.toolCalls);addCount(result,"inputTokens",parsed.stats.inputTokens);addCount(result,"outputTokens",parsed.stats.outputTokens);addCount(result,"totalTokens",parsed.stats.totalTokens);addCost(result,parsed.stats.costUsd);for(const key of ["inputTokens","outputTokens","totalTokens","costUsd"] as const)result.measurementCounts[key]+=parsed.stats.measurementCounts[key];result.truncated||=parsed.stats.truncated;}
+  try{const parsed=await parseFile(file,Math.min(PI_HISTORY_STATS_LIMITS.maxFileBytes,remaining),totalBudgetLimit,byDay);if(seenSessionIds.has(parsed.sessionId)){result.duplicateFiles++;continue;}seenSessionIds.add(parsed.sessionId);if(projectKey!==undefined&&await workspaceKey(parsed.cwd)!==projectKey){result.outOfScopeFiles++;continue;}if(!included(parsed.timestamp,result.range))continue;result.sessions++;addCount(result,"entries",parsed.stats.entries);addCount(result,"userMessages",parsed.stats.userMessages);addCount(result,"assistantMessages",parsed.stats.assistantMessages);addCount(result,"toolCalls",parsed.stats.toolCalls);mergeUsage(result,parsed.stats);
+   if(dayTotals&&result.byDay&&parsed.days){
+    result.byDay.unbucketedUsageEntries+=parsed.unbucketedUsageEntries;
+    mergeDays(dayTotals,parsed.days,result.byDay);
+   }
+  }
   catch(error){if(error instanceof TotalBudgetHistoryError){result.truncated=true;break;}if(error instanceof DuplicateHistoryError)result.duplicateFiles++;else if(error instanceof OversizedHistoryError)result.oversizedFiles++;else if(error instanceof CorruptHistoryError)result.corruptFiles++;else result.unreadableFiles++;}
  }
+ if(dayTotals&&result.byDay)finishDays(dayTotals,result.byDay);
  result.costUsd=Number(result.costUsd.toFixed(8));return result;
 }

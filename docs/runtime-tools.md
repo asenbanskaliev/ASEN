@@ -104,6 +104,10 @@ ASEN does not register a separate CLI flag because Pi's public extension API has
 
 The source-level collector retains `asen.pi-history-stats/v1` and its numeric totals for compatibility, adding observation counts. Consumers of `/asen-stats` JSON must accept the explicit v2 schema and nullable measurement fields rather than treating missing history as zero. Range validation, privacy, corruption handling and numeric saturation remain unchanged; collection writes no history data.
 
+`/asen-stats --by-day` adds an opt-in `byDay` field to the unchanged v2 summary. Pass `--by-day` alone: the legacy `from`/`to` bounds filter by session header date, not by event day, and cannot be combined with this option. The day view groups observed usage from accepted, deduplicated sessions by each entry's timestamp in UTC, not by the session header or the local date in the timestamp. It accepts ISO date-times with `Z` or an explicit numeric offset. Measured entries without a usable UTC day remain in the summary and are counted in `byDay.unbucketedUsageEntries`.
+
+`byDay.days` contains only dates with observed measurements, sorted by UTC date, with the same nullable fields and observation counts as the summary. The existing scan limits still apply. The day view retains at most 3,660 distinct days in scan order; `byDay.truncated` marks omitted days or saturated day totals, while the summary retains its own scan and saturation diagnostics. No total or cost is inferred. No prompts, session or entry IDs, paths, or model/provider labels appear in the day view; it neither copies nor modifies session history.
+
 History-reported cost is not verified provider billing. Neither command proves provider-used routing or enforces provider request/token/spending limits; ASEN does not invent prices, quotas, or measurements from profile choices.
 
 ## Runtime profiles and routing visibility
