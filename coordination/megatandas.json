@@ -182,11 +182,11 @@
         ],
         "openReviewThreads": 0
       },
-      "next": "Validar recuperación pública, firma y rutas sensibles del SHA; diagnosticar CI y auditar G03/G04/G05/P01/P06 antes de aceptación real.",
+      "next": "Validar CI y revisión exacta #163; auditar G04 existente, pruebas reales G03 y Fix E3, no declarar cierre integral.",
       "blocker": null,
       "generation": 2,
       "pr": 163,
-      "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+      "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
       "verifiedCandidate": {
         "pr": 135,
         "sha": "6f52855777e20ff81d1b3cfefdeb8bcfe6ba8ddb",
@@ -350,22 +350,7 @@
         "phase": "M1-M2-integradas",
         "writeReservation": false
       },
-      "lease": {
-        "id": "manual-E-M3-M4-g2-73d255d",
-        "team": "E",
-        "generation": 2,
-        "package": "M3-M4",
-        "base": "73d255dd9cae8e1079c22de84a316b3c6e418399",
-        "branch": "feat/asen-equipo-E-M3-M4-g2-consolidacion-20261128",
-        "phase": "continuacion-implementacion",
-        "files": [
-          "src/agents/pi-process-runner.ts",
-          "tests/pi-process-runner.test.ts",
-          "src/review/ordinary-review-command.ts",
-          "tests/judgment-fix-odd-save.test.ts",
-          "tests/pi-model-reviewer.test.ts"
-        ]
-      }
+      "lease": null
     }
   },
   "packages": {
@@ -3803,7 +3788,7 @@
         },
         "currentCandidate": {
           "pr": 163,
-          "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+          "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
           "state": "tanda-publicada-pendiente-ci-revision"
         }
       },
@@ -3822,7 +3807,7 @@
         },
         "currentCandidate": {
           "pr": 163,
-          "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+          "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
           "state": "tanda-publicada-pendiente-ci-revision"
         }
       },
@@ -4515,15 +4500,28 @@
     },
     "lastImplementationBatch": {
       "pr": 163,
-      "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+      "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
       "paths": [
-        "tests/native-partition-flow.test.ts",
-        "src/runtime/lifecycle/native-integration-review.ts",
-        "tests/asen-c-checkpoint-recovery.test.ts",
-        "src/review/workspace-review-projection.ts",
-        "tests/workspace-review-session.test.ts"
+        "src/agents/pi-process-runner.ts",
+        "tests/pi-process-runner.test.ts",
+        "src/review/ordinary-review-command.ts",
+        "tests/judgment-fix-odd-save.test.ts",
+        "tests/pi-model-reviewer.test.ts"
       ],
-      "scope": "Regresión de entrada pública histórica; firmas hex válidas; rechazo de rutas sensibles modificadas antes de persistir blobs Git. Pendientes G03 real, revisión proporcional y Fix integral, seguridad de vistas completas y aceptación.",
+      "previous": {
+        "pr": 163,
+        "sha": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+        "paths": [
+          "tests/native-partition-flow.test.ts",
+          "src/runtime/lifecycle/native-integration-review.ts",
+          "tests/asen-c-checkpoint-recovery.test.ts",
+          "src/review/workspace-review-projection.ts",
+          "tests/workspace-review-session.test.ts"
+        ],
+        "scope": "Regresión de entrada pública histórica; firmas hex válidas; rechazo de rutas sensibles modificadas antes de persistir blobs Git. Pendientes G03 real, revisión proporcional y Fix integral, seguridad de vistas completas y aceptación.",
+        "globalFull": false
+      },
+      "scope": "G03 detener Writer ante auto_retry_start y prueba de turno abierto/cierre prematuro; G05 prevenir doble guardado Fix y prueba concurrente; G06 adaptar prueba al rechazo anticipado. G04 ya tiene contratos proporcionales y ensayo de escalada en runtime simulado; falta comprobar restantes consumidores y evidencia real. Sin consumo NVIDIA.",
       "globalFull": false
     }
   }
