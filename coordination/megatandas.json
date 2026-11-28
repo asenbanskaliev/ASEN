@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Avanzar evidencia determinista M5 sin proveedor mientras G06 espera diseño acotado. Mantener abiertas M3/M4 y P05/CTX.",
+        "next": "Corregir hallazgo de G06 y agrupar con cobertura M5; no cerrar M3/M4 ni M5",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -392,7 +392,7 @@
         },
         "secondBatch": {
           "sha": "3904bed0ea03262e87698838083b9c375d2c5e89",
-          "state": "publicada-espera-ci-y-revision",
+          "state": "CI-ReleaseGate-correctos-revision-con-hallazgo",
           "base": "08b72241db0880ea5e6730e9f32c6e3da77edf44",
           "commits": [
             "b0959476",
@@ -409,7 +409,10 @@
             "pi": 46133172744,
             "releaseGate": 46133172796,
             "reason": "Salida histórica sin argumentos alterada en 08b72241; corregida en b0959476. Release Gate anterior correcto."
-          }
+          },
+          "ci": 46135817672,
+          "releaseGate": 46135817554,
+          "codeRabbitComment": 4726622134
         },
         "g06Views": {
           "sha": "3904bed0ea03262e87698838083b9c375d2c5e89",
@@ -428,8 +431,20 @@
         "phase": "G02-metricas-publicas-cero-desconocido",
         "files": [
           "tests/asen-d-flow-usage.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
+          "odd/tasks/asen-pi-local-megatandas.md",
+          "src/security/path-safety.ts",
+          "tests/workspace-review-session.test.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M4-g2-pi-local-docker-raiz",
+          "base": "3904bed0ea03262e87698838083b9c375d2c5e89",
+          "phase": "G06-CodeRabbit-proyeccion-ruta-Docker",
+          "files": [
+            "src/security/path-safety.ts",
+            "tests/workspace-review-session.test.ts"
+          ],
+          "reviewComment": 4726622134
+        }
       }
     }
   },
