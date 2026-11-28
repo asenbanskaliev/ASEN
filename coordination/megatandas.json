@@ -362,7 +362,7 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "Verificar CI/Release Gate/CodeRabbit del nuevo SHA. Sigue pendiente identidad ejecutada para Verifier, linaje de Fix, G06 vistas acotadas, fronteras P04, comparación real y M6.",
+        "next": "Cerrar verificación de G06 acotada; P04 terminal solo con nueva hipótesis reproducible.",
         "globalFull": false,
         "m4": {
           "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
@@ -470,6 +470,15 @@
             "point18": "12 celdas listas para auditoría independiente",
             "globalFull": false
           }
+        },
+        "p04Terminal": {
+          "sha": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
+          "branch": "feat/asen-equipo-E-M3-g2-pi-local-terminal-reinicio",
+          "paths": [
+            "tests/native-partition-flow.test.ts"
+          ],
+          "state": "bloqueada-sin-publicar",
+          "reason": "Tipos correctos en primer ajuste; job-79 llegó a recuperación pero registró .asen/ no contemplado. Tras acotar metadatos esperados, hubo timeout y fallo de Writer simulado; job-86 fue bloqueado antes del despacho. No hay causa estable ni validación verde; se preserva diff local y no se debilitan controles."
         }
       },
       "lease": {
@@ -488,17 +497,8 @@
           "src/review/ordinary-review-command.ts",
           "tests/ordinary-review-workspace-flow.test.ts",
           "tests/workspace-review-session.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md",
-          "tests/native-partition-flow.test.ts"
-        ],
-        "pairedUnit": {
-          "branch": "feat/asen-equipo-E-M3-g2-pi-local-terminal-reinicio",
-          "base": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
-          "phase": "G03-P04-terminal-durable-reconciliacion-tras-reinicio",
-          "files": [
-            "tests/native-partition-flow.test.ts"
-          ]
-        }
+          "odd/tasks/asen-pi-local-megatandas.md"
+        ]
       }
     }
   },
