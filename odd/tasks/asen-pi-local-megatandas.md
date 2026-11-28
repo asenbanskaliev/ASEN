@@ -15,9 +15,10 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 
 ## Tasks
 
-- T1 [S1–S4,S6–S7] M3 G03/P04: ensayo de reinicio de padre Pi tras escritura parcial, sin proveedor; inline; evidencia local obtenida; commit de esta unidad.
-- T2 [S1–S4,S6–S7] M4: comprobar y cerrar las brechas G04–G06/P01/P06 que puedan validarse; ruta tras acotar cada unidad; commit pendiente.
-- T3 [S4–S7] Consolidar, verificar y publicar M3/M4; coordinador E; commit pendiente.
+- T1 [S1–S4,S6–S7] M3 G03/P04: ensayo de reinicio de padre Pi tras escritura parcial, sin proveedor; inline; evidencia local obtenida; `9eadc6d3`.
+- T2 [S1–S4,S6–S7] M4 G05/P06 parcial: bloquear rejuicio de Todo Fix sin linaje verificable; worker y verificador independiente; `5100fb01`, consolidado `b344b54a`.
+- T3 [S4–S7] Consolidar, verificar y publicar la primera tanda M3/M4; coordinador E; `b344b54a`, validación en curso.
+- T6 [S1–S4,S6–S7] M3/M4 pendientes: matriz pública y proporcional G04/P01, identidad canónica del Verifier, linaje y límite durable G05/P06, vistas G06 y evidencia restante de G03/P04; nueva reserva por unidad; commit pendiente.
 - T4 [S1,S3,S6–S7] M5 G02/G07/CTX/P05; rama y reserva por definir; commit pendiente.
 - T5 [S1,S3,S5–S7] M6: aceptación integral y límites de la evidencia; rama y reserva por definir; commit pendiente.
 
@@ -67,3 +68,15 @@ CI `46124949068` y Release Gate `46124949035` sin fallos en las puertas ejecutad
 ### L3
 
 T1: RED `job-11` falló por ausencia de la escritura parcial. `job-10` detectó un alias de ruta Windows; `job-12` detectó una expectativa errónea (`null` público para alcance ajeno). GREEN `job-13`: 4 correctas, 1 omitida por ser POSIX, 0 fallos. Padre Pi 1.6 RPC terminado y reiniciado de verdad; con un Writer en cola y otro iniciado por un fixture sin proveedor, se conservaron bytes, commit y diario de avisos, sin nuevo despacho ni historial duplicado. No acredita admisión Writer real, todas las fronteras de P04 ni aceptación M3 integral.
+
+### L4
+
+T2: primer alcance no implementable con el formato histórico del informe; el Todo sí tiene `fixSource`, pero el informe no conserva hallazgos congelados ni dicta cada resolución. El segundo alcance bloquea el camino ambiguo antes de consultar perfiles. RED 1, GREEN 0; verificador `mx077fjz-4-h9u9` favorable a la protección parcial. `job-17` reproduce fallo Windows de ruta en base y cambio; con TEMP largo nativo, `job-18` dio 24 correctas en el cambio y salida 0 en la base. `job-19` dio 17 correctas para comando y ayuda. `job-21` comparó stdout, stderr y código de salida idénticos para cuatro modos de Todo no modificados. Sin llamadas a proveedores.
+
+### L5
+
+T6, auditoría `mx07h3xd-5-aixv`: el servicio interno ya contempla 1/2/3 identidades para la doble revisión, pero el comando público `asen_plan_resume_batch` no tiene esa matriz. El candidato de prueba es `tests/native-partition-flow.test.ts`, lote exacto con recibo e integración denegada; permite contrastar modo proporcional, doble insuficiente, alias canónico y diálogo de doble suficiente sin ejecutar modelos. El Verifier de riesgo nombrado necesita una comprobación canónica separada en el flujo E3; el resultado del lote nativo no la acredita.
+
+### L6
+
+`job-20`: `check:fast`, `build`, import cycles y typecheck correctos; la suite local frenó con 1 fallo en `tests/lifecycle-applicability.test.ts:163`. El test compara una expresión regular que incluye `git` contra un JSON con rutas del candidato. El árbol se había creado debajo de `.git`, y esa cadena aparecía dos veces, sin que cambiara ningún permiso. Se movió mediante `git worktree move` a `C:/ASEN/worktrees/pr163` conservando rama, commits y dependencias, sin modificar el test ni `main`.
