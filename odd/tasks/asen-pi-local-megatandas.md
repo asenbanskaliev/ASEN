@@ -19,7 +19,7 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 - T2 [S1–S4,S6–S7] M4 G05/P06 parcial: bloquear rejuicio de Todo Fix sin linaje verificable; worker y verificador independiente; `5100fb01`, consolidado `b344b54a`.
 - T3 [S4–S7] Publicar y verificar las tandas parciales M3/M4; coordinador E; `08b72241` publicado; `b0959476` corrige la ayuda histórica.
 - T6 [S1–S4,S6–S7] M3/M4 pendientes: matriz G04/P01 `d7fb89e5`, acuse M3 `7d137c7b`, vista ordinaria G06 `c2d09243`; quedan Verifier, linaje y límite durable G05/P06 y fronteras restantes G03/P04.
-- T4 [S1,S3,S6–S7] M5 G02/G07/CTX/P05; contrato de costes en `20af9866` y comparador sintético en `6fc98ef2`; faltan mediciones pareadas reales.
+- T4 [S1,S3,S6–S7] M5 G02/G07/CTX/P05; costes `20af9866`, comparador sintético `6fc98ef2` y ensayo pareado de runtime local `c4ddd1e0`. Faltan mediciones reales de modelos y CTX.
 - T5 [S1,S3,S5–S7] M6: aceptación integral y límites de la evidencia; rama y reserva por definir; commit pendiente.
 
 ## Log
@@ -106,3 +106,9 @@ M3 `7d137c7b`: la TUI simulada se vuelve a registrar entre inspección y acuse; 
 ### L12
 
 G06 `c2d09243`: revisión ordinaria y corrección materializan solo los archivos regulares cambiados autorizados. Se verifica localmente cada blob por bytes antes de descartar los omitidos, sin codificarlos en el manifiesto, copiarlos a la vista ni enviarlos al revisor. No se cambian árbol, recibo, límites, preparación de vista completa ni rechazo de enlaces/gitlinks. RED/GREEN público con fixture sintético; revisión independiente inicialmente detectó la comprobación de metadatos insuficiente, corregida y rerrevisada (5/5). Verificación G06 del Verifier y aceptación real quedan abiertas.
+
+### L13
+
+`0ce7708e`: CI `46145560859`, Release Gate `46145560946` y CodeRabbit correctos para el SHA exacto, sin hilos abiertos. M5 `c4ddd1e0` ejecutó la misma carga de dos Explorers sintéticos con una y dos plazas. En `job-101` se observaron picos 1 y 2, solapamiento 0 y 4,17 ms, dos terminales exactos por corrida y ninguna repetición. Typecheck y batería M5: 16/16, sin omisiones. Es una observación del runtime local con barreras de prueba, no una medición de Pi, inferencia, CTX, calidad de modelo o ahorro. Coste desconocido, `globalFull:false`.
+
+M4 identidad observada: aún no se integra. Las 26 pruebas funcionales pasaron en local, pero la inspección de seguridad detectó que el lector del anexo no liga la preparación de la ruta al descriptor abierto. El HMAC no evita lecturas de rutas sustituidas. Falta también justificar el límite de anexos huérfanos. No se modifican recibos históricos ni permisos en esta tanda.
