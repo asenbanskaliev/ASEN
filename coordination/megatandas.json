@@ -350,7 +350,22 @@
         "phase": "M1-M2-integradas",
         "writeReservation": false
       },
-      "lease": null
+      "lease": {
+        "id": "manual-E-M3-M4-g2-73d255d",
+        "team": "E",
+        "generation": 2,
+        "package": "M3-M4",
+        "base": "73d255dd9cae8e1079c22de84a316b3c6e418399",
+        "branch": "feat/asen-equipo-E-M3-M4-g2-consolidacion-20261128",
+        "phase": "continuacion-implementacion",
+        "files": [
+          "src/agents/pi-process-runner.ts",
+          "tests/pi-process-runner.test.ts",
+          "src/review/ordinary-review-command.ts",
+          "tests/judgment-fix-odd-save.test.ts",
+          "tests/pi-model-reviewer.test.ts"
+        ]
+      }
     }
   },
   "packages": {
