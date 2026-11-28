@@ -476,8 +476,17 @@
           "src/review/ordinary-review-command.ts",
           "tests/ordinary-review-workspace-flow.test.ts",
           "tests/workspace-review-session.test.ts",
-          "odd/tasks/asen-pi-local-megatandas.md"
-        ]
+          "odd/tasks/asen-pi-local-megatandas.md",
+          "tests/native-partition-flow.test.ts"
+        ],
+        "pairedUnit": {
+          "branch": "feat/asen-equipo-E-M3-g2-pi-local-terminal-reinicio",
+          "base": "9a45d980b6e1acf56c21d5aba6a3b3e85126231e",
+          "phase": "G03-P04-terminal-durable-reconciliacion-tras-reinicio",
+          "files": [
+            "tests/native-partition-flow.test.ts"
+          ]
+        }
       }
     }
   },
