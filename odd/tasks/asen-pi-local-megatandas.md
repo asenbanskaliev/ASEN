@@ -20,8 +20,8 @@ Plan rector: `odd/tasks/INDEX.md`. `globalFull:false`.
 - T2 [S1–S4,S6–S7] M4 G05/P06 parcial: bloquear rejuicio de Todo Fix sin linaje verificable; worker y verificador independiente; `5100fb01`, consolidado `b344b54a`.
 - T3 [S4–S7] Publicar y verificar las tandas parciales M3/M4; coordinador E; `08b72241` publicado; `b0959476` corrige la ayuda histórica.
 - T6 [S1–S4,S6–S7] M3/M4 pendientes: matriz G04/P01 `d7fb89e5`, acuse M3 `7d137c7b`, vista ordinaria G06 `c2d09243`; quedan Verifier, linaje y límite durable G05/P06 y fronteras restantes G03/P04.
-- T4 [S1,S3,S6–S7] M5: costes `20af9866`, P05 sintético `6fc98ef2`, P05 runtime local `c4ddd1e0`, G02 sin llamadas `f23b6774`, G07 día UTC `39749c89`. Faltan desglose por proveedor/modelo, mediciones reales P05 y CTX.
-- T5 [S1,S3,S5–S7] M6: aceptación integral y límites de la evidencia; rama y reserva por definir; commit pendiente.
+- T4 [S1,S3,S6–S7] M5: costes `20af9866`, P05 sintético `6fc98ef2`, P05 runtime local `c4ddd1e0`, G02 sin llamadas `f23b6774`, G07 día UTC `39749c89` y desglose por el par del modelo activo de Pi `6e9578c2` (`--by-model`). Falta acreditar qué proveedor y modelo atendieron cada petición y obtener mediciones reales de P05 y CTX.
+- T5 [S1,S3,S5–S7] M6: procedencia y 12/12 recibos de compatibilidad del anfitrión verificados para `9a45d980` (L16); puntos 16/17 y aceptación integral pendientes.
 - T7 [S1,S3–S4,S6–S8] G05: contrato versionado que autentique hallazgos, árbol reparado y consumo durable de dos rondas; conservar v1; en diseño; reserva y commit pendientes.
 
 ## Log
@@ -124,3 +124,7 @@ M4 identidad observada: aún no se integra. Las 26 pruebas funcionales pasaron e
 Selección del usuario: «Ampliar G05 con un contrato versionado». Se autorizaron linaje, dictámenes por hallazgo y dos rondas con pruebas sintéticas, conservando v1 y sin permisos ni proveedor. T7 se separa en contrato de datos/transiciones, luego almacenamiento y cableado autenticados. El checkpoint v1 solo acredita origen y conteo de hallazgos, no reparación ni rejuicio; no se inferirá un dictamen por ausencia.
 
 `26f30eb8`: CI `46149659344` y Release Gate `46149659316` correctos. G07 `6e9578c2` añade `/asen-stats --by-model`, optativo y excluyente. Agrupa por día UTC y par exacto del modelo activo entregado por Pi o `null` si no coincide. No consulta registro, disponibilidad ni autenticación; no publica etiquetas crudas. RED 1, GREEN 14/14, revisión independiente favorable y diferencial de seis modos anteriores sin diferencias. No acredita modelo que sirvió la petición, catálogo completo, P05/CTX ni facturación. `globalFull:false`.
+
+### L16
+
+T5/M6, auditoría independiente de procedencia: CI `46141315723` del SHA `9a45d980b6e1acf56c21d5aba6a3b3e85126231e`; digest SHA-256 y vínculo de los cuatro artefactos confirmados (agregado `15261184583`, Linux `15260959495`, Windows `15262545045`, macOS `15260949542`). Los 12 recibos declaran PASS y pasan `validateCellObservation` de ese SHA. El agregado no contiene recibos fuente. TUI: 3/3 observaciones de teclado; RPC: 3/3 resúmenes correlacionados, sin frames crudos. Un comprobador auxiliar salió 1 al exigir erróneamente `hasUI:false` en RPC; contrato solo exige booleano. Sin reintentos. Punto 18 respaldado para compatibilidad de anfitrión, no aceptado integralmente. 16/17 bloqueados; Writer, lanzamiento autónomo y filas con modelos no aceptados. Sin llamadas a proveedores. `globalFull:false`.
