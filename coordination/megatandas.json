@@ -362,17 +362,23 @@
           "result": "G03/P04 parcial: padre Pi RPC reiniciado, Writer simulado sin proveedor; 4 pruebas correctas, 1 POSIX omitida, línea de base sin publicar",
           "branch": "feat/asen-equipo-E-M3-g2-pi-local-writer-restart"
         },
-        "next": "M4 G05/P06: comprobar e integrar límite de rejuicio en el Fix público sin ampliar autoridad",
-        "globalFull": false
+        "next": "M4 G05/P06: establecer primero un enlace verificable de hallazgos y propuesta para rejuicio; sin aumentar autoridad Writer",
+        "globalFull": false,
+        "m4": {
+          "sha": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
+          "previousLease": "pi-local-E-M4-g2-fix-rounds-7b8c727b",
+          "result": "Sin cambios: falta ligar fixSource del Todo con el informe y dictámenes explícitos sobre hallazgos originales; no inferir por sesión ni omisión.",
+          "task": "mx06r7kg-2-0ff5"
+        }
       },
       "lease": {
-        "id": "pi-local-E-M4-g2-fix-rounds-7b8c727b",
+        "id": "pi-local-E-M4-g2-fix-lineage-7b8c727b",
         "team": "E",
         "generation": 2,
         "package": "M4",
         "base": "7b8c727bd7db21f80596a514a7ea5bc25f6ec3ee",
-        "branch": "feat/asen-equipo-E-M4-g2-pi-local-fix-rounds",
-        "phase": "G05-P06-consumidor-limite-de-rejuicio",
+        "branch": "feat/asen-equipo-E-M4-g2-pi-local-fix-lineage",
+        "phase": "G05-P06-evidencia-de-linaje-y-dictamen",
         "files": [
           "odd/tasks/asen-pi-local-megatandas.md",
           "src/review/ordinary-review-command.ts",
@@ -382,7 +388,11 @@
           "tests/judgment-fix-odd-save.test.ts",
           "tests/judgment-fix-odd-command.test.ts",
           "tests/judgment-fix-proposal-journal.test.ts",
-          "tests/dual-rejudgment-two-rounds-negative.test.ts"
+          "tests/dual-rejudgment-two-rounds-negative.test.ts",
+          "src/review/judgment-day.ts",
+          "src/review/pi-model-reviewer.ts",
+          "tests/judgment-day.test.ts",
+          "tests/pi-model-reviewer.test.ts"
         ]
       }
     }
